@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -40,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
@@ -146,7 +146,7 @@ public class TableMetadataImpl implements Metadata {
   public static Type getFunctionType(String functionName, List<? extends Type> argumentTypes) {
 
     // builtin scalar function
-    if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
+    if (TableBuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes)
           && !(argumentTypes.size() == 2
               && isNumericType(argumentTypes.get(0))
@@ -157,7 +157,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only supports one numeric data types [INT32, INT64, FLOAT, DOUBLE] and one boolean");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -165,7 +165,9 @@ public class TableMetadataImpl implements Metadata {
                 + " only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.REPLACE
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
 
       if (!isTwoCharType(argumentTypes) && !isThreeCharType(argumentTypes)) {
         throw new SemanticException(
@@ -174,7 +176,9 @@ public class TableMetadataImpl implements Metadata {
                 + " only supports text or string data type.");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SUBSTRING
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 2
               && isCharType(argumentTypes.get(0))
               && isIntegerNumber(argumentTypes.get(1)))
@@ -188,7 +192,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -196,7 +200,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be text or string data type.");
       }
       return INT32;
-    } else if (BuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -204,7 +208,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be text or string data type.");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -212,7 +216,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be text or string data type.");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -220,7 +224,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be text or string data type.");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.STRING_CONTAINS
+    } else if (TableBuiltinScalarFunction.STRING_CONTAINS
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
@@ -230,7 +234,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (BuiltinScalarFunction.STRING_MATCHES
+    } else if (TableBuiltinScalarFunction.STRING_MATCHES
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
@@ -240,7 +244,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (BuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -248,7 +252,9 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return INT32;
-    } else if (BuiltinScalarFunction.STARTS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.STARTS_WITH
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -256,7 +262,9 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (BuiltinScalarFunction.ENDS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ENDS_WITH
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -264,7 +272,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (BuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -272,7 +280,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return TEXT;
-    } else if (BuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -280,7 +288,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (BuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -288,7 +296,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -296,7 +304,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -304,7 +312,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -312,7 +320,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -320,7 +328,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -328,7 +336,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -336,7 +344,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -344,7 +352,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -352,7 +360,9 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.DEGREES.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.DEGREES
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -360,7 +370,9 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.RADIANS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.RADIANS
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -368,7 +380,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -376,7 +388,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return argumentTypes.get(0);
-    } else if (BuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -384,7 +396,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return INT32;
-    } else if (BuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -392,7 +404,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -400,7 +412,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -408,7 +420,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -416,7 +428,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "
@@ -424,7 +436,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
-    } else if (BuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
             "Scalar function "

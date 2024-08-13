@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.relational;
 
-import org.apache.iotdb.commons.udf.builtin.BuiltinScalarFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -129,6 +128,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.St
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
@@ -551,7 +551,7 @@ public class ColumnTransformerBuilder
   private ColumnTransformer getFunctionColumnTransformer(
       String functionName, List<Expression> children, Context context) {
     // builtin scalar function
-    if (BuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
+    if (TableBuiltinScalarFunction.DIFF.getFunctionName().equalsIgnoreCase(functionName)) {
       boolean ignoreNull = true;
       if (children.size() > 1) {
         if (isBooleanLiteral(children.get(1))) {
@@ -565,7 +565,7 @@ public class ColumnTransformerBuilder
       }
       return new DiffFunctionColumnTransformer(
           DOUBLE, this.process(children.get(0), context), ignoreNull);
-    } else if (BuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
       int places = 0;
       if (children.size() > 1) {
         if (isLongLiteral(children.get(1))) {
@@ -579,7 +579,9 @@ public class ColumnTransformerBuilder
       }
       return new RoundFunctionColumnTransformer(
           DOUBLE, this.process(children.get(0), context), places);
-    } else if (BuiltinScalarFunction.REPLACE.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.REPLACE
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
@@ -605,7 +607,9 @@ public class ColumnTransformerBuilder
               this.process(children.get(2), context));
         }
       }
-    } else if (BuiltinScalarFunction.SUBSTRING.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SUBSTRING
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isLongLiteral(children.get(1))) {
@@ -638,27 +642,27 @@ public class ColumnTransformerBuilder
               this.process(children.get(2), context));
         }
       }
-    } else if (BuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new LengthColumnTransformer(INT32, first);
       }
-    } else if (BuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new UpperColumnTransformer(first.getType(), first);
       }
-    } else if (BuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new LowerColumnTransformer(first.getType(), first);
       }
-    } else if (BuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new TrimColumnTransformer(first.getType(), first);
       }
-    } else if (BuiltinScalarFunction.STRING_CONTAINS
+    } else if (TableBuiltinScalarFunction.STRING_CONTAINS
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
@@ -671,7 +675,7 @@ public class ColumnTransformerBuilder
               BOOLEAN, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.STRING_MATCHES
+    } else if (TableBuiltinScalarFunction.STRING_MATCHES
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
@@ -684,7 +688,7 @@ public class ColumnTransformerBuilder
               BOOLEAN, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
@@ -694,7 +698,9 @@ public class ColumnTransformerBuilder
           return new Locate2ColumnTransformer(INT32, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.STARTS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.STARTS_WITH
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
@@ -705,7 +711,9 @@ public class ColumnTransformerBuilder
               BOOLEAN, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.ENDS_WITH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ENDS_WITH
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
@@ -716,7 +724,7 @@ public class ColumnTransformerBuilder
               BOOLEAN, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
@@ -727,7 +735,7 @@ public class ColumnTransformerBuilder
               STRING, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
@@ -738,97 +746,101 @@ public class ColumnTransformerBuilder
               BOOLEAN, first, this.process(children.get(1), context));
         }
       }
-    } else if (BuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new SinColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.COS.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new CosColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.TAN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new TanColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ASIN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new AsinColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ACOS.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new AcosColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ATAN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new AtanColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SINH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new SinhColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.COSH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new CoshColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.TANH.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new TanhColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.DEGREES.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.DEGREES
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new DegreesColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.RADIANS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.RADIANS
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new RadiansColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.ABS.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new AbsColumnTransformer(first.getType(), first);
       }
-    } else if (BuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new SignColumnTransformer(INT32, first);
       }
-    } else if (BuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new CeilColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.FLOOR.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new FloorColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.EXP.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new ExpColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new LnColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.LOG10.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new Log10ColumnTransformer(DOUBLE, first);
       }
-    } else if (BuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.SQRT.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new SqrtColumnTransformer(DOUBLE, first);
