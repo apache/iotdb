@@ -95,7 +95,8 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
             FragmentInstanceState.valueOf(resp.getState()),
             resp.getEndTime(),
             failedMessage,
-            failureInfoList);
+            failureInfoList,
+            resp.getErrorCode());
       }
     }
   }
