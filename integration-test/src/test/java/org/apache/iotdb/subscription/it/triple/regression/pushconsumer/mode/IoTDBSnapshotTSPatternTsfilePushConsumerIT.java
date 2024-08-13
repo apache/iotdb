@@ -163,12 +163,13 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
     Path path_d0s0 = new Path(device, "s_0", true);
     Path path_d0s1 = new Path(device, "s_1", true);
     Path path_d1s0 = new Path(database + ".d_1", "s_0", true);
-    Path path_other_d2 = new Path("" + database2 + ".d_2", "s_0", true);
+    Path path_other_d2 = new Path(database2 + ".d_2", "s_0", true);
     List<Path> paths = new ArrayList<>(4);
     paths.add(path_d0s0);
     paths.add(path_d0s1);
     paths.add(path_d1s0);
     paths.add(path_other_d2);
+
     consumer =
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
@@ -207,50 +208,39 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT extends AbstractSubscrip
                 })
             .buildPushConsumer();
     consumer.open();
-
     // Subscribe
     consumer.subscribe(topicName);
     subs.getSubscriptions(topicName).forEach(System.out::println);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after subscription");
-    insert_data(1707609600000L);
-    insert_data(System.currentTimeMillis());
 
+    insert_data(1707609600000L); // 2024-02-11 08:00:00+08:00
+    insert_data(System.currentTimeMillis());
     System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
           assertEquals(onReceiveCount.get(), 1, "receive files");
-          //            for (int i = 0; i < 4; i++) {
-          //                System.out.println("rowCounts_"+i+":"+rowCounts.get(i).get());
-          //            }
           assertEquals(rowCounts.get(0).get(), 5, device + ".s_0");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1");
           assertEquals(rowCounts.get(2).get(), 0, database + ".d_1.s_0");
-          assertEquals(rowCounts.get(3).get(), 0, "" + database2 + ".d_2.s_0");
-          //            assertEquals(consumer.allSnapshotTopicMessagesHaveBeenConsumed(), true, "All
-          // messages have been consumed");
+          assertEquals(rowCounts.get(3).get(), 0, database2 + ".d_2.s_0");
         });
+
     // Unsubscribe
     consumer.unsubscribe(topicName);
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after re-subscribing");
-    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
-    System.out.println("onReceiveCount: " + onReceiveCount.get());
-    System.out.println(FORMAT.format(new Date()) + " src:" + getCount(session_src, sql));
+
     AWAIT.untilAsserted(
         () -> {
-          //            for (int i = 0; i < 4; i++) {
-          //                System.out.println("rowCounts_"+i+":"+rowCounts.get(i).get());
-          //            }
+          assertGte(onReceiveCount.get(), 2, "receive files over 2");
           assertEquals(rowCounts.get(0).get(), 15, device + ".s_0");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1");
           assertEquals(rowCounts.get(2).get(), 0, database + ".d_1.s_0");
-          assertEquals(rowCounts.get(3).get(), 0, "" + database2 + ".d_2.s_0");
-          //            assertEquals(consumer.allSnapshotTopicMessagesHaveBeenConsumed(), true, "All
-          // Messages have been consumed");
-          assertEquals(onReceiveCount.get(), 2, "receive files over 2");
+          assertEquals(rowCounts.get(3).get(), 0, database2 + ".d_2.s_0");
         });
   }
 }

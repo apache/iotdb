@@ -143,8 +143,6 @@ public class IoTDBSnapshotDevicePullConsumerDataSetIT extends AbstractSubscripti
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
-    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
-    System.out.println("src: " + getCount(session_src, sql));
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.
     consume_data(consumer, session_dest);

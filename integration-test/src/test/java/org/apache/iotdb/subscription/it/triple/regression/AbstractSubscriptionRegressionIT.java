@@ -449,10 +449,9 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     if (Objects.nonNull(message)) {
       Assume.assumeTrue(
           actual + " should be equals to " + expected + ", message: " + message,
-          Objects.equals(actual, expected));
+          actual == expected);
     } else {
-      Assume.assumeTrue(
-          actual + " should be equals to " + expected, Objects.equals(actual, expected));
+      Assume.assumeTrue(actual + " should be equals to " + expected, actual == expected);
     }
   }
 

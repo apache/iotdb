@@ -160,7 +160,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver

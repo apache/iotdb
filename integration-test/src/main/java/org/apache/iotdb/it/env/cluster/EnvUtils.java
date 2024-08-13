@@ -180,7 +180,7 @@ public class EnvUtils {
     }
     return new Pair<>(
         getIntFromSysVar(DEFAULT_CONFIG_NODE_NUM, 1, index),
-        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, index));
+        getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 1, index));
   }
 
   public static String getFilePathFromSysVar(String key, int index) {

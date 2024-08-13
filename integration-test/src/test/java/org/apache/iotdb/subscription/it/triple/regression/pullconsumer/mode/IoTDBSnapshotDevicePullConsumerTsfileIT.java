@@ -47,7 +47,7 @@ import java.util.List;
 /***
  * PullConsumer
  * pattern: device
- * Tsfile
+ * tsfile
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -130,6 +130,7 @@ public class IoTDBSnapshotDevicePullConsumerTsfileIT extends AbstractSubscriptio
           StatementExecutionException {
     // Subscribe before writing data
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
+
     consumer =
         new SubscriptionPullConsumer.Builder()
             .host(SRC_HOST)
@@ -144,32 +145,32 @@ public class IoTDBSnapshotDevicePullConsumerTsfileIT extends AbstractSubscriptio
     consumer.subscribe(topicName);
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-    //        insert_data(1706659200000L); //2024-01-31 08:00:00+08:00
+
     insert_data(System.currentTimeMillis());
+    System.out.println("src :" + getCount(session_src, "select count(s_0) from " + device));
+
     // Consumption data
     List<String> devices = new ArrayList<>(3);
     devices.add(device);
     devices.add(database + ".d_1");
-    devices.add("" + database2 + ".d_2");
-    System.out.println("src :" + getCount(session_src, "select count(s_0) from " + device));
+    devices.add(database2 + ".d_2");
     List<Integer> rowCounts = consume_tsfile(consumer, devices);
 
     assertEquals(rowCounts.get(0), 5);
     assertEquals(rowCounts.get(1), 0);
     assertEquals(rowCounts.get(2), 0);
+
     // Unsubscribe
     consumer.unsubscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 0, "Show subscriptions after unsubscription");
-    // Subscribe and then write data
+
+    // Subscribe
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
-    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
+
     // Consumption data: Progress is not retained after unsubscribing and then re-subscribing. Full
     // synchronization.
     rowCounts = consume_tsfile(consumer, devices);
-    System.out.println(
-        "Resubscribe src :" + getCount(session_src, "select count(s_0) from " + device));
-
     assertEquals(
         rowCounts.get(0),
         10,

@@ -166,6 +166,8 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
     subs.getSubscriptions(topicName).forEach(System.out::println);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after subscription");
+
+    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     insert_data(System.currentTimeMillis());
 
     AWAIT.untilAsserted(
@@ -182,12 +184,12 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
     consumer.subscribe(topicName);
     assertEquals(
         subs.getSubscriptions(topicName).size(), 1, "show subscriptions after re-subscribing");
-    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
+
     // Consumption data: Progress is not retained when re-subscribing after cancellation. Full
     // synchronization.
     AWAIT.untilAsserted(
         () -> {
-          check_count(8, "select count(s_0) from " + device, "consume data again:s_0 " + device);
+          check_count(12, "select count(s_0) from " + device, "consume data again:s_0 " + device);
           check_count(0, "select count(s_1) from " + device, "Consumption data: s_1 " + device);
         });
   }

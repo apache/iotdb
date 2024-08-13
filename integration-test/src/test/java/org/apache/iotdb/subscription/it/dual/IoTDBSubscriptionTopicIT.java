@@ -162,7 +162,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -263,7 +263,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -360,7 +360,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -484,7 +484,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -658,7 +658,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     try {
@@ -769,7 +769,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName())));
+            String.format("%s - consumer", testName.getDisplayName())));
 
     // Insert some realtime data on sender
     threads.add(
@@ -792,7 +792,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
               }
               dataPrepared.set(true);
             },
-            String.format("%s - data inserter", testName.getMethodName())));
+            String.format("%s - data inserter", testName.getDisplayName())));
 
     for (final Thread thread : threads) {
       thread.start();

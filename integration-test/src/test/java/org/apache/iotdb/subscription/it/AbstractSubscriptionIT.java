@@ -24,12 +24,11 @@ import org.apache.iotdb.session.subscription.consumer.SubscriptionExecutorServic
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
-import org.junit.rules.TestName;
 import org.junit.rules.TestRule;
 
 public abstract class AbstractSubscriptionIT {
 
-  @Rule public TestName testName = new TestName();
+  @Rule public DisplayName testName = new DisplayName();
 
   @Rule
   public final TestRule skipOnSetUpAndTearDownFailure =
@@ -38,7 +37,7 @@ public abstract class AbstractSubscriptionIT {
   @Before
   public void setUp() throws Exception {
     // set thread name
-    Thread.currentThread().setName(String.format("%s - main", testName.getMethodName()));
+    Thread.currentThread().setName(String.format("%s - main", testName.getDisplayName()));
 
     // set thread pools core size
     SubscriptionExecutorServiceManager.setControlFlowExecutorCorePoolSize(1);

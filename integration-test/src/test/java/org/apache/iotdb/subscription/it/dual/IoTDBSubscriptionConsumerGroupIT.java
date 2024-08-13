@@ -1036,7 +1036,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                   LOGGER.info("consumer {} exiting...", consumers.get(index));
                 }
               },
-              String.format("%s - %s", testName.getMethodName(), consumers.get(index).toString()));
+              String.format("%s - %s", testName.getDisplayName(), consumers.get(index).toString()));
       t.start();
       threads.add(t);
     }
@@ -1058,7 +1058,7 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                 for (final DataNodeWrapper wrapper : senderEnv.getDataNodeWrapperList()) {
                   // wrapper.executeJstack();
                   wrapper.executeJstack(
-                      String.format("%s_%s", testName.getMethodName(), currentTime[0]));
+                      String.format("%s_%s", testName.getDisplayName(), currentTime[0]));
                 }
                 currentTime[0] = System.currentTimeMillis();
               }
