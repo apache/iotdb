@@ -21,10 +21,12 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -46,6 +48,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector.MNodeCollector;
@@ -78,21 +81,30 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -114,6 +126,8 @@ import java.util.function.Function;
  * </ol>
  */
 public class MTreeBelowSGMemoryImpl {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowSGMemoryImpl.class);
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
@@ -325,7 +339,8 @@ public class MTreeBelowSGMemoryImpl {
           if (node.isMeasurement()) {
             final IMeasurementMNode<IMemMNode> measurementNode = node.getAsMeasurementMNode();
             if (node.getAsMeasurementMNode().isPreDeleted()) {
-              throw new MeasurementInBlackListException(devicePath.concatNode(measurements.get(i)));
+              throw new MeasurementInBlackListException(
+                  devicePath.concatAsMeasurementPath(measurements.get(i)));
             } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
               throw new MeasurementAlreadyExistException(
                   devicePath.getFullPath() + "." + measurements.get(i),
@@ -462,7 +477,8 @@ public class MTreeBelowSGMemoryImpl {
           if (node.getAsMeasurementMNode().isPreDeleted()) {
             failingMeasurementMap.put(
                 i,
-                new MeasurementInBlackListException(devicePath.concatNode(measurementList.get(i))));
+                new MeasurementInBlackListException(
+                    devicePath.concatAsMeasurementPath(measurementList.get(i))));
           } else {
             failingMeasurementMap.put(
                 i,
@@ -1006,7 +1022,8 @@ public class MTreeBelowSGMemoryImpl {
   // region Interfaces for schema reader
 
   @SuppressWarnings("java:S2095")
-  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(
+      IShowDevicesPlan showDevicesPlan, BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
     EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(
@@ -1018,8 +1035,15 @@ public class MTreeBelowSGMemoryImpl {
 
           protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
             PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            return new ShowDevicesResult(
-                device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
+            ShowDevicesResult result =
+                new ShowDevicesResult(
+                    device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
+            result.setAttributeProvider(
+                k ->
+                    attributeProvider.apply(
+                        ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
+                        k));
+            return result;
           }
         };
     if (showDevicesPlan.usingSchemaTemplate()) {
@@ -1050,7 +1074,8 @@ public class MTreeBelowSGMemoryImpl {
           public boolean hasNext() {
             while (next == null && collector.hasNext()) {
               IDeviceSchemaInfo temp = collector.next();
-              if (filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
+              if (showDevicesPlan.getSchemaFilter() == null
+                  || filterVisitor.process(showDevicesPlan.getSchemaFilter(), temp)) {
                 next = temp;
               }
             }
@@ -1072,6 +1097,201 @@ public class MTreeBelowSGMemoryImpl {
     } else {
       return reader;
     }
+  }
+
+  // Used for device query/fetch with filters during show device or table query
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      final PartialPath pattern,
+      final SchemaFilter deviceFilter,
+      final BiFunction<Integer, String, String> attributeProvider)
+      throws MetadataException {
+
+    final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
+        new EntityCollector<IDeviceSchemaInfo, IMemMNode>(rootNode, pattern, store, false, null) {
+
+          protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
+            final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
+            final ShowDevicesResult result =
+                new ShowDevicesResult(
+                    device.getFullPath(),
+                    node.isAlignedNullable(),
+                    node.getSchemaTemplateId(),
+                    node.getPartialPath().getNodes());
+            result.setAttributeProvider(
+                k ->
+                    attributeProvider.apply(
+                        ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
+                        k));
+            return result;
+          }
+        };
+    return new ISchemaReader<IDeviceSchemaInfo>() {
+
+      private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
+      private IDeviceSchemaInfo next;
+
+      public boolean isSuccess() {
+        return collector.isSuccess();
+      }
+
+      public Throwable getFailure() {
+        return collector.getFailure();
+      }
+
+      public void close() {
+        collector.close();
+      }
+
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
+
+      public boolean hasNext() {
+        while (next == null && collector.hasNext()) {
+          final IDeviceSchemaInfo temp = collector.next();
+          if (deviceFilter == null || filterVisitor.process(deviceFilter, temp)) {
+            next = temp;
+          }
+        }
+        return next != null;
+      }
+
+      public IDeviceSchemaInfo next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        final IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
+      }
+    };
+  }
+
+  private int computeSmallestNullableIndex(final PartialPath partialPath) {
+    if (!(partialPath instanceof ExtendedPartialPath)) {
+      return partialPath.getNodeLength() - 1;
+    }
+    return 0;
+  }
+
+  // used for device fetch with explicit device id/path during table insertion
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      final String table,
+      final List<Object[]> devicePathList,
+      final BiFunction<Integer, String, String> attributeProvider) {
+    return new ISchemaReader<IDeviceSchemaInfo>() {
+
+      final Iterator<Object[]> deviceIdIterator = devicePathList.listIterator();
+
+      IDeviceSchemaInfo next = null;
+
+      Throwable t = null;
+
+      @Override
+      public boolean isSuccess() {
+        return t == null;
+      }
+
+      @Override
+      public Throwable getFailure() {
+        return t;
+      }
+
+      @Override
+      public ListenableFuture<?> isBlocked() {
+        return NOT_BLOCKED;
+      }
+
+      @Override
+      public boolean hasNext() {
+        if (next == null) {
+          tryGetNext();
+        }
+        return next != null;
+      }
+
+      @Override
+      public IDeviceSchemaInfo next() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        final IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
+      }
+
+      private void tryGetNext() {
+        while (deviceIdIterator.hasNext()) {
+          try {
+            final IMemMNode node = getTableDeviceNode(table, deviceIdIterator.next());
+
+            if (!node.isDevice()) {
+              continue;
+            }
+            final IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();
+            final ShowDevicesResult result =
+                new ShowDevicesResult(
+                    deviceNode.getFullPath(),
+                    deviceNode.isAlignedNullable(),
+                    deviceNode.getSchemaTemplateId(),
+                    deviceNode.getPartialPath().getNodes());
+            result.setAttributeProvider(
+                k ->
+                    attributeProvider.apply(
+                        ((TableDeviceInfo<IMemMNode>) deviceNode.getDeviceInfo())
+                            .getAttributePointer(),
+                        k));
+            next = result;
+            break;
+          } catch (final PathNotExistException e) {
+            // Do nothing
+          } catch (final Throwable e) {
+            t = e;
+            return;
+          }
+        }
+      }
+
+      @Override
+      public void close() {}
+    };
+  }
+
+  private IMemMNode getTableDeviceNode(final String table, final Object[] deviceId)
+      throws PathNotExistException {
+    IMemMNode cur = storageGroupMNode;
+    IMemMNode next;
+
+    next = cur.getChild(table);
+    if (next == null) {
+      throw new PathNotExistException(
+          storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+          true);
+    } else if (next.isMeasurement()) {
+      throw new PathNotExistException(
+          storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+          true);
+    }
+    cur = next;
+
+    for (int i = 0; i < deviceId.length; i++) {
+      next = cur.getChild(deviceId[i] == null ? null : String.valueOf(deviceId[i]));
+      if (next == null) {
+        throw new PathNotExistException(
+            storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+            true);
+      } else if (next.isMeasurement()) {
+        if (i == deviceId.length - 1) {
+          return next;
+        } else {
+          throw new PathNotExistException(
+              storageGroupMNode.getFullPath() + PATH_SEPARATOR + table + Arrays.toString(deviceId),
+              true);
+        }
+      }
+      cur = next;
+    }
+    return cur;
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
@@ -1310,5 +1530,59 @@ public class MTreeBelowSGMemoryImpl {
     }
     return result;
   }
+
+  // endregion
+
+  // region table device management
+
+  public void createTableDevice(
+      final String tableName,
+      final Object[] devicePath,
+      final IntSupplier attributePointerGetter,
+      final IntConsumer attributeUpdater)
+      throws MetadataException {
+    // todo implement storage for device of diverse data types
+
+    IMemMNode cur = storageGroupMNode.getChild(tableName);
+    if (cur == null) {
+      cur =
+          store.addChild(
+              storageGroupMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
+    }
+
+    for (final Object o : devicePath) {
+      final String childName = o == null ? null : o.toString();
+      IMemMNode child = cur.getChild(childName);
+      if (child == null) {
+        child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
+      }
+      cur = child;
+    }
+
+    final IDeviceMNode<IMemMNode> entityMNode;
+
+    synchronized (this) {
+      if (cur.isDevice()) {
+        entityMNode = cur.getAsDeviceMNode();
+        if (!(entityMNode.getDeviceInfo() instanceof TableDeviceInfo)) {
+          throw new MetadataException("Table device shall not create under tree model");
+        }
+        final TableDeviceInfo<IMemMNode> deviceInfo =
+            (TableDeviceInfo<IMemMNode>) entityMNode.getDeviceInfo();
+        attributeUpdater.accept(deviceInfo.getAttributePointer());
+      } else {
+        entityMNode = store.setToEntity(cur);
+        final TableDeviceInfo<IMemMNode> deviceInfo = new TableDeviceInfo<>();
+        deviceInfo.setAttributePointer(attributePointerGetter.getAsInt());
+        entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
+        regionStatistics.addDevice();
+      }
+    }
+  }
+
+  public void deleteTableDevice(String tableName) {
+    storageGroupMNode.deleteChild(tableName);
+  }
+
   // endregion
 }

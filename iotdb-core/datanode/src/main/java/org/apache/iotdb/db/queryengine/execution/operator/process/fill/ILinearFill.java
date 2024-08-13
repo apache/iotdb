@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.fill;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public interface ILinearFill {
 
@@ -33,7 +32,7 @@ public interface ILinearFill {
    * @param currentRowIndex current row index for start time in timeColumn
    * @return Value Column that has been filled
    */
-  Column fill(TimeColumn timeColumn, Column valueColumn, long currentRowIndex);
+  Column fill(Column timeColumn, Column valueColumn, long currentRowIndex);
 
   /**
    * Whether need prepare for next.
@@ -58,5 +57,5 @@ public interface ILinearFill {
    *     current column, and still need to keep getting next TsBlock and then call prepareForNext
    */
   boolean prepareForNext(
-      long startRowIndex, long endRowIndex, TimeColumn nextTimeColumn, Column nextValueColumn);
+      long startRowIndex, long endRowIndex, Column nextTimeColumn, Column nextValueColumn);
 }

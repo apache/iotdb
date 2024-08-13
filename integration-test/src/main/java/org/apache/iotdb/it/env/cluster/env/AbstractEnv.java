@@ -377,16 +377,19 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(String username, String password) throws SQLException {
+  public Connection getConnection(String username, String password, String sqlDialect)
+      throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnection(null, username, password), getReadConnections(null, username, password));
+        getWriteConnection(null, username, password, sqlDialect),
+        getReadConnections(null, username, password, sqlDialect));
   }
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNode, null, username, password, TREE_SQL_DIALECT),
         Collections.emptyList());
   }
 
@@ -394,72 +397,123 @@ public abstract class AbstractEnv implements BaseEnv {
   public Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
-        getReadConnections(null, username, password));
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNode, null, username, password, TREE_SQL_DIALECT),
+        getReadConnections(null, username, password, TREE_SQL_DIALECT));
   }
 
   @Override
-  public Connection getConnection(Constant.Version version, String username, String password)
+  public Connection getConnection(
+      Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
       return new ClusterTestConnection(
-          getWriteConnection(version, username, password),
-          getReadConnections(version, username, password));
+          getWriteConnection(version, username, password, sqlDialect),
+          getReadConnections(version, username, password, sqlDialect));
     } else {
-      return getWriteConnection(version, username, password).getUnderlyingConnecton();
+      return getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnecton();
     }
   }
 
   @Override
-  public ISession getSessionConnection() throws IoTDBConnectionException {
+  public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    Session session =
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .sqlDialect(sqlDialect)
+            .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISession getSessionConnection(String userName, String password)
+  public ISession getSessionConnectionWithDB(String sqlDialect, String database)
       throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session = new Session(dataNode.getIp(), dataNode.getPort(), userName, password);
-    session.open();
-    return session;
-  }
-
-  @Override
-  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =
-        new Session(
-            nodeUrls,
-            SessionConfig.DEFAULT_USER,
-            SessionConfig.DEFAULT_PASSWORD,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .sqlDialect(sqlDialect)
+            .database(database)
+            .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize) {
+  public ISession getSessionConnection(String userName, String password, String sqlDialect)
+      throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new SessionPool(
-        dataNode.getIp(),
-        dataNode.getPort(),
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        maxSize);
+    Session session =
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .username(userName)
+            .password(password)
+            .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder()
+            .nodeUrls(nodeUrls)
+            .username(SessionConfig.DEFAULT_USER)
+            .password(SessionConfig.DEFAULT_PASSWORD)
+            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+            .zoneId(null)
+            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+            .version(SessionConfig.DEFAULT_VERSION)
+            .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool.Builder()
+        .host(dataNode.getIp())
+        .port(dataNode.getPort())
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .sqlDialect(sqlDialect)
+        .build();
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect, String database) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool.Builder()
+        .host(dataNode.getIp())
+        .port(dataNode.getPort())
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .sqlDialect(sqlDialect)
+        .database(database)
+        .build();
   }
 
   protected NodeConnection getWriteConnection(
-      Constant.Version version, String username, String password) throws SQLException {
+      Constant.Version version, String username, String password, String sqlDialect)
+      throws SQLException {
     DataNodeWrapper dataNode;
 
     if (System.getProperty("RandomSelectWriteNode", "true").equalsIgnoreCase("true")) {
@@ -470,11 +524,15 @@ public abstract class AbstractEnv implements BaseEnv {
     }
 
     return getWriteConnectionFromDataNodeList(
-        this.dataNodeWrapperList, version, username, password);
+        this.dataNodeWrapperList, version, username, password, sqlDialect);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, Constant.Version version, String username, String password)
+      DataNodeWrapper dataNode,
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect)
       throws SQLException {
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
@@ -482,8 +540,7 @@ public abstract class AbstractEnv implements BaseEnv {
             Config.IOTDB_URL_PREFIX
                 + endpoint
                 + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-            System.getProperty("User", username),
-            System.getProperty("Password", password));
+            BaseEnv.constructProperties(username, password, sqlDialect));
     return new NodeConnection(
         endpoint,
         NodeConnection.NodeRole.DATA_NODE,
@@ -495,14 +552,16 @@ public abstract class AbstractEnv implements BaseEnv {
       List<DataNodeWrapper> dataNodeList,
       Constant.Version version,
       String username,
-      String password)
+      String password,
+      String sqlDialect)
       throws SQLException {
     List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
     Collections.shuffle(dataNodeWrapperListCopy);
     SQLException lastException = null;
     for (DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
       try {
-        return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+        return getWriteConnectionWithSpecifiedDataNode(
+            dataNode, version, username, password, sqlDialect);
       } catch (SQLException e) {
         lastException = e;
       }
@@ -512,7 +571,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected List<NodeConnection> getReadConnections(
-      Constant.Version version, String username, String password) throws SQLException {
+      Constant.Version version, String username, String password, String sqlDialect)
+      throws SQLException {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
@@ -526,8 +586,7 @@ public abstract class AbstractEnv implements BaseEnv {
                     Config.IOTDB_URL_PREFIX
                         + endpoint
                         + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-                    System.getProperty("User", username),
-                    System.getProperty("Password", password));
+                    BaseEnv.constructProperties(username, password, sqlDialect));
             return new NodeConnection(
                 endpoint,
                 NodeConnection.NodeRole.DATA_NODE,

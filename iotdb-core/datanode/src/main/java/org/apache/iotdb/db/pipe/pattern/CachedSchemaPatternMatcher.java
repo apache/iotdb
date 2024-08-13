@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected final ReentrantReadWriteLock lock;
 
   protected final Set<PipeRealtimeDataRegionExtractor> extractors;
-  protected final Cache<String, Set<PipeRealtimeDataRegionExtractor>> deviceToExtractorsCache;
+  protected final Cache<IDeviceID, Set<PipeRealtimeDataRegionExtractor>> deviceToExtractorsCache;
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
@@ -114,8 +115,8 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
             .collect(Collectors.toSet());
       }
 
-      for (final Map.Entry<String, String[]> entry : event.getSchemaInfo().entrySet()) {
-        final String device = entry.getKey();
+      for (final Map.Entry<IDeviceID, String[]> entry : event.getSchemaInfo().entrySet()) {
+        final IDeviceID device = entry.getKey();
         final String[] measurements = entry.getValue();
 
         // 1. try to get matched extractors from cache, if not success, match them by device
@@ -176,7 +177,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     return matchedExtractors;
   }
 
-  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(final String device) {
+  protected Set<PipeRealtimeDataRegionExtractor> filterExtractorsByDevice(final IDeviceID device) {
     final Set<PipeRealtimeDataRegionExtractor> filteredExtractors = new HashSet<>();
 
     for (final PipeRealtimeDataRegionExtractor extractor : extractors) {

@@ -19,6 +19,9 @@
 package org.apache.iotdb.commons.path;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -127,6 +130,17 @@ public class PatternTreeMap<V, VSerializer extends PathPatternNode.Serializer<V>
     Set<V> res = new HashSet<>();
     searchOverlapped(root, fullPath.getNodes(), 0, res);
     return new ArrayList<>(res);
+  }
+
+  public List<V> getOverlapped(IDeviceID deviceID, String measurement) {
+    // TODO change this way
+    PartialPath devicePath;
+    try {
+      devicePath = new PartialPath(deviceID.toString());
+    } catch (IllegalPathException e) {
+      throw new RuntimeException(e);
+    }
+    return getOverlapped(devicePath.concatAsMeasurementPath(measurement));
   }
 
   /**

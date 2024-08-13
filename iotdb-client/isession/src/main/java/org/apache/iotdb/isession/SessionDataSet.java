@@ -38,8 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
-
 public class SessionDataSet implements ISessionDataSet {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
@@ -57,7 +55,9 @@ public class SessionDataSet implements ISessionDataSet {
       List<ByteBuffer> queryResult,
       boolean ignoreTimeStamp,
       boolean moreData,
-      ZoneId zoneId) {
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -74,41 +74,9 @@ public class SessionDataSet implements ISessionDataSet {
             SessionConfig.DEFAULT_FETCH_SIZE,
             0,
             zoneId,
-            RpcUtils.DEFAULT_TIME_FORMAT);
-  }
-
-  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
-  public SessionDataSet(
-      String sql,
-      List<String> columnNameList,
-      List<String> columnTypeList,
-      Map<String, Integer> columnNameIndex,
-      long queryId,
-      long statementId,
-      IClientRPCService.Iface client,
-      long sessionId,
-      List<ByteBuffer> queryResult,
-      boolean ignoreTimeStamp,
-      long timeout,
-      boolean moreData,
-      ZoneId zoneId) {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            moreData,
-            queryId,
-            statementId,
-            client,
-            sessionId,
-            queryResult,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            timeout,
-            zoneId,
-            RpcUtils.DEFAULT_TIME_FORMAT);
+            RpcUtils.DEFAULT_TIME_FORMAT,
+            timeFactor,
+            tableModel);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -126,7 +94,9 @@ public class SessionDataSet implements ISessionDataSet {
       long timeout,
       boolean moreData,
       int fetchSize,
-      ZoneId zoneId) {
+      ZoneId zoneId,
+      int timeFactor,
+      boolean tableModel) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -143,7 +113,9 @@ public class SessionDataSet implements ISessionDataSet {
             fetchSize,
             timeout,
             zoneId,
-            RpcUtils.DEFAULT_TIME_FORMAT);
+            RpcUtils.DEFAULT_TIME_FORMAT,
+            timeFactor,
+            tableModel);
   }
 
   public int getFetchSize() {
@@ -175,55 +147,47 @@ public class SessionDataSet implements ISessionDataSet {
 
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
     List<Field> outFields = new ArrayList<>();
-    for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
+    for (int i = ioTDBRpcDataSet.getValueColumnStartIndex();
+        i < ioTDBRpcDataSet.getColumnSize();
+        i++) {
       Field field;
 
-      int index = i + 1;
-      int datasetColumnIndex = i + START_INDEX;
-      if (ioTDBRpcDataSet.ignoreTimeStamp) {
-        index--;
-        datasetColumnIndex--;
-      }
-      int loc =
-          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(index))
-              - START_INDEX;
+      String columnName = ioTDBRpcDataSet.columnNameList.get(i);
 
-      if (!ioTDBRpcDataSet.isNull(datasetColumnIndex)) {
-        TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
+      if (!ioTDBRpcDataSet.isNull(columnName)) {
+        TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
         field = new Field(dataType);
         switch (dataType) {
           case BOOLEAN:
-            boolean booleanValue = ioTDBRpcDataSet.getBoolean(datasetColumnIndex);
+            boolean booleanValue = ioTDBRpcDataSet.getBoolean(columnName);
             field.setBoolV(booleanValue);
             break;
           case INT32:
           case DATE:
-            int intValue = ioTDBRpcDataSet.getInt(datasetColumnIndex);
+            int intValue = ioTDBRpcDataSet.getInt(columnName);
             field.setIntV(intValue);
             break;
           case INT64:
           case TIMESTAMP:
-            long longValue = ioTDBRpcDataSet.getLong(datasetColumnIndex);
+            long longValue = ioTDBRpcDataSet.getLong(columnName);
             field.setLongV(longValue);
             break;
           case FLOAT:
-            float floatValue = ioTDBRpcDataSet.getFloat(datasetColumnIndex);
+            float floatValue = ioTDBRpcDataSet.getFloat(columnName);
             field.setFloatV(floatValue);
             break;
           case DOUBLE:
-            double doubleValue = ioTDBRpcDataSet.getDouble(datasetColumnIndex);
+            double doubleValue = ioTDBRpcDataSet.getDouble(columnName);
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
           case BLOB:
           case STRING:
-            field.setBinaryV(ioTDBRpcDataSet.getBinary(datasetColumnIndex));
+            field.setBinaryV(ioTDBRpcDataSet.getBinary(columnName));
             break;
           default:
             throw new UnSupportedDataTypeException(
-                String.format(
-                    "Data type %s is not supported.",
-                    ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i)));
+                String.format("Data type %s is not supported.", dataType));
         }
       } else {
         field = new Field(null);

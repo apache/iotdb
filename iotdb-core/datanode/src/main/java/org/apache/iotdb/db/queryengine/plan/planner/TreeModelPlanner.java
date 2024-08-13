@@ -162,9 +162,9 @@ public class TreeModelPlanner implements IPlanner {
 
     // Get the inner statement of PipeEnrichedStatement
     Statement statementToRedirect =
-        analysis.getStatement() instanceof PipeEnrichedStatement
-            ? ((PipeEnrichedStatement) analysis.getStatement()).getInnerStatement()
-            : analysis.getStatement();
+        analysis.getTreeStatement() instanceof PipeEnrichedStatement
+            ? ((PipeEnrichedStatement) analysis.getTreeStatement()).getInnerStatement()
+            : analysis.getTreeStatement();
 
     if (statementToRedirect instanceof InsertBaseStatement
         && !analysis.isFinishQueryAfterAnalyze()) {

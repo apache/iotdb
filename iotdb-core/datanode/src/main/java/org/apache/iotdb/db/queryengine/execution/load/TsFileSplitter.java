@@ -37,7 +37,6 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -125,7 +124,7 @@ public class TsFileSplitter {
                 TimePartitionUtils.getTimePartitionSlot(chunkMetadata.getStartTime());
             ChunkData chunkData =
                 ChunkData.createChunkData(
-                    isAligned, ((PlainDeviceID) curDevice).toStringID(), header, timePartitionSlot);
+                    isAligned, curDevice.toString(), header, timePartitionSlot);
 
             if (!needDecodeChunk(chunkMetadata)) {
               chunkData.setNotDecode();
@@ -174,10 +173,7 @@ public class TsFileSplitter {
                   timePartitionSlot = pageTimePartitionSlot;
                   chunkData =
                       ChunkData.createChunkData(
-                          isAligned,
-                          ((PlainDeviceID) curDevice).toStringID(),
-                          header,
-                          timePartitionSlot);
+                          isAligned, curDevice.toString(), header, timePartitionSlot);
                 }
                 if (isAligned) {
                   pageIndex2ChunkData
@@ -218,10 +214,7 @@ public class TsFileSplitter {
                             + TimePartitionUtils.getTimePartitionInterval();
                     chunkData =
                         ChunkData.createChunkData(
-                            isAligned,
-                            ((PlainDeviceID) curDevice).toStringID(),
-                            header,
-                            timePartitionSlot);
+                            isAligned, curDevice.toString(), header, timePartitionSlot);
                   }
                   satisfiedLength += 1;
                 }

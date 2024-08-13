@@ -23,7 +23,8 @@ import org.apache.iotdb.db.tools.utils.TsFileValidationScan;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -57,7 +58,7 @@ public class TsFileValidationScanTest {
   }
 
   @Test
-  public void testValidation() throws IOException {
+  public void testValidation() {
     // overlap between chunks
     TsFileValidationScan tsFileValidationScan = new TsFileValidationScan();
     tsFileValidationScan.scanTsFile(files.get(0));
@@ -105,13 +106,13 @@ public class TsFileValidationScanTest {
 
   private static List<File> prepareTsFiles() throws IOException {
     List<File> files = new ArrayList<>();
-    PlainDeviceID plainDeviceID = new PlainDeviceID("root.sg1.d1");
+    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create("root.sg1.d1");
     // overlap between chunks
     File file = new File(TestConstant.BASE_OUTPUT_PATH, "1.tsfile");
     TsFileResource resource = new TsFileResource(file);
     files.add(file);
     TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(file);
-    tsFileIOWriter.startChunkGroup(plainDeviceID);
+    tsFileIOWriter.startChunkGroup(deviceID);
     ChunkWriterImpl chunkWriter =
         new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
     chunkWriter.write(1, 1);
@@ -120,8 +121,8 @@ public class TsFileValidationScanTest {
     chunkWriter.writeToFileWriter(tsFileIOWriter);
     tsFileIOWriter.endChunkGroup();
     tsFileIOWriter.endFile();
-    resource.updateStartTime(plainDeviceID, 1);
-    resource.updateEndTime(plainDeviceID, 1);
+    resource.updateStartTime(deviceID, 1);
+    resource.updateEndTime(deviceID, 1);
     resource.serialize();
 
     // overlap between page
@@ -129,7 +130,7 @@ public class TsFileValidationScanTest {
     resource = new TsFileResource(file);
     files.add(file);
     tsFileIOWriter = new TsFileIOWriter(file);
-    tsFileIOWriter.startChunkGroup(plainDeviceID);
+    tsFileIOWriter.startChunkGroup(deviceID);
     chunkWriter = new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
     chunkWriter.write(1, 1);
     chunkWriter.sealCurrentPage();
@@ -137,8 +138,8 @@ public class TsFileValidationScanTest {
     chunkWriter.writeToFileWriter(tsFileIOWriter);
     tsFileIOWriter.endChunkGroup();
     tsFileIOWriter.endFile();
-    resource.updateStartTime(plainDeviceID, 1);
-    resource.updateEndTime(plainDeviceID, 1);
+    resource.updateStartTime(deviceID, 1);
+    resource.updateEndTime(deviceID, 1);
     resource.serialize();
 
     // overlap within page
@@ -146,15 +147,15 @@ public class TsFileValidationScanTest {
     resource = new TsFileResource(file);
     files.add(file);
     tsFileIOWriter = new TsFileIOWriter(file);
-    tsFileIOWriter.startChunkGroup(plainDeviceID);
+    tsFileIOWriter.startChunkGroup(deviceID);
     chunkWriter = new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
     chunkWriter.write(1, 1);
     chunkWriter.write(1, 1);
     chunkWriter.writeToFileWriter(tsFileIOWriter);
     tsFileIOWriter.endChunkGroup();
     tsFileIOWriter.endFile();
-    resource.updateStartTime(plainDeviceID, 1);
-    resource.updateEndTime(plainDeviceID, 1);
+    resource.updateStartTime(deviceID, 1);
+    resource.updateEndTime(deviceID, 1);
     resource.serialize();
 
     // normal
@@ -162,7 +163,7 @@ public class TsFileValidationScanTest {
     resource = new TsFileResource(file);
     files.add(file);
     tsFileIOWriter = new TsFileIOWriter(file);
-    tsFileIOWriter.startChunkGroup(plainDeviceID);
+    tsFileIOWriter.startChunkGroup(deviceID);
     chunkWriter = new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
     chunkWriter.write(1, 1);
     chunkWriter.sealCurrentPage();
@@ -174,8 +175,8 @@ public class TsFileValidationScanTest {
     chunkWriter.writeToFileWriter(tsFileIOWriter);
     tsFileIOWriter.endChunkGroup();
     tsFileIOWriter.endFile();
-    resource.updateStartTime(plainDeviceID, 1);
-    resource.updateEndTime(plainDeviceID, 4);
+    resource.updateStartTime(deviceID, 1);
+    resource.updateEndTime(deviceID, 4);
     resource.serialize();
 
     // normal but overlap with 4.tsfile
@@ -183,7 +184,7 @@ public class TsFileValidationScanTest {
     resource = new TsFileResource(file);
     files.add(file);
     tsFileIOWriter = new TsFileIOWriter(file);
-    tsFileIOWriter.startChunkGroup(plainDeviceID);
+    tsFileIOWriter.startChunkGroup(deviceID);
     chunkWriter = new ChunkWriterImpl(new MeasurementSchema("s1", TSDataType.INT32));
     chunkWriter.write(3, 1);
     chunkWriter.sealCurrentPage();
@@ -195,8 +196,8 @@ public class TsFileValidationScanTest {
     chunkWriter.writeToFileWriter(tsFileIOWriter);
     tsFileIOWriter.endChunkGroup();
     tsFileIOWriter.endFile();
-    resource.updateStartTime(plainDeviceID, 3);
-    resource.updateEndTime(plainDeviceID, 6);
+    resource.updateStartTime(deviceID, 3);
+    resource.updateEndTime(deviceID, 6);
     resource.serialize();
     return files;
   }

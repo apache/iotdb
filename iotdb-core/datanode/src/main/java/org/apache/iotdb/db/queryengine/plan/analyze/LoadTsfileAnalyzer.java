@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -69,19 +70,20 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -171,6 +173,13 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
         }
       } catch (AuthException e) {
         return createFailAnalysisForAuthException(e);
+      } catch (BufferUnderflowException e) {
+        LOGGER.warn(
+            "The file {} is not a valid tsfile. Please check the input file.", tsFile.getPath(), e);
+        throw new SemanticException(
+            String.format(
+                "The file %s is not a valid tsfile. Please check the input file.",
+                tsFile.getPath()));
       } catch (Exception e) {
         final String exceptionMessage =
             String.format(
@@ -207,7 +216,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
     LOGGER.info("Load - Analysis Stage: all tsfiles have been analyzed.");
 
     // data partition will be queried in the scheduler
-    analysis.setStatement(loadTsFileStatement);
+    analysis.setRealStatement(loadTsFileStatement);
     return analysis;
   }
 
@@ -319,7 +328,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
                 try {
                   List<PartialPath> paths =
                       Collections.singletonList(
-                          new PartialPath(device, timeseriesMetadata.getMeasurementId()));
+                          new MeasurementPath(device, timeseriesMetadata.getMeasurementId()));
                   status =
                       AuthorityChecker.getTSStatus(
                           AuthorityChecker.checkFullPathListPermission(
@@ -504,7 +513,12 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
                   schemaFetcher,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+          && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
+          // In tree model, if the user creates a conflict database concurrently, for instance, the
+          // database created by user is root.db.ss.a, the auto-creation failed database is root.db,
+          // we wait till "getOrCreatePartition" to judge if the time series (like root.db.ss.a.e /
+          // root.db.ss.a) conflicts with the created database. just do not throw exception here.
+          && result.status.code != TSStatusCode.DATABASE_CONFLICT.getStatusCode()) {
         LOGGER.warn(
             "Create database error, statement: {}, result status is: {}", statement, result.status);
         throw new LoadFileException(
@@ -562,12 +576,12 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
       for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
           schemaCache.getDevice2TimeSeries().entrySet()) {
         final IDeviceID device = entry.getKey();
-        final List<MeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
+        final List<IMeasurementSchema> tsfileTimeseriesSchemas = new ArrayList<>(entry.getValue());
         final DeviceSchemaInfo iotdbDeviceSchemaInfo =
             schemaTree.searchDeviceSchemaInfo(
                 new PartialPath(device),
                 tsfileTimeseriesSchemas.stream()
-                    .map(MeasurementSchema::getMeasurementId)
+                    .map(IMeasurementSchema::getMeasurementId)
                     .collect(Collectors.toList()));
 
         if (iotdbDeviceSchemaInfo == null) {
@@ -591,11 +605,11 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
         }
 
         // check timeseries schema
-        final List<MeasurementSchema> iotdbTimeseriesSchemas =
+        final List<IMeasurementSchema> iotdbTimeseriesSchemas =
             iotdbDeviceSchemaInfo.getMeasurementSchemaList();
         for (int i = 0, n = iotdbTimeseriesSchemas.size(); i < n; i++) {
-          final MeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
-          final MeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
+          final IMeasurementSchema tsFileSchema = tsfileTimeseriesSchemas.get(i);
+          final IMeasurementSchema iotdbSchema = iotdbTimeseriesSchemas.get(i);
           if (iotdbSchema == null) {
             throw new VerifyMetadataException(
                 String.format(
@@ -696,7 +710,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
     public void addTimeSeries(IDeviceID device, MeasurementSchema measurementSchema) {
       long memoryUsageSizeInBytes = 0;
       if (!currentBatchDevice2TimeSeriesSchemas.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
+        memoryUsageSizeInBytes += device.ramBytesUsed();
       }
       if (currentBatchDevice2TimeSeriesSchemas
           .computeIfAbsent(device, k -> new HashSet<>())
@@ -714,7 +728,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
     public void addIsAlignedCache(IDeviceID device, boolean isAligned, boolean addIfAbsent) {
       long memoryUsageSizeInBytes = 0;
       if (!tsFileDevice2IsAligned.containsKey(device)) {
-        memoryUsageSizeInBytes += estimateStringSize(((PlainDeviceID) device).toStringID());
+        memoryUsageSizeInBytes += device.ramBytesUsed();
       }
       if (addIfAbsent
           ? (tsFileDevice2IsAligned.putIfAbsent(device, isAligned) == null)
@@ -776,8 +790,7 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
       while (iterator.hasNext()) {
         Map.Entry<IDeviceID, Boolean> entry = iterator.next();
         if (!timeSeriesCacheKeySet.contains(entry.getKey())) {
-          releaseMemoryInBytes +=
-              estimateStringSize(((PlainDeviceID) entry.getKey()).toStringID()) + Byte.BYTES;
+          releaseMemoryInBytes += entry.getKey().ramBytesUsed() + Byte.BYTES;
           iterator.remove();
         }
       }
@@ -803,20 +816,6 @@ public class LoadTsfileAnalyzer implements AutoCloseable {
       currentBatchDevice2TimeSeriesSchemas = null;
       tsFileDevice2IsAligned = null;
       alreadySetDatabases = null;
-    }
-
-    /**
-     * String basic total, 32B
-     *
-     * <ul>
-     *   <li>Object header, 8B
-     *   <li>char[] reference + header + length, 8 + 4 + 8= 20B
-     *   <li>hash code, 4B
-     * </ul>
-     */
-    private static int estimateStringSize(String string) {
-      // each char takes 2B in Java
-      return string == null ? 0 : 32 + 2 * string.length();
     }
   }
 }

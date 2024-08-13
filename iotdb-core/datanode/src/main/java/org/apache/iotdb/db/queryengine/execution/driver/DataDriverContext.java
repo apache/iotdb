@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.driver;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -38,7 +38,7 @@ import java.util.Optional;
 public class DataDriverContext extends DriverContext {
 
   // it will be set to null, after being merged into Parent FIContext
-  private List<PartialPath> paths;
+  private List<IFullPath> paths;
   private QueryDataSourceType queryDataSourceType = null;
   private Map<IDeviceID, DeviceContext> deviceIDToContext;
   // it will be set to null, after QueryDataSource being inited
@@ -71,7 +71,7 @@ public class DataDriverContext extends DriverContext {
     deviceIDToContext = null;
   }
 
-  public void addPath(PartialPath path) {
+  public void addPath(IFullPath path) {
     this.paths.add(path);
   }
 
@@ -79,7 +79,7 @@ public class DataDriverContext extends DriverContext {
     this.sourceOperators.add(sourceOperator);
   }
 
-  public List<PartialPath> getPaths() {
+  public List<IFullPath> getPaths() {
     return paths;
   }
 
