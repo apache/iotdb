@@ -35,8 +35,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
-        cluster1: [ LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode ]
+        java: [ 17, 17, 17 ]
+        cluster1: [ LightWeightStandaloneMode, ScalableSingleNodeMode ]
         cluster2: [ ScalableSingleNodeMode, ScalableSingleNodeMode, ScalableSingleNodeMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
