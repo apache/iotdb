@@ -52,12 +52,12 @@ public class TsFileID {
     if (pathLength >= 3) {
       try {
         tmpRegionId = Integer.parseInt(pathSegments[pathLength - 3]);
-      } catch (NumberFormatException e) {
+      } catch (Exception e) {
         // ignore, load will get in here
       }
       try {
         tmpTimePartitionId = Long.parseLong(pathSegments[pathLength - 2]);
-      } catch (NumberFormatException e) {
+      } catch (Exception e) {
         // ignore, load will get in here
       }
     }
