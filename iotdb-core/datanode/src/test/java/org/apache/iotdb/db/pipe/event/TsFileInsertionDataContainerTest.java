@@ -47,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -65,6 +66,7 @@ public class TsFileInsertionDataContainerTest {
 
   private File alignedTsFile;
   private File nonalignedTsFile;
+  private TsFileResource resource;
 
   @After
   public void tearDown() throws Exception {
@@ -73,6 +75,9 @@ public class TsFileInsertionDataContainerTest {
     }
     if (nonalignedTsFile != null) {
       nonalignedTsFile.delete();
+    }
+    if (Objects.nonNull(resource)) {
+      resource.remove();
     }
   }
 
@@ -466,7 +471,7 @@ public class TsFileInsertionDataContainerTest {
 
   private void testMixedTsFileWithEmptyChunk(final boolean isQuery) throws IOException {
     final File tsFile = new File("0-0-1-0.tsfile");
-    final TsFileResource resource = new TsFileResource(tsFile);
+    resource = new TsFileResource(tsFile);
     resource.updatePlanIndexes(0);
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     try (final CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
@@ -497,7 +502,6 @@ public class TsFileInsertionDataContainerTest {
         Long.MAX_VALUE,
         isQuery,
         115);
-    resource.remove();
   }
 
   private void testTsFilePointNum(
