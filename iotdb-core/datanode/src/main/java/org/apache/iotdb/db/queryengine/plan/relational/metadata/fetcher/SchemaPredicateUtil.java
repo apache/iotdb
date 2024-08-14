@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
@@ -68,10 +67,8 @@ public class SchemaPredicateUtil {
       }
       if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
         idFuzzyList.add(expression);
-      } else if (Boolean.FALSE.equals(expression.accept(visitor, context))) {
-        idDeterminedList.add(expression);
       } else {
-        throw new SemanticException("Can only query schema use id/attribute column.");
+        idDeterminedList.add(expression);
       }
     }
     return new Pair<>(idDeterminedList, idFuzzyList);
