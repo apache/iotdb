@@ -535,7 +535,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
               getCount(sender, sql1), getCount(receiver1, sql1) + getCount(receiver2, sql1));
 
           // "c4,c6|topic2"
-          Assert.assertEquals(105, getCount(receiver1, sql2) + getCount(receiver2, sql2));
+          Assert.assertEquals(
+              getCount(sender, sql2) - 400, getCount(receiver1, sql2) + getCount(receiver2, sql2));
 
           // "c4,c5|c7,c9|topic3"
           final long topic3Total = getCount(receiver1, sql3) + getCount(receiver2, sql3);
