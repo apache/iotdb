@@ -631,8 +631,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     } catch (MetadataException e) {
       LOGGER.error("cache user's path privileges error", e);
     }
-    for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
-      iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
+    if (tPermissionInfoResp.isSetRoleInfo()) {
+      for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
+        iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
+      }
     }
     return user;
   }

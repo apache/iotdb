@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AuthorRStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
@@ -137,6 +138,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
@@ -702,6 +704,113 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitExplainAnalyze(RelationalSqlParser.ExplainAnalyzeContext ctx) {
     return super.visitExplainAnalyze(ctx);
   }
+  // ********************** author expressions ********************
+
+  private String stripQuotes(String text) {
+    if (text != null && text.length() >= 2 && text.startsWith("'") && text.endsWith("'")) {
+      return text.substring(1, text.length() - 1).replace("''", "'");
+    }
+    return text;
+  }
+  @Override
+  public Node visitCreateUser(RelationalSqlParser.CreateUserContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.CREATE_USER);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setPassword(stripQuotes(ctx.password.getText()));
+    return stmt;
+  }
+
+    @Override
+    public Node visitCreateRole(RelationalSqlParser.CreateRoleContext ctx) {
+        AuthorRStatement stmt = new AuthorRStatement(AuthorRType.CREATE_ROLE);
+        stmt.setRoleName(ctx.roleName.getText());
+        return stmt;
+    }
+
+  @Override
+  public Node visitDropUser(RelationalSqlParser.DropUserContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.DROP_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitDropRole(RelationalSqlParser.DropRoleContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.DROP_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantUserRole(RelationalSqlParser.GrantUserRoleContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.GRANT_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitRevokeUserRole(RelationalSqlParser.RevokeUserRoleContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.REVOKE_USER_ROLE);
+    stmt.setUserName(ctx.userName.getText());
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListUserPrivileges(RelationalSqlParser.ListUserPrivilegesContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.LIST_USER);
+    stmt.setUserName(ctx.userName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitListRolePrivileges(RelationalSqlParser.ListRolePrivilegesContext ctx) {
+    AuthorRStatement stmt = new AuthorRStatement(AuthorRType.LIST_ROLE);
+    stmt.setRoleName(ctx.roleName.getText());
+    return stmt;
+  }
+
+  @Override
+  public Node visitGrantStatement(RelationalSqlParser.GrantStatementContext ctx) {
+    boolean toUser;
+    String username;
+    String objectName;
+    toUser = ctx.roleType().USER() != null;
+    username = ctx.role_name.getText();
+    boolean grantOption = ctx.grantOpt() != null;
+    boolean toTable = false;
+
+    if (ctx.grant_privilege_object().ON() != null) {
+      String privilegeText = ctx.grant_privilege_object().object_privilege().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (ctx.grant_privilege_object().object_type().getText().equalsIgnoreCase("TABLE")) {
+        toTable = true;
+      }
+      objectName = ctx.grant_privilege_object().object_name().getText();
+
+      return new AuthTableStatement(
+              toUser
+                      ? (toTable ? GRANT_USER_TB : GRANT_USER_DB)
+                      : (toTable ? GRANT_ROLE_TB : GRANT_ROLE_DB),
+              toTable ? null : objectName,
+              toTable ? objectName : null,
+              priv,
+              toUser ? username : null,
+              toUser ? null : username,
+              grantOption);
+
+    } else {
+      String privilegeText = ctx.grant_privilege_object().SYSTEM_PRIVILEGE().getText();
+      PrivilegeType priv = PrivilegeType.valueOf(privilegeText.toUpperCase());
+      if (toUser) {
+        return new AuthTableStatement(AuthDDLType.GRANT_USER, priv, username, null, grantOption);
+      } else {
+        return new AuthTableStatement(AuthDDLType.GRANT_ROLE, priv, null, username, grantOption);
+      }
+    }
+  }
+
 
   // ********************** query expressions ********************
   @Override

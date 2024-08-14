@@ -375,7 +375,7 @@ revokeUserRole
 
 
 grantStatement
-    : GRANT grantPrivilegeObject TO roleType roleName=identifier (grantOpt)?
+    : GRANT GrantPrivilegeObject TO RoleType roleName=identifier (GrantOpt)?
     ;
 
 listUserPrivileges
@@ -388,14 +388,14 @@ listRolePrivileges
 
 
 revokeStatement
-    : REVOKE revokePrivilegeObject FROM roleType  role_name=identifier
+    : REVOKE RevokePrivilegeObject FROM RoleType  roleName=identifier
     ;
 
-grantPrivilegeObject
+GrantPrivilegeObject
     : SYSTEM_PRIVILEGE
-    | objectPrivilege ON objectType objectName
-    | objectPrivilege ON databaseName=identifier '.' tablename=identifier
-    | objectPrivilege ON ANY
+    | ObjectPrivilege ON ObjectType objectName
+    | ObjectPrivilege ON databaseName=identifier '.' tablename=identifier
+    | ObjectPrivilege ON ANY
     ;
 
 SYSTEM_PRIVILEGE
@@ -409,7 +409,7 @@ SYSTEM_PRIVILEGE
     | MAINTAIN
     ;
 
-objectPrivilege
+ObjectPrivilege
     : CREATE
     | DROP
     | ALTER
@@ -419,17 +419,17 @@ objectPrivilege
     | DELETE
     ;
 
-objectType
+ObjectType
     : TABLE
     | DATABASE
     ;
 
-roleType
+RoleType
     : USER
     | ROLE
     ;
 
-grantOpt
+GrantOpt
     : WITH GRANT OPTION
     ;
 
@@ -437,11 +437,11 @@ objectName
     : IDENTIFIER
     ;
 
-revokePrivilegeObject
+RevokePrivilegeObject
     : SYSTEM_PRIVILEGE
-    | objectPrivilege ON objectType objectName
-    | objectPrivilege ON ANY
-    | objectPrivilege ON databaseName=identifier '.' tableName=identifier
+    | ObjectPrivilege ON objectType objectName
+    | ObjectPrivilege ON ANY
+    | ObjectPrivilege ON databaseName=identifier '.' tableName=identifier
     | GRANT OPTION FOR objectPrivilege ON objectType objectName
     | GRANT OPTION FOR SYSTEM_PRIVILEGE
     | GRANT OPTION FOR objectPrivilege ON ANY
