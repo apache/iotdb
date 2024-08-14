@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -181,10 +182,12 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         return false;
       }
 
-      outputPipeConnector.transfer(event);
+      if (!(event instanceof ProgressReportEvent)) {
+        outputPipeConnector.transfer(event);
+        PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
+      }
       decreaseReferenceCountAndReleaseLastEvent(true);
 
-      PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
     } catch (final PipeException e) {
       setLastExceptionEvent(event);
       if (!isClosed.get()) {

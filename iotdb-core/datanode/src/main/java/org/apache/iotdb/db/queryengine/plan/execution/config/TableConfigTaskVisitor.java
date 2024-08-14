@@ -182,11 +182,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             // Ignore default values
             continue;
           }
+          // TODO: support validation for other properties
           if (!(value instanceof LongLiteral)) {
             throw new SemanticException(
-                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+                "TTL' value must be a LongLiteral, but now is "
+                    + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
+                    + ", value: "
+                    + value);
           }
-          map.put(key, String.valueOf(((LongLiteral) value).getParsedValue()));
+          final long parsedValue = ((LongLiteral) value).getParsedValue();
+          if (parsedValue < 0) {
+            throw new SemanticException(
+                "TTL' value must be equal to or greater than 0, but now is: " + value);
+          }
+          map.put(key, String.valueOf(parsedValue));
         }
       } else {
         throw new SemanticException("Table property " + key + " is currently not allowed.");
