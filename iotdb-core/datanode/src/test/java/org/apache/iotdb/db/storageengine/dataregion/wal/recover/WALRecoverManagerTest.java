@@ -383,7 +383,7 @@ public class WALRecoverManagerTest {
 
     // prepare file with wal
     File fileWithWALDir = new File(FILE_WITH_WAL_NAME).getParentFile();
-    Files.createDirectory(fileWithWALDir.toPath());
+    Files.createDirectories(fileWithWALDir.toPath());
     File fileWithWAL = new File(fileWithWALDir, "1723544967972-1-0-0.tsfile");
     ;
     if (withBrokenTsFile) {
