@@ -465,33 +465,38 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidConsensusGroupIds =
+    List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
-    int length = invalidConsensusGroupIds.size();
-    invalidConsensusGroupIds.addAll(
+
+    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
         SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList()));
-    if (!invalidConsensusGroupIds.isEmpty()) {
-      logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
-      int i = 0;
-      for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-        File oldDir = null;
-        if (i < length) {
-          oldDir =
-              new File(
-                  DataRegionConsensusImpl.getInstance()
-                      .getRegionDirFromConsensusGroupId(consensusGroupId));
-        } else {
-          oldDir =
-              new File(
-                  SchemaRegionConsensusImpl.getInstance()
-                      .getRegionDirFromConsensusGroupId(consensusGroupId));
-        }
-        removeRegionsDir(oldDir);
-      }
+            .collect(Collectors.toList());
+    removeInvalidDataRegions(invalidDataRegionConsensusGroupIds);
+    removeInvalidSchemaRegions(invalidSchemaRegionConsensusGroupIds);
+  }
+
+  private void removeInvalidDataRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
+    logger.info("Remove invalid dataRegion directories... {}", invalidConsensusGroupId);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+      File oldDir =
+          new File(
+              DataRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
+      removeRegionsDir(oldDir);
+    }
+  }
+
+  private void removeInvalidSchemaRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
+    logger.info("Remove invalid schemaRegion directories... {}", invalidConsensusGroupId);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+      File oldDir =
+          new File(
+              SchemaRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
+      removeRegionsDir(oldDir);
     }
   }
 
