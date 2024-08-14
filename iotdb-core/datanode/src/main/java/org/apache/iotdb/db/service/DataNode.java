@@ -469,24 +469,42 @@ public class DataNode implements DataNodeMBean {
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
+    int length = invalidConsensusGroupIds.size();
+    invalidConsensusGroupIds.addAll(
+        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList()));
     if (!invalidConsensusGroupIds.isEmpty()) {
       logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
+      int i = 0;
       for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-        File oldDir =
-            new File(
-                DataRegionConsensusImpl.getInstance()
-                    .getRegionDirFromConsensusGroupId(consensusGroupId));
-        if (oldDir.exists()) {
-          try {
-            FileUtils.recursivelyDeleteFolder(oldDir.getPath());
-            logger.info("delete {} succeed.", oldDir.getAbsolutePath());
-          } catch (IOException e) {
-            logger.error("delete {} failed.", oldDir.getAbsolutePath());
-          }
+        File oldDir = null;
+        if (i < length) {
+          oldDir =
+              new File(
+                  DataRegionConsensusImpl.getInstance()
+                      .getRegionDirFromConsensusGroupId(consensusGroupId));
         } else {
-          logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
+          oldDir =
+              new File(
+                  SchemaRegionConsensusImpl.getInstance()
+                      .getRegionDirFromConsensusGroupId(consensusGroupId));
         }
+        removeRegionsDir(oldDir);
       }
+    }
+  }
+
+  private void removeRegionsDir(File regionDir) {
+    if (regionDir.exists()) {
+      try {
+        FileUtils.recursivelyDeleteFolder(regionDir.getPath());
+        logger.info("delete {} succeed.", regionDir.getAbsolutePath());
+      } catch (IOException e) {
+        logger.error("delete {} failed.", regionDir.getAbsolutePath());
+      }
+    } else {
+      logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
   }
 
