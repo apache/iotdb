@@ -154,6 +154,8 @@ public class ActiveLoadTsFileLoader {
         handleFileNotFoundException(filePair.get());
       } catch (final Exception e) {
         handleOtherException(filePair.get(), e);
+      } finally {
+        pendingQueue.removeFromLoading(filePair.get().getLeft());
       }
     }
   }
@@ -167,7 +169,7 @@ public class ActiveLoadTsFileLoader {
     long currentRetryTimes = 0;
 
     while (true) {
-      final Pair<String, Boolean> filePair = pendingQueue.dequeue();
+      final Pair<String, Boolean> filePair = pendingQueue.dequeueFromPending();
       if (Objects.nonNull(filePair)) {
         return Optional.of(filePair);
       }
@@ -220,7 +222,7 @@ public class ActiveLoadTsFileLoader {
 
   private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
     if (e.getMessage() != null && e.getMessage().contains("memory")) {
-      LOGGER.warn(
+      LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());

@@ -28,30 +28,37 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ActiveLoadPendingQueue {
 
+  private final Set<String> pendingFileSet = new HashSet<>();
+  private final Queue<Pair<String, Boolean>> pendingFileQueue = new ConcurrentLinkedQueue<>();
+
   private final Set<String> loadingFileSet = new HashSet<>();
-  private final Queue<Pair<String, Boolean>> loadingFileQueue = new ConcurrentLinkedQueue<>();
 
   public synchronized boolean enqueue(final String file, final boolean isGeneratedByPipe) {
-    if (loadingFileSet.add(file)) {
-      loadingFileQueue.offer(new Pair<>(file, isGeneratedByPipe));
+    if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
+      pendingFileQueue.offer(new Pair<>(file, isGeneratedByPipe));
       return true;
     }
     return false;
   }
 
-  public synchronized Pair<String, Boolean> dequeue() {
-    final Pair<String, Boolean> pair = loadingFileQueue.poll();
+  public synchronized Pair<String, Boolean> dequeueFromPending() {
+    final Pair<String, Boolean> pair = pendingFileQueue.poll();
     if (pair != null) {
-      loadingFileSet.remove(pair.left);
+      pendingFileSet.remove(pair.left);
+      loadingFileSet.add(pair.left);
     }
     return pair;
   }
 
+  public synchronized void removeFromLoading(final String file) {
+    loadingFileSet.remove(file);
+  }
+
   public int size() {
-    return loadingFileQueue.size();
+    return pendingFileQueue.size() + loadingFileSet.size();
   }
 
   public boolean isEmpty() {
-    return loadingFileQueue.isEmpty();
+    return pendingFileQueue.isEmpty() && loadingFileSet.isEmpty();
   }
 }
