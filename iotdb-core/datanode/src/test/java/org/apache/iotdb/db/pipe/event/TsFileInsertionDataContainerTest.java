@@ -502,6 +502,8 @@ public class TsFileInsertionDataContainerTest {
         Long.MAX_VALUE,
         isQuery,
         115);
+    resource.remove();
+    resource = null;
   }
 
   private void testTsFilePointNum(
