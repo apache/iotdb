@@ -166,13 +166,11 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
     File targetTsFile = null;
     // set version = 0 to keep unsequence data cover sequence data
-    tsFileName.setVersion(0);
-    tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
     do {
       String fileNameStr =
           String.format(
               "%d-%d-%d-%d.tsfile",
-              tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
+              tsFileName.getTime(), 0, tsFileName.getInnerCompactionCnt() + 1, 0);
       targetTsFile = new File(path + File.separator + fileNameStr);
       if (!targetTsFile.getParentFile().exists()) {
         targetTsFile.getParentFile().mkdirs();

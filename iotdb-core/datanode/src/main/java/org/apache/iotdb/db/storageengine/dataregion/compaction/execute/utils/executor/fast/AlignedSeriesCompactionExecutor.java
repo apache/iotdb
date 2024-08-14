@@ -240,7 +240,6 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
-                resource.getVersion(),
                 i == alignedChunkMetadataList.size() - 1,
                 fileElement));
       }
@@ -314,8 +313,7 @@ public class AlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
               alignedPageDatas,
               new CompactionAlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
-              i == timePages.size() - 1,
-              chunkMetadataElement.priority));
+              i == timePages.size() - 1));
     }
     chunkMetadataElement.clearChunks();
   }
