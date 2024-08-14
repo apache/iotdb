@@ -60,6 +60,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
+/**
+ * refer to {@link
+ * org.apache.iotdb.subscription.it.triple.regression.pushconsumer.multi.IoTDBMultiGroupVsMultiConsumerIT}
+ */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2Subscription.class})
 public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {

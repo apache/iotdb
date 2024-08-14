@@ -65,8 +65,6 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * |c7|t0,t3|g3| dataset(dest)/tsfile
  * |c8|t6|g3|  tsfile databasePrefix+"6.**", "now", null,
  * |c9|t0,t3|g3| dataset(dest2)/tsfile
- * <p>
- * {@link org.apache.iotdb.subscription.it.triple.IoTDBSubscriptionSharingIT} refer to this test
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
