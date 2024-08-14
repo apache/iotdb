@@ -569,10 +569,8 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
               getCount(session_dest, sql2) + getCount(session_dest2, sql2),
               105,
               "c4,c6,topic2,group2");
-          assertGte(
-              getCount(session_dest, sql3) + getCount(session_dest2, sql3),
-              400,
-              "c7,c9,topic3,group3");
+          final long topic3Total = getCount(session_dest, sql3) + getCount(session_dest2, sql3);
+          assertTrue(400 <= topic3Total && topic3Total <= 800, "c4,c5|c7,c9|topic3");
           assertEquals(
               getCount(session_dest, sql4) + getCount(session_dest2, sql4),
               400,
