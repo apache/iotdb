@@ -248,7 +248,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
         () -> {
           assertEquals(onReceive.get(), 3);
           assertGte(rowCounts.get(0).get(), 10, "Write data: > end " + device);
-          assertGte(rowCounts.get(0).get(), 10, "Write data:> end " + device2);
+          assertGte(rowCounts.get(0).get(), 10, "Write data: > end " + device2);
         });
   }
 }

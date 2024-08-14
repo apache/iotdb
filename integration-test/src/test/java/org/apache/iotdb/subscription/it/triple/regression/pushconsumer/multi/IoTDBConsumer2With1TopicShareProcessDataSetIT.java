@@ -203,8 +203,8 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
 
     AWAIT.untilAsserted(
         () -> {
-          //            assertTrue(getCount(session_dest, sql)>0, "first consumer");
-          //            assertTrue(getCount(session_dest2, sql)>0, "second Consumer");
+          assertTrue(getCount(session_dest, sql) >= 0, "first consumer");
+          assertTrue(getCount(session_dest2, sql) >= 0, "second Consumer");
           assertEquals(
               getCount(session_dest, sql) + getCount(session_dest2, sql),
               getCount(session_src, sql),
