@@ -109,7 +109,7 @@ public class IoTDBHistoryPullConsumerDataSetIT extends AbstractSubscriptionRegre
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_time", "ts_history_dataset", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);
@@ -120,7 +120,6 @@ public class IoTDBHistoryPullConsumerDataSetIT extends AbstractSubscriptionRegre
     consume_data(consumer, session_dest);
 
     //        System.out.println("Check consumption data");
-    //        Thread.sleep(20000);
     check_count(4, "select count(s_0) from " + device, "Consumption data:" + pattern);
     check_count(0, "select count(s_1) from " + device, "Consumption data: s_1");
     // Unsubscribe

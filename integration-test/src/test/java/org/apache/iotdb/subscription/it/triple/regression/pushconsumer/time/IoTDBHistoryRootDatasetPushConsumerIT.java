@@ -118,7 +118,7 @@ public class IoTDBHistoryRootDatasetPushConsumerIT extends AbstractSubscriptionR
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
         new SubscriptionPushConsumer.Builder()

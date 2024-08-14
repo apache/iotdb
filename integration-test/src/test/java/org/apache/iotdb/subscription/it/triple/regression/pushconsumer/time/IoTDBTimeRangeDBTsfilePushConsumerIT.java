@@ -123,7 +123,7 @@ public class IoTDBTimeRangeDBTsfilePushConsumerIT extends AbstractSubscriptionRe
           StatementExecutionException {
     final AtomicInteger rowCount = new AtomicInteger(0);
     final AtomicInteger onReceive = new AtomicInteger(0);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L); // 2023-12-31 23:59:56+08:00
     consumer =
         new SubscriptionPushConsumer.Builder()

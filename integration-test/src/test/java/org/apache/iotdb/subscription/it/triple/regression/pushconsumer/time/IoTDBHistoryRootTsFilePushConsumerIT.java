@@ -124,7 +124,7 @@ public class IoTDBHistoryRootTsFilePushConsumerIT extends AbstractSubscriptionRe
           StatementExecutionException {
     final AtomicInteger rowCount = new AtomicInteger(0);
     final AtomicInteger onReceive = new AtomicInteger(0);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
         new SubscriptionPushConsumer.Builder()

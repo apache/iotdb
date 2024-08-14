@@ -209,7 +209,6 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
     System.out.println("Write data 3");
     insert_data(System.currentTimeMillis());
     consume_data(consumers.get(7), session_dest2);
-    //        Thread.sleep(60000);
     check_count2(10, "select count(s_0) from " + device, "3 check dest2:s_0 after consumption");
     check_count2(10, "select count(s_3) from " + device, "3 consume check dest2:s_3");
   }

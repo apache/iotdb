@@ -120,7 +120,7 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionReg
           IOException,
           StatementExecutionException {
     Thread.sleep(1000);
-    // Subscribe before writing data
+    // Write data before subscribing
     session_src.executeNonQueryStatement(
         "insert into "
             + device

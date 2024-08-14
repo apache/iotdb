@@ -142,7 +142,7 @@ public class IoTDBPathTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038399000L, device); // 2023-12-31 23:59:59+08:00
     insert_data(1704038399000L, device2); // 2023-12-31 23:59:59+08:00
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00

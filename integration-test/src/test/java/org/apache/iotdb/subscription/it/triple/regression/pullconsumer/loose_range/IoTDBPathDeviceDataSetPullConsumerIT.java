@@ -134,7 +134,7 @@ public class IoTDBPathDeviceDataSetPullConsumerIT extends AbstractSubscriptionRe
           StatementExecutionException {
     String sql = "select count(s_0) from " + device;
     consumer = create_pull_consumer("device_pattern_dataset_pull", "loose_range_path", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00
     insert_data(1706659200000L, device2); // 2024-01-31 08:00:00+08:00
     // Subscribe

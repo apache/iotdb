@@ -115,7 +115,7 @@ public class IoTDBTimeRangeDBDataSetPushConsumerIT extends AbstractSubscriptionR
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L); // 2023-12-31 23:59:56+08:00
     consumer =
         new SubscriptionPushConsumer.Builder()

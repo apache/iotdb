@@ -116,7 +116,7 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
           IOException,
           StatementExecutionException {
     Thread.sleep(1000);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     session_src.executeNonQueryStatement(
         "insert into "

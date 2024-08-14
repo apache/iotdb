@@ -139,7 +139,7 @@ public class IoTDBTimeTsDatasetPullConsumerIT extends AbstractSubscriptionRegres
     consumer =
         create_pull_consumer("pull_ts_pattern_accurate_dataset", "loose_range_time", false, null);
 
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     System.out.println("src filter:" + getCount(session_src, sql));

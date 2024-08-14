@@ -111,7 +111,7 @@ public class IoTDBTestTopicNameIT extends AbstractSubscriptionRegressionIT {
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("g1", "c1", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);

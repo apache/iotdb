@@ -136,7 +136,7 @@ public class IoTDBAllTsDatasetPullConsumerIT extends AbstractSubscriptionRegress
             + device
             + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T23:59:59+08:00";
     consumer = create_pull_consumer("ts_accurate_dataset_pull", "loose_range_all", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     System.out.println("src filter:" + getCount(session_src, sql));

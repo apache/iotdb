@@ -109,7 +109,7 @@ public class IoTDBRealTimePullConsumerDataSetIT extends AbstractSubscriptionRegr
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_time", "ts_realtime_dataset", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);
@@ -128,11 +128,9 @@ public class IoTDBRealTimePullConsumerDataSetIT extends AbstractSubscriptionRegr
     // Subscribe and then write data
     insert_data(System.currentTimeMillis()); // now
     consumer.subscribe(topicName);
-    //        Thread.sleep(1000);
     System.out.println("After re-subscribing:");
     subs.getSubscriptions().forEach((System.out::println));
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
-    //        Thread.sleep(20000);
     // Consumption data
     consume_data(consumer, session_dest2);
     check_count(4, "select count(s_0) from " + device, "Consume data again:" + pattern);

@@ -118,7 +118,7 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionRegression
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
 
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
@@ -156,7 +156,6 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionRegression
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     insert_data(System.currentTimeMillis());
-    //        Thread.sleep(60000);
     String sql = "select count(s_0) from " + device;
     System.out.println("src: " + getCount(session_src, sql));
 

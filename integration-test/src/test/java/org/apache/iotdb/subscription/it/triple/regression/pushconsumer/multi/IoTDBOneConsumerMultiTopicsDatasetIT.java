@@ -134,7 +134,7 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00
     insert_data(1707782400000L, device2); // 2024-02-13
     session_src.executeNonQueryStatement(

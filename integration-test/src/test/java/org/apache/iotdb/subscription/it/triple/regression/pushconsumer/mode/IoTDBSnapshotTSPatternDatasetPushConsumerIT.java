@@ -124,7 +124,7 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    //        session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush;");
   }
 
   @Test
@@ -134,7 +134,7 @@ public class IoTDBSnapshotTSPatternDatasetPushConsumerIT extends AbstractSubscri
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
 
     consumer =

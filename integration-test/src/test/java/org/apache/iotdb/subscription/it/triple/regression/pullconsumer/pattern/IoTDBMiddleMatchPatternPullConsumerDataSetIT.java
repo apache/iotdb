@@ -122,13 +122,12 @@ public class IoTDBMiddleMatchPatternPullConsumerDataSetIT extends AbstractSubscr
           StatementExecutionException {
     consumer =
         create_pull_consumer("pull_pattern", "MiddleMatchPatternHistory_DataSet", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     insert_data(System.currentTimeMillis() - 30000L);
-    //        Thread.sleep(5000);
     // Consumption data
     consume_data(consumer, session_dest);
     String sql = "select count(s_0) from " + device;

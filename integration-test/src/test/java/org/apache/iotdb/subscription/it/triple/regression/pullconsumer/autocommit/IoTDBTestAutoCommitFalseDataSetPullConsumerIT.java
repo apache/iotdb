@@ -56,7 +56,6 @@ import java.util.List;
  * For the semantics related to data subscription commit, here are some supplements: *
  * In the implementation of data subscription, after a batch of messages is polled by the consumer, if they are not committed within a certain period of time (hardcoded value), the consumers under this subscription can repoll this batch of messages. This mechanism is designed to prevent messages from accumulating on the server side when the consumer does not explicitly commit with autoCommit set to false. However, this mechanism is not part of the functional definition (not exposed to the user), but only to handle some exceptional cases on the client side, such as when a consumer crashes after polling a batch of messages, or forgets to commit.
  * Tests can be more focused on situations where autoCommit is true. In this case, if not explicitly committed, it is expected that all messages successfully polled by the consumer should be committed before the consumer is closed (reflected in the Pipe as no accumulated resources).
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -152,7 +151,7 @@ public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_commit", "Auto_commit_FALSE", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     assertEquals(subs.getSubscriptions().size(), 0, "Before subscription show subscriptions");

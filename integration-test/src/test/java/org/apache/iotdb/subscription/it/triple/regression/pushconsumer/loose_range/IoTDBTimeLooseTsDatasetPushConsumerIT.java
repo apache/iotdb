@@ -149,7 +149,7 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionR
             + device
             + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-02-13T08:00:02+08:00";
 
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038399000L, device); // 2023-12-31 23:59:59+08:00
     insert_data(1704038399000L, device2); // 2023-12-31 23:59:59+08:00
     session_src.executeNonQueryStatement("flush;");

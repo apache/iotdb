@@ -108,7 +108,7 @@ public class IoTDBTimeRangePullConsumerDataSetIT extends AbstractSubscriptionReg
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_time", "ts_time_range_dataset", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L); // 2023-12-31 23:59:56+08:00
     // Subscribe
     consumer.subscribe(topicName);

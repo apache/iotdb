@@ -99,7 +99,7 @@ public class IoTDBDefaultPullConsumerDataSetIT extends AbstractSubscriptionRegre
     }
     consumer = create_pull_consumer("pull_auto_create_db", "default_pattern_dataset", false, null);
     for (int i = 0; i < deviceCount; i++) {
-      // Subscribe before writing data
+      // Write data before subscribing
       insert_data(1706659200000L, devices.get(i)); // 2024-01-31 08:00:00+08:00
     }
     // Subscribe

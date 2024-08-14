@@ -106,12 +106,11 @@ public class IoTDBTSPatternPullConsumerDataSetIT extends AbstractSubscriptionReg
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_pattern", "ts_dataset", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-    //        Thread.sleep(1000);
     insert_data(System.currentTimeMillis());
     // Consumption data
     consume_data(consumer, session_dest);
@@ -123,7 +122,6 @@ public class IoTDBTSPatternPullConsumerDataSetIT extends AbstractSubscriptionReg
     // Subscribe and then write data
     consumer.subscribe(topicName);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
-    //        Thread.sleep(1000);
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
     // synchronization.

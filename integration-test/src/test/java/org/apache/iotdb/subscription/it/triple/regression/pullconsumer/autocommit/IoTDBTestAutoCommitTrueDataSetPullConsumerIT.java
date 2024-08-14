@@ -51,7 +51,6 @@ import java.util.List;
 /***
  * PullConsumer DataSet
  * pattern: device
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -147,7 +146,7 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT extends AbstractSubscr
           StatementExecutionException {
     String sql = "select count(s_0) from " + device;
     consumer = create_pull_consumer("pull_commit", "Auto_commit_true", true, 1000L);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     assertEquals(subs.getSubscriptions().size(), 0, "Before subscription show subscriptions");
@@ -160,14 +159,12 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT extends AbstractSubscr
     System.out.println(FORMAT.format(new Date()) + ", " + getCount(session_src, sql));
     check_count(4, sql, "Consumption subscription previous data: s_0");
     check_count(4, "select count(s_1) from " + device, "Consumption subscription before data: s_1");
-    //        Thread.sleep(3000);
     // Subscribe and then write data
     insert_data(System.currentTimeMillis());
     consume_data_noCommit(consumer, session_dest2);
     System.out.println("second consumption");
     check_count2(4, "select count(s_0) from " + device, "Consumption subscription data 2: s_0");
     check_count2(4, "select count(s_1) from " + device, "Consumption subscription data 2:s_1");
-    //        Thread.sleep(3000);
     // Consumed data will not be consumed again
     consume_data_noCommit(consumer, session_dest);
     System.out.println("Third consumption");

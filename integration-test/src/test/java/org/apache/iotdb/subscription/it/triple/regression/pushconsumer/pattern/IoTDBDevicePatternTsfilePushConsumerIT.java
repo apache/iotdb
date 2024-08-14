@@ -141,7 +141,7 @@ public class IoTDBDevicePatternTsfilePushConsumerIT extends AbstractSubscription
           IOException,
           StatementExecutionException {
     String sql = "select count(s_0) from " + device;
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
     final AtomicInteger d0s0_rowCount = new AtomicInteger(0);

@@ -53,7 +53,6 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * PushConsumer
  * pattern: db
  * Dataset
- * result:pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -122,7 +121,7 @@ public class IoTDBPushConsumerPullConsumerWith1TopicShareProcessMixIT
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     Thread thread =
         new Thread(
             () -> {

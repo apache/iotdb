@@ -59,7 +59,6 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 
 /***
  * 1 consumer subscribes to 2 topics: Historical data
- * result: fail
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -115,7 +114,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    //        session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush;");
   }
 
   @Test
@@ -125,8 +124,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    //        Thread.sleep(1000);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     session_src.executeNonQueryStatement(
         "insert into "

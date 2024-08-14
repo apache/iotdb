@@ -105,12 +105,11 @@ public class IoTDBTimeRangeAccuratePullConsumerDataSetIT extends AbstractSubscri
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_time", "ts_accurate_dataset", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L); // 2023-12-31 23:59:56+08:00
     // Subscribe
     consumer.subscribe(topicName);
     subs.getSubscriptions().forEach(System.out::println);
-    //        Thread.sleep(10000);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
 
     // Before consumption subscription data
@@ -124,7 +123,6 @@ public class IoTDBTimeRangeAccuratePullConsumerDataSetIT extends AbstractSubscri
 
     insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
     consume_data(consumer, session_dest);
-    //        Thread.sleep(30000);
     check_count(6, "select count(s_0) from " + device, "Data within the time range:" + pattern);
 
     insert_data(1711814398000L); // 2024-03-30 23:59:58+08:00

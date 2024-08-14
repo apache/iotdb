@@ -46,7 +46,6 @@ import java.util.List;
 /***
  * PullConsumer Tsfile
  * pattern: db
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -112,7 +111,7 @@ public class IoTDBDBTsfilePullConsumerIT extends AbstractSubscriptionRegressionI
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
         new SubscriptionPullConsumer.Builder()
@@ -130,7 +129,6 @@ public class IoTDBDBTsfilePullConsumerIT extends AbstractSubscriptionRegressionI
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     //        insert_data(1706659200000L); //2024-01-31 08:00:00+08:00
     insert_data(System.currentTimeMillis());
-    //        Thread.sleep(3000);
     // Consumption data
     List<Integer> results = consume_tsfile_withFileCount(consumer, device);
     assertEquals(results.get(0), 10);

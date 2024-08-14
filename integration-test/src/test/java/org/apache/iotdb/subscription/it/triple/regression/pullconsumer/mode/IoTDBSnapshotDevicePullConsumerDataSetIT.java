@@ -121,7 +121,7 @@ public class IoTDBSnapshotDevicePullConsumerDataSetIT extends AbstractSubscripti
           IOException,
           StatementExecutionException {
     consumer = create_pull_consumer("pull_mode", "device_snapshot_dataset", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);

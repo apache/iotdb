@@ -131,7 +131,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    //        session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush;");
   }
 
   @Test
@@ -155,7 +155,7 @@ public class IoTDBPathLooseDeviceTsfilePushConsumerIT extends AbstractSubscripti
             + device
             + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-03-31T00:00:00+08:00";
 
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038396000L, device); // 2023-12-31 23:59:56+08:00
     insert_data(1704038396000L, device2); // 2023-12-31 23:59:56+08:00
     session_src.executeNonQueryStatement("flush;");

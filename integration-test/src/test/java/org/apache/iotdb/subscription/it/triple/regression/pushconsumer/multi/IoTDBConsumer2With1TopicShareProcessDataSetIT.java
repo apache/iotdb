@@ -125,7 +125,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     //        insert_data(1706659200000L);
     Thread thread =
         new Thread(

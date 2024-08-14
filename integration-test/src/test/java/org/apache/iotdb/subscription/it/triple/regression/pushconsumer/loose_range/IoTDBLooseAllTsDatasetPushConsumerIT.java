@@ -133,7 +133,7 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
       timestamp += 2000;
     }
     session_src.insertTablet(tablet);
-    //        session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush;");
   }
 
   @Test
@@ -148,7 +148,7 @@ public class IoTDBLooseAllTsDatasetPushConsumerIT extends AbstractSubscriptionRe
             + device
             + " where time >= 2024-01-01T00:00:00+08:00 and time <= 2024-02-13T08:00:02+08:00";
 
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1704038399000L, device); // 2023-12-31 23:59:59+08:00
     insert_data(1704038399000L, device2); // 2023-12-31 23:59:59+08:00
     insert_data(1706659200000L, device); // 2024-01-31 08:00:00+08:00

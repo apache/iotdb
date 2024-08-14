@@ -130,7 +130,7 @@ public class IoTDBDevicePatternPullConsumeTsfileIT extends AbstractSubscriptionR
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
         new SubscriptionPullConsumer.Builder()
@@ -147,7 +147,6 @@ public class IoTDBDevicePatternPullConsumeTsfileIT extends AbstractSubscriptionR
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     insert_data(System.currentTimeMillis());
-    //        Thread.sleep(3000);
     // Consumption data
     List<String> devices = new ArrayList<>(3);
     devices.add(device);

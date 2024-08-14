@@ -129,7 +129,7 @@ public class IoTDBMiddleMatch2PatternPullConsumerDataSetIT
           StatementExecutionException {
     consumer =
         create_pull_consumer("pull_pattern", "MiddleMatchPatternHistory_DataSet", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     for (int i = 0; i < 3; i++) {
       insert_data(1706659200000L, devices.get(i)); // 2024-01-31 08:00:00+08:00
     }

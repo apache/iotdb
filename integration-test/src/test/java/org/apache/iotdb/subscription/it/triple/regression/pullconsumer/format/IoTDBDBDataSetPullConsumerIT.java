@@ -46,7 +46,6 @@ import java.util.List;
 /***
  * PullConsumer DataSet
  * pattern: db
- * result: pass
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -102,7 +101,7 @@ public class IoTDBDBDataSetPullConsumerIT extends AbstractSubscriptionRegression
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
-    //        session_src.executeNonQueryStatement("flush;");
+    session_src.executeNonQueryStatement("flush;");
   }
 
   @Test
@@ -112,7 +111,7 @@ public class IoTDBDBDataSetPullConsumerIT extends AbstractSubscriptionRegression
           IoTDBConnectionException,
           IOException,
           StatementExecutionException {
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     consumer =
         new SubscriptionPullConsumer.Builder()
@@ -129,7 +128,6 @@ public class IoTDBDBDataSetPullConsumerIT extends AbstractSubscriptionRegression
     subs.getSubscriptions().forEach(System.out::println);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
     insert_data(System.currentTimeMillis());
-    //        Thread.sleep(3000);
     // Consumption data
     consume_data(consumer, session_dest);
 

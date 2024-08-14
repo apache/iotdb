@@ -115,7 +115,7 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
           StatementExecutionException {
     consumer = create_pull_consumer("g1", "c1", false, null);
     consumer2 = create_pull_consumer("g1", "c2", false, null);
-    // Subscribe before writing data
+    // Write data before subscribing
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     assertEquals(subs.getSubscriptions().size(), 0, "Before subscribing, show subscriptions");
@@ -125,7 +125,6 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
     subs.getSubscriptions().forEach((System.out::println));
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
 
-    //        Thread.sleep(1000);
     consume_data(consumer, session_dest);
     check_count(
         5, "select count(s_0) from " + device, "Consumption subscription before data: s_0 ");
