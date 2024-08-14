@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -334,11 +335,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            // Do not record empty chunks
-            if (chunkHeader.getDataSize() == 0) {
-              break;
-            }
-
             if (Objects.isNull(currentDevice)
                 || !pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
               tsFileSequenceReader.position(
@@ -346,11 +342,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               break;
             }
 
-            // Emit when encountered non-sequential value chunk
+            // Increase value index
             final int valueIndex =
                 measurementIndexMap.compute(
                     chunkHeader.getMeasurementID(),
                     (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
+
+            // Emit when encountered non-sequential value chunk
+            // Do not record or end current value chunks when there are empty chunks
+            if (chunkHeader.getDataSize() == 0) {
+              break;
+            }
             boolean needReturn = false;
             if (lastIndex >= 0 && valueIndex != lastIndex) {
               needReturn = recordAlignedChunk(valueChunkList, marker);
@@ -362,6 +364,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             }
           } else {
             chunkHeader = firstChunkHeader4NextSequentialValueChunks;
+            firstChunkHeader4NextSequentialValueChunks = null;
           }
 
           valueChunkList.add(
