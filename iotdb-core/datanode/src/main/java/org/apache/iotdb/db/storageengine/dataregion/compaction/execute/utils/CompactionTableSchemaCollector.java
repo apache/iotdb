@@ -92,6 +92,6 @@ public class CompactionTableSchemaCollector {
   }
 
   private static boolean isTreeModel(TableSchema tableSchema) {
-    return tableSchema.getTableName().startsWith("root.");
+    return tableSchema == null;
   }
 }

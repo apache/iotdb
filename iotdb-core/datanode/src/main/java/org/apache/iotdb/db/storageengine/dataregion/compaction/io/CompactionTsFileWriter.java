@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -48,6 +49,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
+  private IDeviceID currentDeviceId;
 
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
@@ -56,7 +58,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     super.out =
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
-    setGenerateTableSchema(true);
   }
 
   public void markStartingWritingAligned() {
@@ -118,6 +119,25 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     int size = super.checkMetadataSizeAndMayFlush();
     CompactionMetrics.getInstance().recordWriteInfo(type, CompactionIoDataType.METADATA, size);
     return size;
+  }
+
+  @Override
+  public int startChunkGroup(IDeviceID deviceId) throws IOException {
+    currentDeviceId = deviceId;
+    return super.startChunkGroup(deviceId);
+  }
+
+  @Override
+  public void endChunkGroup() throws IOException {
+    if (currentDeviceId == null || chunkMetadataList.isEmpty()) {
+      return;
+    }
+    String tableName = currentDeviceId.getTableName();
+    TableSchema tableSchema = getSchema().getTableSchemaMap().get(tableName);
+    boolean generateTableSchemaForCurrentChunkGroup = tableSchema != null;
+    setGenerateTableSchema(generateTableSchemaForCurrentChunkGroup);
+    super.endChunkGroup();
+    currentDeviceId = null;
   }
 
   @Override

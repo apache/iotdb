@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.lock;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DataNodeSchemaLockManager {
@@ -34,26 +37,34 @@ public class DataNodeSchemaLockManager {
   }
 
   private DataNodeSchemaLockManager() {
-    int lockNum = SchemaLockType.values().length;
+    final int lockNum = SchemaLockType.values().length;
     this.locks = new ReentrantReadWriteLock[lockNum];
     for (int i = 0; i < lockNum; i++) {
       locks[i] = new ReentrantReadWriteLock(false);
     }
   }
 
-  public void takeReadLock(SchemaLockType lockType) {
+  public void takeReadLock(final MPPQueryContext context, final SchemaLockType lockType) {
     locks[lockType.ordinal()].readLock().lock();
+    context.addAcquiredLockNum(lockType);
   }
 
-  public void releaseReadLock(SchemaLockType lockType) {
-    locks[lockType.ordinal()].readLock().unlock();
+  public void releaseReadLock(final MPPQueryContext queryContext) {
+    if (queryContext != null && !queryContext.getAcquiredLockNumMap().isEmpty()) {
+      final Map<SchemaLockType, Integer> lockMap = queryContext.getAcquiredLockNumMap();
+      for (final Map.Entry<SchemaLockType, Integer> entry : lockMap.entrySet()) {
+        for (int i = 0; i < entry.getValue(); i++) {
+          locks[entry.getKey().ordinal()].readLock().unlock();
+        }
+      }
+    }
   }
 
-  public void takeWriteLock(SchemaLockType lockType) {
+  public void takeWriteLock(final SchemaLockType lockType) {
     locks[lockType.ordinal()].writeLock().lock();
   }
 
-  public void releaseWriteLock(SchemaLockType lockType) {
+  public void releaseWriteLock(final SchemaLockType lockType) {
     locks[lockType.ordinal()].writeLock().unlock();
   }
 }
