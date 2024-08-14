@@ -67,7 +67,7 @@ public class TsFileID {
     long[] arr = null;
     try {
       arr = splitAndGetVersionArray(pathSegments[pathLength - 1]);
-    } catch (NumberFormatException e) {
+    } catch (Exception e) {
       // ignore, load will get in here
     }
     this.fileVersion = arr == null || arr.length != 2 ? -1 : arr[0];
