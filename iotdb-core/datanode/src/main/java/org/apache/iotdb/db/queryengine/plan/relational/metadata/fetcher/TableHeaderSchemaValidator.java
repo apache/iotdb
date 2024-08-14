@@ -79,9 +79,9 @@ public class TableHeaderSchemaValidator {
   public Optional<TableSchema> validateTableHeaderSchema(
       String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
-    // operation executed by delete timeseries will be effective.
-    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
-    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
+    // operation executed by delete timeSeries will be effective.
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
 
     List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {

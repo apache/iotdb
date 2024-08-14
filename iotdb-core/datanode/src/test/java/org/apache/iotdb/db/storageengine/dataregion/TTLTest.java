@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -328,7 +328,7 @@ public class TTLTest {
     DataNodeTTLCache.getInstance().setTTL(sg1, 500);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
-          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
     while (dataRegion.getTsFileManager().getTsFileList(true).size()
@@ -419,7 +419,7 @@ public class TTLTest {
     DataNodeTTLCache.getInstance().setTTL(sg1, 1);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
-          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
     while (dataRegion.getTsFileManager().getTsFileList(true).size()
