@@ -568,6 +568,18 @@ public class IoTDBInsertTableIT {
     }
   }
 
+  @Test
+  public void testInsertAttributes() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      st1.execute("use \"test\"");
+      st1.execute(
+          "create table if not exists sg18 (id1 string id, s1 string attribute, s2 int32 measurement)");
+      st1.execute("insert into sg18(id1, s1, s2) values('d1','1', 1)");
+      st1.execute("insert into sg18(id1, s1, s2) values('d2', 2, 2)");
+    }
+  }
+
   private List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {
