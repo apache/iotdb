@@ -529,7 +529,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     // handle exception, delete all_deleted files
     task.recoverFullyDirtyFiles();
     try {
-      task.recoverTaskInfoFromLogFile();
+      task.recoverSettleTaskInfoFromLogFile();
       Assert.fail();
     } catch (Exception e) {
       // do nothing
@@ -1102,7 +1102,7 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
     task.recoverFullyDirtyFiles();
 
     try {
-      task.recoverTaskInfoFromLogFile();
+      task.recoverSettleTaskInfoFromLogFile();
       Assert.fail();
     } catch (Exception e) {
       // do nothing

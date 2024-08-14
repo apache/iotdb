@@ -279,4 +279,9 @@ public class ProcedureInfo implements SnapshotProcessor {
     return lastProcId.get() == procedureInfo.lastProcId.get()
         && procedureMap.equals(procedureInfo.procedureMap);
   }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(lastProcId, procedureMap);
+  }
 }

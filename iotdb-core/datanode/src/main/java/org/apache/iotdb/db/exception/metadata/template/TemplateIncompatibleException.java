@@ -32,8 +32,8 @@ public class TemplateIncompatibleException extends MetadataException {
         String.format(
             "Cannot create timeseries [%s] since device template [%s] already set on path [%s].",
             path, templateName, templateSetPath),
-        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
+        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
+        true);
   }
 
   public TemplateIncompatibleException(String templateName, PartialPath templateSetPath) {
@@ -42,12 +42,11 @@ public class TemplateIncompatibleException extends MetadataException {
             "Cannot set device template [%s] to path [%s] "
                 + "since there's timeseries under path [%s].",
             templateName, templateSetPath, templateSetPath),
-        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
+        TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(),
+        true);
   }
 
   public TemplateIncompatibleException(String reason) {
-    super(reason, TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode());
-    this.isUserException = true;
+    super(reason, TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode(), true);
   }
 }

@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.collector;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -31,19 +32,19 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.Entit
 public abstract class EntityCollector<R, N extends IMNode<N>> extends EntityTraverser<R, N> {
 
   protected EntityCollector(
-      N startNode,
-      PartialPath path,
-      IMTreeStore<N> store,
-      boolean isPrefixMatch,
-      PathPatternTree scope)
+      final N startNode,
+      final PartialPath path,
+      final IMTreeStore<N> store,
+      final boolean isPrefixMatch,
+      final PathPatternTree scope)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, scope);
   }
 
   @Override
-  protected R generateResult(N nextMatchedNode) {
+  protected R generateResult(final N nextMatchedNode) {
     return collectEntity(nextMatchedNode.getAsDeviceMNode());
   }
 
-  protected abstract R collectEntity(IDeviceMNode<N> node);
+  protected abstract R collectEntity(final IDeviceMNode<N> node);
 }

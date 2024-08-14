@@ -35,7 +35,6 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -157,15 +156,14 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
   private Map<IDeviceID, List<String>> filterDeviceMeasurementsMapByPattern(
       final Map<IDeviceID, List<String>> originalDeviceMeasurementsMap) {
     final Map<IDeviceID, List<String>> filteredDeviceMeasurementsMap = new HashMap<>();
-    for (final Map.Entry<IDeviceID, List<String>> entry :
-        originalDeviceMeasurementsMap.entrySet()) {
-      final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
+    for (Map.Entry<IDeviceID, List<String>> entry : originalDeviceMeasurementsMap.entrySet()) {
+      final IDeviceID deviceId = entry.getKey();
 
       // case 1: for example, pattern is root.a.b or pattern is null and device is root.a.b.c
       // in this case, all data can be matched without checking the measurements
       if (Objects.isNull(pattern) || pattern.isRoot() || pattern.coversDevice(deviceId)) {
         if (!entry.getValue().isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), entry.getValue());
+          filteredDeviceMeasurementsMap.put(deviceId, entry.getValue());
         }
       }
 
@@ -181,7 +179,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
         }
 
         if (!filteredMeasurements.isEmpty()) {
-          filteredDeviceMeasurementsMap.put(new PlainDeviceID(deviceId), filteredMeasurements);
+          filteredDeviceMeasurementsMap.put(deviceId, filteredMeasurements);
         }
       }
     }
@@ -207,8 +205,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
     final Set<IDeviceID> filteredDevices = new HashSet<>();
     for (final IDeviceID device : devices) {
-      final String deviceId = ((PlainDeviceID) device).toStringID();
-      if (pattern.coversDevice(deviceId) || pattern.mayOverlapWithDevice(deviceId)) {
+      if (pattern.coversDevice(device) || pattern.mayOverlapWithDevice(device)) {
         filteredDevices.add(device);
       }
     }
@@ -230,9 +227,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
           .forEach(
               timeseriesMetadata ->
                   result.put(
-                      ((PlainDeviceID) device).toStringID()
-                          + "."
-                          + timeseriesMetadata.getMeasurementId(),
+                      device.toString() + "." + timeseriesMetadata.getMeasurementId(),
                       timeseriesMetadata.getTsDataType()));
     }
 
@@ -283,7 +278,7 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
                     new TsFileInsertionQueryDataTabletIterator(
                         tsFileReader,
                         measurementDataTypeMap,
-                        ((PlainDeviceID) entry.getKey()).toStringID(),
+                        entry.getKey(),
                         entry.getValue(),
                         timeFilterExpression);
               } catch (final Exception e) {
@@ -304,7 +299,8 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
 
             final Tablet tablet = tabletIterator.next();
             final boolean isAligned =
-                deviceIsAlignedMap.getOrDefault(new PlainDeviceID(tablet.deviceId), false);
+                deviceIsAlignedMap.getOrDefault(
+                    IDeviceID.Factory.DEFAULT_FACTORY.create(tablet.getDeviceId()), false);
 
             final TabletInsertionEvent next;
             if (!hasNext()) {

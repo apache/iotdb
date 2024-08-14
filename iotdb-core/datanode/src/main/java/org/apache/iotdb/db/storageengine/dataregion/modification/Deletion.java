@@ -20,8 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.commons.path.MeasurementPath;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -43,7 +42,7 @@ public class Deletion extends Modification implements Cloneable {
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(PartialPath path, long fileOffset, long endTime) {
+  public Deletion(MeasurementPath path, long fileOffset, long endTime) {
     super(Type.DELETION, path, fileOffset);
     this.timeRange = new TimeRange(Long.MIN_VALUE, endTime);
     this.timeRange.setLeftClose(false);
@@ -59,7 +58,7 @@ public class Deletion extends Modification implements Cloneable {
    * @param endTime end time of delete interval
    * @param path time series path
    */
-  public Deletion(PartialPath path, long fileOffset, long startTime, long endTime) {
+  public Deletion(MeasurementPath path, long fileOffset, long startTime, long endTime) {
     super(Type.DELETION, path, fileOffset);
     this.timeRange = new TimeRange(startTime, endTime);
     if (startTime == Long.MIN_VALUE) {
@@ -117,10 +116,7 @@ public class Deletion extends Modification implements Cloneable {
     long startTime = stream.readLong();
     long endTime = stream.readLong();
     return new Deletion(
-        DataNodeDevicePathCache.getInstance().getPartialPath(ReadWriteIOUtils.readString(stream)),
-        0,
-        startTime,
-        endTime);
+        new MeasurementPath(ReadWriteIOUtils.readString(stream)), 0, startTime, endTime);
   }
 
   public long getSerializedSize() {

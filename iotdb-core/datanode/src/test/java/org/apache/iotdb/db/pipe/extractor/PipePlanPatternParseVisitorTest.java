@@ -20,24 +20,25 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 
@@ -63,7 +64,7 @@ public class PipePlanPatternParseVisitorTest {
     final CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            new PartialPath("root.db.device.s1"),
+            new MeasurementPath("root.db.device.s1"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -74,7 +75,7 @@ public class PipePlanPatternParseVisitorTest {
     final CreateTimeSeriesNode createTimeSeriesNodeToFilter =
         new CreateTimeSeriesNode(
             new PlanNodeId("2024-04-30-2"),
-            new PartialPath("root.db1.device.s1"),
+            new MeasurementPath("root.db1.device.s1"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
@@ -128,7 +129,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new CreateMultiTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new PartialPath("root.db.device.s1")),
+            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Collections.singletonList(TSDataType.FLOAT),
             Collections.singletonList(TSEncoding.RLE),
             Collections.singletonList(CompressionType.SNAPPY),
@@ -141,8 +142,8 @@ public class PipePlanPatternParseVisitorTest {
                 new CreateMultiTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
                     Arrays.asList(
-                        new PartialPath("root.db.device.s1"),
-                        new PartialPath("root.db1.device.s1")),
+                        new MeasurementPath("root.db.device.s1"),
+                        new MeasurementPath("root.db1.device.s1")),
                     Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN),
                     Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
                     Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
@@ -411,7 +412,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new DeleteDataNode(
             new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new PartialPath("root.db.device.s1")),
+            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Long.MIN_VALUE,
             Long.MAX_VALUE),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
@@ -419,7 +420,8 @@ public class PipePlanPatternParseVisitorTest {
                 new DeleteDataNode(
                     new PlanNodeId("2024-04-30-1"),
                     Arrays.asList(
-                        new PartialPath("root.*.device.s1"), new PartialPath("root.db.*.s1")),
+                        new MeasurementPath("root.*.device.s1"),
+                        new MeasurementPath("root.db.*.s1")),
                     Long.MIN_VALUE,
                     Long.MAX_VALUE),
                 prefixPathPattern)

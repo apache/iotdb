@@ -21,12 +21,15 @@ package org.apache.iotdb.commons.pipe.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -78,24 +81,24 @@ public class IoTDBPipePattern extends PipePattern {
   public boolean coversDb(final String db) {
     try {
       return patternPartialPath.include(
-          new PartialPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+          new MeasurementPath(db, IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   @Override
-  public boolean coversDevice(final String device) {
+  public boolean coversDevice(final IDeviceID device) {
     try {
       return patternPartialPath.include(
-          new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   @Override
-  public boolean mayOverlapWithDevice(final String device) {
+  public boolean mayOverlapWithDevice(final IDeviceID device) {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
@@ -106,28 +109,31 @@ public class IoTDBPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean matchesMeasurement(final String device, final String measurement) {
+  public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
     // For aligned timeseries, empty measurement is an alias of the time column.
     if (Objects.isNull(measurement) || measurement.isEmpty()) {
       return false;
     }
 
     try {
-      return patternPartialPath.matchFullPath(new PartialPath(device, measurement));
+      return patternPartialPath.matchFullPath(new MeasurementPath(device, measurement));
     } catch (final IllegalPathException e) {
       return false;
     }
   }
 
   /**
-   * Check if the {@link PipePattern} matches the given prefix path.
-   *
-   * <p>NOTE: In schema transmission, {@link #mayOverlapWithDevice(String)} can be used to detect
-   * whether the given path can act as a parent path of the {@link PipePattern}, and to transmit
-   * possibly used schemas like database creation and template setting.
+   * Check if the {@link PipePattern} matches the given prefix path. In schema transmission, this
+   * can be used to detect whether the given path can act as a parent path of the {@link
+   * PipePattern}, and to transmit possibly used schemas like database creation and template
+   * setting.
    */
   public boolean matchPrefixPath(final String path) {
-    return mayOverlapWithDevice(path);
+    try {
+      return patternPartialPath.matchPrefixPath(new PartialPath(path));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
   }
 
   /**
@@ -135,7 +141,7 @@ public class IoTDBPipePattern extends PipePattern {
    */
   public boolean matchDevice(final String devicePath) {
     try {
-      return patternPartialPath.overlapWith(new PartialPath(devicePath, "*"));
+      return patternPartialPath.overlapWith(new MeasurementPath(devicePath, "*"));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -156,7 +162,7 @@ public class IoTDBPipePattern extends PipePattern {
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
     if (isFullPath()) {
       return partialPath.matchFullPath(patternPartialPath)
-          ? Collections.singletonList(patternPartialPath)
+          ? Collections.singletonList(partialPath)
           : Collections.emptyList();
     }
     return partialPath.intersectWithPrefixPattern(patternPartialPath);

@@ -62,6 +62,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -79,7 +80,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getStatement().getType() != StatementType.QUERY) {
+    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
       return plan;
     }
     QueryStatement queryStatement = analysis.getQueryStatement();
@@ -106,7 +107,7 @@ public class AggregationPushDown implements PlanOptimizer {
       }
 
       // check any of the devices
-      String device = analysis.getDeviceList().get(0).toString();
+      IDeviceID device = analysis.getDeviceList().get(0).getIDeviceIDAsFullDevice();
       return cannotUseStatistics(
           analysis.getDeviceToAggregationExpressions().get(device),
           analysis.getDeviceToSourceTransformExpressions().get(device));
@@ -136,8 +137,8 @@ public class AggregationPushDown implements PlanOptimizer {
               return true;
             }
             if (StringUtils.isEmpty(alignedDeviceId)) {
-              alignedDeviceId = ts.getPath().getDevice();
-            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDevice())) {
+              alignedDeviceId = ts.getPath().getDeviceString();
+            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDeviceString())) {
               // count_time from only one aligned device can use AlignedSeriesAggScan
               return true;
             }
@@ -385,7 +386,7 @@ public class AggregationPushDown implements PlanOptimizer {
           PartialPath path = ts.getPath();
           Pair<List<String>, List<IMeasurementSchema>> pair =
               map.computeIfAbsent(
-                  path.getDevice(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+                  path.getDeviceString(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
           pair.left.add(path.getMeasurement());
           try {
             pair.right.add(path.getMeasurementSchema());
@@ -640,7 +641,7 @@ public class AggregationPushDown implements PlanOptimizer {
     private final MPPQueryContext context;
     private final boolean isAlignByDevice;
 
-    private String curDevice;
+    private IDeviceID curDevice;
     private PartialPath curDevicePath;
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
@@ -658,7 +659,7 @@ public class AggregationPushDown implements PlanOptimizer {
       return isAlignByDevice;
     }
 
-    public void setCurDevice(String curDevice) {
+    public void setCurDevice(IDeviceID curDevice) {
       this.curDevice = curDevice;
     }
 

@@ -133,6 +133,7 @@ struct TSendFragmentInstanceResp {
   1: required bool accepted
   2: optional string message
   3: optional bool needRetry
+  4: optional common.TSStatus status
 }
 
 struct TSendSinglePlanNodeReq {
@@ -164,6 +165,7 @@ struct TFragmentInstanceInfoResp {
   2: optional i64 endTime
   3: optional list<string> failedMessages
   4: optional list<binary> failureInfoList
+  5: optional common.TSStatus errorCode
 }
 
 struct TCancelQueryReq {
@@ -333,6 +335,11 @@ struct TRegionRouteReq {
 struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
+}
+
+struct TUpdateTableReq {
+  1: required byte type
+  2: required binary tableInfo
 }
 
 struct TTsFilePieceReq {
@@ -1006,6 +1013,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  /**
+  * Update Table Cache
+  */
+  common.TSStatus updateTable(TUpdateTableReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

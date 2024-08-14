@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaRegion;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -189,7 +190,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     final Map<String, String> oldAttrMap = Collections.singletonMap("attrK1", "attrV1");
     schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -203,7 +204,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     final Map<String, String> newAttrMap = Collections.singletonMap("attrK2", "attrV2");
     final ICreateTimeSeriesPlan mergePlan =
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath("root.sg.wf01.wt01.v1.s1"),
+            new MeasurementPath("root.sg.wf01.wt01.v1.s1"),
             TSDataType.BOOLEAN,
             TSEncoding.RLE,
             CompressionType.ZSTD,

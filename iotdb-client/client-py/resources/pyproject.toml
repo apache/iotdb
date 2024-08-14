@@ -1,0 +1,84 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apache-iotdb"
+version = "${iotdb_version}"
+description = "Apache IoTDB client API"
+readme = "README.md"
+authors = [
+    { name = "Apache IoTDB", email = "dev@iotdb.apache.org" }
+]
+license = { text = "Apache License, Version 2.0"}
+keywords = ["iotdb", "apache", "client", "API"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+requires-python = ">=3.6"
+dependencies = [
+    "thrift>=0.14.1",
+    "pandas>=1.0.0",
+    "numpy>=1.0.0",
+    "sqlalchemy<1.5,>=1.4",
+    "sqlalchemy-utils>=0.37.8"
+]
+
+[project.urls]
+Homepage = "https://iotdb.apache.org"
+Documentation = "https://github.com/apache/iotdb"
+
+[project.entry-points."sqlalchemy.dialects"]
+iotdb = "iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.black]
+line-length = 88
+target-version = ['py36', 'py37', 'py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | migrations
+    | iotdb/thrift
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''

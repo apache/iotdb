@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNo
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALFileVersion;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
@@ -70,13 +71,15 @@ public class WALRepairWriterTest {
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
     // repair
     new WALRepairWriter(logFile).repair(walMetaData);
-    // verify file, marker + metadata(search index + size number) + metadata size + head magic
+    // verify file, marker(header size + marker buffer size) + metadata(search index + size number)
+    // + metadata size + head magic
     // string + tail magic string
+    // empty file will be assumed as V1 (because of no header magic)
     Assert.assertEquals(
-        Byte.BYTES
+        (Byte.BYTES + Integer.BYTES + Byte.BYTES)
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
+            + WALFileVersion.V1.getVersionBytes().length,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());
@@ -95,12 +98,14 @@ public class WALRepairWriterTest {
     WALMetaData walMetaData = new WALMetaData(firstSearchIndex, new ArrayList<>(), new HashSet<>());
     // repair
     new WALRepairWriter(logFile).repair(walMetaData);
-    // verify file, marker + metadata(search index + size number) + metadata size + magic string
+    // verify file, marker(header size + marker buffer size) + metadata(search index + size number)
+    // + metadata size + magic string
+    // file too small will be assumed as V1 (because of no header magic)
     Assert.assertEquals(
-        Byte.BYTES
+        (Byte.BYTES + Integer.BYTES + Byte.BYTES)
             + (Long.BYTES + Integer.BYTES)
             + Integer.BYTES
-            + WALWriter.MAGIC_STRING_V2_BYTES * 2,
+            + WALFileVersion.V1.getVersionBytes().length,
         logFile.length());
     try (WALByteBufReader reader = new WALByteBufReader(logFile)) {
       Assert.assertFalse(reader.hasNext());

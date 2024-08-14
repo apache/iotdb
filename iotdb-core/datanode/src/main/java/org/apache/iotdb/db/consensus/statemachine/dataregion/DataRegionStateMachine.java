@@ -52,10 +52,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -196,6 +194,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     List<Integer> index = new ArrayList<>();
     int i = 0;
     switch (insertNodes.get(0).getType()) {
+      case RELATIONAL_INSERT_TABLET:
       case INSERT_TABLET:
         // merge to InsertMultiTabletsNode
         List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
@@ -240,13 +239,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getDatabaseName(),
               region.getDataRegionId())
-          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
+          .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",

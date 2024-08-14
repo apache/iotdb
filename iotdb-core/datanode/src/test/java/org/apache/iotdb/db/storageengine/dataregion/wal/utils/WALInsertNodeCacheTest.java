@@ -118,9 +118,7 @@ public class WALInsertNodeCacheTest {
       Thread getInsertNodeThread =
           new Thread(
               () -> {
-                try {
-                  assertEquals(node1, cache.getInsertNode(position));
-                } catch (Throwable e) {
+                if (!node1.equals(cache.getInsertNode(position))) {
                   failure.set(true);
                 }
               });

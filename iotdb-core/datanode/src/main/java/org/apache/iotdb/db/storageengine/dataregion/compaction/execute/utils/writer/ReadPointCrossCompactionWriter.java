@@ -46,7 +46,7 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
 
   @Override
   public void write(TsBlock tsBlock, int subTaskId) throws IOException {
-    TimeColumn timestamps = tsBlock.getTimeColumn();
+    TimeColumn timestamps = (TimeColumn) tsBlock.getTimeColumn();
     Column[] columns = tsBlock.getValueColumns();
     int batchSize = tsBlock.getPositionCount();
     // Since a batch of data is written, the end time of the current aligned device may exceed the

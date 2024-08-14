@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.subscription.broker;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTsFileEventBatch;
-import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFilePlainEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -35,6 +38,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 
 import com.google.common.collect.ImmutableSet;
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,10 +50,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
+
+public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTsFileQueue.class);
@@ -67,12 +73,13 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
   public SubscriptionPrefetchingTsFileQueue(
       final String brokerId,
       final String topicName,
-      final SubscriptionBlockingPendingQueue inputPendingQueue) {
-    super(brokerId, topicName, inputPendingQueue);
+      final SubscriptionBlockingPendingQueue inputPendingQueue,
+      final AtomicLong commitIdGenerator) {
+    super(brokerId, topicName, inputPendingQueue, commitIdGenerator);
 
     this.consumerIdToSubscriptionEventMap = new ConcurrentHashMap<>();
     this.currentBatchRef.set(
-        new SubscriptionPipeTsFileEventBatch(BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
+        new SubscriptionPipeTsFileEventBatch(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
   }
 
   @Override
@@ -305,26 +312,7 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   @Override
   protected boolean onEvent(final TabletInsertionEvent event) {
-    final AtomicBoolean result = new AtomicBoolean(false);
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          try {
-            if (batch.onEvent(event)) {
-              sealBatch(batch);
-              result.set(true);
-              return new SubscriptionPipeTsFileEventBatch(
-                  BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
-            }
-            return batch;
-          } catch (final Exception e) {
-            LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing tsFiles from batch",
-                this,
-                e);
-            return batch;
-          }
-        });
-    return result.get();
+    return onEventInternal(event);
   }
 
   @Override
@@ -343,44 +331,41 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
   }
 
   @Override
-  protected boolean trySealBatch() {
+  protected boolean onEvent() {
+    return onEventInternal(null);
+  }
+
+  // missing synchronization can cause IoTDBSubscriptionSharingIT to lose data
+  private synchronized boolean onEventInternal(@Nullable final TabletInsertionEvent event) {
     final AtomicBoolean result = new AtomicBoolean(false);
     currentBatchRef.getAndUpdate(
         (batch) -> {
           try {
-            if (batch.shouldEmit()) {
-              sealBatch(batch);
+            final List<SubscriptionEvent> evs = batch.onEvent(event);
+            if (!evs.isEmpty()) {
+              evs.forEach(
+                  (ev) -> {
+                    uncommittedEvents.put(ev.getCommitContext(), ev); // before enqueuing the event
+                    prefetchingQueue.add(ev);
+                  });
               result.set(true);
               return new SubscriptionPipeTsFileEventBatch(
-                  BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
+                  this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
             }
+            // If onEvent returns an empty list, one possibility is that the batch has already been
+            // sealed, which would result in the failure of weakCompareAndSetVolatile to obtain the
+            // most recent batch.
             return batch;
           } catch (final Exception e) {
             LOGGER.warn(
-                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFile from batch",
+                "Exception occurred when SubscriptionPrefetchingTsFileQueue {} sealing TsFiles from batch {}",
                 this,
+                batch,
                 e);
             return batch;
           }
         });
     return result.get();
-  }
-
-  private void sealBatch(final SubscriptionPipeTsFileEventBatch batch) throws Exception {
-    final List<File> tsFiles = batch.sealTsFiles();
-    final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
-    for (final File tsFile : tsFiles) {
-      final SubscriptionCommitContext commitContext = generateSubscriptionCommitContext();
-      final SubscriptionEvent subscriptionEvent =
-          new SubscriptionEvent(
-              new SubscriptionPipeTsFileBatchEvents(batch, tsFile, referenceCount),
-              new SubscriptionPollResponse(
-                  SubscriptionPollResponseType.FILE_INIT.getType(),
-                  new FileInitPayload(tsFile.getName()),
-                  commitContext));
-      uncommittedEvents.put(commitContext, subscriptionEvent); // before enqueuing the event
-      prefetchingQueue.add(subscriptionEvent);
-    }
   }
 
   /////////////////////////////// commit ///////////////////////////////
@@ -452,7 +437,17 @@ class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQueue {
 
   private SubscriptionEvent generateSubscriptionPollErrorResponse(final String errorMessage) {
     // consider non-critical by default, meaning the client can retry
-    return super.generateSubscriptionPollErrorResponse(errorMessage, false);
+    return new SubscriptionEvent(
+        new SubscriptionPipeEmptyEvent(),
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.ERROR.getType(),
+            new ErrorPayload(errorMessage, false),
+            new SubscriptionCommitContext(
+                IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+                PipeDataNodeAgent.runtime().getRebootTimes(),
+                topicName,
+                brokerId,
+                INVALID_COMMIT_ID)));
   }
 
   /////////////////////////////// stringify ///////////////////////////////

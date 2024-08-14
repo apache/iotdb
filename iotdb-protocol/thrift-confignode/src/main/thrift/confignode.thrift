@@ -106,6 +106,7 @@ struct TRuntimeConfiguration {
   4: required binary allTTLInformation
   5: required list<binary> allPipeInformation
   6: optional string clusterId
+  7: optional binary tableInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -256,7 +257,7 @@ struct TDataPartitionTableResp {
 struct TGetRegionIdReq {
     1: required common.TConsensusGroupType type
     2: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional common.TTimePartitionSlot startTimeSlot
     5: optional common.TTimePartitionSlot endTimeSlot
 }
@@ -268,7 +269,7 @@ struct TGetRegionIdResp {
 
 struct TGetTimeSlotListReq {
     1: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional i64 regionId
     5: optional i64 startTime
     6: optional i64 endTime
@@ -281,7 +282,7 @@ struct TGetTimeSlotListResp {
 
 struct TCountTimeSlotListReq {
     1: optional string database
-    3: optional string device
+    3: optional binary device
     4: optional i64 regionId
     5: optional i64 startTime
     6: optional i64 endTime
@@ -673,10 +674,12 @@ struct TCreatePipePluginReq {
   3: required string jarName
   4: required binary jarFile
   5: required string jarMD5
+  6: optional bool ifNotExistsCondition
 }
 
 struct TDropPipePluginReq {
   1: required string pluginName
+  2: optional bool ifExistsCondition
 }
 
 // Get PipePlugin table from config node
@@ -709,6 +712,7 @@ struct TCreatePipeReq {
     2: optional map<string, string> extractorAttributes
     3: optional map<string, string> processorAttributes
     4: required map<string, string> connectorAttributes
+    5: optional bool ifNotExistsCondition
 }
 
 struct TAlterPipeReq {
@@ -719,6 +723,12 @@ struct TAlterPipeReq {
     5: required bool isReplaceAllConnectorAttributes
     6: optional map<string, string> extractorAttributes
     7: optional bool isReplaceAllExtractorAttributes
+    8: optional bool ifExistsCondition
+}
+
+struct TDropPipeReq {
+    1: required string pipeName
+    2: optional bool ifExistsCondition
 }
 
 // Deprecated, restored for compatibility
@@ -773,6 +783,12 @@ struct TAlterLogicalViewReq {
 struct TCreateTopicReq {
     1: required string topicName
     2: optional map<string, string> topicAttributes
+    3: optional bool ifNotExistsCondition
+}
+
+struct TDropTopicReq {
+    1: required string topicName
+    2: optional bool ifExistsCondition
 }
 
 struct TShowTopicReq {
@@ -910,6 +926,7 @@ struct TShowThrottleReq {
   1: optional string userName;
 }
 
+
 // ====================================================
 // Activation
 // ====================================================
@@ -928,6 +945,29 @@ enum TActivationControl {
 enum TTestOperation {
   TEST_PROCEDURE_RECOVER,
   TEST_SUB_PROCEDURE,
+}
+
+// ====================================================
+// Table
+// ====================================================
+
+struct TAlterTableReq {
+    1: required string database
+    2: required string tableName
+    3: required string queryId
+    4: required byte operationType
+    5: required binary updateInfo
+}
+
+struct TShowTableResp {
+   1: required common.TSStatus status
+   2: optional list<TTableInfo> tableInfoList
+}
+
+struct TTableInfo {
+   1: required string tableName
+   // TTL is stored as string in table props
+   2: required string TTL
 }
 
 service IConfigNodeRPCService {
@@ -1070,6 +1110,11 @@ service IConfigNodeRPCService {
   TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
 
   /**
+  * Get SchemaPartitionTable by specific database name and series slots.
+  **/
+  TSchemaPartitionTableResp getSchemaPartitionTableWithSlots(map<string, list<common.TSeriesPartitionSlot>> dbSlotMap)
+
+  /**
    * Get or create SchemaPartitionTable by specific PathPatternTree,
    * the returned SchemaPartitionTable always contains all the SeriesPartitionSlots
    * since the unallocated SeriesPartitionSlots will be allocated by the way
@@ -1079,6 +1124,11 @@ service IConfigNodeRPCService {
    *         DATABASE_NOT_EXIST if some Databases don't exist
    */
   TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
+
+  /**
+   * Get or create SchemaPartitionTable by specific database name and series slots.
+   **/
+   TSchemaPartitionTableResp getOrCreateSchemaPartitionTableWithSlots(map<string, list<common.TSeriesPartitionSlot>> dbSlotMap)
 
   // ======================================================
   // Node Management
@@ -1484,6 +1534,9 @@ service IConfigNodeRPCService {
   /** Drop Pipe */
   common.TSStatus dropPipe(string pipeName)
 
+  /** Drop Pipe */
+  common.TSStatus dropPipeExtended(TDropPipeReq req)
+
   /** Show Pipe by name, if name is empty, show all Pipe */
   TShowPipeResp showPipe(TShowPipeReq req)
 
@@ -1504,6 +1557,9 @@ service IConfigNodeRPCService {
 
   /** Drop Topic */
   common.TSStatus dropTopic(string topicName)
+
+  /** Drop Topic */
+  common.TSStatus dropTopicExtended(TDropTopicReq req)
 
   /** Show Topic by name, if name is empty, show all Topic */
   TShowTopicResp showTopic(TShowTopicReq req)
@@ -1593,5 +1649,15 @@ service IConfigNodeRPCService {
 
   /** Get throttle quota information */
   TThrottleQuotaResp getThrottleQuota()
+
+  // ======================================================
+  // Table
+  // ======================================================
+
+  common.TSStatus createTable(binary tableInfo)
+
+  common.TSStatus alterTable(TAlterTableReq req)
+
+  TShowTableResp showTables(string database)
 }
 

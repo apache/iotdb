@@ -55,6 +55,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Pair;
@@ -142,8 +143,8 @@ public class Util2 {
     analysis.setSchemaPartitionInfo(schemaPartition);
     analysis.setSchemaTree(genSchemaTree());
     // to avoid some special case which is not the point of test
-    analysis.setStatement(Mockito.mock(QueryStatement.class));
-    Mockito.when(analysis.getStatement().isQuery()).thenReturn(false);
+    analysis.setRealStatement(Mockito.mock(QueryStatement.class));
+    Mockito.when(analysis.getTreeStatement().isQuery()).thenReturn(false);
     return analysis;
   }
 
@@ -312,6 +313,22 @@ public class Util2 {
 
       @Override
       public void invalidAllCache() {}
+
+      @Override
+      public SchemaPartition getOrCreateSchemaPartition(
+          String database, List<IDeviceID> deviceIDList, String userName) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList) {
+        return null;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(String database) {
+        return null;
+      }
     };
   }
 

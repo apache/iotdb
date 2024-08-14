@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic;
 
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -40,18 +41,18 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
    * @param scope traversing scope
    * @throws MetadataException path does not meet the expected rules
    */
-  public EntityTraverser(
-      N startNode,
-      PartialPath path,
-      IMTreeStore<N> store,
-      boolean isPrefixMatch,
-      PathPatternTree scope)
+  protected EntityTraverser(
+      final N startNode,
+      final PartialPath path,
+      final IMTreeStore<N> store,
+      final boolean isPrefixMatch,
+      final PathPatternTree scope)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, scope);
   }
 
   @Override
-  protected boolean mayTargetNodeType(N node) {
+  protected boolean mayTargetNodeType(final N node) {
     if (node.isDevice()) {
       return (!usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId());
     }
@@ -59,7 +60,7 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
   }
 
   @Override
-  protected boolean acceptFullMatchedNode(N node) {
+  protected boolean acceptFullMatchedNode(final N node) {
     if (node.isDevice()) {
       return (!usingTemplate || schemaTemplateId == node.getAsDeviceMNode().getSchemaTemplateId());
     }
@@ -67,21 +68,21 @@ public abstract class EntityTraverser<R, N extends IMNode<N>> extends Traverser<
   }
 
   @Override
-  protected boolean acceptInternalMatchedNode(N node) {
+  protected boolean acceptInternalMatchedNode(final N node) {
     return false;
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfFullMatchedNode(N node) {
+  protected boolean shouldVisitSubtreeOfFullMatchedNode(final N node) {
     return !node.isMeasurement();
   }
 
   @Override
-  protected boolean shouldVisitSubtreeOfInternalMatchedNode(N node) {
+  protected boolean shouldVisitSubtreeOfInternalMatchedNode(final N node) {
     return !node.isMeasurement();
   }
 
-  public void setSchemaTemplateFilter(int schemaTemplateId) {
+  public void setSchemaTemplateFilter(final int schemaTemplateId) {
     this.usingTemplate = true;
     this.schemaTemplateId = schemaTemplateId;
   }

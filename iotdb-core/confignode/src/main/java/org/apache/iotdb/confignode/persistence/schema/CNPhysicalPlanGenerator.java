@@ -114,6 +114,7 @@ public class CNPhysicalPlanGenerator
   }
 
   @Override
+  @SuppressWarnings("java:S4348")
   public Iterator<ConfigPhysicalPlan> iterator() {
     return this;
   }

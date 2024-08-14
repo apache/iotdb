@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -324,7 +325,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void invalidate(List<PartialPath> partialPathList) {
+  public void invalidate(List<? extends PartialPath> partialPathList) {
     int estimateSize = 0;
     for (PartialPath path : partialPathList) {
       String measurement = path.getMeasurement();
@@ -384,6 +385,42 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @TestOnly
   public void evictOneEntry() {
     cacheStats.decreaseMemoryUsage(evictOneCacheEntry());
+  }
+
+  @Override
+  public void invalidate(FK firstKey) {
+    int estimateSize = 0;
+    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);
+    if (cacheEntryGroup != null) {
+      estimateSize += sizeComputer.computeFirstKeySize(firstKey);
+      for (Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries(); it.hasNext(); ) {
+        Map.Entry<SK, T> entry = it.next();
+        estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
+        estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
+        cacheEntryManager.invalid(entry.getValue());
+      }
+      cacheStats.decreaseMemoryUsage(estimateSize);
+    }
+  }
+
+  @Override
+  public void invalidateForTable(String database) {
+    int estimateSize = 0;
+    for (FK firstKey : firstKeyMap.getAllKeys()) {
+      TableId tableId = (TableId) firstKey;
+      if (tableId.belongTo(database)) {
+        estimateSize += sizeComputer.computeFirstKeySize(firstKey);
+        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
+        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
+          Map.Entry<SK, T> entry = it.next();
+          estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
+          estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
+          cacheEntryManager.invalid(entry.getValue());
+        }
+        firstKeyMap.remove(firstKey);
+      }
+    }
+    cacheStats.decreaseMemoryUsage(estimateSize);
   }
 
   /**

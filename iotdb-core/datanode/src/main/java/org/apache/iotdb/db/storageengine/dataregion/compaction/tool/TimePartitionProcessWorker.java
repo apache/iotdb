@@ -43,7 +43,14 @@ public class TimePartitionProcessWorker {
                   new SequenceFileSubTaskThreadExecutor(OverlapStatisticTool.subTaskNum);
               while (!workerTaskList.isEmpty()) {
                 TimePartitionProcessTask task = workerTaskList.remove(0);
-                OverlapStatistic partialRet = task.processTimePartition(fileProcessTaskExecutor);
+                OverlapStatistic partialRet = null;
+                try {
+                  partialRet = task.processTimePartition(fileProcessTaskExecutor);
+                } catch (InterruptedException e) {
+                  fileProcessTaskExecutor.shutdown();
+                  Thread.currentThread().interrupt();
+                  return;
+                }
                 workerResults.add(partialRet);
               }
               latch.countDown();

@@ -50,6 +50,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   protected volatile boolean isSubmitted = false;
 
   // For cleaning up the last event when the pipe is dropped
+  @SuppressWarnings("java:S3077")
   protected volatile Event lastExceptionEvent;
 
   protected PipeAbstractConnectorSubtask(

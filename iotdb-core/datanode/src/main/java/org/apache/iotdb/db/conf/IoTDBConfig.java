@@ -795,7 +795,7 @@ public class IoTDBConfig {
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
    */
-  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.DEVICE_TIME_INDEX;
+  private TimeIndexLevel timeIndexLevel = TimeIndexLevel.ARRAY_DEVICE_TIME_INDEX;
 
   // just for test
   // wait for 60 second by default.
@@ -1331,12 +1331,17 @@ public class IoTDBConfig {
     formulateLoadTsFileDirs(tierDataDirs);
   }
 
-  void reloadDataDirs(String[][] tierDataDirs) throws LoadConfigurationException {
+  void reloadDataDirs(String[][] newTierDataDirs) throws LoadConfigurationException {
     // format data directories
-    formulateDataDirs(tierDataDirs);
+    formulateDataDirs(newTierDataDirs);
+    if (newTierDataDirs.length < this.tierDataDirs.length) {
+      String msg = "some data dirs are removed from data_dirs parameter, please add them back.";
+      logger.error(msg);
+      throw new LoadConfigurationException(msg);
+    }
     // make sure old data directories not removed
     for (int i = 0; i < this.tierDataDirs.length; ++i) {
-      List<String> newDirs = Arrays.asList(tierDataDirs[i]);
+      List<String> newDirs = Arrays.asList(newTierDataDirs[i]);
       for (String oldDir : this.tierDataDirs[i]) {
         if (newDirs.stream()
             .noneMatch(
@@ -1350,7 +1355,7 @@ public class IoTDBConfig {
         }
       }
     }
-    this.tierDataDirs = tierDataDirs;
+    this.tierDataDirs = newTierDataDirs;
     reloadSystemMetrics();
   }
 
@@ -1430,6 +1435,7 @@ public class IoTDBConfig {
     return tierDataDirs;
   }
 
+  @SuppressWarnings("javabugs:S6466")
   public void setTierDataDirs(String[][] tierDataDirs) {
     formulateDataDirs(tierDataDirs);
     this.tierDataDirs = tierDataDirs;
