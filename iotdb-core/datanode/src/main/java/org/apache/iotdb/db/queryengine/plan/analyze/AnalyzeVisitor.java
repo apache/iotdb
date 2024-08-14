@@ -2810,7 +2810,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     final long startTime = System.nanoTime();
     try (final LoadTsFileAnalyzer loadTsfileAnalyzer =
         new LoadTsFileAnalyzer(loadTsFileStatement, context, partitionFetcher, schemaFetcher)) {
-      return loadTsfileAnalyzer.analyzeFileByFile();
+      return loadTsfileAnalyzer.analyzeFileByFile(loadTsFileStatement.isDeleteAfterLoad());
     } catch (final Exception e) {
       final String exceptionMessage =
           String.format(
