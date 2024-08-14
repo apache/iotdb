@@ -62,7 +62,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     results.forEach(
         result ->
             TableDeviceQuerySource.transformToTsBlockColumns(
-                result, tsBlockBuilder, database, tableName, columnHeaderList));
+                result, tsBlockBuilder, database, tableName, columnHeaderList, 1));
   }
 
   @Override

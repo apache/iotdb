@@ -59,7 +59,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     final List<DeviceEntry> entries = new ArrayList<>();
     final boolean needFetch =
         super.parseRawExpression(entries, tableInstance, attributeColumns, context);
-    if (needFetch) {
+    if (!needFetch) {
       results =
           entries.stream()
               .map(

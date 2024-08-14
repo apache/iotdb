@@ -81,7 +81,8 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
       final DeviceEntry entry, final List<String> attributeColumns) {
     final ShowDevicesResult result =
-        new ShowDevicesResult(entry.getDeviceID().toString(), null, -1);
+        new ShowDevicesResult(
+            entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
     final Map<String, String> attributeProviderMap = new HashMap<>();
     for (int i = 0; i < attributeColumns.size(); ++i) {
       attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));

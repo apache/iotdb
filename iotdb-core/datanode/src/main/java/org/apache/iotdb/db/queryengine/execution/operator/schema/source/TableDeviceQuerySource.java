@@ -186,7 +186,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
-    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList);
+    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList, 3);
   }
 
   public static void transformToTsBlockColumns(
@@ -194,22 +194,22 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final TsBlockBuilder builder,
       final String database,
       final String tableName,
-      final List<ColumnHeader> columnHeaderList) {
+      final List<ColumnHeader> columnHeaderList,
+      int idIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
-    int idIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
+        if (pathNodes.length <= idIndex || pathNodes[idIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(new Binary(pathNodes[idIndex + 3], TSFileConfig.STRING_CHARSET));
+              .writeBinary(new Binary(pathNodes[idIndex], TSFileConfig.STRING_CHARSET));
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
