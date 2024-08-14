@@ -138,7 +138,6 @@ public class SubscriptionConsumerAgent {
           consumerGroupMetasFromCoordinator) {
         try {
           handleSingleConsumerGroupMetaChangesInternal(consumerGroupMetaFromCoordinator);
-          return null;
         } catch (final Exception e) {
           final String consumerGroupId = consumerGroupMetaFromCoordinator.getConsumerGroupId();
           LOGGER.warn(
