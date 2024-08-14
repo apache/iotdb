@@ -200,6 +200,8 @@ public class CommonConfig {
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
   private int pipeExtractorMatcherCacheSize = 1024;
 
+  private long pipeProcessorTsFileDeduplicationWindowSeconds = 120; // 120s
+
   private int pipeConnectorHandshakeTimeoutMs = 10 * 1000; // 10 seconds
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 8388608;
@@ -674,6 +676,16 @@ public class CommonConfig {
 
   public void setPipeExtractorMatcherCacheSize(int pipeExtractorMatcherCacheSize) {
     this.pipeExtractorMatcherCacheSize = pipeExtractorMatcherCacheSize;
+  }
+
+  public long getPipeProcessorTsFileDeduplicationWindowSeconds() {
+    return pipeProcessorTsFileDeduplicationWindowSeconds;
+  }
+
+  public void setPipeProcessorTsFileDeduplicationWindowSeconds(
+      long pipeProcessorTsFileDeduplicationWindowSeconds) {
+    this.pipeProcessorTsFileDeduplicationWindowSeconds =
+        pipeProcessorTsFileDeduplicationWindowSeconds;
   }
 
   public int getPipeConnectorHandshakeTimeoutMs() {

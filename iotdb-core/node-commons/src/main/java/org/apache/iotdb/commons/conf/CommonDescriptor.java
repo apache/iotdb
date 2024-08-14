@@ -341,6 +341,12 @@ public class CommonDescriptor {
                         "pipe_extractor_matcher_cache_size",
                         String.valueOf(config.getPipeExtractorMatcherCacheSize())))));
 
+    config.setPipeProcessorTsFileDeduplicationWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_processor_tsfile_deduplication_window_seconds",
+                String.valueOf(config.getPipeProcessorTsFileDeduplicationWindowSeconds()))));
+
     config.setPipeConnectorHandshakeTimeoutMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_handshake_timeout_ms"))

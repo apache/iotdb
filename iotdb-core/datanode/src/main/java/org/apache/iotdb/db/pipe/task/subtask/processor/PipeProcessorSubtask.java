@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.processor;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
@@ -30,6 +31,8 @@ import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
 import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
@@ -42,12 +45,15 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeProcessorSubtask extends PipeReportableSubtask {
@@ -69,6 +75,8 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
   // restart.
   private final long subtaskCreationTime;
 
+  private final Cache<Integer, Boolean> hashCodeToIsGeneratedByHistoricalExtractor;
+
   public PipeProcessorSubtask(
       final String taskID,
       final long creationTime,
@@ -84,6 +92,14 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     this.inputEventSupplier = inputEventSupplier;
     this.pipeProcessor = pipeProcessor;
     this.outputEventCollector = outputEventCollector;
+    this.hashCodeToIsGeneratedByHistoricalExtractor =
+        Caffeine.newBuilder()
+            .expireAfterAccess(
+                CommonDescriptor.getInstance()
+                    .getConfig()
+                    .getPipeProcessorTsFileDeduplicationWindowSeconds(),
+                TimeUnit.SECONDS)
+            .build();
 
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
@@ -121,10 +137,11 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     final Event event =
         lastEvent != null
             ? lastEvent
-            : UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply());
+            : filter(UserDefinedEnrichedEvent.maybeOf(inputEventSupplier.supply()));
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
+    // If there isn't an event or there is a duplicate event, return directly.
     if (Objects.isNull(event)) {
       return false;
     }
@@ -205,6 +222,58 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       }
     }
 
+    return true;
+  }
+
+  private synchronized Event filter(final Event event) { // make it synchronized
+    if (Objects.isNull(event)) {
+      return null;
+    }
+
+    if (event instanceof PipeRawTabletInsertionEvent) {
+      final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent =
+          (PipeRawTabletInsertionEvent) event;
+      final EnrichedEvent sourceEvent = pipeRawTabletInsertionEvent.getSourceEvent();
+      if (sourceEvent instanceof PipeTsFileInsertionEvent
+          && isDuplicated((PipeTsFileInsertionEvent) sourceEvent)) {
+        // Discard duplicate event, because pipeConsensus doesn't expect to assign a commit id for
+        // duplicate events to ensure that events can be received in order. The consequence of this
+        // is that ProgressIndex is not updated in time, but this will not affect the correctness.
+        pipeRawTabletInsertionEvent.clearReferenceCount(PipeProcessorSubtask.class.getName());
+        return null;
+      }
+    }
+
+    if (event instanceof PipeTsFileInsertionEvent) {
+      final PipeTsFileInsertionEvent pipeTsFileInsertionEvent = (PipeTsFileInsertionEvent) event;
+      if (isDuplicated(pipeTsFileInsertionEvent)) {
+        // ditto
+        pipeTsFileInsertionEvent.clearReferenceCount(PipeProcessorSubtask.class.getName());
+        return null;
+      }
+    }
+
+    return event;
+  }
+
+  private boolean isDuplicated(final PipeTsFileInsertionEvent event) {
+    final int hashCode = event.getTsFile().hashCode();
+    final boolean isGeneratedByHistoricalExtractor = event.isGeneratedByHistoricalExtractor();
+    final Boolean existedIsGeneratedByHistoricalExtractor =
+        hashCodeToIsGeneratedByHistoricalExtractor.getIfPresent(hashCode);
+    if (Objects.isNull(existedIsGeneratedByHistoricalExtractor)) {
+      hashCodeToIsGeneratedByHistoricalExtractor.put(hashCode, isGeneratedByHistoricalExtractor);
+      return false;
+    }
+    // Multiple PipeRawTabletInsertionEvents parsed from the same PipeTsFileInsertionEvent (i.e.,
+    // with the same isGeneratedByHistoricalExtractor field) are not considered duplicates.
+    if (Objects.equals(existedIsGeneratedByHistoricalExtractor, isGeneratedByHistoricalExtractor)) {
+      return false;
+    }
+    LOGGER.info(
+        "Pipe-{}: Detect duplicated PipeTsFileInsertionEvent {}, commit it directly",
+        pipeName,
+        event.coreReportMessage());
     return true;
   }
 
