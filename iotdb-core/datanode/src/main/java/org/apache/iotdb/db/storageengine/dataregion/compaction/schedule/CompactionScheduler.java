@@ -90,11 +90,11 @@ public class CompactionScheduler {
    *
    * @param tsFileManager tsfileManager that contains source files
    * @param timePartition the time partition to execute the selection
-   * @param summary the summary of compaction schedule
+   * @param context the context of compaction schedule
    * @return the count of submitted task
    */
   public static int scheduleCompaction(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context)
       throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
@@ -104,12 +104,12 @@ public class CompactionScheduler {
     int trySubmitCount = 0;
     try {
       trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, summary);
+          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, context);
       trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, summary);
-      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, summary);
+          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, context);
+      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, context);
       trySubmitCount +=
-          tryToSubmitSettleCompactionTask(tsFileManager, timePartition, summary, false);
+          tryToSubmitSettleCompactionTask(tsFileManager, timePartition, context, false);
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
@@ -121,18 +121,22 @@ public class CompactionScheduler {
   @TestOnly
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
       throws InterruptedException {
-    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleSummary());
+    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleContext());
   }
 
   public static int scheduleInsertionCompaction(
-      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
+      TsFileManager tsFileManager,
+      long timePartition,
+      Phaser insertionTaskPhaser,
+      CompactionScheduleContext context)
       throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
     }
     int trySubmitCount = 0;
     trySubmitCount +=
-        tryToSubmitInsertionCompactionTask(tsFileManager, timePartition, insertionTaskPhaser);
+        tryToSubmitInsertionCompactionTask(
+            tsFileManager, timePartition, insertionTaskPhaser, context);
     return trySubmitCount;
   }
 
@@ -140,7 +144,7 @@ public class CompactionScheduler {
       TsFileManager tsFileManager,
       long timePartition,
       boolean sequence,
-      CompactionScheduleSummary summary)
+      CompactionScheduleContext context)
       throws InterruptedException {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
@@ -157,12 +161,14 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(
+                  storageGroupName, dataRegionId, timePartition, tsFileManager, context);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .createInstance(storageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(
+                  storageGroupName, dataRegionId, timePartition, tsFileManager, context);
     }
     long startTime = System.currentTimeMillis();
     List<InnerSpaceCompactionTask> innerSpaceTaskList =
@@ -179,7 +185,7 @@ public class CompactionScheduler {
     // the name of this variable is trySubmitCount, because the task submitted to the queue could be
     // evicted due to the low priority of the task
     int trySubmitCount = addTaskToWaitingQueue(innerSpaceTaskList);
-    summary.incrementSubmitTaskNum(
+    context.incrementSubmitTaskNum(
         sequence ? CompactionTaskType.INNER_SEQ : CompactionTaskType.INNER_UNSEQ, trySubmitCount);
     return trySubmitCount;
   }
@@ -218,7 +224,10 @@ public class CompactionScheduler {
   }
 
   private static int tryToSubmitInsertionCompactionTask(
-      TsFileManager tsFileManager, long timePartition, Phaser insertionTaskPhaser)
+      TsFileManager tsFileManager,
+      long timePartition,
+      Phaser insertionTaskPhaser,
+      CompactionScheduleContext context)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
@@ -227,7 +236,7 @@ public class CompactionScheduler {
     String dataRegionId = tsFileManager.getDataRegionId();
     RewriteCrossSpaceCompactionSelector selector =
         new RewriteCrossSpaceCompactionSelector(
-            logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+            logicalStorageGroupName, dataRegionId, timePartition, tsFileManager, context);
 
     List<CrossCompactionTaskResource> selectedTasks =
         selector.selectInsertionCrossSpaceTask(
@@ -253,7 +262,7 @@ public class CompactionScheduler {
   }
 
   private static int tryToSubmitCrossSpaceCompactionTask(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleSummary summary)
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
@@ -297,14 +306,14 @@ public class CompactionScheduler {
       task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);
       trySubmitCount = addTaskToWaitingQueue(Collections.singletonList(task));
     }
-    summary.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
+    context.incrementSubmitTaskNum(CompactionTaskType.CROSS, trySubmitCount);
     return trySubmitCount;
   }
 
   public static int tryToSubmitSettleCompactionTask(
       TsFileManager tsFileManager,
       long timePartition,
-      CompactionScheduleSummary summary,
+      CompactionScheduleContext context,
       boolean heavySelect)
       throws InterruptedException {
     if (!config.isEnableSeqSpaceCompaction() && !config.isEnableUnseqSpaceCompaction()) {
@@ -335,7 +344,7 @@ public class CompactionScheduler {
     int trySubmitCount = 0;
     for (AbstractCompactionTask task : taskList) {
       if (CompactionTaskManager.getInstance().addTaskToWaitingQueue(task)) {
-        summary.updateTTLInfo(task);
+        context.updateTTLInfo(task);
         trySubmitCount++;
       }
     }
