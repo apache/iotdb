@@ -385,7 +385,6 @@ public class WALRecoverManagerTest {
     File fileWithWALDir = new File(FILE_WITH_WAL_NAME).getParentFile();
     Files.createDirectories(fileWithWALDir.toPath());
     File fileWithWAL = new File(fileWithWALDir, "1723544967972-1-0-0.tsfile");
-    ;
     if (withBrokenTsFile) {
       // copy a broken TsFileV3
       String oldWalPathStr = this.getClass().getClassLoader().getResource("oldwal").getFile();
