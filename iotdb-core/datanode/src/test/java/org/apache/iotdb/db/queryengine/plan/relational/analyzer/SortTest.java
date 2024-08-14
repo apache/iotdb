@@ -100,7 +100,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag3 asc, time desc, s1+s2 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -176,7 +176,7 @@ public class SortTest {
 
     sql = "SELECT * FROM table1 order by tag2 desc, tag3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -202,7 +202,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, tag3 asc, time desc, s1+s2 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -280,7 +280,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, tag3 asc, time desc, s1+s2 desc";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -348,7 +348,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, s1+s2 desc, time desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -428,7 +428,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, tag3 asc, s1+s2 desc, time desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -506,7 +506,7 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 order by time desc, tag2 asc, tag3 desc, s1+s2 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -518,7 +518,7 @@ public class SortTest {
         "SELECT time, tag3, substring(tag1, 1), cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag1 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -529,7 +529,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag3 desc, tag1 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -540,7 +540,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, tag2 asc, tag3 desc, tag1 asc, s1+s2 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -555,7 +555,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "order by s1+s2 desc, tag2 desc, tag1 desc, time desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -566,7 +566,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by s1+s2 desc, tag2 desc, tag1 desc, tag3 desc, time asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -577,7 +577,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by s1+s2 desc, time desc, tag2 desc, tag1 desc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
@@ -588,7 +588,7 @@ public class SortTest {
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by s1+s2 desc, time desc, tag2 desc, tag1 desc, tag3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();

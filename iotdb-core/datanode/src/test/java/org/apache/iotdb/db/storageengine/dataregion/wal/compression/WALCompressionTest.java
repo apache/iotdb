@@ -228,6 +228,8 @@ public class WALCompressionTest {
       ByteBuffer dataBuf = ByteBuffer.allocate(buf.array().length);
       dataInputStream.readFully(dataBuf.array());
       Assert.assertArrayEquals(buf.array(), dataBuf.array());
+      Assert.assertEquals(CompressionType.UNCOMPRESSED.serialize(), dataInputStream.readByte());
+      Assert.assertEquals(Byte.BYTES, dataInputStream.readInt());
       Assert.assertEquals(
           new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER),
           WALEntry.deserialize(dataInputStream));
@@ -284,6 +286,8 @@ public class WALCompressionTest {
       Assert.assertArrayEquals(compressed, dataBuf.array());
       IUnCompressor unCompressor = IUnCompressor.getUnCompressor(CompressionType.LZ4);
       Assert.assertArrayEquals(unCompressor.uncompress(compressed), buf.array());
+      Assert.assertEquals(CompressionType.UNCOMPRESSED.serialize(), dataInputStream.readByte());
+      Assert.assertEquals(Byte.BYTES, dataInputStream.readInt());
       Assert.assertEquals(
           new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER),
           WALEntry.deserialize(dataInputStream));

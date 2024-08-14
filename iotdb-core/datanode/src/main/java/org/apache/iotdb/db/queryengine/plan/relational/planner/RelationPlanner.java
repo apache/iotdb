@@ -17,6 +17,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -179,6 +180,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     return new RelationPlan(plan.getRoot(), analysis.getScope(node), plan.getFieldMappings());
   }
 
+  @Override
+  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
+    RelationPlan subPlan = process(node.getRelation(), context);
+
+    PlanNode root = subPlan.getRoot();
+    List<Symbol> mappings = subPlan.getFieldMappings();
+
+    if (node.getColumnNames() != null) {
+      ImmutableList.Builder<Symbol> newMappings = ImmutableList.builder();
+
+      // Adjust the mappings to expose only the columns visible in the scope of the aliased relation
+      for (int i = 0; i < subPlan.getDescriptor().getAllFieldCount(); i++) {
+        if (!subPlan.getDescriptor().getFieldByIndex(i).isHidden()) {
+          newMappings.add(subPlan.getFieldMappings().get(i));
+        }
+      }
+
+      mappings = newMappings.build();
+    }
+
+    return new RelationPlan(root, analysis.getScope(node), mappings);
+  }
+
   // ================================ Implemented later =====================================
 
   @Override
@@ -194,11 +218,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitJoin(Join node, Void context) {
     throw new IllegalStateException("Join is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
-    throw new IllegalStateException("AliasedRelation is not supported in current version.");
   }
 
   @Override
