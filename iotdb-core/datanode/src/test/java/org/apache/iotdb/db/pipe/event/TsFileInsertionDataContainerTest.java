@@ -65,7 +65,6 @@ public class TsFileInsertionDataContainerTest {
 
   private File alignedTsFile;
   private File nonalignedTsFile;
-  private File mixTsFileWithEmptyChunk;
 
   @After
   public void tearDown() throws Exception {
@@ -74,9 +73,6 @@ public class TsFileInsertionDataContainerTest {
     }
     if (nonalignedTsFile != null) {
       nonalignedTsFile.delete();
-    }
-    if (mixTsFileWithEmptyChunk != null) {
-      mixTsFileWithEmptyChunk.delete();
     }
   }
 
@@ -469,7 +465,8 @@ public class TsFileInsertionDataContainerTest {
   }
 
   private void testMixedTsFileWithEmptyChunk(final boolean isQuery) throws IOException {
-    final TsFileResource resource = new TsFileResource(new File("0-0-1-0.tsfile"));
+    final File tsFile = new File("0-0-1-0.tsfile");
+    final TsFileResource resource = new TsFileResource(tsFile);
     resource.updatePlanIndexes(0);
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     try (final CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
@@ -493,14 +490,14 @@ public class TsFileInsertionDataContainerTest {
       writer.endFile();
     }
 
-    mixTsFileWithEmptyChunk = resource.getTsFile();
     testTsFilePointNum(
-        mixTsFileWithEmptyChunk,
+        resource.getTsFile(),
         new PrefixPipePattern("root"),
         Long.MIN_VALUE,
         Long.MAX_VALUE,
         isQuery,
         115);
+    resource.remove();
   }
 
   private void testTsFilePointNum(
