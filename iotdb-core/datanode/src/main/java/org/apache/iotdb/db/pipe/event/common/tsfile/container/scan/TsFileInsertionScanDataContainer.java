@@ -271,7 +271,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private void moveToNextChunkReader() throws IOException, IllegalStateException {
     ChunkHeader chunkHeader;
-
     final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
 
