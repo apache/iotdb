@@ -88,4 +88,9 @@ public class ProgressReportEvent extends EnrichedEvent {
   public boolean mayEventPathsOverlappedWithPattern() {
     return true;
   }
+
+  @Override
+  public String toString() {
+    return "ProgressReportEvent - " + super.toString();
+  }
 }
