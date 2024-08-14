@@ -42,6 +42,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -59,9 +61,11 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.POLL_
 
 public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscriptionTripleIT {
 
-  public static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AbstractSubscriptionRegressionIT.class);
   private static final String DROP_DATABASE_SQL = "drop database ";
+
+  protected static final SimpleDateFormat FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
   public String SRC_HOST;
   public String DEST_HOST;
@@ -446,12 +450,13 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
 
   public static void assertGte(long actual, int expected, String message) {
     assertTrue(actual >= expected);
-    if (Objects.nonNull(message)) {
-      Assume.assumeTrue(
-          actual + " should be equals to " + expected + ", message: " + message,
-          actual == expected);
-    } else {
-      Assume.assumeTrue(actual + " should be equals to " + expected, actual == expected);
+    if (!(actual == expected)) {
+      String skipMessage = actual + " should be equals to " + expected;
+      if (Objects.nonNull(message)) {
+        skipMessage += ", message: " + message;
+      }
+      LOGGER.warn(skipMessage);
+      Assume.assumeTrue(skipMessage, actual == expected);
     }
   }
 
