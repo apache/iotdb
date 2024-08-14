@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
 
-  // For sql-input show device usage
   public ShowDevice(final QualifiedName name, final Expression rawExpression) {
     super(name, rawExpression);
   }

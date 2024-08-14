@@ -41,8 +41,8 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
 
   protected List<ColumnHeader> columnHeaderList;
 
-  protected AbstractQueryDeviceWithCache(final String tableName, final Expression rawExpression) {
-    super(tableName, rawExpression);
+  protected AbstractQueryDeviceWithCache(final QualifiedName name, final Expression rawExpression) {
+    super(name, rawExpression);
   }
 
   public boolean parseRawExpression(

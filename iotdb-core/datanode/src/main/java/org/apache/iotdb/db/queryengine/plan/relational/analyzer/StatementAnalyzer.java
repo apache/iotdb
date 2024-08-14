@@ -2502,22 +2502,18 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
-      node.parseQualifiedName(sessionContext);
       return null;
     }
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
-      node.parseQualifiedName(sessionContext);
       return null;
     }
 
     private void analyzeQueryDevice(
         final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
-      if (Objects.isNull(node.getDatabase())) {
-        node.setDatabase(analysis.getDatabaseName());
-      }
+      node.parseQualifiedName(sessionContext);
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 
