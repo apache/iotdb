@@ -127,7 +127,8 @@ public abstract class AbstractTraverseDevice extends Statement {
             this,
             entries,
             attributeColumns,
-            context);
+            context,
+            false);
   }
 
   public List<List<SchemaFilter>> getIdDeterminedFilterList() {

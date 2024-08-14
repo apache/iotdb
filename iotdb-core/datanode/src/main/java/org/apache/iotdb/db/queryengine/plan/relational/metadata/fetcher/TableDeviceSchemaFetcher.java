@@ -182,7 +182,8 @@ public class TableDeviceSchemaFetcher {
         statement,
         deviceEntryList,
         attributeColumns,
-        queryContext)) {
+        queryContext,
+        true)) {
       fetchMissingDeviceSchemaForQuery(
           database, tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
     }
@@ -203,10 +204,11 @@ public class TableDeviceSchemaFetcher {
       final AbstractTraverseDevice statement,
       final List<DeviceEntry> deviceEntryList,
       final List<String> attributeColumns,
-      final MPPQueryContext queryContext) {
+      final MPPQueryContext queryContext,
+      final boolean canDeduplicate) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(
-            expressionList, tableInstance, queryContext);
+            expressionList, tableInstance, queryContext, canDeduplicate);
     final List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
     final List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
 

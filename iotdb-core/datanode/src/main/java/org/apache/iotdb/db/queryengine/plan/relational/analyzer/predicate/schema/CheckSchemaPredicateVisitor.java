@@ -81,6 +81,10 @@ public class CheckSchemaPredicateVisitor
       }
       return true;
     }
+    // TODO: improve the distinct result set detection logic
+    if (!context.canDeduplicate) {
+      return true;
+    }
     return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
   }
 
@@ -145,10 +149,13 @@ public class CheckSchemaPredicateVisitor
 
     // For query performance analyze
     private final MPPQueryContext queryContext;
+    private boolean canDeduplicate;
 
-    public Context(final TsTable table, final MPPQueryContext queryContext) {
+    public Context(
+        final TsTable table, final MPPQueryContext queryContext, final boolean canDeduplicate) {
       this.table = table;
       this.queryContext = queryContext;
+      this.canDeduplicate = canDeduplicate;
     }
   }
 }
