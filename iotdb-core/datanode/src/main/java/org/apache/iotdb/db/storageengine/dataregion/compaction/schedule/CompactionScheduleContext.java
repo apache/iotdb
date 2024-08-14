@@ -22,8 +22,15 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-public class CompactionScheduleSummary {
+import org.apache.tsfile.file.metadata.IDeviceID;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class CompactionScheduleContext {
   private int submitSeqInnerSpaceCompactionTaskNum = 0;
   private int submitUnseqInnerSpaceCompactionTaskNum = 0;
   private int submitCrossSpaceCompactionTaskNum = 0;
@@ -36,6 +43,25 @@ public class CompactionScheduleSummary {
   private int partiallyDirtyFileNum = 0;
 
   // end region
+
+  private final Map<TsFileResource, Map<IDeviceID, DeviceInfo>> partitionFileDeviceInfoCache;
+
+  public CompactionScheduleContext() {
+    this.partitionFileDeviceInfoCache = new HashMap<>();
+  }
+
+  public void addResourceDeviceTimeIndex(
+      TsFileResource tsFileResource, Map<IDeviceID, DeviceInfo> deviceInfoMap) {
+    partitionFileDeviceInfoCache.put(tsFileResource, deviceInfoMap);
+  }
+
+  public Map<IDeviceID, DeviceInfo> getResourceDeviceInfo(TsFileResource resource) {
+    return partitionFileDeviceInfoCache.get(resource);
+  }
+
+  public void clearTimePartitionDeviceInfoCache() {
+    partitionFileDeviceInfoCache.clear();
+  }
 
   public void incrementSubmitTaskNum(CompactionTaskType taskType, int num) {
     switch (taskType) {
