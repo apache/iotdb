@@ -183,7 +183,7 @@ public class TableDeviceSchemaFetcher {
         deviceEntryList,
         attributeColumns,
         queryContext,
-        true)) {
+        false)) {
       fetchMissingDeviceSchemaForQuery(
           database, tableInstance, attributeColumns, statement, deviceEntryList, queryContext);
     }
@@ -205,10 +205,10 @@ public class TableDeviceSchemaFetcher {
       final List<DeviceEntry> deviceEntryList,
       final List<String> attributeColumns,
       final MPPQueryContext queryContext,
-      final boolean canDeduplicate) {
+      final boolean isDirectDeviceQuery) {
     final Pair<List<Expression>, List<Expression>> separatedExpression =
         SchemaPredicateUtil.separateIdDeterminedPredicate(
-            expressionList, tableInstance, queryContext, canDeduplicate);
+            expressionList, tableInstance, queryContext, isDirectDeviceQuery);
     final List<Expression> idDeterminedPredicateList = separatedExpression.left; // and-concat
     final List<Expression> idFuzzyPredicateList = separatedExpression.right; // and-concat
 
@@ -253,7 +253,8 @@ public class TableDeviceSchemaFetcher {
             index2FilterMapList.get(index),
             o -> fuzzyFilter == null || filterVisitor.process(fuzzyFilter, o),
             attributeColumns,
-            fetchPaths)) {
+            fetchPaths,
+            isDirectDeviceQuery)) {
           idSingleMatchPredicateNotInCache.add(index);
         }
       }
@@ -294,7 +295,7 @@ public class TableDeviceSchemaFetcher {
     return false;
   }
 
-  // return whether all of required info of current device is in cache
+  // Return whether all of required info of current device is in cache
   private boolean tryGetDeviceInCache(
       final List<DeviceEntry> deviceEntryList,
       final String database,
@@ -302,7 +303,8 @@ public class TableDeviceSchemaFetcher {
       final Map<Integer, List<SchemaFilter>> idFilters,
       final Predicate<DeviceEntry> check,
       final List<String> attributeColumns,
-      final List<IDeviceID> fetchPaths) {
+      final List<IDeviceID> fetchPaths,
+      final boolean isDirectDeviceQuery) {
     String[] idValues = new String[tableInstance.getIdNums()];
     for (final List<SchemaFilter> schemaFilters : idFilters.values()) {
       final IdFilter idFilter = (IdFilter) schemaFilters.get(0);
@@ -313,9 +315,11 @@ public class TableDeviceSchemaFetcher {
     idValues = (String[]) truncateTailingNull(idValues);
     final Map<String, String> attributeMap =
         cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
+
+    final IDeviceID deviceID = convertIdValuesToDeviceID(idValues, tableInstance);
     if (attributeMap == null) {
       if (Objects.nonNull(fetchPaths)) {
-        fetchPaths.add(convertIdValuesToDeviceID(idValues, tableInstance));
+        fetchPaths.add(deviceID);
       }
       return false;
     }
@@ -324,19 +328,23 @@ public class TableDeviceSchemaFetcher {
       if (!attributeMap.containsKey(attributeKey)) {
         // The attributes may be updated and the cache entry is stale
         if (Objects.nonNull(fetchPaths)) {
-          fetchPaths.add(convertIdValuesToDeviceID(idValues, tableInstance));
+          fetchPaths.add(deviceID);
         }
         return false;
       }
       attributeValues.add(attributeMap.get(attributeKey));
     }
 
-    final DeviceEntry deviceEntry =
-        new DeviceEntry(convertIdValuesToDeviceID(idValues, tableInstance), attributeValues);
+    final DeviceEntry deviceEntry = new DeviceEntry(deviceID, attributeValues);
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
       deviceEntryList.add(deviceEntry);
+      // If we partially hit cache in direct device query, we must fetch for all the predicates
+      // because now we do not support combining memory source and other sources
+      if (isDirectDeviceQuery) {
+        fetchPaths.add(deviceID);
+      }
     }
     return true;
   }

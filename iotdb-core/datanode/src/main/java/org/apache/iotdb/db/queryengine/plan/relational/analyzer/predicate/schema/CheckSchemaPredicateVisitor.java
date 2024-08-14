@@ -82,7 +82,7 @@ public class CheckSchemaPredicateVisitor
       return true;
     }
     // TODO: improve the distinct result set detection logic
-    if (!context.canDeduplicate) {
+    if (context.isDirectDeviceQuery) {
       return true;
     }
     return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
@@ -149,13 +149,15 @@ public class CheckSchemaPredicateVisitor
 
     // For query performance analyze
     private final MPPQueryContext queryContext;
-    private boolean canDeduplicate;
+    private final boolean isDirectDeviceQuery;
 
     public Context(
-        final TsTable table, final MPPQueryContext queryContext, final boolean canDeduplicate) {
+        final TsTable table,
+        final MPPQueryContext queryContext,
+        final boolean isDirectDeviceQuery) {
       this.table = table;
       this.queryContext = queryContext;
-      this.canDeduplicate = canDeduplicate;
+      this.isDirectDeviceQuery = isDirectDeviceQuery;
     }
   }
 }
