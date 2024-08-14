@@ -45,7 +45,7 @@ public class Strcmp2ColumnTransformer extends BinaryColumnTransformer {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBoolean(leftValue.compareTo(rightValue) == 0);
+        columnBuilder.writeInt(Integer.compare(leftValue.compareTo(rightValue), 0));
       } else {
         columnBuilder.appendNull();
       }

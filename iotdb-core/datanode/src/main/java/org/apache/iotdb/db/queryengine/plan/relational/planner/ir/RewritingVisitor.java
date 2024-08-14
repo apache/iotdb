@@ -19,23 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -193,6 +179,21 @@ public class RewritingVisitor<C> extends IrVisitor<Expression, C> {
 
     if (!sameElements(node.getArguments(), arguments)) {
       return new FunctionCall(node.getName(), arguments);
+    }
+    return node;
+  }
+
+  @Override
+  protected Expression visitTrim(Trim node, C context) {
+    List<Expression> expectedArguments = new ArrayList<>();
+    expectedArguments.add(node.getTrimSource());
+    node.getTrimCharacter().ifPresent(expectedArguments::add);
+    List<Expression> actualArguments = new ArrayList<>();
+    actualArguments.add(process(node.getTrimSource(),context));
+    node.getTrimCharacter().ifPresent(argument -> actualArguments.add(process(argument, context)));
+
+    if (!sameElements(expectedArguments, actualArguments)) {
+      return new FunctionCall(QualifiedName.of(node.getSpecification().getFunctionName()), actualArguments);
     }
     return node;
   }

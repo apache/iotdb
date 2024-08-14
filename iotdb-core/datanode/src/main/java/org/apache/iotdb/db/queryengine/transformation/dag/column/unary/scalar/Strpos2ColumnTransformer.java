@@ -20,28 +20,32 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
-public class LocateColumnTransformer extends UnaryColumnTransformer {
-  private final String subString;
-
-  public LocateColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String subString) {
-    super(returnType, childColumnTransformer);
-    this.subString = subString;
+public class Strpos2ColumnTransformer extends BinaryColumnTransformer {
+  public Strpos2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeInt(currentValue.indexOf(subString));
+  protected void checkType() {
+    // do nothing
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeInt(leftValue.indexOf(rightValue) + 1);
       } else {
         columnBuilder.appendNull();
       }

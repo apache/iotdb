@@ -41,7 +41,7 @@ public class StrcmpColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBoolean(currentValue.compareTo(str) == 0);
+        columnBuilder.writeInt(Integer.compare(currentValue.compareTo(str), 0));
       } else {
         columnBuilder.appendNull();
       }

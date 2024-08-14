@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -28,30 +28,40 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-public class ConcatColumnTransformer extends UnaryColumnTransformer {
-  private final String str;
-  private final boolean isBehind;
-
-  public ConcatColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String str, boolean isBehind) {
-    super(returnType, childColumnTransformer);
-    this.str = str;
-    this.isBehind = isBehind;
+public class LTrim2ColumnTransformer extends BinaryColumnTransformer {
+  public LTrim2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        if (isBehind) {
-          columnBuilder.writeBinary(BytesUtils.valueOf(currentValue.concat(str)));
-        } else {
-          columnBuilder.writeBinary(BytesUtils.valueOf(str.concat(currentValue)));
-        }
+  protected void checkType() {
+    // do nothing
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBinary(BytesUtils.valueOf(ltrim(leftValue, rightValue)));
       } else {
-        columnBuilder.writeBinary(BytesUtils.valueOf(str));
+        columnBuilder.appendNull();
       }
     }
+  }
+
+  private String ltrim(String source, String character) {
+    if (source.isEmpty() || character.isEmpty()) {
+      return source;
+    }
+
+    int start = 0;
+
+    while (start < source.length() && character.indexOf(source.charAt(start)) >= 0) start++;
+
+    return source.substring(start);
   }
 }

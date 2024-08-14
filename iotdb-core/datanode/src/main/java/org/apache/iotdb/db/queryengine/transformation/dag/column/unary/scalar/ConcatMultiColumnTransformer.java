@@ -20,30 +20,45 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MultiColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.BytesUtils;
 
-public class StringMatchesColumnTransformer extends UnaryColumnTransformer {
-  private final String regex;
+import java.util.List;
 
-  public StringMatchesColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String regex) {
-    super(returnType, childColumnTransformer);
-    this.regex = regex;
+public class ConcatMultiColumnTransformer extends MultiColumnTransformer {
+
+  public ConcatMultiColumnTransformer(
+      Type returnType, List<ColumnTransformer> columnTransformerList) {
+    super(returnType, columnTransformerList);
   }
 
   @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBoolean(currentValue.matches(regex));
+  protected void checkType() {
+    // do nothing because the type is checked in tableMetaDataImpl
+  }
+
+  @Override
+  protected void doTransform(
+      List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      boolean isNull = true;
+      StringBuilder result = new StringBuilder();
+      for (int j = 0; j < childrenColumns.size(); j++) {
+        if (!childrenColumns.get(j).isNull(i)) {
+          isNull = false;
+          result.append(
+              childrenColumns.get(j).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+        }
+      }
+      if (isNull) {
+        builder.appendNull();
       } else {
-        columnBuilder.appendNull();
+        builder.writeBinary(BytesUtils.valueOf(result.toString()));
       }
     }
   }

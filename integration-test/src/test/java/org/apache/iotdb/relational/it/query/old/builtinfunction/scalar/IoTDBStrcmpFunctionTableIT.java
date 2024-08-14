@@ -85,9 +85,9 @@ public class IoTDBStrcmpFunctionTableIT {
     String[] expectedHeader = new String[] {"time", "s1", "_col2", "s9", "_col4"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,abcd,false,ab,true,",
-          "1970-01-01T00:00:00.002Z,Test,false,Test,false,",
-          "1970-01-01T00:00:00.003Z,efgh,true,efgh,false,",
+          "1970-01-01T00:00:00.001Z,abcd,-1,ab,0,",
+          "1970-01-01T00:00:00.002Z,Test,-1,Test,-1,",
+          "1970-01-01T00:00:00.003Z,efgh,0,efgh,1,",
         };
     tableResultSetEqualTest(
         "select time,s1,strcmp(s1,'efgh'),s9,strcmp(s9,'ab') from table1",
@@ -99,9 +99,9 @@ public class IoTDBStrcmpFunctionTableIT {
     expectedHeader = new String[] {"time", "s1", "s9", "_col3"};
     retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,abcd,ab,false,",
-          "1970-01-01T00:00:00.002Z,Test,Test,true,",
-          "1970-01-01T00:00:00.003Z,efgh,efgh,true,",
+          "1970-01-01T00:00:00.001Z,abcd,ab,1,",
+          "1970-01-01T00:00:00.002Z,Test,Test,0,",
+          "1970-01-01T00:00:00.003Z,efgh,efgh,0,",
         };
     tableResultSetEqualTest(
         "select time,s1,s9,strcmp(s1,s9) from table1", expectedHeader, retArray, DATABASE_NAME);

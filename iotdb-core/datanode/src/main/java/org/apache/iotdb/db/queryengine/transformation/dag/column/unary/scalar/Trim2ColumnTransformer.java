@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -28,42 +28,45 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-public class TrimColumnTransformer extends UnaryColumnTransformer {
-
-  private final String character;
-
-  public TrimColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String character) {
-    super(returnType, childColumnTransformer);
-    this.character = character;
+public class Trim2ColumnTransformer extends BinaryColumnTransformer {
+  public Trim2ColumnTransformer(
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(trim(currentValue)));
+  protected void checkType() {
+    // do nothing
+  }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBinary(BytesUtils.valueOf(trim(leftValue, rightValue)));
       } else {
         columnBuilder.appendNull();
       }
     }
   }
 
-  private String trim(String value) {
-    if (value.isEmpty() || character.isEmpty()) {
-      return value;
+  private String trim(String source, String character) {
+    if (source.isEmpty() || character.isEmpty()) {
+      return source;
     }
 
     int start = 0;
-    int end = value.length() - 1;
+    int end = source.length() - 1;
 
-    while (start <= end && character.indexOf(value.charAt(start)) >= 0) start++;
-    while (start <= end && character.indexOf(value.charAt(end)) >= 0) end--;
+    while (start <= end && character.indexOf(source.charAt(start)) >= 0) start++;
+    while (start <= end && character.indexOf(source.charAt(end)) >= 0) end--;
     if (start > end) {
       return "";
     } else {
-      return value.substring(start, end + 1);
+      return source.substring(start, end + 1);
     }
   }
 }

@@ -26,17 +26,14 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
 
-public class ConcatColumnTransformer extends UnaryColumnTransformer {
-  private final String str;
-  private final boolean isBehind;
+public class StrposColumnTransformer extends UnaryColumnTransformer {
+  private final String subString;
 
-  public ConcatColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String str, boolean isBehind) {
+  public StrposColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, String subString) {
     super(returnType, childColumnTransformer);
-    this.str = str;
-    this.isBehind = isBehind;
+    this.subString = subString;
   }
 
   @Override
@@ -44,13 +41,9 @@ public class ConcatColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        if (isBehind) {
-          columnBuilder.writeBinary(BytesUtils.valueOf(currentValue.concat(str)));
-        } else {
-          columnBuilder.writeBinary(BytesUtils.valueOf(str.concat(currentValue)));
-        }
+        columnBuilder.writeInt(currentValue.indexOf(subString) + 1);
       } else {
-        columnBuilder.writeBinary(BytesUtils.valueOf(str));
+        columnBuilder.appendNull();
       }
     }
   }

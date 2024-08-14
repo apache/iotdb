@@ -64,6 +64,7 @@ import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 
 public class TableMetadataImpl implements Metadata {
 
@@ -217,11 +218,30 @@ public class TableMetadataImpl implements Metadata {
       }
       return argumentTypes.get(0);
     } else if (TableBuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))
+          && !(argumentTypes.size() == 2 && isTwoCharType(argumentTypes))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string data type.");
+                + " only accepts one or two arguments and they must be text or string data type.");
+      }
+      return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.LTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))
+          && !(argumentTypes.size() == 2 && isTwoCharType(argumentTypes))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one or two arguments and they must be text or string data type.");
+      }
+      return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.RTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))
+          && !(argumentTypes.size() == 2 && isTwoCharType(argumentTypes))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts one or two arguments and they must be text or string data type.");
       }
       return argumentTypes.get(0);
     } else if (TableBuiltinScalarFunction.STRING_CONTAINS
@@ -234,7 +254,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (TableBuiltinScalarFunction.STRING_MATCHES
+    } else if (TableBuiltinScalarFunction.REGEXP_LIKE
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
@@ -244,7 +264,7 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts two arguments and they must be text or string data type.");
       }
       return BOOLEAN;
-    } else if (TableBuiltinScalarFunction.LOCATE.getFunctionName().equalsIgnoreCase(functionName)) {
+    } else if (TableBuiltinScalarFunction.STRPOS.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
@@ -273,13 +293,14 @@ public class TableMetadataImpl implements Metadata {
       }
       return BOOLEAN;
     } else if (TableBuiltinScalarFunction.CONCAT.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isTwoCharType(argumentTypes)) {
+      if (!(argumentTypes.size() >= 2
+          && argumentTypes.stream().allMatch(TableMetadataImpl::isCharType))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
+                + " only accepts two or more arguments and they must be text or string data type.");
       }
-      return TEXT;
+      return STRING;
     } else if (TableBuiltinScalarFunction.STRCMP.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!isTwoCharType(argumentTypes)) {
         throw new SemanticException(
@@ -287,7 +308,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only accepts two arguments and they must be text or string data type.");
       }
-      return BOOLEAN;
+      return INT32;
     } else if (TableBuiltinScalarFunction.SIN.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(

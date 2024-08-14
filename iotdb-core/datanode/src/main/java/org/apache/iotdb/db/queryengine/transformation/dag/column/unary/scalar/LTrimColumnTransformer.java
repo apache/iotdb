@@ -28,15 +28,13 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-public class ConcatColumnTransformer extends UnaryColumnTransformer {
-  private final String str;
-  private final boolean isBehind;
+public class LTrimColumnTransformer extends UnaryColumnTransformer {
+  private final String character;
 
-  public ConcatColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String str, boolean isBehind) {
+  public LTrimColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, String character) {
     super(returnType, childColumnTransformer);
-    this.str = str;
-    this.isBehind = isBehind;
+    this.character = character;
   }
 
   @Override
@@ -44,14 +42,26 @@ public class ConcatColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        if (isBehind) {
-          columnBuilder.writeBinary(BytesUtils.valueOf(currentValue.concat(str)));
-        } else {
-          columnBuilder.writeBinary(BytesUtils.valueOf(str.concat(currentValue)));
-        }
+        columnBuilder.writeBinary(BytesUtils.valueOf(ltrim(currentValue)));
       } else {
-        columnBuilder.writeBinary(BytesUtils.valueOf(str));
+        columnBuilder.appendNull();
       }
+    }
+  }
+
+  private String ltrim(String value) {
+    if (value.isEmpty() || character.isEmpty()) {
+      return value;
+    }
+
+    int start = 0;
+
+    while (start < value.length() && character.indexOf(value.charAt(start)) >= 0) start++;
+
+    if (start >= value.length()) {
+      return "";
+    } else {
+      return value.substring(start);
     }
   }
 }

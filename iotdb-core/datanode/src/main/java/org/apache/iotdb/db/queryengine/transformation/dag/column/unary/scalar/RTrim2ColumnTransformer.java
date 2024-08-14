@@ -26,9 +26,10 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.BytesUtils;
 
-public class Locate2ColumnTransformer extends BinaryColumnTransformer {
-  public Locate2ColumnTransformer(
+public class RTrim2ColumnTransformer extends BinaryColumnTransformer {
+  public RTrim2ColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
     super(returnType, leftTransformer, rightTransformer);
   }
@@ -45,10 +46,22 @@ public class Locate2ColumnTransformer extends BinaryColumnTransformer {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeInt(leftValue.indexOf(rightValue));
+        columnBuilder.writeBinary(BytesUtils.valueOf(rtrim(leftValue, rightValue)));
       } else {
         columnBuilder.appendNull();
       }
     }
+  }
+
+  private String rtrim(String source, String character) {
+    if (source.isEmpty() || character.isEmpty()) {
+      return source;
+    }
+
+    int end = source.length() - 1;
+
+    while (end >= 0 && character.indexOf(source.charAt(end)) >= 0) end--;
+
+    return source.substring(0, end + 1);
   }
 }

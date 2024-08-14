@@ -48,6 +48,12 @@ public class Concat2ColumnTransformer extends BinaryColumnTransformer {
         String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         columnBuilder.writeBinary(BytesUtils.valueOf(leftValue.concat(rightValue)));
+      } else if (!leftColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBinary(BytesUtils.valueOf(leftValue));
+      } else if (!rightColumn.isNull(i)) {
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        columnBuilder.writeBinary(BytesUtils.valueOf(rightValue));
       } else {
         columnBuilder.appendNull();
       }

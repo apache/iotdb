@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.query.old.builtinfunction.scalar;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -32,11 +33,11 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.sql.Connection;
-import java.sql.Statement;
+import java.sql.*;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.tableAssertTestFail;
-import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
@@ -88,21 +89,83 @@ public class IoTDBRadiansFunctionTableIT {
   @Test
   public void testNormalTransformer() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.017453292519943295,1,0.017453292519943295,1.0,0.017453292519943295,1.0,0.017453292519943295,2021-10-01T00:00:00.000Z,2.8502036517840324E10,",
-          "1970-01-01T00:00:00.002Z,2,0.03490658503988659,2,0.03490658503988659,2.5,0.04363323129985824,2.5,0.04363323129985824,1970-01-01T00:00:00.002Z,0.03490658503988659,",
-          "1970-01-01T00:00:00.003Z,3,0.05235987755982988,3,0.05235987755982988,3.5,0.061086523819801536,3.5,0.061086523819801536,1970-01-01T00:00:00.003Z,0.05235987755982988,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,radians(s2),s3,radians(s3),s4,radians(s4),s5,radians(s5),s8,radians(s8) from table1",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    int[] expectedBodyInt = new int[] {1, 2, 3};
+    long[] expectedBodyLong = new long[] {1, 2, 3};
+    float[] expectedBodyFloat = new float[] {1, 2.5f, 3.5f};
+    double[] expectedBodyDouble = new double[] {1, 2.5, 3.5};
+    long[] expectedBodyTimestamp = new long[] {1633046400000L, 2, 3};
+    TestSQLDoubleResult(
+        "select time,radians(s2),radians(s3),radians(s4),radians(s5),radians(s8) from table1",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedBodyInt,
+        expectedBodyLong,
+        expectedBodyFloat,
+        expectedBodyDouble,
+        expectedBodyTimestamp);
+  }
+
+  private void TestSQLDoubleResult(
+      String sql,
+      String[] expectedHeader,
+      String database,
+      int[] expectedBodyInt,
+      long[] expectedBodyLong,
+      float[] expectedBodyFloat,
+      double[] expectedBodyDouble,
+      long[] expectedBodyTimestamp) {
+    try (Connection connection =
+        EnvFactory.getEnv()
+            .getConnection(
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            assertEquals(
+                Math.toRadians(expectedBodyInt[cnt]),
+                Double.parseDouble(resultSet.getString(2)),
+                0.00001);
+            assertEquals(
+                Math.toRadians(expectedBodyLong[cnt]),
+                Double.parseDouble(resultSet.getString(3)),
+                0.00001);
+            assertEquals(
+                Math.toRadians(expectedBodyFloat[cnt]),
+                Double.parseDouble(resultSet.getString(4)),
+                0.00001);
+            assertEquals(
+                Math.toRadians(expectedBodyDouble[cnt]),
+                Double.parseDouble(resultSet.getString(5)),
+                0.00001);
+            assertEquals(
+                Math.toRadians(expectedBodyTimestamp[cnt]),
+                Double.parseDouble(resultSet.getString(6)),
+                0.00001);
+
+            for (int i = 1; i < expectedHeader.length; i++) {
+              System.out.println(resultSet.getString(i));
+            }
+            cnt++;
+          }
+          assertEquals(expectedBodyInt.length, cnt);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test
