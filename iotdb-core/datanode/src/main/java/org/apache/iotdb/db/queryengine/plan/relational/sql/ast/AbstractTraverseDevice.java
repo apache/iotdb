@@ -69,6 +69,12 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.rawExpression = rawExpression;
   }
 
+  protected AbstractTraverseDevice(final String database, final String tableName) {
+    super(null);
+    this.database = database;
+    this.tableName = tableName;
+  }
+
   public void parseQualifiedName(final SessionInfo sessionInfo) {
     if (Objects.isNull(name)) {
       return;
@@ -89,6 +95,10 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   public String getTableName() {
     return tableName;
+  }
+
+  public QualifiedName getName() {
+    return name;
   }
 
   public Expression getRawExpression() {

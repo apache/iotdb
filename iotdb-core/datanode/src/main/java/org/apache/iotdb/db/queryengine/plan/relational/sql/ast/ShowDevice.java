@@ -35,6 +35,10 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
     super(name, rawExpression);
   }
 
+  public ShowDevice(final String database, final String tableName) {
+    super(database, tableName);
+  }
+
   @Override
   public void setColumnHeaderList() {
     columnHeaderList = getDeviceColumnHeaderList(database, tableName);

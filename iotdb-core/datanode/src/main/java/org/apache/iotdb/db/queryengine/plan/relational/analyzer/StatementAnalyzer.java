@@ -1513,7 +1513,7 @@ public class StatementAnalyzer {
       analysis.addEmptyColumnReferencesForTable(accessControl, sessionContext.getIdentity(), name);
 
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
-      fields.addAll(analyzeTableOutputFields(table, name, tableSchema.get()));
+      fields.addAll(analyzeTableOutputFields(table.getName(), name, tableSchema.get()));
 
       //      boolean addRowIdColumn = updateKind.isPresent();
       //
@@ -1610,14 +1610,16 @@ public class StatementAnalyzer {
     }
 
     private List<Field> analyzeTableOutputFields(
-        Table table, QualifiedObjectName tableName, TableSchema tableSchema) {
+        final QualifiedName relationAlias,
+        final QualifiedObjectName tableName,
+        final TableSchema tableSchema) {
       // TODO: discover columns lazily based on where they are needed (to support connectors that
       // can't enumerate all tables)
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
       for (ColumnSchema column : tableSchema.getColumns()) {
         Field field =
             Field.newQualified(
-                table.getName(),
+                relationAlias,
                 Optional.of(column.getName()),
                 column.getType(),
                 column.getColumnCategory(),
@@ -2535,7 +2537,22 @@ public class StatementAnalyzer {
         throw new SemanticException(String.format("Table '%s' does not exist", name));
       }
 
-      analysis.registerTable(table, tableSchema, name);
+      final TableSchema originalSchema = tableSchema.get();
+
+      final ImmutableList.Builder<Field> fields = ImmutableList.builder();
+      fields.addAll(
+          analyzeTableOutputFields(
+              node.getName(),
+              name,
+              new TableSchema(
+                  originalSchema.getTableName(),
+                  originalSchema.getColumns().stream()
+                      .filter(
+                          columnSchema ->
+                              columnSchema.getColumnCategory() == TsTableColumnCategory.ID
+                                  || columnSchema.getColumnCategory()
+                                      == TsTableColumnCategory.ATTRIBUTE)
+                      .collect(Collectors.toList()))));
 
       final List<String> attributeList =
           table.getColumnList().stream()
@@ -2547,7 +2564,8 @@ public class StatementAnalyzer {
 
       node.setColumnHeaderList();
       if (Objects.nonNull(node.getRawExpression())) {
-        analyzeExpression(node.getRawExpression(), createScope(context));
+        analyzeExpression(
+            node.getRawExpression(), createAndAssignScope(node, context, fields.build()));
       }
       if (!node.parseRawExpression(table, attributeList, queryContext)) {
         // Cache hit

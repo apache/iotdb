@@ -45,6 +45,10 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     super(name, rawExpression);
   }
 
+  protected AbstractQueryDeviceWithCache(final String database, final String tableName) {
+    super(database, tableName);
+  }
+
   public boolean parseRawExpression(
       final TsTable tableInstance,
       final List<String> attributeColumns,
