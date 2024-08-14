@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -42,8 +41,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionTy
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
 
 // Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
@@ -75,15 +72,6 @@ public class CheckSchemaPredicateVisitor
 
   @Override
   protected Boolean visitLogicalExpression(final LogicalExpression node, final Context context) {
-    for (final Expression child : node.getTerms()) {
-      final Boolean childResult = child.accept(this, context);
-      if (Boolean.TRUE.equals(childResult)) {
-        return Boolean.TRUE;
-      }
-      if (Objects.isNull(childResult)) {
-        return null;
-      }
-    }
     if (node.getOperator().equals(LogicalExpression.Operator.AND)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
@@ -91,17 +79,13 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return Boolean.TRUE;
+      return true;
     }
-    return Boolean.FALSE;
+    return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
   }
 
   @Override
   protected Boolean visitNotExpression(final NotExpression node, final Context context) {
-    final Boolean result = node.getValue().accept(this, context);
-    if (Objects.isNull(result)) {
-      return null;
-    }
     if (node.getValue().getExpressionType().equals(TableExpressionType.LOGICAL_EXPRESSION)) {
       if (System.currentTimeMillis() - lastLogTime >= LOG_INTERVAL_MS) {
         LOGGER.info(
@@ -109,21 +93,16 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return Boolean.TRUE;
+      return true;
     }
-    return result;
+    return node.getValue().accept(this, context);
   }
 
   @Override
   protected Boolean visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
-    if (node.getLeft() instanceof SymbolReference && node.getRight() instanceof SymbolReference) {
-      return (Objects.isNull(processColumn(node.getLeft(), context))
-              || Objects.isNull(processColumn(node.getRight(), context)))
-          ? null
-          : Boolean.TRUE;
-    }
-    return processColumn(node, context);
+    return (node.getLeft() instanceof SymbolReference && node.getRight() instanceof SymbolReference)
+        || processColumn(node, context);
   }
 
   @Override
@@ -153,20 +132,12 @@ public class CheckSchemaPredicateVisitor
     return visitExpression(node, context);
   }
 
-  private Boolean processColumn(final Expression node, final Context context) {
-    final TsTableColumnSchema column =
-        context.table.getColumnSchema(
-            node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
-    if (Objects.isNull(column)) {
-      return null;
-    }
-    if (column.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-      return Boolean.TRUE;
-    }
-    if (column.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-      return Boolean.FALSE;
-    }
-    return null;
+  private boolean processColumn(final Expression node, final Context context) {
+    return context
+        .table
+        .getColumnSchema(node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null))
+        .getColumnCategory()
+        .equals(TsTableColumnCategory.ATTRIBUTE);
   }
 
   public static class Context {
