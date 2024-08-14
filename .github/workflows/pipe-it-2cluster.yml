@@ -105,7 +105,7 @@ jobs:
           name: cluster-log-manual-create-schema-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  subscription:
+  subscription-arch-verification:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -134,7 +134,7 @@ jobs:
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
-          -am -PMultiClusterIT2Subscription \
+          -am -PMultiClusterIT2SubscriptionArchVerification \
           -ntp
       - name: Upload Artifact
         if: failure()

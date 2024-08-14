@@ -22,7 +22,7 @@ package org.apache.iotdb.subscription.it.triple;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -65,7 +65,7 @@ import static org.junit.Assert.fail;
  * org.apache.iotdb.subscription.it.triple.regression.pushconsumer.multi.IoTDBMultiGroupVsMultiConsumerIT}
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2Subscription.class})
+@Category({MultiClusterIT2SubscriptionArchVerification.class})
 public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionSharingIT.class);
