@@ -34,7 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
@@ -123,6 +126,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
+import org.apache.ratis.protocol.GroupManagementRequest;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -2562,8 +2566,19 @@ public class StatementAnalyzer {
                                     || columnSchema.getColumnCategory()
                                         == TsTableColumnCategory.ATTRIBUTE)
                         .collect(Collectors.toList()))));
-        analyzeExpression(
-            node.getRawExpression(), createAndAssignScope(node, context, fields.build()));
+        final List<Field> fieldList = fields.build();
+        final Scope scope = createAndAssignScope(node, context, fieldList);
+        analyzeExpression(node.getRawExpression(), scope);
+        node.setRawExpression(
+            new TranslationMap(
+                    Optional.empty(),
+                    scope,
+                    analysis,
+                    fieldList.stream()
+                        .map(field -> Symbol.of(field.getName().orElse(null)))
+                        .collect(Collectors.toList()),
+                    new PlannerContext(metadata, null))
+                .rewrite(node.getRawExpression()));
       }
       if (!node.parseRawExpression(table, attributeList, queryContext)) {
         // Cache hit

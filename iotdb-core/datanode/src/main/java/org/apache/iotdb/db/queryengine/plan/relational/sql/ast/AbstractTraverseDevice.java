@@ -101,6 +101,10 @@ public abstract class AbstractTraverseDevice extends Statement {
     return rawExpression;
   }
 
+  public void setRawExpression(final Expression rawExpression) {
+    this.rawExpression = rawExpression;
+  }
+
   public boolean parseRawExpression(
       final List<DeviceEntry> entries,
       final TsTable tableInstance,
