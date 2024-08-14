@@ -465,7 +465,7 @@
             </properties>
         </profile>
         <profile>
-            <id>MultiClusterIT2Subscription</id>
+            <id>MultiClusterIT2SubscriptionArchVerification</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
             </activation>
