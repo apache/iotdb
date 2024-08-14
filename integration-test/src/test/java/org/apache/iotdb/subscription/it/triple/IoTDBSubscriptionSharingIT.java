@@ -335,7 +335,6 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                   return ConsumeResult.SUCCESS;
                 })
             .buildPushConsumer());
-
     consumers.add(
         new SubscriptionPushConsumer.Builder()
             .host(sender.getIP())
@@ -391,7 +390,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                         reader.query(
                             QueryExpression.create(
                                 Collections.singletonList(
-                                    new Path(databasePrefix + 6 + ".d_0", "s_0", true)),
+                                    new Path(databasePrefix + "6.d_0", "s_0", true)),
                                 null));
                     while (dataset.hasNext()) {
                       rowCount6.addAndGet(1);

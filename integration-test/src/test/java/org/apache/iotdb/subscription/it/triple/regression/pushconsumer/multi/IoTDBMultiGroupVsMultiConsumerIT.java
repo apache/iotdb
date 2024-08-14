@@ -66,7 +66,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * |c8|t6|g3|  tsfile databasePrefix+"6.**", "now", null,
  * |c9|t0,t3|g3| dataset(dest2)/tsfile
  * <p>
- * org.apache.iotdb.subscription.it.triple.IoTDBSubscriptionSharingIT refer to this test
+ * {@link org.apache.iotdb.subscription.it.triple.IoTDBSubscriptionSharingIT} refer to this test
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2SubscriptionRegression.class})
@@ -364,7 +364,6 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                   return ConsumeResult.SUCCESS;
                 })
             .buildPushConsumer());
-
     consumers.add(
         new SubscriptionPushConsumer.Builder()
             .host(SRC_HOST)
@@ -429,7 +428,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                         reader.query(
                             QueryExpression.create(
                                 Collections.singletonList(
-                                    new Path(databasePrefix + 6 + ".d_0", "s_0", true)),
+                                    new Path(databasePrefix + "6.d_0", "s_0", true)),
                                 null));
                     while (dataset.hasNext()) {
                       rowCount6.addAndGet(1);
@@ -565,18 +564,19 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
           assertEquals(
               getCount(session_dest, sql1) + getCount(session_dest2, sql1),
               getCount(session_src, sql1),
-              "c2,c3,topic1 share process group1");
+              "c2,c3,topic1,group1");
           assertEquals(
               getCount(session_dest, sql2) + getCount(session_dest2, sql2),
               105,
-              "c4,c6,topic2, group2");
-          assertTrue(
-              getCount(session_dest, sql3) + getCount(session_dest2, sql3) > 400,
-              "c7,c9, topic3 group3");
+              "c4,c6,topic2,group2");
+          assertGte(
+              getCount(session_dest, sql3) + getCount(session_dest2, sql3),
+              400,
+              "c7,c9,topic3,group3");
           assertEquals(
               getCount(session_dest, sql4) + getCount(session_dest2, sql4),
               400,
-              "c5,c6,topic4 group3");
+              "c5,c6,topic4,group3");
           assertGte(rowCount70.get() + rowCount90.get(), 400, "c7,c9,topic0,tsfile");
           assertEquals(rowCount6.get(), 5, "c8,topic6,tsfile");
           //            assertTrue(rowCount00.get()>0);
