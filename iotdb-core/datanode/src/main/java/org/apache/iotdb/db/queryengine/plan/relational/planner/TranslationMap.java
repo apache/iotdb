@@ -281,8 +281,8 @@ public class TranslationMap {
             }
 
             List<Expression> newArguments = new ArrayList<>();
-            newArguments.add(node.getTrimSource());
-            node.getTrimCharacter().ifPresent(newArguments::add);
+            newArguments.add(rewrite(node.getTrimSource()));
+            node.getTrimCharacter().ifPresent(argument->newArguments.add(rewrite(argument)));
 
             return new FunctionCall(
                 QualifiedName.of(node.getSpecification().getFunctionName()), newArguments);
