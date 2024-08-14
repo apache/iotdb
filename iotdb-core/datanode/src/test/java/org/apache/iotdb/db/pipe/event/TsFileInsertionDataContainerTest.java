@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInserti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.pipe.api.access.Row;
 
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -531,7 +532,7 @@ public class TsFileInsertionDataContainerTest {
                           (row, collector) -> {
                             try {
                               collector.collectRow(row);
-                              count1.addAndGet(row.size());
+                              count1.addAndGet(getNonNullSize(row));
                             } catch (final IOException e) {
                               throw new RuntimeException(e);
                             }
@@ -543,7 +544,7 @@ public class TsFileInsertionDataContainerTest {
                                       (row, collector) -> {
                                         try {
                                           collector.collectRow(row);
-                                          count2.addAndGet(row.size());
+                                          count2.addAndGet(getNonNullSize(row));
                                         } catch (final IOException e) {
                                           throw new RuntimeException(e);
                                         }
@@ -557,7 +558,7 @@ public class TsFileInsertionDataContainerTest {
                                                           (row, collector) -> {
                                                             try {
                                                               rowCollector.collectRow(row);
-                                                              count3.addAndGet(row.size());
+                                                              count3.addAndGet(getNonNullSize(row));
                                                             } catch (final IOException e) {
                                                               throw new RuntimeException(e);
                                                             }
@@ -570,5 +571,15 @@ public class TsFileInsertionDataContainerTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private int getNonNullSize(final Row row) {
+    int count = 0;
+    for (int i = 0; i < row.size(); ++i) {
+      if (!row.isNull(i)) {
+        ++count;
+      }
+    }
+    return count;
   }
 }
