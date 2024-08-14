@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import com.google.common.collect.ImmutableList;
@@ -67,7 +66,7 @@ public class MetadataUtil {
   }
 
   public static QualifiedObjectName createQualifiedObjectName(
-      SessionInfo session, Node node, QualifiedName name) {
+      SessionInfo session, QualifiedName name) {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
     if (name.getParts().size() > 2) {

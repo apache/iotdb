@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.LoadEmptyFileException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.LoadReadOnlyException;
 import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
@@ -137,7 +139,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.schemaAutoCreatorAndVerifier = new SchemaAutoCreatorAndVerifier();
   }
 
-  public Analysis analyzeFileByFile() {
+  public Analysis analyzeFileByFile(final boolean isDeleteAfterLoad) {
     final Analysis analysis = new Analysis();
 
     // check if the system is read only
@@ -165,7 +167,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
 
       try {
-        analyzeSingleTsFile(tsFile);
+        analyzeSingleTsFile(tsFile, isDeleteAfterLoad);
         if (LOGGER.isInfoEnabled()) {
           LOGGER.info(
               "Load - Analysis Stage: {}/{} tsfiles have been analyzed, progress: {}%",
@@ -225,7 +227,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     schemaAutoCreatorAndVerifier.close();
   }
 
-  private void analyzeSingleTsFile(File tsFile) throws IOException, AuthException {
+  private void analyzeSingleTsFile(final File tsFile, final boolean isDeleteAfterLoad)
+      throws IOException, AuthException {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
       // can be reused when constructing tsfile resource
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator =
@@ -243,8 +246,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
-        LOGGER.warn("device2TimeseriesMetadata is empty, because maybe the tsfile is empty");
-        return;
+        throw new LoadEmptyFileException(tsFile.getAbsolutePath());
       }
 
       long writePointCount = 0;
@@ -277,6 +279,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
       loadTsFileStatement.addTsFileResource(tsFileResource);
       loadTsFileStatement.addWritePointCount(writePointCount);
+    } catch (final LoadEmptyFileException loadEmptyFileException) {
+      LOGGER.warn("Failed to load empty file: {}", tsFile.getAbsolutePath());
+      if (isDeleteAfterLoad) {
+        FileUtils.deleteQuietly(tsFile);
+      }
     }
   }
 

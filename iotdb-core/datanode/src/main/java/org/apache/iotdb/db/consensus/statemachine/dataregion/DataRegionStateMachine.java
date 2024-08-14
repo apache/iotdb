@@ -311,6 +311,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
+  public boolean hasPipeReleaseRegionRelatedResource() {
+    // TODO: implement the method to check whether the user pipe has released all resources related
+    return true;
+  }
+
+  @Override
+  public boolean hasReleaseAllRegionRelatedResource() {
+    boolean releaseAllResource = true;
+    releaseAllResource &= hasPipeReleaseRegionRelatedResource();
+    return releaseAllResource;
+  }
+
   @Override
   public File getSnapshotRoot() {
     String snapshotDir = "";

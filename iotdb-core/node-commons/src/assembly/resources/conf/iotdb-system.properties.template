@@ -1907,7 +1907,7 @@ load_active_listening_max_thread_num=8
 # The active listening mode will check the directory every load_active_listening_check_interval_seconds seconds.
 # effectiveMode: restart
 # Datatype: int
-load_active_listening_check_interval_seconds=20
+load_active_listening_check_interval_seconds=5
 
 ####################
 ### Dispatch Retry Configuration

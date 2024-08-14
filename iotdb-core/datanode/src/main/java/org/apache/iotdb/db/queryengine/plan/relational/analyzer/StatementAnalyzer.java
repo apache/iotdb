@@ -1496,7 +1496,7 @@ public class StatementAnalyzer {
         }
       }
 
-      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table, table.getName());
+      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
@@ -2496,11 +2496,13 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
+      node.parseQualifiedName(sessionContext);
       return null;
     }
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
+      node.parseQualifiedName(sessionContext);
       return null;
     }
   }
