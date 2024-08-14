@@ -99,7 +99,7 @@ struct TWaitReleaseAllRegionRelatedResourceReq {
 }
 
 struct TWaitReleaseAllRegionRelatedResourceRes {
-  1: required bool allowRemovePeer
+  1: required bool releaseAllResource
 }
 
 struct TSendSnapshotFragmentRes {

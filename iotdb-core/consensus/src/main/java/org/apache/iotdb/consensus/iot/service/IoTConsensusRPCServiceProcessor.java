@@ -245,7 +245,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
     if (impl == null) {
       String message =
           String.format(
-              "unexpected consensusGroupId %s for waitUserPipeAllowRemovePeer request", groupId);
+              "unexpected consensusGroupId %s for TWaitReleaseAllRegionRelatedResourceRes request",
+              groupId);
       LOGGER.error(message);
       return new TWaitReleaseAllRegionRelatedResourceRes(true);
     }

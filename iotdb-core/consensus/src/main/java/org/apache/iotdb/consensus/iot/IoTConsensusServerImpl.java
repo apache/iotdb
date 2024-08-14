@@ -635,23 +635,24 @@ public class IoTConsensusServerImpl {
             client.waitReleaseAllRegionRelatedResource(
                 new TWaitReleaseAllRegionRelatedResourceReq(
                     targetPeer.getGroupId().convertToTConsensusGroupId()));
-        if (res.allowRemovePeer) {
-          logger.info("[WAIT USER PIPE] {} allow remove peer.", targetPeer);
+        if (res.releaseAllResource) {
+          logger.info("[WAIT RELEASE] {} has released all region related resource", targetPeer);
           return;
         }
-        logger.info("[WAIT USER PIPE] {} wait for permission to remove peer.", targetPeer);
+        logger.info("[WAIT RELEASE] {} is still releasing all region related resource", targetPeer);
         Thread.sleep(checkIntervalInMs);
       }
     } catch (ClientManagerException | TException e) {
       throw new ConsensusGroupModifyPeerException(
           String.format(
-              "error when waiting %s to allow remove peer. %s", targetPeer, e.getMessage()),
+              "error when waiting %s to release all region related resource. %s",
+              targetPeer, e.getMessage()),
           e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ConsensusGroupModifyPeerException(
           String.format(
-              "thread interrupted when waiting %s to allow remove peer. %s",
+              "thread interrupted when waiting %s to release all region related resource. %s",
               targetPeer, e.getMessage()),
           e);
     }
