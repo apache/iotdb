@@ -2502,12 +2502,14 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
+      node.parseQualifiedName(sessionContext);
       return null;
     }
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
+      node.parseQualifiedName(sessionContext);
       return null;
     }
 

@@ -29,8 +29,8 @@ import java.util.Collections;
 public class CountDevice extends AbstractQueryDeviceWithCache {
 
   // For sql-input show device usage
-  public CountDevice(final String tableName, final Expression rawExpression) {
-    super(tableName, rawExpression);
+  public CountDevice(final QualifiedName name, final Expression rawExpression) {
+    super(name, rawExpression);
   }
 
   @Override

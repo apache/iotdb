@@ -25,6 +25,9 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonPredicatesExpressionRewriter;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -37,7 +40,10 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   protected String database;
 
-  protected final String tableName;
+  protected String tableName;
+
+  // Temporary
+  private QualifiedName name;
 
   protected Expression rawExpression;
 
@@ -57,10 +63,20 @@ public abstract class AbstractTraverseDevice extends Statement {
   private List<IDeviceID> partitionKeyList;
 
   // For sql-input show device usage
-  protected AbstractTraverseDevice(final String tableName, final Expression rawExpression) {
+  protected AbstractTraverseDevice(final QualifiedName name, final Expression rawExpression) {
     super(null);
-    this.tableName = tableName;
+    this.name = name;
     this.rawExpression = rawExpression;
+  }
+
+  public void parseQualifiedName(final SessionInfo sessionInfo) {
+    if (Objects.isNull(name)) {
+      return;
+    }
+    final QualifiedObjectName objectName =
+        MetadataUtil.createQualifiedObjectName(sessionInfo, name);
+    database = objectName.getDatabaseName();
+    tableName = objectName.getObjectName();
   }
 
   public String getDatabase() {
