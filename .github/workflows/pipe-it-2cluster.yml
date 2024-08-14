@@ -58,7 +58,7 @@ jobs:
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
-          -am -PMultiClusterIT2SubscriptionRegression
+          -am -PMultiClusterIT2SubscriptionRegression \
           -ntp
       - name: Upload Artifact
         if: failure()
