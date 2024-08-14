@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.statistics.StatisticsManager;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -127,7 +128,7 @@ public class AggregationUtil {
       TsBlock inputTsBlock, TimeRange curTimeRange, List<Aggregator> aggregators) {
     // Get the row which need to be processed by aggregator
     IWindow curWindow = new TimeWindow(curTimeRange);
-    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    Column timeColumn = inputTsBlock.getTimeColumn();
     int lastIndexToProcess = 0;
     for (int i = 0; i < inputTsBlock.getPositionCount(); i++) {
       if (!curWindow.satisfy(timeColumn, i)) {
@@ -214,7 +215,7 @@ public class AggregationUtil {
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<TSDataType> outPutDataTypes =
           descriptor.getOutputColumnNames().stream()
-              .map(typeProvider::getType)
+              .map(typeProvider::getTreeModelType)
               .collect(Collectors.toList());
       for (TSDataType tsDataType : outPutDataTypes) {
         timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);

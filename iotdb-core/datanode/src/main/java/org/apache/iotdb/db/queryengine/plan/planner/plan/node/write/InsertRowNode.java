@@ -58,11 +58,12 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   private static final byte TYPE_RAW_STRING = -1;
 
-  private static final byte TYPE_NULL = -2;
+  private static final byte TYPE_NULL_WITHOUT_TYPE = -2;
+  private static final byte TYPE_NULL_WITH_TYPE = -3;
 
   private static final String UNSUPPORTED_DATA_TYPE = "Unsupported data type: ";
 
-  private static final String DESERIALIZE_ERROR = "Cannot deserialize InsertRowNode";
+  protected static final String DESERIALIZE_ERROR = "Cannot deserialize InsertRowNode";
 
   private long time;
   private Object[] values;
@@ -112,17 +113,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     this.dataRegionReplicaSet =
         analysis
             .getDataPartitionInfo()
-            .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+            .getDataRegionReplicaSetForWriting(
+                getDeviceID(), timePartitionSlot, analysis.getDatabaseName());
     // collect redirectInfo
     analysis.setRedirectNodeList(
         Collections.singletonList(
             dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint()));
     return Collections.singletonList(this);
-  }
-
-  @Override
-  public List<PlanNode> getChildren() {
-    return Collections.emptyList();
   }
 
   @Override
@@ -138,6 +135,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   @Override
   public PlanNode clone() {
     throw new NotImplementedException("clone of Insert is not implemented");
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowNode{" + "time=" + time + ", values=" + Arrays.toString(values) + '}';
   }
 
   @Override
@@ -213,13 +215,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    PlanNodeType.INSERT_ROW.serialize(byteBuffer);
+    getType().serialize(byteBuffer);
     subSerialize(byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    PlanNodeType.INSERT_ROW.serialize(stream);
+    getType().serialize(stream);
     subSerialize(stream);
   }
 
@@ -311,7 +313,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
       // serialize null value
       if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        ReadWriteIOUtils.write(
+            dataTypes[i] == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, buffer);
+        if (dataTypes[i] != null) {
+          ReadWriteIOUtils.write(dataTypes[i], buffer);
+        }
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -366,7 +372,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
       // serialize null value
       if (values[i] == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, stream);
+        ReadWriteIOUtils.write(
+            dataTypes[i] == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, stream);
+        if (dataTypes[i] != null) {
+          ReadWriteIOUtils.write(dataTypes[i], stream);
+        }
         continue;
       }
       // types are not determined, the situation mainly occurs when the plan uses string values
@@ -462,8 +472,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // types are not determined, the situation mainly occurs when the node uses string values
       // and is forwarded to other nodes
       byte typeNum = (byte) ReadWriteIOUtils.read(buffer);
-      if (typeNum == TYPE_RAW_STRING || typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING
+          || typeNum == TYPE_NULL_WITHOUT_TYPE
+          || typeNum == TYPE_NULL_WITH_TYPE) {
         values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
+        if (typeNum == TYPE_NULL_WITH_TYPE) {
+          dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
+        }
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -530,6 +545,9 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       // serialize null value
       if (values[i] == null) {
         size += Byte.BYTES;
+        if (dataTypes[i] != null) {
+          size += Byte.BYTES;
+        }
         continue;
       }
       size += Byte.BYTES;
@@ -571,7 +589,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
+    buffer.putShort(getType().getNodeType());
     buffer.putLong(searchIndex);
     subSerialize(buffer);
   }
@@ -604,7 +622,11 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       }
       // serialize null value
       if (values[i] == null) {
-        WALWriteUtils.write(TYPE_NULL, buffer);
+        WALWriteUtils.write(
+            dataTypes[i] == null ? TYPE_NULL_WITHOUT_TYPE : TYPE_NULL_WITH_TYPE, buffer);
+        if (dataTypes[i] != null) {
+          WALWriteUtils.write(dataTypes[i], buffer);
+        }
         continue;
       }
       WALWriteUtils.write(dataTypes[i], buffer);
@@ -691,7 +713,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public void fillDataTypesAndValuesFromWAL(DataInputStream stream) throws IOException {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = stream.readByte();
-      if (typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING
+          || typeNum == TYPE_NULL_WITHOUT_TYPE
+          || typeNum == TYPE_NULL_WITH_TYPE) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(stream) : null;
+        if (typeNum == TYPE_NULL_WITH_TYPE) {
+          dataTypes[i] = ReadWriteIOUtils.readDataType(stream);
+        }
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];
@@ -777,7 +805,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   public void fillDataTypesAndValuesFromWAL(ByteBuffer buffer) {
     for (int i = 0; i < dataTypes.length; i++) {
       byte typeNum = buffer.get();
-      if (typeNum == TYPE_NULL) {
+      if (typeNum == TYPE_RAW_STRING
+          || typeNum == TYPE_NULL_WITHOUT_TYPE
+          || typeNum == TYPE_NULL_WITH_TYPE) {
+        values[i] = typeNum == TYPE_RAW_STRING ? ReadWriteIOUtils.readString(buffer) : null;
+        if (typeNum == TYPE_NULL_WITH_TYPE) {
+          dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
+        }
         continue;
       }
       dataTypes[i] = TSDataType.values()[typeNum];

@@ -194,6 +194,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     List<Integer> index = new ArrayList<>();
     int i = 0;
     switch (insertNodes.get(0).getType()) {
+      case RELATIONAL_INSERT_TABLET:
       case INSERT_TABLET:
         // merge to InsertMultiTabletsNode
         List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
@@ -308,6 +309,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
     }
+  }
+
+  public boolean hasPipeReleaseRegionRelatedResource() {
+    // TODO: implement the method to check whether the user pipe has released all resources related
+    return true;
+  }
+
+  @Override
+  public boolean hasReleaseAllRegionRelatedResource() {
+    boolean releaseAllResource = true;
+    releaseAllResource &= hasPipeReleaseRegionRelatedResource();
+    return releaseAllResource;
   }
 
   @Override

@@ -443,6 +443,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
+
     Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
       // poll all subscribed topics

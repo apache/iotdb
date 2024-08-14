@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.join.merge;
 
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.statement.component.NullOrdering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
@@ -66,15 +67,36 @@ public class MergeSortComparator {
     return list.size() == 1 ? list.get(0) : new ComparatorChain<>(list);
   }
 
+  public static Comparator<SortKey> getComparatorForTable(
+      List<SortOrder> sortOrderList, List<Integer> indexList, List<TSDataType> dataTypeList) {
+
+    // use code-gen compile this comparator
+    List<Comparator<SortKey>> list = new ArrayList<>(indexList.size());
+    for (int i = 0; i < indexList.size(); i++) {
+      int index = indexList.get(i);
+      if (index == -2) {
+        continue;
+      }
+      TSDataType dataType = dataTypeList.get(i);
+      SortOrder sortOrder = sortOrderList.get(i);
+      list.add(
+          genSingleComparator(sortOrder.isAscending(), index, dataType, sortOrder.isNullsFirst()));
+    }
+
+    return list.size() == 1 ? list.get(0) : new ComparatorChain<>(list);
+  }
+
   public static Comparator<SortKey> getComparator(TSDataType dataType, int index, boolean asc) {
     Comparator<SortKey> comparator;
     switch (dataType) {
       case INT32:
+      case DATE:
         comparator =
             Comparator.comparingInt(
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getInt(sortKey.rowIndex));
         break;
       case INT64:
+      case TIMESTAMP:
         comparator =
             Comparator.comparingLong(
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getLong(sortKey.rowIndex));
@@ -90,6 +112,8 @@ public class MergeSortComparator {
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getDouble(sortKey.rowIndex));
         break;
       case TEXT:
+      case BLOB:
+      case STRING:
         comparator =
             Comparator.comparing(
                 (SortKey sortKey) -> sortKey.tsBlock.getColumn(index).getBinary(sortKey.rowIndex));

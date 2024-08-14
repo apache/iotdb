@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
@@ -75,6 +76,8 @@ public class WALReader implements Closeable {
         nextEntry = null;
         return false;
       }
+    } catch (EOFException e) {
+      return false;
     } catch (Exception e) {
       fileCorrupted = true;
       // log only when file should be complete

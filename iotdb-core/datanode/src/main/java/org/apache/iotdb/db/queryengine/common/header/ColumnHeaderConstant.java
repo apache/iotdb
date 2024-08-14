@@ -207,6 +207,11 @@ public class ColumnHeaderConstant {
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
+  // column names for table query
+  public static final String COLUMN_NAME = "ColumnName";
+  public static final String COLUMN_DATA_TYPE = "DataType";
+  public static final String COLUMN_CATEGORY = "Category";
+  public static final String TABLE_NAME = "TableName";
   public static final String PRIVILEGES = "Privileges";
 
   public static final String GRANT_OPTION = "GrantOption";
@@ -510,6 +515,23 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
 
+  public static final List<ColumnHeader> showDBColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
+
+  public static final List<ColumnHeader> describeTableColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTablesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
   public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),

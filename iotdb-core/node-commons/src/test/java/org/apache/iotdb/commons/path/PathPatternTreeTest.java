@@ -254,7 +254,10 @@ public class PathPatternTreeTest {
             .map(PartialPath::getFullPath)
             .sorted()
             .collect(Collectors.toList()),
-        patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));
+        patternTree.getAllDevicePatterns().stream()
+            .map(Object::toString)
+            .sorted()
+            .collect(Collectors.toList()));
 
     Assert.assertEquals(
         compressedDevicePaths.stream().sorted().collect(Collectors.toList()),

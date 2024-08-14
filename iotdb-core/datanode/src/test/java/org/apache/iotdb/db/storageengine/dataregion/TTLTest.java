@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -44,7 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -54,6 +54,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -184,7 +185,7 @@ public class TTLTest {
     QueryDataSource dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -199,15 +200,16 @@ public class TTLTest {
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
+
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
-    MeasurementPath path = mockMeasurementPath();
+    NonAlignedFullPath path = mockMeasurementPath();
 
     IDataBlockReader reader =
         new SeriesDataBlockReader(
@@ -230,7 +232,7 @@ public class TTLTest {
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
-            sg1,
+            IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -257,9 +259,9 @@ public class TTLTest {
     assertTrue(cnt == 0);
   }
 
-  private MeasurementPath mockMeasurementPath() throws MetadataException {
-    return new MeasurementPath(
-        new PartialPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
+  private NonAlignedFullPath mockMeasurementPath() {
+    return new NonAlignedFullPath(
+        IDeviceID.Factory.DEFAULT_FACTORY.create(sg1),
         new MeasurementSchema(
             s1,
             TSDataType.INT64,
@@ -326,7 +328,7 @@ public class TTLTest {
     DataNodeTTLCache.getInstance().setTTL(sg1, 500);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
-          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
     while (dataRegion.getTsFileManager().getTsFileList(true).size()
@@ -417,7 +419,7 @@ public class TTLTest {
     DataNodeTTLCache.getInstance().setTTL(sg1, 1);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
-          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleSummary(), true);
+          dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
     }
     long totalWaitingTime = 0;
     while (dataRegion.getTsFileManager().getTsFileList(true).size()

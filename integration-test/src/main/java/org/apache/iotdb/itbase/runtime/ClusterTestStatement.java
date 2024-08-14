@@ -31,6 +31,8 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
+
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
@@ -187,7 +189,16 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public boolean execute(String sql) throws SQLException {
-    return writeStatement.execute(sql);
+    sql = sql.trim();
+    boolean result = writeStatement.execute(sql);
+    // if use XXXX, sendRequest to all statements
+    if (isUseDatabase(sql)) {
+      for (Statement readStatement : readStatements) {
+        boolean tmp = readStatement.execute(sql);
+        result = result && tmp;
+      }
+    }
+    return result;
   }
 
   @Override

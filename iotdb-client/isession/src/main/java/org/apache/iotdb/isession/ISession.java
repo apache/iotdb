@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -212,6 +213,15 @@ public interface ISession extends AutoCloseable {
       Object... values)
       throws IoTDBConnectionException, StatementExecutionException;
 
+  void insertRelationalRecord(
+      String tableName,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<ColumnType> columnCategories,
+      Object... values)
+      throws IoTDBConnectionException, StatementExecutionException;
+
   void insertRecord(
       String deviceId,
       long time,
@@ -334,6 +344,12 @@ public interface ISession extends AutoCloseable {
   void insertTablet(Tablet tablet) throws StatementExecutionException, IoTDBConnectionException;
 
   void insertTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRelationalTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException;
+
+  void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException;
 
   void insertAlignedTablet(Tablet tablet)

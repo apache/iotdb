@@ -23,6 +23,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
@@ -37,7 +38,7 @@ public class TabletTest {
   @Test
   public void testSortTablet() {
     Session session = new Session("127.0.0.1", 1234);
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.TIMESTAMP));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT32));

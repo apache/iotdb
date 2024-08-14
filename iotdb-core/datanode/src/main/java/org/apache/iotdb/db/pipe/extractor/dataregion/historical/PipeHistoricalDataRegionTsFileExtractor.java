@@ -47,7 +47,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -534,7 +533,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     return deviceSet.stream()
         .anyMatch(
             // TODO: use IDeviceID
-            deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
+            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {

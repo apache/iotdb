@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -295,7 +295,7 @@ public class LocalTextModificationAccessor
     try {
       String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 3);
       path = String.join(SEPARATOR, pathArray);
-      return new Deletion(new PartialPath(path), tsFileOffset, startTimestamp, endTimestamp);
+      return new Deletion(new MeasurementPath(path), tsFileOffset, startTimestamp, endTimestamp);
     } catch (IllegalPathException e) {
       throw new IOException("Invalid series path: " + path);
     }
@@ -321,7 +321,7 @@ public class LocalTextModificationAccessor
     try {
       String[] pathArray = Arrays.copyOfRange(fields, 1, fields.length - 2);
       path = String.join(SEPARATOR, pathArray);
-      return new Deletion(new PartialPath(path), versionNum, endTimestamp);
+      return new Deletion(new MeasurementPath(path), versionNum, endTimestamp);
     } catch (IllegalPathException e) {
       throw new IOException("Invalid series path: " + path);
     }

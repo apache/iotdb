@@ -277,6 +277,10 @@ public class DeleteDatabaseProcedure
     return DeleteStorageGroupState.PRE_DELETE_DATABASE;
   }
 
+  public String getDatabase() {
+    return deleteDatabaseSchema.getName();
+  }
+
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(

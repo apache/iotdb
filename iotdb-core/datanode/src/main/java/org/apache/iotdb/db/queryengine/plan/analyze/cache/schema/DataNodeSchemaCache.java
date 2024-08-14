@@ -306,7 +306,7 @@ public class DataNodeSchemaCache {
     timeSeriesSchemaCache.invalidate(database);
   }
 
-  public void invalidate(List<PartialPath> partialPathList) {
+  public void invalidate(List<? extends PartialPath> partialPathList) {
     boolean doPrecise = true;
     for (PartialPath partialPath : partialPathList) {
       if (partialPath.getDevicePath().hasWildcard()) {

@@ -47,9 +47,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       if (!column.isNull(i)) {
         switch (sourceType) {
           case INT32:
+          case DATE:
             cast(columnBuilder, childType.getInt(column, i));
             break;
           case INT64:
+          case TIMESTAMP:
             cast(columnBuilder, childType.getLong(column, i));
             break;
           case FLOAT:
@@ -61,7 +63,9 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
           case BOOLEAN:
             cast(columnBuilder, childType.getBoolean(column, i));
             break;
-          case BINARY:
+          case TEXT:
+          case STRING:
+          case BLOB:
             cast(columnBuilder, childType.getBinary(column, i));
             break;
           default:
@@ -79,9 +83,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, int value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
+      case DATE:
         returnType.writeInt(columnBuilder, value);
         break;
       case INT64:
+      case TIMESTAMP:
         returnType.writeLong(columnBuilder, value);
         break;
       case FLOAT:
@@ -93,8 +99,12 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0);
         break;
-      case BINARY:
+      case TEXT:
+      case STRING:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.intToBytes(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -104,9 +114,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, long value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
+      case DATE:
         returnType.writeInt(columnBuilder, (CastFunctionHelper.castLongToInt(value)));
         break;
       case INT64:
+      case TIMESTAMP:
         returnType.writeLong(columnBuilder, value);
         break;
       case FLOAT:
@@ -118,8 +130,12 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0L);
         break;
-      case BINARY:
+      case TEXT:
+      case STRING:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.longToBytes(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -129,9 +145,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, float value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
+      case DATE:
         returnType.writeInt(columnBuilder, CastFunctionHelper.castFloatToInt(value));
         break;
       case INT64:
+      case TIMESTAMP:
         returnType.writeLong(columnBuilder, CastFunctionHelper.castFloatToLong(value));
         break;
       case FLOAT:
@@ -143,8 +161,12 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0.0f);
         break;
-      case BINARY:
+      case TEXT:
+      case STRING:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.floatToBytes(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -154,9 +176,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, double value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
+      case DATE:
         returnType.writeInt(columnBuilder, CastFunctionHelper.castDoubleToInt(value));
         break;
       case INT64:
+      case TIMESTAMP:
         returnType.writeLong(columnBuilder, CastFunctionHelper.castDoubleToLong(value));
         break;
       case FLOAT:
@@ -168,8 +192,12 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value != 0.0);
         break;
-      case BINARY:
+      case TEXT:
+      case STRING:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.doubleToBytes(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -179,9 +207,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
   private void cast(ColumnBuilder columnBuilder, boolean value) {
     switch (returnType.getTypeEnum()) {
       case INT32:
+      case DATE:
         returnType.writeInt(columnBuilder, value ? 1 : 0);
         break;
       case INT64:
+      case TIMESTAMP:
         returnType.writeLong(columnBuilder, value ? 1L : 0);
         break;
       case FLOAT:
@@ -193,8 +223,12 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, value);
         break;
-      case BINARY:
+      case TEXT:
+      case STRING:
         returnType.writeBinary(columnBuilder, BytesUtils.valueOf(String.valueOf(value)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.boolToBytes(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -205,9 +239,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     String stringValue = value.getStringValue(TSFileConfig.STRING_CHARSET);
     switch (returnType.getTypeEnum()) {
       case INT32:
+      case DATE:
         returnType.writeInt(columnBuilder, Integer.parseInt(stringValue));
         break;
       case INT64:
+      case TIMESTAMP:
         returnType.writeLong(columnBuilder, Long.parseLong(stringValue));
         break;
       case FLOAT:
@@ -219,7 +255,9 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case BOOLEAN:
         returnType.writeBoolean(columnBuilder, CastFunctionHelper.castTextToBoolean(stringValue));
         break;
-      case BINARY:
+      case TEXT:
+      case STRING:
+      case BLOB:
         returnType.writeBinary(columnBuilder, value);
         break;
       default:
