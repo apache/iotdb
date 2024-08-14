@@ -2530,30 +2530,6 @@ public class StatementAnalyzer {
             String.format("Table '%s.%s' does not exist.", database, tableName));
       }
 
-      final QualifiedObjectName name = new QualifiedObjectName(database, tableName);
-      final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
-      // This can only be a table
-      if (!tableSchema.isPresent()) {
-        throw new SemanticException(String.format("Table '%s' does not exist", name));
-      }
-
-      final TableSchema originalSchema = tableSchema.get();
-
-      final ImmutableList.Builder<Field> fields = ImmutableList.builder();
-      fields.addAll(
-          analyzeTableOutputFields(
-              node.getName(),
-              name,
-              new TableSchema(
-                  originalSchema.getTableName(),
-                  originalSchema.getColumns().stream()
-                      .filter(
-                          columnSchema ->
-                              columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                                  || columnSchema.getColumnCategory()
-                                      == TsTableColumnCategory.ATTRIBUTE)
-                      .collect(Collectors.toList()))));
-
       final List<String> attributeList =
           table.getColumnList().stream()
               .filter(
@@ -2564,6 +2540,28 @@ public class StatementAnalyzer {
 
       node.setColumnHeaderList();
       if (Objects.nonNull(node.getRawExpression())) {
+        final QualifiedObjectName name = new QualifiedObjectName(database, tableName);
+        final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+        // This can only be a table
+        if (!tableSchema.isPresent()) {
+          throw new SemanticException(String.format("Table '%s' does not exist", name));
+        }
+
+        final TableSchema originalSchema = tableSchema.get();
+        final ImmutableList.Builder<Field> fields = ImmutableList.builder();
+        fields.addAll(
+            analyzeTableOutputFields(
+                node.getName(),
+                name,
+                new TableSchema(
+                    originalSchema.getTableName(),
+                    originalSchema.getColumns().stream()
+                        .filter(
+                            columnSchema ->
+                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
+                                    || columnSchema.getColumnCategory()
+                                        == TsTableColumnCategory.ATTRIBUTE)
+                        .collect(Collectors.toList()))));
         analyzeExpression(
             node.getRawExpression(), createAndAssignScope(node, context, fields.build()));
       }

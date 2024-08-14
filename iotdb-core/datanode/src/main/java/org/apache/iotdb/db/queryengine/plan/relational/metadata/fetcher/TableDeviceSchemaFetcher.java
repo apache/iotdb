@@ -169,8 +169,7 @@ public class TableDeviceSchemaFetcher {
       final List<String> attributeColumns,
       final MPPQueryContext queryContext) {
     final List<DeviceEntry> deviceEntryList = new ArrayList<>();
-    final ShowDevice statement = new ShowDevice(table, null);
-    statement.setDatabase(database);
+    final ShowDevice statement = new ShowDevice(database, table);
     final TsTable tableInstance = DataNodeTableCache.getInstance().getTable(database, table);
     if (tableInstance == null) {
       throw new SemanticException(String.format("Table '%s.%s' does not exist", database, table));
