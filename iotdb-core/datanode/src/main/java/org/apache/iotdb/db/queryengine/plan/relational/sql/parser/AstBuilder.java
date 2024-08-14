@@ -537,16 +537,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       throw new UnsupportedOperationException("Show devices with LIMIT/OFFSET is unsupported yet.");
     }
     return new ShowDevice(
-        getQualifiedName(ctx.tableName),
-        visitIfPresent(ctx.where, Expression.class).orElse(null));
+        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
     return new CountDevice(
-        getQualifiedName(ctx.tableName),
-        visitIfPresent(ctx.where, Expression.class).orElse(null));
+        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
