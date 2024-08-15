@@ -411,7 +411,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             .map(
                 r ->
                     toInsertRowStatement(
-                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName))
+                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName, databaseName))
             .collect(toList());
 
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
@@ -421,7 +421,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private InsertRowStatement toInsertRowStatement(
-      Row row, int timeColumnIndex, String[] nonTimeColumnNames, String tableName) {
+      Row row,
+      int timeColumnIndex,
+      String[] nonTimeColumnNames,
+      String tableName,
+      Optional<String> databaseName) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
@@ -465,6 +469,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
+    databaseName.ifPresent(insertRowStatement::setDatabaseName);
     return insertRowStatement;
   }
 

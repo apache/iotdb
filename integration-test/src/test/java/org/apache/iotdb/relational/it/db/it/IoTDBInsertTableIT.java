@@ -579,7 +579,7 @@ public class IoTDBInsertTableIT {
       st1.execute("insert into sg18(id1, s1, s2) values('d1','1', 1)");
       st1.execute("insert into sg18(id1, s1, s2) values('d2', 2, 2)");
 
-      ResultSet rs1 = st1.executeQuery("select time, s1, s2 from sg18");
+      ResultSet rs1 = st1.executeQuery("select time, s1, s2 from sg18 order by s1");
       assertTrue(rs1.next());
       assertEquals("1", rs1.getString("s1"));
       assertTrue(rs1.next());
@@ -605,13 +605,14 @@ public class IoTDBInsertTableIT {
       st1.execute("insert into sg19(TIme, Id1, Ss1, Ss2) values(5, 'd5','5', 5)");
       st1.execute("insert into sg19(TIme, Id1, sS1, sS2) values(6, 'd6', 6, 6)");
 
-      ResultSet rs1 = st1.executeQuery("select time, ss1, ss2 from sg19");
-      for (int i = 0; i < 6; i++) {
+      ResultSet rs1 = st1.executeQuery("select time, ss1, ss2 from sg19 order by time");
+      for (int i = 1; i <= 6; i++) {
         assertTrue(rs1.next());
         assertEquals(i, rs1.getLong("time"));
         assertEquals(String.valueOf(i), rs1.getString("ss1"));
         assertEquals(i, rs1.getInt("ss2"));
       }
+      assertFalse(rs1.next());
     }
   }
 

@@ -565,4 +565,15 @@ public abstract class InsertBaseStatement extends Statement {
       }
     }
   }
+
+  @TableModel
+  public List<String> getAttributeColumnNameList() {
+    List<String> attributeColumnNameList = new ArrayList<>();
+    for (int i = 0; i < getColumnCategories().length; i++) {
+      if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+        attributeColumnNameList.add(getMeasurements()[i]);
+      }
+    }
+    return attributeColumnNameList;
+  }
 }
