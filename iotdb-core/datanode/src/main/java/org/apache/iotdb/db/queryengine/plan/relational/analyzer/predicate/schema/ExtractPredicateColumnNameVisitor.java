@@ -72,12 +72,20 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
     final String columnName;
     if (node.getLeft() instanceof Literal) {
       if (!(node.getRight() instanceof SymbolReference)) {
-        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
+        throw new IllegalStateException(
+            "Can only be SymbolReference, now is "
+                + node.getRight().getClass().getSimpleName()
+                + ", value: "
+                + node.getRight());
       }
       columnName = ((SymbolReference) (node.getRight())).getName();
     } else {
       if (!(node.getLeft() instanceof SymbolReference)) {
-        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getLeft());
+        throw new IllegalStateException(
+            "Can only be SymbolReference, now is "
+                + node.getLeft().getClass().getSimpleName()
+                + ", value: "
+                + node.getLeft());
       }
       columnName = ((SymbolReference) (node.getLeft())).getName();
     }
