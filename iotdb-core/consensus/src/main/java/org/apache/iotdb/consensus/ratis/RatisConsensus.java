@@ -611,7 +611,8 @@ class RatisConsensus implements IConsensus {
       Peer leader = getLeader(groupId);
       logger.info("oldleader {}", leader);
       if (leader != null) {
-        if (leader.getNodeId() == newLeader.getNodeId() && leader.getGroupId() == newLeader.getGroupId()) {
+        if (leader.getNodeId() == newLeader.getNodeId()
+            && leader.getGroupId() == newLeader.getGroupId()) {
           logger.info("leader {} is already the leader of group {}", newLeader, groupId);
           return;
         }
@@ -903,29 +904,29 @@ class RatisConsensus implements IConsensus {
       int retryTimes = 0;
       while (true) {
         logger.info("retry sendConfiguration req {} times", retryTimes);
-          reply =
-              client
-                  .getRaftClient()
-                  .admin()
-                  .setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
-          if (reply.isSuccess()) {
-            logger.info("reConfiguration success");
-            break;
+        reply =
+            client
+                .getRaftClient()
+                .admin()
+                .setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
+        if (reply.isSuccess()) {
+          logger.info("reConfiguration success");
+          break;
+        }
+        logger.warn("setConfiguration ReplyException is: {}", reply.getException().toString());
+        if (reply.getException() instanceof ReconfigurationInProgressException
+            || reply.getException() instanceof LeaderSteppingDownException
+            || reply.getException() instanceof TransferLeadershipException) {
+          logger.warn(
+              "Reconfiguration is in progress or steppingDown or transferLeadership, retry after {}s",
+              basicWaitTime / 1000);
+          TimeDuration time = TimeDuration.valueOf(basicWaitTime, TimeUnit.MILLISECONDS);
+          time.sleep();
+          basicWaitTime = Math.max(basicWaitTime * 2, maxWaitTime);
+          if (retryTimes++ >= 20) {
+            basicWaitTime = 5000;
           }
-          logger.warn("setConfiguration ReplyException is: {}", reply.getException().toString());
-          if (reply.getException() instanceof ReconfigurationInProgressException
-              || reply.getException() instanceof LeaderSteppingDownException
-              || reply.getException() instanceof TransferLeadershipException) {
-            logger.warn(
-                "Reconfiguration is in progress or steppingDown or transferLeadership, retry after {}s",
-                basicWaitTime / 1000);
-            TimeDuration time = TimeDuration.valueOf(basicWaitTime, TimeUnit.MILLISECONDS);
-            time.sleep();
-            basicWaitTime = Math.max(basicWaitTime * 2, maxWaitTime);
-            if (retryTimes++ >=  20) {
-              basicWaitTime = 5000;
-            }
-            continue;
+          continue;
         }
         throw new RatisRequestFailedException(reply.getException());
       }
