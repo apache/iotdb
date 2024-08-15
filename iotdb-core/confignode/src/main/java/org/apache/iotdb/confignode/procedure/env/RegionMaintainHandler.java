@@ -715,7 +715,6 @@ public class RegionMaintainHandler {
             SyncDataNodeClientPool.getInstance()
                 .changeRegionLeader(
                     regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
-
         if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           timestamp = resp.getConsensusLogicalTimestamp();
           break;
