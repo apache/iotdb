@@ -633,4 +633,10 @@ public abstract class PlanVisitor<R, C> {
   public R visitGroupReference(GroupReference node, C context) {
     return visitPlan(node, context);
   }
+
+  public R visitAggregation(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
+      C context) {
+    return visitPlan(node, context);
+  }
 }

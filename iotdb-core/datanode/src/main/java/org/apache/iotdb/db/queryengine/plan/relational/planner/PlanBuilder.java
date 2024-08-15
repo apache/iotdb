@@ -80,6 +80,10 @@ public class PlanBuilder {
     return new PlanBuilder(translations.withScope(scope, fields), root);
   }
 
+  public Scope getScope() {
+    return translations.getScope();
+  }
+
   public TranslationMap getTranslations() {
     return translations;
   }

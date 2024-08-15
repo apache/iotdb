@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
-import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 
 import java.util.Objects;
@@ -29,27 +28,18 @@ import static java.util.Objects.requireNonNull;
 
 public class ResolvedFunction {
   private final BoundSignature signature;
-  private final FunctionId functionId;
   private final FunctionKind functionKind;
   private final boolean deterministic;
 
   public ResolvedFunction(
-      BoundSignature signature,
-      FunctionId functionId,
-      FunctionKind functionKind,
-      boolean deterministic) {
+      BoundSignature signature, FunctionKind functionKind, boolean deterministic) {
     this.signature = requireNonNull(signature, "signature is null");
-    this.functionId = requireNonNull(functionId, "functionId is null");
     this.functionKind = requireNonNull(functionKind, "functionKind is null");
     this.deterministic = deterministic;
   }
 
   public BoundSignature getSignature() {
     return signature;
-  }
-
-  public FunctionId getFunctionId() {
-    return functionId;
   }
 
   public FunctionKind getFunctionKind() {
@@ -90,14 +80,13 @@ public class ResolvedFunction {
     }
     ResolvedFunction that = (ResolvedFunction) o;
     return Objects.equals(signature, that.signature)
-        && Objects.equals(functionId, that.functionId)
         && functionKind == that.functionKind
         && deterministic == that.deterministic;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(signature, functionId, functionKind, deterministic);
+    return Objects.hash(signature, functionKind, deterministic);
   }
 
   @Override
