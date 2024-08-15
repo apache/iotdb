@@ -147,7 +147,12 @@ public class RegionWriteExecutor {
           new WritePlanNodeExecutionContext(groupId, regionManager.getRegionLock(groupId));
       return planNode.accept(executionVisitor, context);
     } catch (Throwable e) {
-      LOGGER.warn(e.getMessage(), e);
+      String forgivableReason = "";
+      if (e instanceof NullPointerException && regionManager.getRegionLock(groupId) == null) {
+        forgivableReason =
+            ", this exception is unavoidable during the removing progress of a region, just retry writing later";
+      }
+      LOGGER.warn(e.getMessage() + forgivableReason, e);
       RegionExecutionResult result = new RegionExecutionResult();
       result.setAccepted(false);
       result.setMessage(e.getMessage());
