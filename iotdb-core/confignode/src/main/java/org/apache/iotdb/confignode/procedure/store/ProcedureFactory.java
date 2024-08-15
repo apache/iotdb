@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -277,7 +278,13 @@ public class ProcedureFactory implements IProcedureFactory {
         LOGGER.error("Unknown Procedure type: {}", typeCode);
         throw new IOException("Unknown Procedure type: " + typeCode);
     }
-    procedure.deserialize(buffer);
+    try {
+      procedure.deserialize(buffer);
+    } catch (ThriftSerDeException e) {
+      LOGGER.warn(
+          "Catch exception while deserializing procedure, this procedure will be ignored.", e);
+      procedure = null;
+    }
     return procedure;
   }
 
