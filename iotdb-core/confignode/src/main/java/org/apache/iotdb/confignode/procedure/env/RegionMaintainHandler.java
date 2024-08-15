@@ -736,7 +736,7 @@ public class RegionMaintainHandler {
             Collections.singletonMap(
                 regionId,
                 new ConsensusGroupHeartbeatSample(timestamp, newLeaderNode.get().getDataNodeId())));
-    // configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+    configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
 
     LOGGER.info(
         "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
