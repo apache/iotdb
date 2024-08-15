@@ -64,7 +64,7 @@ public class SubscriptionStates {
     for (final SubscriptionEvent event : events) {
       final long currentSize;
       try {
-        currentSize = event.getCurrentResponseByteBuffer().limit();
+        currentSize = event.getCurrentResponseSize();
       } catch (final IOException e) {
         // If there's an issue with accessing the event's size, nack the event
         eventsToNack.add(event);

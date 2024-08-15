@@ -352,6 +352,12 @@ public class SubscriptionEvent {
     }
   }
 
+  public int getCurrentResponseSize() throws IOException {
+    final ByteBuffer byteBuffer = getCurrentResponseByteBuffer();
+    // refer to org.apache.thrift.protocol.TBinaryProtocol.writeBinary
+    return byteBuffer.limit() - byteBuffer.position();
+  }
+
   /////////////////////////////// tsfile ///////////////////////////////
 
   private @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
@@ -403,7 +409,11 @@ public class SubscriptionEvent {
         + Arrays.toString(responses)
         + ", responses' byte buffer size="
         + Arrays.stream(byteBuffers)
-            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "<unknown>" : byteBuffer.limit())
+            .map(
+                byteBuffer ->
+                    Objects.isNull(byteBuffer)
+                        ? "<unknown>"
+                        : byteBuffer.limit() - byteBuffer.position())
             .collect(Collectors.toList())
         + ", currentResponseIndex="
         + currentResponseIndex

@@ -395,7 +395,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                       final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
 
                       // payload size control
-                      final long size = byteBuffer.limit();
+                      final long size = event.getCurrentResponseSize();
                       if (totalSize.get() + size > POLL_PAYLOAD_SIZE_THRESHOLD) {
                         throw new SubscriptionException(
                             String.format(
