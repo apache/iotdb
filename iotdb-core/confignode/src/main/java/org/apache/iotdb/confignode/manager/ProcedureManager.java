@@ -117,7 +117,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -610,13 +609,12 @@ public class ProcedureManager {
   }
 
   // region region migration
-  public static TSStatus checkRegionMigrate(
+  public TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
-    ConfigManager configManager1 = ConfigNode.getInstance().getConfigManager();
     String failMessage = null;
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (TConsensusGroupType.DataRegion == regionGroupId.getType()
@@ -629,7 +627,7 @@ public class ProcedureManager {
           "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
     } else if (0 != RegionOperationProcedure.getRegionOperations(regionGroupId)) {
       Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
-          configManager1.getProcedureManager().executor.getProcedures().values().stream()
+          configManager.getProcedureManager().executor.getProcedures().values().stream()
               .filter(
                   procedure -> {
                     if (procedure instanceof RegionMigrateProcedure) {
@@ -669,7 +667,7 @@ public class ProcedureManager {
               "%s, There are no other DataNodes could be selected to perform the add peer process, "
                   + "please check RegionGroup: %s by show regions sql command",
               REGION_MIGRATE_PROCESS, regionGroupId);
-    } else if (configManager1
+    } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
         .stream()
@@ -678,7 +676,7 @@ public class ProcedureManager {
           String.format(
               "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain Region %s",
               migrateRegionReq.getFromId(), migrateRegionReq.getRegionId());
-    } else if (configManager1
+    } else if (configManager
         .getPartitionManager()
         .getAllReplicaSets(destDataNode.getDataNodeId())
         .stream()
@@ -687,7 +685,7 @@ public class ProcedureManager {
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
               migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
-    } else if (!configManager1
+    } else if (!configManager
         .getNodeManager()
         .filterDataNodeThroughStatus(NodeStatus.Running)
         .stream()
