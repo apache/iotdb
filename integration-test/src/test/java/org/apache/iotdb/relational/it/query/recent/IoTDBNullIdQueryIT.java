@@ -66,7 +66,7 @@ public class IoTDBNullIdQueryIT {
 
   @Test
   public void nullFilterTest() throws Exception {
-    final String result = defaultFormatDataTime(1) + ",0,false,11.1";
+    String result = defaultFormatDataTime(1) + ",0,false,11.1";
     try (final Connection connectionIsNull =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connectionIsNull.createStatement()) {
@@ -132,6 +132,28 @@ public class IoTDBNullIdQueryIT {
               + resultSet.getString("s2")
               + ","
               + resultSet.getString("s3");
+      assertEquals(result, ans);
+      assertFalse(resultSet.next());
+
+      // Test constant select item
+      resultSet = statement.executeQuery("select *, 1 from testNullId");
+      result = defaultFormatDataTime(1) + ",null,null,0,false,11.1,1";
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("id1")
+              + ","
+              + resultSet.getString("id2")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3")
+              + ","
+              + resultSet.getString("_col6");
+
       assertEquals(result, ans);
       assertFalse(resultSet.next());
     }

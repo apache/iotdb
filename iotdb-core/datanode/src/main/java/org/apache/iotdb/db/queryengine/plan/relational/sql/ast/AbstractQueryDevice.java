@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -32,7 +35,10 @@ public abstract class AbstractQueryDevice extends Statement {
 
   private String database;
 
-  private final String tableName;
+  private String tableName;
+
+  // Temporary
+  private QualifiedName name;
 
   // Currently unused, shall be parsed into idDeterminedPredicateList and idFuzzyPredicate on demand
   private Expression rawExpression;
@@ -53,9 +59,9 @@ public abstract class AbstractQueryDevice extends Statement {
   private List<IDeviceID> partitionKeyList;
 
   // For sql-input show device usage
-  protected AbstractQueryDevice(final String tableName, final Expression rawExpression) {
+  protected AbstractQueryDevice(final QualifiedName name, final Expression rawExpression) {
     super(null);
-    this.tableName = tableName;
+    this.name = name;
     this.rawExpression = rawExpression;
   }
 
@@ -72,6 +78,16 @@ public abstract class AbstractQueryDevice extends Statement {
     this.idDeterminedFilterList = idDeterminedFilterList;
     this.idFuzzyPredicate = idFuzzyFilterList;
     this.partitionKeyList = partitionKeyList;
+  }
+
+  public void parseQualifiedName(final SessionInfo sessionInfo) {
+    if (Objects.isNull(name)) {
+      return;
+    }
+    final QualifiedObjectName objectName =
+        MetadataUtil.createQualifiedObjectName(sessionInfo, name);
+    database = objectName.getDatabaseName();
+    tableName = objectName.getObjectName();
   }
 
   public String getDatabase() {

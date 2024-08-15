@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.SchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -168,6 +169,7 @@ public class StatementAnalyzer {
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
   private Analysis analysis;
+  private final MPPQueryContext queryContext;
 
   private final AccessControl accessControl;
 
@@ -182,6 +184,7 @@ public class StatementAnalyzer {
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
       Analysis analysis,
+      MPPQueryContext queryContext,
       AccessControl accessControl,
       WarningCollector warningCollector,
       SessionInfo sessionContext,
@@ -189,6 +192,7 @@ public class StatementAnalyzer {
       CorrelationSupport correlationSupport) {
     this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
+    this.queryContext = queryContext;
     this.accessControl = accessControl;
     this.warningCollector = warningCollector;
     this.sessionContext = sessionContext;
@@ -695,7 +699,7 @@ public class StatementAnalyzer {
     protected Scope visitTableSubquery(TableSubquery node, Optional<Scope> scope) {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.createStatementAnalyzer(
-              analysis, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
+              analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
@@ -1495,7 +1499,7 @@ public class StatementAnalyzer {
         }
       }
 
-      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table, table.getName());
+      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
@@ -1975,6 +1979,7 @@ public class StatementAnalyzer {
         ExpressionAnalysis expressionAnalysis =
             ExpressionAnalyzer.analyzeExpression(
                 metadata,
+                queryContext,
                 sessionContext,
                 statementAnalyzerFactory,
                 accessControl,
@@ -2162,6 +2167,7 @@ public class StatementAnalyzer {
     private ExpressionAnalysis analyzeExpression(Expression expression, Scope scope) {
       return ExpressionAnalyzer.analyzeExpression(
           metadata,
+          queryContext,
           sessionContext,
           statementAnalyzerFactory,
           accessControl,
@@ -2176,6 +2182,7 @@ public class StatementAnalyzer {
         Expression expression, Scope scope, CorrelationSupport correlationSupport) {
       return ExpressionAnalyzer.analyzeExpression(
           metadata,
+          queryContext,
           sessionContext,
           statementAnalyzerFactory,
           accessControl,
@@ -2492,6 +2499,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitCreateDevice(final CreateDevice node, final Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
       return null;
     }
 
@@ -2502,11 +2510,13 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
+      node.parseQualifiedName(sessionContext);
       return null;
     }
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
+      node.parseQualifiedName(sessionContext);
       return null;
     }
   }
