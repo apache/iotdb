@@ -24,17 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 
-import org.apache.iotdb.confignode.manager.ProcedureManager;
-import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class RegionOperationProcedureTest {
   static List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();

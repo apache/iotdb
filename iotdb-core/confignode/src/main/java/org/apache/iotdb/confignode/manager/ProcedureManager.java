@@ -139,7 +139,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -630,18 +629,18 @@ public class ProcedureManager {
           "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
     } else if (0 != RegionOperationProcedure.getRegionOperations(regionGroupId)) {
       Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
-              configManager1.getProcedureManager().executor.getProcedures().values().stream()
-                      .filter(
-                              procedure -> {
-                                if (procedure instanceof RegionMigrateProcedure) {
-                                  return !procedure.isFinished()
-                                          && ((RegionMigrateProcedure) procedure)
-                                          .getConsensusGroupId()
-                                          .equals(regionGroupId);
-                                }
-                                return false;
-                              })
-                      .findAny();
+          configManager1.getProcedureManager().executor.getProcedures().values().stream()
+              .filter(
+                  procedure -> {
+                    if (procedure instanceof RegionMigrateProcedure) {
+                      return !procedure.isFinished()
+                          && ((RegionMigrateProcedure) procedure)
+                              .getConsensusGroupId()
+                              .equals(regionGroupId);
+                    }
+                    return false;
+                  })
+              .findAny();
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, "
@@ -649,7 +648,10 @@ public class ProcedureManager {
                   + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. ",
               regionGroupId.getId());
       if (anotherMigrateProcedure.isPresent()) {
-        failMessage += String.format("For further information, please search pid%d in log. ", anotherMigrateProcedure.get().getProcId());
+        failMessage +=
+            String.format(
+                "For further information, please search pid%d in log. ",
+                anotherMigrateProcedure.get().getProcId());
       }
     } else if (originalDataNode == null) {
       failMessage =

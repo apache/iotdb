@@ -27,11 +27,8 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class RegionOperationProcedure<TState>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, TState> {
@@ -53,18 +50,20 @@ public abstract class RegionOperationProcedure<TState>
 
   private static synchronized void addToMap(TConsensusGroupId consensusGroupId, long procId) {
     regionOperationsMap.putIfAbsent(consensusGroupId, 0);
-    regionOperationsMap.compute(consensusGroupId, (k,v) -> v+1);
+    regionOperationsMap.compute(consensusGroupId, (k, v) -> v + 1);
   }
 
   @Override
   protected void procedureEndHook() {
     synchronized (RegionOperationProcedure.class) {
-      regionOperationsMap.computeIfPresent(consensusGroupId, (k,v) -> {
-        if (v == 1) {
-          return null;
-        }
-        return v-1;
-      });
+      regionOperationsMap.computeIfPresent(
+          consensusGroupId,
+          (k, v) -> {
+            if (v == 1) {
+              return null;
+            }
+            return v - 1;
+          });
     }
   }
 
