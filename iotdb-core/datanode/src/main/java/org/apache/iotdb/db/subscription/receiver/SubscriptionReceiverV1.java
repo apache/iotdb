@@ -89,7 +89,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private static final long POLL_PAYLOAD_MAX_SIZE =
       SubscriptionConfig.getInstance().getSubscriptionPollPayloadMaxSize();
 
-  private static final double POLL_PAYLOAD_SIZE_THRESHOLD = POLL_PAYLOAD_MAX_SIZE * 0.75;
+  private static final long POLL_PAYLOAD_SIZE_THRESHOLD = (long) (POLL_PAYLOAD_MAX_SIZE * 0.75);
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -399,8 +399,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                       if (totalSize.get() + size > POLL_PAYLOAD_SIZE_THRESHOLD) {
                         throw new SubscriptionException(
                             String.format(
-                                "payload size will exceed the threshold %s",
-                                POLL_PAYLOAD_SIZE_THRESHOLD));
+                                "payload size %s byte(s) will exceed the threshold %s byte(s)",
+                                totalSize.get() + size, POLL_PAYLOAD_SIZE_THRESHOLD));
                       }
                       totalSize.getAndAdd(size);
 
