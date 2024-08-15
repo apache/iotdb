@@ -211,7 +211,7 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(3, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 
@@ -250,7 +250,7 @@ public class TableModelFastCompactionPerformerTest extends AbstractCompactionTes
         new TsFileSequenceReader(
             tsFileManager.getTsFileList(true).get(0).getTsFile().getAbsolutePath())) {
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Assert.assertEquals(2, tsFileMetadata.getTableSchemaMap().size());
+      Assert.assertEquals(1, tsFileMetadata.getTableSchemaMap().size());
     }
   }
 }

@@ -145,6 +145,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Binary;
@@ -374,10 +375,20 @@ public class ColumnTransformerBuilder
         context.cache.computeIfAbsent(
             node,
             e -> {
-              ConstantColumnTransformer columnTransformer =
-                  new ConstantColumnTransformer(
-                      INT64,
-                      new LongColumn(1, Optional.empty(), new long[] {node.getParsedValue()}));
+              ConstantColumnTransformer columnTransformer;
+              if (node.getParsedValue() >= Integer.MIN_VALUE
+                  && node.getParsedValue() <= Integer.MAX_VALUE) {
+                columnTransformer =
+                    new ConstantColumnTransformer(
+                        INT32,
+                        new IntColumn(
+                            1, Optional.empty(), new int[] {(int) node.getParsedValue()}));
+              } else {
+                columnTransformer =
+                    new ConstantColumnTransformer(
+                        INT64,
+                        new LongColumn(1, Optional.empty(), new long[] {node.getParsedValue()}));
+              }
               context.leafList.add(columnTransformer);
               return columnTransformer;
             });

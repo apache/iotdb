@@ -77,7 +77,7 @@ public abstract class SchemaFilterVisitor<C> {
     return visitFilter(templateFilter, context);
   }
 
-  public final Boolean visitAndFilter(final AndFilter andFilter, final C context) {
+  public Boolean visitAndFilter(final AndFilter andFilter, final C context) {
     Boolean result = Boolean.TRUE;
     for (final SchemaFilter child : andFilter.getChildren()) {
       final Boolean childResult = child.accept(this, context);

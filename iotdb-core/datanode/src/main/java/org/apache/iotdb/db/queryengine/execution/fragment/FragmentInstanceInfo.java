@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
+import java.util.Optional;
 
 public class FragmentInstanceInfo implements DataSet {
   private final FragmentInstanceState state;
@@ -29,6 +31,8 @@ public class FragmentInstanceInfo implements DataSet {
   private long endTime;
 
   private List<FragmentInstanceFailureInfo> failureInfoList;
+
+  private TSStatus errorCode;
 
   public FragmentInstanceInfo(FragmentInstanceState state) {
     this.state = state;
@@ -49,6 +53,18 @@ public class FragmentInstanceInfo implements DataSet {
     this.failureInfoList = failureInfoList;
   }
 
+  public FragmentInstanceInfo(
+      FragmentInstanceState state,
+      long endTime,
+      String message,
+      List<FragmentInstanceFailureInfo> failureInfoList,
+      TSStatus errorStatus) {
+    this(state, endTime);
+    this.message = message;
+    this.failureInfoList = failureInfoList;
+    this.errorCode = errorStatus;
+  }
+
   public FragmentInstanceState getState() {
     return state;
   }
@@ -59,6 +75,10 @@ public class FragmentInstanceInfo implements DataSet {
 
   public String getMessage() {
     return message;
+  }
+
+  public Optional<TSStatus> getErrorCode() {
+    return Optional.ofNullable(errorCode);
   }
 
   public List<FragmentInstanceFailureInfo> getFailureInfoList() {

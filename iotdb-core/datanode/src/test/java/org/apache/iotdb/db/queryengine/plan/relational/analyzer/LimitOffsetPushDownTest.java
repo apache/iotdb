@@ -11,6 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
@@ -69,7 +71,7 @@ public class LimitOffsetPushDownTest {
   public void noOrderByTest() {
     sql = "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -103,13 +105,13 @@ public class LimitOffsetPushDownTest {
     assertFalse(tableScanNode.isPushLimitToEachDevice());
   }
 
-  // order by all tags, limit can be pushed into TableScan, pushLimitToEachDevice==false
+  // order by all IDs, limit can be pushed into TableScan, pushLimitToEachDevice==false
   @Test
-  public void orderByAllTagsTest() {
+  public void orderByAllIDsTest() {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by tag2 desc, tag1 asc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -117,29 +119,62 @@ public class LimitOffsetPushDownTest {
     // LogicalPlan: `Output - Offset - Limit - Project - StreamSort -  Project - TableScan`
     assertTrue(getChildrenNode(rootNode, 6) instanceof TableScanNode);
 
-    // DistributePlan: `IdentitySink - Output - Offset - Project - TopK - Limit - Project -
-    // TableScan`
+    // DistributePlan: `IdentitySink - Output - Offset - Project - TopK - Project - TableScan`
     distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     TopKNode topKNode =
         (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
-    assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof ProjectNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
-    tableScanNode = (TableScanNode) getChildrenNode(topKNode.getChildren().get(1), 2);
+    tableScanNode = (TableScanNode) getChildrenNode(topKNode.getChildren().get(1), 1);
     assertEquals(4, tableScanNode.getDeviceEntries().size());
     assertEquals(DESC, tableScanNode.getScanOrder());
     assertTrue(tableScanNode.getPushDownLimit() == 15 && tableScanNode.getPushDownOffset() == 0);
     assertFalse(tableScanNode.isPushLimitToEachDevice());
 
-    // `Identity - Limit - Project - TableScan`
+    // `Identity - Project - TableScan`
     tableScanNode =
         (TableScanNode)
-            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 3);
+            getChildrenNode(distributedQueryPlan.getFragments().get(1).getPlanNodeTree(), 2);
     assertEquals(2, tableScanNode.getDeviceEntries().size());
     assertEquals(DESC, tableScanNode.getScanOrder());
     assertTrue(tableScanNode.getPushDownLimit() == 15 && tableScanNode.getPushDownOffset() == 0);
+    assertFalse(tableScanNode.isPushLimitToEachDevice());
+
+    sql = "SELECT * FROM table1 order by tag2 desc, tag1 asc, attr1 desc, tag3 desc limit 10";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    rootNode = logicalQueryPlan.getRootNode();
+    // LogicalPlan: `Output - Limit - StreamSort - TableScan`
+    assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
+
+    // DistributePlan: `IdentitySink - Output - TopK - TableScan`
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    topKNode =
+        (TopKNode) getChildrenNode(distributedQueryPlan.getFragments().get(0).getPlanNodeTree(), 2);
+    assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
+    assertTrue(topKNode.getChildren().get(1) instanceof TableScanNode);
+    assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
+    tableScanNode = (TableScanNode) topKNode.getChildren().get(1);
+    assertEquals(4, tableScanNode.getDeviceEntries().size());
+    assertEquals(ASC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 10 && tableScanNode.getPushDownOffset() == 0);
+    assertFalse(tableScanNode.isPushLimitToEachDevice());
+
+    // `Identity - TableScan`
+    tableScanNode =
+        (TableScanNode)
+            distributedQueryPlan.getFragments().get(1).getPlanNodeTree().getChildren().get(0);
+    assertEquals(2, tableScanNode.getDeviceEntries().size());
+    assertEquals(ASC, tableScanNode.getScanOrder());
+    assertTrue(tableScanNode.getPushDownLimit() == 10 && tableScanNode.getPushDownOffset() == 0);
     assertFalse(tableScanNode.isPushLimitToEachDevice());
   }
 
@@ -149,7 +184,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by tag2 desc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -190,7 +225,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by time desc, tag2 asc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
@@ -230,7 +265,7 @@ public class LimitOffsetPushDownTest {
     sql =
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by s1 desc, tag2 desc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    actualAnalysis = analyzeSQL(sql, metadata);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
