@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -42,13 +41,9 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Region migrate procedure */
-public class RegionMigrateProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, RegionTransitionState> {
+public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTransitionState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RegionMigrateProcedure.class);
-
-  /** Wait region migrate finished */
-  private TConsensusGroupId consensusGroupId;
 
   private TDataNodeLocation originalDataNode;
   private TDataNodeLocation destDataNode;
@@ -65,8 +60,7 @@ public class RegionMigrateProcedure
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer,
       TDataNodeLocation coordinatorForRemovePeer) {
-    super();
-    this.consensusGroupId = consensusGroupId;
+    super(consensusGroupId);
     this.originalDataNode = originalDataNode;
     this.destDataNode = destDataNode;
     this.coordinatorForAddPeer = coordinatorForAddPeer;
@@ -200,18 +194,16 @@ public class RegionMigrateProcedure
     super.serialize(stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(originalDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(destDataNode, stream);
-    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinatorForAddPeer, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinatorForRemovePeer, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
-    super.deserialize(byteBuffer);
     try {
+      super.deserialize(byteBuffer);
       originalDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       destDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
-      consensusGroupId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
       coordinatorForAddPeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinatorForRemovePeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
@@ -240,9 +232,5 @@ public class RegionMigrateProcedure
   @Override
   public int hashCode() {
     return Objects.hash(this.originalDataNode, this.destDataNode, this.consensusGroupId);
-  }
-
-  public TConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
   }
 }

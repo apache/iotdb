@@ -72,6 +72,7 @@ import org.apache.iotdb.confignode.procedure.impl.pipe.task.StartPipeProcedureV2
 import org.apache.iotdb.confignode.procedure.impl.pipe.task.StopPipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.region.CreateRegionGroupsProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
@@ -116,6 +117,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -137,6 +139,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -608,26 +611,14 @@ public class ProcedureManager {
   }
 
   // region region migration
-  private TSStatus checkRegionMigrate(
+  public static TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
+    ConfigManager configManager1 = ConfigNode.getInstance().getConfigManager();
     String failMessage = null;
-    Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
-        this.executor.getProcedures().values().stream()
-            .filter(
-                procedure -> {
-                  if (procedure instanceof RegionMigrateProcedure) {
-                    return !procedure.isFinished()
-                        && ((RegionMigrateProcedure) procedure)
-                            .getConsensusGroupId()
-                            .equals(regionGroupId);
-                  }
-                  return false;
-                })
-            .findAny();
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     if (TConsensusGroupType.DataRegion == regionGroupId.getType()
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getDataRegionConsensusProtocolClass())) {
@@ -637,14 +628,29 @@ public class ProcedureManager {
         && ConsensusFactory.SIMPLE_CONSENSUS.equals(conf.getSchemaRegionConsensusProtocolClass())) {
       failMessage =
           "The region you are trying to migrate is using SimpleConsensus, and SimpleConsensus not supports region migration.";
-    } else if (anotherMigrateProcedure.isPresent()) {
+    } else if (0 != RegionOperationProcedure.getRegionOperations(regionGroupId)) {
+      Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
+              configManager1.getProcedureManager().executor.getProcedures().values().stream()
+                      .filter(
+                              procedure -> {
+                                if (procedure instanceof RegionMigrateProcedure) {
+                                  return !procedure.isFinished()
+                                          && ((RegionMigrateProcedure) procedure)
+                                          .getConsensusGroupId()
+                                          .equals(regionGroupId);
+                                }
+                                return false;
+                              })
+                      .findAny();
       failMessage =
           String.format(
               "Submit RegionMigrateProcedure failed, "
                   + "because another RegionMigrateProcedure of the same consensus group %d is already in processing. "
-                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. "
-                  + "For further information, please search [pid%d] in log. ",
-              regionGroupId.getId(), anotherMigrateProcedure.get().getProcId());
+                  + "A consensus group is able to have at most 1 RegionMigrateProcedure at the same time. ",
+              regionGroupId.getId());
+      if (anotherMigrateProcedure.isPresent()) {
+        failMessage += String.format("For further information, please search pid%d in log. ", anotherMigrateProcedure.get().getProcId());
+      }
     } else if (originalDataNode == null) {
       failMessage =
           String.format(
@@ -661,7 +667,7 @@ public class ProcedureManager {
               "%s, There are no other DataNodes could be selected to perform the add peer process, "
                   + "please check RegionGroup: %s by show regions sql command",
               REGION_MIGRATE_PROCESS, regionGroupId);
-    } else if (configManager
+    } else if (configManager1
         .getPartitionManager()
         .getAllReplicaSets(originalDataNode.getDataNodeId())
         .stream()
@@ -670,7 +676,7 @@ public class ProcedureManager {
           String.format(
               "Submit RegionMigrateProcedure failed, because the original DataNode %s doesn't contain Region %s",
               migrateRegionReq.getFromId(), migrateRegionReq.getRegionId());
-    } else if (configManager
+    } else if (configManager1
         .getPartitionManager()
         .getAllReplicaSets(destDataNode.getDataNodeId())
         .stream()
@@ -679,7 +685,7 @@ public class ProcedureManager {
           String.format(
               "Submit RegionMigrateProcedure failed, because the target DataNode %s already contains Region %s",
               migrateRegionReq.getToId(), migrateRegionReq.getRegionId());
-    } else if (!configManager
+    } else if (!configManager1
         .getNodeManager()
         .filterDataNodeThroughStatus(NodeStatus.Running)
         .stream()

@@ -195,6 +195,7 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
       stateFlow = executeFromState(env, state);
       setStateDeserialized(false);
       if (!hasMoreState()) {
+        procedureEndHook();
         setNextState(EOF_STATE);
       }
 
@@ -304,6 +305,9 @@ public abstract class StateMachineProcedure<Env, TState> extends Procedure<Env> 
     }
     states[stateCount++] = stateId;
   }
+
+  /** Override this method if you need to do something after this procedure ends. */
+  protected void procedureEndHook() {}
 
   @Override
   protected void toStringState(StringBuilder builder) {

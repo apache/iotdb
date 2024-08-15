@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -53,10 +52,9 @@ import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_PEER;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
-public class RemoveRegionPeerProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveRegionPeerState> {
+public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRegionPeerState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoveRegionPeerProcedure.class);
-  private TConsensusGroupId consensusGroupId;
+
   private TDataNodeLocation coordinator;
   private TDataNodeLocation targetDataNode;
 
@@ -68,8 +66,7 @@ public class RemoveRegionPeerProcedure
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation coordinator,
       TDataNodeLocation targetDataNode) {
-    super();
-    this.consensusGroupId = consensusGroupId;
+    super(consensusGroupId);
     this.coordinator = coordinator;
     this.targetDataNode = targetDataNode;
   }
@@ -192,25 +189,19 @@ public class RemoveRegionPeerProcedure
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.REMOVE_REGION_PEER_PROCEDURE.getTypeCode());
     super.serialize(stream);
-    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(consensusGroupId, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(targetDataNode, stream);
     ThriftCommonsSerDeUtils.serializeTDataNodeLocation(coordinator, stream);
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
-    super.deserialize(byteBuffer);
     try {
-      consensusGroupId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
+      super.deserialize(byteBuffer);
       targetDataNode = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinator = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
       LOGGER.error("Error in deserialize {}", this.getClass(), e);
     }
-  }
-
-  public TConsensusGroupId getConsensusGroupId() {
-    return consensusGroupId;
   }
 
   public TDataNodeLocation getCoordinator() {
