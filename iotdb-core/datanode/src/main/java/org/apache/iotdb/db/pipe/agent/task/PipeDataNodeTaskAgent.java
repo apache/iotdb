@@ -639,15 +639,6 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     }
   }
 
-  public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
-    acquireReadLock();
-    try {
-      return pipeTaskManager.getPipeTask(consensusGroupId).isEmpty();
-    } finally {
-      releaseReadLock();
-    }
-  }
-
   ///////////////////////// Utils /////////////////////////
 
   public Set<Integer> getPipeTaskRegionIdSet(final String pipeName, final long creationTime) {
@@ -655,6 +646,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
+    acquireReadLock();
+    try {
+      return pipeTaskManager.getPipeTask(consensusGroupId).isEmpty();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   ///////////////////////// Pipe Consensus /////////////////////////
