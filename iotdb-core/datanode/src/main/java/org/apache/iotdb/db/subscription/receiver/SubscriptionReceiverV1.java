@@ -456,7 +456,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // filter unsubscribed topics
     topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
-    return SubscriptionAgent.broker().poll(consumerConfig, topicNames);
+    return SubscriptionAgent.broker()
+        .poll(consumerConfig, topicNames, messagePayload.getMaxBytes());
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileInternal(

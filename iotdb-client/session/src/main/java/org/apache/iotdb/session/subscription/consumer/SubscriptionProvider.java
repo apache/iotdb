@@ -29,8 +29,10 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionExcepti
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
@@ -279,6 +281,15 @@ final class SubscriptionProvider extends SubscriptionSession {
     final PipeSubscribeUnsubscribeResp unsubscribeResp =
         PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
     return unsubscribeResp.getTopics();
+  }
+
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeout)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL.getType(),
+            new PollPayload(topicNames, thriftMaxFrameSize),
+            timeout));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

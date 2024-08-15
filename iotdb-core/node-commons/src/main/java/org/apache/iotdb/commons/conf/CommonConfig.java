@@ -269,7 +269,7 @@ public class CommonConfig {
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
   private long subscriptionReadFileBufferSize = 8 * MB;
-  private long subscriptionReadTabletBufferSize = 16 * MB;
+  private long subscriptionReadTabletBufferSize = 2 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
 
   // default to SessionConfig.DEFAULT_MAX_FRAME_SIZE

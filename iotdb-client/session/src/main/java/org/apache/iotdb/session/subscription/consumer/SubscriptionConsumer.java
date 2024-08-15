@@ -32,7 +32,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
@@ -46,7 +45,6 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 import org.apache.iotdb.session.subscription.util.RandomStringGenerator;
 import org.apache.iotdb.session.subscription.util.SubscriptionPollTimer;
-import org.apache.iotdb.session.subscription.util.TopicIterator;
 import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.tsfile.write.record.Tablet;
@@ -105,8 +103,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
-  private final TopicIterator topicIterator;
-
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
@@ -160,9 +156,6 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
-
-    // TODO: config
-    this.topicIterator = new TopicIterator(2);
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -422,8 +415,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     do {
       try {
         // poll tablets or file
-        for (final SubscriptionPollResponse pollResponse :
-            pollInternal(topicIterator.nextBatch(topicNames))) {
+        for (final SubscriptionPollResponse pollResponse : pollInternal(topicNames)) {
           final short responseType = pollResponse.getResponseType();
           if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
             LOGGER.warn("unexpected response type: {}", responseType);
@@ -783,9 +775,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(
-            new SubscriptionPollRequest(
-                SubscriptionPollRequestType.POLL.getType(), new PollPayload(topicNames), 0L));
+        return provider.poll(topicNames, 0L);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }

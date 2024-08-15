@@ -46,7 +46,7 @@ public class SubscriptionBrokerAgent {
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+      final ConsumerConfig consumerConfig, final Set<String> topicNames, final long maxBytes) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -58,7 +58,7 @@ public class SubscriptionBrokerAgent {
     }
     // TODO: currently we fetch messages from all topics
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.poll(consumerId, topicNames);
+    return broker.poll(consumerId, topicNames, maxBytes);
   }
 
   public List<SubscriptionEvent> pollTsFile(
