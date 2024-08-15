@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -46,8 +47,10 @@ public class TsFileResourceCandidate {
   private Map<IDeviceID, DeviceInfo> deviceInfoMap;
 
   private boolean hasDetailedDeviceInfo;
+  private CompactionScheduleContext compactionScheduleContext;
 
-  protected TsFileResourceCandidate(TsFileResource tsFileResource) {
+  protected TsFileResourceCandidate(
+      TsFileResource tsFileResource, CompactionScheduleContext context) {
     this.resource = tsFileResource;
     this.selected = false;
     // although we do the judgement here, the task should be validated before executing because
@@ -55,6 +58,7 @@ public class TsFileResourceCandidate {
     this.isValidCandidate =
         tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
             && tsFileResource.getTsFileRepairStatus() == TsFileRepairStatus.NORMAL;
+    this.compactionScheduleContext = context;
   }
 
   /**
@@ -67,6 +71,10 @@ public class TsFileResourceCandidate {
   }
 
   private void prepareDeviceInfos() throws IOException {
+    if (deviceInfoMap == null && compactionScheduleContext != null) {
+      // get device info from cache
+      deviceInfoMap = compactionScheduleContext.getResourceDeviceInfo(this.resource);
+    }
     if (deviceInfoMap != null) {
       return;
     }
@@ -98,6 +106,9 @@ public class TsFileResourceCandidate {
       }
     }
     hasDetailedDeviceInfo = true;
+    if (compactionScheduleContext != null) {
+      compactionScheduleContext.addResourceDeviceTimeIndex(this.resource, deviceInfoMap);
+    }
   }
 
   public void markAsSelected() {

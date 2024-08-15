@@ -451,7 +451,7 @@ cn_max_client_count_for_each_node_in_client_manager=300
 # Datatype: int
 dn_session_timeout_threshold=0
 
-# weather enable thrift compression
+# whether enable thrift compression
 # effectiveMode: restart
 # Datatype: boolean
 dn_rpc_thrift_compression_enable=false
@@ -1866,6 +1866,48 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # effectiveMode: hot_reload
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
+
+# Whether to enable the active listening mode for tsfile loading.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+load_active_listening_enable=true
+
+# The directory to be actively listened for tsfile loading.
+# Multiple directories should be separated by a ','.
+# The default directory is 'ext/load/pending'.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_dirs=ext\\load\\pending
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_dirs=ext/load/pending
+
+# The directory where tsfile are moved if the active listening mode fails to load them.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_fail_dir=ext\\load\\failed
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_fail_dir=ext/load/failed
+
+# The maximum number of threads that can be used to load tsfile actively.
+# The default value, when this parameter is commented out, is the minimum of 8 or the number of CPU cores.
+# effectiveMode: restart
+# Datatype: int
+load_active_listening_max_thread_num=8
+
+# The interval specified in seconds for the active listening mode to check the directory specified in load_active_listening_dirs.
+# The active listening mode will check the directory every load_active_listening_check_interval_seconds seconds.
+# effectiveMode: restart
+# Datatype: int
+load_active_listening_check_interval_seconds=5
 
 ####################
 ### Dispatch Retry Configuration
