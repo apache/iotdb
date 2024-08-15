@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -721,6 +722,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
     private long tsFileDevice2IsAlignedMemoryUsageSizeInBytes = 0;
     private long alreadySetDatabasesMemoryUsageSizeInBytes = 0;
+    private long currentModificationsMemoryUsageSizeInBytes = 0;
+    private long currentTimeIndexMemoryUsageSizeInBytes = 0;
 
     private int currentBatchTimeSeriesCount = 0;
 
@@ -731,6 +734,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
       this.tsFileDevice2IsAligned = new HashMap<>();
       this.alreadySetDatabases = new HashSet<>();
+      this.currentModifications = new ArrayList<>();
     }
 
     public Map<IDeviceID, Set<MeasurementSchema>> getDevice2TimeSeries() {
@@ -787,15 +791,21 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
+      clearModificationsAndTimeIndex();
+
       currentModifications = resource.getModFile().getModifications();
+      for (final Modification modification : currentModifications) {
+        currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
+      }
+      block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 
       if (resource.resourceFileExists()) {
         currentTimeIndex = resource.getTimeIndex();
         if (currentTimeIndex instanceof FileTimeIndex) {
           currentTimeIndex = resource.buildDeviceTimeIndex();
         }
-      } else {
-        currentTimeIndex = null;
+        currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
+        block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
       }
     }
 
@@ -847,6 +857,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       currentBatchTimeSeriesCount = 0;
     }
 
+    public void clearModificationsAndTimeIndex() {
+      currentModifications.clear();
+      currentTimeIndex = null;
+      block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
+      block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
+      currentModificationsMemoryUsageSizeInBytes = 0;
+      currentTimeIndexMemoryUsageSizeInBytes = 0;
+    }
+
     public void clearAlignedCache() {
       tsFileDevice2IsAligned.clear();
       block.reduceMemoryUsage(tsFileDevice2IsAlignedMemoryUsageSizeInBytes);
@@ -884,6 +903,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void close() {
       clearTimeSeries();
+      clearModificationsAndTimeIndex();
       clearAlignedCache();
       clearDatabasesCache();
 
