@@ -31,6 +31,7 @@ import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.exceptions.RaftException;
 import org.apache.ratis.retry.ExponentialBackoffRetry;
+import org.apache.ratis.retry.MultipleLinearRandomRetry;
 import org.apache.ratis.retry.RetryPolicy;
 import org.apache.ratis.thirdparty.io.grpc.StatusRuntimeException;
 import org.apache.ratis.util.TimeDuration;
@@ -120,6 +121,48 @@ class RatisClient implements AutoCloseable {
     }
   }
 
+  static class EndlessRetryFactory extends BaseClientFactory<RaftGroup, RatisClient> {
+
+    private final RaftProperties raftProperties;
+    private final RaftClientRpc clientRpc;
+    private final RatisConfig.Client config;
+
+    public EndlessRetryFactory(
+        ClientManager<RaftGroup, RatisClient> clientManager,
+        RaftProperties raftProperties,
+        RaftClientRpc clientRpc,
+        RatisConfig.Client config) {
+      super(clientManager);
+      this.raftProperties = raftProperties;
+      this.clientRpc = clientRpc;
+      this.config = config;
+    }
+
+    @Override
+    public void destroyObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
+      pooledObject.getObject().invalidate();
+    }
+
+    @Override
+    public PooledObject<RatisClient> makeObject(RaftGroup group) {
+      return new DefaultPooledObject<>(
+          new RatisClient(
+              group,
+              RaftClient.newBuilder()
+                  .setProperties(raftProperties)
+                  .setRaftGroup(group)
+                  .setRetryPolicy(new RatisEndlessRetryPolicy())
+                  .setClientRpc(clientRpc)
+                  .build(),
+              clientManager));
+    }
+
+    @Override
+    public boolean validateObject(RaftGroup key, PooledObject<RatisClient> pooledObject) {
+      return true;
+    }
+  }
+
   /**
    * RatisRetryPolicy is similar to ExceptionDependentRetry 1. By default, use
    * ExponentialBackoffRetry to handle request failure 2. If unexpected IOException is caught,
@@ -146,6 +189,48 @@ class RatisClient implements AutoCloseable {
               .setMaxAttempts(config.getClientMaxRetryAttempt())
               .build();
     }
+
+    @Override
+    public Action handleAttemptFailure(Event event) {
+      // Ratis guarantees that event.getCause() is instance of IOException.
+      // We should allow RaftException or IOException(StatusRuntimeException, thrown by gRPC) to be
+      // retried.
+      Optional<Throwable> unexpectedCause =
+          Optional.ofNullable(event.getCause())
+              .filter(RaftException.class::isInstance)
+              .map(Throwable::getCause)
+              .filter(StatusRuntimeException.class::isInstance);
+
+      if (unexpectedCause.isPresent()) {
+        logger.info(
+            "{}: raft client request failed and caught exception: ", this, unexpectedCause.get());
+        return NO_RETRY_ACTION;
+      }
+
+      return defaultPolicy.handleAttemptFailure(event);
+    }
+  }
+
+  // This policy is used to raft configuration change
+  private static class RatisEndlessRetryPolicy implements RetryPolicy {
+
+    private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
+    private static final RetryPolicy defaultPolicy;
+
+    static {
+      String str = "";
+      // 50, 500ms, 40, 1000ms, 30, 1500ms, 20, 2000ms, 10, 2500ms
+      int basicRetry = 50;
+      int basicSleep = 500;
+      for (int i = 0; i < 5; i++) {
+        str += basicRetry + "," + basicSleep + ",";
+      }
+
+      defaultPolicy =
+          MultipleLinearRandomRetry.parseCommaSeparated(str.substring(0, str.length() - 1));
+    }
+
+    RatisEndlessRetryPolicy() {}
 
     @Override
     public Action handleAttemptFailure(Event event) {
