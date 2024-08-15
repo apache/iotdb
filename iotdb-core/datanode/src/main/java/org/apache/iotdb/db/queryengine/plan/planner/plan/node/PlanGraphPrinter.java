@@ -728,6 +728,17 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     return render(node, boxValue, context);
   }
 
+  @Override
+  public List<String> visitJoin(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    boxValue.add(String.format("JoinCriteria: %s", node.getCriteria()));
+    return render(node, boxValue, context);
+  }
+
   private String printRegion(TRegionReplicaSet regionReplicaSet) {
     return String.format(
         "Partition: %s",
