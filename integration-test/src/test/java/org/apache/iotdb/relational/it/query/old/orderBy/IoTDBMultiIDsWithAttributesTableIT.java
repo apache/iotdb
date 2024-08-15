@@ -36,13 +36,12 @@ import java.sql.Statement;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.fail;
 
+/** In this IT, table has more than one IDs and Attributes. */
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBStreamSortIT {
+public class IoTDBMultiIDsWithAttributesTableIT {
   private static final String DATABASE_NAME = "db";
 
-  // the data can be viewed in
-  // https://docs.google.com/spreadsheets/d/1OWA1bKraArCwWVnuTjuhJ5yLG0PFLdD78gD6FjquepI/edit#gid=0
   private static final String[] sql1 =
       new String[] {
         "CREATE DATABASE db",
@@ -111,6 +110,111 @@ public class IoTDBStreamSortIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void onlyQueryAttribute2Test() {
+    String[] expectedHeader =
+        new String[] {
+          "time", "device", "attr2", "num", "str",
+        };
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,d2,c,3,coconut,",
+          "1970-01-01T00:00:00.020Z,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.040Z,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.080Z,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d2,null,8,papaya,",
+          "1971-01-01T00:00:00.000Z,d1,d,6,banana,",
+          "1971-01-01T00:00:00.000Z,d2,c,6,banana,",
+          "1971-01-01T00:00:00.100Z,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,null,5,orange,",
+          "1971-01-01T00:00:10.000Z,d1,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d2,null,7,lemon,",
+          "1971-01-01T00:01:40.000Z,d1,d,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d2,c,11,pitaya,",
+          "1971-04-26T17:46:40.000Z,d1,zz,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d2,null,12,strawberry,",
+          "1971-04-26T17:46:40.020Z,d1,a,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d2,null,14,cherry,",
+          "1971-04-26T18:01:40.000Z,d1,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d2,null,13,lychee,",
+          "1971-08-20T11:33:20.000Z,d1,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d2,null,15,watermelon,",
+        };
+    tableResultSetEqualTest(
+        "select time, device, attr2, num, str from table0 order by time, device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "time", "num", "str",
+        };
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.040Z,1,apricot,",
+          "1971-01-01T00:00:00.500Z,4,peach,",
+          "1971-04-26T17:46:40.020Z,14,cherry,",
+          "1970-01-01T00:00:00.000Z,3,coconut,",
+          "1971-01-01T00:00:00.000Z,6,banana,",
+          "1971-01-01T00:01:40.000Z,11,pitaya,",
+          "1970-01-01T00:00:00.000Z,3,coconut,",
+          "1971-01-01T00:00:00.000Z,6,banana,",
+          "1971-01-01T00:01:40.000Z,11,pitaya,",
+          "1970-01-01T00:00:00.020Z,2,pineapple,",
+          "1971-01-01T00:00:00.100Z,10,pumelo,",
+          "1971-04-26T17:46:40.000Z,12,strawberry,",
+          "1970-01-01T00:00:00.100Z,8,papaya,",
+          "1970-01-01T00:00:00.080Z,9,apple,",
+          "1971-01-01T00:00:10.000Z,7,lemon,",
+          "1971-01-01T00:00:01.000Z,5,orange,",
+          "1971-08-20T11:33:20.000Z,15,watermelon,",
+          "1971-04-26T18:01:40.000Z,13,lychee,",
+          "1970-01-01T00:00:00.020Z,2,pineapple,",
+          "1970-01-01T00:00:00.040Z,1,apricot,",
+          "1971-01-01T00:00:00.100Z,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,4,peach,",
+          "1971-04-26T17:46:40.000Z,12,strawberry,",
+          "1971-04-26T17:46:40.020Z,14,cherry,",
+          "1970-01-01T00:00:00.080Z,9,apple,",
+          "1970-01-01T00:00:00.100Z,8,papaya,",
+          "1971-01-01T00:00:01.000Z,5,orange,",
+          "1971-01-01T00:00:10.000Z,7,lemon,",
+          "1971-04-26T18:01:40.000Z,13,lychee,",
+          "1971-08-20T11:33:20.000Z,15,watermelon,",
+        };
+    tableResultSetEqualTest(
+        "select time, num, str from table0 order by attr2, device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader =
+        new String[] {
+          "time", "device", "num", "str",
+        };
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d1,3,coconut,",
+          "1971-01-01T00:00:00.000Z,d1,6,banana,",
+          "1971-01-01T00:01:40.000Z,d1,11,pitaya,",
+        };
+    tableResultSetEqualTest(
+        "select time, device, num, str from table0 where attr2 = 'd' order by time,device",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test

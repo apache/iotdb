@@ -201,8 +201,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private SplitExpression splitPredicate(TableScanNode node) {
-      Set<String> idOrAttributeColumnNames = new HashSet<>();
-      Set<String> measurementColumnNames = new HashSet<>();
+      Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
+      Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
       for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
         ColumnSchema columnSchema = entry.getValue();
