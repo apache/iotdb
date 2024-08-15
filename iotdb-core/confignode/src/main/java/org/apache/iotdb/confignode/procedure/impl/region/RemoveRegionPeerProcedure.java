@@ -112,6 +112,7 @@ public class RemoveRegionPeerProcedure
       switch (state) {
         case TRANSFER_REGION_LEADER:
           handleTransferLeader(handler);
+          setKillPoint(state);
           setNextState(REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
