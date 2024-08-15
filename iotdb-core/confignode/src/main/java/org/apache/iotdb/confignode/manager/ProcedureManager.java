@@ -609,7 +609,7 @@ public class ProcedureManager {
   }
 
   // region region migration
-  public TSStatus checkRegionMigrate(
+  private TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
       TDataNodeLocation originalDataNode,
