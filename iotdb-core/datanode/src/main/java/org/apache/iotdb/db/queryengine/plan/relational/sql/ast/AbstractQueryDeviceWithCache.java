@@ -24,13 +24,11 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,20 +97,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
         .collect(Collectors.toList());
   }
 
-  public DatasetHeader getDataSetHeader() {
-    return new DatasetHeader(columnHeaderList, true);
-  }
+  public abstract DatasetHeader getDataSetHeader();
 
-  public TsBlock getTsBlock() {
-    final TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(
-            columnHeaderList.stream()
-                .map(ColumnHeader::getColumnType)
-                .collect(Collectors.toList()));
-    results.forEach(
-        result ->
-            TableDeviceQuerySource.transformToTsBlockColumns(
-                result, tsBlockBuilder, database, tableName, columnHeaderList, 1));
-    return tsBlockBuilder.build();
-  }
+  public abstract TsBlock getTsBlock();
 }
