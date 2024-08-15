@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -71,13 +70,7 @@ public class InsertTablet extends WrappedInsertStatement {
   @Override
   public List<String> getAttributeColumnNameList() {
     final InsertTabletStatement insertTabletStatement = getInnerTreeStatement();
-    List<String> result = new ArrayList<>();
-    for (int i = 0; i < insertTabletStatement.getColumnCategories().length; i++) {
-      if (insertTabletStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-        result.add(insertTabletStatement.getMeasurements()[i]);
-      }
-    }
-    return result;
+    return insertTabletStatement.getAttributeColumnNameList();
   }
 
   @Override
