@@ -365,8 +365,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
     } else {
       FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
-      LOGGER.info(
-          "Moved file {} to fail directory {}.", sourceFile.getName(), targetDir.getAbsolutePath());
     }
   }
 
