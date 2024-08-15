@@ -47,7 +47,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
@@ -61,7 +60,6 @@ public class RemoveRegionPeerProcedure
   private TConsensusGroupId consensusGroupId;
   private TDataNodeLocation coordinator;
   private TDataNodeLocation targetDataNode;
-  private Optional<TDataNodeLocation> destDataNode;
 
   public RemoveRegionPeerProcedure() {
     super();
@@ -71,19 +69,9 @@ public class RemoveRegionPeerProcedure
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation coordinator,
       TDataNodeLocation targetDataNode) {
-    this(consensusGroupId, coordinator, targetDataNode, Optional.empty());
-  }
-
-  public RemoveRegionPeerProcedure(
-      TConsensusGroupId consensusGroupId,
-      TDataNodeLocation coordinator,
-      TDataNodeLocation targetDataNode,
-      Optional<TDataNodeLocation> destDataNode) {
-    super();
     this.consensusGroupId = consensusGroupId;
     this.coordinator = coordinator;
     this.targetDataNode = targetDataNode;
-    this.destDataNode = destDataNode;
   }
 
   private void handleTransferLeader(RegionMaintainHandler handler)
@@ -96,7 +84,7 @@ public class RemoveRegionPeerProcedure
     handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
     List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
     excludeDataNode.add(targetDataNode);
-    destDataNode.ifPresent(excludeDataNode::add);
+    excludeDataNode.add(coordinator);
     handler.transferRegionLeader(consensusGroupId, targetDataNode, excludeDataNode);
   }
 

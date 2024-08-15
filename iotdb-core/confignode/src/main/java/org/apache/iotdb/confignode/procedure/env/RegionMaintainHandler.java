@@ -453,7 +453,7 @@ public class RegionMaintainHandler {
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
     configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
-    // configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+    configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
   }
 
   /**

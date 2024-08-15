@@ -597,7 +597,6 @@ class RatisConsensus implements IConsensus {
   @Override
   public void transferLeader(ConsensusGroupId groupId, Peer newLeader) throws ConsensusException {
     // first fetch the newest information
-    logger.info("transfer consensusGroup {} leader to {}", groupId, newLeader);
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup raftGroup =
         Optional.ofNullable(getGroupInfo(raftGroupId))
@@ -609,11 +608,10 @@ class RatisConsensus implements IConsensus {
     final RaftClientReply reply;
     try {
       Peer leader = getLeader(groupId);
-      logger.info("oldleader {}", leader);
       if (leader != null) {
         if (leader.getNodeId() == newLeader.getNodeId()
             && leader.getGroupId() == newLeader.getGroupId()) {
-          logger.info("leader {} is already the leader of group {}", newLeader, groupId);
+          logger.info("Don't need to transfer groupd {} leader to {}", groupId, newLeader);
           return;
         }
       }
@@ -913,7 +911,6 @@ class RatisConsensus implements IConsensus {
           logger.info("reConfiguration success");
           break;
         }
-        logger.warn("setConfiguration ReplyException is: {}", reply.getException().toString());
         if (reply.getException() instanceof ReconfigurationInProgressException
             || reply.getException() instanceof LeaderSteppingDownException
             || reply.getException() instanceof TransferLeadershipException) {
