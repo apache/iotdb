@@ -27,10 +27,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -54,28 +51,20 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
-  private final Expression idFuzzyPredicate;
-
   private final List<ColumnHeader> columnHeaderList;
   private final DevicePredicateFilter filter;
-
-  private final TsTable table;
 
   public TableDeviceQuerySource(
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final DevicePredicateFilter filter) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
-    this.idFuzzyPredicate = idFuzzyPredicate;
     this.columnHeaderList = columnHeaderList;
     this.filter = filter;
-
-    this.table = DataNodeTableCache.getInstance().getTable(database, tableName);
   }
 
   @Override
@@ -139,11 +128,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
           }
 
           while (index < devicePatternList.size()) {
-            deviceReader =
-                schemaRegion.getTableDeviceReader(
-                    new ShowTableDevicesPlan(
-                        devicePatternList.get(index),
-                        getExecutableIdFuzzyFilter(idFuzzyPredicate)));
+            deviceReader = schemaRegion.getTableDeviceReader(devicePatternList.get(index));
             index++;
             if (deviceReader.hasNext()) {
               return true;
@@ -195,16 +180,6 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         tableName,
         DataNodeTableCache.getInstance().getTable(database, tableName).getIdNums(),
         idDeterminedPredicateList);
-  }
-
-  private SchemaFilter getExecutableIdFuzzyFilter(final Expression idFuzzyExpression) {
-    if (idFuzzyExpression == null) {
-      return null;
-    }
-    final ConvertSchemaPredicateToFilterVisitor visitor =
-        new ConvertSchemaPredicateToFilterVisitor();
-    return visitor.process(
-        idFuzzyExpression, new ConvertSchemaPredicateToFilterVisitor.Context(table));
   }
 
   @Override

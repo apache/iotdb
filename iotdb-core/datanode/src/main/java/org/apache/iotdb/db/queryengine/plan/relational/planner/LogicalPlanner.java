@@ -307,7 +307,7 @@ public class LogicalPlanner {
     }
 
     if (!analysis.isFailed()) {
-      analysis.setRespDatasetHeader(new DatasetHeader(statement.getColumnHeaderList(), true));
+      analysis.setRespDatasetHeader(statement.getDataSetHeader());
     }
   }
 

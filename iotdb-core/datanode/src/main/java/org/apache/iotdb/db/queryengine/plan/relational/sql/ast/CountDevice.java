@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -28,15 +29,18 @@ import java.util.Collections;
 
 public class CountDevice extends AbstractQueryDeviceWithCache {
 
+  public static final String COUNT_DEVICE_HEADER_STRING = "count(devices)";
+
   // For sql-input show device usage
   public CountDevice(final QualifiedName name, final Expression rawExpression) {
     super(name, rawExpression);
   }
 
   @Override
-  public void setColumnHeaderList() {
-    columnHeaderList =
-        Collections.singletonList(new ColumnHeader("count(devices)", TSDataType.INT64));
+  public DatasetHeader getDataSetHeader() {
+    return new DatasetHeader(
+        Collections.singletonList(new ColumnHeader(COUNT_DEVICE_HEADER_STRING, TSDataType.INT64)),
+        true);
   }
 
   @Override

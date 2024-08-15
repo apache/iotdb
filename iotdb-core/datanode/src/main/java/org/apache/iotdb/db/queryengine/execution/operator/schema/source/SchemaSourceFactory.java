@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -113,10 +112,9 @@ public class SchemaSourceFactory {
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedFilterList,
-      final Expression idFuzzyFilter,
       final List<ColumnHeader> columnHeaderList,
       final DevicePredicateFilter filter) {
     return new TableDeviceQuerySource(
-        database, tableName, idDeterminedFilterList, idFuzzyFilter, columnHeaderList, filter);
+        database, tableName, idDeterminedFilterList, columnHeaderList, filter);
   }
 }

@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -460,7 +459,7 @@ public class SchemaRegionTestUtil {
     final List<IDeviceSchemaInfo> result = new ArrayList<>();
     for (final PartialPath pattern : patternList) {
       try (final ISchemaReader<IDeviceSchemaInfo> reader =
-          schemaRegion.getTableDeviceReader(new ShowTableDevicesPlan(pattern, idFuzzyFilter))) {
+          schemaRegion.getTableDeviceReader(pattern)) {
         while (reader.hasNext()) {
           result.add(reader.next());
         }

@@ -787,7 +787,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getDatabase(),
             node.getTableName(),
             node.getIdDeterminedFilterList(),
-            node.getIdFuzzyPredicate(),
             node.getColumnHeaderList(),
             null));
   }
@@ -809,7 +808,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getDatabase(),
             node.getTableName(),
             node.getIdDeterminedFilterList(),
-            node.getIdFuzzyPredicate(),
             node.getColumnHeaderList(),
             Objects.nonNull(node.getIdFuzzyPredicate())
                 ? new DevicePredicateFilter(

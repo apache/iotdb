@@ -17,6 +17,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
@@ -34,11 +37,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 
 public class TableModelTypeProviderExtractor {
 
@@ -85,7 +91,25 @@ public class TableModelTypeProviderExtractor {
     }
 
     @Override
+    public Void visitCountMerge(final CountSchemaMergeNode node, final Void context) {
+      beTypeProvider.putTableModelType(
+          new Symbol(COUNT_DEVICE_HEADER_STRING), TypeFactory.getType(TSDataType.INT64));
+      node.getChildren().forEach(schemaCount -> schemaCount.accept(this, context));
+      return null;
+    }
+
+    @Override
     public Void visitTableDeviceQueryScan(final TableDeviceQueryScanNode node, final Void context) {
+      return visitAbstractTableDeviceQueryNode(node);
+    }
+
+    @Override
+    public Void visitTableDeviceQueryCount(
+        final TableDeviceQueryCountNode node, final Void context) {
+      return visitAbstractTableDeviceQueryNode(node);
+    }
+
+    private Void visitAbstractTableDeviceQueryNode(final AbstractTableDeviceQueryNode node) {
       node.getColumnHeaderList()
           .forEach(
               columnHeader ->
