@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
@@ -143,5 +144,11 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
     InsertMultiTabletsStatement splitResult = new InsertMultiTabletsStatement();
     splitResult.setInsertTabletStatementList(mergedList);
     return splitResult;
+  }
+
+  @TableModel
+  @Override
+  public void measurementsToLowerCase() {
+    insertTabletStatementList.forEach(InsertTabletStatement::measurementsToLowerCase);
   }
 }

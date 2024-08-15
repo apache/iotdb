@@ -417,9 +417,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
-    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableName}));
-    databaseName.ifPresent(insertRowsStatement::setDatabaseName);
-    insertRowsStatement.setMeasurements(columnNameArray);
     return new InsertRows(insertRowsStatement, null);
   }
 
