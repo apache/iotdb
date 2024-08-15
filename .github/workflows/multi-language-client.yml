@@ -44,25 +44,25 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
       - uses: actions/checkout@v4
       - name: Install CPP Dependencies (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install libboost-all-dev
       - name: Install CPP Dependencies (Mac)
-        if: matrix.os == 'macos-latest'
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost
           brew install bison
       - name: Install CPP Dependencies (Windows)
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows'
         run: |
           choco install winflexbison3
           choco install boost-msvc-14.3
@@ -82,7 +82,12 @@ jobs:
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
+          else
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+          fi
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4

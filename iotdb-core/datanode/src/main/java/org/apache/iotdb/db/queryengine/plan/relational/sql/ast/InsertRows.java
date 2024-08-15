@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
@@ -80,13 +81,16 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = getDatabase();
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
       final TableSchema realSchema =
           metadata
-              .validateTableHeaderSchema(databaseName, incomingTableSchema, context, false)
+              .validateTableHeaderSchema(
+                  AnalyzeUtils.getDatabaseName(insertRowStatement, context),
+                  incomingTableSchema,
+                  context,
+                  false)
               .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(
@@ -110,12 +114,12 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public String getDatabase() {
-        return InsertRows.this.getDatabase();
+        return AnalyzeUtils.getDatabaseName(insertRowStatement, context);
       }
 
       @Override
       public String getTableName() {
-        return InsertRows.this.getTableName();
+        return insertRowStatement.getTableDeviceID().getTableName();
       }
 
       @Override
@@ -126,13 +130,7 @@ public class InsertRows extends WrappedInsertStatement {
 
       @Override
       public List<String> getAttributeColumnNameList() {
-        List<String> attributeColumnNameList = new ArrayList<>();
-        for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
-          if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-            attributeColumnNameList.add(insertRowStatement.getMeasurements()[i]);
-          }
-        }
-        return attributeColumnNameList;
+        return insertRowStatement.getAttributeColumnNameList();
       }
 
       @Override
