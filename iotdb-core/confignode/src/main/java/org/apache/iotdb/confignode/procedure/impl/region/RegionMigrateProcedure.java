@@ -207,7 +207,7 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
       coordinatorForAddPeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinatorForRemovePeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-        super.procedureEndHook();
+      super.procedureEndHook();
       LOGGER.warn(
           "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.",
           this.getClass(),
