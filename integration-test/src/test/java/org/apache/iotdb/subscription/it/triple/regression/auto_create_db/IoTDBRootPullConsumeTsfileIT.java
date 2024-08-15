@@ -75,8 +75,8 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionRegression
     } catch (Exception e) {
     }
     subs.dropTopic(topicName);
-    session_src.executeNonQueryStatement("drop database root.auto_create_db.**");
-    session_src.executeNonQueryStatement("drop database root.RootPullConsumeTsfile.**");
+    session_src.executeNonQueryStatement("drop database root.auto_create_db");
+    session_src.executeNonQueryStatement("drop database root.RootPullConsumeTsfile");
     super.tearDown();
   }
 

@@ -86,7 +86,9 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionRegres
     } catch (Exception e) {
     }
     subs.dropTopic(topicName);
-    session_src.executeNonQueryStatement("drop database " + databasePrefix + "*.**");
+    for (int i = 0; i < deviceCount; i++) {
+      session_src.executeNonQueryStatement("drop database " + databasePrefix + i);
+    }
     super.tearDown();
   }
 

@@ -67,8 +67,10 @@ public class IoTDBDefaultPullConsumerDataSetIT extends AbstractSubscriptionRegre
   public void tearDown() throws Exception {
     consumer.close();
     subs.dropTopic(topicName);
-    session_src.executeNonQueryStatement("drop database " + databasePrefix + "*.**");
-    session_dest.executeNonQueryStatement("drop database " + databasePrefix + "*.**");
+    for (int i = 0; i < deviceCount; i++) {
+      session_src.executeNonQueryStatement("drop database " + databasePrefix + i);
+      session_dest.executeNonQueryStatement("drop database " + databasePrefix + i);
+    }
     super.tearDown();
   }
 
