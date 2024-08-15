@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
-
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
-
 public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   public ShowDevice(final QualifiedName name, final Expression rawExpression) {
@@ -31,14 +27,6 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   public ShowDevice(final String database, final String tableName) {
     super(database, tableName);
-  }
-
-  @Override
-  protected void buildTsBlock(final TsBlockBuilder tsBlockBuilder) {
-    results.forEach(
-        result ->
-            TableDeviceQuerySource.transformToTsBlockColumns(
-                result, tsBlockBuilder, database, tableName, columnHeaderList, 1));
   }
 
   @Override

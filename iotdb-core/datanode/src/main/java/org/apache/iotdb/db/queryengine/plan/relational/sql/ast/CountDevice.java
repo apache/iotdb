@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.Collections;
@@ -44,10 +45,13 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   }
 
   @Override
-  protected void buildTsBlock(final TsBlockBuilder tsBlockBuilder) {
+  public TsBlock getTsBlock() {
+    final TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeLong(results.size());
     tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.build();
   }
 
   @Override
