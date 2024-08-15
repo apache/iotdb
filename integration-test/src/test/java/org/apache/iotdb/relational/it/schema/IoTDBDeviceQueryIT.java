@@ -97,6 +97,15 @@ public class IoTDBDeviceQueryIT {
               "count devices from table0 where region_id = '1' or plant_id like '%'"),
           "count(devices),",
           Collections.singleton("1,"));
+      // Test cross column
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from table0 where region_id < plant_id"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,A,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from table0 where region_id < plant_id"),
+          "count(devices),",
+          Collections.singleton("1,"));
       // Test get from cache
       statement.executeQuery(
           "select * from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'");
