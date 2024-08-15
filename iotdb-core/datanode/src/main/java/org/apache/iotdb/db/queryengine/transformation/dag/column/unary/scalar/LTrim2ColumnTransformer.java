@@ -62,6 +62,9 @@ public class LTrim2ColumnTransformer extends BinaryColumnTransformer {
 
     while (start < source.length() && character.indexOf(source.charAt(start)) >= 0) start++;
 
+    if (start >= source.length()) {
+      return "";
+    }
     return source.substring(start);
   }
 }

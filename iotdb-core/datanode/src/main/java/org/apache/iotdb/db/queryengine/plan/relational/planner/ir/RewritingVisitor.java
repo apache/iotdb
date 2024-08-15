@@ -34,8 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 
 import java.util.ArrayList;
@@ -206,11 +206,12 @@ public class RewritingVisitor<C> extends IrVisitor<Expression, C> {
     expectedArguments.add(node.getTrimSource());
     node.getTrimCharacter().ifPresent(expectedArguments::add);
     List<Expression> actualArguments = new ArrayList<>();
-    actualArguments.add(process(node.getTrimSource(),context));
+    actualArguments.add(process(node.getTrimSource(), context));
     node.getTrimCharacter().ifPresent(argument -> actualArguments.add(process(argument, context)));
 
     if (!sameElements(expectedArguments, actualArguments)) {
-      return new FunctionCall(QualifiedName.of(node.getSpecification().getFunctionName()), actualArguments);
+      return new FunctionCall(
+          QualifiedName.of(node.getSpecification().getFunctionName()), actualArguments);
     }
     return node;
   }

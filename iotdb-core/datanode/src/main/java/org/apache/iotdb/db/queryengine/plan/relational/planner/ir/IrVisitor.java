@@ -75,7 +75,7 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
     return visitExpression(node, context);
   }
 
-  protected R visitTrim(Trim node, C context){
+  protected R visitTrim(Trim node, C context) {
     return visitExpression(node, context);
   }
 

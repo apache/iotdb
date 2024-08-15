@@ -37,13 +37,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -424,10 +424,10 @@ public final class ExpressionTreeRewriter<C> {
     }
 
     @Override
-    public Expression visitTrim(Trim node, Context<C> context){
-      if (!context.isDefaultRewrite()){
+    public Expression visitTrim(Trim node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
         Expression result = rewriter.rewriteTrim(node, context.get(), ExpressionTreeRewriter.this);
-        if (result != null){
+        if (result != null) {
           return result;
         }
       }
@@ -436,8 +436,9 @@ public final class ExpressionTreeRewriter<C> {
       ExpectedArguments.add(node.getTrimSource());
       node.getTrimCharacter().ifPresent(ExpectedArguments::add);
       List<Expression> ActualArguments = rewrite(ExpectedArguments, context);
-      if(!sameElements(ActualArguments, ExpectedArguments)){
-        return new FunctionCall(QualifiedName.of(node.getSpecification().getFunctionName()), ActualArguments);
+      if (!sameElements(ActualArguments, ExpectedArguments)) {
+        return new FunctionCall(
+            QualifiedName.of(node.getSpecification().getFunctionName()), ActualArguments);
       }
       return node;
     }

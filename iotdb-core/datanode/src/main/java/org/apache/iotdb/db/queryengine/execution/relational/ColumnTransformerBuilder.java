@@ -103,11 +103,13 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.En
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExpColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.FloorColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrim2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LengthColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LnColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Log10ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LowerColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrim2ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RadiansColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLike2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLikeColumnTransformer;
@@ -678,11 +680,11 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.LTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new TrimColumnTransformer(first.getType(), first, " ");
+        return new LTrimColumnTransformer(first.getType(), first, " ");
       } else {
         // children.size() == 2
         if (isStringLiteral(children.get(1))) {
-          return new TrimColumnTransformer(
+          return new LTrimColumnTransformer(
               first.getType(), first, ((StringLiteral) children.get(1)).getValue());
         } else {
           return new LTrim2ColumnTransformer(
@@ -692,11 +694,11 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.RTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new TrimColumnTransformer(first.getType(), first, " ");
+        return new RTrimColumnTransformer(first.getType(), first, " ");
       } else {
         // children.size() == 2
         if (isStringLiteral(children.get(1))) {
-          return new TrimColumnTransformer(
+          return new RTrimColumnTransformer(
               first.getType(), first, ((StringLiteral) children.get(1)).getValue());
         } else {
           return new RTrim2ColumnTransformer(

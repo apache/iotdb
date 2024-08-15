@@ -52,12 +52,9 @@ public class IoTDBConcatFunctionTableIT {
         "INSERT INTO table1(Time,device_id,s1) values(2, 'd1', 'Test')",
         "INSERT INTO table1(Time,device_id,s1) values(3, 'd1', 'efgh')",
         "INSERT INTO table1(Time,device_id,s1) values(4, 'd1', null)",
-        "INSERT INTO table1(Time,device_id,s1) values(5, 'd1', null)",
         "INSERT INTO table1(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO table1(Time,device_id,s9) values(3, 'd1', 'efgh')",
-        "INSERT INTO table1(Time,device_id,s9) values(4, 'd1', null)",
-        "INSERT INTO table1(Time,device_id,s9) values(5, 'd1', 'haha')",
-        "INSERT INTO table1(Time,device_id,s2) values(4, 'd1', 2)",
+        "INSERT INTO table1(Time,device_id,s9) values(4, 'd1', 'haha')",
         "flush"
       };
 
@@ -87,60 +84,28 @@ public class IoTDBConcatFunctionTableIT {
   @Test
   public void testNormalTransformer() {
     // support the (measurement, ConstantArgument)
-    String[] expectedHeader = new String[] {"time", "s1", "s9", "s2"};
+    String[] expectedHeader = new String[] {"time", "s1", "_col2", "s9", "_col4"};
     String[] retArray =
-            new String[] {
-                    "1970-01-01T00:00:00.001Z,abcd,ab,1,",
-                    "1970-01-01T00:00:00.002Z,Test,Test,null,",
-                    "1970-01-01T00:00:00.003Z,efgh,efgh,null,",
-                    "1970-01-01T00:00:00.004Z,null,null,2,",
-                    "1970-01-01T00:00:00.005Z,null,haha,null,",
-            };
-    tableResultSetEqualTest(
-            "select time,s1,s9,s2 from table1",
-            expectedHeader,
-            retArray,
-            DATABASE_NAME);
-
-    expectedHeader = new String[] {"time", "s1", "s9"};
-    retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,abcd,ab,",
-          "1970-01-01T00:00:00.002Z,Test,Test,",
-          "1970-01-01T00:00:00.003Z,efgh,efgh,",
-          "1970-01-01T00:00:00.004Z,null,null,",
-          "1970-01-01T00:00:00.005Z,null,haha,",
+          "1970-01-01T00:00:00.001Z,abcd,abcdes,ab,abes,",
+          "1970-01-01T00:00:00.002Z,Test,Testes,Test,Testes,",
+          "1970-01-01T00:00:00.003Z,efgh,efghes,efgh,efghes,",
+          "1970-01-01T00:00:00.004Z,null,es,haha,hahaes,",
         };
     tableResultSetEqualTest(
-        "select time,s1,s9 from table1",
+        "select time,s1,concat(s1,'es'),s9,concat(s9,'es') from table1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-//    // support the (measurement, ConstantArgument)
-//    String[] expectedHeader = new String[] {"time", "s1", "_col2", "s9", "_col4"};
-//    String[] retArray =
-//            new String[] {
-//                    "1970-01-01T00:00:00.001Z,abcd,abcdes,ab,abes,",
-//                    "1970-01-01T00:00:00.002Z,Test,Testes,Test,Testes,",
-//                    "1970-01-01T00:00:00.003Z,efgh,efghes,efgh,efghes,",
-//                    "1970-01-01T00:00:00.004Z,null,es,null,es,",
-//                    "1970-01-01T00:00:00.005Z,null,es,haha,hahaes,",
-//            };
-//    tableResultSetEqualTest(
-//            "select time,s1,concat(s1,'es'),s9,concat(s9,'es') from table1",
-//            expectedHeader,
-//            retArray,
-//            DATABASE_NAME);
-
-    // support the (measurement, ConstantArgument)
+    // support the (ConstantArgument, measurement)
     expectedHeader = new String[] {"time", "s1", "_col2", "s9", "_col4"};
     retArray =
         new String[] {
           "1970-01-01T00:00:00.001Z,abcd,esabcd,ab,esab,",
           "1970-01-01T00:00:00.002Z,Test,esTest,Test,esTest,",
           "1970-01-01T00:00:00.003Z,efgh,esefgh,efgh,esefgh,",
-          "1970-01-01T00:00:00.004Z,null,es,null,es,",
+          "1970-01-01T00:00:00.004Z,null,es,haha,eshaha,",
         };
     tableResultSetEqualTest(
         "select time,s1,concat('es',s1),s9,concat('es',s9) from table1",
@@ -155,7 +120,7 @@ public class IoTDBConcatFunctionTableIT {
           "1970-01-01T00:00:00.001Z,abcd,ab,abcdab,",
           "1970-01-01T00:00:00.002Z,Test,Test,TestTest,",
           "1970-01-01T00:00:00.003Z,efgh,efgh,efghefgh,",
-          "1970-01-01T00:00:00.004Z,null,null,null,",
+          "1970-01-01T00:00:00.004Z,null,haha,haha,",
         };
     tableResultSetEqualTest(
         "select time,s1,s9,concat(s1,s9) from table1", expectedHeader, retArray, DATABASE_NAME);
@@ -167,7 +132,7 @@ public class IoTDBConcatFunctionTableIT {
           "1970-01-01T00:00:00.001Z,abcd,ab,headerabcdbodyabtail,",
           "1970-01-01T00:00:00.002Z,Test,Test,headerTestbodyTesttail,",
           "1970-01-01T00:00:00.003Z,efgh,efgh,headerefghbodyefghtail,",
-          "1970-01-01T00:00:00.004Z,null,null,headerbodytail,",
+          "1970-01-01T00:00:00.004Z,null,haha,headerbodyhahatail,",
         };
     tableResultSetEqualTest(
         "select time,s1,s9,concat('header',s1,'body',s9,'tail') from table1",
