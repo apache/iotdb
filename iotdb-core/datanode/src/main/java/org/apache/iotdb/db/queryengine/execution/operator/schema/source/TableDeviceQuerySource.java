@@ -37,12 +37,14 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -55,6 +57,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   private final Expression idFuzzyPredicate;
 
   private final List<ColumnHeader> columnHeaderList;
+  private final DevicePredicateFilter filter;
 
   private final TsTable table;
 
@@ -63,12 +66,14 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
-      final List<ColumnHeader> columnHeaderList) {
+      final List<ColumnHeader> columnHeaderList,
+      final DevicePredicateFilter filter) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.idFuzzyPredicate = idFuzzyPredicate;
     this.columnHeaderList = columnHeaderList;
+    this.filter = filter;
 
     this.table = DataNodeTableCache.getInstance().getTable(database, tableName);
   }
@@ -81,6 +86,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
       private Throwable throwable;
       private int index = 0;
+      private final List<TSDataType> dataTypes =
+          columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+      private IDeviceSchemaInfo next;
 
       @Override
       public boolean isSuccess() {
@@ -104,6 +112,16 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
       @Override
       public boolean hasNext() {
+        while (next == null && innerHasNext()) {
+          final IDeviceSchemaInfo temp = deviceReader.next();
+          if (match(temp)) {
+            next = temp;
+          }
+        }
+        return next != null;
+      }
+
+      private boolean innerHasNext() {
         try {
           if (throwable != null) {
             return false;
@@ -144,7 +162,18 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        return deviceReader.next();
+        final IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
+      }
+
+      private boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
+        if (Objects.isNull(filter)) {
+          return true;
+        }
+        final TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+        transformToTsBlockColumns(deviceSchemaInfo, builder, database);
+        return filter.match(builder.build());
       }
 
       @Override

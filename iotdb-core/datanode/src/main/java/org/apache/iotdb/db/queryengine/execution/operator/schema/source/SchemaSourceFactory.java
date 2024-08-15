@@ -102,20 +102,21 @@ public class SchemaSourceFactory {
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceFetchSource(
-      String database,
-      String tableName,
-      List<Object[]> deviceIdList,
-      List<ColumnHeader> columnHeaderList) {
+      final String database,
+      final String tableName,
+      final List<Object[]> deviceIdList,
+      final List<ColumnHeader> columnHeaderList) {
     return new TableDeviceFetchSource(database, tableName, deviceIdList, columnHeaderList);
   }
 
   public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceQuerySource(
-      String database,
-      String tableName,
-      List<List<SchemaFilter>> idDeterminedFilterList,
-      Expression idFuzzyFilter,
-      List<ColumnHeader> columnHeaderList) {
+      final String database,
+      final String tableName,
+      final List<List<SchemaFilter>> idDeterminedFilterList,
+      final Expression idFuzzyFilter,
+      final List<ColumnHeader> columnHeaderList,
+      final DevicePredicateFilter filter) {
     return new TableDeviceQuerySource(
-        database, tableName, idDeterminedFilterList, idFuzzyFilter, columnHeaderList);
+        database, tableName, idDeterminedFilterList, idFuzzyFilter, columnHeaderList, filter);
   }
 }

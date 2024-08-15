@@ -39,7 +39,7 @@ public class DevicePredicateFilter {
   }
 
   // Single row tsBlock
-  private boolean match(final TsBlock input) {
+  public boolean match(final TsBlock input) {
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     filterLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(input));

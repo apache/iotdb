@@ -94,6 +94,7 @@ import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -773,68 +774,63 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitTableDeviceQueryScan(
       final TableDeviceQueryScanNode node, final LocalExecutionPlanContext context) {
-    final OperatorContext operatorContext =
+    // Query scan use filterNode directly
+    return new SchemaQueryScanOperator<>(
+        node.getPlanNodeId(),
         context
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                SchemaQueryScanOperator.class.getSimpleName());
-    return new SchemaQueryScanOperator<>(
-        node.getPlanNodeId(),
-        operatorContext,
+                SchemaQueryScanOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
             node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
-            node.getColumnHeaderList()));
+            node.getColumnHeaderList(),
+            null));
   }
 
   @Override
   public Operator visitTableDeviceQueryCount(
       final TableDeviceQueryCountNode node, final LocalExecutionPlanContext context) {
-    final OperatorContext operatorContext =
+    // In "count" we have to reuse filter operator per "next"
+    final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    return new SchemaCountOperator<>(
+        node.getPlanNodeId(),
         context
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                SchemaCountOperator.class.getSimpleName());
-    return new SchemaCountOperator<>(
-        node.getPlanNodeId(),
-        operatorContext,
+                SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             node.getDatabase(),
             node.getTableName(),
             node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
-            node.getColumnHeaderList()));
-  }
-
-  private DevicePredicateFilter constructDevicePredicateFilter(
-      final Expression predicate,
-      final Map<Symbol, List<InputLocation>> inputLocations,
-      final LocalExecutionPlanContext context) {
-    final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
-
-    return new DevicePredicateFilter(
-        filterLeafColumnTransformerList,
-        Objects.nonNull(predicate)
-            ? new ColumnTransformerBuilder()
-                .process(
-                    predicate,
-                    new ColumnTransformerBuilder.Context(
-                        context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
-                        filterLeafColumnTransformerList,
-                        inputLocations,
-                        new HashMap<>(),
-                        ImmutableMap.of(),
-                        ImmutableList.of(),
-                        ImmutableList.of(),
-                        0,
-                        context.getTypeProvider(),
-                        metadata))
-            : null);
+            node.getColumnHeaderList(),
+            Objects.nonNull(node.getIdFuzzyPredicate())
+                ? new DevicePredicateFilter(
+                    filterLeafColumnTransformerList,
+                    new ColumnTransformerBuilder()
+                        .process(
+                            node.getIdFuzzyPredicate(),
+                            new ColumnTransformerBuilder.Context(
+                                context
+                                    .getDriverContext()
+                                    .getFragmentInstanceContext()
+                                    .getSessionInfo(),
+                                filterLeafColumnTransformerList,
+                                makeLayout(Collections.singletonList(node)),
+                                new HashMap<>(),
+                                ImmutableMap.of(),
+                                ImmutableList.of(),
+                                ImmutableList.of(),
+                                0,
+                                context.getTypeProvider(),
+                                metadata)))
+                : null));
   }
 }
