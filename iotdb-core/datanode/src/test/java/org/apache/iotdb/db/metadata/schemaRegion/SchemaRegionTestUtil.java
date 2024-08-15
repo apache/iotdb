@@ -448,8 +448,7 @@ public class SchemaRegionTestUtil {
       final ISchemaRegion schemaRegion,
       final String table,
       final int idColumnNum,
-      final List<SchemaFilter> idDeterminedFilterList,
-      final SchemaFilter idFuzzyFilter) {
+      final List<SchemaFilter> idDeterminedFilterList) {
     final List<PartialPath> patternList =
         DeviceFilterUtil.convertToDevicePattern(
             schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1),
