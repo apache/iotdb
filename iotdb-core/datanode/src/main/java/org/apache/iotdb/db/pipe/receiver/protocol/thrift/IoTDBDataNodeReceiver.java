@@ -81,13 +81,20 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -129,6 +136,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   // datanode (cluster B).
   private static final AtomicLong CONFIG_RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicReference<String> configReceiverId = new AtomicReference<>();
+
+  private final AtomicReference<String> moveToLoadTsFileDirBySequence = new AtomicReference<>();
 
   static {
     try {
@@ -317,6 +326,71 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected String getClusterId() {
     return IoTDBDescriptor.getInstance().getConfig().getClusterId();
+  }
+
+  @Override
+  protected TSStatus asyncLoadTsFile(final String fileAbsolutePath) throws Exception {
+    moveToLoadTsFileDirBySequence.set(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
+
+    final File sourceFile = new File(fileAbsolutePath);
+    // whether the move folder equal the listening folder
+    if (moveToLoadTsFileDirBySequence.get().equals(sourceFile.getParentFile().getAbsolutePath())) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
+
+    moveFileWithMD5Check(sourceFile, new File(moveToLoadTsFileDirBySequence.get()));
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private static void moveFileWithMD5Check(final File sourceFile, final File targetDir)
+      throws IOException {
+    final String sourceFileName = sourceFile.getName();
+    final File targetFile = new File(targetDir, sourceFileName);
+
+    if (targetFile.exists()) {
+      if (haveSameMD5(sourceFile, targetFile)) {
+        FileUtils.forceDelete(sourceFile);
+        LOGGER.info(
+            "Deleted the file {} because it already exists in the fail directory: {}",
+            sourceFile.getName(),
+            targetDir.getAbsolutePath());
+      } else {
+        renameWithMD5(sourceFile, targetDir);
+        LOGGER.info(
+            "Renamed file {} to {} because it already exists in the fail directory: {}",
+            sourceFile.getName(),
+            targetFile.getName(),
+            targetDir.getAbsolutePath());
+      }
+    } else {
+      FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
+      LOGGER.info(
+          "Moved file {} to fail directory {}.", sourceFile.getName(), targetDir.getAbsolutePath());
+    }
+  }
+
+  private static boolean haveSameMD5(final File file1, final File file2) {
+    try (final InputStream is1 = Files.newInputStream(file1.toPath());
+        final InputStream is2 = Files.newInputStream(file2.toPath())) {
+      return DigestUtils.md5Hex(is1).equals(DigestUtils.md5Hex(is2));
+    } catch (final Exception e) {
+      return false;
+    }
+  }
+
+  private static void renameWithMD5(File sourceFile, File targetDir) throws IOException {
+    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
+      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+
+      final String targetFileName =
+          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
+      final File targetFile = new File(targetDir, targetFileName);
+
+      FileUtils.moveFile(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+    }
   }
 
   @Override

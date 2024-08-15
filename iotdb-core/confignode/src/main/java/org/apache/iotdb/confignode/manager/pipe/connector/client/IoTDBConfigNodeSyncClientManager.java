@@ -39,7 +39,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       String trustStorePath,
       String trustStorePwd,
       String loadBalanceStrategy,
-      boolean shouldReceiverConvertOnTypeMismatch) {
+      boolean shouldReceiverConvertOnTypeMismatch,
+      String loadTsFileStrategy) {
     super(
         endPoints,
         useSSL,
@@ -47,7 +48,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
         trustStorePwd,
         false,
         loadBalanceStrategy,
-        shouldReceiverConvertOnTypeMismatch);
+        shouldReceiverConvertOnTypeMismatch,
+        loadTsFileStrategy);
   }
 
   @Override
