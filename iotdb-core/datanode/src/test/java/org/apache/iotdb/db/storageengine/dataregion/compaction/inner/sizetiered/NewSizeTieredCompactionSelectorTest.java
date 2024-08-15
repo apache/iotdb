@@ -19,13 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner.sizetiered;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -312,6 +315,117 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       } else {
         Assert.assertEquals(2, targetFile.getDevices().size());
       }
+    }
+  }
+
+  @Test
+  public void testAllTargetFilesEmpty() throws IOException, IllegalPathException {
+    TsFileResource resource1 =
+        generateSingleNonAlignedSeriesFile(
+            "1-1-0-0.tsfile",
+            Arrays.asList("d1", "d2"),
+            new TimeRange[] {new TimeRange(100, 200)},
+            true);
+    resource1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    resource1.getModFile().close();
+    seqResources.add(resource1);
+    TsFileResource resource2 =
+        generateSingleNonAlignedSeriesFile(
+            "2-2-0-0.tsfile",
+            Arrays.asList("d3", "d4"),
+            new TimeRange[] {new TimeRange(300, 400)},
+            true);
+    resource2
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    resource2.getModFile().close();
+    seqResources.add(resource2);
+
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager);
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    InnerSpaceCompactionTask task = innerSpaceCompactionTasks.get(0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(2, task.getSelectedTsFileResourceList().size());
+    Assert.assertEquals(2, task.getAllSourceTsFiles().size());
+    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(0, targetFiles.size());
+  }
+
+  @Test
+  public void testAllTargetFilesEmptyWithSkippedSourceFiles()
+      throws IOException, IllegalPathException {
+    TsFileResource resource1 =
+        generateSingleNonAlignedSeriesFile(
+            "1-1-0-0.tsfile",
+            Arrays.asList("d1", "d2"),
+            new TimeRange[] {new TimeRange(100, 200)},
+            true);
+    resource1
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    resource1.getModFile().close();
+    seqResources.add(resource1);
+    TsFileResource resource2 =
+        generateSingleNonAlignedSeriesFile(
+            "2-2-0-0.tsfile",
+            Arrays.asList("d3", "d4"),
+            new TimeRange[] {new TimeRange(300, 400)},
+            true);
+    seqResources.add(resource2);
+    TsFileResource resource3 =
+        generateSingleNonAlignedSeriesFile(
+            "3-3-0-0.tsfile",
+            Arrays.asList("d1", "d3"),
+            new TimeRange[] {new TimeRange(500, 600)},
+            true);
+    resource3
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    resource3.getModFile().close();
+    seqResources.add(resource3);
+    TsFileResource resource4 =
+        generateSingleNonAlignedSeriesFile(
+            "4-4-0-0.tsfile",
+            Arrays.asList("d4", "d5"),
+            new TimeRange[] {new TimeRange(700, 800)},
+            true);
+    seqResources.add(resource4);
+    TsFileResource resource5 =
+        generateSingleNonAlignedSeriesFile(
+            "5-5-0-0.tsfile",
+            Arrays.asList("d1", "d4"),
+            new TimeRange[] {new TimeRange(900, 1000)},
+            true);
+    resource5
+        .getModFile()
+        .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+    resource5.getModFile().close();
+    seqResources.add(resource5);
+
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(
+            resource1.getTsFileSize() + resource3.getTsFileSize() + resource5.getTsFileSize() + 1);
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager);
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    InnerSpaceCompactionTask task = innerSpaceCompactionTasks.get(0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(3, task.getSelectedTsFileResourceList().size());
+    Assert.assertEquals(5, task.getAllSourceTsFiles().size());
+    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(2, targetFiles.size());
+    Assert.assertEquals(4, targetFiles.get(targetFiles.size() - 1).getTsFileID().fileVersion);
+    for (int i = 0; i < targetFiles.size(); i++) {
+      TsFileResource targetFile = targetFiles.get(i);
+      Assert.assertEquals(2, targetFile.getDevices().size());
     }
   }
 
