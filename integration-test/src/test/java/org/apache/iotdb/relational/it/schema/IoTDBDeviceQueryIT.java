@@ -97,7 +97,7 @@ public class IoTDBDeviceQueryIT {
               "count devices from table0 where region_id = '1' or plant_id like '%'"),
           "count(devices),",
           Collections.singleton("1,"));
-      // Test complicated parsing
+      // Test complicated query
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from table0 where region_id < plant_id"),
           "region_id,plant_id,device_id,model,",
