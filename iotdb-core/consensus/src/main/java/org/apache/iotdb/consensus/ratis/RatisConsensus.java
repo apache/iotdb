@@ -115,11 +115,6 @@ class RatisConsensus implements IConsensus {
 
   private static final Logger logger = LoggerFactory.getLogger(RatisConsensus.class);
 
-  // The two fields are used to control the retry times and wait time for setConfiguration
-  // reconfiguration may take many time, so we need to set a long wait time and retry times
-  private final long setConfigurationWaitTime = 10000;
-  private final int setConfigurationRetryTimes = 50;
-
   /** The unique net communication endpoint */
   private final RaftPeer myself;
 
@@ -146,7 +141,6 @@ class RatisConsensus implements IConsensus {
   private final RatisConfig.Read.Option readOption;
   private final RetryPolicy<RaftClientReply> readRetryPolicy;
   private final RetryPolicy<RaftClientReply> writeRetryPolicy;
-  private final RetryPolicy<RaftClientReply> regionMigrateRetryPolicy;
 
   private final RatisMetricSet ratisMetricSet;
   private final TConsensusGroupType consensusGroupType;
@@ -193,16 +187,6 @@ class RatisConsensus implements IConsensus {
             .setWaitTime(
                 TimeDuration.valueOf(
                     this.config.getImpl().getRetryWaitMillis(), TimeUnit.MILLISECONDS))
-            .build();
-
-    regionMigrateRetryPolicy =
-        RetryPolicy.<RaftClientReply>newBuilder()
-            .setRetryHandler(
-                reply ->
-                    !reply.isSuccess()
-                        && (reply.getException() instanceof ReconfigurationInProgressException))
-            .setMaxAttempts(this.setConfigurationRetryTimes)
-            .setWaitTime(TimeDuration.valueOf(this.setConfigurationWaitTime, TimeUnit.MILLISECONDS))
             .build();
 
     this.diskGuardian = new DiskGuardian(() -> this, this.config);
@@ -607,14 +591,6 @@ class RatisConsensus implements IConsensus {
     final RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, DEFAULT_PRIORITY);
     final RaftClientReply reply;
     try {
-      Peer leader = getLeader(groupId);
-      if (leader != null) {
-        if (leader.getNodeId() == newLeader.getNodeId()
-            && leader.getGroupId() == newLeader.getGroupId()) {
-          logger.info("Don't need to transfer groupd {} leader to {}", groupId, newLeader);
-          return;
-        }
-      }
       reply = transferLeader(raftGroup, newRaftLeader);
       if (!reply.isSuccess()) {
         throw new RatisRequestFailedException(reply.getException());
@@ -929,30 +905,6 @@ class RatisConsensus implements IConsensus {
       }
     } catch (Exception e) {
       throw new RatisRequestFailedException(e);
-    }
-    return reply;
-  }
-
-  private RaftClientReply sendReconfigurationWithRetry(RaftGroup newGroupConf)
-      throws RatisRequestFailedException {
-    RaftClientReply reply;
-    try {
-      logger.info("send reconfigurationWithRetry request {}", newGroupConf);
-      reply =
-          Retriable.attempt(
-              () -> sendReconfiguration(newGroupConf),
-              regionMigrateRetryPolicy,
-              () -> newGroupConf,
-              logger);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error(
-          "{}: interrupted when retrying for reconfiguration request {}", this, newGroupConf);
-      reply =
-          RaftClientReply.newBuilder()
-              .setSuccess(false)
-              .setException(new RaftException("Reconfiguration: " + newGroupConf + " due to " + e))
-              .build();
     }
     return reply;
   }

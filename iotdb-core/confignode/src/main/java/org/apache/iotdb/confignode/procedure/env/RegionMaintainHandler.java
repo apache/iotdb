@@ -667,8 +667,7 @@ public class RegionMaintainHandler {
    */
   public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
       throws ProcedureException, InterruptedException {
-    List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
-    excludeDataNode.add(originalDataNode);
+    List<TDataNodeLocation> excludeDataNode = Collections.singletonList(originalDataNode);
     transferRegionLeader(regionId, originalDataNode, excludeDataNode);
   }
 
@@ -706,11 +705,9 @@ public class RegionMaintainHandler {
       Integer leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
 
       if (leaderId != -1) {
-        // The migrated node is not leader, so we specify the transfer leader to current leader node
+        // The migrated node is not leader, so we don't need to transfer temporarily
         if (originalDataNode.getDataNodeId() != leaderId) {
-          newLeaderNode =
-              Optional.of(
-                  configManager.getNodeManager().getRegisteredDataNode(leaderId).getLocation());
+          return;
         }
       }
       while (true) {
@@ -776,9 +773,7 @@ public class RegionMaintainHandler {
 
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation, NodeStatus... allowingStatus) {
-    List<TDataNodeLocation> excludeLocations = new ArrayList<>();
-    excludeLocations.add(filterLocation);
-
+    List<TDataNodeLocation> excludeLocations = Collections.singletonList(filterLocation);
     return filterDataNodeWithOtherRegionReplica(regionId, excludeLocations, allowingStatus);
   }
 
