@@ -225,6 +225,17 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_CONSENSUS_GROUP_ID_KEY = "connector.consensus.group-id";
   public static final String CONNECTOR_CONSENSUS_PIPE_NAME = "connector.consensus.pipe-name";
 
+  public static final String CONNECTOR_LOAD_TSFILE_STRATEGY_KEY = "connector.load-tsfile-strategy";
+  public static final String SINK_LOAD_TSFILE_STRATEGY_KEY = "sink.load-tsfile-strategy";
+  public static final String CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE = "async";
+  public static final String CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE = "sync";
+  public static final Set<String> CONNECTOR_LOAD_TSFILE_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
+                  CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)));
+
   private PipeConnectorConstant() {
     throw new IllegalStateException("Utility class");
   }

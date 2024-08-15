@@ -69,11 +69,14 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final boolean shouldReceiverConvertOnTypeMismatch;
 
+  private final String loadTsFileStrategy;
+
   public IoTDBDataNodeAsyncClientManager(
       List<TEndPoint> endPoints,
       boolean useLeaderCache,
       String loadBalanceStrategy,
-      boolean shouldReceiverConvertOnTypeMismatch) {
+      boolean shouldReceiverConvertOnTypeMismatch,
+      String loadTsFileStrategy) {
     super(endPoints, useLeaderCache);
 
     endPointSet = new HashSet<>(endPoints);
@@ -108,6 +111,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
+    this.loadTsFileStrategy = loadTsFileStrategy;
   }
 
   public AsyncPipeDataTransferServiceClient borrowClient() throws Exception {
@@ -219,6 +223,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
 
       client.setTimeoutDynamically(PipeConfig.getInstance().getPipeConnectorHandshakeTimeoutMs());
       client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params), callback);
