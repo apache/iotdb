@@ -57,11 +57,11 @@ public class IoTDBSetConfigurationTableIT {
   public void testSetConfiguration() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      statement.execute("set configuration enable_seq_space_compaction=\"false\"");
+      statement.execute("set configuration \"enable_seq_space_compaction\"='false'");
       statement.execute("set configuration enable_unseq_space_compaction=\'false\' on 0");
-      statement.execute("set configuration enable_cross_space_compaction=false on 1");
+      statement.execute("set configuration \"enable_cross_space_compaction\"='false' on 1");
       statement.execute(
-          "set configuration max_inner_compaction_candidate_file_num=1,max_cross_compaction_candidate_file_num=1 on 1");
+          "set configuration max_inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on 1");
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
@@ -96,7 +96,6 @@ public class IoTDBSetConfigurationTableIT {
               + CommonConfig.SYSTEM_CONFIG_NAME;
       File f = new File(systemPropertiesPath);
       String fileContent = new String(Files.readAllBytes(f.toPath()));
-      System.out.println(fileContent);
       return Arrays.stream(contents).allMatch(fileContent::contains);
     } catch (IOException ignore) {
       return false;
