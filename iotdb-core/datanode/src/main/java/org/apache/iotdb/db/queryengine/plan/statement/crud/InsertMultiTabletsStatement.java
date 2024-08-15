@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
@@ -31,6 +32,8 @@ import org.apache.tsfile.exception.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class InsertMultiTabletsStatement extends InsertBaseStatement {
@@ -150,5 +153,23 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
   @Override
   public void measurementsToLowerCase() {
     insertTabletStatementList.forEach(InsertTabletStatement::measurementsToLowerCase);
+  }
+
+  @Override
+  @TableModel
+  public Optional<String> getDatabaseName() {
+    Optional<String> database = Optional.empty();
+    for (InsertTabletStatement insertTabletStatement : insertTabletStatementList) {
+      Optional<String> childDatabaseName = insertTabletStatement.getDatabaseName();
+      if (childDatabaseName.isPresent()
+          && database.isPresent()
+          && !Objects.equals(childDatabaseName.get(), database.get())) {
+        throw new SemanticException(
+            "Cannot insert into multiple databases within one statement, please split them manually");
+      }
+
+      database = childDatabaseName;
+    }
+    return database;
   }
 }

@@ -81,13 +81,16 @@ public class InsertRows extends WrappedInsertStatement {
 
   @Override
   public void validateTableSchema(Metadata metadata, MPPQueryContext context) {
-    String databaseName = getDatabase();
     for (InsertRowStatement insertRowStatement :
         getInnerTreeStatement().getInsertRowStatementList()) {
       final TableSchema incomingTableSchema = toTableSchema(insertRowStatement);
       final TableSchema realSchema =
           metadata
-              .validateTableHeaderSchema(databaseName, incomingTableSchema, context, false)
+              .validateTableHeaderSchema(
+                  AnalyzeUtils.getDatabaseName(insertRowStatement, context),
+                  incomingTableSchema,
+                  context,
+                  false)
               .orElse(null);
       if (realSchema == null) {
         throw new SemanticException(
