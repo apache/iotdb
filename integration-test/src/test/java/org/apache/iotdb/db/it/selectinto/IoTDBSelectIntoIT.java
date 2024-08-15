@@ -570,6 +570,27 @@ public class IoTDBSelectIntoIT {
         queryRetArray);
   }
 
+  @Test
+  public void testAliasAlignByDevice() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1,s1,root.sg_abd_alias.d1.k1,10,",
+        };
+    resultSetEqualTest(
+        "select s1 as k1 " + "into root.sg_abd_alias.d1(::) from root.sg.d1 align by device;",
+        selectIntoAlignByDeviceHeader,
+        intoRetArray);
+
+    intoRetArray =
+        new String[] {
+          "k1,root.sg_abd_alias.d2.k1,10,",
+        };
+    resultSetEqualTest(
+        "select s1 as k1 " + "into root.sg_abd_alias.d2(::) from root.sg.d1;",
+        selectIntoHeader,
+        intoRetArray);
+  }
+
   // -------------------------------------- CHECK EXCEPTION -------------------------------------
 
   @Test

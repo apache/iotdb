@@ -557,6 +557,7 @@ public class IoTDBInsertTableIT {
       st1.execute("flush");
       st1.execute("insert into sg17(id1, time, s1) values('d1', 604799990,1), ('d1', 604800001,1)");
       st1.execute("flush");
+
       ResultSet rs1 = st1.executeQuery("select time, s1 from sg17");
       assertTrue(rs1.next());
       assertEquals(604799990, rs1.getLong("time"));
@@ -577,6 +578,41 @@ public class IoTDBInsertTableIT {
           "create table if not exists sg18 (id1 string id, s1 string attribute, s2 int32 measurement)");
       st1.execute("insert into sg18(id1, s1, s2) values('d1','1', 1)");
       st1.execute("insert into sg18(id1, s1, s2) values('d2', 2, 2)");
+
+      ResultSet rs1 = st1.executeQuery("select time, s1, s2 from sg18 order by s1");
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("s1"));
+      assertTrue(rs1.next());
+      assertEquals("2", rs1.getString("s1"));
+      assertFalse(rs1.next());
+    }
+  }
+
+  @Test
+  public void testInsertCaseSensitivity() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      st1.execute("use \"test\"");
+      st1.execute(
+          "create table if not exists sg19 (id1 string id, ss1 string attribute, ss2 int32 measurement)");
+      // lower case
+      st1.execute("insert into sg19(time, id1, ss1, ss2) values(1, 'd1','1', 1)");
+      st1.execute("insert into sg19(time, id1, ss1, ss2) values(2, 'd2', 2, 2)");
+      // upper case
+      st1.execute("insert into sg19(TIME, ID1, SS1, SS2) values(3, 'd3','3', 3)");
+      st1.execute("insert into sg19(TIME, ID1, SS1, SS2) values(4, 'd4', 4, 4)");
+      // mixed
+      st1.execute("insert into sg19(TIme, Id1, Ss1, Ss2) values(5, 'd5','5', 5)");
+      st1.execute("insert into sg19(TIme, Id1, sS1, sS2) values(6, 'd6', 6, 6)");
+
+      ResultSet rs1 = st1.executeQuery("select time, ss1, ss2 from sg19 order by time");
+      for (int i = 1; i <= 6; i++) {
+        assertTrue(rs1.next());
+        assertEquals(i, rs1.getLong("time"));
+        assertEquals(String.valueOf(i), rs1.getString("ss1"));
+        assertEquals(i, rs1.getInt("ss2"));
+      }
+      assertFalse(rs1.next());
     }
   }
 
