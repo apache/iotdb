@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOpera
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
@@ -98,6 +99,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -808,5 +810,31 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getIdDeterminedFilterList(),
             node.getIdFuzzyPredicate(),
             node.getColumnHeaderList()));
+  }
+
+  private DevicePredicateFilter constructDevicePredicateFilter(
+      final Expression predicate,
+      final Map<Symbol, List<InputLocation>> inputLocations,
+      final LocalExecutionPlanContext context) {
+    final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+
+    return new DevicePredicateFilter(
+        filterLeafColumnTransformerList,
+        Objects.nonNull(predicate)
+            ? new ColumnTransformerBuilder()
+                .process(
+                    predicate,
+                    new ColumnTransformerBuilder.Context(
+                        context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+                        filterLeafColumnTransformerList,
+                        inputLocations,
+                        new HashMap<>(),
+                        ImmutableMap.of(),
+                        ImmutableList.of(),
+                        ImmutableList.of(),
+                        0,
+                        context.getTypeProvider(),
+                        metadata))
+            : null);
   }
 }
