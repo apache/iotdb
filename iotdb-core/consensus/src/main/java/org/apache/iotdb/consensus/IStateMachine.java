@@ -68,6 +68,15 @@ public interface IStateMachine {
   DataSet read(IConsensusRequest request);
 
   /**
+   * Release all resources related to the region. Currently, we only check pipe related resources.
+   *
+   * @return true if all resources are released successfully
+   */
+  default boolean hasReleaseAllRegionRelatedResource() {
+    return true;
+  }
+
+  /**
    * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
    * which is a subdirectory of the StorageDir in Consensus
    *
