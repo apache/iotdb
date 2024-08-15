@@ -40,6 +40,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Region migrate procedure */
 public class RegionMigrateProcedure
@@ -109,7 +110,10 @@ public class RegionMigrateProcedure
         case REMOVE_REGION_PEER:
           addChildProcedure(
               new RemoveRegionPeerProcedure(
-                  consensusGroupId, coordinatorForRemovePeer, originalDataNode));
+                  consensusGroupId,
+                  coordinatorForRemovePeer,
+                  originalDataNode,
+                  Optional.ofNullable(destDataNode)));
           setNextState(RegionTransitionState.CHECK_REMOVE_REGION_PEER);
           break;
         case CHECK_REMOVE_REGION_PEER:

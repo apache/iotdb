@@ -453,7 +453,7 @@ public class RegionMaintainHandler {
         getIdWithRpcEndpoint(deprecatedLocation),
         status);
     configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
-    configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+    // configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
   }
 
   /**
@@ -667,12 +667,22 @@ public class RegionMaintainHandler {
    */
   public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
       throws ProcedureException, InterruptedException {
+    List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
+    excludeDataNode.add(originalDataNode);
+    transferRegionLeader(regionId, originalDataNode, excludeDataNode);
+  }
+
+  public void transferRegionLeader(
+      TConsensusGroupId regionId,
+      TDataNodeLocation originalDataNode,
+      List<TDataNodeLocation> excludeDataNode)
+      throws ProcedureException, InterruptedException {
     // find new leader
     final int findNewLeaderTimeLimitSecond = 10;
     long startTime = System.nanoTime();
     Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
     while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
-      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
+      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, excludeDataNode);
       if (newLeaderNode.isPresent()) {
         break;
       }
@@ -693,11 +703,22 @@ public class RegionMaintainHandler {
           (CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()
                   + CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs())
               / 2;
+      Integer leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
+
+      if (leaderId != -1) {
+        // The migrated node is not leader, so we specify the transfer leader to current leader node
+        if (originalDataNode.getDataNodeId() != leaderId) {
+          newLeaderNode =
+              Optional.of(
+                  configManager.getNodeManager().getRegisteredDataNode(leaderId).getLocation());
+        }
+      }
       while (true) {
         TRegionLeaderChangeResp resp =
             SyncDataNodeClientPool.getInstance()
                 .changeRegionLeader(
                     regionId, originalDataNode.getInternalEndPoint(), newLeaderNode.get());
+
         if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           timestamp = resp.getConsensusLogicalTimestamp();
           break;
@@ -718,7 +739,7 @@ public class RegionMaintainHandler {
             Collections.singletonMap(
                 regionId,
                 new ConsensusGroupHeartbeatSample(timestamp, newLeaderNode.get().getDataNodeId())));
-    configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+    // configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
 
     LOGGER.info(
         "{}, Change region leader finished, regionId: {}, newLeaderNode: {}",
@@ -742,12 +763,29 @@ public class RegionMaintainHandler {
    */
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
+    List<TDataNodeLocation> filterLocations = new ArrayList<>();
+    filterLocations.add(filterLocation);
+    return filterDataNodeWithOtherRegionReplica(regionId, filterLocations);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId, List<TDataNodeLocation> filterLocations) {
     return filterDataNodeWithOtherRegionReplica(
-        regionId, filterLocation, NodeStatus.Running, NodeStatus.ReadOnly);
+        regionId, filterLocations, NodeStatus.Running, NodeStatus.ReadOnly);
   }
 
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation, NodeStatus... allowingStatus) {
+    List<TDataNodeLocation> excludeLocations = new ArrayList<>();
+    excludeLocations.add(filterLocation);
+
+    return filterDataNodeWithOtherRegionReplica(regionId, excludeLocations, allowingStatus);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId,
+      List<TDataNodeLocation> excludeLocations,
+      NodeStatus... allowingStatus) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
       LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
@@ -762,11 +800,10 @@ public class RegionMaintainHandler {
             .collect(Collectors.toList());
     Collections.shuffle(aliveDataNodes);
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
-      if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
+      if (regionLocations.contains(aliveDataNode) && !excludeLocations.contains(aliveDataNode)) {
         return Optional.of(aliveDataNode);
       }
     }
-
     return Optional.empty();
   }
 
