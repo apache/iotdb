@@ -224,6 +224,8 @@ class RatisClient implements AutoCloseable {
       int basicSleep = 500;
       for (int i = 0; i < 5; i++) {
         str += basicRetry + "," + basicSleep + ",";
+        basicRetry -= 10;
+        basicSleep += 500;
       }
 
       defaultPolicy =
