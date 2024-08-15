@@ -162,6 +162,25 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
+            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=null)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: TTL' value must be a LongLiteral, but now is NullLiteral, value: null",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=-1)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: TTL' value must be equal to or greater than 0, but now is: -1", e.getMessage());
+      }
+
+      try {
+        statement.execute(
             "create table table2(region_id TEXT ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)");
         fail();
       } catch (final SQLException e) {
