@@ -715,7 +715,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
     private Set<PartialPath> alreadySetDatabases;
 
-    private boolean isCurrentTsFileResourceExists;
     private Collection<Modification> currentModifications;
     private ITimeIndex currentTimeIndex;
 
@@ -790,8 +789,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
       currentModifications = resource.getModFile().getModifications();
 
-      isCurrentTsFileResourceExists = resource.resourceFileExists();
-      if (isCurrentTsFileResourceExists) {
+      if (resource.resourceFileExists()) {
         currentTimeIndex = resource.getTimeIndex();
         if (currentTimeIndex instanceof FileTimeIndex) {
           currentTimeIndex = resource.buildDeviceTimeIndex();
@@ -802,7 +800,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
-      return isCurrentTsFileResourceExists
+      return currentTimeIndex != null
           && ModificationUtils.isDeviceDeletedByMods(
               currentModifications,
               device,
