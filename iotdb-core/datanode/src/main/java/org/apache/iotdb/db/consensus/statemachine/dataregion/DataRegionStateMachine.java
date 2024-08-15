@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine.dataregion;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -28,6 +29,7 @@ import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.iot.log.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.BaseStateMachine;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -311,15 +313,14 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
-  public boolean hasPipeReleaseRegionRelatedResource() {
-    // TODO: implement the method to check whether the user pipe has released all resources related
-    return true;
+  public boolean hasPipeReleaseRegionRelatedResource(ConsensusGroupId groupId) {
+    return PipeDataNodeAgent.task().hasPipeReleaseRegionRelatedResource(groupId.getId());
   }
 
   @Override
-  public boolean hasReleaseAllRegionRelatedResource() {
+  public boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
     boolean releaseAllResource = true;
-    releaseAllResource &= hasPipeReleaseRegionRelatedResource();
+    releaseAllResource &= hasPipeReleaseRegionRelatedResource(groupId);
     return releaseAllResource;
   }
 
