@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
@@ -88,8 +87,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
-  protected void calculateSourceFilesAndTargetFiles()
-      throws DiskSpaceInsufficientException, IOException {
+  protected void calculateSourceFilesAndTargetFiles() throws IOException {
     filesView.renamedTargetFiles = Collections.emptyList();
     filesView.targetFilesInLog =
         filesView.sourceFilesInCompactionPerformer.isEmpty()
@@ -331,7 +329,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       }
     }
 
-    filesView.setSourceFiles(selectedTsFileResourceList);
+    filesView.setSourceFilesForRecover(selectedTsFileResourceList);
     // recover target file
     recoverTargetResource(targetFileIdentifiers, deletedTargetFileIdentifiers);
   }

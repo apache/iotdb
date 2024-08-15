@@ -176,19 +176,19 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       }
     }
 
-    protected void setSourceFiles(List<TsFileResource> sourceFiles) {
+    protected void setSourceFilesForRecover(List<TsFileResource> sourceFiles) {
       sourceFilesInCompactionPerformer = sourceFiles;
       sourceFilesInLog = sourceFiles;
       sortedAllSourceFilesInTask = sourceFiles;
     }
 
-    protected void setTargetFile(TsFileResource resource) {
+    protected void setTargetFileForRecover(TsFileResource resource) {
       targetFilesInLog = Collections.singletonList(resource);
       targetFilesInPerformer = targetFilesInLog;
       renamedTargetFiles = Collections.emptyList();
     }
 
-    protected void setTargetFile(List<TsFileResource> resources) {
+    protected void setTargetFileForRecover(List<TsFileResource> resources) {
       targetFilesInLog = resources;
       targetFilesInPerformer = resources;
       renamedTargetFiles = resources;
@@ -459,7 +459,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         storageGroupName + "-" + dataRegionId);
 
     CompactionUtils.combineModsInInnerCompaction(
-        filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInLog);
+        filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
   }
 
   public void recover() {
@@ -490,7 +490,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     sourceFileIdentifiers.forEach(
         f -> selectedTsFileResourceList.add(new TsFileResource(f.getFileFromDataDirs())));
 
-    filesView.setSourceFiles(selectedTsFileResourceList);
+    filesView.setSourceFilesForRecover(selectedTsFileResourceList);
     // recover target files
     recoverTargetResource(targetFileIdentifiers, deletedTargetFileIdentifiers);
     this.taskStage = logAnalyzer.getTaskStage();
@@ -500,7 +500,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileIdentifier> targetFileIdentifiers,
       List<TsFileIdentifier> deletedTargetFileIdentifiers) {
     if (targetFileIdentifiers.isEmpty()) {
-      filesView.setTargetFile(Collections.emptyList());
+      filesView.setTargetFileForRecover(Collections.emptyList());
       return;
     }
     TsFileIdentifier targetIdentifier = targetFileIdentifiers.get(0);
@@ -513,12 +513,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 TsFileConstant.TSFILE_SUFFIX));
     File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
     if (tmpTargetFile != null) {
-      filesView.setTargetFile(new TsFileResource(tmpTargetFile));
+      filesView.setTargetFileForRecover(new TsFileResource(tmpTargetFile));
     } else if (targetFile != null) {
-      filesView.setTargetFile(new TsFileResource(targetFile));
+      filesView.setTargetFileForRecover(new TsFileResource(targetFile));
     } else {
       // target file does not exist, then create empty resource
-      filesView.setTargetFile(new TsFileResource(new File(targetIdentifier.getFilePath())));
+      filesView.setTargetFileForRecover(
+          new TsFileResource(new File(targetIdentifier.getFilePath())));
     }
     // check if target file is deleted after compaction or not
     if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
@@ -529,9 +530,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   protected void rollback() throws IOException {
     List<TsFileResource> targetFiles =
-        filesView.targetFilesInPerformer == null
-            ? Collections.emptyList()
-            : filesView.targetFilesInPerformer;
+        filesView.targetFilesInLog == null ? Collections.emptyList() : filesView.targetFilesInLog;
     // if the task has started,
     if (recoverMemoryStatus) {
       replaceTsFileInMemory(targetFiles, filesView.sourceFilesInLog);
@@ -600,7 +599,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @TestOnly
   public void setTargetTsFileResource(TsFileResource targetTsFileResource) {
-    this.filesView.setTargetFile(targetTsFileResource);
+    this.filesView.setTargetFileForRecover(targetTsFileResource);
   }
 
   public boolean isSequence() {
