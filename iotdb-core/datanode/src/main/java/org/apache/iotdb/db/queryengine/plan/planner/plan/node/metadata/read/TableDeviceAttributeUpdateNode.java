@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
@@ -37,8 +38,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
@@ -97,6 +102,11 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   public List<UpdateAssignment> getAssignments() {
     return assignments;
+  }
+
+  @Override
+  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitTableDeviceAttributeUpdate(this, context);
   }
 
   @Override
@@ -159,7 +169,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
     }
   }
 
-  protected static PlanNode deserialize(final ByteBuffer buffer) {
+  public static PlanNode deserialize(final ByteBuffer buffer) {
     final String database = ReadWriteIOUtils.readString(buffer);
     final String tableName = ReadWriteIOUtils.readString(buffer);
 
@@ -269,18 +279,24 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
-    return analysis.getSchemaPartitionInfo().getSchemaPartitionMap().get(database).values().stream()
-        .map(
-            replicaSet ->
-                new TableDeviceAttributeUpdateNode(
-                    getPlanNodeId(),
-                    database,
-                    tableName,
-                    idDeterminedPredicateList,
-                    idFuzzyPredicate,
-                    columnHeaderList,
-                    replicaSet,
-                    assignments))
-        .collect(Collectors.toList());
+    return new HashSet<>(
+            analysis
+                .getSchemaPartitionInfo()
+                .getSchemaPartitionMap()
+                .get(PATH_ROOT + PATH_SEPARATOR + database)
+                .values())
+        .stream()
+            .map(
+                replicaSet ->
+                    new TableDeviceAttributeUpdateNode(
+                        getPlanNodeId(),
+                        database,
+                        tableName,
+                        idDeterminedPredicateList,
+                        idFuzzyPredicate,
+                        columnHeaderList,
+                        replicaSet,
+                        assignments))
+            .collect(Collectors.toList());
   }
 }
