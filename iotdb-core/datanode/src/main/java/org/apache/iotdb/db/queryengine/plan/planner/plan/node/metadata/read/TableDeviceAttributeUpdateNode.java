@@ -35,6 +35,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -158,6 +159,50 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
     }
   }
 
+  protected static PlanNode deserialize(final ByteBuffer buffer) {
+    final String database = ReadWriteIOUtils.readString(buffer);
+    final String tableName = ReadWriteIOUtils.readString(buffer);
+
+    int size = ReadWriteIOUtils.readInt(buffer);
+    final List<List<SchemaFilter>> idDeterminedFilterList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      final int singleSize = ReadWriteIOUtils.readInt(buffer);
+      idDeterminedFilterList.add(new ArrayList<>(singleSize));
+      for (int k = 0; k < singleSize; k++) {
+        idDeterminedFilterList.get(i).add(SchemaFilter.deserialize(buffer));
+      }
+    }
+
+    Expression idFuzzyFilter = null;
+    if (buffer.get() == 1) {
+      idFuzzyFilter = Expression.deserialize(buffer);
+    }
+
+    size = ReadWriteIOUtils.readInt(buffer);
+    final List<ColumnHeader> columnHeaderList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      columnHeaderList.add(ColumnHeader.deserialize(buffer));
+    }
+
+    final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
+
+    size = ReadWriteIOUtils.readInt(buffer);
+    final List<UpdateAssignment> assignments = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      assignments.add(UpdateAssignment.deserialize(buffer));
+    }
+
+    return new TableDeviceAttributeUpdateNode(
+        planNodeId,
+        database,
+        tableName,
+        idDeterminedFilterList,
+        idFuzzyFilter,
+        columnHeaderList,
+        null,
+        assignments);
+  }
+
   @Override
   public List<PlanNode> getChildren() {
     return Collections.emptyList();
@@ -224,6 +269,18 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
-    return null;
+    return analysis.getSchemaPartitionInfo().getSchemaPartitionMap().get(database).values().stream()
+        .map(
+            replicaSet ->
+                new TableDeviceAttributeUpdateNode(
+                    getPlanNodeId(),
+                    database,
+                    tableName,
+                    idDeterminedPredicateList,
+                    idFuzzyPredicate,
+                    columnHeaderList,
+                    replicaSet,
+                    assignments))
+        .collect(Collectors.toList());
   }
 }
