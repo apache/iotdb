@@ -134,6 +134,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -154,6 +155,7 @@ import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
@@ -298,13 +300,13 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateTable(CreateTable node, Optional<Scope> context) {
+    protected Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropTable(DropTable node, Optional<Scope> context) {
+    protected Scope visitDropTable(final DropTable node, final Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
@@ -324,7 +326,8 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitSetProperties(SetProperties node, Optional<Scope> context) {
+    protected Scope visitSetProperties(final SetProperties node, final Optional<Scope> context) {
+      validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
@@ -2399,15 +2402,26 @@ public class StatementAnalyzer {
       return aliases.build();
     }
 
-    private void validateProperties(List<Property> properties, Optional<Scope> scope) {
-      Set<String> propertyNames = new HashSet<>();
-      for (Property property : properties) {
-        if (!propertyNames.add(property.getName().getValue())) {
+    private void validateProperties(final List<Property> properties, final Optional<Scope> scope) {
+      final Set<String> propertyNames = new HashSet<>();
+      for (final Property property : properties) {
+        final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+        if (!TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+          throw new SemanticException("Table property " + key + " is currently not allowed.");
+        }
+        if (!propertyNames.add(key)) {
           throw new SemanticException(
               String.format("Duplicate property: %s", property.getName().getValue()));
         }
+        if (!property.isSetToDefault()) {
+          final Expression value = property.getNonDefaultValue();
+          if (!(value instanceof LongLiteral)) {
+            throw new SemanticException(
+                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+          }
+        }
       }
-      for (Property property : properties) {
+      for (final Property property : properties) {
         process(property, scope);
       }
     }

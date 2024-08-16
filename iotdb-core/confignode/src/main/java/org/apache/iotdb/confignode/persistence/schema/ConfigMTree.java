@@ -64,6 +64,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
@@ -701,14 +702,14 @@ public class ConfigMTree {
   }
 
   public Map<String, List<TsTable>> getAllPreCreateTables() throws MetadataException {
-    Map<String, List<TsTable>> result = new HashMap<>();
-    List<PartialPath> databaseList = getAllDatabasePaths();
+    final Map<String, List<TsTable>> result = new HashMap<>();
+    final List<PartialPath> databaseList = getAllDatabasePaths();
     for (PartialPath databasePath : databaseList) {
-      String database = databasePath.getFullPath().substring(ROOT.length() + 1);
-      IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
-      for (IConfigMNode child : databaseNode.getChildren().values()) {
+      final String database = databasePath.getFullPath().substring(ROOT.length() + 1);
+      final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
+      for (final IConfigMNode child : databaseNode.getChildren().values()) {
         if (child instanceof ConfigTableNode) {
-          ConfigTableNode tableNode = (ConfigTableNode) child;
+          final ConfigTableNode tableNode = (ConfigTableNode) child;
           if (!tableNode.getStatus().equals(TableNodeStatus.PRE_CREATE)) {
             continue;
           }
@@ -719,7 +720,49 @@ public class ConfigMTree {
     return result;
   }
 
-  public Optional<TsTable> getTable(final PartialPath database, final String tableName)
+  public void addTableColumn(
+      final PartialPath database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
+    final TsTable table = getTable(database, tableName);
+    columnSchemaList.forEach(table::addColumnSchema);
+  }
+
+  public void rollbackAddTableColumn(
+      final PartialPath database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList)
+      throws MetadataException {
+    final TsTable table = getTable(database, tableName);
+    columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
+  }
+
+  public void setTableProperties(
+      final PartialPath database, final String tableName, final Map<String, String> tableProperties)
+      throws MetadataException {
+    final TsTable table = getTable(database, tableName);
+    tableProperties.forEach(
+        (k, v) -> {
+          if (Objects.nonNull(v)) {
+            table.addProp(k, v);
+          } else {
+            table.removeProp(k);
+          }
+        });
+  }
+
+  private TsTable getTable(final PartialPath database, final String tableName)
+      throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
+    if (!databaseNode.hasChild(tableName)) {
+      throw new TableNotExistsException(
+          database.getFullPath().substring(ROOT.length() + 1), tableName);
+    }
+    return ((ConfigTableNode) databaseNode.getChild(tableName)).getTable();
+  }
+
+  public Optional<TsTable> getTableIfExists(final PartialPath database, final String tableName)
       throws MetadataException {
     final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
     if (!databaseNode.hasChild(tableName)) {
@@ -727,32 +770,6 @@ public class ConfigMTree {
     }
     final ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
     return Optional.of(tableNode.getTable());
-  }
-
-  public void addTableColumn(
-      PartialPath database, String tableName, List<TsTableColumnSchema> columnSchemaList)
-      throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (!databaseNode.hasChild(tableName)) {
-      throw new TableNotExistsException(
-          database.getFullPath().substring(ROOT.length() + 1), tableName);
-    }
-    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    TsTable table = tableNode.getTable();
-    columnSchemaList.forEach(table::addColumnSchema);
-  }
-
-  public void rollbackAddTableColumn(
-      PartialPath database, String tableName, List<TsTableColumnSchema> columnSchemaList)
-      throws MetadataException {
-    IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(database).getAsMNode();
-    if (!databaseNode.hasChild(tableName)) {
-      throw new TableNotExistsException(
-          database.getFullPath().substring(ROOT.length() + 1), tableName);
-    }
-    ConfigTableNode tableNode = (ConfigTableNode) databaseNode.getChild(tableName);
-    TsTable table = tableNode.getTable();
-    columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
   }
 
   // endregion
