@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
@@ -41,7 +42,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class})
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSetConfigurationTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
@@ -58,10 +59,19 @@ public class IoTDBSetConfigurationTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("set configuration \"enable_seq_space_compaction\"='false'");
-      statement.execute("set configuration enable_unseq_space_compaction=\'false\' on 0");
-      statement.execute("set configuration \"enable_cross_space_compaction\"='false' on 1");
-      statement.execute(
-          "set configuration max_inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on 1");
+      int configNodeNum = EnvFactory.getEnv().getConfigNodeWrapperList().size();
+      int dataNodeNum = EnvFactory.getEnv().getDataNodeWrapperList().size();
+
+      for (int i = 0; i < configNodeNum; i++) {
+        statement.execute("set configuration enable_unseq_space_compaction=\'false\' on " + i);
+      }
+      for (int i = 0; i < dataNodeNum; i++) {
+        int dnId = configNodeNum + i;
+        statement.execute("set configuration \"enable_cross_space_compaction\"='false' on " + dnId);
+        statement.execute(
+            "set configuration max_inner_compaction_candidate_file_num='1',max_cross_compaction_candidate_file_num='1' on "
+                + dnId);
+      }
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
