@@ -217,8 +217,7 @@ class RatisClient implements AutoCloseable {
     }
   }
 
-  /** This policy is used to raft configuration change
-   */
+  /** This policy is used to raft configuration change */
   private static class RatisEndlessRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
@@ -231,22 +230,12 @@ class RatisClient implements AutoCloseable {
 
     @Override
     public Action handleAttemptFailure(Event event) {
-      if (event.getCause() instanceof ReconfigurationInProgressException) {
-        return defaultPolicy.handleAttemptFailure(event);
-      }
-      if (event.getCause() instanceof TimeoutIOException) {
-        return defaultPolicy.handleAttemptFailure(event);
-      }
-      if (event.getCause() instanceof LeaderSteppingDownException) {
-        return defaultPolicy.handleAttemptFailure(event);
-      }
-      if (event.getCause() instanceof ReconfigurationTimeoutException) {
-        return defaultPolicy.handleAttemptFailure(event);
-      }
-      if (event.getCause() instanceof ServerNotReadyException) {
-        return defaultPolicy.handleAttemptFailure(event);
-      }
-      if (event.getCause() instanceof NotLeaderException) {
+      if (event.getCause() instanceof ReconfigurationInProgressException
+          || event.getCause() instanceof TimeoutIOException
+          || event.getCause() instanceof LeaderSteppingDownException
+          || event.getCause() instanceof ReconfigurationTimeoutException
+          || event.getCause() instanceof ServerNotReadyException
+          || event.getCause() instanceof NotLeaderException) {
         return defaultPolicy.handleAttemptFailure(event);
       }
       return NO_RETRY_ACTION;

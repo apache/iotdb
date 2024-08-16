@@ -758,8 +758,7 @@ public class RegionMaintainHandler {
    */
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
-    List<TDataNodeLocation> filterLocations = new ArrayList<>();
-    filterLocations.add(filterLocation);
+    List<TDataNodeLocation> filterLocations = Collections.singletonList(filterLocation);
     return filterDataNodeWithOtherRegionReplica(regionId, filterLocations);
   }
 
