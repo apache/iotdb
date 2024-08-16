@@ -34,6 +34,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
@@ -1096,6 +1097,37 @@ public abstract class AbstractMemTable implements IMemTable {
     }
   }
 
+  public void deserializeFromOldMemTableSnapshot(DataInputStream stream) throws IOException {
+    seriesNumber = stream.readInt();
+    memSize = stream.readLong();
+    tvListRamCost = stream.readLong();
+    totalPointsNum = stream.readLong();
+    totalPointsNumThreshold = stream.readLong();
+    maxPlanIndex = stream.readLong();
+    minPlanIndex = stream.readLong();
+
+    int memTableMapSize = stream.readInt();
+    for (int i = 0; i < memTableMapSize; ++i) {
+      PartialPath devicePath;
+      try {
+        devicePath =
+            DataNodeDevicePathCache.getInstance()
+                .getPartialPath(ReadWriteIOUtils.readString(stream));
+      } catch (IllegalPathException e) {
+        throw new IllegalArgumentException("Cannot deserialize OldMemTableSnapshot", e);
+      }
+      IDeviceID deviceID = deviceIDFactory.getDeviceID(devicePath);
+      boolean isAligned = ReadWriteIOUtils.readBool(stream);
+      IWritableMemChunkGroup memChunkGroup;
+      if (isAligned) {
+        memChunkGroup = AlignedWritableMemChunkGroup.deserialize(stream);
+      } else {
+        memChunkGroup = WritableMemChunkGroup.deserialize(stream);
+      }
+      memTableMap.put(deviceID, memChunkGroup);
+    }
+  }
+
   @Override
   public Map<IDeviceID, Long> getMaxTime() {
     Map<IDeviceID, Long> latestTimeForEachDevice = new HashMap<>();
@@ -1125,6 +1157,21 @@ public abstract class AbstractMemTable implements IMemTable {
         // database will be updated when deserialize
         PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
         primitiveMemTable.deserialize(stream);
+        memTable = primitiveMemTable;
+      }
+      return memTable;
+    }
+
+    public static IMemTable createFromOldMemTableSnapshot(DataInputStream stream)
+        throws IOException {
+      boolean isSignal = ReadWriteIOUtils.readBool(stream);
+      IMemTable memTable;
+      if (isSignal) {
+        memTable = new NotifyFlushMemTable();
+      } else {
+        // database will be updated when deserialize
+        PrimitiveMemTable primitiveMemTable = new PrimitiveMemTable();
+        primitiveMemTable.deserializeFromOldMemTableSnapshot(stream);
         memTable = primitiveMemTable;
       }
       return memTable;

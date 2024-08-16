@@ -21,10 +21,12 @@ package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.utils.annotations.TableModel;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
@@ -32,6 +34,8 @@ import org.apache.tsfile.exception.NotImplementedException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class InsertRowsStatement extends InsertBaseStatement {
@@ -172,5 +176,29 @@ public class InsertRowsStatement extends InsertBaseStatement {
               return Arrays.copyOfRange(segments, 1, segments.length);
             })
         .collect(Collectors.toList());
+  }
+
+  @TableModel
+  @Override
+  public void measurementsToLowerCase() {
+    insertRowStatementList.forEach(InsertRowStatement::measurementsToLowerCase);
+  }
+
+  @Override
+  @TableModel
+  public Optional<String> getDatabaseName() {
+    Optional<String> database = Optional.empty();
+    for (InsertRowStatement rowStatement : insertRowStatementList) {
+      Optional<String> childDatabaseName = rowStatement.getDatabaseName();
+      if (childDatabaseName.isPresent()
+          && database.isPresent()
+          && !Objects.equals(childDatabaseName.get(), database.get())) {
+        throw new SemanticException(
+            "Cannot insert into multiple databases within one statement, please split them manually");
+      }
+
+      database = childDatabaseName;
+    }
+    return database;
   }
 }

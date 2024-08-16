@@ -371,10 +371,6 @@ public class TableScanNode extends SourceNode {
     this.outputSymbols = outputSymbols;
   }
 
-  public void setAssignments(Map<Symbol, ColumnSchema> assignments) {
-    this.assignments = assignments;
-  }
-
   public Map<Symbol, ColumnSchema> getAssignments() {
     return this.assignments;
   }

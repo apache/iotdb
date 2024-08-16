@@ -167,6 +167,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -254,7 +255,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableStatement(RelationalSqlParser.CreateTableStatementContext ctx) {
+  public Node visitCreateTableStatement(final RelationalSqlParser.CreateTableStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
@@ -271,11 +272,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitColumnDefinition(RelationalSqlParser.ColumnDefinitionContext ctx) {
+  public Node visitColumnDefinition(final RelationalSqlParser.ColumnDefinitionContext ctx) {
     return new ColumnDefinition(
         getLocation(ctx),
         lowerIdentifier((Identifier) visit(ctx.identifier())),
-        (DataType) visit(ctx.type()),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
             ? null
@@ -309,8 +310,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitAddColumn(RelationalSqlParser.AddColumnContext ctx) {
-    return new AddColumn(getQualifiedName(ctx.tableName), (ColumnDefinition) visit(ctx.column));
+  public Node visitAddColumn(final RelationalSqlParser.AddColumnContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.tableName),
+        (ColumnDefinition) visit(ctx.column),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()));
   }
 
   @Override
@@ -331,7 +337,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitSetTableProperties(RelationalSqlParser.SetTablePropertiesContext ctx) {
+  public Node visitSetTableProperties(final RelationalSqlParser.SetTablePropertiesContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.propertyAssignments() != null) {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
@@ -340,7 +346,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         SetProperties.Type.TABLE,
         getQualifiedName(ctx.qualifiedName()),
-        properties);
+        properties,
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override
@@ -411,20 +418,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             .map(
                 r ->
                     toInsertRowStatement(
-                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName))
+                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName, databaseName))
             .collect(toList());
 
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
     insertRowsStatement.setInsertRowStatementList(rowStatements);
     insertRowsStatement.setWriteToTable(true);
-    insertRowsStatement.setDevicePath(new PartialPath(new String[] {tableName}));
-    databaseName.ifPresent(insertRowsStatement::setDatabaseName);
-    insertRowsStatement.setMeasurements(columnNameArray);
     return new InsertRows(insertRowsStatement, null);
   }
 
   private InsertRowStatement toInsertRowStatement(
-      Row row, int timeColumnIndex, String[] nonTimeColumnNames, String tableName) {
+      Row row,
+      int timeColumnIndex,
+      String[] nonTimeColumnNames,
+      String tableName,
+      Optional<String> databaseName) {
     InsertRowStatement insertRowStatement = new InsertRowStatement();
     insertRowStatement.setWriteToTable(true);
     insertRowStatement.setDevicePath(new PartialPath(new String[] {tableName}));
@@ -468,6 +476,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
+    databaseName.ifPresent(insertRowStatement::setDatabaseName);
     return insertRowStatement;
   }
 
@@ -533,20 +542,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    if (ctx.WHERE() != null || ctx.LIMIT() != null || ctx.OFFSET() != null) {
-      throw new UnsupportedOperationException(
-          "Show devices with WHERE/LIMIT/OFFSET is unsupported yet.");
+    if (ctx.LIMIT() != null || ctx.OFFSET() != null) {
+      throw new UnsupportedOperationException("Show devices with LIMIT/OFFSET is unsupported yet.");
     }
-    return new ShowDevice(getQualifiedName(ctx.tableName), null);
+    return new ShowDevice(
+        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
-    if (ctx.WHERE() != null) {
-      throw new UnsupportedOperationException("Count devices with WHERE is unsupported yet.");
-    }
-    return new CountDevice(getQualifiedName(ctx.tableName), null);
+    return new CountDevice(
+        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override

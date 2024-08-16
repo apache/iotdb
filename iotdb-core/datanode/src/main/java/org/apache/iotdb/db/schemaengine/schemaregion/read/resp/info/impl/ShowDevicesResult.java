@@ -16,11 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -71,6 +76,19 @@ public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchema
   @Override
   public PartialPath getPartialPath() {
     return rawNodes == null ? super.getPartialPath() : new PartialPath(rawNodes);
+  }
+
+  public static ShowDevicesResult convertDeviceEntry2ShowDeviceResult(
+      final DeviceEntry entry, final List<String> attributeColumns) {
+    final ShowDevicesResult result =
+        new ShowDevicesResult(
+            entry.getDeviceID().toString(), null, -1, (String[]) entry.getDeviceID().getSegments());
+    final Map<String, String> attributeProviderMap = new HashMap<>();
+    for (int i = 0; i < attributeColumns.size(); ++i) {
+      attributeProviderMap.put(attributeColumns.get(i), entry.getAttributeColumnValues().get(i));
+    }
+    result.setAttributeProvider(attributeProviderMap::get);
+    return result;
   }
 
   @Override
