@@ -57,16 +57,17 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.time.ZoneId;
-import java.util.BitSet;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.iotdb.rpc.RpcUtils.convertToTimestamp;
 
 public class IoTDBJDBCResultSet implements ResultSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBJDBCResultSet.class);
 
-  protected Statement statement;
+  protected IoTDBStatement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
   protected IoTDBRpcDataSet ioTDBRpcDataSet;
@@ -79,60 +80,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
   public IoTDBJDBCResultSet(
-      Statement statement,
-      List<String> columnNameList,
-      List<String> columnTypeList,
-      Map<String, Integer> columnNameIndex,
-      boolean ignoreTimeStamp,
-      IClientRPCService.Iface client,
-      String sql,
-      long queryId,
-      long sessionId,
-      List<ByteBuffer> dataset,
-      TSTracingInfo tracingInfo,
-      long timeout,
-      String operationType,
-      List<String> columns,
-      List<String> sgColumns,
-      BitSet aliasColumnMap,
-      boolean moreData,
-      ZoneId zoneId,
-      Charset charset)
-      throws SQLException {
-    this.ioTDBRpcDataSet =
-        new IoTDBRpcDataSet(
-            sql,
-            columnNameList,
-            columnTypeList,
-            columnNameIndex,
-            ignoreTimeStamp,
-            moreData,
-            queryId,
-            ((IoTDBStatement) statement).getStmtId(),
-            client,
-            sessionId,
-            dataset,
-            statement.getFetchSize(),
-            timeout,
-            sgColumns,
-            aliasColumnMap,
-            zoneId,
-            timeFormat);
-    this.statement = statement;
-    this.columnTypeList = columnTypeList;
-    if (tracingInfo != null) {
-      ioTDBRpcTracingInfo = new IoTDBTracingInfo();
-      ioTDBRpcTracingInfo.setTsTracingInfo(tracingInfo);
-    }
-    this.operationType = operationType;
-    this.columns = columns;
-    this.sgColumns = sgColumns;
-    this.charset = charset;
-  }
-
-  @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
-  public IoTDBJDBCResultSet(
-      Statement statement,
+      IoTDBStatement statement,
       List<String> columnNameList,
       List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
@@ -146,7 +94,8 @@ public class IoTDBJDBCResultSet implements ResultSet {
       long timeout,
       boolean moreData,
       ZoneId zoneId,
-      Charset charset)
+      Charset charset,
+      boolean tableModel)
       throws SQLException {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
@@ -157,14 +106,16 @@ public class IoTDBJDBCResultSet implements ResultSet {
             ignoreTimeStamp,
             moreData,
             queryId,
-            ((IoTDBStatement) statement).getStmtId(),
+            statement.getStmtId(),
             client,
             sessionId,
             dataSet,
             statement.getFetchSize(),
             timeout,
             zoneId,
-            timeFormat);
+            timeFormat,
+            statement.getTimeFactor(),
+            tableModel);
     this.statement = statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
@@ -207,8 +158,10 @@ public class IoTDBJDBCResultSet implements ResultSet {
             statement.getFetchSize(),
             timeout,
             zoneId,
-            timeFormat);
-    this.statement = statement;
+            timeFormat,
+            ((IoTDBStatement) statement).getTimeFactor(),
+            false);
+    this.statement = (IoTDBStatement) statement;
     this.columnTypeList = columnTypeList;
     if (tracingInfo != null) {
       ioTDBRpcTracingInfo = new IoTDBTracingInfo();
@@ -722,12 +675,12 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Time getTime(int columnIndex) throws SQLException {
-    return new Time(getLong(columnIndex));
+    long time = statement.getMilliSecond(getLong(columnIndex));
+    return new Time(time);
   }
 
   @Override
   public Time getTime(String columnName) throws SQLException {
-    // TODO: timestamp
     return getTime(findColumn(columnName));
   }
 
@@ -743,7 +696,7 @@ public class IoTDBJDBCResultSet implements ResultSet {
 
   @Override
   public Timestamp getTimestamp(int columnIndex) throws SQLException {
-    return new Timestamp(getLong(columnIndex));
+    return convertToTimestamp(getLong(columnIndex), statement.getTimeFactor());
   }
 
   @Override

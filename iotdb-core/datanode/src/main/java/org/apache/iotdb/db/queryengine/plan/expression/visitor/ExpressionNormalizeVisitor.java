@@ -61,7 +61,7 @@ public class ExpressionNormalizeVisitor extends ReconstructVisitor<Void> {
     if (newPath.isMeasurementAliasExists()) {
       ((MeasurementPath) newPath).removeMeasurementAlias();
     }
-    TimeSeriesOperand newOperand = new TimeSeriesOperand(newPath);
+    TimeSeriesOperand newOperand = new TimeSeriesOperand(newPath, timeSeriesOperand.getType());
     if (timeSeriesOperand.isViewExpression()) {
       newOperand.setViewPath(timeSeriesOperand.getViewPath());
     }

@@ -767,7 +767,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               Objects.nonNull(aliasList) ? aliasList.remove(i) : null,
               Objects.nonNull(tagsList) ? tagsList.remove(i) : null,
               Objects.nonNull(attributesList) ? attributesList.remove(i) : null,
-              prefixPath.concatNode(measurements.get(i)));
+              prefixPath.concatAsMeasurementPath(measurements.get(i)));
           if (Objects.nonNull(tagOffsets) && !tagOffsets.isEmpty()) {
             tagOffsets.remove(i);
           }
@@ -1428,6 +1428,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
+  public void createTableDevice(
+      String tableName,
+      List<Object[]> devicePathList,
+      List<String> attributeNameList,
+      List<Object[]> attributeValueList)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void deleteTableDevice(String table) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(showDevicesPlan);
@@ -1458,6 +1473,18 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      String table, List<Object[]> devicePathList) throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   // endregion

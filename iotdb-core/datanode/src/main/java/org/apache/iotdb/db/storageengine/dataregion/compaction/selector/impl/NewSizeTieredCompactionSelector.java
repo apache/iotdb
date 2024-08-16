@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -46,6 +47,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
+  private final CompactionScheduleContext context;
   private boolean isActiveTimePartition;
 
   public NewSizeTieredCompactionSelector(
@@ -53,7 +55,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       String dataRegionId,
       long timePartition,
       boolean sequence,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager);
     double availableDisk =
         MetricService.getInstance()
@@ -73,6 +76,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         Math.min(config.getInnerCompactionTotalFileSizeThreshold(), maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
+    this.context = context;
   }
 
   @Override
@@ -82,7 +86,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
     this.isActiveTimePartition = checkIsActiveTimePartition(tsFileResources);
     this.tsFileResourceCandidateList =
-        tsFileResources.stream().map(TsFileResourceCandidate::new).collect(Collectors.toList());
+        tsFileResources.stream()
+            .map(resource -> new TsFileResourceCandidate(resource, context))
+            .collect(Collectors.toList());
     return super.selectInnerSpaceTask(tsFileResources);
   }
 

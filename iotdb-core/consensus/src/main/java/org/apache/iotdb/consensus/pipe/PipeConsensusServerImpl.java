@@ -276,6 +276,10 @@ public class PipeConsensusServerImpl {
                   consensusGroupId,
                   existedName,
                   expectedStatus);
+              if (expectedStatus.equals(PipeStatus.RUNNING)) {
+                // Do nothing. Because Pipe framework's metaSync will do that.
+                return;
+              }
               consensusPipeManager.updateConsensusPipe(existedName, expectedStatus);
             } catch (Exception e) {
               LOGGER.warn(

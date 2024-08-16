@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -48,14 +49,12 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
-  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
+  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) {
     this(Collections.singletonList(targetFileResource));
   }
 
-  protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources)
-      throws IOException {
+  protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources) {
     this.targetResources = targetFileResources;
-    this.fileWriter = getAvailableWriter();
     isEmptyFile = true;
   }
 
@@ -69,13 +68,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   private CompactionTsFileWriter getAvailableWriter() throws IOException {
     if (fileWriter == null) {
-      fileWriter =
-          new CompactionTsFileWriter(
-              targetResources.get(currentFileIndex).getTsFile(),
-              sizeForFileWriter,
-              targetResources.get(currentFileIndex).isSeq()
-                  ? CompactionType.INNER_SEQ_COMPACTION
-                  : CompactionType.INNER_UNSEQ_COMPACTION);
+      useNewWriter();
       return fileWriter;
     }
     boolean shouldSwitchToNextWriter =
@@ -98,11 +91,16 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     fileWriter = null;
 
     currentFileIndex++;
+    useNewWriter();
+  }
+
+  private void useNewWriter() throws IOException {
     fileWriter =
         new CompactionTsFileWriter(
             targetResources.get(currentFileIndex).getTsFile(),
             sizeForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION);
+    fileWriter.setSchema(CompactionTableSchemaCollector.copySchema(schemas.get(0)));
   }
 
   @Override
@@ -131,9 +129,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endFile() throws IOException {
-    if (targetResources == null) {
-      System.out.println();
-    }
     for (int i = currentFileIndex + 1; i < targetResources.size(); i++) {
       targetResources.get(i).forceMarkDeleted();
     }

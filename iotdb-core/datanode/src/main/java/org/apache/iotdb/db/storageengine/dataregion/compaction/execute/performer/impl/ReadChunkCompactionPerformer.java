@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
@@ -40,6 +41,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -59,6 +61,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+  private Schema schema = null;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this(sourceFiles, Collections.singletonList(targetFile));
@@ -84,6 +87,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           StorageEngineException,
           PageException {
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
+      schema =
+          CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap());
       while (deviceIterator.hasNextDevice()) {
         currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -124,11 +129,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private CompactionTsFileWriter getAvailableCompactionWriter() throws IOException {
     if (currentWriter == null) {
-      currentWriter =
-          new CompactionTsFileWriter(
-              targetResources.get(currentTargetFileIndex).getTsFile(),
-              sizeForFileWriter,
-              CompactionType.INNER_SEQ_COMPACTION);
+      useNewWriter();
       return currentWriter;
     }
     boolean shouldSwitchToNextWriter =
@@ -151,11 +152,16 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     currentWriter = null;
 
     currentTargetFileIndex++;
+    useNewWriter();
+  }
+
+  private void useNewWriter() throws IOException {
     currentWriter =
         new CompactionTsFileWriter(
             targetResources.get(currentTargetFileIndex).getTsFile(),
             sizeForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION);
+    currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 
   @Override

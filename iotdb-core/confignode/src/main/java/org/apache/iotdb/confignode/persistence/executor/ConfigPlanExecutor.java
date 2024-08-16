@@ -99,6 +99,11 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Al
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -459,6 +464,16 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
       case ExtendSchemaTemplate:
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
+      case PreCreateTable:
+        return clusterSchemaInfo.preCreateTable((PreCreateTablePlan) physicalPlan);
+      case RollbackCreateTable:
+        return clusterSchemaInfo.rollbackCreateTable((RollbackCreateTablePlan) physicalPlan);
+      case CommitCreateTable:
+        return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
+      case AddTableColumn:
+        return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
+      case SetTableProperties:
+        return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

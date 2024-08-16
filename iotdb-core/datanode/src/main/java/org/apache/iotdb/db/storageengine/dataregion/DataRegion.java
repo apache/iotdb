@@ -25,8 +25,11 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -48,7 +51,7 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.queryengine.execution.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -56,10 +59,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -71,7 +77,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -111,6 +117,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TimePartitionManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -118,7 +125,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
@@ -159,6 +165,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.IntToLongFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
@@ -395,6 +402,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   /** this class is used to store recovering context. */
   private class DataRegionRecoveryContext {
+
     /** number of files to be recovered. */
     private final long numOfFilesToRecover;
 
@@ -876,7 +884,7 @@ public class DataRegion implements IDataRegionForQuery {
     // reject insertions that are out of ttl
     long deviceTTL =
         DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
-    if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+    if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
           insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
     }
@@ -890,18 +898,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       // init map
       long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
-
-      if (config.isEnableSeparateData()
-          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
-        TimePartitionManager.getInstance()
-            .registerTimePartitionInfo(
-                new TimePartitionInfo(
-                    new DataRegionId(Integer.parseInt(dataRegionId)),
-                    timePartitionId,
-                    true,
-                    Long.MAX_VALUE,
-                    0));
-      }
+      initFlushTimeMap(timePartitionId);
 
       boolean isSequence =
           config.isEnableSeparateData()
@@ -930,8 +927,91 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  private long getLastFlushTime(long timePartitionID, IDeviceID deviceID) {
+    return config.isEnableSeparateData()
+        ? lastFlushTimeMap.getFlushedTime(timePartitionID, deviceID)
+        : Long.MAX_VALUE;
+  }
+
+  private boolean splitAndInsert(InsertTabletNode insertTabletNode, int loc, TSStatus[] results)
+      throws BatchProcessException, WriteProcessException {
+    boolean noFailure = true;
+
+    // before is first start point
+    int before = loc;
+    long beforeTime = insertTabletNode.getTimes()[before];
+    // before time partition
+    long beforeTimePartition = TimePartitionUtils.getTimePartitionId(beforeTime);
+    // init flush time map
+    initFlushTimeMap(beforeTimePartition);
+
+    // if is sequence
+    boolean isSequence = false;
+    while (loc < insertTabletNode.getRowCount()) {
+      long time = insertTabletNode.getTimes()[loc];
+      final long timePartitionId = TimePartitionUtils.getTimePartitionId(time);
+
+      long lastFlushTime;
+      // judge if we should insert sequence
+      if (timePartitionId != beforeTimePartition) {
+        initFlushTimeMap(timePartitionId);
+        lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
+        // a new partition, insert the remaining of the previous partition
+        noFailure =
+            insertTabletToTsFileProcessor(
+                    insertTabletNode,
+                    before,
+                    loc,
+                    isSequence,
+                    results,
+                    beforeTimePartition,
+                    noFailure)
+                && noFailure;
+        before = loc;
+        beforeTimePartition = timePartitionId;
+        isSequence = time > lastFlushTime;
+      } else if (!isSequence) {
+        lastFlushTime = getLastFlushTime(timePartitionId, insertTabletNode.getDeviceID(loc));
+        if (time > lastFlushTime) {
+          // the same partition and switch to sequence data
+          // insert previous range into unsequence
+          noFailure =
+              insertTabletToTsFileProcessor(
+                      insertTabletNode,
+                      before,
+                      loc,
+                      isSequence,
+                      results,
+                      beforeTimePartition,
+                      noFailure)
+                  && noFailure;
+          before = loc;
+          isSequence = true;
+        }
+      }
+      // else: the same partition and isSequence not changed, just move the cursor forward
+      loc++;
+    }
+
+    // do not forget last part
+    if (before < loc) {
+      noFailure =
+          insertTabletToTsFileProcessor(
+                  insertTabletNode,
+                  before,
+                  loc,
+                  isSequence,
+                  results,
+                  beforeTimePartition,
+                  noFailure)
+              && noFailure;
+    }
+
+    return noFailure;
+  }
+
   /**
-   * Insert a tablet (rows belonging to the same devices) into this database.
+   * Insert a tablet into this database.
    *
    * @throws BatchProcessException if some of the rows failed to be inserted
    */
@@ -950,87 +1030,13 @@ public class DataRegion implements IDataRegionForQuery {
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
-      boolean noFailure = true;
-      long deviceTTL =
-          DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDevicePath().getNodes());
+      boolean noFailure;
+      int loc =
+          insertTabletNode.checkTTL(
+              results, i -> DataNodeTTLCache.getInstance().getTTL(insertTabletNode.getDeviceID(i)));
+      noFailure = loc == 0;
 
-      /*
-       * assume that batch has been sorted by client
-       */
-      int loc = 0;
-      while (loc < insertTabletNode.getRowCount()) {
-        long currTime = insertTabletNode.getTimes()[loc];
-        // skip points that do not satisfy TTL
-        if (!isAlive(currTime, deviceTTL)) {
-          results[loc] =
-              RpcUtils.getStatus(
-                  TSStatusCode.OUT_OF_TTL,
-                  String.format(
-                      "Insertion time [%s] is less than ttl time bound [%s]",
-                      DateTimeUtils.convertLongToDate(currTime),
-                      DateTimeUtils.convertLongToDate(
-                          CommonDateTimeUtils.currentTime() - deviceTTL)));
-          loc++;
-          noFailure = false;
-        } else {
-          break;
-        }
-      }
-      // loc pointing at first legal position
-      if (loc == insertTabletNode.getRowCount()) {
-        throw new OutOfTTLException(
-            insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
-            (CommonDateTimeUtils.currentTime() - deviceTTL));
-      }
-      // before is first start point
-      int before = loc;
-      // before time partition
-      long beforeTimePartition =
-          TimePartitionUtils.getTimePartitionId(insertTabletNode.getTimes()[before]);
-      // init map
-
-      if (config.isEnableSeparateData()
-          && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(beforeTimePartition)) {
-        TimePartitionManager.getInstance()
-            .registerTimePartitionInfo(
-                new TimePartitionInfo(
-                    new DataRegionId(Integer.parseInt(dataRegionId)),
-                    beforeTimePartition,
-                    true,
-                    Long.MAX_VALUE,
-                    0));
-      }
-
-      long lastFlushTime =
-          config.isEnableSeparateData()
-              ? lastFlushTimeMap.getFlushedTime(beforeTimePartition, insertTabletNode.getDeviceID())
-              : Long.MAX_VALUE;
-
-      // if is sequence
-      boolean isSequence = false;
-      while (loc < insertTabletNode.getRowCount()) {
-        long time = insertTabletNode.getTimes()[loc];
-        // always in some time partition
-        // judge if we should insert sequence
-        if (!isSequence && time > lastFlushTime) {
-          // insert into unsequence and then start sequence
-          noFailure =
-              insertTabletToTsFileProcessor(
-                      insertTabletNode, before, loc, false, results, beforeTimePartition)
-                  && noFailure;
-          before = loc;
-          isSequence = true;
-        }
-        loc++;
-      }
-
-      // do not forget last part
-      if (before < loc) {
-        noFailure =
-            insertTabletToTsFileProcessor(
-                    insertTabletNode, before, loc, isSequence, results, beforeTimePartition)
-                && noFailure;
-      }
+      noFailure = noFailure && splitAndInsert(insertTabletNode, loc, results);
 
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
         if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
@@ -1050,13 +1056,63 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * Check whether the time falls in TTL.
-   *
-   * @return whether the given time falls in ttl
-   */
-  private boolean isAlive(long time, long dataTTL) {
-    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+  private void initFlushTimeMap(long timePartitionId) {
+    if (config.isEnableSeparateData()
+        && !lastFlushTimeMap.checkAndCreateFlushedTimePartition(timePartitionId)) {
+      TimePartitionManager.getInstance()
+          .registerTimePartitionInfo(
+              new TimePartitionInfo(
+                  new DataRegionId(Integer.parseInt(dataRegionId)),
+                  timePartitionId,
+                  true,
+                  Long.MAX_VALUE,
+                  0));
+    }
+  }
+
+  private int checkTTL(
+      InsertTabletNode insertTabletNode,
+      TSStatus[] results,
+      IntToLongFunction rowTTLGetter,
+      boolean breakOnFirstAlive)
+      throws OutOfTTLException {
+
+    /*
+     * assume that batch has been sorted by client
+     */
+    int loc = 0;
+    long ttl = 0;
+    int firstAliveLoc = -1;
+    while (loc < insertTabletNode.getRowCount()) {
+      ttl = rowTTLGetter.applyAsLong(loc);
+      long currTime = insertTabletNode.getTimes()[loc];
+      // skip points that do not satisfy TTL
+      if (!CommonUtils.isAlive(currTime, ttl)) {
+        results[loc] =
+            RpcUtils.getStatus(
+                TSStatusCode.OUT_OF_TTL,
+                String.format(
+                    "Insertion time [%s] is less than ttl time bound [%s]",
+                    DateTimeUtils.convertLongToDate(currTime),
+                    DateTimeUtils.convertLongToDate(CommonDateTimeUtils.currentTime() - ttl)));
+      } else {
+        if (firstAliveLoc == -1) {
+          firstAliveLoc = loc;
+        }
+        if (breakOnFirstAlive) {
+          break;
+        }
+      }
+      loc++;
+    }
+
+    if (firstAliveLoc == -1) {
+      // no alive data
+      throw new OutOfTTLException(
+          insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
+          (CommonDateTimeUtils.currentTime() - ttl));
+    }
+    return firstAliveLoc;
   }
 
   /**
@@ -1078,7 +1134,8 @@ public class DataRegion implements IDataRegionForQuery {
       int end,
       boolean sequence,
       TSStatus[] results,
-      long timePartitionId) {
+      long timePartitionId,
+      boolean noFailure) {
     // return when start >= end or all measurement failed
     if (start >= end || insertTabletNode.allMeasurementFailed()) {
       if (logger.isDebugEnabled()) {
@@ -1101,8 +1158,11 @@ public class DataRegion implements IDataRegionForQuery {
       return false;
     }
 
+    // register TableSchema (and maybe more) for table insertion
+    registerToTsFile(insertTabletNode, tsFileProcessor);
+
     try {
-      tsFileProcessor.insertTablet(insertTabletNode, start, end, results);
+      tsFileProcessor.insertTablet(insertTabletNode, start, end, results, noFailure);
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
       return false;
@@ -1116,6 +1176,17 @@ public class DataRegion implements IDataRegionForQuery {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
     return true;
+  }
+
+  private void registerToTsFile(InsertNode node, TsFileProcessor tsFileProcessor) {
+    final String tableName = node.getTableName();
+    if (tableName != null) {
+      tsFileProcessor.registerToTsFile(
+          tableName,
+          t ->
+              TableSchema.of(DataNodeTableCache.getInstance().getTable(getDatabaseName(), t))
+                  .toTsFileTableSchema());
+    }
   }
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
@@ -1139,7 +1210,10 @@ public class DataRegion implements IDataRegionForQuery {
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeLastTimeValuePair,
-            index -> node.getColumns()[index] != null,
+            index ->
+                node.getColumns()[index] != null
+                    && (node.getColumnCategories() == null
+                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
             true,
             latestFlushedTime);
   }
@@ -1181,7 +1255,10 @@ public class DataRegion implements IDataRegionForQuery {
             node.getMeasurementSchemas(),
             node.isAligned(),
             node::composeTimeValuePair,
-            index -> node.getValues()[index] != null,
+            index ->
+                node.getValues()[index] != null
+                    && (node.getColumnCategories() == null
+                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
             true,
             latestFlushedTime);
   }
@@ -1783,8 +1860,8 @@ public class DataRegion implements IDataRegionForQuery {
   /** used for queryengine */
   @Override
   public QueryDataSource query(
-      List<PartialPath> pathList,
-      String singleDeviceId,
+      List<IFullPath> pathList,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       List<Long> timePartitions)
@@ -1818,7 +1895,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   @Override
   public IQueryDataSource queryForSeriesRegionScan(
-      List<PartialPath> pathList,
+      List<IFullPath> pathList,
       QueryContext queryContext,
       Filter globalTimeFilter,
       List<Long> timePartitions)
@@ -1853,7 +1930,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private List<IFileScanHandle> getFileHandleListForQuery(
       Collection<TsFileResource> tsFileResources,
-      List<PartialPath> partialPaths,
+      List<IFullPath> partialPaths,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -1978,8 +2055,8 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
-      List<PartialPath> pathList,
-      String singleDeviceId,
+      List<IFullPath> pathList,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -1997,11 +2074,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(
-          singleDeviceId == null ? null : new PlainDeviceID(singleDeviceId),
-          globalTimeFilter,
-          isSeq,
-          context.isDebug())) {
+      if (!tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -2036,13 +2109,9 @@ public class DataRegion implements IDataRegionForQuery {
 
   /**
    * @param pattern Must be a pattern start with a precise device path
-   * @param startTime
-   * @param endTime
-   * @param searchIndex
-   * @throws IOException
    */
-  public void deleteByDevice(PartialPath pattern, long startTime, long endTime, long searchIndex)
-      throws IOException {
+  public void deleteByDevice(
+      MeasurementPath pattern, long startTime, long endTime, long searchIndex) throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
@@ -2091,7 +2160,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDataDirectly(
-      PartialPath pathToDelete, long startTime, long endTime, long searchIndex) throws IOException {
+      MeasurementPath pathToDelete, long startTime, long endTime, long searchIndex)
+      throws IOException {
     logger.info(
         "{} will delete data files directly for deleting data between {} and {}",
         databaseName + "-" + dataRegionId,
@@ -2130,7 +2200,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private List<WALFlushListener> logDeletionInWAL(
-      long startTime, long endTime, long searchIndex, PartialPath path) {
+      long startTime, long endTime, long searchIndex, MeasurementPath path) {
     List<WALFlushListener> walFlushListeners = new ArrayList<>();
     if (config.getWalMode() == WALMode.DISABLE) {
       return walFlushListeners;
@@ -2201,13 +2271,15 @@ public class DataRegion implements IDataRegionForQuery {
             return true;
           }
         }
-        if (databaseName.contentEquals(device.getDevice())) {
+        if (databaseName.contentEquals(device.getIDeviceID().toString())) {
           return false;
         }
         Pair<Long, Long> startAndEndTime =
             tsFileResource.getPossibleStartTimeAndEndTime(
                 device,
-                deviceMatchInfo.stream().map(PlainDeviceID::new).collect(Collectors.toSet()));
+                deviceMatchInfo.stream()
+                    .map(IDeviceID.Factory.DEFAULT_FACTORY::create)
+                    .collect(Collectors.toSet()));
         if (startAndEndTime == null) {
           continue;
         }
@@ -2215,7 +2287,7 @@ public class DataRegion implements IDataRegionForQuery {
         deviceEndTime = startAndEndTime.getRight();
       } else {
         // TODO: DELETE
-        IDeviceID deviceId = new PlainDeviceID(device.getFullPath());
+        IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(device.getFullPath());
         if (tsFileResource.definitelyNotContains(deviceId)) {
           // resource does not contain this device
           continue;
@@ -2319,7 +2391,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private void deleteDataDirectlyInFile(
       List<TsFileResource> tsfileResourceList,
-      PartialPath pathToDelete,
+      MeasurementPath pathToDelete,
       long startTime,
       long endTime)
       throws IOException {
@@ -2525,11 +2597,11 @@ public class DataRegion implements IDataRegionForQuery {
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleSummary summary = new CompactionScheduleSummary();
+      CompactionScheduleContext context = new CompactionScheduleContext();
 
       // schedule insert compaction
-      trySubmitCount += executeInsertionCompaction(timePartitions);
-      summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
+      trySubmitCount += executeInsertionCompaction(timePartitions, context);
+      context.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
 
       // schedule the other compactions
       if (trySubmitCount == 0) {
@@ -2539,14 +2611,15 @@ public class DataRegion implements IDataRegionForQuery {
           CompactionScheduler.sharedLockCompactionSelection();
           try {
             trySubmitCount +=
-                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, context);
           } finally {
+            context.clearTimePartitionDeviceInfoCache();
             CompactionScheduler.sharedUnlockCompactionSelection();
           }
         }
       }
-      if (summary.hasSubmitTask()) {
-        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+      if (context.hasSubmitTask()) {
+        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(context);
       }
     } catch (InterruptedException e) {
       throw e;
@@ -2567,7 +2640,7 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
-      CompactionScheduleSummary summary = new CompactionScheduleSummary();
+      CompactionScheduleContext context = new CompactionScheduleContext();
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -2577,20 +2650,21 @@ public class DataRegion implements IDataRegionForQuery {
         try {
           trySubmitCount +=
               CompactionScheduler.tryToSubmitSettleCompactionTask(
-                  tsFileManager, timePartition, summary, true);
+                  tsFileManager, timePartition, context, true);
         } finally {
+          context.clearTimePartitionDeviceInfoCache();
           CompactionScheduler.sharedUnlockCompactionSelection();
         }
       }
-      if (summary.hasSubmitTask()) {
-        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+      if (context.hasSubmitTask()) {
+        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(context);
       }
       logger.info(
           "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
           databaseName,
           dataRegionId,
-          summary.getFullyDirtyFileNum(),
-          summary.getPartiallyDirtyFileNum());
+          context.getFullyDirtyFileNum(),
+          context.getPartiallyDirtyFileNum());
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
@@ -2601,24 +2675,31 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  protected int executeInsertionCompaction(List<Long> timePartitions) throws InterruptedException {
+  protected int executeInsertionCompaction(
+      List<Long> timePartitions, CompactionScheduleContext context) throws InterruptedException {
     int trySubmitCount = 0;
     CompactionScheduler.sharedLockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
-        Phaser insertionTaskPhaser = new Phaser(1);
         for (long timePartition : timePartitions) {
-          currentSubmitCount +=
-              CompactionScheduler.scheduleInsertionCompaction(
-                  tsFileManager, timePartition, insertionTaskPhaser);
+          while (true) {
+            Phaser insertionTaskPhaser = new Phaser(1);
+            int selectedTaskNum =
+                CompactionScheduler.scheduleInsertionCompaction(
+                    tsFileManager, timePartition, insertionTaskPhaser, context);
+            insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
+            currentSubmitCount += selectedTaskNum;
+            if (selectedTaskNum <= 0) {
+              break;
+            }
+          }
+          context.clearTimePartitionDeviceInfoCache();
+        }
+        if (currentSubmitCount <= 0) {
+          break;
         }
         trySubmitCount += currentSubmitCount;
-        insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
-        if (currentSubmitCount != 0) {
-          continue;
-        }
-        break;
       }
     } catch (InterruptedException e) {
       throw e;
@@ -3264,7 +3345,7 @@ public class DataRegion implements IDataRegionForQuery {
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
-        if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+        if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
           insertRowsOfOneDeviceNode
@@ -3380,8 +3461,12 @@ public class DataRegion implements IDataRegionForQuery {
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
         long deviceTTL =
-            DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
-        if (!isAlive(insertRowNode.getTime(), deviceTTL)) {
+            DataNodeTTLCache.getInstance()
+                .getTTL(
+                    Arrays.stream(insertRowNode.getDeviceID().getSegments())
+                        .map(seg -> seg != null ? seg.toString() : null)
+                        .toArray(String[]::new));
+        if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
           insertRowsNode
               .getResults()
               .put(

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
@@ -44,7 +44,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -312,7 +312,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
+    CompactionScheduleContext summary = new CompactionScheduleContext();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(2, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
 
@@ -387,7 +387,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
+    CompactionScheduleContext summary = new CompactionScheduleContext();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(2, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
 
@@ -463,7 +463,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
+    CompactionScheduleContext summary = new CompactionScheduleContext();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(1, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
     Assert.assertEquals(1, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
@@ -561,7 +561,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     }
     ModificationFile modFile = seqResource2.getModFile();
     Deletion writedModification =
-        new Deletion(new PartialPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
+        new Deletion(new MeasurementPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
     modFile.write(writedModification);
     modFile.close();
 
@@ -663,7 +663,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource target = tsFileManager.getTsFileList(false).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
-          reader.getAlignedChunkMetadata(new PlainDeviceID("root.testsg.d1"));
+          reader.getAlignedChunkMetadata(
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
       for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
         ChunkMetadata timeChunkMetadata =
             (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
@@ -710,7 +711,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource target = tsFileManager.getTsFileList(false).get(0);
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
-          reader.getAlignedChunkMetadata(new PlainDeviceID("root.testsg.d1"));
+          reader.getAlignedChunkMetadata(
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
       Assert.assertEquals(3, chunkMetadataList.size());
     }
   }

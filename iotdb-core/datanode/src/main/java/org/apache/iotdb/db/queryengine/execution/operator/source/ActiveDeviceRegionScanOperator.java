@@ -96,7 +96,7 @@ public class ActiveDeviceRegionScanOperator extends AbstractRegionScanDataSource
         String ttlStr = ttl == Long.MAX_VALUE ? IoTDBConstant.TTL_INFINITE : String.valueOf(ttl);
 
         timeColumnBuilder.writeLong(-1);
-        columnBuilders[0].writeBinary(new Binary(deviceID.getBytes()));
+        columnBuilders[0].writeBinary(new Binary(deviceID.toString(), TSFileConfig.STRING_CHARSET));
         columnBuilders[1].writeBinary(
             new Binary(
                 String.valueOf(deviceContextMap.get(deviceID).isAligned()),

@@ -45,9 +45,9 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.execution.QueryStateMachine;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.queryengine.execution.load.ChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileData;
-import org.apache.iotdb.db.queryengine.execution.load.TsFileSplitter;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.ChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileData;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileSplitter;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileDataCacheMemoryBlock;
 import org.apache.iotdb.db.queryengine.load.LoadTsFileMemoryManager;
 import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
@@ -69,7 +69,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -584,7 +583,8 @@ public class LoadTsFileScheduler implements IScheduler {
                   .map(
                       data ->
                           new Pair<>(
-                              (IDeviceID) new PlainDeviceID(data.getDevice()),
+                              (IDeviceID)
+                                  IDeviceID.Factory.DEFAULT_FACTORY.create(data.getDevice()),
                               data.getTimePartitionSlot()))
                   .collect(Collectors.toList()),
               scheduler.queryContext.getSession().getUserName());
@@ -653,10 +653,7 @@ public class LoadTsFileScheduler implements IScheduler {
             fetcher.getOrCreateDataPartition(toQueryParam(subSlotList), userName);
         replicaSets.addAll(
             subSlotList.stream()
-                .map(
-                    pair ->
-                        dataPartition.getDataRegionReplicaSetForWriting(
-                            ((PlainDeviceID) pair.left).toStringID(), pair.right))
+                .map(pair -> dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right))
                 .collect(Collectors.toList()));
       }
       return replicaSets;
@@ -672,9 +669,7 @@ public class LoadTsFileScheduler implements IScheduler {
           .stream()
           .map(
               entry ->
-                  new DataPartitionQueryParam(
-                      ((PlainDeviceID) entry.getKey()).toStringID(),
-                      new ArrayList<>(entry.getValue())))
+                  new DataPartitionQueryParam(entry.getKey(), new ArrayList<>(entry.getValue())))
           .collect(Collectors.toList());
     }
   }

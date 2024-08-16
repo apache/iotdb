@@ -265,7 +265,7 @@ public class SetTemplateProcedure
     try {
       path = new PartialPath(templateSetPath);
       patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
     } catch (IllegalPathException | IOException ignored) {
     }

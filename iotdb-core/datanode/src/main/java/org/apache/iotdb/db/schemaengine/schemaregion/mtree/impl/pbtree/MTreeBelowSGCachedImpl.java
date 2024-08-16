@@ -80,6 +80,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -415,7 +416,7 @@ public class MTreeBelowSGCachedImpl {
                     node.getAsMeasurementMNode();
                 if (node.getAsMeasurementMNode().isPreDeleted()) {
                   throw new MeasurementInBlackListException(
-                      devicePath.concatNode(measurements.get(i)));
+                      devicePath.concatAsMeasurementPath(measurements.get(i)));
                 } else if (!withMerge || measurementNode.getDataType() != dataTypes.get(i)) {
                   throw new MeasurementAlreadyExistException(
                       devicePath.getFullPath() + "." + measurements.get(i),
@@ -1024,7 +1025,8 @@ public class MTreeBelowSGCachedImpl {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    PartialPath devicePath = path.getDevicePath();
+    PartialPath devicePath =
+        new PartialPath(Arrays.copyOf(path.getNodes(), path.getNodeLength() - 1));
     ICachedMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     try {

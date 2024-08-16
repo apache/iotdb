@@ -52,6 +52,8 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -61,6 +63,7 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -345,12 +348,12 @@ public class IoTDBPartitionGetterIT {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
-    final String d11 = sg1 + ".d1.s";
+    final IDeviceID d00 = Factory.DEFAULT_FACTORY.create(sg0 + ".d0.s");
+    final IDeviceID d01 = Factory.DEFAULT_FACTORY.create(sg0 + ".d1.s");
+    final IDeviceID d10 = Factory.DEFAULT_FACTORY.create(sg1 + ".d0.s");
+    final IDeviceID d11 = Factory.DEFAULT_FACTORY.create(sg1 + ".d1.s");
 
-    String[] devices = new String[] {d00, d01, d10, d11};
+    IDeviceID[] devices = new IDeviceID[] {d00, d01, d10, d11};
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
@@ -430,8 +433,10 @@ public class IoTDBPartitionGetterIT {
       // Get RegionId with device
 
       TGetRegionIdReq deviceReq = new TGetRegionIdReq(TConsensusGroupType.DataRegion);
-      for (String device : devices) {
-        deviceReq.setDevice(device);
+      for (IDeviceID device : devices) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        device.serialize(baos);
+        deviceReq.setDevice(baos.toByteArray());
         TGetRegionIdResp resp = client.getRegionId(deviceReq);
         Assert.assertEquals(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());

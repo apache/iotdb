@@ -570,6 +570,27 @@ public class IoTDBSelectIntoIT {
         queryRetArray);
   }
 
+  @Test
+  public void testAliasAlignByDevice() {
+    String[] intoRetArray =
+        new String[] {
+          "root.sg.d1,s1,root.sg_abd_alias.d1.k1,10,",
+        };
+    resultSetEqualTest(
+        "select s1 as k1 " + "into root.sg_abd_alias.d1(::) from root.sg.d1 align by device;",
+        selectIntoAlignByDeviceHeader,
+        intoRetArray);
+
+    intoRetArray =
+        new String[] {
+          "k1,root.sg_abd_alias.d2.k1,10,",
+        };
+    resultSetEqualTest(
+        "select s1 as k1 " + "into root.sg_abd_alias.d2(::) from root.sg.d1;",
+        selectIntoHeader,
+        intoRetArray);
+  }
+
   // -------------------------------------- CHECK EXCEPTION -------------------------------------
 
   @Test
@@ -778,8 +799,8 @@ public class IoTDBSelectIntoIT {
 
     String[] resultSet =
         new String[] {
-          "1,852076800001,Hong Kong,0x486f6e67204b6f6e6720426c6f6221,1997-07-01,",
-          "3,852249600001,Hong Kong-3,0x486f6e67204b6f6e6720426c6f6224,1997-07-03,",
+          "1,1997-01-01T00:00:00.001Z,Hong Kong,0x486f6e67204b6f6e6720426c6f6221,1997-07-01,",
+          "3,1997-01-03T00:00:00.001Z,Hong Kong-3,0x486f6e67204b6f6e6720426c6f6224,1997-07-03,",
         };
 
     String expectedQueryHeader = "Time,root.db.d2.s7,root.db.d2.s8,root.db.d2.s9,root.db.d2.s10,";

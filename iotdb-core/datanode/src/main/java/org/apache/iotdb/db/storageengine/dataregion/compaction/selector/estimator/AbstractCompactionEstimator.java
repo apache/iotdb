@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
@@ -56,7 +56,7 @@ public abstract class AbstractCompactionEstimator {
           new LRUMap<>(
               IoTDBDescriptor.getInstance().getConfig().getGlobalCompactionFileInfoCacheSize()));
   protected Map<TsFileResource, FileInfo> fileInfoCache = new HashMap<>();
-  protected Map<TsFileResource, DeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
+  protected Map<TsFileResource, ArrayDeviceTimeIndex> deviceTimeIndexCache = new HashMap<>();
 
   protected IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
@@ -111,15 +111,15 @@ public abstract class AbstractCompactionEstimator {
   protected int calculatingMaxOverlapFileNumInSubCompactionTask(List<TsFileResource> resources)
       throws IOException {
     Set<IDeviceID> devices = new HashSet<>();
-    List<DeviceTimeIndex> resourceDevices = new ArrayList<>(resources.size());
+    List<ArrayDeviceTimeIndex> resourceDevices = new ArrayList<>(resources.size());
     for (TsFileResource resource : resources) {
-      DeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(resource);
+      ArrayDeviceTimeIndex deviceTimeIndex = getDeviceTimeIndexFromCache(resource);
       devices.addAll(deviceTimeIndex.getDevices());
       resourceDevices.add(deviceTimeIndex);
     }
     int maxOverlapFileNumInSubCompactionTask = 1;
     for (IDeviceID device : devices) {
-      List<DeviceTimeIndex> resourcesContainsCurrentDevice =
+      List<ArrayDeviceTimeIndex> resourcesContainsCurrentDevice =
           resourceDevices.stream()
               .filter(resource -> !resource.definitelyNotContains(device))
               .sorted(Comparator.comparingLong(resource -> resource.getStartTime(device)))
@@ -130,7 +130,7 @@ public abstract class AbstractCompactionEstimator {
 
       long maxEndTimeOfCurrentDevice = Long.MIN_VALUE;
       int overlapFileNumOfCurrentDevice = 0;
-      for (DeviceTimeIndex resource : resourcesContainsCurrentDevice) {
+      for (ArrayDeviceTimeIndex resource : resourcesContainsCurrentDevice) {
         long deviceStartTimeInCurrentFile = resource.getStartTime(device);
         long deviceEndTimeInCurrentFile = resource.getEndTime(device);
         if (deviceStartTimeInCurrentFile <= maxEndTimeOfCurrentDevice) {
@@ -154,7 +154,8 @@ public abstract class AbstractCompactionEstimator {
     return maxOverlapFileNumInSubCompactionTask;
   }
 
-  private DeviceTimeIndex getDeviceTimeIndexFromCache(TsFileResource resource) throws IOException {
+  private ArrayDeviceTimeIndex getDeviceTimeIndexFromCache(TsFileResource resource)
+      throws IOException {
     if (deviceTimeIndexCache.containsKey(resource)) {
       return deviceTimeIndexCache.get(resource);
     }
@@ -162,8 +163,8 @@ public abstract class AbstractCompactionEstimator {
     if (timeIndex instanceof FileTimeIndex) {
       timeIndex = resource.buildDeviceTimeIndex();
     }
-    deviceTimeIndexCache.put(resource, (DeviceTimeIndex) timeIndex);
-    return (DeviceTimeIndex) timeIndex;
+    deviceTimeIndexCache.put(resource, (ArrayDeviceTimeIndex) timeIndex);
+    return (ArrayDeviceTimeIndex) timeIndex;
   }
 
   public void cleanup() {

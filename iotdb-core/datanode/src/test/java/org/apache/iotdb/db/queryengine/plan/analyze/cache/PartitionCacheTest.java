@@ -34,6 +34,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -82,7 +84,7 @@ public class PartitionCacheTest {
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
       // init each database
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       storageGroups.add(storageGroupName);
       if (!schemaPartitionTable.containsKey(storageGroupName)) {
         schemaPartitionTable.put(storageGroupName, new HashMap<>());
@@ -92,9 +94,10 @@ public class PartitionCacheTest {
       }
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         // init each device
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         TSeriesPartitionSlot seriesPartitionSlot =
-            new TSeriesPartitionSlot(partitionExecutor.getSeriesPartitionSlot(deviceName));
+            new TSeriesPartitionSlot(partitionExecutor.getSeriesPartitionSlot(deviceID));
         // init schemaRegion of device
         TConsensusGroupId schemaConsensusGroupId =
             new TConsensusGroupId(
@@ -134,7 +137,7 @@ public class PartitionCacheTest {
     }
   }
 
-  private static String getStorageGroupName(int storageGroupNumber) {
+  private static String getDatabaseName(int storageGroupNumber) {
     return STORAGE_GROUP_PREFIX + storageGroupNumber;
   }
 
@@ -145,7 +148,7 @@ public class PartitionCacheTest {
   @Before
   public void setUp() throws Exception {
     partitionCache = new PartitionCache();
-    partitionCache.updateStorageCache(storageGroups);
+    partitionCache.updateDatabaseCache(storageGroups);
     partitionCache.updateSchemaPartitionCache(schemaPartitionTable);
     partitionCache.updateDataPartitionCache(dataPartitionTable);
     partitionCache.updateGroupIdToReplicaSetMap(100, consensusGroupIdToRegionReplicaSet);
@@ -158,69 +161,84 @@ public class PartitionCacheTest {
 
   @Test
   public void testStorageGroupCache() {
-    Map<String, List<String>> storageGroupToDeviceMap;
-    Map<String, String> deviceToStorageGroupMap;
+    Map<String, List<IDeviceID>> storageGroupToDeviceMap;
+    Map<IDeviceID, String> deviceToStorageGroupMap;
     // test devices in one database
-    List<List<String>> existedDevicesInOneStorageGroup =
+    List<List<IDeviceID>> existedDevicesInOneStorageGroup =
         Arrays.asList(
-            Arrays.asList("root.sg1.d1", "root.sg1.d2"),
-            Arrays.asList("root.sg2.d1", "root.sg2.d2"));
-    for (List<String> searchDevices : existedDevicesInOneStorageGroup) {
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg1.d1"),
+                Factory.DEFAULT_FACTORY.create("root.sg1.d2")),
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg2.d1"),
+                Factory.DEFAULT_FACTORY.create("root.sg2.d2")));
+    for (List<IDeviceID> searchDevices : existedDevicesInOneStorageGroup) {
       storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(
+          partitionCache.getDatabaseToDevice(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(1, storageGroupToDeviceMap.size());
-      for (List<String> devices : storageGroupToDeviceMap.values()) {
+      for (List<IDeviceID> devices : storageGroupToDeviceMap.values()) {
         assertEquals(2, devices.size());
       }
       deviceToStorageGroupMap =
-          partitionCache.getDeviceToStorageGroup(
+          partitionCache.getDeviceToDatabase(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
     // test devices in two database
-    List<List<String>> existedDevicesInMultiStorageGroup =
+    List<List<IDeviceID>> existedDevicesInMultiStorageGroup =
         Arrays.asList(
-            Arrays.asList("root.sg1.d1", "root.sg2.d2"),
-            Arrays.asList("root.sg1.d1", "root.sg2.d2"));
-    for (List<String> searchDevices : existedDevicesInMultiStorageGroup) {
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg1.d1"),
+                Factory.DEFAULT_FACTORY.create("root.sg2.d2")),
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg1.d1"),
+                Factory.DEFAULT_FACTORY.create("root.sg2.d2")));
+    for (List<IDeviceID> searchDevices : existedDevicesInMultiStorageGroup) {
       storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(
+          partitionCache.getDatabaseToDevice(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, storageGroupToDeviceMap.size());
-      for (List<String> devices : storageGroupToDeviceMap.values()) {
+      for (List<IDeviceID> devices : storageGroupToDeviceMap.values()) {
         assertEquals(1, devices.size());
       }
       deviceToStorageGroupMap =
-          partitionCache.getDeviceToStorageGroup(
+          partitionCache.getDeviceToDatabase(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(2, deviceToStorageGroupMap.size());
     }
     // test missed devices in storageGroupCache
-    List<List<String>> nonExistedDevices =
+    List<List<IDeviceID>> nonExistedDevices =
         Arrays.asList(
-            Arrays.asList("root.sg5.d1", "root.sg5.d2"),
-            Arrays.asList("root.sg.d1", "root.sg.d2"),
-            Arrays.asList("root.sg3.**", "root.sg4.**"));
-    for (List<String> searchDevices : nonExistedDevices) {
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg5.d1"),
+                Factory.DEFAULT_FACTORY.create("root.sg5.d2")),
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg.d1"),
+                Factory.DEFAULT_FACTORY.create("root.sg.d2")),
+            Arrays.asList(
+                Factory.DEFAULT_FACTORY.create("root.sg3.**"),
+                Factory.DEFAULT_FACTORY.create("root.sg4.**")));
+    for (List<IDeviceID> searchDevices : nonExistedDevices) {
       storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(
+          partitionCache.getDatabaseToDevice(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(0, storageGroupToDeviceMap.size());
       deviceToStorageGroupMap =
-          partitionCache.getDeviceToStorageGroup(
+          partitionCache.getDeviceToDatabase(
               searchDevices, false, false, AuthorityChecker.SUPER_USER);
       assertEquals(0, deviceToStorageGroupMap.size());
     }
     // test invalid all cache
     partitionCache.invalidAllCache();
-    List<String> oneDeviceList = Collections.singletonList("root.sg1.d1");
+    List<IDeviceID> oneDeviceList =
+        Collections.singletonList(Factory.DEFAULT_FACTORY.create("root.sg1.d1"));
     storageGroupToDeviceMap =
-        partitionCache.getStorageGroupToDevice(
+        partitionCache.getDatabaseToDevice(
             oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
     assertEquals(0, storageGroupToDeviceMap.size());
     deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(
+        partitionCache.getDeviceToDatabase(
             oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
     assertEquals(0, deviceToStorageGroupMap.size());
   }
@@ -269,13 +287,14 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         TSeriesPartitionSlot seriesPartitionSlot =
-            partitionExecutor.getSeriesPartitionSlot(deviceName);
-        Map<String, List<String>> searchMap = new HashMap<>();
-        searchMap.put(storageGroupName, Collections.singletonList(deviceName));
+            partitionExecutor.getSeriesPartitionSlot(deviceID);
+        Map<String, List<IDeviceID>> searchMap = new HashMap<>();
+        searchMap.put(storageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNotNull(schemaPartition);
         Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result =
@@ -291,9 +310,10 @@ public class PartitionCacheTest {
     List<String> missedStorageGroupNames = Arrays.asList("root.sg", "root.*");
     for (String missedStorageGroupName : missedStorageGroupNames) {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(missedStorageGroupName, deviceNumber);
-        Map<String, List<String>> searchMap = new HashMap<>();
-        searchMap.put(missedStorageGroupName, Collections.singletonList(deviceName));
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(missedStorageGroupName, deviceNumber));
+        Map<String, List<IDeviceID>> searchMap = new HashMap<>();
+        searchMap.put(missedStorageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNull(schemaPartition);
       }
@@ -302,13 +322,14 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = DEVICE_PER_STORAGE_GROUP;
           deviceNumber < 2 * DEVICE_PER_STORAGE_GROUP;
           deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
-        Map<String, List<String>> searchMap = new HashMap<>();
-        searchMap.put(storageGroupName, Collections.singletonList(deviceName));
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
+        Map<String, List<IDeviceID>> searchMap = new HashMap<>();
+        searchMap.put(storageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNull(schemaPartition);
       }
@@ -318,11 +339,12 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
-        Map<String, List<String>> searchMap = new HashMap<>();
-        searchMap.put(storageGroupName, Collections.singletonList(deviceName));
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
+        Map<String, List<IDeviceID>> searchMap = new HashMap<>();
+        searchMap.put(storageGroupName, Collections.singletonList(deviceID));
         SchemaPartition schemaPartition = partitionCache.getSchemaPartition(searchMap);
         assertNull(schemaPartition);
       }
@@ -334,14 +356,15 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            IDeviceID.Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         TSeriesPartitionSlot seriesPartitionSlot =
-            partitionExecutor.getSeriesPartitionSlot(deviceName);
+            partitionExecutor.getSeriesPartitionSlot(deviceID);
         // try to get DataPartition from partitionCache
         Map<String, List<DataPartitionQueryParam>> searchMap =
-            getStorageGroupToQueryParamsMap(storageGroupName, deviceName, false);
+            getStorageGroupToQueryParamsMap(storageGroupName, deviceID, false);
         DataPartition dataPartition = partitionCache.getDataPartition(searchMap);
         // try to check DataPartition
         assertNotNull(dataPartition);
@@ -366,9 +389,10 @@ public class PartitionCacheTest {
     List<String> missedStorageGroupNames = Arrays.asList("root.sg", "root.*");
     for (String missedStorageGroupName : missedStorageGroupNames) {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(missedStorageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(missedStorageGroupName, deviceNumber));
         Map<String, List<DataPartitionQueryParam>> searchMap =
-            getStorageGroupToQueryParamsMap(missedStorageGroupName, deviceName, false);
+            getStorageGroupToQueryParamsMap(missedStorageGroupName, deviceID, false);
         DataPartition dataPartition = partitionCache.getDataPartition(searchMap);
         assertNull(dataPartition);
       }
@@ -378,13 +402,14 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = DEVICE_PER_STORAGE_GROUP;
           deviceNumber < 2 * DEVICE_PER_STORAGE_GROUP;
           deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         Map<String, List<DataPartitionQueryParam>> searchMap =
-            getStorageGroupToQueryParamsMap(storageGroupName, deviceName, false);
+            getStorageGroupToQueryParamsMap(storageGroupName, deviceID, false);
         DataPartition dataPartition = partitionCache.getDataPartition(searchMap);
         assertNull(dataPartition);
       }
@@ -394,11 +419,12 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         Map<String, List<DataPartitionQueryParam>> searchMap =
-            getStorageGroupToQueryParamsMap(storageGroupName, deviceName, true);
+            getStorageGroupToQueryParamsMap(storageGroupName, deviceID, true);
         DataPartition dataPartition = partitionCache.getDataPartition(searchMap);
         assertNull(dataPartition);
       }
@@ -409,11 +435,12 @@ public class PartitionCacheTest {
     for (int storageGroupNumber = 0;
         storageGroupNumber < STORAGE_GROUP_NUMBER;
         storageGroupNumber++) {
-      String storageGroupName = getStorageGroupName(storageGroupNumber);
+      String storageGroupName = getDatabaseName(storageGroupNumber);
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
-        String deviceName = getDeviceName(storageGroupName, deviceNumber);
+        IDeviceID deviceID =
+            Factory.DEFAULT_FACTORY.create(getDeviceName(storageGroupName, deviceNumber));
         Map<String, List<DataPartitionQueryParam>> searchMap =
-            getStorageGroupToQueryParamsMap(storageGroupName, deviceName, false);
+            getStorageGroupToQueryParamsMap(storageGroupName, deviceID, false);
         DataPartition dataPartition = partitionCache.getDataPartition(searchMap);
         assertNull(dataPartition);
       }
@@ -426,7 +453,7 @@ public class PartitionCacheTest {
    * @param timePartitionSlotMissed whether the timePartitionSlot in result is missed in cache
    */
   private Map<String, List<DataPartitionQueryParam>> getStorageGroupToQueryParamsMap(
-      String storageGroupName, String deviceName, boolean timePartitionSlotMissed) {
+      String storageGroupName, IDeviceID deviceID, boolean timePartitionSlotMissed) {
     Map<String, List<DataPartitionQueryParam>> storageGroupToQueryParamsMap = new HashMap<>();
     List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
@@ -441,7 +468,7 @@ public class PartitionCacheTest {
       timePartitionSlotList.add(timePartitionSlot);
     }
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
-    dataPartitionQueryParam.setDevicePath(deviceName);
+    dataPartitionQueryParam.setDeviceID(deviceID);
     dataPartitionQueryParam.setTimePartitionSlotList(timePartitionSlotList);
     storageGroupToQueryParamsMap.put(
         storageGroupName, Collections.singletonList(dataPartitionQueryParam));

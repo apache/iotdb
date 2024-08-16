@@ -30,7 +30,6 @@ import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.Chunk;
@@ -41,6 +40,7 @@ import org.apache.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -96,6 +96,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected IDeviceID deviceId;
 
   protected String[] measurementId = new String[subTaskNum];
+
+  protected List<Schema> schemas;
 
   public abstract void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException;
 
@@ -316,11 +318,13 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void checkPreviousTimestamp(long currentWritingTimestamp, int subTaskId) {
     if (currentWritingTimestamp <= lastTime[subTaskId]) {
       throw new CompactionLastTimeCheckFailedException(
-          ((PlainDeviceID) deviceId).toStringID()
-              + IoTDBConstant.PATH_SEPARATOR
-              + measurementId[subTaskId],
+          deviceId.toString() + IoTDBConstant.PATH_SEPARATOR + measurementId[subTaskId],
           currentWritingTimestamp,
           lastTime[subTaskId]);
     }
+  }
+
+  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+    this.schemas = schemas;
   }
 }

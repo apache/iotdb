@@ -35,6 +35,11 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadDirScanner;
+import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadTsFileLoader;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.ChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.DeletionData;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileData;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -47,7 +52,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyT
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,9 +97,14 @@ public class LoadTsFileManager {
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
+  private final ActiveLoadTsFileLoader activeLoadTsFileLoader = new ActiveLoadTsFileLoader();
+  private final ActiveLoadDirScanner activeLoadDirScanner =
+      new ActiveLoadDirScanner(activeLoadTsFileLoader);
+
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
+    activeLoadDirScanner.start();
   }
 
   private void registerCleanupTaskExecutor() {
@@ -393,7 +403,7 @@ public class LoadTsFileManager {
         if (dataPartition2LastDevice.containsKey(partitionInfo)) {
           writer.endChunkGroup();
         }
-        writer.startChunkGroup(new PlainDeviceID(chunkData.getDevice()));
+        writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create(chunkData.getDevice()));
         dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
       }
       chunkData.writeToFileWriter(writer);

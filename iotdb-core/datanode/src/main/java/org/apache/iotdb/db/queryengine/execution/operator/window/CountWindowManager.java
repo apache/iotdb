@@ -25,7 +25,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.List;
 
@@ -80,7 +79,7 @@ public class CountWindowManager implements IWindowManager {
       return inputTsBlock;
     }
 
-    TimeColumn timeColumn = inputTsBlock.getTimeColumn();
+    Column timeColumn = inputTsBlock.getTimeColumn();
     Column controlColumn = countWindow.getControlColumn(inputTsBlock);
     long leftCount = countWindow.getLeftCount();
     int i = 0;

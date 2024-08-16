@@ -314,6 +314,19 @@ public interface ISchemaRegion {
 
   // endregion
 
+  // region table device management
+
+  void createTableDevice(
+      final String tableName,
+      final List<Object[]> devicePathList,
+      final List<String> attributeNameList,
+      final List<Object[]> attributeValueList)
+      throws MetadataException;
+
+  void deleteTableDevice(String table) throws MetadataException;
+
+  // endregion
+
   // region Interfaces for SchemaReader
 
   ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
@@ -324,6 +337,13 @@ public interface ISchemaRegion {
 
   ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
+      throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      final String table, final List<Object[]> devicePathList) throws MetadataException;
+  // endregion
 
   // endregion
 }
