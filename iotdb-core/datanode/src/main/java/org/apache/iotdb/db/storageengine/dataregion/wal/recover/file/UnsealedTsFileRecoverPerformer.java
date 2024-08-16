@@ -288,8 +288,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         // currently, we close this file anyway
         writer.endFile();
         tsFileResource.serialize();
-        FileTimeIndexCacheRecorder.getInstance()
-            .logFileTimeIndex(dataRegionInfo.getDataRegion().getDataRegionSysDir(), tsFileResource);
+        FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {

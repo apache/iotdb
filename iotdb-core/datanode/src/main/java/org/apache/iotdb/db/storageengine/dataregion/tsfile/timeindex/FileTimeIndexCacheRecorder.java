@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceList;
@@ -70,10 +71,13 @@ public class FileTimeIndexCacheRecorder {
     }
   }
 
-  public void logFileTimeIndex(File dataRegionSysDir, TsFileResource tsFileResource) {
+  public void logFileTimeIndex(TsFileResource tsFileResource) {
     TsFileID tsFileID = tsFileResource.getTsFileID();
     int dataRegionId = tsFileID.regionId;
     long partitionId = tsFileID.timePartitionId;
+    File dataRegionSysDir =
+        StorageEngine.getDataRegionSystemDir(
+            tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
 
     FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
     taskQueue.offer(
@@ -87,12 +91,16 @@ public class FileTimeIndexCacheRecorder {
   }
 
   public void compactFileTimeIndexIfNeeded(
-      File dataRegionSysDir,
+      String dataBaseName,
       int dataRegionId,
       long partitionId,
       TsFileResourceList sequenceFiles,
       TsFileResourceList unsequenceFiles) {
-    FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
+    FileTimeIndexCacheWriter writer =
+        getWriter(
+            dataRegionId,
+            partitionId,
+            StorageEngine.getDataRegionSystemDir(dataBaseName, String.valueOf(dataRegionId)));
 
     int currentResourceCount =
         (sequenceFiles == null ? 0 : sequenceFiles.size())

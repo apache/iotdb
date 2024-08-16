@@ -25,7 +25,6 @@ import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
 import org.apache.tsfile.read.filter.basic.Filter;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -250,10 +249,9 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      File storageGroupDirFile = new File(this.dataRegionSysDir);
       FileTimeIndexCacheRecorder.getInstance()
           .compactFileTimeIndexIfNeeded(
-              storageGroupDirFile,
+              storageGroupName,
               Integer.parseInt(dataRegionId),
               timePartition,
               sequenceFiles.get(timePartition),
@@ -270,7 +268,7 @@ public class TsFileManager {
                 .computeIfAbsent(timePartition, t -> new TsFileResourceList())
                 .keepOrderInsert(resource);
           }
-          FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(storageGroupDirFile, resource);
+          FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(resource);
         }
       }
     } finally {

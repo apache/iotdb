@@ -1709,8 +1709,7 @@ public class TsFileProcessor {
     }
     writer.endFile();
     tsFileResource.serialize();
-    FileTimeIndexCacheRecorder.getInstance()
-        .logFileTimeIndex(dataRegionInfo.getDataRegion().getDataRegionSysDir(), tsFileResource);
+    FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     if (logger.isDebugEnabled()) {
       logger.debug("Ended file {}", tsFileResource);
     }

@@ -120,7 +120,7 @@ public class StorageEngine implements IService {
    * a folder (system/databases/ by default) that persist system info. Each database will have a
    * subfolder under the systemDir.
    */
-  private final String systemDir =
+  private static final String systemDir =
       FilePathUtils.regularizePath(CONFIG.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
@@ -973,6 +973,11 @@ public class StorageEngine implements IService {
             dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
           }
         });
+  }
+
+  public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {
+    return SystemFileFactory.INSTANCE.getFile(
+        systemDir + File.separator + dataBaseName, dataRegionId);
   }
 
   static class InstanceHolder {
