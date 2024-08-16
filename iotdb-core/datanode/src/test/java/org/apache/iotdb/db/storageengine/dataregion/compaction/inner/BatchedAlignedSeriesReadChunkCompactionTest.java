@@ -401,6 +401,43 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
   }
 
   @Test
+  public void testCompactionWithEmptyBatch() throws Exception {
+    TsFileResource seqResource1 = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqResource1)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3", "s4", "s5"),
+          new TimeRange[] {new TimeRange(100, 200)},
+          TSEncoding.RLE,
+          CompressionType.LZ4,
+          Arrays.asList(false, false, false, false, false));
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3", "s4", "s5"),
+          new TimeRange[] {new TimeRange(300, 400)},
+          TSEncoding.RLE,
+          CompressionType.LZ4,
+          Arrays.asList(true, true, false, false, false));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    seqResources.add(seqResource1);
+    CompactionTaskSummary summary = new CompactionTaskSummary();
+    TsFileResource targetResource = performCompaction(summary);
+    Assert.assertEquals(0, summary.getDirectlyFlushChunkNum());
+    Assert.assertEquals(14, summary.getDeserializeChunkCount());
+    Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
+    TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+    Assert.assertTrue(
+        CompactionCheckerUtils.compareSourceDataAndTargetData(
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(seqResources), seqResources, unseqResources),
+            CompactionCheckerUtils.getDataByQuery(
+                getPaths(Collections.singletonList(targetResource)),
+                Collections.singletonList(targetResource),
+                Collections.emptyList())));
+  }
+
+  @Test
   public void testSimpleCompactionWithPartialDeletedPageByWritePoint() throws Exception {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
