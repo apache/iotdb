@@ -20,9 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonPredicatesExpressionRewriter;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -31,17 +36,16 @@ import java.util.List;
 import java.util.Objects;
 
 // TODO table metadata: reuse query distinct logic
-public abstract class AbstractQueryDevice extends Statement {
+public abstract class AbstractTraverseDevice extends Statement {
 
-  private String database;
+  protected String database;
 
-  private String tableName;
+  protected String tableName;
 
   // Temporary
   private QualifiedName name;
 
-  // Currently unused, shall be parsed into idDeterminedPredicateList and idFuzzyPredicate on demand
-  private Expression rawExpression;
+  protected Expression rawExpression;
 
   /**
    * The outer list represents the OR relation between different expression lists.
@@ -59,25 +63,16 @@ public abstract class AbstractQueryDevice extends Statement {
   private List<IDeviceID> partitionKeyList;
 
   // For sql-input show device usage
-  protected AbstractQueryDevice(final QualifiedName name, final Expression rawExpression) {
+  protected AbstractTraverseDevice(final QualifiedName name, final Expression rawExpression) {
     super(null);
     this.name = name;
     this.rawExpression = rawExpression;
   }
 
-  // For device fetch serving data query
-  protected AbstractQueryDevice(
-      final String database,
-      final String tableName,
-      final List<List<SchemaFilter>> idDeterminedFilterList,
-      final Expression idFuzzyFilterList,
-      final List<IDeviceID> partitionKeyList) {
+  protected AbstractTraverseDevice(final String database, final String tableName) {
     super(null);
     this.database = database;
     this.tableName = tableName;
-    this.idDeterminedFilterList = idDeterminedFilterList;
-    this.idFuzzyPredicate = idFuzzyFilterList;
-    this.partitionKeyList = partitionKeyList;
   }
 
   public void parseQualifiedName(final SessionInfo sessionInfo) {
@@ -98,8 +93,42 @@ public abstract class AbstractQueryDevice extends Statement {
     return tableName;
   }
 
+  public QualifiedName getName() {
+    return name;
+  }
+
   public Expression getRawExpression() {
     return rawExpression;
+  }
+
+  public void setRawExpression(final Expression rawExpression) {
+    this.rawExpression = rawExpression;
+  }
+
+  public boolean parseRawExpression(
+      final List<DeviceEntry> entries,
+      final TsTable tableInstance,
+      final List<String> attributeColumns,
+      final MPPQueryContext context) {
+    if (Objects.isNull(rawExpression)) {
+      return true;
+    }
+    rawExpression =
+        ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(rawExpression);
+    return TableDeviceSchemaFetcher.getInstance()
+        .parseFilter4TraverseDevice(
+            database,
+            tableInstance,
+            (rawExpression instanceof LogicalExpression
+                    && ((LogicalExpression) rawExpression).getOperator()
+                        == LogicalExpression.Operator.AND)
+                ? ((LogicalExpression) rawExpression).getTerms()
+                : Collections.singletonList(rawExpression),
+            this,
+            entries,
+            attributeColumns,
+            context,
+            true);
   }
 
   public List<List<SchemaFilter>> getIdDeterminedFilterList() {
@@ -109,8 +138,16 @@ public abstract class AbstractQueryDevice extends Statement {
     return idDeterminedFilterList;
   }
 
+  public void setIdDeterminedFilterList(final List<List<SchemaFilter>> idDeterminedFilterList) {
+    this.idDeterminedFilterList = idDeterminedFilterList;
+  }
+
   public Expression getIdFuzzyPredicate() {
     return idFuzzyPredicate;
+  }
+
+  public void setIdFuzzyPredicate(final Expression idFuzzyPredicate) {
+    this.idFuzzyPredicate = idFuzzyPredicate;
   }
 
   public boolean isIdDetermined() {
@@ -119,6 +156,10 @@ public abstract class AbstractQueryDevice extends Statement {
 
   public List<IDeviceID> getPartitionKeyList() {
     return partitionKeyList;
+  }
+
+  public void setPartitionKeyList(final List<IDeviceID> partitionKeyList) {
+    this.partitionKeyList = partitionKeyList;
   }
 
   @Override
@@ -130,7 +171,7 @@ public abstract class AbstractQueryDevice extends Statement {
   public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    final AbstractQueryDevice that = (AbstractQueryDevice) o;
+    final AbstractTraverseDevice that = (AbstractTraverseDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(rawExpression, that.rawExpression)

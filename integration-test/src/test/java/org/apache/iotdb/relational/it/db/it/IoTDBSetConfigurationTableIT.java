@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
@@ -42,7 +42,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBSetConfigurationTableIT {
   @BeforeClass
   public static void setUp() throws Exception {

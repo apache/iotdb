@@ -29,8 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -47,22 +49,22 @@ public class TableModelStatementMemorySourceVisitor
 
   @Override
   public StatementMemorySource visitNode(
-      Node node, TableModelStatementMemorySourceContext context) {
-    DatasetHeader datasetHeader = context.getAnalysis().getRespDatasetHeader();
+      final Node node, final TableModelStatementMemorySourceContext context) {
+    final DatasetHeader datasetHeader = context.getAnalysis().getRespDatasetHeader();
     return new StatementMemorySource(
         new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
 
   @Override
   public StatementMemorySource visitExplain(
-      Explain node, TableModelStatementMemorySourceContext context) {
+      final Explain node, final TableModelStatementMemorySourceContext context) {
     context.getAnalysis().setStatement(node.getStatement());
-    DatasetHeader header =
+    final DatasetHeader header =
         new DatasetHeader(
             Collections.singletonList(
                 new ColumnHeader(IoTDBConstant.COLUMN_DISTRIBUTION_PLAN, TSDataType.TEXT)),
             true);
-    LogicalQueryPlan logicalPlan =
+    final LogicalQueryPlan logicalPlan =
         new org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner(
                 context.getQueryContext(),
                 LocalExecutionPlanner.getInstance().metadata,
@@ -73,19 +75,31 @@ public class TableModelStatementMemorySourceVisitor
       return new StatementMemorySource(new TsBlock(0), header);
     }
 
-    // generate table model distributed plan
-    TableDistributedPlanGenerator.PlanContext planContext =
+    // Generate table model distributed plan
+    final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
-    PlanNode outputNodeWithExchange =
+    final PlanNode outputNodeWithExchange =
         new TableDistributedPlanner(context.getAnalysis(), logicalPlan, context.getQueryContext())
             .generateDistributedPlanWithOptimize(planContext);
 
-    List<String> lines =
+    final List<String> lines =
         outputNodeWithExchange.accept(
             new PlanGraphPrinter(),
             new PlanGraphPrinter.GraphContext(
                 context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
     return getStatementMemorySource(header, lines);
+  }
+
+  @Override
+  public StatementMemorySource visitShowDevice(
+      final ShowDevice node, final TableModelStatementMemorySourceContext context) {
+    return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitCountDevice(
+      final CountDevice node, final TableModelStatementMemorySourceContext context) {
+    return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
   }
 }
