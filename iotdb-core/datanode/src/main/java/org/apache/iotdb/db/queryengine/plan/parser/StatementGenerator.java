@@ -525,7 +525,7 @@ public class StatementGenerator {
   public static CreateAlignedTimeSeriesStatement createStatement(TSCreateAlignedTimeseriesReq req)
       throws IllegalPathException {
     final long startTime = System.nanoTime();
-    // construct create aligned timeseries statement
+    // construct create aligned time series statement
     CreateAlignedTimeSeriesStatement statement = new CreateAlignedTimeSeriesStatement();
     statement.setDevicePath(DEVICE_PATH_CACHE.getPartialPath(req.prefixPath));
     List<TSDataType> dataTypes = new ArrayList<>();

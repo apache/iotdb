@@ -35,6 +35,11 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadDirScanner;
+import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadTsFileLoader;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.ChunkData;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.DeletionData;
+import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileData;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -65,7 +70,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -93,9 +97,14 @@ public class LoadTsFileManager {
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
+  private final ActiveLoadTsFileLoader activeLoadTsFileLoader = new ActiveLoadTsFileLoader();
+  private final ActiveLoadDirScanner activeLoadDirScanner =
+      new ActiveLoadDirScanner(activeLoadTsFileLoader);
+
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
+    activeLoadDirScanner.start();
   }
 
   private void registerCleanupTaskExecutor() {
@@ -296,26 +305,13 @@ public class LoadTsFileManager {
     if (Objects.nonNull(writerManager)) {
       writerManager.close();
     }
-
-    for (final Path loadDirPath :
-        Arrays.stream(LOAD_BASE_DIRS.get())
-            .map(File::new)
-            .filter(File::exists)
-            .map(File::toPath)
-            .collect(Collectors.toList())) {
-      try {
-        Files.deleteIfExists(loadDirPath);
-        LOGGER.info("Load dir {} was deleted.", loadDirPath);
-      } catch (DirectoryNotEmptyException e) {
-        LOGGER.info("Load dir {} is not empty, skip deleting.", loadDirPath);
-      } catch (Exception e) {
-        LOGGER.info(MESSAGE_DELETE_FAIL, loadDirPath);
-      }
-    }
   }
 
   public static void updateWritePointCountMetrics(
-      final DataRegion dataRegion, final String databaseName, final long writePointCount) {
+      final DataRegion dataRegion,
+      final String databaseName,
+      final long writePointCount,
+      final boolean isGeneratedByPipeConsensusLeader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionId());
     MetricService.getInstance()
@@ -342,7 +338,7 @@ public class LoadTsFileManager {
                     Integer.parseInt(dataRegion.getDataRegionId())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
-    if (replicationNum != 0) {
+    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
       MetricService.getInstance()
           .count(
               writePointCount / replicationNum,
@@ -472,7 +468,7 @@ public class LoadTsFileManager {
             .ifPresent(
                 databaseName ->
                     updateWritePointCountMetrics(
-                        dataRegion, databaseName, getTsFileWritePointCount(writer)));
+                        dataRegion, databaseName, getTsFileWritePointCount(writer), false));
       }
     }
 

@@ -169,6 +169,10 @@
             <artifactId>stack-core</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.eclipse.milo</groupId>
+            <artifactId>sdk-core</artifactId>
+        </dependency>
+        <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
         </dependency>
@@ -370,7 +374,7 @@
                 <configuration>
                     <skipTests>${iotdb.ut.skip}</skipTests>
                     <systemProperties>
-                        <IOTDB_CONF>src/test/resources</IOTDB_CONF>
+                        <IOTDB_CONF>${project.basedir}/src/test/resources</IOTDB_CONF>
                     </systemProperties>
                     <reuseForks>false</reuseForks>
                     <runOrder>random</runOrder>

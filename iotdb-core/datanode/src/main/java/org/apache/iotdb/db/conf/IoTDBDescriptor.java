@@ -111,6 +111,9 @@ public class IoTDBDescriptor {
       ConfigurationFileUtils.checkAndMayUpdate(
           systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       LOGGER.error("Failed to update config file", e);
     }
   }
@@ -1838,19 +1841,7 @@ public class IoTDBDescriptor {
       loadCompactionHotModifiedProps(properties);
 
       // update load config
-      conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
-          Long.parseLong(
-              properties.getProperty(
-                  "load_clean_up_task_execution_delay_time_seconds",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "load_clean_up_task_execution_delay_time_seconds"))));
-
-      conf.setLoadWriteThroughputBytesPerSecond(
-          Double.parseDouble(
-              properties.getProperty(
-                  "load_write_throughput_bytes_per_second",
-                  ConfigurationFileUtils.getConfigurationDefaultValue(
-                      "load_write_throughput_bytes_per_second"))));
+      loadLoadTsFileHotModifiedProp(properties);
 
       // update pipe config
       commonDescriptor
@@ -1883,6 +1874,9 @@ public class IoTDBDescriptor {
       // update retry config
       commonDescriptor.loadRetryProperties(properties);
     } catch (Exception e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
   }
@@ -2038,6 +2032,7 @@ public class IoTDBDescriptor {
     }
   }
 
+  @SuppressWarnings("java:S3518")
   private void initStorageEngineAllocate(Properties properties) {
     long storageMemoryTotal = conf.getAllocateMemoryForStorageEngine();
     String valueOfStorageEngineMemoryProportion =
@@ -2092,6 +2087,7 @@ public class IoTDBDescriptor {
     }
   }
 
+  @SuppressWarnings("squid:S3518")
   private void initSchemaMemoryAllocate(Properties properties) {
     long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
 
@@ -2176,6 +2172,78 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_write_throughput_bytes_per_second",
                 String.valueOf(conf.getLoadWriteThroughputBytesPerSecond()))));
+
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                Boolean.toString(conf.getLoadActiveListeningEnable()))));
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(",", conf.getLoadActiveListeningDirs()))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_active_listening_check_interval_seconds",
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
+    conf.setLoadActiveListeningMaxThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_active_listening_max_thread_num",
+                Integer.toString(
+                    Math.min(
+                        conf.getLoadActiveListeningMaxThreadNum(),
+                        Math.max(1, Runtime.getRuntime().availableProcessors() / 2))))));
+  }
+
+  private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
+    conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "load_clean_up_task_execution_delay_time_seconds",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_clean_up_task_execution_delay_time_seconds"))));
+
+    conf.setLoadWriteThroughputBytesPerSecond(
+        Double.parseDouble(
+            properties.getProperty(
+                "load_write_throughput_bytes_per_second",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_write_throughput_bytes_per_second"))));
+
+    conf.setLoadActiveListeningEnable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "load_active_listening_enable",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "load_active_listening_enable"))));
+    conf.setLoadActiveListeningDirs(
+        Arrays.stream(
+                properties
+                    .getProperty(
+                        "load_active_listening_dirs",
+                        String.join(
+                            ",",
+                            ConfigurationFileUtils.getConfigurationDefaultValue(
+                                "load_active_listening_dirs")))
+                    .trim()
+                    .split(","))
+            .filter(dir -> !dir.isEmpty())
+            .toArray(String[]::new));
+    conf.setLoadActiveListeningFailDir(
+        properties.getProperty(
+            "load_active_listening_fail_dir",
+            ConfigurationFileUtils.getConfigurationDefaultValue("load_active_listening_fail_dir")));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

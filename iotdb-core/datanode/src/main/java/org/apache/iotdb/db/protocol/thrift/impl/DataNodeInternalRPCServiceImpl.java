@@ -358,6 +358,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     resp.setAccepted(executionResult.isAccepted());
     resp.setMessage(executionResult.getMessage());
     resp.setNeedRetry(executionResult.isNeedRetry());
+    resp.setStatus(executionResult.getStatus());
     return resp;
   }
 
@@ -397,6 +398,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           failureInfoList.add(failureInfo.serialize());
         }
         resp.setFailureInfoList(failureInfoList);
+        info.getErrorCode().ifPresent(resp::setErrorCode);
         return resp;
       } catch (IOException e) {
         return resp;
@@ -514,32 +516,34 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus constructSchemaBlackList(TConstructSchemaBlackListReq req) throws TException {
-    PathPatternTree patternTree =
+  public TSStatus constructSchemaBlackList(final TConstructSchemaBlackListReq req)
+      throws TException {
+    final PathPatternTree patternTree =
         PathPatternTree.deserialize(ByteBuffer.wrap(req.getPathPatternTree()));
-    AtomicInteger preDeletedNum = new AtomicInteger(0);
-    TSStatus executionResult =
-        executeInternalSchemaTask(
+    final AtomicLong preDeletedNum = new AtomicLong(0);
+    final TSStatus executionResult =
+        executeSchemaBlackListTask(
             req.getSchemaRegionIdList(),
             consensusGroupId -> {
-              String storageGroup =
+              final String storageGroup =
                   schemaEngine
                       .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
                       .getDatabaseFullPath();
-              PathPatternTree filteredPatternTree =
+              final PathPatternTree filteredPatternTree =
                   filterPathPatternTree(patternTree, storageGroup);
               if (filteredPatternTree.isEmpty()) {
-                return RpcUtils.SUCCESS_STATUS;
+                return new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode());
               }
-              RegionWriteExecutor executor = new RegionWriteExecutor();
-              TSStatus status =
+              final RegionWriteExecutor executor = new RegionWriteExecutor();
+              final TSStatus status =
                   executor
                       .execute(
                           new SchemaRegionId(consensusGroupId.getId()),
                           new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
                       .getStatus();
-              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                preDeletedNum.getAndAdd(Integer.parseInt(status.getMessage()));
+              if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  || status.code == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+                preDeletedNum.getAndAdd(Long.parseLong(status.getMessage()));
               }
               return status;
             });
@@ -1293,6 +1297,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final TPipeHeartbeatResp resp = new TPipeHeartbeatResp();
     PipeDataNodeAgent.task().collectPipeMetaList(req, resp);
     return resp;
+  }
+
+  private TSStatus executeSchemaBlackListTask(
+      final List<TConsensusGroupId> consensusGroupIdList,
+      final Function<TConsensusGroupId, TSStatus> executeOnOneRegion) {
+    final List<TSStatus> statusList = new ArrayList<>();
+    TSStatus status;
+    boolean hasFailure = false;
+    for (final TConsensusGroupId consensusGroupId : consensusGroupIdList) {
+      status = executeOnOneRegion.apply(consensusGroupId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.getCode() != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+        hasFailure = true;
+      }
+      statusList.add(status);
+    }
+    if (hasFailure) {
+      return RpcUtils.getStatus(statusList);
+    } else {
+      return statusList.stream()
+          .filter(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode())
+          .findFirst()
+          .orElse(new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()));
+    }
   }
 
   private TSStatus executeInternalSchemaTask(

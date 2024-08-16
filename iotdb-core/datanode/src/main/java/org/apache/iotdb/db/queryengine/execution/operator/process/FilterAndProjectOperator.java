@@ -72,6 +72,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
   // false when we only need to do projection
   private final boolean hasFilter;
 
+  private long filteredRowCount = 0;
+
   @SuppressWarnings("squid:S107")
   public FilterAndProjectOperator(
       OperatorContext operatorContext,
@@ -114,8 +116,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
     long inputRowCount = input.getPositionCount();
     TsBlock filterResult = getFilterTsBlock(input);
-    long filteredRowCount =
-        filterResult == null ? inputRowCount : inputRowCount - filterResult.getPositionCount();
+    filteredRowCount += inputRowCount - filterResult.getPositionCount();
     operatorContext.recordSpecifiedInfo("Filtered Rows", Long.toString(filteredRowCount));
 
     // contains non-mappable udf, we leave calculation for TransformOperator

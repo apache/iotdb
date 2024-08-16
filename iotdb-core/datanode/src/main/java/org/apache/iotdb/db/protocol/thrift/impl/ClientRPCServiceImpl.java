@@ -647,6 +647,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
+  @SuppressWarnings("java:S2095") // close() do nothing
   private List<TsBlock> executeGroupByQueryInternal(
       SessionInfo sessionInfo,
       String device,
@@ -1564,9 +1565,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           TSStatus status =
               onQueryException(
                   e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
-          if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
-            isAllSuccessful = false;
-          }
+          isAllSuccessful = false;
           results.add(status);
         } finally {
           addStatementExecutionLatency(

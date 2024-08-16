@@ -43,6 +43,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
@@ -269,8 +270,12 @@ public class FastCompactionPerformer
         futures.get(i).get();
         subTaskSummary.increase(taskSummaryList.get(i));
       } catch (ExecutionException e) {
-        if (e.getCause() instanceof CompactionLastTimeCheckFailedException) {
-          throw (CompactionLastTimeCheckFailedException) e.getCause();
+        Throwable cause = e.getCause();
+        if (cause instanceof CompactionLastTimeCheckFailedException) {
+          throw (CompactionLastTimeCheckFailedException) cause;
+        }
+        if (cause instanceof StopReadTsFileByInterruptException) {
+          throw (StopReadTsFileByInterruptException) cause;
         }
         throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
       }

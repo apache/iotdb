@@ -55,12 +55,13 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
       PlanNodeId sourceId,
       Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo,
       Filter timeFilter,
+      Map<IDeviceID, Long> ttlCache,
       boolean isOutputCount) {
     this.outputCount = isOutputCount;
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
-    this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter);
+    this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
     this.dataBaseName =
         new Binary(
             operatorContext

@@ -117,11 +117,23 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(
-        stateMachine.getState(),
-        context.getEndTime(),
-        context.getFailedCause(),
-        context.getFailureInfoList());
+    return context
+        .getErrorCode()
+        .map(
+            s ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    context.getEndTime(),
+                    context.getFailedCause(),
+                    context.getFailureInfoList(),
+                    s))
+        .orElseGet(
+            () ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    context.getEndTime(),
+                    context.getFailedCause(),
+                    context.getFailureInfoList()));
   }
 
   public long getStartTime() {
@@ -170,6 +182,7 @@ public class FragmentInstanceExecution {
     statistics.setSeqUnclosedNum(context.getUnclosedSeqFileNum());
     statistics.setUnseqClosedNum(context.getClosedUnseqFileNum());
     statistics.setUnseqUnclosedNum(context.getUnclosedUnseqFileNum());
+
     return true;
   }
 

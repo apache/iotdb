@@ -48,11 +48,12 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
-import org.apache.iotdb.db.queryengine.execution.load.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.queryengine.execution.load.limiter.LoadTsFileRateLimiter;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -70,7 +71,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -2163,6 +2164,19 @@ public class DataRegion implements IDataRegionForQuery {
     return walFlushListeners;
   }
 
+  /**
+   * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
+   * request</a> for details.
+   */
+  public void insertSeparatorToWAL() {
+    getWALNode()
+        .ifPresent(
+            walNode ->
+                walNode.log(
+                    TsFileProcessor.MEMTABLE_NOT_EXIST,
+                    new ContinuousSameSearchIndexSeparatorNode()));
+  }
+
   private boolean canSkipDelete(
       TsFileResource tsFileResource,
       Set<PartialPath> devicePaths,
@@ -2511,11 +2525,11 @@ public class DataRegion implements IDataRegionForQuery {
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleSummary summary = new CompactionScheduleSummary();
+      CompactionScheduleContext context = new CompactionScheduleContext();
 
       // schedule insert compaction
-      trySubmitCount += executeInsertionCompaction(timePartitions);
-      summary.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
+      trySubmitCount += executeInsertionCompaction(timePartitions, context);
+      context.incrementSubmitTaskNum(CompactionTaskType.INSERTION, trySubmitCount);
 
       // schedule the other compactions
       if (trySubmitCount == 0) {
@@ -2525,14 +2539,15 @@ public class DataRegion implements IDataRegionForQuery {
           CompactionScheduler.sharedLockCompactionSelection();
           try {
             trySubmitCount +=
-                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, summary);
+                CompactionScheduler.scheduleCompaction(tsFileManager, timePartition, context);
           } finally {
+            context.clearTimePartitionDeviceInfoCache();
             CompactionScheduler.sharedUnlockCompactionSelection();
           }
         }
       }
-      if (summary.hasSubmitTask()) {
-        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+      if (context.hasSubmitTask()) {
+        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(context);
       }
     } catch (InterruptedException e) {
       throw e;
@@ -2553,7 +2568,7 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
-      CompactionScheduleSummary summary = new CompactionScheduleSummary();
+      CompactionScheduleContext context = new CompactionScheduleContext();
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -2563,20 +2578,21 @@ public class DataRegion implements IDataRegionForQuery {
         try {
           trySubmitCount +=
               CompactionScheduler.tryToSubmitSettleCompactionTask(
-                  tsFileManager, timePartition, summary, true);
+                  tsFileManager, timePartition, context, true);
         } finally {
+          context.clearTimePartitionDeviceInfoCache();
           CompactionScheduler.sharedUnlockCompactionSelection();
         }
       }
-      if (summary.hasSubmitTask()) {
-        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(summary);
+      if (context.hasSubmitTask()) {
+        CompactionMetrics.getInstance().updateCompactionTaskSelectionNum(context);
       }
       logger.info(
           "[TTL] {}-{} Totally select {} all-outdated files and {} partial-outdated files.",
           databaseName,
           dataRegionId,
-          summary.getFullyDirtyFileNum(),
-          summary.getPartiallyDirtyFileNum());
+          context.getFullyDirtyFileNum(),
+          context.getPartiallyDirtyFileNum());
     } catch (InterruptedException e) {
       throw e;
     } catch (Throwable e) {
@@ -2587,24 +2603,31 @@ public class DataRegion implements IDataRegionForQuery {
     return trySubmitCount;
   }
 
-  protected int executeInsertionCompaction(List<Long> timePartitions) throws InterruptedException {
+  protected int executeInsertionCompaction(
+      List<Long> timePartitions, CompactionScheduleContext context) throws InterruptedException {
     int trySubmitCount = 0;
     CompactionScheduler.sharedLockCompactionSelection();
     try {
       while (true) {
         int currentSubmitCount = 0;
-        Phaser insertionTaskPhaser = new Phaser(1);
         for (long timePartition : timePartitions) {
-          currentSubmitCount +=
-              CompactionScheduler.scheduleInsertionCompaction(
-                  tsFileManager, timePartition, insertionTaskPhaser);
+          while (true) {
+            Phaser insertionTaskPhaser = new Phaser(1);
+            int selectedTaskNum =
+                CompactionScheduler.scheduleInsertionCompaction(
+                    tsFileManager, timePartition, insertionTaskPhaser, context);
+            insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
+            currentSubmitCount += selectedTaskNum;
+            if (selectedTaskNum <= 0) {
+              break;
+            }
+          }
+          context.clearTimePartitionDeviceInfoCache();
+        }
+        if (currentSubmitCount <= 0) {
+          break;
         }
         trySubmitCount += currentSubmitCount;
-        insertionTaskPhaser.awaitAdvanceInterruptibly(insertionTaskPhaser.arrive());
-        if (currentSubmitCount != 0) {
-          continue;
-        }
-        break;
       }
     } catch (InterruptedException e) {
       throw e;
@@ -2680,6 +2703,7 @@ public class DataRegion implements IDataRegionForQuery {
     try {
       return executeCompaction();
     } catch (InterruptedException ignored) {
+      Thread.currentThread().interrupt();
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
@@ -3298,6 +3322,9 @@ public class DataRegion implements IDataRegionForQuery {
                 v.setAligned(insertRowNode.isAligned());
                 if (insertRowNode.isGeneratedByPipe()) {
                   v.markAsGeneratedByPipe();
+                }
+                if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
+                  v.markAsGeneratedByRemoteConsensusLeader();
                 }
               }
               v.addOneInsertRowNode(insertRowNode, finalI);

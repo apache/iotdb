@@ -58,7 +58,7 @@ public abstract class AbstractSchemaRegionTest {
         new SchemaRegionTestParams("PBTree-NonMemory", "PBTree", 0));
   }
 
-  public AbstractSchemaRegionTest(SchemaRegionTestParams testParams) {
+  public AbstractSchemaRegionTest(final SchemaRegionTestParams testParams) {
     this.testParams = testParams;
   }
 
@@ -91,7 +91,8 @@ public abstract class AbstractSchemaRegionTest {
     SchemaEngine.getInstance().init();
   }
 
-  protected ISchemaRegion getSchemaRegion(String database, int schemaRegionId) throws Exception {
+  protected ISchemaRegion getSchemaRegion(final String database, final int schemaRegionId)
+      throws Exception {
     SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
       SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
@@ -99,7 +100,7 @@ public abstract class AbstractSchemaRegionTest {
     return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }
 
-  protected static class SchemaRegionTestParams {
+  public static class SchemaRegionTestParams {
 
     private final String testModeName;
 
@@ -108,7 +109,7 @@ public abstract class AbstractSchemaRegionTest {
     private final int cachedMNodeSize;
 
     private SchemaRegionTestParams(
-        String testModeName, String schemaEngineMode, int cachedMNodeSize) {
+        final String testModeName, final String schemaEngineMode, final int cachedMNodeSize) {
       this.testModeName = testModeName;
       this.schemaEngineMode = schemaEngineMode;
       this.cachedMNodeSize = cachedMNodeSize;

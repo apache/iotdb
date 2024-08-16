@@ -153,7 +153,10 @@ public class ProcedureFactory implements IProcedureFactory {
         procedure = new DropPipeProcedureV2();
         break;
       case ALTER_PIPE_PROCEDURE_V2:
-        procedure = new AlterPipeProcedureV2();
+        procedure = new AlterPipeProcedureV2(ProcedureType.ALTER_PIPE_PROCEDURE_V2);
+        break;
+      case ALTER_PIPE_PROCEDURE_V3:
+        procedure = new AlterPipeProcedureV2(ProcedureType.ALTER_PIPE_PROCEDURE_V3);
         break;
       case PIPE_HANDLE_LEADER_CHANGE_PROCEDURE:
         procedure = new PipeHandleLeaderChangeProcedure();

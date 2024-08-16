@@ -23,6 +23,7 @@ public class PipeTransferHandshakeConstant {
 
   public static final String HANDSHAKE_KEY_TIME_PRECISION = "timestampPrecision";
   public static final String HANDSHAKE_KEY_CLUSTER_ID = "clusterID";
+  public static final String HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH = "convertOnTypeMismatch";
 
   private PipeTransferHandshakeConstant() {
     // Utility class

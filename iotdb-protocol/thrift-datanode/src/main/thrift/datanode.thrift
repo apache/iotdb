@@ -133,6 +133,7 @@ struct TSendFragmentInstanceResp {
   1: required bool accepted
   2: optional string message
   3: optional bool needRetry
+  4: optional common.TSStatus status
 }
 
 struct TSendSinglePlanNodeReq {
@@ -164,6 +165,7 @@ struct TFragmentInstanceInfoResp {
   2: optional i64 endTime
   3: optional list<string> failedMessages
   4: optional list<binary> failureInfoList
+  5: optional common.TSStatus errorCode
 }
 
 struct TCancelQueryReq {
@@ -592,7 +594,13 @@ struct TQueryStatistics {
   29: i64 pageReadersDecodeNonAlignedDiskCount,
   30: i64 pageReadersDecodeNonAlignedDiskTime,
   31: i64 pageReadersDecodeNonAlignedMemCount,
-  32: i64 pageReadersDecodeNonAlignedMemTime
+  32: i64 pageReadersDecodeNonAlignedMemTime,
+  33: i64 pageReaderMaxUsedMemorySize
+
+  34: i64 alignedTimeSeriesMetadataModificationCount
+  35: i64 alignedTimeSeriesMetadataModificationTime
+  36: i64 nonAlignedTimeSeriesMetadataModificationCount
+  37: i64 nonAlignedTimeSeriesMetadataModificationTime
 }
 
 
@@ -618,6 +626,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   15: optional string ip
   16: optional string state
 }
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/

@@ -141,7 +141,7 @@ public class DataNode implements DataNodeMBean {
    * When joining a cluster or getting configuration this node will retry at most "DEFAULT_RETRY"
    * times before returning a failure to the client.
    */
-  private static final int DEFAULT_RETRY = 50;
+  private static final int DEFAULT_RETRY = 200;
 
   private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
 
@@ -461,28 +461,51 @@ public class DataNode implements DataNodeMBean {
   }
 
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidConsensusGroupIds =
+    List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
-    if (!invalidConsensusGroupIds.isEmpty()) {
-      logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
-      for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-        File oldDir =
-            new File(
-                DataRegionConsensusImpl.getInstance()
-                    .getRegionDirFromConsensusGroupId(consensusGroupId));
-        if (oldDir.exists()) {
-          try {
-            FileUtils.recursivelyDeleteFolder(oldDir.getPath());
-            logger.info("delete {} succeed.", oldDir.getAbsolutePath());
-          } catch (IOException e) {
-            logger.error("delete {} failed.", oldDir.getAbsolutePath());
-          }
-        } else {
-          logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
-        }
+
+    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
+        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList());
+    removeInvalidDataRegions(invalidDataRegionConsensusGroupIds);
+    removeInvalidSchemaRegions(invalidSchemaRegionConsensusGroupIds);
+  }
+
+  private void removeInvalidDataRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
+    logger.info("Remove invalid dataRegion directories... {}", invalidConsensusGroupId);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+      File oldDir =
+          new File(
+              DataRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
+      removeRegionsDir(oldDir);
+    }
+  }
+
+  private void removeInvalidSchemaRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
+    logger.info("Remove invalid schemaRegion directories... {}", invalidConsensusGroupId);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+      File oldDir =
+          new File(
+              SchemaRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
+      removeRegionsDir(oldDir);
+    }
+  }
+
+  private void removeRegionsDir(File regionDir) {
+    if (regionDir.exists()) {
+      try {
+        FileUtils.recursivelyDeleteFolder(regionDir.getPath());
+        logger.info("delete {} succeed.", regionDir.getAbsolutePath());
+      } catch (IOException e) {
+        logger.error("delete {} failed.", regionDir.getAbsolutePath());
       }
+    } else {
+      logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
   }
 

@@ -15,6 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import warnings
+
+warnings.simplefilter("always", DeprecationWarning)
 
 
 class TemplateNode(object):
@@ -23,6 +26,11 @@ class TemplateNode(object):
     """
 
     def __init__(self, name):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.name = name
 
     def get_name(self):

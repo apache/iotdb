@@ -55,7 +55,9 @@ public class BooleanLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.BOOLEAN || dataType == TSDataType.TEXT;
+    return dataType == TSDataType.BOOLEAN
+        || dataType == TSDataType.TEXT
+        || dataType == TSDataType.STRING;
   }
 
   @Override

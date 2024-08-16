@@ -37,6 +37,8 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
+import org.junit.Assert;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,7 +65,7 @@ public class SchemaRegionTestUtil {
       Map<String, String> attributes,
       String alias)
       throws MetadataException {
-    schemaRegion.createTimeseries(
+    schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
             new PartialPath(fullPath),
             dataType,
@@ -88,7 +90,7 @@ public class SchemaRegionTestUtil {
       List<String> alias)
       throws MetadataException {
     for (int i = 0; i < fullPaths.size(); i++) {
-      schemaRegion.createTimeseries(
+      schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
               new PartialPath(fullPaths.get(i)),
               dataTypes.get(i),
@@ -146,19 +148,19 @@ public class SchemaRegionTestUtil {
   }
 
   /**
-   * Create timeseries quickly using createSimpleTimeSeriesInt64 with given string list of paths.
+   * Create time series quickly using createSimpleTimeSeriesInt64 with given string list of paths.
    *
-   * @param schemaRegion schemaRegion which you want to create timeseries
+   * @param schemaRegion schemaRegion which you want to create time series
    * @param pathList
    */
-  public static void createSimpleTimeseriesByList(ISchemaRegion schemaRegion, List<String> pathList)
+  public static void createSimpleTimeSeriesByList(ISchemaRegion schemaRegion, List<String> pathList)
       throws Exception {
     for (String path : pathList) {
       SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, path);
     }
   }
 
-  public static long getAllTimeseriesCount(
+  public static long getAllTimeSeriesCount(
       ISchemaRegion schemaRegion,
       PartialPath pathPattern,
       Map<Integer, Template> templateMap,
@@ -174,6 +176,34 @@ public class SchemaRegionTestUtil {
       }
       return count;
     } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static void checkSingleTimeSeries(
+      final ISchemaRegion schemaRegion,
+      final PartialPath pathPattern,
+      final boolean isAligned,
+      final TSDataType type,
+      final TSEncoding encoding,
+      final CompressionType compressor,
+      final String alias,
+      final Map<String, String> tags,
+      final Map<String, String> attributes) {
+    try (final ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        schemaRegion.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                pathPattern, Collections.emptyMap(), 0, 0, false, null, false, ALL_MATCH_SCOPE))) {
+      Assert.assertTrue(timeSeriesReader.hasNext());
+      final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
+      Assert.assertEquals(isAligned, info.isUnderAlignedDevice());
+      Assert.assertEquals(type, info.getSchema().getType());
+      Assert.assertEquals(encoding, info.getSchema().getEncodingType());
+      Assert.assertEquals(compressor, info.getSchema().getCompressor());
+      Assert.assertEquals(alias, info.getAlias());
+      Assert.assertEquals(tags, info.getTags());
+      Assert.assertEquals(attributes, info.getAttributes());
+    } catch (final Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -368,13 +398,13 @@ public class SchemaRegionTestUtil {
     return result;
   }
 
-  public static long deleteTimeSeries(ISchemaRegion schemaRegion, PartialPath pathPattern)
-      throws MetadataException {
-    PathPatternTree patternTree = new PathPatternTree();
+  public static Pair<Long, Boolean> deleteTimeSeries(
+      final ISchemaRegion schemaRegion, final PartialPath pathPattern) throws MetadataException {
+    final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pathPattern);
     patternTree.constructTree();
-    long num = schemaRegion.constructSchemaBlackList(patternTree);
+    final Pair<Long, Boolean> numIsViewPair = schemaRegion.constructSchemaBlackList(patternTree);
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
-    return num;
+    return numIsViewPair;
   }
 }

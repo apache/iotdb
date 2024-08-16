@@ -464,6 +464,7 @@ public class ImportData extends AbstractDataTool {
     }
   }
 
+  @SuppressWarnings("java:S2259")
   private static void importFromSqlFile(File file) {
     ArrayList<List<Object>> failedRecords = new ArrayList<>();
     String failedFilePath = null;
@@ -500,7 +501,6 @@ public class ImportData extends AbstractDataTool {
             writer.flush();
             writer.close();
           } catch (IOException e) {
-            ;
           }
         }
       }

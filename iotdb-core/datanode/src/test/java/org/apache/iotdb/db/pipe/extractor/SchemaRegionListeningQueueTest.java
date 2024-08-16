@@ -55,6 +55,8 @@ public class SchemaRegionListeningQueueTest {
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).open();
+    PipeDataNodeAgent.runtime().notifySchemaLeaderReady(new SchemaRegionId(0));
   }
 
   @AfterClass
@@ -67,10 +69,7 @@ public class SchemaRegionListeningQueueTest {
 
   @Test
   public void testSnapshot() throws TException, IOException, AuthException, IllegalPathException {
-    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).open();
-    PipeDataNodeAgent.runtime().notifySchemaLeaderReady(new SchemaRegionId(0));
-
-    CreateTimeSeriesNode node1 =
+    final CreateTimeSeriesNode node1 =
         new CreateTimeSeriesNode(
             new PlanNodeId("CreateTimeSeriesNode"),
             new PartialPath("root.db.d1.s1"),
@@ -82,7 +81,7 @@ public class SchemaRegionListeningQueueTest {
             null,
             "alias");
 
-    PipeEnrichedWritePlanNode node2 =
+    final PipeEnrichedWritePlanNode node2 =
         new PipeEnrichedWritePlanNode(
             new ActivateTemplateNode(
                 new PlanNodeId("ActivateTemplateNode"), new PartialPath("root.sg.d1.s1"), 2, 1));
@@ -98,13 +97,13 @@ public class SchemaRegionListeningQueueTest {
 
     PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).loadSnapshot(snapshotDir);
     Assert.assertTrue(PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).isOpened());
-    ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
+    final ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
         PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).newIterator(0);
 
-    Event event1 = itr.next(0);
+    final Event event1 = itr.next(0);
     Assert.assertEquals(node1, ((PipeSchemaRegionWritePlanEvent) event1).getPlanNode());
 
-    Event event2 = itr.next(0);
+    final Event event2 = itr.next(0);
     Assert.assertEquals(
         node2.getWritePlanNode(), ((PipeSchemaRegionWritePlanEvent) event2).getPlanNode());
     Assert.assertTrue(((PipeSchemaRegionWritePlanEvent) event2).isGeneratedByPipe());

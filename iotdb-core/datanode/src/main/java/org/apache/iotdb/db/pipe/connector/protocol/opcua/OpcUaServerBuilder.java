@@ -79,6 +79,7 @@ public class OpcUaServerBuilder {
   private String user;
   private String password;
   private Path securityDir;
+  private boolean enableAnonymousAccess;
 
   public OpcUaServerBuilder() {
     tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
@@ -86,30 +87,37 @@ public class OpcUaServerBuilder {
     user = PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
     password = PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
     securityDir = Paths.get(PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+    enableAnonymousAccess =
+        PipeConnectorConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
   }
 
-  public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
+  public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
     return this;
   }
 
-  public OpcUaServerBuilder setHttpsBindPort(int httpsBindPort) {
+  public OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
     this.httpsBindPort = httpsBindPort;
     return this;
   }
 
-  public OpcUaServerBuilder setUser(String user) {
+  public OpcUaServerBuilder setUser(final String user) {
     this.user = user;
     return this;
   }
 
-  public OpcUaServerBuilder setPassword(String password) {
+  public OpcUaServerBuilder setPassword(final String password) {
     this.password = password;
     return this;
   }
 
-  public OpcUaServerBuilder setSecurityDir(String securityDir) {
+  public OpcUaServerBuilder setSecurityDir(final String securityDir) {
     this.securityDir = Paths.get(securityDir);
+    return this;
+  }
+
+  public OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
+    this.enableAnonymousAccess = enableAnonymousAccess;
     return this;
   }
 
@@ -132,74 +140,77 @@ public class OpcUaServerBuilder {
     final DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
-    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
-    LOGGER.info(
-        "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
-        pkiDir.getAbsolutePath());
+    final OpcUaServerConfig serverConfig;
+    try (final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir)) {
+      LOGGER.info(
+          "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
+          pkiDir.getAbsolutePath());
 
-    final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+      final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
-    final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
-        new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
-    httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
-    final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
+      final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
+          new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
+      httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
+      HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
+      final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
-    final DefaultServerCertificateValidator certificateValidator =
-        new DefaultServerCertificateValidator(trustListManager);
+      final DefaultServerCertificateValidator certificateValidator =
+          new DefaultServerCertificateValidator(trustListManager);
 
-    final UsernameIdentityValidator identityValidator =
-        new UsernameIdentityValidator(
-            true,
-            authChallenge -> {
-              String inputUsername = authChallenge.getUsername();
-              String inputPassword = authChallenge.getPassword();
+      final UsernameIdentityValidator identityValidator =
+          new UsernameIdentityValidator(
+              enableAnonymousAccess,
+              authChallenge -> {
+                String inputUsername = authChallenge.getUsername();
+                String inputPassword = authChallenge.getPassword();
 
-              return inputUsername.equals(user) && inputPassword.equals(password);
-            });
+                return inputUsername.equals(user) && inputPassword.equals(password);
+              });
 
-    final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
+      final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
 
-    final X509Certificate certificate =
-        certificateManager.getCertificates().stream()
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError, "No certificate found"));
+      final X509Certificate certificate =
+          certificateManager.getCertificates().stream()
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new UaRuntimeException(
+                          StatusCodes.Bad_ConfigurationError, "No certificate found"));
 
-    final String applicationUri =
-        CertificateUtil.getSanUri(certificate)
-            .orElseThrow(
-                () ->
-                    new UaRuntimeException(
-                        StatusCodes.Bad_ConfigurationError,
-                        "Certificate is missing the application URI"));
+      final String applicationUri =
+          CertificateUtil.getSanUri(certificate)
+              .orElseThrow(
+                  () ->
+                      new UaRuntimeException(
+                          StatusCodes.Bad_ConfigurationError,
+                          "Certificate is missing the application URI"));
 
-    final Set<EndpointConfiguration> endpointConfigurations =
-        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+      final Set<EndpointConfiguration> endpointConfigurations =
+          createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
 
-    final OpcUaServerConfig serverConfig =
-        OpcUaServerConfig.builder()
-            .setApplicationUri(applicationUri)
-            .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
-            .setEndpoints(endpointConfigurations)
-            .setBuildInfo(
-                new BuildInfo(
-                    "urn:apache:iotdb:opc-ua-server",
-                    "apache",
-                    "Apache IoTDB OPC UA server",
-                    OpcUaServer.SDK_VERSION,
-                    "",
-                    DateTime.now()))
-            .setCertificateManager(certificateManager)
-            .setTrustListManager(trustListManager)
-            .setCertificateValidator(certificateValidator)
-            .setHttpsKeyPair(httpsKeyPair)
-            .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
-            .setIdentityValidator(new CompositeValidator(identityValidator, x509IdentityValidator))
-            .setProductUri("urn:apache:iotdb:opc-ua-server")
-            .build();
+      serverConfig =
+          OpcUaServerConfig.builder()
+              .setApplicationUri(applicationUri)
+              .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
+              .setEndpoints(endpointConfigurations)
+              .setBuildInfo(
+                  new BuildInfo(
+                      "urn:apache:iotdb:opc-ua-server",
+                      "apache",
+                      "Apache IoTDB OPC UA server",
+                      OpcUaServer.SDK_VERSION,
+                      "",
+                      DateTime.now()))
+              .setCertificateManager(certificateManager)
+              .setTrustListManager(trustListManager)
+              .setCertificateValidator(certificateValidator)
+              .setHttpsKeyPair(httpsKeyPair)
+              .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
+              .setIdentityValidator(
+                  new CompositeValidator(identityValidator, x509IdentityValidator))
+              .setProductUri("urn:apache:iotdb:opc-ua-server")
+              .build();
+    }
 
     // Setup server to enable event posting
     final OpcUaServer server = new OpcUaServer(serverConfig);
@@ -212,7 +223,7 @@ public class OpcUaServerBuilder {
   }
 
   private Set<EndpointConfiguration> createEndpointConfigurations(
-      X509Certificate certificate, int tcpBindPort, int httpsBindPort) {
+      final X509Certificate certificate, final int tcpBindPort, final int httpsBindPort) {
     final Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
 
     final List<String> bindAddresses = newArrayList();
@@ -222,8 +233,8 @@ public class OpcUaServerBuilder {
     hostnames.add(HostnameUtil.getHostname());
     hostnames.addAll(HostnameUtil.getHostnames(WILD_CARD_ADDRESS));
 
-    for (String bindAddress : bindAddresses) {
-      for (String hostname : hostnames) {
+    for (final String bindAddress : bindAddresses) {
+      for (final String hostname : hostnames) {
         final EndpointConfiguration.Builder builder =
             EndpointConfiguration.newBuilder()
                 .setBindAddress(bindAddress)
@@ -276,7 +287,7 @@ public class OpcUaServerBuilder {
   }
 
   private EndpointConfiguration buildTcpEndpoint(
-      EndpointConfiguration.Builder base, int tcpBindPort) {
+      final EndpointConfiguration.Builder base, final int tcpBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
         .setBindPort(tcpBindPort)
@@ -284,7 +295,7 @@ public class OpcUaServerBuilder {
   }
 
   private EndpointConfiguration buildHttpsEndpoint(
-      EndpointConfiguration.Builder base, int httpsBindPort) {
+      final EndpointConfiguration.Builder base, final int httpsBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.HTTPS_UABINARY)
         .setBindPort(httpsBindPort)

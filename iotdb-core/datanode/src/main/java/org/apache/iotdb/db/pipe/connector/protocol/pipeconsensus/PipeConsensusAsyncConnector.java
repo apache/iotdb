@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeConnectorRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
@@ -56,7 +57,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,6 +167,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
             event.getCommitId(),
             event);
       }
+      // Special judge to avoid transfer stuck when re-transfer events that will not be put in
+      // retryQueue.
+      if (transferBuffer.contains(event)) {
+        return true;
+      }
       long currentTime = System.nanoTime();
       boolean result =
           transferBuffer.offer(
@@ -203,6 +208,13 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           transferBuffer.size(),
           IOTDB_CONFIG.getPipeConsensusPipelineSize());
     }
+    if (transferBuffer.isEmpty()) {
+      LOGGER.info(
+          "PipeConsensus-ConsensusGroup-{}: try to remove event-{} after pipeConsensusAsyncConnector being closed. Ignore it.",
+          consensusGroupId,
+          event);
+      return;
+    }
     Iterator<EnrichedEvent> iterator = transferBuffer.iterator();
     EnrichedEvent current = iterator.next();
     while (!current.equalsInPipeConsensus(event) && iterator.hasNext()) {
@@ -233,7 +245,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tabletInsertionEvent);
     if (!enqueueResult) {
-      throw new PipeException(ENQUEUE_EXCEPTION_MSG);
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          ENQUEUE_EXCEPTION_MSG, Integer.MAX_VALUE);
     }
     // batch transfer tablets.
     if (isTabletBatchModeEnabled) {
@@ -328,7 +341,8 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
     boolean enqueueResult = addEvent2Buffer((EnrichedEvent) tsFileInsertionEvent);
     if (!enqueueResult) {
-      throw new PipeException(ENQUEUE_EXCEPTION_MSG);
+      throw new PipeRuntimeConnectorRetryTimesConfigurableException(
+          ENQUEUE_EXCEPTION_MSG, Integer.MAX_VALUE);
     }
     final PipeTsFileInsertionEvent pipeTsFileInsertionEvent =
         (PipeTsFileInsertionEvent) tsFileInsertionEvent;
@@ -456,7 +470,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
                 polledEvent);
           }
         }
-        if (polledEvent != null && LOGGER.isDebugEnabled()) {
+        if (polledEvent != null) {
           if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Polled event {} from retry queue.", polledEvent);
           }
@@ -472,6 +486,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
    *
    * @param event event to retry
    */
+  @SuppressWarnings("java:S899")
   public void addFailureEventToRetryQueue(final Event event) {
     if (isClosed.get()) {
       if (event instanceof EnrichedEvent) {
@@ -480,7 +495,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       return;
     }
 
-    boolean ignore = retryEventQueue.offer(event);
+    retryEventQueue.offer(event);
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
           "PipeConsensus-ConsensusGroup-{}: Event {} transfer failed, will be added to retry queue.",

@@ -58,7 +58,17 @@ public class PointPriorityReader {
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.timestamp, o2.timestamp);
-              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+              if (timeCompare != 0) {
+                return timeCompare;
+              }
+              boolean o1IsSeq =
+                  o1.pageElement.getChunkMetadataElement().fileElement.resource.isSeq();
+              boolean o2IsSeq =
+                  o2.pageElement.getChunkMetadataElement().fileElement.resource.isSeq();
+              if (o1IsSeq != o2IsSeq) {
+                return o1IsSeq ? 1 : -1;
+              }
+              return Long.compare(o2.priority, o1.priority);
             });
     this.isAligned = isAligned;
   }

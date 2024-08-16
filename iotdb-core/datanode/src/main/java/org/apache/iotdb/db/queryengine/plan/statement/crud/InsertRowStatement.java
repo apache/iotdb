@@ -59,18 +59,18 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
 
-  private static final byte TYPE_RAW_STRING = -1;
-  private static final byte TYPE_NULL = -2;
+  protected static final byte TYPE_RAW_STRING = -1;
+  protected static final byte TYPE_NULL = -2;
 
-  private long time;
-  private Object[] values;
-  private boolean isNeedInferType = false;
+  protected long time;
+  protected Object[] values;
+  protected boolean isNeedInferType = false;
 
   /**
    * This param record whether the source of logical view is aligned. Only used when there are
    * views.
    */
-  private boolean[] measurementIsAligned;
+  protected boolean[] measurementIsAligned;
 
   public InsertRowStatement() {
     super();

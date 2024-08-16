@@ -3,17 +3,29 @@ on:
   push:
     branches:
       - master
-      - "rel/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "rc/*"
+    paths:
+      - 'pom.xml'
+      - 'iotdb-client/pom.xml'
+      - 'iotdb-client/client-py/**'
+      - 'iotdb-client/client-cpp/**'
+      - 'example/client-cpp-example/**'
+      - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+      - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
+      - '.github/workflows/multi-language-client.yml'
   pull_request:
     branches:
       - master
-      - "rel/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
+      - "rc/*"
+    paths:
+      - 'pom.xml'
+      - 'iotdb-client/pom.xml'
+      - 'iotdb-client/client-py/**'
+      - 'iotdb-client/client-cpp/**'
+      - 'example/client-cpp-example/**'
+      - 'iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift'
+      - 'iotdb-protocol/thrift-commons/src/main/thrift/common.thrift'
+      - '.github/workflows/multi-language-client.yml'
   # allow manually run the action:
   workflow_dispatch:
 
@@ -24,6 +36,7 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
 
 jobs:
   cpp:
@@ -39,37 +52,37 @@ jobs:
       - name: Install CPP Dependencies (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        run: sudo apt-get update && sudo apt-get install libboost-all-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install libboost-all-dev
       - name: Install CPP Dependencies (Mac)
         if: matrix.os == 'macos-latest'
         shell: bash
         run: |
           brew install boost
           brew install bison
-          echo 'export PATH="/opt/homebrew/opt/bison/bin:$PATH"' >> ~/.bash_profile
-          source ~/.bash_profile && export LDFLAGS="-L/opt/homebrew/opt/bison/lib"
       - name: Install CPP Dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           choco install winflexbison3
-          choco install boost-msvc-14.3 --version=1.84.0.1
-          echo C:\\local\\boost_1_84_0 >> $env:GITHUB_PATH
+          choco install boost-msvc-14.3
+          $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
+          echo $boost_path >> $env:GITHUB_PATH
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Build IoTDB server and client
+      - name: Build IoTDB server
+        shell: bash
+        run: ./mvnw clean install -pl distribution -am -DskipTests
+      - name: Test with Maven
         shell: bash
         # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
-        run: ./mvnw clean install -P with-cpp -pl distribution,example/client-cpp-example -am -DskipTests
-      - name: Test with Maven
-        shell: bash
-        # Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp -am
+        run: ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -107,12 +120,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: ['3.x']
-        os: [ubuntu-latest]
-        include:
-          - python: '3.6'
-            os: ubuntu-20.04
-    runs-on: ${{ matrix.os }}
+        python: [ '3.6', '3.x' ]
+    runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
       - uses: actions/checkout@v4

@@ -100,7 +100,7 @@ public class MLogParserTest {
           try {
             schemaEngine
                 .getSchemaRegion(new SchemaRegionId(schemaRegionIds[i]))
-                .createTimeseries(
+                .createTimeSeries(
                     SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
                         new PartialPath("root.sg" + i + "." + "device" + j + "." + "s" + k),
                         TSDataType.INT32,

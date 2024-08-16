@@ -151,6 +151,7 @@ public class SessionPool implements ISessionPool {
   private final String formattedNodeUrls;
 
   // used to update datanodeList periodically
+  @SuppressWarnings("java:S3077")
   private volatile ScheduledExecutorService executorService;
 
   private INodeSupplier availableNodes;

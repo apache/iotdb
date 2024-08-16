@@ -174,7 +174,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @return Pair of device full path and whether this device is aligned
    */
-  @SuppressWarnings("squid:S135")
+  @SuppressWarnings({"squid:S135", "java:S2259"})
   public Pair<IDeviceID, Boolean> nextDevice() throws IllegalPathException {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<IDeviceID, Boolean> minDevice = null;
@@ -487,6 +487,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                 }
 
                 @Override
+                @SuppressWarnings("java:S2272")
                 public Map<String, List<ChunkMetadata>> next() {
                   return Collections.emptyMap();
                 }

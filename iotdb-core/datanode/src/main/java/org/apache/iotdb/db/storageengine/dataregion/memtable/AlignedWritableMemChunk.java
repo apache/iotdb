@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
-import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
-import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -390,17 +388,6 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
                   list.getValueIndex(sortedRowIndex);
             }
             if (timeDuplicateInfo[sortedRowIndex]) {
-              if (!list.isNullValue(list.getValueIndex(sortedRowIndex), columnIndex)) {
-                long recordSize =
-                    MemUtils.getRecordSize(
-                        tsDataType,
-                        tsDataType.isBinary()
-                            ? list.getBinaryByValueIndex(
-                                list.getValueIndex(sortedRowIndex), columnIndex)
-                            : null,
-                        true);
-                CompressionRatio.decreaseDuplicatedMemorySize(recordSize);
-              }
               continue;
             }
           }

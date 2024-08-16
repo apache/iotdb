@@ -100,7 +100,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
-    TsFileValidationTool.badFileNum = 0;
+    TsFileValidationTool.setBadFileNum(0);
   }
 
   /**
@@ -2255,7 +2255,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getInnerSequenceCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager, null);
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
 
     // first compaction task finishes successfully

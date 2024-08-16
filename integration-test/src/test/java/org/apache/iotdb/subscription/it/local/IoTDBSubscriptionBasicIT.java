@@ -168,9 +168,12 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
-      Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
-      Assert.assertEquals(0, commitFailureCount.get());
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(100, rowCount.get());
+            Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
+            Assert.assertEquals(0, commitFailureCount.get());
+          });
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -194,9 +197,12 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     // Check row count
     try {
       // Keep retrying if there are execution failures
-      AWAIT.untilAsserted(() -> Assert.assertEquals(200, rowCount.get()));
-      Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
-      Assert.assertEquals(0, commitFailureCount.get());
+      AWAIT.untilAsserted(
+          () -> {
+            Assert.assertEquals(200, rowCount.get());
+            Assert.assertTrue(commitSuccessCount.get() > lastCommitSuccessCount.get());
+            Assert.assertEquals(0, commitFailureCount.get());
+          });
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -471,6 +477,69 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             Assert.assertEquals(100, rowCount.get());
             Assert.assertEquals(1, onReceiveCount.get()); // exactly one tsfile
           });
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testDataSetDeduplication() {
+    // Insert some historical data
+    try (final ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.createDatabase("root.db");
+      for (int i = 0; i < 100; ++i) {
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d1(time, s1, s2) values (%s, 1, 2)", i));
+        session.executeNonQueryStatement(
+            String.format("insert into root.db.d2(time, s1, s2) values (%s, 3, 4)", i));
+      }
+      // DO NOT FLUSH HERE
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Create topic
+    final String topicName = "topic6";
+    final String host = EnvFactory.getEnv().getIP();
+    final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
+    try (final SubscriptionSession session = new SubscriptionSession(host, port)) {
+      session.open();
+      final Properties config = new Properties();
+      config.put(TopicConstant.PATTERN_KEY, "root.db.d1.s1");
+      session.createTopic(topicName, config);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    // Subscription
+    final AtomicInteger rowCount = new AtomicInteger();
+    try (final SubscriptionPushConsumer consumer =
+        new SubscriptionPushConsumer.Builder()
+            .host(host)
+            .port(port)
+            .consumerId("c1")
+            .consumerGroupId("cg1")
+            .ackStrategy(AckStrategy.AFTER_CONSUME)
+            .consumeListener(
+                message -> {
+                  for (final SubscriptionSessionDataSet dataSet :
+                      message.getSessionDataSetsHandler()) {
+                    while (dataSet.hasNext()) {
+                      dataSet.next();
+                      rowCount.addAndGet(1);
+                    }
+                  }
+                  return ConsumeResult.SUCCESS;
+                })
+            .buildPushConsumer()) {
+
+      consumer.open();
+      consumer.subscribe(topicName);
+
+      AWAIT.untilAsserted(() -> Assert.assertEquals(100, rowCount.get()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

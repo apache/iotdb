@@ -25,9 +25,26 @@ import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 
 public enum WALFileVersion {
-  V1,
-  V2,
-  UNKNOWN;
+  V1("WAL"),
+  V2("V2-WAL");
+
+  private final String versionString;
+  private byte[] versionBytes;
+
+  public String getVersionString() {
+    return versionString;
+  }
+
+  public byte[] getVersionBytes() {
+    return versionBytes;
+  }
+
+  WALFileVersion(String versionString) {
+    this.versionString = versionString;
+    if (versionString != null) {
+      this.versionBytes = versionString.getBytes(StandardCharsets.UTF_8);
+    }
+  }
 
   public static WALFileVersion getVersion(File file) throws IOException {
     try (FileChannel channel = FileChannel.open(file.toPath())) {
@@ -38,22 +55,23 @@ public enum WALFileVersion {
   public static WALFileVersion getVersion(FileChannel channel) throws IOException {
     long originalPosition = channel.position();
     try {
-      channel.position(0);
-      ByteBuffer buffer = ByteBuffer.allocate(WALWriter.MAGIC_STRING_V2_BYTES);
-      channel.read(buffer);
-      buffer.flip();
-      if (buffer.remaining() < WALWriter.MAGIC_STRING_V2_BYTES) {
-        return UNKNOWN;
+      // head magic string starts to exist since V2
+      WALFileVersion[] versions = {V2};
+      for (WALFileVersion version : versions) {
+        channel.position(0);
+        if (channel.size() < version.versionBytes.length) {
+          continue;
+        }
+        ByteBuffer buffer = ByteBuffer.allocate(version.versionBytes.length);
+        channel.read(buffer);
+        buffer.flip();
+        String versionString = new String(buffer.array(), StandardCharsets.UTF_8);
+        if (version.versionString.equals(versionString)) {
+          return version;
+        }
       }
-      String version = new String(buffer.array(), StandardCharsets.UTF_8);
-      switch (version) {
-        case WALWriter.MAGIC_STRING_V2:
-          return V2;
-        case WALWriter.MAGIC_STRING_V1:
-          return V1;
-        default:
-          return UNKNOWN;
-      }
+      // v1 by default
+      return V1;
     } finally {
       channel.position(originalPosition);
     }

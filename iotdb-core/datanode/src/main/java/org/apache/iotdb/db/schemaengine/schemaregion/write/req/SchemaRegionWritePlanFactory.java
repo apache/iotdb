@@ -57,7 +57,7 @@ public class SchemaRegionWritePlanFactory {
 
   private SchemaRegionWritePlanFactory() {}
 
-  public static ISchemaRegionPlan getEmptyPlan(SchemaRegionPlanType planType) {
+  public static ISchemaRegionPlan getEmptyPlan(final SchemaRegionPlanType planType) {
     switch (planType) {
       case CREATE_TIMESERIES:
         return new CreateTimeSeriesPlanImpl();

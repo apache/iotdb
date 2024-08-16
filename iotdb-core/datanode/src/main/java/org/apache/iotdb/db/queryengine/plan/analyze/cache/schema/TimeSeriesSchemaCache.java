@@ -200,7 +200,6 @@ public class TimeSeriesSchemaCache {
 
             @Override
             public void computeValue(int index, SchemaCacheEntry value) {
-              index = realIndex;
               if (value == null) {
                 indexOfMissingMeasurements.add(recordMissingIndex);
               } else {
@@ -216,7 +215,7 @@ public class TimeSeriesSchemaCache {
                                   + "Please check it.",
                               fullPath)));
                 }
-                schemaComputation.computeMeasurementOfView(index, value, value.isAligned());
+                schemaComputation.computeMeasurementOfView(realIndex, value, value.isAligned());
               }
             }
           });

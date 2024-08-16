@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
@@ -31,6 +34,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManage
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.ReadException;
@@ -89,7 +93,19 @@ public class RegionReadExecutor {
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse;
         resp.setAccepted(!info.getState().isFailed());
         resp.setMessage(info.getMessage());
+        info.getErrorCode()
+            .ifPresent(
+                s -> {
+                  resp.setStatus(s);
+                  resp.setNeedRetry(StatusUtils.needRetryHelper(s));
+                });
       }
+      return resp;
+    } catch (ConsensusGroupNotExistException e) {
+      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
+      resp.setNeedRetry(true);
+      resp.setStatus(new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
       return resp;
     } catch (Throwable e) {
       LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
@@ -100,6 +116,7 @@ public class RegionReadExecutor {
           || t instanceof NotLeaderException
           || t instanceof ServerNotReadyException) {
         resp.setNeedRetry(true);
+        resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
       }
       return resp;
     }
