@@ -22,8 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
@@ -48,7 +48,7 @@ import static org.junit.Assert.fail;
 
 @Ignore
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBRestartTableIT {
 
   private final Logger logger = LoggerFactory.getLogger(IoTDBRestartTableIT.class);

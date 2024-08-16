@@ -17,27 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load;
+package org.apache.iotdb.itbase.category;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-
-import org.apache.tsfile.exception.write.PageException;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
-public interface TsFileData {
-  long getDataSize();
-
-  boolean isModification();
-
-  void serialize(DataOutputStream stream) throws IOException;
-
-  static TsFileData deserialize(InputStream stream)
-      throws IOException, PageException, IllegalPathException {
-    boolean isModification = ReadWriteIOUtils.readBool(stream);
-    return isModification ? DeletionData.deserialize(stream) : ChunkData.deserialize(stream);
-  }
-}
+public interface TableClusterIT {}

@@ -38,11 +38,11 @@ import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Set;
 
-public class OptimizeFactory {
+public class LogicalOptimizeFactory {
 
   private final List<PlanOptimizer> planOptimizers;
 
-  public OptimizeFactory(PlannerContext plannerContext) {
+  public LogicalOptimizeFactory(PlannerContext plannerContext) {
 
     PlanOptimizer simplifyExpressionOptimizer = new SimplifyExpressions();
     PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();

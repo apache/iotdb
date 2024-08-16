@@ -190,6 +190,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     try {
       switch (walEntry.getType()) {
         case MEMORY_TABLE_SNAPSHOT:
+        case OLD_MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
             if (tsFileResource != null) {

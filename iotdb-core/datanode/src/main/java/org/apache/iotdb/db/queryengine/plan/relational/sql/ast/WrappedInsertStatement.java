@@ -49,7 +49,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
 
   protected TableSchema tableSchema;
 
-  public WrappedInsertStatement(InsertBaseStatement innerTreeStatement, MPPQueryContext context) {
+  protected WrappedInsertStatement(
+      InsertBaseStatement innerTreeStatement, MPPQueryContext context) {
     super(innerTreeStatement, context);
   }
 
@@ -216,5 +217,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       throw new SemanticException("database is not specified");
     }
     return databaseName;
+  }
+
+  public void columnsToLowerCase() {
+    getInnerTreeStatement().measurementsToLowerCase();
   }
 }

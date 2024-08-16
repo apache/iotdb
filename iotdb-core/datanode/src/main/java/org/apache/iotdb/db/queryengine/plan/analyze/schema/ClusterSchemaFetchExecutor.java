@@ -245,9 +245,10 @@ class ClusterSchemaFetchExecutor {
       ExecutionResult executionResult = executionStatement(queryId, fetchStatement, context);
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
-            String.format(
-                "cannot fetch schema, status is: %s, msg is: %s",
-                executionResult.status.getCode(), executionResult.status.getMessage()));
+            new IoTDBException(
+                String.format(
+                    "Fetch Schema failed, because %s", executionResult.status.getMessage()),
+                executionResult.status.getCode()));
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         ClusterSchemaTree result = new ClusterSchemaTree();

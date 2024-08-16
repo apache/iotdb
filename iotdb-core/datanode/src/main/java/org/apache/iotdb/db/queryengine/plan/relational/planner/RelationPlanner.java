@@ -17,6 +17,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -58,6 +59,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -67,18 +69,22 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   private final SymbolAllocator symbolAllocator;
   private final MPPQueryContext queryContext;
   private final QueryId idAllocator;
+  private final Optional<TranslationMap> outerContext;
   private final SessionInfo sessionInfo;
+  private final SubqueryPlanner subqueryPlanner;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
   public RelationPlanner(
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       MPPQueryContext queryContext,
+      Optional<TranslationMap> outerContext,
       SessionInfo sessionInfo,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(queryContext, "queryContext is null");
+    requireNonNull(outerContext, "outerContext is null");
     requireNonNull(sessionInfo, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
 
@@ -86,14 +92,23 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     this.symbolAllocator = symbolAllocator;
     this.queryContext = queryContext;
     this.idAllocator = queryContext.getQueryId();
+    this.outerContext = outerContext;
     this.sessionInfo = sessionInfo;
+    this.subqueryPlanner =
+        new SubqueryPlanner(
+            analysis,
+            symbolAllocator,
+            queryContext,
+            outerContext,
+            sessionInfo,
+            recursiveSubqueries);
     this.recursiveSubqueries = recursiveSubqueries;
   }
 
   @Override
   protected RelationPlan visitQuery(Query node, Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -116,7 +131,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
-    int idIndex = 0, attributeIndex = 0;
+    int idIndex = 0;
     for (Field field : fields) {
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
@@ -127,8 +142,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               field.getName().orElse(null), field.getType(), field.isHidden(), category));
       if (category == TsTableColumnCategory.ID) {
         idAndAttributeIndexMap.put(symbol, idIndex++);
-      } else if (category == TsTableColumnCategory.ATTRIBUTE) {
-        idAndAttributeIndexMap.put(symbol, attributeIndex++);
       }
     }
 
@@ -163,7 +176,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitQuerySpecification(QuerySpecification node, Void context) {
     return new QueryPlanner(
-            analysis, symbolAllocator, queryContext, sessionInfo, recursiveSubqueries)
+            analysis, symbolAllocator, queryContext, outerContext, sessionInfo, recursiveSubqueries)
         .plan(node);
   }
 
@@ -177,6 +190,29 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     RelationPlan plan = process(node.getQuery(), context);
     // TODO transmit outerContext
     return new RelationPlan(plan.getRoot(), analysis.getScope(node), plan.getFieldMappings());
+  }
+
+  @Override
+  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
+    RelationPlan subPlan = process(node.getRelation(), context);
+
+    PlanNode root = subPlan.getRoot();
+    List<Symbol> mappings = subPlan.getFieldMappings();
+
+    if (node.getColumnNames() != null) {
+      ImmutableList.Builder<Symbol> newMappings = ImmutableList.builder();
+
+      // Adjust the mappings to expose only the columns visible in the scope of the aliased relation
+      for (int i = 0; i < subPlan.getDescriptor().getAllFieldCount(); i++) {
+        if (!subPlan.getDescriptor().getFieldByIndex(i).isHidden()) {
+          newMappings.add(subPlan.getFieldMappings().get(i));
+        }
+      }
+
+      mappings = newMappings.build();
+    }
+
+    return new RelationPlan(root, analysis.getScope(node), mappings);
   }
 
   // ================================ Implemented later =====================================
@@ -194,11 +230,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
   @Override
   protected RelationPlan visitJoin(Join node, Void context) {
     throw new IllegalStateException("Join is not supported in current version.");
-  }
-
-  @Override
-  protected RelationPlan visitAliasedRelation(AliasedRelation node, Void context) {
-    throw new IllegalStateException("AliasedRelation is not supported in current version.");
   }
 
   @Override

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -42,7 +43,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionTy
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// Return whether input expression has an attribute column predicate
+import java.util.Objects;
+
+// Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
     extends PredicateVisitor<Boolean, CheckSchemaPredicateVisitor.Context> {
 
@@ -79,10 +82,13 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return false;
+      return true;
     }
-    // TODO: separate or concat expressions, e.g. (id1 or id2 or attr) => (id1 or id2) and (attr)
-    return node.getTerms().stream().allMatch(predicate -> predicate.accept(this, context));
+    // TODO: improve the distinct result set detection logic
+    if (context.isDirectDeviceQuery) {
+      return true;
+    }
+    return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
   }
 
   @Override
@@ -94,7 +100,7 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
-      return false;
+      return true;
     }
     return node.getValue().accept(this, context);
   }
@@ -134,11 +140,11 @@ public class CheckSchemaPredicateVisitor
   }
 
   private boolean processColumn(final Expression node, final Context context) {
-    return context
-        .table
-        .getColumnSchema(node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null))
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ATTRIBUTE);
+    final TsTableColumnSchema schema =
+        context.table.getColumnSchema(
+            node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
+    return Objects.isNull(schema)
+        || schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
   }
 
   public static class Context {
@@ -146,10 +152,15 @@ public class CheckSchemaPredicateVisitor
 
     // For query performance analyze
     private final MPPQueryContext queryContext;
+    private final boolean isDirectDeviceQuery;
 
-    public Context(final TsTable table, final MPPQueryContext queryContext) {
+    public Context(
+        final TsTable table,
+        final MPPQueryContext queryContext,
+        final boolean isDirectDeviceQuery) {
       this.table = table;
       this.queryContext = queryContext;
+      this.isDirectDeviceQuery = isDirectDeviceQuery;
     }
   }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.store;
 
+import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
@@ -48,6 +49,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -189,6 +191,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ADD_TABLE_COLUMN_PROCEDURE:
         procedure = new AddTableColumnProcedure();
         break;
+      case SET_TABLE_PROPERTIES_PROCEDURE:
+        procedure = new SetTablePropertiesProcedure();
+        break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();
         break;
@@ -277,7 +282,13 @@ public class ProcedureFactory implements IProcedureFactory {
         LOGGER.error("Unknown Procedure type: {}", typeCode);
         throw new IOException("Unknown Procedure type: " + typeCode);
     }
-    procedure.deserialize(buffer);
+    try {
+      procedure.deserialize(buffer);
+    } catch (ThriftSerDeException e) {
+      LOGGER.warn(
+          "Catch exception while deserializing procedure, this procedure will be ignored.", e);
+      procedure = null;
+    }
     return procedure;
   }
 
@@ -324,6 +335,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.CREATE_TABLE_PROCEDURE;
     } else if (procedure instanceof AddTableColumnProcedure) {
       return ProcedureType.ADD_TABLE_COLUMN_PROCEDURE;
+    } else if (procedure instanceof SetTablePropertiesProcedure) {
+      return ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE;
     } else if (procedure instanceof CreatePipePluginProcedure) {
       return ProcedureType.CREATE_PIPE_PLUGIN_PROCEDURE;
     } else if (procedure instanceof DropPipePluginProcedure) {
