@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
@@ -312,7 +312,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
+    CompactionScheduleContext summary = new CompactionScheduleContext();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(2, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
 
@@ -387,7 +387,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
+    CompactionScheduleContext summary = new CompactionScheduleContext();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(2, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
 
@@ -463,7 +463,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
 
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
-    CompactionScheduleSummary summary = new CompactionScheduleSummary();
+    CompactionScheduleContext summary = new CompactionScheduleContext();
     CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
     Assert.assertEquals(1, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
     Assert.assertEquals(1, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());

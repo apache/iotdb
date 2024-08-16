@@ -49,7 +49,7 @@ public class TypeInferenceUtils {
     return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
   }
 
-  static boolean isNumber(String s) {
+  public static boolean isNumber(String s) {
     if (s == null || s.equals("NaN")) {
       return false;
     }
@@ -58,7 +58,7 @@ public class TypeInferenceUtils {
     } catch (NumberFormatException e) {
       return false;
     }
-    return true;
+    return !s.endsWith("F") && !s.endsWith("f") && !s.endsWith("D") && !s.endsWith("d");
   }
 
   private static boolean isBoolean(String s) {

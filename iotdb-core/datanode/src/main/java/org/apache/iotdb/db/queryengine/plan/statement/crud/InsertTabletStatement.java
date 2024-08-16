@@ -56,17 +56,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
-  private long[] times; // times should be sorted. It is done in the session API.
-  private BitMap[] bitMaps;
-  private Object[] columns;
+  protected long[] times; // times should be sorted. It is done in the session API.
+  protected BitMap[] bitMaps;
+  protected Object[] columns;
 
-  private int rowCount = 0;
+  protected int rowCount = 0;
 
   /**
    * This param record whether the source of logical view is aligned. Only used when there are
    * views.
    */
-  private boolean[] measurementIsAligned;
+  protected boolean[] measurementIsAligned;
 
   public InsertTabletStatement() {
     super();

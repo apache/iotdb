@@ -36,19 +36,26 @@ import java.util.List;
 public class CreatePipePluginStatement extends Statement implements IConfigStatement {
 
   private final String pluginName;
+  private final boolean ifNotExistsCondition;
   private final String className;
   private final String uriString;
 
-  public CreatePipePluginStatement(String pluginName, String className, String uriString) {
+  public CreatePipePluginStatement(
+      String pluginName, boolean ifNotExistsCondition, String className, String uriString) {
     super();
     statementType = StatementType.CREATE_PIPEPLUGIN;
     this.pluginName = pluginName;
+    this.ifNotExistsCondition = ifNotExistsCondition;
     this.className = className;
     this.uriString = uriString;
   }
 
   public String getPluginName() {
     return pluginName;
+  }
+
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
   }
 
   public String getClassName() {

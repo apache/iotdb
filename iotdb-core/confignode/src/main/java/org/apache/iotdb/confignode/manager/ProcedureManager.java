@@ -106,6 +106,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
@@ -799,9 +800,10 @@ public class ProcedureManager {
     return statusList.get(0);
   }
 
-  public TSStatus createPipePlugin(PipePluginMeta pipePluginMeta, byte[] jarFile) {
+  public TSStatus createPipePlugin(
+      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean isSetIfNotExistsCondition) {
     final CreatePipePluginProcedure createPipePluginProcedure =
-        new CreatePipePluginProcedure(pipePluginMeta, jarFile);
+        new CreatePipePluginProcedure(pipePluginMeta, jarFile, isSetIfNotExistsCondition);
     try {
       if (jarFile != null
           && new UpdateProcedurePlan(createPipePluginProcedure).getSerializedSize()
@@ -829,8 +831,11 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus dropPipePlugin(String pluginName) {
-    final long procedureId = executor.submitProcedure(new DropPipePluginProcedure(pluginName));
+  public TSStatus dropPipePlugin(TDropPipePluginReq req) {
+    final long procedureId =
+        executor.submitProcedure(
+            new DropPipePluginProcedure(
+                req.getPluginName(), req.isSetIfExistsCondition() && req.isIfExistsCondition()));
     final List<TSStatus> statusList = new ArrayList<>();
     final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), statusList);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
@@ -61,6 +62,12 @@ public class SubscriptionPipeTsFileEventBatch {
     }
     if (Objects.nonNull(event)) {
       batch.onEvent(event);
+      if (event instanceof EnrichedEvent) {
+        ((EnrichedEvent) event)
+            .decreaseReferenceCount(
+                SubscriptionPipeTsFileEventBatch.class.getName(),
+                false); // missing releaseLastEvent decreases reference count
+      }
     }
     if (batch.shouldEmit()) {
       final List<SubscriptionEvent> events = generateSubscriptionEvents();

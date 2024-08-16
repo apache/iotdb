@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
 
@@ -67,6 +66,15 @@ public interface IStateMachine {
    * @param request read request
    */
   DataSet read(IConsensusRequest request);
+
+  /**
+   * Release all resources related to the region. Currently, we only check pipe related resources.
+   *
+   * @return true if all resources are released successfully
+   */
+  default boolean hasReleaseAllRegionRelatedResource() {
+    return true;
+  }
 
   /**
    * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
@@ -117,7 +125,7 @@ public interface IStateMachine {
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    * @return List of real snapshot files.
    */
-  default List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
   }
 

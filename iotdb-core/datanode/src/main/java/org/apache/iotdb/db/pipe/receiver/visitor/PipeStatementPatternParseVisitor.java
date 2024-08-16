@@ -92,6 +92,7 @@ public class PipeStatementPatternParseVisitor
                   statement.getEncodings().get(index));
               targetCreateAlignedTimeSeriesStatement.addCompressor(
                   statement.getCompressors().get(index));
+              // Non-null lists
               targetCreateAlignedTimeSeriesStatement.addTagsList(
                   statement.getTagsList().get(index));
               targetCreateAlignedTimeSeriesStatement.addAttributesList(

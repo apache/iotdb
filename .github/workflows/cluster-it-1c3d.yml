@@ -6,6 +6,7 @@ on:
       - master
       - 'rel/1.*'
       - pipe-meta-sync
+      - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -14,6 +15,7 @@ on:
       - master
       - 'rel/1.*'
       - pipe-meta-sync
+      - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
@@ -45,11 +46,12 @@ public enum InnerUnsequenceCompactionSelector {
       String storageGroupName,
       String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     switch (this) {
       case NEW_SIZE_TIERED:
         return new NewSizeTieredCompactionSelector(
-            storageGroupName, dataRegionId, timePartition, false, tsFileManager);
+            storageGroupName, dataRegionId, timePartition, false, tsFileManager, context);
       case SIZE_TIERED:
       default:
         return new SizeTieredCompactionSelector(

@@ -52,10 +52,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -240,13 +238,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     try {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getDatabaseName(),
               region.getDataRegionId())
-          .getSnapshotFileInfo().stream().map(File::toPath).collect(Collectors.toList());
+          .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",
@@ -310,6 +308,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
       }
       return QUERY_INSTANCE_MANAGER.execDataQueryFragmentInstance(fragmentInstance, region);
     }
+  }
+
+  public boolean hasPipeReleaseRegionRelatedResource() {
+    // TODO: implement the method to check whether the user pipe has released all resources related
+    return true;
+  }
+
+  @Override
+  public boolean hasReleaseAllRegionRelatedResource() {
+    boolean releaseAllResource = true;
+    releaseAllResource &= hasPipeReleaseRegionRelatedResource();
+    return releaseAllResource;
   }
 
   @Override

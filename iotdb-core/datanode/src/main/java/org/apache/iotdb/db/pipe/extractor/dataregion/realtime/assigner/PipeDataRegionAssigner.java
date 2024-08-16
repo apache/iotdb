@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -29,10 +30,14 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRe
 import org.apache.iotdb.db.pipe.metric.PipeAssignerMetrics;
 import org.apache.iotdb.db.pipe.pattern.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.pattern.PipeDataRegionMatcher;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
 import java.io.Closeable;
 
 public class PipeDataRegionAssigner implements Closeable {
+
+  private static final int nonForwardingEventsProgressReportInterval =
+      PipeConfig.getInstance().getPipeNonForwardingEventsProgressReportInterval();
 
   /**
    * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
@@ -44,6 +49,8 @@ public class PipeDataRegionAssigner implements Closeable {
   private final DisruptorQueue disruptor;
 
   private final String dataRegionId;
+
+  private int counter = 0;
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -73,6 +80,16 @@ public class PipeDataRegionAssigner implements Closeable {
         .forEach(
             extractor -> {
               if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+                // The frequency of progress reports is limited by the counter, while progress
+                // reports to TsFileInsertionEvent are not limited.
+                if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
+                  if (counter < nonForwardingEventsProgressReportInterval) {
+                    counter++;
+                    return;
+                  }
+                  counter = 0;
+                }
+
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
                         extractor.getPipeName(),

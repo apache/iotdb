@@ -91,10 +91,11 @@ public class ConsumerGroupMetaSyncProcedure extends AbstractOperateSubscriptionP
   }
 
   @Override
-  public void executeFromValidate(ConfigNodeProcedureEnv env) {
+  public boolean executeFromValidate(ConfigNodeProcedureEnv env) {
     LOGGER.info("ConsumerGroupMetaSyncProcedure: executeFromValidate");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
+    return true;
   }
 
   @Override
