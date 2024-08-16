@@ -217,15 +217,14 @@ class RatisClient implements AutoCloseable {
     }
   }
 
-  // This policy is used to raft configuration change
-  //
+  /** This policy is used to raft configuration change
+   */
   private static class RatisEndlessRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
     private final RetryPolicy defaultPolicy;
 
     RatisEndlessRetryPolicy() {
-      // about 1 hour wait Time.
       defaultPolicy =
           RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
     }

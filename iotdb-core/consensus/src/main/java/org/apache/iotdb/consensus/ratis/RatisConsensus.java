@@ -924,8 +924,8 @@ class RatisConsensus implements IConsensus {
 
     private final boolean isReconfiguration;
 
-    RatisClientPoolFactory(boolean isReConfiguration) {
-      this.isReconfiguration = isReConfiguration;
+    RatisClientPoolFactory(boolean isReconfiguration) {
+      this.isReconfiguration = isReconfiguration;
     }
 
     @Override
