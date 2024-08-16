@@ -388,8 +388,8 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitCreateTable(CreateTable node, C context) {
-    for (Property property : node.getProperties()) {
+  protected Void visitCreateTable(final CreateTable node, final C context) {
+    for (final Property property : node.getProperties()) {
       process(property, context);
     }
 
@@ -406,8 +406,8 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitSetProperties(SetProperties node, C context) {
-    for (Property property : node.getProperties()) {
+  protected Void visitSetProperties(final SetProperties node, final C context) {
+    for (final Property property : node.getProperties()) {
       process(property, context);
     }
 
@@ -415,7 +415,7 @@ public abstract class DefaultTraversalVisitor<C> extends AstVisitor<Void, C> {
   }
 
   @Override
-  protected Void visitAddColumn(AddColumn node, C context) {
+  protected Void visitAddColumn(final AddColumn node, final C context) {
     process(node.getColumn(), context);
 
     return null;

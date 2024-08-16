@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -45,16 +46,17 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
-import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
 /**
@@ -199,18 +201,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     private SplitExpression splitPredicate(TableScanNode node) {
-
-      Set<String> idOrAttributeColumnNames =
-          node.getIdAndAttributeIndexMap().keySet().stream()
-              .map(Symbol::getName)
-              .collect(Collectors.toSet());
-
-      Set<String> measurementColumnNames =
-          node.getAssignments().entrySet().stream()
-              .filter(e -> MEASUREMENT.equals(e.getValue().getColumnCategory()))
-              .map(e -> e.getKey().getName())
-              .collect(Collectors.toSet());
-      measurementColumnNames.add(TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH));
+      Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
+      Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
+      for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+        Symbol columnSymbol = entry.getKey();
+        ColumnSchema columnSchema = entry.getValue();
+        if (MEASUREMENT.equals(columnSchema.getColumnCategory())
+            || TIME.equals(columnSchema.getColumnCategory())) {
+          measurementColumnNames.add(columnSymbol.getName());
+        } else {
+          idOrAttributeColumnNames.add(columnSymbol.getName());
+        }
+      }
 
       List<Expression> metadataExpressions = new ArrayList<>();
       List<Expression> expressionsCanPushDown = new ArrayList<>();
@@ -264,12 +266,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     /** Get deviceEntries and DataPartition used in TableScan. */
     private void tableMetadataIndexScan(TableScanNode node, List<Expression> metadataExpressions) {
-      List<String> attributeColumns =
-          node.getOutputSymbols().stream()
-              .filter(
-                  symbol -> ATTRIBUTE.equals(node.getAssignments().get(symbol).getColumnCategory()))
-              .map(Symbol::getName)
-              .collect(Collectors.toList());
+      List<String> attributeColumns = new ArrayList<>();
+      int attributeIndex = 0;
+      for (Symbol columnName : node.getAssignments().keySet()) {
+        if (ATTRIBUTE.equals(node.getAssignments().get(columnName).getColumnCategory())) {
+          attributeColumns.add(columnName.getName());
+          node.getIdAndAttributeIndexMap().put(columnName, attributeIndex++);
+        }
+      }
       List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               node.getQualifiedObjectName(), metadataExpressions, attributeColumns, queryContext);

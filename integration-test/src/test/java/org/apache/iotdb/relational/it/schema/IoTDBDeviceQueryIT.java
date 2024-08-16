@@ -37,6 +37,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collections;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
@@ -66,6 +67,7 @@ public class IoTDBDeviceQueryIT {
       statement.execute(
           "insert into table0(region_id, plant_id, device_id, model, temperature, humidity) values('1', '5', '3', 'A', 37.6, 111.1)");
 
+      // Test plain show / count
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from table0"),
           "region_id,plant_id,device_id,model,",
@@ -83,18 +85,77 @@ public class IoTDBDeviceQueryIT {
           "count(devices),",
           Collections.singleton("0,"));
 
+      // Test show / count with where expression
+      // Test AND
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from table0 where region_id = '1' and model = 'A'"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,A,"));
+      // Test OR
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "count devices from table0 where region_id = '1' or plant_id like '%'"),
+          "count(devices),",
+          Collections.singleton("1,"));
+      // Test complicated query
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from table0 where region_id < plant_id"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,A,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from table0 where region_id < plant_id"),
+          "count(devices),",
+          Collections.singleton("1,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "count devices from table0 where substring(region_id, cast(plant_id as int32), 1) < plant_id"),
+          "count(devices),",
+          Collections.singleton("1,"));
+      // Test get from cache
+      statement.executeQuery(
+          "select * from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,A,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "count devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3'"),
+          "count(devices),",
+          Collections.singleton("1,"));
+      // Test filter
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from table0 where region_id >= '2'"),
+          "count(devices),",
+          Collections.singleton("0,"));
+
       try {
         statement.executeQuery("show devices from table2");
         fail("Show devices shall fail for non-exist table");
       } catch (final Exception e) {
-        // Pass
+        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
       }
 
       try {
         statement.executeQuery("count devices from table2");
         fail("Count devices shall fail for non-exist table");
       } catch (final Exception e) {
-        // Pass
+        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+      }
+
+      try {
+        statement.executeQuery("show devices from table0 where temperature = 37.6");
+        fail("Show devices shall fail for measurement predicate");
+      } catch (final Exception e) {
+        assertEquals("701: Column 'temperature' cannot be resolved", e.getMessage());
+      }
+
+      try {
+        statement.executeQuery("count devices from table0 where a = 1");
+        fail("Count devices shall fail for non-exist column");
+      } catch (final Exception e) {
+        assertEquals("701: Column 'a' cannot be resolved", e.getMessage());
       }
 
       // Test fully qualified name

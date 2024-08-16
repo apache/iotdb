@@ -227,6 +227,11 @@ public class Cli extends AbstractCli {
     } catch (EndOfFileException e) {
       // Exit on EOF (usually by pressing CTRL+D).
       ctx.exit(CODE_OK);
+    } catch (IllegalArgumentException e) {
+      if (e.getMessage().contains("history")) {
+        return false;
+      }
+      throw e;
     }
     return false;
   }

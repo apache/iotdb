@@ -17,30 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.schema.table;
+package org.apache.iotdb.confignode.procedure.state.schema;
 
-public enum AlterTableOperationType {
-  ADD_COLUMN((byte) 0),
-  SET_PROPERTIES((byte) 1);
-
-  private final byte type;
-
-  AlterTableOperationType(final byte type) {
-    this.type = type;
-  }
-
-  public byte getTypeValue() {
-    return type;
-  }
-
-  public static AlterTableOperationType getType(final byte value) {
-    switch (value) {
-      case 0:
-        return ADD_COLUMN;
-      case 1:
-        return SET_PROPERTIES;
-      default:
-        throw new IllegalArgumentException();
-    }
-  }
+public enum SetTablePropertiesState {
+  VALIDATE_TABLE,
+  PRE_RELEASE,
+  SET_PROPERTIES,
+  COMMIT_RELEASE
 }

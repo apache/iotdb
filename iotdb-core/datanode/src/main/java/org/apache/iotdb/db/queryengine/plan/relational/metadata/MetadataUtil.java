@@ -66,16 +66,16 @@ public class MetadataUtil {
   }
 
   public static QualifiedObjectName createQualifiedObjectName(
-      SessionInfo session, QualifiedName name) {
+      final SessionInfo session, final QualifiedName name) {
     requireNonNull(session, "session is null");
     requireNonNull(name, "name is null");
     if (name.getParts().size() > 2) {
       throw new SemanticException(String.format("Too many dots in table name: %s", name));
     }
 
-    List<String> parts = Lists.reverse(name.getParts());
-    String objectName = parts.get(0);
-    String databaseName =
+    final List<String> parts = Lists.reverse(name.getParts());
+    final String objectName = parts.get(0);
+    final String databaseName =
         (parts.size() > 1)
             ? parts.get(1)
             : session

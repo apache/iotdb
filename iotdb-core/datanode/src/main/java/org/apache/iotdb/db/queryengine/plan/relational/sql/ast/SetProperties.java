@@ -39,20 +39,31 @@ public class SetProperties extends Statement {
   private final Type type;
   private final QualifiedName name;
   private final List<Property> properties;
+  private final boolean ifExists;
 
-  public SetProperties(Type type, QualifiedName name, List<Property> properties) {
+  public SetProperties(
+      final Type type,
+      final QualifiedName name,
+      final List<Property> properties,
+      final boolean ifExists) {
     super(null);
     this.type = requireNonNull(type, "type is null");
     this.name = requireNonNull(name, "name is null");
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+    this.ifExists = ifExists;
   }
 
   public SetProperties(
-      @Nonnull NodeLocation location, Type type, QualifiedName name, List<Property> properties) {
+      final @Nonnull NodeLocation location,
+      final Type type,
+      final QualifiedName name,
+      final List<Property> properties,
+      final boolean ifExists) {
     super(requireNonNull(location, "location is null"));
     this.type = requireNonNull(type, "type is null");
     this.name = requireNonNull(name, "name is null");
     this.properties = ImmutableList.copyOf(requireNonNull(properties, "properties is null"));
+    this.ifExists = ifExists;
   }
 
   public Type getType() {
@@ -67,8 +78,12 @@ public class SetProperties extends Statement {
     return properties;
   }
 
+  public boolean ifExists() {
+    return ifExists;
+  }
+
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitSetProperties(this, context);
   }
 
@@ -79,19 +94,20 @@ public class SetProperties extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, name, properties);
+    return Objects.hash(type, name, properties, ifExists);
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if ((obj == null) || (getClass() != obj.getClass())) {
       return false;
     }
-    SetProperties o = (SetProperties) obj;
+    final SetProperties o = (SetProperties) obj;
     return type == o.type
+        && ifExists == o.ifExists
         && Objects.equals(name, o.name)
         && Objects.equals(properties, o.properties);
   }
@@ -102,6 +118,7 @@ public class SetProperties extends Statement {
         .add("type", type)
         .add("name", name)
         .add("properties", properties)
+        .add("ifExists", ifExists)
         .toString();
   }
 }

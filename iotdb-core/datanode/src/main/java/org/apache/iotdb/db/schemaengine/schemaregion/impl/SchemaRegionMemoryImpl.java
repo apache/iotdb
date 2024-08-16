@@ -62,7 +62,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMN
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -1402,12 +1401,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      final ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getTableDeviceReader(
-        showTableDevicesPlan.getDevicePattern(),
-        showTableDevicesPlan.getDeviceFilter(),
-        (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+        pathPattern, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
   }
 
   @Override
