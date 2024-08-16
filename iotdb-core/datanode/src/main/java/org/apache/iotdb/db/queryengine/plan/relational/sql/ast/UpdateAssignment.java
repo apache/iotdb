@@ -69,6 +69,10 @@ public class UpdateAssignment extends Node {
     Expression.serialize(value, stream);
   }
 
+  public static UpdateAssignment deserialize(final ByteBuffer buffer) {
+    return new UpdateAssignment(Expression.deserialize(buffer), Expression.deserialize(buffer));
+  }
+
   @Override
   public List<? extends Node> getChildren() {
     return ImmutableList.of(name, value);

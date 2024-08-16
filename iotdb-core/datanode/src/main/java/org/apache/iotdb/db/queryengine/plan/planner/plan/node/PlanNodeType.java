@@ -236,6 +236,7 @@ public enum PlanNodeType {
   TABLE_DEVICE_FETCH((short) 904),
   DELETE_TABLE_DEVICE((short) 905),
   TABLE_DEVICE_QUERY_COUNT((short) 906),
+  TABLE_DEVICE_ATTRIBUTE_UPDATE((short) 907),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),

@@ -74,7 +74,8 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceTraverseNode {
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
-    return AbstractTableDeviceTraverseNode.deserialize(buffer, true);
+    return AbstractTableDeviceTraverseNode.deserialize(
+        buffer, PlanNodeType.TABLE_DEVICE_QUERY_SCAN);
   }
 
   @Override

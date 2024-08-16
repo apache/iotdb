@@ -82,7 +82,8 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceTraverseNode {
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
-    return AbstractTableDeviceTraverseNode.deserialize(buffer, false);
+    return AbstractTableDeviceTraverseNode.deserialize(
+        buffer, PlanNodeType.TABLE_DEVICE_QUERY_COUNT);
   }
 
   @Override

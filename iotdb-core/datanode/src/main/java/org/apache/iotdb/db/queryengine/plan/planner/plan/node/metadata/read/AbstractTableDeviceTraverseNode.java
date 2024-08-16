@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -121,7 +123,7 @@ public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceN
     }
   }
 
-  protected static PlanNode deserialize(final ByteBuffer buffer, final boolean isScan) {
+  protected static PlanNode deserialize(final ByteBuffer buffer, final PlanNodeType type) {
     final String database = ReadWriteIOUtils.readString(buffer);
     final String tableName = ReadWriteIOUtils.readString(buffer);
 
@@ -147,16 +149,10 @@ public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceN
     }
 
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return isScan
-        ? new TableDeviceQueryScanNode(
-            planNodeId,
-            database,
-            tableName,
-            idDeterminedFilterList,
-            idFuzzyFilter,
-            columnHeaderList,
-            null)
-        : new TableDeviceQueryCountNode(
+
+    switch (type) {
+      case TABLE_DEVICE_QUERY_SCAN:
+        return new TableDeviceQueryScanNode(
             planNodeId,
             database,
             tableName,
@@ -164,6 +160,34 @@ public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceN
             idFuzzyFilter,
             columnHeaderList,
             null);
+      case TABLE_DEVICE_QUERY_COUNT:
+        return new TableDeviceQueryCountNode(
+            planNodeId,
+            database,
+            tableName,
+            idDeterminedFilterList,
+            idFuzzyFilter,
+            columnHeaderList,
+            null);
+      case TABLE_DEVICE_ATTRIBUTE_UPDATE:
+        size = ReadWriteIOUtils.readInt(buffer);
+        final List<UpdateAssignment> assignments = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          assignments.add(UpdateAssignment.deserialize(buffer));
+        }
+        return new TableDeviceAttributeUpdateNode(
+            planNodeId,
+            database,
+            tableName,
+            idDeterminedFilterList,
+            idFuzzyFilter,
+            columnHeaderList,
+            null,
+            assignments);
+      default:
+        throw new UnsupportedOperationException(
+            "Unsupported table device traverse node type: " + type);
+    }
   }
 
   @Override

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 
@@ -78,6 +79,11 @@ public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseN
     for (final UpdateAssignment assignment : assignments) {
       assignment.serialize(stream);
     }
+  }
+
+  @Override
+  public PlanNodeType getType() {
+    return PlanNodeType.TABLE_DEVICE_ATTRIBUTE_UPDATE;
   }
 
   @Override
