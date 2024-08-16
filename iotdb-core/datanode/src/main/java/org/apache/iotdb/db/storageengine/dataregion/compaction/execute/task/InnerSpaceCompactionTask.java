@@ -83,6 +83,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     this.hashCode = this.hashCode();
     createSummary();
+    System.out.println("start task" + this);
   }
 
   public InnerSpaceCompactionTask(
@@ -106,6 +107,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     this.performer = performer;
     this.hashCode = this.hashCode();
     createSummary();
+    System.out.println("start task" + this);
   }
 
   public InnerSpaceCompactionTask(

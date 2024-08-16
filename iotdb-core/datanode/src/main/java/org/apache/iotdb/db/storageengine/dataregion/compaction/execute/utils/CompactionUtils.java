@@ -108,9 +108,14 @@ public class CompactionUtils {
       FSFactoryProducer.getFSFactory().moveFile(targetResource.getTsFile(), newFile);
     }
 
+    System.out.println("move file from " + targetResource.getTsFile() + " to " + newFile);
     // serialize xxx.tsfile.resource
     targetResource.setFile(newFile);
-    targetResource.serialize();
+    try {
+      targetResource.serialize();
+    } catch (Exception e) {
+      System.out.println();
+    }
     targetResource.closeWithoutSettingStatus();
   }
 

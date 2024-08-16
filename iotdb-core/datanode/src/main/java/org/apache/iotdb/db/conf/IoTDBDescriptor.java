@@ -649,11 +649,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "chunk_size_lower_bound_in_compaction",
                 Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
-    conf.setFileLimitPerInnerTask(
+    conf.setInnerCompactionCandidateFileNum(
         Integer.parseInt(
             properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
-                Integer.toString(conf.getFileLimitPerInnerTask()))));
+                "inner_compaction_candidate_file_num",
+                Integer.toString(conf.getInnerCompactionCandidateFileNum()))));
     conf.setFileLimitPerCrossTask(
         Integer.parseInt(
             properties.getProperty(
@@ -1225,15 +1225,16 @@ public class IoTDBDescriptor {
                     "compaction_read_throughput_mb_per_sec"))));
     configModified |= compactionReadThroughput != conf.getCompactionReadThroughputMbPerSec();
 
-    // update max_inner_compaction_candidate_file_num
-    int maxInnerCompactionCandidateFileNum = conf.getFileLimitPerInnerTask();
-    conf.setFileLimitPerInnerTask(
+    // update inner_compaction_candidate_file_num
+    int maxInnerCompactionCandidateFileNum = conf.getInnerCompactionCandidateFileNum();
+    conf.setInnerCompactionCandidateFileNum(
         Integer.parseInt(
             properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
+                "inner_compaction_candidate_file_num",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "max_inner_compaction_candidate_file_num"))));
-    configModified |= maxInnerCompactionCandidateFileNum != conf.getFileLimitPerInnerTask();
+                    "inner_compaction_candidate_file_num"))));
+    configModified |=
+        maxInnerCompactionCandidateFileNum != conf.getInnerCompactionCandidateFileNum();
 
     // update target_compaction_file_size
     long targetCompactionFilesize = conf.getTargetCompactionFileSize();

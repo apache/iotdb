@@ -683,6 +683,7 @@ public class TsFileResource {
 
   /** Return false if the status is not changed */
   public boolean transformStatus(TsFileResourceStatus status) {
+    System.out.println(this.file + " from " + this.getStatus() + " to" + status);
     switch (status) {
       case NORMAL:
         return compareAndSetStatus(TsFileResourceStatus.UNCLOSED, TsFileResourceStatus.NORMAL)

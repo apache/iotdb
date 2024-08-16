@@ -113,7 +113,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
 
     public boolean checkHasReachedThreshold() {
-      return resources.size() >= config.getFileLimitPerInnerTask()
+      return resources.size() >= config.getInnerCompactionCandidateFileNum()
           || totalFileSize >= config.getTargetCompactionFileSize();
     }
   }
