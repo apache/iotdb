@@ -167,6 +167,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -487,19 +488,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitUpdateStatement(RelationalSqlParser.UpdateStatementContext ctx) {
-    if (ctx.booleanExpression() != null) {
-      return new Update(
-          getLocation(ctx),
-          new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-          visit(ctx.updateAssignment(), UpdateAssignment.class),
-          (Expression) visit(ctx.booleanExpression()));
-    } else {
-      return new Update(
-          getLocation(ctx),
-          new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-          visit(ctx.updateAssignment(), UpdateAssignment.class));
-    }
+  public Node visitUpdateStatement(final RelationalSqlParser.UpdateStatementContext ctx) {
+    return new Update(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        visit(ctx.updateAssignment(), UpdateAssignment.class),
+        Objects.nonNull(ctx.booleanExpression())
+            ? (Expression) visit(ctx.booleanExpression())
+            : null);
   }
 
   @Override
@@ -539,14 +535,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       throw new UnsupportedOperationException("Show devices with LIMIT/OFFSET is unsupported yet.");
     }
     return new ShowDevice(
-        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
     return new CountDevice(
-        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override

@@ -33,8 +33,9 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   public static final String COUNT_DEVICE_HEADER_STRING = "count(devices)";
 
   // For sql-input show device usage
-  public CountDevice(final QualifiedName name, final Expression rawExpression) {
-    super(name, rawExpression);
+  public CountDevice(
+      final NodeLocation location, final Table table, final Expression rawExpression) {
+    super(location, table, rawExpression);
   }
 
   @Override

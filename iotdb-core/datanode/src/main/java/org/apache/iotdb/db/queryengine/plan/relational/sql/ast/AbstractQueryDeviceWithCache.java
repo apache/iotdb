@@ -35,8 +35,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
-
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
   // For query devices fully in cache
@@ -46,8 +44,9 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   // to help reuse filter operator
   protected List<ColumnHeader> columnHeaderList;
 
-  protected AbstractQueryDeviceWithCache(final QualifiedName name, final Expression rawExpression) {
-    super(name, rawExpression);
+  protected AbstractQueryDeviceWithCache(
+      final NodeLocation location, final Table table, final Expression rawExpression) {
+    super(location, table, rawExpression);
   }
 
   protected AbstractQueryDeviceWithCache(final String database, final String tableName) {
@@ -58,7 +57,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    if (Objects.isNull(rawExpression)) {
+    if (Objects.isNull(where)) {
       return true;
     }
     final List<DeviceEntry> entries = new ArrayList<>();

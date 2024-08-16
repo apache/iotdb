@@ -29,11 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectN
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonPredicatesExpressionRewriter;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 // TODO table metadata: reuse query distinct logic
 public abstract class AbstractTraverseDevice extends Statement {
@@ -43,9 +45,9 @@ public abstract class AbstractTraverseDevice extends Statement {
   protected String tableName;
 
   // Temporary
-  private QualifiedName name;
+  private Table table;
 
-  protected Expression rawExpression;
+  protected Expression where;
 
   /**
    * The outer list represents the OR relation between different expression lists.
@@ -63,10 +65,11 @@ public abstract class AbstractTraverseDevice extends Statement {
   private List<IDeviceID> partitionKeyList;
 
   // For sql-input show device usage
-  protected AbstractTraverseDevice(final QualifiedName name, final Expression rawExpression) {
-    super(null);
-    this.name = name;
-    this.rawExpression = rawExpression;
+  protected AbstractTraverseDevice(
+      final NodeLocation location, final Table table, final Expression where) {
+    super(location);
+    this.table = table;
+    this.where = where;
   }
 
   protected AbstractTraverseDevice(final String database, final String tableName) {
@@ -75,12 +78,12 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.tableName = tableName;
   }
 
-  public void parseQualifiedName(final SessionInfo sessionInfo) {
-    if (Objects.isNull(name)) {
+  public void parseTable(final SessionInfo sessionInfo) {
+    if (Objects.isNull(table)) {
       return;
     }
     final QualifiedObjectName objectName =
-        MetadataUtil.createQualifiedObjectName(sessionInfo, name);
+        MetadataUtil.createQualifiedObjectName(sessionInfo, table.getName());
     database = objectName.getDatabaseName();
     tableName = objectName.getObjectName();
   }
@@ -93,16 +96,16 @@ public abstract class AbstractTraverseDevice extends Statement {
     return tableName;
   }
 
-  public QualifiedName getName() {
-    return name;
+  public Table getTable() {
+    return table;
   }
 
-  public Expression getRawExpression() {
-    return rawExpression;
+  public Optional<Expression> getWhere() {
+    return Optional.ofNullable(where);
   }
 
-  public void setRawExpression(final Expression rawExpression) {
-    this.rawExpression = rawExpression;
+  public void setWhere(final Expression where) {
+    this.where = where;
   }
 
   public boolean parseRawExpression(
@@ -110,20 +113,18 @@ public abstract class AbstractTraverseDevice extends Statement {
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    if (Objects.isNull(rawExpression)) {
+    if (Objects.isNull(where)) {
       return true;
     }
-    rawExpression =
-        ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(rawExpression);
+    where = ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(where);
     return TableDeviceSchemaFetcher.getInstance()
         .parseFilter4TraverseDevice(
             database,
             tableInstance,
-            (rawExpression instanceof LogicalExpression
-                    && ((LogicalExpression) rawExpression).getOperator()
-                        == LogicalExpression.Operator.AND)
-                ? ((LogicalExpression) rawExpression).getTerms()
-                : Collections.singletonList(rawExpression),
+            (where instanceof LogicalExpression
+                    && ((LogicalExpression) where).getOperator() == LogicalExpression.Operator.AND)
+                ? ((LogicalExpression) where).getTerms()
+                : Collections.singletonList(where),
             this,
             entries,
             attributeColumns,
@@ -164,25 +165,32 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   @Override
   public List<? extends Node> getChildren() {
-    return null;
+    final ImmutableList.Builder<Node> nodes = ImmutableList.builder();
+    if (where != null) {
+      nodes.add(where);
+    }
+    return nodes.build();
   }
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
     final AbstractTraverseDevice that = (AbstractTraverseDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(rawExpression, that.rawExpression)
+        && Objects.equals(where, that.where)
         && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
         && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        database, tableName, rawExpression, idDeterminedFilterList, idFuzzyPredicate);
+    return Objects.hash(database, tableName, where, idDeterminedFilterList, idFuzzyPredicate);
   }
 
   protected String toStringContent() {
@@ -194,7 +202,7 @@ public abstract class AbstractTraverseDevice extends Statement {
         + tableName
         + '\''
         + ", rawExpression="
-        + rawExpression
+        + where
         + ", idDeterminedFilterList="
         + idDeterminedFilterList
         + ", idFuzzyFilter="

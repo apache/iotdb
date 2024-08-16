@@ -27,22 +27,23 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class UpdateAssignment extends Node {
-  private final Identifier name;
+  private final Expression name;
   private final Expression value;
 
-  public UpdateAssignment(Identifier name, Expression value) {
+  public UpdateAssignment(final Expression name, final Expression value) {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.value = requireNonNull(value, "value is null");
   }
 
-  public UpdateAssignment(NodeLocation location, Identifier name, Expression value) {
+  public UpdateAssignment(
+      final NodeLocation location, final Expression name, final Expression value) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.value = requireNonNull(value, "value is null");
   }
 
-  public Identifier getName() {
+  public Expression getName() {
     return name;
   }
 
@@ -51,7 +52,7 @@ public class UpdateAssignment extends Node {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitUpdateAssignment(this, context);
   }
 
@@ -61,14 +62,14 @@ public class UpdateAssignment extends Node {
   }
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    UpdateAssignment other = (UpdateAssignment) obj;
+    final UpdateAssignment other = (UpdateAssignment) obj;
     return Objects.equals(name, other.name) && Objects.equals(value, other.value);
   }
 

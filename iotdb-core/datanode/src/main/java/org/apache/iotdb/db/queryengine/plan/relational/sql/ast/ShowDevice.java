@@ -30,8 +30,9 @@ import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
 
-  public ShowDevice(final QualifiedName name, final Expression rawExpression) {
-    super(name, rawExpression);
+  public ShowDevice(
+      final NodeLocation location, final Table table, final Expression rawExpression) {
+    super(location, table, rawExpression);
   }
 
   public ShowDevice(final String database, final String tableName) {
