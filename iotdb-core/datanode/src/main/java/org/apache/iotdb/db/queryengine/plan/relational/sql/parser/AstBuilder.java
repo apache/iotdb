@@ -535,20 +535,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    if (ctx.WHERE() != null || ctx.LIMIT() != null || ctx.OFFSET() != null) {
-      throw new UnsupportedOperationException(
-          "Show devices with WHERE/LIMIT/OFFSET is unsupported yet.");
+    if (ctx.LIMIT() != null || ctx.OFFSET() != null) {
+      throw new UnsupportedOperationException("Show devices with LIMIT/OFFSET is unsupported yet.");
     }
-    return new ShowDevice(getQualifiedName(ctx.tableName), null);
+    return new ShowDevice(
+        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
-    if (ctx.WHERE() != null) {
-      throw new UnsupportedOperationException("Count devices with WHERE is unsupported yet.");
-    }
-    return new CountDevice(getQualifiedName(ctx.tableName), null);
+    return new CountDevice(
+        getQualifiedName(ctx.tableName), visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
