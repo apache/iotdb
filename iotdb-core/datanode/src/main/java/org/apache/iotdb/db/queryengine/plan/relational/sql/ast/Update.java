@@ -28,8 +28,7 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class Update extends AbstractTraverseDevice {
-
-  private final List<UpdateAssignment> assignments;
+  private List<UpdateAssignment> assignments;
 
   public Update(
       final NodeLocation location,
@@ -42,6 +41,10 @@ public class Update extends AbstractTraverseDevice {
 
   public List<UpdateAssignment> getAssignments() {
     return assignments;
+  }
+
+  public void setAssignments(final List<UpdateAssignment> assignments) {
+    this.assignments = assignments;
   }
 
   @Override

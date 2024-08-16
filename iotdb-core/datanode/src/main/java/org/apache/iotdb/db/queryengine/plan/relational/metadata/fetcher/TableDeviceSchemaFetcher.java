@@ -317,7 +317,10 @@ public class TableDeviceSchemaFetcher {
         cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
 
     final IDeviceID deviceID = convertIdValuesToDeviceID(idValues, tableInstance);
-    if (attributeMap == null) {
+
+    // DeviceEntryList == null means that this is update statement
+    // Shall not get from cache and shall reach the SchemaRegion to update
+    if (Objects.isNull(attributeMap) || Objects.isNull(deviceEntryList)) {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }
