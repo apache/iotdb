@@ -60,7 +60,9 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   private TsBlock next; // next will be set only when done
 
   public SchemaCountOperator(
-      PlanNodeId sourceId, OperatorContext operatorContext, ISchemaSource<T> schemaSource) {
+      final PlanNodeId sourceId,
+      final OperatorContext operatorContext,
+      final ISchemaSource<T> schemaSource) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.schemaSource = schemaSource;

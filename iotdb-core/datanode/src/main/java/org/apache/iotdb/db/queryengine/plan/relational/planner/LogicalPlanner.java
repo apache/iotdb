@@ -15,10 +15,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -41,7 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -52,21 +49,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.tsfile.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 public class LogicalPlanner {
@@ -237,7 +232,7 @@ public class LogicalPlanner {
 
   private PlanNode planFetchDevice(final FetchDevice statement, final Analysis analysis) {
     final List<ColumnHeader> columnHeaderList =
-        getColumnHeaderList(statement.getDatabase(), statement.getTableName());
+        getDeviceColumnHeaderList(statement.getDatabase(), statement.getTableName());
 
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
 
@@ -262,22 +257,16 @@ public class LogicalPlanner {
   }
 
   private PlanNode planShowDevice(final ShowDevice statement, final Analysis analysis) {
-    final String database = planQueryDevice(statement, analysis);
-    List<ColumnHeader> columnHeaderList = null;
-    if (!analysis.isFailed()) {
-      columnHeaderList = getColumnHeaderList(database, statement.getTableName());
-      analysis.setRespDatasetHeader(
-          new DatasetHeader(getColumnHeaderList(database, statement.getTableName()), true));
-    }
+    planQueryDevice(statement, analysis);
 
     final TableDeviceQueryScanNode node =
         new TableDeviceQueryScanNode(
             queryContext.getQueryId().genPlanNodeId(),
-            database,
+            statement.getDatabase(),
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
             null,
-            columnHeaderList,
+            statement.getColumnHeaderList(),
             null);
     return Objects.nonNull(statement.getIdFuzzyPredicate())
         ? new FilterNode(
@@ -286,19 +275,16 @@ public class LogicalPlanner {
   }
 
   private PlanNode planCountDevice(final CountDevice statement, final Analysis analysis) {
-    final String database = planQueryDevice(statement, analysis);
-    final List<ColumnHeader> columnHeaderList =
-        Collections.singletonList(new ColumnHeader("count(devices)", TSDataType.INT64));
-    analysis.setRespDatasetHeader(new DatasetHeader(columnHeaderList, true));
+    planQueryDevice(statement, analysis);
 
     final TableDeviceQueryCountNode node =
         new TableDeviceQueryCountNode(
             queryContext.getQueryId().genPlanNodeId(),
-            database,
+            statement.getDatabase(),
             statement.getTableName(),
             statement.getIdDeterminedFilterList(),
             statement.getIdFuzzyPredicate(),
-            columnHeaderList,
+            statement.getColumnHeaderList(),
             null);
 
     final CountSchemaMergeNode countMergeNode =
@@ -307,15 +293,9 @@ public class LogicalPlanner {
     return countMergeNode;
   }
 
-  private String planQueryDevice(final AbstractQueryDevice statement, final Analysis analysis) {
-    final String database =
-        Objects.isNull(statement.getDatabase())
-            ? analysis.getDatabaseName()
-            : statement.getDatabase();
-
-    if (Objects.isNull(database)) {
-      throw new SemanticException("The database must be set before show devices.");
-    }
+  private void planQueryDevice(
+      final AbstractQueryDeviceWithCache statement, final Analysis analysis) {
+    final String database = statement.getDatabase();
 
     final SchemaPartition schemaPartition =
         statement.isIdDetermined()
@@ -327,27 +307,9 @@ public class LogicalPlanner {
       analysis.setFinishQueryAfterAnalyze();
     }
 
-    if (Objects.isNull(
-        DataNodeTableCache.getInstance().getTable(database, statement.getTableName()))) {
-      throw new SemanticException(
-          String.format("Table '%s.%s' does not exist.", database, statement.getTableName()));
+    if (!analysis.isFailed()) {
+      analysis.setRespDatasetHeader(statement.getDataSetHeader());
     }
-    return database;
-  }
-
-  private List<ColumnHeader> getColumnHeaderList(final String database, final String tableName) {
-    final List<TsTableColumnSchema> columnSchemaList =
-        DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList();
-
-    final List<ColumnHeader> columnHeaderList = new ArrayList<>(columnSchemaList.size());
-    for (final TsTableColumnSchema columnSchema : columnSchemaList) {
-      if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)
-          || columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {
-        columnHeaderList.add(
-            new ColumnHeader(columnSchema.getColumnName(), columnSchema.getDataType()));
-      }
-    }
-    return columnHeaderList;
   }
 
   private enum Stage {

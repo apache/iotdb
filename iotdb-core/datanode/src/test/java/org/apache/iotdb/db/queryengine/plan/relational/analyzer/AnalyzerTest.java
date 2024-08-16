@@ -267,7 +267,7 @@ public class AnalyzerTest {
   @Test
   public void singleTableWithFilterTest2() {
     // measurement value filter, which can be pushed down to TableScanNode
-    sql = "SELECT tag1, attr1, s2 FROM table1 where s1 > 1";
+    sql = "SELECT tag1, attr2, s2 FROM table1 where s1 > 1";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     assertNotNull(actualAnalysis);
@@ -282,16 +282,12 @@ public class AnalyzerTest {
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
     assertTrue(
-        Stream.of(
-                Symbol.of("tag1"),
-                Symbol.of("tag2"),
-                Symbol.of("tag3"),
-                Symbol.of("attr1"),
-                Symbol.of("attr2"))
+        Stream.of(Symbol.of("tag1"), Symbol.of("tag2"), Symbol.of("tag3"), Symbol.of("attr2"))
             .allMatch(tableScanNode.getIdAndAttributeIndexMap()::containsKey));
-    assertEquals(Arrays.asList("tag1", "attr1", "s2"), tableScanNode.getOutputColumnNames());
+    assertEquals(0, (int) tableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr2")));
+    assertEquals(Arrays.asList("tag1", "attr2", "s2"), tableScanNode.getOutputColumnNames());
     assertEquals(
-        ImmutableSet.of("tag1", "attr1", "s1", "s2"),
+        ImmutableSet.of("tag1", "attr2", "s1", "s2"),
         tableScanNode.getAssignments().keySet().stream()
             .map(Symbol::toString)
             .collect(Collectors.toSet()));
@@ -581,7 +577,7 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
     assertEquals(Arrays.asList("tag2", "attr2", "s2"), tableScanNode.getOutputColumnNames());
-    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, tableScanNode.getIdAndAttributeIndexMap().size());
   }
 
   @Test

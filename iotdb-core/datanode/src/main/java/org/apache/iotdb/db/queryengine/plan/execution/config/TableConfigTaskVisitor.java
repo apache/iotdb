@@ -27,6 +27,8 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -55,7 +58,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
@@ -70,8 +75,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Pair;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -88,43 +96,44 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   private final Metadata metadata;
 
-  public TableConfigTaskVisitor(IClientSession clientSession, Metadata metadata) {
+  public TableConfigTaskVisitor(final IClientSession clientSession, final Metadata metadata) {
     this.clientSession = clientSession;
     this.metadata = metadata;
   }
 
   @Override
-  protected IConfigTask visitNode(Node node, MPPQueryContext context) {
+  protected IConfigTask visitNode(final Node node, final MPPQueryContext context) {
     throw new UnsupportedOperationException(
         "Unsupported statement type: " + node.getClass().getName());
   }
 
   @Override
-  protected IConfigTask visitCreateDB(CreateDB node, MPPQueryContext context) {
+  protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new CreateDBTask(node);
   }
 
   @Override
-  protected IConfigTask visitUse(Use node, MPPQueryContext context) {
+  protected IConfigTask visitUse(final Use node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new UseDBTask(node, clientSession);
   }
 
   @Override
-  protected IConfigTask visitDropDB(DropDB node, MPPQueryContext context) {
+  protected IConfigTask visitDropDB(final DropDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new DropDBTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowDB(ShowDB node, MPPQueryContext context) {
+  protected IConfigTask visitShowDB(final ShowDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDBTask(node);
   }
 
   @Override
-  protected IConfigTask visitShowCluster(ShowCluster showCluster, MPPQueryContext context) {
+  protected IConfigTask visitShowCluster(
+      final ShowCluster showCluster, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
@@ -134,7 +143,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowRegions(ShowRegions showRegions, MPPQueryContext context) {
+  protected IConfigTask visitShowRegions(
+      final ShowRegions showRegions, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
@@ -147,13 +157,13 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
   @Override
   protected IConfigTask visitShowDataNodes(
-      ShowDataNodes showDataNodesStatement, MPPQueryContext context) {
+      final ShowDataNodes showDataNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowDataNodesTask(showDataNodesStatement);
   }
 
   protected IConfigTask visitShowConfigNodes(
-      ShowConfigNodes showConfigNodesStatement, MPPQueryContext context) {
+      final ShowConfigNodes showConfigNodesStatement, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     return new ShowConfigNodesTask(showConfigNodesStatement);
   }
@@ -161,16 +171,75 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateTable(final CreateTable node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+
+    final TsTable table = new TsTable(databaseTablePair.getRight());
+
+    table.setProps(convertPropertiesToMap(node.getProperties(), false));
+
+    // TODO: Place the check at statement analyzer
+    for (final ColumnDefinition columnDefinition : node.getElements()) {
+      final TsTableColumnCategory category = columnDefinition.getColumnCategory();
+      final String columnName = columnDefinition.getName().getValue();
+      if (table.getColumnSchema(columnName) != null) {
+        throw new SemanticException(
+            String.format("Columns in table shall not share the same name %s.", columnName));
+      }
+      final TSDataType dataType = getDataType(columnDefinition.getType());
+      table.addColumnSchema(
+          TableHeaderSchemaValidator.generateColumnSchema(category, columnName, dataType));
+    }
+    return new CreateTableTask(table, databaseTablePair.getLeft(), node.isIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitAddColumn(final AddColumn node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getTableName());
+
+    final ColumnDefinition definition = node.getColumn();
+    return new AlterTableAddColumnTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        Collections.singletonList(
+            TableHeaderSchemaValidator.generateColumnSchema(
+                definition.getColumnCategory(),
+                definition.getName().getValue(),
+                getDataType(definition.getType()))),
+        context.getQueryId().getId(),
+        node.tableIfExists(),
+        node.columnIfNotExists());
+  }
+
+  @Override
+  protected IConfigTask visitSetProperties(
+      final SetProperties node, final MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    final Pair<String, String> databaseTablePair = splitQualifiedName(node.getName());
+
+    return new AlterTableSetPropertiesTask(
+        databaseTablePair.getLeft(),
+        databaseTablePair.getRight(),
+        convertPropertiesToMap(node.getProperties(), true),
+        context.getQueryId().getId(),
+        node.ifExists());
+  }
+
+  public Pair<String, String> splitQualifiedName(final QualifiedName name) {
     String database = clientSession.getDatabaseName();
-    if (node.getName().getPrefix().isPresent()) {
-      database = node.getName().getPrefix().get().toString();
+    if (name.getPrefix().isPresent()) {
+      database = name.getPrefix().get().toString();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);
     }
-    final TsTable table = new TsTable(node.getName().getSuffix());
+    return new Pair<>(database, name.getSuffix());
+  }
+
+  private Map<String, String> convertPropertiesToMap(
+      final List<Property> propertyList, final boolean serializeDefault) {
     final Map<String, String> map = new HashMap<>();
-    for (final Property property : node.getProperties()) {
+    for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
       if (TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
         if (!property.isSetToDefault()) {
@@ -196,30 +265,20 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
                 "TTL' value must be equal to or greater than 0, but now is: " + value);
           }
           map.put(key, String.valueOf(parsedValue));
+        } else if (serializeDefault) {
+          map.put(key, null);
         }
       } else {
-        throw new SemanticException("Table property " + key + " is currently not allowed.");
+        throw new SemanticException("Table property '" + key + "' is currently not allowed.");
       }
     }
-    table.setProps(map);
-
-    for (final ColumnDefinition columnDefinition : node.getElements()) {
-      final TsTableColumnCategory category = columnDefinition.getColumnCategory();
-      final String columnName = columnDefinition.getName().getValue();
-      if (table.getColumnSchema(columnName) != null) {
-        throw new SemanticException(
-            String.format("Columns in table shall not share the same name %s.", columnName));
-      }
-      final TSDataType dataType = getDataType(columnDefinition.getType());
-      TableHeaderSchemaValidator.generateColumnSchema(table, category, columnName, dataType);
-    }
-    return new CreateTableTask(table, database, node.isIfNotExists());
+    return map;
   }
 
-  private TSDataType getDataType(DataType dataType) {
+  private TSDataType getDataType(final DataType dataType) {
     try {
       return getTSDataType(metadata.getType(toTypeSignature(dataType)));
-    } catch (TypeNotFoundException e) {
+    } catch (final TypeNotFoundException e) {
       throw new SemanticException(String.format("Unknown type: %s", dataType));
     }
   }
