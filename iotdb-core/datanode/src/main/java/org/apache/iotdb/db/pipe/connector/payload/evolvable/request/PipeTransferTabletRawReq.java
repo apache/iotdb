@@ -80,6 +80,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
+      // TODO: remove the check for table model
       request.setMeasurements(
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 
