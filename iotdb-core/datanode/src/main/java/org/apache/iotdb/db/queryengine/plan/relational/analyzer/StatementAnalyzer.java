@@ -107,6 +107,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -380,12 +381,23 @@ public class StatementAnalyzer {
       node.setAssignments(
           node.getAssignments().stream()
               .map(
-                  assignment ->
-                      new UpdateAssignment(
-                          analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getName()),
-                          analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getValue())))
+                  assignment -> {
+                    final Expression parsedColumn =
+                        analyzeAndRewriteExpression(
+                            translationMap, translationMap.getScope(), assignment.getName());
+                    if (!(parsedColumn instanceof SymbolReference)
+                        || table
+                                .getColumnSchema(((SymbolReference) parsedColumn).getName())
+                                .getColumnCategory()
+                            != TsTableColumnCategory.ATTRIBUTE) {
+                      throw new SemanticException(
+                          "Update attribute shall specify attribute column.");
+                    }
+                    return new UpdateAssignment(
+                        parsedColumn,
+                        analyzeAndRewriteExpression(
+                            translationMap, translationMap.getScope(), assignment.getValue()));
+                  })
               .collect(Collectors.toList()));
       return null;
     }
