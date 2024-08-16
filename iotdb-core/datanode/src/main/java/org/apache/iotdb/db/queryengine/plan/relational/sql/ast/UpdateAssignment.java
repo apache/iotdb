@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -54,6 +57,16 @@ public class UpdateAssignment extends Node {
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitUpdateAssignment(this, context);
+  }
+
+  public void serialize(final ByteBuffer byteBuffer) {
+    Expression.serialize(name, byteBuffer);
+    Expression.serialize(value, byteBuffer);
+  }
+
+  public void serialize(final DataOutputStream stream) throws IOException {
+    Expression.serialize(name, stream);
+    Expression.serialize(value, stream);
   }
 
   @Override

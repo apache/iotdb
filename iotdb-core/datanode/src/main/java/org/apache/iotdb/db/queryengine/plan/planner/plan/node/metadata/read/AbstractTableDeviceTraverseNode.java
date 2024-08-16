@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode {
+public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceNode {
 
   /**
    * The outer list represents the OR relation between different expression lists.
@@ -50,7 +50,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   protected final Expression idFuzzyPredicate;
 
-  protected AbstractTableDeviceQueryNode(
+  protected AbstractTableDeviceTraverseNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
@@ -177,7 +177,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
     if (!super.equals(o)) {
       return false;
     }
-    final AbstractTableDeviceQueryNode that = (AbstractTableDeviceQueryNode) o;
+    final AbstractTableDeviceTraverseNode that = (AbstractTableDeviceTraverseNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)
@@ -199,7 +199,7 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
   }
 
   protected String toStringMessage() {
-    return "{database='"
+    return "database='"
         + database
         + '\''
         + ", tableName='"
@@ -212,7 +212,6 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
         + ", columnHeaderList="
         + columnHeaderList
         + ", schemaRegionReplicaSet="
-        + schemaRegionReplicaSet
-        + '}';
+        + schemaRegionReplicaSet;
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceTraverseNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -511,7 +511,7 @@ public class TableDistributedPlanGenerator
   }
 
   private List<PlanNode> visitAbstractTableDeviceQuery(
-      final AbstractTableDeviceQueryNode node, final PlanContext context) {
+      final AbstractTableDeviceTraverseNode node, final PlanContext context) {
     final String database = PathUtils.qualifyDatabaseName(node.getDatabase());
     final Set<TRegionReplicaSet> schemaRegionSet = new HashSet<>();
     analysis
@@ -528,8 +528,8 @@ public class TableDistributedPlanGenerator
     } else {
       final List<PlanNode> res = new ArrayList<>(schemaRegionSet.size());
       for (final TRegionReplicaSet schemaRegion : schemaRegionSet) {
-        final AbstractTableDeviceQueryNode clonedChild =
-            (AbstractTableDeviceQueryNode) node.clone();
+        final AbstractTableDeviceTraverseNode clonedChild =
+            (AbstractTableDeviceTraverseNode) node.clone();
         clonedChild.setPlanNodeId(queryId.genPlanNodeId());
         clonedChild.setRegionReplicaSet(schemaRegion);
         res.add(clonedChild);

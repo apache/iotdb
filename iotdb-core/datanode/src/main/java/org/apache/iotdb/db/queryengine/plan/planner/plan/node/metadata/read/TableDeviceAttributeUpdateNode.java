@@ -24,26 +24,29 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
+public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseNode {
 
-public class TableDeviceQueryCountNode extends AbstractTableDeviceTraverseNode {
+  private final List<UpdateAssignment> assignments;
 
-  public TableDeviceQueryCountNode(
+  protected TableDeviceAttributeUpdateNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
+      final TRegionReplicaSet schemaRegionReplicaSet,
+      final List<UpdateAssignment> assignments) {
     super(
         planNodeId,
         database,
@@ -52,41 +55,50 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceTraverseNode {
         idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
+    this.assignments = assignments;
+  }
+
+  public List<UpdateAssignment> getAssignments() {
+    return assignments;
   }
 
   @Override
-  public List<String> getOutputColumnNames() {
-    return Collections.singletonList(COUNT_DEVICE_HEADER_STRING);
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
+    super.serializeAttributes(byteBuffer);
+    ReadWriteIOUtils.write(assignments.size(), byteBuffer);
+    for (final UpdateAssignment assignment : assignments) {
+      assignment.serialize(byteBuffer);
+    }
   }
 
   @Override
-  public <R, C> R accept(final PlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitTableDeviceQueryCount(this, context);
-  }
-
-  @Override
-  public PlanNodeType getType() {
-    return PlanNodeType.TABLE_DEVICE_QUERY_COUNT;
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+    super.serializeAttributes(stream);
+    ReadWriteIOUtils.write(assignments.size(), stream);
+    for (final UpdateAssignment assignment : assignments) {
+      assignment.serialize(stream);
+    }
   }
 
   @Override
   public PlanNode clone() {
-    return new TableDeviceQueryCountNode(
+    return new TableDeviceAttributeUpdateNode(
         getPlanNodeId(),
         database,
         tableName,
         idDeterminedPredicateList,
         idFuzzyPredicate,
         columnHeaderList,
-        schemaRegionReplicaSet);
-  }
-
-  public static PlanNode deserialize(final ByteBuffer buffer) {
-    return AbstractTableDeviceTraverseNode.deserialize(buffer, false);
+        schemaRegionReplicaSet,
+        assignments);
   }
 
   @Override
   public String toString() {
-    return "TableDeviceQueryCountNode{" + toStringMessage() + "}";
+    return "TableDeviceAttributeUpdateNode{assignments="
+        + assignments
+        + ", "
+        + toStringMessage()
+        + "}";
   }
 }
