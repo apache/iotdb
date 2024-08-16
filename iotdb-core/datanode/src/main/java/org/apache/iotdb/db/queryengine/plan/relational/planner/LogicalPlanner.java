@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
@@ -141,7 +142,7 @@ public class LogicalPlanner {
       return planCountDevice((CountDevice) statement, analysis);
     }
     if (statement instanceof Update) {
-      return planUpdate((Update) statement);
+      return planUpdate((Update) statement, analysis);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -300,6 +301,28 @@ public class LogicalPlanner {
 
   private void planQueryDevice(
       final AbstractQueryDeviceWithCache statement, final Analysis analysis) {
+    planTraverseDevice(statement, analysis);
+
+    if (!analysis.isFailed()) {
+      analysis.setRespDatasetHeader(statement.getDataSetHeader());
+    }
+  }
+
+  private PlanNode planUpdate(final Update statement, final Analysis analysis) {
+    planTraverseDevice(statement, analysis);
+
+    return new TableDeviceAttributeUpdateNode(
+        queryContext.getQueryId().genPlanNodeId(),
+        statement.getDatabase(),
+        statement.getTableName(),
+        statement.getIdDeterminedFilterList(),
+        statement.getIdFuzzyPredicate(),
+        statement.getColumnHeaderList(),
+        null,
+        statement.getAssignments());
+  }
+
+  private void planTraverseDevice(final AbstractTraverseDevice statement, final Analysis analysis) {
     final String database = statement.getDatabase();
 
     final SchemaPartition schemaPartition =
@@ -311,22 +334,6 @@ public class LogicalPlanner {
     if (schemaPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze();
     }
-
-    if (!analysis.isFailed()) {
-      analysis.setRespDatasetHeader(statement.getDataSetHeader());
-    }
-  }
-
-  private PlanNode planUpdate(final Update statement) {
-    return new TableDeviceAttributeUpdateNode(
-        queryContext.getQueryId().genPlanNodeId(),
-        statement.getDatabase(),
-        statement.getTableName(),
-        statement.getIdDeterminedFilterList(),
-        statement.getIdFuzzyPredicate(),
-        statement.getColumnHeaderList(),
-        null,
-        statement.getAssignments());
   }
 
   private enum Stage {

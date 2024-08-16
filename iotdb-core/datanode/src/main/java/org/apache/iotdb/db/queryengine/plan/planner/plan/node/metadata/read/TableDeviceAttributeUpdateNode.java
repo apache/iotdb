@@ -223,7 +223,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
   }
 
   @Override
-  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+  public List<WritePlanNode> splitByPartition(final IAnalysis analysis) {
     return null;
   }
 }
