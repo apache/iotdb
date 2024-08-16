@@ -587,6 +587,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   @Override
   public TSStatus visitTableDeviceAttributeUpdate(
       final TableDeviceAttributeUpdateNode node, final ISchemaRegion schemaRegion) {
+    schemaRegion.updateTableDeviceAttribute(node);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

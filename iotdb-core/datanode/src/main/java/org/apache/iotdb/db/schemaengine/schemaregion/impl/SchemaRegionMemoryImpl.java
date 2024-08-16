@@ -816,13 +816,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void rollbackSchemaBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
-      for (PartialPath path : paths) {
+  public void rollbackSchemaBlackList(final PathPatternTree patternTree) throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      final List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
+      for (final PartialPath path : paths) {
         try {
           writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
