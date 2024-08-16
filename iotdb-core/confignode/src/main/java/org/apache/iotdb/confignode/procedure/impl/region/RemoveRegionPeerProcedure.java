@@ -44,8 +44,6 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
@@ -82,10 +80,7 @@ public class RemoveRegionPeerProcedure
         consensusGroupId.getId(),
         targetDataNode.getDataNodeId());
     handler.forceUpdateRegionCache(consensusGroupId, targetDataNode, RegionStatus.Removing);
-    List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
-    excludeDataNode.add(targetDataNode);
-    excludeDataNode.add(coordinator);
-    handler.transferRegionLeader(consensusGroupId, targetDataNode, excludeDataNode);
+    handler.transferRegionLeader(consensusGroupId, targetDataNode, coordinator);
   }
 
   @Override

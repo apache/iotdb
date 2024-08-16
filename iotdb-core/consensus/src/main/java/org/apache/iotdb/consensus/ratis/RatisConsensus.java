@@ -122,7 +122,7 @@ class RatisConsensus implements IConsensus {
   private final RaftClientRpc clientRpc;
 
   private final IClientManager<RaftGroup, RatisClient> clientManager;
-  private final IClientManager<RaftGroup, RatisClient> reconfClientManager;
+  private final IClientManager<RaftGroup, RatisClient> reconfigurationClientManager;
 
   private final DiskGuardian diskGuardian;
 
@@ -192,7 +192,7 @@ class RatisConsensus implements IConsensus {
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()
             .createClientManager(new RatisClientPoolFactory(false));
-    reconfClientManager =
+    reconfigurationClientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()
             .createClientManager(new RatisClientPoolFactory(true));
 
@@ -869,9 +869,9 @@ class RatisConsensus implements IConsensus {
     }
   }
 
-  private RatisClient getConfRaftClient(RaftGroup group) throws ClientManagerException {
+  private RatisClient getConfigurationRaftClient(RaftGroup group) throws ClientManagerException {
     try {
-      return reconfClientManager.borrowClient(group);
+      return reconfigurationClientManager.borrowClient(group);
     } catch (ClientManagerException e) {
       logger.error("Borrow client from pool for group {} failed.", group, e);
       // rethrow the exception
@@ -883,7 +883,7 @@ class RatisConsensus implements IConsensus {
       throws RatisRequestFailedException {
     // notify the group leader of configuration change
     RaftClientReply reply;
-    try (RatisClient client = getConfRaftClient(newGroupConf)) {
+    try (RatisClient client = getConfigurationRaftClient(newGroupConf)) {
       while (true) {
         reply =
             client
@@ -922,10 +922,10 @@ class RatisConsensus implements IConsensus {
 
   private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {
 
-    private boolean isReConfiguration;
+    private final boolean isReconfiguration;
 
     RatisClientPoolFactory(boolean isReConfiguration) {
-      this.isReConfiguration = isReConfiguration;
+      this.isReconfiguration = isReConfiguration;
     }
 
     @Override
@@ -933,7 +933,7 @@ class RatisConsensus implements IConsensus {
         ClientManager<RaftGroup, RatisClient> manager) {
       GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
           new GenericKeyedObjectPool<>(
-              isReConfiguration
+              isReconfiguration
                   ? new RatisClient.EndlessRetryFactory(
                       manager, properties, clientRpc, config.getClient())
                   : new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),

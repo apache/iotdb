@@ -665,26 +665,25 @@ public class RegionMaintainHandler {
    * @param regionId The region to be migrated
    * @param originalDataNode The DataNode where the region locates
    */
-  public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
-      throws ProcedureException, InterruptedException {
-    List<TDataNodeLocation> excludeDataNode = Collections.singletonList(originalDataNode);
-    transferRegionLeader(regionId, originalDataNode, excludeDataNode);
-  }
-
   public void transferRegionLeader(
-      TConsensusGroupId regionId,
-      TDataNodeLocation originalDataNode,
-      List<TDataNodeLocation> excludeDataNode)
+      TConsensusGroupId regionId, TDataNodeLocation originalDataNode, TDataNodeLocation coodinator)
       throws ProcedureException, InterruptedException {
     // find new leader
     final int findNewLeaderTimeLimitSecond = 10;
     long startTime = System.nanoTime();
     Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
+    List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
+    excludeDataNode.add(originalDataNode);
+    excludeDataNode.add(coodinator);
     while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
       newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, excludeDataNode);
       if (newLeaderNode.isPresent()) {
         break;
       }
+    }
+    if (!newLeaderNode.isPresent()) {
+      // If we have no choice, we use it
+      newLeaderNode = Optional.of(coodinator);
     }
     newLeaderNode.orElseThrow(
         () ->

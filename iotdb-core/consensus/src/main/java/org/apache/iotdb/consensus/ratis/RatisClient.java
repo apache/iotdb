@@ -219,13 +219,24 @@ class RatisClient implements AutoCloseable {
 
     static {
       String str = "";
-      // 50, 500ms, 40, 1000ms, 30, 1500ms, 20, 2000ms, 10, 2500ms
+      /**
+       * Given pairs of number of retries and sleep time (n0, t0), (n1, t1), ..., the first n0
+       * retries sleep t0 milliseconds on average, the following n1 retries sleep t1 milliseconds on
+       * average, and so on.
+       *
+       * <p>For all the sleep, the actual sleep time is randomly uniform distributed in the close
+       * interval [0.5t, 1.5t], where t is the sleep time specified.
+       *
+       * <p>The objects of this class are immutable.
+       *
+       * @copy from ratis.MultipleLinearRandomRetry comment
+       */
       int basicRetry = 50;
-      int basicSleep = 500;
+      int basicSleep = 1000;
       for (int i = 0; i < 5; i++) {
         str += basicRetry + "," + basicSleep + ",";
         basicRetry -= 10;
-        basicSleep += 500;
+        basicSleep += 1000;
       }
 
       defaultPolicy =
