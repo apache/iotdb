@@ -44,9 +44,11 @@ public class EnvFactory {
         EnvType envType = EnvType.getSystemEnvType();
         switch (envType) {
           case Simple:
+          case TABLE_SIMPLE:
             env = new SimpleEnv();
             break;
           case Cluster1:
+          case TABLE_CLUSTER1:
             env = new Cluster1Env();
             break;
           case Remote:
