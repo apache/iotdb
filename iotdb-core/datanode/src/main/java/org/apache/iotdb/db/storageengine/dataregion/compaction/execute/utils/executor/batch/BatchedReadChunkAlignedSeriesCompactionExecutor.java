@@ -67,6 +67,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
   private final int batchSize =
       IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
+  private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      originReaderAndChunkMetadataList;
 
   public BatchedReadChunkAlignedSeriesCompactionExecutor(
       IDeviceID device,
@@ -76,6 +78,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       CompactionTaskSummary summary)
       throws IOException {
     super(device, targetResource, readerAndChunkMetadataList, writer, summary);
+    this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
     compactedMeasurements = new HashSet<>();
   }
 
@@ -215,7 +218,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
       List<AlignedChunkMetadata> alignedChunkMetadataList = Collections.emptyList();
       for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair :
-          readerAndChunkMetadataList) {
+          originReaderAndChunkMetadataList) {
         TsFileSequenceReader reader = pair.getLeft();
         if (reader.getFileName().equals(file)) {
           alignedChunkMetadataList = pair.getRight();
@@ -302,7 +305,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
     @Override
     protected void flushCurrentChunkWriter() throws IOException {
-      if (chunkWriter.isEmpty()) {
+      if (chunkWriter.isEmpty() || currentCompactChunk >= batchCompactionPlan.compactedChunkNum()) {
         return;
       }
       super.flushCurrentChunkWriter();
