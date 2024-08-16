@@ -1318,6 +1318,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   public static void setInstance(DataNode dataNode) {
+    if (DataNodeHolder.instance != null) {
+      throw new RuntimeException("DataNode has already been initialized");
+    }
     DataNodeHolder.instance = dataNode;
   }
 }

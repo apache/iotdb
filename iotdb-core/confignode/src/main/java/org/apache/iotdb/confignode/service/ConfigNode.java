@@ -580,6 +580,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   public static void setInstance(ConfigNode configNode) {
+    if (ConfigNode.ConfigNodeHolder.instance != null) {
+      throw new RuntimeException("ConfigNode has already been initialized");
+    }
     ConfigNodeHolder.instance = configNode;
   }
 }
