@@ -17,7 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.SimplePlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceTraverseNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.AbstractTableDeviceQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -109,7 +109,7 @@ public class TableModelTypeProviderExtractor {
       return visitAbstractTableDeviceQueryNode(node);
     }
 
-    private Void visitAbstractTableDeviceQueryNode(final AbstractTableDeviceTraverseNode node) {
+    private Void visitAbstractTableDeviceQueryNode(final AbstractTableDeviceQueryNode node) {
       node.getColumnHeaderList()
           .forEach(
               columnHeader ->

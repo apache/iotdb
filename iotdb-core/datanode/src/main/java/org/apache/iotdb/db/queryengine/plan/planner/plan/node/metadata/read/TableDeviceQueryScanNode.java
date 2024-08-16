@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TableDeviceQueryScanNode extends AbstractTableDeviceTraverseNode {
+public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
 
   public TableDeviceQueryScanNode(
       final PlanNodeId planNodeId,
@@ -74,7 +74,7 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceTraverseNode {
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
-    return AbstractTableDeviceTraverseNode.deserialize(buffer, true);
+    return AbstractTableDeviceQueryNode.deserialize(buffer, true);
   }
 
   @Override

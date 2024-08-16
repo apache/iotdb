@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceNode {
+public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode {
 
   /**
    * The outer list represents the OR relation between different expression lists.
@@ -50,7 +50,7 @@ public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceN
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
   protected final Expression idFuzzyPredicate;
 
-  protected AbstractTableDeviceTraverseNode(
+  protected AbstractTableDeviceQueryNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,
@@ -177,7 +177,7 @@ public abstract class AbstractTableDeviceTraverseNode extends TableDeviceSourceN
     if (!super.equals(o)) {
       return false;
     }
-    final AbstractTableDeviceTraverseNode that = (AbstractTableDeviceTraverseNode) o;
+    final AbstractTableDeviceQueryNode that = (AbstractTableDeviceQueryNode) o;
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(idDeterminedPredicateList, that.idDeterminedPredicateList)

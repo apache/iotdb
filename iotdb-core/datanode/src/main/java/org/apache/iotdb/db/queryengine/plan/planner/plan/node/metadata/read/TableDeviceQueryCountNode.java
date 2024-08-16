@@ -34,7 +34,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 
-public class TableDeviceQueryCountNode extends AbstractTableDeviceTraverseNode {
+public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
 
   public TableDeviceQueryCountNode(
       final PlanNodeId planNodeId,
@@ -82,7 +82,7 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceTraverseNode {
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
-    return AbstractTableDeviceTraverseNode.deserialize(buffer, false);
+    return AbstractTableDeviceQueryNode.deserialize(buffer, false);
   }
 
   @Override

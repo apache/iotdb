@@ -35,7 +35,9 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
@@ -70,6 +72,26 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.idFuzzyPredicate = idFuzzyPredicate;
     this.assignments = assignments;
+  }
+
+  public String getDatabase() {
+    return database;
+  }
+
+  public String getTableName() {
+    return tableName;
+  }
+
+  public List<ColumnHeader> getColumnHeaderList() {
+    return columnHeaderList;
+  }
+
+  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
+    return idDeterminedPredicateList;
+  }
+
+  public Expression getIdFuzzyPredicate() {
+    return idFuzzyPredicate;
   }
 
   public List<UpdateAssignment> getAssignments() {
@@ -138,11 +160,13 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   @Override
   public List<PlanNode> getChildren() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
-  public void addChild(PlanNode child) {}
+  public void addChild(final PlanNode child) {
+    // Do nothing
+  }
 
   @Override
   public PlanNodeType getType() {
@@ -169,7 +193,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return null;
+    return columnHeaderList.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
   @Override
@@ -195,7 +219,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   @Override
   public TRegionReplicaSet getRegionReplicaSet() {
-    return null;
+    return schemaRegionReplicaSet;
   }
 
   @Override
