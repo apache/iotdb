@@ -22,9 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 
@@ -35,7 +37,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseNode {
+public class TableDeviceAttributeUpdateNode extends WritePlanNode {
+
+  protected String database;
+
+  protected String tableName;
+
+  protected List<ColumnHeader> columnHeaderList;
+
+  protected TRegionReplicaSet schemaRegionReplicaSet;
+  protected final List<List<SchemaFilter>> idDeterminedPredicateList;
+
+  /** filters/conditions involving non-id columns and concat by OR to id column filters */
+  protected final Expression idFuzzyPredicate;
 
   private final List<UpdateAssignment> assignments;
 
@@ -48,14 +62,13 @@ public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseN
       final List<ColumnHeader> columnHeaderList,
       final TRegionReplicaSet schemaRegionReplicaSet,
       final List<UpdateAssignment> assignments) {
-    super(
-        planNodeId,
-        database,
-        tableName,
-        idDeterminedPredicateList,
-        idFuzzyPredicate,
-        columnHeaderList,
-        schemaRegionReplicaSet);
+    super(planNodeId);
+    this.database = database;
+    this.tableName = tableName;
+    this.columnHeaderList = columnHeaderList;
+    this.schemaRegionReplicaSet = schemaRegionReplicaSet;
+    this.idDeterminedPredicateList = idDeterminedPredicateList;
+    this.idFuzzyPredicate = idFuzzyPredicate;
     this.assignments = assignments;
   }
 
@@ -65,7 +78,28 @@ public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseN
 
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
-    super.serializeAttributes(byteBuffer);
+    getType().serialize(byteBuffer);
+    ReadWriteIOUtils.write(database, byteBuffer);
+    ReadWriteIOUtils.write(tableName, byteBuffer);
+
+    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), byteBuffer);
+    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
+      ReadWriteIOUtils.write(filterList.size(), byteBuffer);
+      for (final SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, byteBuffer);
+      }
+    }
+
+    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, byteBuffer);
+    if (idFuzzyPredicate != null) {
+      Expression.serialize(idFuzzyPredicate, byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(columnHeaderList.size(), byteBuffer);
+    for (final ColumnHeader columnHeader : columnHeaderList) {
+      columnHeader.serialize(byteBuffer);
+    }
+
     ReadWriteIOUtils.write(assignments.size(), byteBuffer);
     for (final UpdateAssignment assignment : assignments) {
       assignment.serialize(byteBuffer);
@@ -74,12 +108,41 @@ public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseN
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
-    super.serializeAttributes(stream);
+    getType().serialize(stream);
+    ReadWriteIOUtils.write(database, stream);
+    ReadWriteIOUtils.write(tableName, stream);
+
+    ReadWriteIOUtils.write(idDeterminedPredicateList.size(), stream);
+    for (final List<SchemaFilter> filterList : idDeterminedPredicateList) {
+      ReadWriteIOUtils.write(filterList.size(), stream);
+      for (final SchemaFilter filter : filterList) {
+        SchemaFilter.serialize(filter, stream);
+      }
+    }
+
+    ReadWriteIOUtils.write(idFuzzyPredicate == null ? (byte) 0 : (byte) 1, stream);
+    if (idFuzzyPredicate != null) {
+      Expression.serialize(idFuzzyPredicate, stream);
+    }
+
+    ReadWriteIOUtils.write(columnHeaderList.size(), stream);
+    for (final ColumnHeader columnHeader : columnHeaderList) {
+      columnHeader.serialize(stream);
+    }
+
     ReadWriteIOUtils.write(assignments.size(), stream);
     for (final UpdateAssignment assignment : assignments) {
       assignment.serialize(stream);
     }
   }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
+  }
+
+  @Override
+  public void addChild(PlanNode child) {}
 
   @Override
   public PlanNodeType getType() {
@@ -100,11 +163,43 @@ public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseN
   }
 
   @Override
+  public int allowedChildCount() {
+    return 0;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return null;
+  }
+
+  @Override
   public String toString() {
     return "TableDeviceAttributeUpdateNode{assignments="
         + assignments
-        + ", "
-        + toStringMessage()
+        + ", database='"
+        + database
+        + '\''
+        + ", tableName='"
+        + tableName
+        + '\''
+        + ", idDeterminedFilterList="
+        + idDeterminedPredicateList
+        + ", idFuzzyFilter="
+        + idFuzzyPredicate
+        + ", columnHeaderList="
+        + columnHeaderList
+        + ", schemaRegionReplicaSet="
+        + schemaRegionReplicaSet
         + "}";
+  }
+
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    return null;
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    return null;
   }
 }

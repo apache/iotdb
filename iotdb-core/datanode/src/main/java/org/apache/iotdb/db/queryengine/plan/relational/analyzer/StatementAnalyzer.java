@@ -364,6 +364,7 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
       final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
