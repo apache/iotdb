@@ -40,10 +40,6 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
   // For query devices fully in cache
   protected List<ShowDevicesResult> results = new ArrayList<>();
 
-  // The "CountDevice"'s column header list is the same as the device's header
-  // to help reuse filter operator
-  protected List<ColumnHeader> columnHeaderList;
-
   protected AbstractQueryDeviceWithCache(
       final NodeLocation location, final Table table, final Expression rawExpression) {
     super(location, table, rawExpression);
@@ -73,14 +69,6 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
               .collect(Collectors.toList());
     }
     return needFetch;
-  }
-
-  public List<ColumnHeader> getColumnHeaderList() {
-    return columnHeaderList;
-  }
-
-  public void setColumnHeaderList() {
-    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName);
   }
 
   public static List<ColumnHeader> getDeviceColumnHeaderList(

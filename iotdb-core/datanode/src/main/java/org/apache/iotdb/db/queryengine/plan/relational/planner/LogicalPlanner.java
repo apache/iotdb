@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -47,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
@@ -137,6 +139,9 @@ public class LogicalPlanner {
     }
     if (statement instanceof CountDevice) {
       return planCountDevice((CountDevice) statement, analysis);
+    }
+    if (statement instanceof Update) {
+      return planUpdate((Update) statement);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -310,6 +315,18 @@ public class LogicalPlanner {
     if (!analysis.isFailed()) {
       analysis.setRespDatasetHeader(statement.getDataSetHeader());
     }
+  }
+
+  private PlanNode planUpdate(final Update statement) {
+    return new TableDeviceAttributeUpdateNode(
+        queryContext.getQueryId().genPlanNodeId(),
+        statement.getDatabase(),
+        statement.getTableName(),
+        statement.getIdDeterminedFilterList(),
+        statement.getIdFuzzyPredicate(),
+        statement.getColumnHeaderList(),
+        null,
+        statement.getAssignments());
   }
 
   private enum Stage {

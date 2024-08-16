@@ -39,7 +39,7 @@ public class TableDeviceAttributeUpdateNode extends AbstractTableDeviceTraverseN
 
   private final List<UpdateAssignment> assignments;
 
-  protected TableDeviceAttributeUpdateNode(
+  public TableDeviceAttributeUpdateNode(
       final PlanNodeId planNodeId,
       final String database,
       final String tableName,

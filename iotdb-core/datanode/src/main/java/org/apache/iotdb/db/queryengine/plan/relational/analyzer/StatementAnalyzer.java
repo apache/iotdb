@@ -2558,7 +2558,6 @@ public class StatementAnalyzer {
       analyzeTraverseDevice(node, context, node.getWhere().isPresent());
       final TsTable table =
           DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
-      node.setColumnHeaderList();
       if (!node.parseRawExpression(
           table,
           table.getColumnList().stream()
@@ -2581,6 +2580,8 @@ public class StatementAnalyzer {
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
       node.parseTable(sessionContext);
+      node.setColumnHeaderList();
+
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -36,6 +37,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache.getDeviceColumnHeaderList;
 
 // TODO table metadata: reuse query distinct logic
 public abstract class AbstractTraverseDevice extends Statement {
@@ -63,6 +66,10 @@ public abstract class AbstractTraverseDevice extends Statement {
   private Expression idFuzzyPredicate;
 
   private List<IDeviceID> partitionKeyList;
+
+  // The "CountDevice"'s column header list is the same as the device's header
+  // to help reuse filter operator
+  protected List<ColumnHeader> columnHeaderList;
 
   // For sql-input show device usage
   protected AbstractTraverseDevice(
@@ -161,6 +168,14 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   public void setPartitionKeyList(final List<IDeviceID> partitionKeyList) {
     this.partitionKeyList = partitionKeyList;
+  }
+
+  public List<ColumnHeader> getColumnHeaderList() {
+    return columnHeaderList;
+  }
+
+  public void setColumnHeaderList() {
+    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName);
   }
 
   @Override
