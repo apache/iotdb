@@ -1,29 +1,9 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-name: Unit-Test
+name: Daily IT
 
 on:
-  push:
-    branches:
-      - master
-      - 'rel/*'
-      - pipe-meta-sync
-      - "rc/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
-  pull_request:
-    branches:
-      - master
-      - 'rel/*'
-      - pipe-meta-sync
-      - "rc/*"
-    paths-ignore:
-      - 'docs/**'
-      - 'site/**'
-  # allow manually run the action:
-  workflow_dispatch:
+  schedule:
+    # Run at UTC 19:00 every day (CST 03:00 AM)
+    - cron: '0 19 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -40,9 +20,16 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 17 ]
+        java: [ 8 ]
         os: [ ubuntu-latest, windows-latest ]
         it_task: [ 'others', 'datanode' ]
+        include:
+          - java: 17
+            os: macos-latest
+            it_task: 'datanode'
+          - java: 17
+            os: macos-latest
+            it_task: 'others'
     runs-on: ${{ matrix.os }}
 
     steps:
