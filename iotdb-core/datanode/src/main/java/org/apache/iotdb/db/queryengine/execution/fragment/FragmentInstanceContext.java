@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -312,6 +314,18 @@ public class FragmentInstanceContext extends QueryContext {
         .collect(Collectors.toList());
   }
 
+  public Optional<TSStatus> getErrorCode() {
+    return stateMachine.getFailureCauses().stream()
+        .filter(IoTDBException.class::isInstance)
+        .findFirst()
+        .flatMap(
+            t -> {
+              TSStatus status = new TSStatus(((IoTDBException) t).getErrorCode());
+              status.setMessage(t.getMessage());
+              return Optional.of(status);
+            });
+  }
+
   public void finished() {
     stateMachine.finished();
   }
@@ -350,8 +364,19 @@ public class FragmentInstanceContext extends QueryContext {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(
-        stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList());
+    return getErrorCode()
+        .map(
+            s ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(),
+                    getEndTime(),
+                    getFailedCause(),
+                    getFailureInfoList(),
+                    s))
+        .orElseGet(
+            () ->
+                new FragmentInstanceInfo(
+                    stateMachine.getState(), getEndTime(), getFailedCause(), getFailureInfoList()));
   }
 
   public FragmentInstanceStateMachine getStateMachine() {

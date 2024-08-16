@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecificatio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
@@ -55,6 +57,8 @@ public class QueryPlanner {
   private final MPPQueryContext queryContext;
   private final QueryId queryIdAllocator;
   private final SessionInfo session;
+  private final SubqueryPlanner subqueryPlanner;
+  private final Optional<TranslationMap> outerContext;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
   // private final Map<NodeRef<LambdaArgumentDeclaration>, Symbol> lambdaDeclarationToSymbolMap;
@@ -64,11 +68,13 @@ public class QueryPlanner {
       Analysis analysis,
       SymbolAllocator symbolAllocator,
       MPPQueryContext queryContext,
+      Optional<TranslationMap> outerContext,
       SessionInfo session,
       Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
-    requireNonNull(queryContext, "idAllocator is null");
+    requireNonNull(queryContext, "queryContext is null");
+    requireNonNull(outerContext, "outerContext is null");
     requireNonNull(session, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
 
@@ -77,6 +83,10 @@ public class QueryPlanner {
     this.queryContext = queryContext;
     this.queryIdAllocator = queryContext.getQueryId();
     this.session = session;
+    this.outerContext = outerContext;
+    this.subqueryPlanner =
+        new SubqueryPlanner(
+            analysis, symbolAllocator, queryContext, outerContext, session, recursiveSubqueries);
     this.recursiveSubqueries = recursiveSubqueries;
   }
 
@@ -211,7 +221,8 @@ public class QueryPlanner {
 
   private PlanBuilder planQueryBody(QueryBody queryBody) {
     RelationPlan relationPlan =
-        new RelationPlanner(analysis, symbolAllocator, queryContext, session, recursiveSubqueries)
+        new RelationPlanner(
+                analysis, symbolAllocator, queryContext, outerContext, session, recursiveSubqueries)
             .process(queryBody, null);
 
     return newPlanBuilder(relationPlan, analysis);
@@ -220,7 +231,13 @@ public class QueryPlanner {
   private PlanBuilder planFrom(QuerySpecification node) {
     if (node.getFrom().isPresent()) {
       RelationPlan relationPlan =
-          new RelationPlanner(analysis, symbolAllocator, queryContext, session, recursiveSubqueries)
+          new RelationPlanner(
+                  analysis,
+                  symbolAllocator,
+                  queryContext,
+                  outerContext,
+                  session,
+                  recursiveSubqueries)
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
@@ -309,5 +326,39 @@ public class QueryPlanner {
               tiesResolvingScheme));
     }
     return subPlan;
+  }
+
+  public static class PlanAndMappings {
+    private final PlanBuilder subPlan;
+    private final Map<NodeRef<Expression>, Symbol> mappings;
+
+    public PlanAndMappings(PlanBuilder subPlan, Map<NodeRef<Expression>, Symbol> mappings) {
+      this.subPlan = subPlan;
+      this.mappings = ImmutableMap.copyOf(mappings);
+    }
+
+    public PlanBuilder getSubPlan() {
+      return subPlan;
+    }
+
+    public Symbol get(Expression expression) {
+      return tryGet(expression)
+          .orElseThrow(
+              () ->
+                  new IllegalArgumentException(
+                      format(
+                          "No mapping for expression: %s (%s)",
+                          expression, System.identityHashCode(expression))));
+    }
+
+    public Optional<Symbol> tryGet(Expression expression) {
+      Symbol result = mappings.get(NodeRef.of(expression));
+
+      if (result != null) {
+        return Optional.of(result);
+      }
+
+      return Optional.empty();
+    }
   }
 }

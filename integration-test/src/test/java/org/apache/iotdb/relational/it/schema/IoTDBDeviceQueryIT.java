@@ -96,6 +96,14 @@ public class IoTDBDeviceQueryIT {
       } catch (final Exception e) {
         // Pass
       }
+
+      // Test fully qualified name
+      statement.execute("create database test2");
+      statement.execute("use test2");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("count devices from test.table0"),
+          "count(devices),",
+          Collections.singleton("1,"));
     }
   }
 }
