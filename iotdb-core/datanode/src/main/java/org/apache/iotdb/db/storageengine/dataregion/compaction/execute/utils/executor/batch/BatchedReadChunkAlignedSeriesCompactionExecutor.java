@@ -316,8 +316,6 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       currentCompactChunk++;
       if (currentCompactChunk < batchCompactionPlan.compactedChunkNum()) {
         CompactChunkPlan chunkRecord = batchCompactionPlan.getCompactChunkPlan(currentCompactChunk);
-        //        chunkWriter = new FollowingBatchCompactionAlignedChunkWriter(timeSchema,
-        // schemaList, chunkRecord);
         ((FollowingBatchCompactionAlignedChunkWriter) this.chunkWriter)
             .setCompactChunkPlan(chunkRecord);
       }
