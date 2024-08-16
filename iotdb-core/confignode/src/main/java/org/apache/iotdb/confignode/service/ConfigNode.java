@@ -165,7 +165,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         "{} default charset is: {}",
         ConfigNodeConstant.GLOBAL_NAME,
         Charset.defaultCharset().displayName());
-    int returnCode = new ConfigNode().run(args);
+    ConfigNode configNode = new ConfigNode();
+    setInstance(configNode);
+    int returnCode = configNode.run(args);
     if (returnCode != 0) {
       System.exit(returnCode);
     }
@@ -561,7 +563,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private static class ConfigNodeHolder {
 
-    private static ConfigNode instance = new ConfigNode();
+    private static ConfigNode instance;
 
     private ConfigNodeHolder() {
       // Empty constructor

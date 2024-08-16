@@ -342,14 +342,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static RegisterManager registerManager = new RegisterManager();
 
-  public static DataNode getInstance() {
-    return DataNodeHolder.INSTANCE;
-  }
-
   public static void main(String[] args) throws Exception {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
-    int returnCode = new DataNode().run(args);
+    DataNode dataNode = new DataNode();
+    setInstance(dataNode);
+    int returnCode = dataNode.run(args);
     if (returnCode != 0) {
       System.exit(returnCode);
     }
@@ -1303,10 +1301,18 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static class DataNodeHolder {
 
-    private static final DataNode INSTANCE = new DataNode();
+    private static DataNode INSTANCE;
 
     private DataNodeHolder() {
       // Empty constructor
     }
+  }
+
+  public static DataNode getInstance() {
+    return DataNodeHolder.INSTANCE;
+  }
+
+  public static void setInstance(DataNode dataNode) {
+    DataNodeHolder.INSTANCE = dataNode;
   }
 }
