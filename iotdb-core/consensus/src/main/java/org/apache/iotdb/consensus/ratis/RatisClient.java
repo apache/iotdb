@@ -29,9 +29,15 @@ import org.apache.ratis.client.RaftClient;
 import org.apache.ratis.client.RaftClientRpc;
 import org.apache.ratis.conf.RaftProperties;
 import org.apache.ratis.protocol.RaftGroup;
+import org.apache.ratis.protocol.exceptions.LeaderSteppingDownException;
+import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.protocol.exceptions.RaftException;
+import org.apache.ratis.protocol.exceptions.ReconfigurationInProgressException;
+import org.apache.ratis.protocol.exceptions.ReconfigurationTimeoutException;
+import org.apache.ratis.protocol.exceptions.ServerNotReadyException;
+import org.apache.ratis.protocol.exceptions.TimeoutIOException;
 import org.apache.ratis.retry.ExponentialBackoffRetry;
-import org.apache.ratis.retry.MultipleLinearRandomRetry;
+import org.apache.ratis.retry.RetryPolicies;
 import org.apache.ratis.retry.RetryPolicy;
 import org.apache.ratis.thirdparty.io.grpc.StatusRuntimeException;
 import org.apache.ratis.util.TimeDuration;
@@ -212,57 +218,39 @@ class RatisClient implements AutoCloseable {
   }
 
   // This policy is used to raft configuration change
+  //
   private static class RatisEndlessRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
-    private static final RetryPolicy defaultPolicy;
+    private final RetryPolicy defaultPolicy;
 
-    static {
-      String str = "";
-      /**
-       * Given pairs of number of retries and sleep time (n0, t0), (n1, t1), ..., the first n0
-       * retries sleep t0 milliseconds on average, the following n1 retries sleep t1 milliseconds on
-       * average, and so on.
-       *
-       * <p>For all the sleep, the actual sleep time is randomly uniform distributed in the close
-       * interval [0.5t, 1.5t], where t is the sleep time specified.
-       *
-       * <p>The objects of this class are immutable.
-       *
-       * @copy from ratis.MultipleLinearRandomRetry comment
-       */
-      int basicRetry = 50;
-      int basicSleep = 1000;
-      for (int i = 0; i < 5; i++) {
-        str += basicRetry + "," + basicSleep + ",";
-        basicRetry -= 10;
-        basicSleep += 1000;
-      }
-
+    RatisEndlessRetryPolicy() {
+      // about 1 hour wait Time.
       defaultPolicy =
-          MultipleLinearRandomRetry.parseCommaSeparated(str.substring(0, str.length() - 1));
+          RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
     }
-
-    RatisEndlessRetryPolicy() {}
 
     @Override
     public Action handleAttemptFailure(Event event) {
-      // Ratis guarantees that event.getCause() is instance of IOException.
-      // We should allow RaftException or IOException(StatusRuntimeException, thrown by gRPC) to be
-      // retried.
-      Optional<Throwable> unexpectedCause =
-          Optional.ofNullable(event.getCause())
-              .filter(RaftException.class::isInstance)
-              .map(Throwable::getCause)
-              .filter(StatusRuntimeException.class::isInstance);
-
-      if (unexpectedCause.isPresent()) {
-        logger.info(
-            "{}: raft client request failed and caught exception: ", this, unexpectedCause.get());
-        return NO_RETRY_ACTION;
+      if (event.getCause() instanceof ReconfigurationInProgressException) {
+        return defaultPolicy.handleAttemptFailure(event);
       }
-
-      return defaultPolicy.handleAttemptFailure(event);
+      if (event.getCause() instanceof TimeoutIOException) {
+        return defaultPolicy.handleAttemptFailure(event);
+      }
+      if (event.getCause() instanceof LeaderSteppingDownException) {
+        return defaultPolicy.handleAttemptFailure(event);
+      }
+      if (event.getCause() instanceof ReconfigurationTimeoutException) {
+        return defaultPolicy.handleAttemptFailure(event);
+      }
+      if (event.getCause() instanceof ServerNotReadyException) {
+        return defaultPolicy.handleAttemptFailure(event);
+      }
+      if (event.getCause() instanceof NotLeaderException) {
+        return defaultPolicy.handleAttemptFailure(event);
+      }
+      return NO_RETRY_ACTION;
     }
   }
 }
