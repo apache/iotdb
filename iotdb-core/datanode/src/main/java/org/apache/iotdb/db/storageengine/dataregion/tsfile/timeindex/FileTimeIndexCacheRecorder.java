@@ -80,14 +80,18 @@ public class FileTimeIndexCacheRecorder {
             tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
 
     FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
-    taskQueue.offer(
-        () -> {
-          try {
-            writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
-          } catch (IOException e) {
-            throw new RuntimeException(e);
-          }
-        });
+    boolean result =
+        taskQueue.offer(
+            () -> {
+              try {
+                writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+              } catch (IOException e) {
+                LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage());
+              }
+            });
+    if (!result) {
+      LOGGER.warn("Meet error when record FileTimeIndexCache");
+    }
   }
 
   public void compactFileTimeIndexIfNeeded(
@@ -106,24 +110,29 @@ public class FileTimeIndexCacheRecorder {
         (sequenceFiles == null ? 0 : sequenceFiles.size())
             + (unsequenceFiles == null ? 0 : unsequenceFiles.size());
     if (writer.getLogFile().length() > currentResourceCount * (4 * Long.BYTES) * 100) {
-      taskQueue.offer(
-          () -> {
-            try {
-              writer.clearFile();
-              if (sequenceFiles != null) {
-                for (TsFileResource tsFileResource : sequenceFiles) {
-                  writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+
+      boolean result =
+          taskQueue.offer(
+              () -> {
+                try {
+                  writer.clearFile();
+                  if (sequenceFiles != null) {
+                    for (TsFileResource tsFileResource : sequenceFiles) {
+                      writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                    }
+                  }
+                  if (unsequenceFiles != null) {
+                    for (TsFileResource tsFileResource : unsequenceFiles) {
+                      writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                    }
+                  }
+                } catch (IOException e) {
+                  LOGGER.warn("Meet error when compact FileTimeIndexCache: {}", e.getMessage());
                 }
-              }
-              if (unsequenceFiles != null) {
-                for (TsFileResource tsFileResource : unsequenceFiles) {
-                  writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
-                }
-              }
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          });
+              });
+      if (!result) {
+        LOGGER.warn("Meet error when compact FileTimeIndexCache");
+      }
     }
   }
 
