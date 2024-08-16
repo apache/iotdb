@@ -688,7 +688,27 @@ public class IoTDBInsertTableIT {
         tablet.addValue("date", rowIndex, LocalDate.parse("2024-08-15"));
       }
       session.insertRelationalTablet(tablet, true);
-      session.executeNonQueryStatement("drop database db1");
+
+      SessionDataSet rs1 =
+          session.executeQueryStatement(
+              "select time, device_id, attribute, boolean, int32, int64, float, double, text, string, blob, timestamp, date from table20 order by time");
+      for (int i = 0; i < 10; i++) {
+        RowRecord rec = rs1.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        assertEquals("1", rec.getFields().get(1).getStringValue());
+        assertEquals("1", rec.getFields().get(2).getStringValue());
+        assertTrue(rec.getFields().get(3).getBoolV());
+        assertEquals(1, rec.getFields().get(4).getIntV());
+        assertEquals(1, rec.getFields().get(5).getLongV());
+        assertEquals(1.0, rec.getFields().get(6).getFloatV(), 0.001);
+        assertEquals(1.0, rec.getFields().get(7).getDoubleV(), 0.001);
+        assertEquals("true", rec.getFields().get(8).getStringValue());
+        assertEquals("true", rec.getFields().get(9).getStringValue());
+        assertEquals("0x696f746462", rec.getFields().get(10).getStringValue());
+        assertEquals(1, rec.getFields().get(11).getLongV());
+        assertEquals("20240815", rec.getFields().get(12).getStringValue());
+      }
+      assertFalse(rs1.hasNext());
     }
   }
 
