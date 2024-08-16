@@ -232,6 +232,7 @@ class RatisConsensus implements IConsensus {
       Thread.currentThread().interrupt();
     } finally {
       clientManager.close();
+      reconfigurationClientManager.close();
       server.get().close();
       MetricService.getInstance().removeMetricSet(this.ratisMetricSet);
     }
@@ -586,9 +587,6 @@ class RatisConsensus implements IConsensus {
     final RaftGroup raftGroup =
         Optional.ofNullable(getGroupInfo(raftGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    if (raftGroup.getPeers() == null) {
-      throw new ConsensusException("group " + groupId + " has no peers");
-    }
     final RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, DEFAULT_PRIORITY);
     final RaftClientReply reply;
     try {
@@ -845,6 +843,7 @@ class RatisConsensus implements IConsensus {
       if (lastSeenGroup != null && !lastSeenGroup.equals(raftGroup)) {
         // delete the pooled raft-client of the out-dated group and cache the latest
         clientManager.clear(lastSeenGroup);
+        reconfigurationClientManager.clear(lastSeenGroup);
         lastSeen.put(raftGroupId, raftGroup);
       }
     } catch (IOException e) {

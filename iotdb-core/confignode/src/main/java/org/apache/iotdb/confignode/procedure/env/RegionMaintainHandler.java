@@ -675,21 +675,11 @@ public class RegionMaintainHandler {
     List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
     excludeDataNode.add(originalDataNode);
     excludeDataNode.add(coodinator);
-    while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
-      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, excludeDataNode);
-      if (newLeaderNode.isPresent()) {
-        break;
-      }
-    }
+    newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, excludeDataNode);
     if (!newLeaderNode.isPresent()) {
       // If we have no choice, we use it
       newLeaderNode = Optional.of(coodinator);
     }
-    newLeaderNode.orElseThrow(
-        () ->
-            new ProcedureException(
-                "Cannot find the new leader after " + findNewLeaderTimeLimitSecond + " seconds"));
-
     // ratis needs DataNode to do election by itself
     long timestamp = System.nanoTime();
     if (TConsensusGroupType.SchemaRegion.equals(regionId.getType())
