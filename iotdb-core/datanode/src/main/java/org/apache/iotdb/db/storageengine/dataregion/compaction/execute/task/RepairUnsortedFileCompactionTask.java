@@ -178,6 +178,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       // avoid same file name
       tsFileName.setTime(tsFileName.getTime() + 1);
     } while (targetTsFile.exists());
+    System.out.println("target file is " + targetTsFile);
     return targetTsFile;
   }
 

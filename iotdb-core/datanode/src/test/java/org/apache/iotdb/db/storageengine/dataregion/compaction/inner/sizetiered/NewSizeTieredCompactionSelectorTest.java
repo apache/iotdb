@@ -51,7 +51,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   private long defaultTotalCompactionFileSize =
       IoTDBDescriptor.getInstance().getConfig().getInnerCompactionTotalFileSizeThreshold();
   private int defaultFileNumLowerBound =
-      IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
+      IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
   private int defaultFileNumLimit =
       IoTDBDescriptor.getInstance().getConfig().getTotalFileLimitForCompactionTask();
 
@@ -73,7 +73,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerCompactionTotalFileNumThreshold(defaultFileNumLimit);
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(defaultFileNumLowerBound);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setInnerCompactionCandidateFileNum(defaultFileNumLowerBound);
   }
 
   @Test
@@ -102,7 +104,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   @Test
   public void testSelectWithFileNumLimit() throws IOException {
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTotalFileNumThreshold(8);
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(8);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(8);
     for (int i = 0; i < 10; i++) {
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(

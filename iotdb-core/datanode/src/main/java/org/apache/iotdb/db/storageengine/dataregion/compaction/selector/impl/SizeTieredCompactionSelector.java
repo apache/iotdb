@@ -98,7 +98,7 @@ public class SizeTieredCompactionSelector
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
-    int fileLimit = config.getFileLimitPerInnerTask();
+    int fileLimit = config.getInnerCompactionCandidateFileNum();
 
     List<List<TsFileResource>> taskList = new ArrayList<>();
     for (TsFileResource currentFile : tsFileResources) {
@@ -213,6 +213,7 @@ public class SizeTieredCompactionSelector
     for (TsFileResource resource : tsFileResources) {
       if (resource.getStatus() == TsFileResourceStatus.NORMAL
           && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
+        System.out.println("select repair task " + resource);
         taskList.add(
             new RepairUnsortedFileCompactionTask(
                 timePartition,

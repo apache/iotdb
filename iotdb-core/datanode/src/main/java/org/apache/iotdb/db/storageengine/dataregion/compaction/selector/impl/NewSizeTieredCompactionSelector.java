@@ -68,7 +68,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles;
     this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();
     this.totalFileNumThreshold = config.getInnerCompactionTotalFileNumThreshold();
-    this.totalFileNumLowerBound = config.getFileLimitPerInnerTask();
+    this.totalFileNumLowerBound = config.getInnerCompactionCandidateFileNum();
     this.totalFileSizeThreshold =
         Math.min(config.getInnerCompactionTotalFileSizeThreshold(), maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =

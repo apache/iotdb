@@ -503,7 +503,7 @@ public class IoTDBConfig {
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
   /** The max candidate file num in one inner space compaction task */
-  private volatile int fileLimitPerInnerTask = 30;
+  private volatile int innerCompactionCandidateFileNum = 30;
 
   /** The max candidate file num in one cross space compaction task */
   private volatile int fileLimitPerCrossTask = 500;
@@ -2964,12 +2964,12 @@ public class IoTDBConfig {
     this.expiredDataRatio = expiredDataRatio;
   }
 
-  public int getFileLimitPerInnerTask() {
-    return fileLimitPerInnerTask;
+  public int getInnerCompactionCandidateFileNum() {
+    return innerCompactionCandidateFileNum;
   }
 
-  public void setFileLimitPerInnerTask(int fileLimitPerInnerTask) {
-    this.fileLimitPerInnerTask = fileLimitPerInnerTask;
+  public void setInnerCompactionCandidateFileNum(int innerCompactionCandidateFileNum) {
+    this.innerCompactionCandidateFileNum = innerCompactionCandidateFileNum;
   }
 
   public int getFileLimitPerCrossTask() {
