@@ -154,6 +154,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     this.threadPoolMetrics = threadPoolMetrics;
     this.systemMetrics = systemMetrics;
     this.defaultRetryIntervalInMs = defaultRetryIntervalInMs;
+    // Save this instance in the singleton.
+    setInstance(this);
   }
 
   public static void main(String[] args) throws Exception {
@@ -166,7 +168,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         ConfigNodeConstant.GLOBAL_NAME,
         Charset.defaultCharset().displayName());
     ConfigNode configNode = new ConfigNode();
-    setInstance(configNode);
     int returnCode = configNode.run(args);
     if (returnCode != 0) {
       System.exit(returnCode);
@@ -571,6 +572,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   public static ConfigNode getInstance() {
+    // Make sure the singleton is initialized (Mainly in Unit-Tests)
+    if (ConfigNodeHolder.instance == null) {
+      new ConfigNode();
+    }
     return ConfigNodeHolder.instance;
   }
 

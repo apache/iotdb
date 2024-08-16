@@ -331,6 +331,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     this.pipeConfig = pipeConfig;
 
     this.defaultRetryIntervalInMs = descriptor.getConfig().getJoinClusterRetryIntervalMs();
+    // Save this instance in the singleton.
+    setInstance(this);
   }
 
   // TODO: This needs removal of statics ...
@@ -346,7 +348,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     DataNode dataNode = new DataNode();
-    setInstance(dataNode);
     int returnCode = dataNode.run(args);
     if (returnCode != 0) {
       System.exit(returnCode);
@@ -1301,7 +1302,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static class DataNodeHolder {
 
-    private static DataNode INSTANCE;
+    private static DataNode instance;
 
     private DataNodeHolder() {
       // Empty constructor
@@ -1309,10 +1310,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   public static DataNode getInstance() {
-    return DataNodeHolder.INSTANCE;
+    // Make sure the singleton is initialized (Mainly in Unit-Tests)
+    if (DataNodeHolder.instance == null) {
+      new DataNode();
+    }
+    return DataNodeHolder.instance;
   }
 
   public static void setInstance(DataNode dataNode) {
-    DataNodeHolder.INSTANCE = dataNode;
+    DataNodeHolder.instance = dataNode;
   }
 }
