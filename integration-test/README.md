@@ -23,10 +23,12 @@
 
 Integration tests for IoTDB are in this module.
 
-Now integration testing supports two kinds of architecture.
+Now integration testing supports four kinds of architecture.
 
-- `Simple`: A cluster with 1 config node and 1 data node.
-- `Cluster1`: A cluster with 1 config node and 3 data nodes.
+- `Simple`: A cluster with 1 config node and 1 data node running tree model ITs.
+- `Cluster1`: A cluster with 1 config node and 3 data nodes running tree model ITs.
+- `TABLE_SIMPLE`: A cluster with 1 config node and 1 data node running table model ITs.
+- `TABLE_CLUSTER1`: A cluster with 1 config node and 3 data nodes running table model ITs.
 
 ## Integration Testing with Simple Consensus Mode
 
@@ -51,13 +53,27 @@ After doing this, you can run any one just by clicking the test case and pressin
 
 ## Integration Testing with Cluster Mode
 
-You can run the integration test in a 'real' cluster mode. At present, we have implemented a pseudo cluster with 1 config nodes and 3 data nodes.
+You can run the integration test in a 'real' cluster mode for tree model ITs. At present, we have implemented a pseudo cluster with 1 config nodes and 3 data nodes.
 (As the test cases and the test environment are decoupled, we can easily implement other pseudo cluster or even a docker-based cluster later.)
 
 The maven command is:
 ```
 mvn clean verify -DskipUTs -pl integration-test -am -PClusterIT -P with-integration-tests 
 ```
+
+You can run the integration test in `Simple` mode for table model ITs. 
+The maven command is:
+```
+mvn clean verify -DskipUTs -pl integration-test -am -PTableSimpleIT -P with-integration-tests 
+```
+
+You can run the integration test in 'real' cluster mode for table model ITs. At present, we have implemented a pseudo cluster with 1 config nodes and 3 data nodes.
+(As the test cases and the test environment are decoupled, we can easily implement other pseudo cluster or even a docker-based cluster later.)
+The maven command is:
+```
+mvn clean verify -DskipUTs -pl integration-test -am -PTableClusterIT -P with-integration-tests 
+```
+
 
 If you want to run IT in `Cluster1` mode in the IDE like IntelliJ, you need to achieve the effect as the `ClusterIT` profile in maven explicitly. Follow Steps 1-4 to achieve it.
 

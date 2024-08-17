@@ -21,12 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -1101,9 +1099,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // Used for device query/fetch with filters during show device or table query
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      final PartialPath pattern,
-      final SchemaFilter deviceFilter,
-      final BiFunction<Integer, String, String> attributeProvider)
+      final PartialPath pattern, final BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
@@ -1127,9 +1123,6 @@ public class MTreeBelowSGMemoryImpl {
         };
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
-      private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
-      private IDeviceSchemaInfo next;
-
       public boolean isSuccess() {
         return collector.isSuccess();
       }
@@ -1147,31 +1140,13 @@ public class MTreeBelowSGMemoryImpl {
       }
 
       public boolean hasNext() {
-        while (next == null && collector.hasNext()) {
-          final IDeviceSchemaInfo temp = collector.next();
-          if (deviceFilter == null || filterVisitor.process(deviceFilter, temp)) {
-            next = temp;
-          }
-        }
-        return next != null;
+        return collector.hasNext();
       }
 
       public IDeviceSchemaInfo next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        final IDeviceSchemaInfo result = next;
-        next = null;
-        return result;
+        return collector.next();
       }
     };
-  }
-
-  private int computeSmallestNullableIndex(final PartialPath partialPath) {
-    if (!(partialPath instanceof ExtendedPartialPath)) {
-      return partialPath.getNodeLength() - 1;
-    }
-    return 0;
   }
 
   // used for device fetch with explicit device id/path during table insertion

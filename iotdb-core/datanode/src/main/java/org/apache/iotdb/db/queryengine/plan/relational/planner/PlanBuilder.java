@@ -14,10 +14,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
@@ -49,18 +49,11 @@ public class PlanBuilder {
   }
 
   public static PlanBuilder newPlanBuilder(RelationPlan plan, Analysis analysis) {
-    return newPlanBuilder(
-        plan,
-        analysis,
-        ImmutableMap.of(),
-        new PlannerContext(new TableMetadataImpl(), new InternalTypeManager()));
+    return newPlanBuilder(plan, analysis, ImmutableMap.of());
   }
 
   public static PlanBuilder newPlanBuilder(
-      RelationPlan plan,
-      Analysis analysis,
-      Map<ScopeAware<Expression>, Symbol> mappings,
-      PlannerContext plannerContext) {
+      RelationPlan plan, Analysis analysis, Map<ScopeAware<Expression>, Symbol> mappings) {
     return new PlanBuilder(
         new TranslationMap(
             Optional.empty(),
@@ -68,7 +61,8 @@ public class PlanBuilder {
             analysis,
             plan.getFieldMappings(),
             mappings,
-            plannerContext),
+            new PlannerContext(
+                LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager())),
         plan.getRoot());
   }
 
@@ -80,8 +74,16 @@ public class PlanBuilder {
     return new PlanBuilder(translations.withScope(scope, fields), root);
   }
 
+  public boolean canTranslate(Expression expression) {
+    return translations.canTranslate(expression);
+  }
+
   public TranslationMap getTranslations() {
     return translations;
+  }
+
+  public Scope getScope() {
+    return translations.getScope();
   }
 
   public PlanNode getRoot() {
