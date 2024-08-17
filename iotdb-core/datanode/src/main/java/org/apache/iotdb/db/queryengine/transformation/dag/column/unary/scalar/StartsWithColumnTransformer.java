@@ -51,11 +51,12 @@ public class StartsWithColumnTransformer extends UnaryColumnTransformer {
     if (value.length < pattern.length) {
       return false;
     }
-    for (int i = offset; i < value.length; i++) {
-      if (value[i] != pattern[i - offset]) {
+    for (int i = 0; (i < pattern.length) && (i + offset < value.length); i++) {
+      if (value[i + offset] != pattern[i]) {
         return false;
       }
     }
+    // 简化代码后如下
     return true;
   }
 }
