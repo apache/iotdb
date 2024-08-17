@@ -24,24 +24,26 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StartsWithColumnTransformer.equalCompare;
+
 public class EndsWithColumnTransformer extends UnaryColumnTransformer {
-  private final String suffix;
+  private final byte[] suffix;
 
   public EndsWithColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String suffix) {
+      Type returnType, ColumnTransformer childColumnTransformer, String suffixStr) {
     super(returnType, childColumnTransformer);
-    this.suffix = suffix;
+    this.suffix = suffixStr.getBytes();
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBoolean(currentValue.endsWith(suffix));
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBoolean(
+            equalCompare(currentValue, suffix, currentValue.length - suffix.length));
       } else {
         columnBuilder.appendNull();
       }

@@ -24,9 +24,10 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryCo
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ConcatColumnTransformer.concat;
 
 public class Concat2ColumnTransformer extends BinaryColumnTransformer {
 
@@ -45,15 +46,13 @@ public class Concat2ColumnTransformer extends BinaryColumnTransformer {
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(leftValue.concat(rightValue)));
+        columnBuilder.writeBinary(
+            new Binary(
+                concat(leftColumn.getBinary(i).getValues(), rightColumn.getBinary(i).getValues())));
       } else if (!leftColumn.isNull(i)) {
-        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(leftValue));
+        columnBuilder.writeBinary(leftColumn.getBinary(i));
       } else if (!rightColumn.isNull(i)) {
-        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(rightValue));
+        columnBuilder.writeBinary(rightColumn.getBinary(i));
       } else {
         columnBuilder.appendNull();
       }

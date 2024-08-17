@@ -24,18 +24,20 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
 
 public class ConcatColumnTransformer extends UnaryColumnTransformer {
-  private final String str;
+  private final byte[] value;
   private final boolean isBehind;
 
   public ConcatColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String str, boolean isBehind) {
+      Type returnType,
+      ColumnTransformer childColumnTransformer,
+      String valueStr,
+      boolean isBehind) {
     super(returnType, childColumnTransformer);
-    this.str = str;
+    this.value = valueStr.getBytes();
     this.isBehind = isBehind;
   }
 
@@ -43,15 +45,22 @@ public class ConcatColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         if (isBehind) {
-          columnBuilder.writeBinary(BytesUtils.valueOf(currentValue.concat(str)));
+          columnBuilder.writeBinary(new Binary(concat(column.getBinary(i).getValues(), value)));
         } else {
-          columnBuilder.writeBinary(BytesUtils.valueOf(str.concat(currentValue)));
+          columnBuilder.writeBinary(new Binary(concat(value, column.getBinary(i).getValues())));
         }
       } else {
-        columnBuilder.writeBinary(BytesUtils.valueOf(str));
+        columnBuilder.writeBinary(new Binary(value));
       }
     }
+  }
+
+  // 只处理两个参数的concat
+  public static byte[] concat(byte[] leftValue, byte[] rightValue) {
+    byte[] result = new byte[leftValue.length + rightValue.length];
+    System.arraycopy(leftValue, 0, result, 0, leftValue.length);
+    System.arraycopy(rightValue, 0, result, leftValue.length, rightValue.length);
+    return result;
   }
 }

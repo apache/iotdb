@@ -24,44 +24,47 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer.isContain;
 
 public class RTrimColumnTransformer extends UnaryColumnTransformer {
-  private final String character;
+  private final byte[] character;
 
   public RTrimColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String character) {
+      Type returnType, ColumnTransformer childColumnTransformer, String characterStr) {
     super(returnType, childColumnTransformer);
-    this.character = character;
+    this.character = characterStr.getBytes();
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(rtrim(currentValue)));
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBinary(new Binary(rtrim(currentValue, character)));
       } else {
         columnBuilder.appendNull();
       }
     }
   }
 
-  private String rtrim(String value) {
-    if (value.isEmpty() || character.isEmpty()) {
-      return value;
+  public static byte[] rtrim(byte[] source, byte[] character) {
+    if (source.length == 0 || character.length == 0) {
+      return source;
     }
+    int end = source.length - 1;
 
-    int end = value.length() - 1;
-
-    while (end >= 0 && character.indexOf(value.charAt(end)) >= 0) end--;
-
+    while (end >= 0 && isContain(character, source[end])) {
+      end--;
+    }
     if (end < 0) {
-      return "";
+      return new byte[0];
+    } else {
+      byte[] result = new byte[end + 1];
+      System.arraycopy(source, 0, result, 0, end + 1);
+      return result;
     }
-
-    return value.substring(0, end + 1);
   }
 }

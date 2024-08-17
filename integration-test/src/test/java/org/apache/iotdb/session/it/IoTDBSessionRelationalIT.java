@@ -236,8 +236,6 @@ public class IoTDBSessionRelationalIT {
                 row, "id:" + row, "attr:" + row, row * 1.0));
       }
 
-      // 在这里加上transform的操作
-
       SessionDataSet dataSet = session.executeQueryStatement("select * from table1 order by time");
       int cnt = 0;
       while (dataSet.hasNext()) {

@@ -244,16 +244,6 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one or two arguments and they must be text or string data type.");
       }
       return argumentTypes.get(0);
-    } else if (TableBuiltinScalarFunction.STRING_CONTAINS
-        .getFunctionName()
-        .equalsIgnoreCase(functionName)) {
-      if (!isTwoCharType(argumentTypes)) {
-        throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts two arguments and they must be text or string data type.");
-      }
-      return BOOLEAN;
     } else if (TableBuiltinScalarFunction.REGEXP_LIKE
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
@@ -416,7 +406,11 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.");
       }
-      return INT32;
+      if (isTimestampType(argumentTypes.get(0))) {
+        return INT64;
+      } else {
+        return argumentTypes.get(0);
+      }
     } else if (TableBuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0)))) {
         throw new SemanticException(
@@ -683,6 +677,10 @@ public class TableMetadataImpl implements Metadata {
         || INT32.equals(type)
         || INT64.equals(type)
         || TimestampType.TIMESTAMP.equals(type);
+  }
+
+  public static boolean isTimestampType(Type type) {
+    return TimestampType.TIMESTAMP.equals(type);
   }
 
   public static boolean isIntegerNumber(Type type) {

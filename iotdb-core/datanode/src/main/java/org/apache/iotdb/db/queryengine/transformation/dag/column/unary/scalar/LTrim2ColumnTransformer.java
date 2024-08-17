@@ -24,9 +24,10 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryCo
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.LTrimColumnTransformer.ltrim;
 
 public class LTrim2ColumnTransformer extends BinaryColumnTransformer {
   public LTrim2ColumnTransformer(
@@ -44,27 +45,12 @@ public class LTrim2ColumnTransformer extends BinaryColumnTransformer {
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(ltrim(leftValue, rightValue)));
+        byte[] leftValue = leftColumn.getBinary(i).getValues();
+        byte[] rightValue = rightColumn.getBinary(i).getValues();
+        columnBuilder.writeBinary(new Binary(ltrim(leftValue, rightValue)));
       } else {
         columnBuilder.appendNull();
       }
     }
-  }
-
-  private String ltrim(String source, String character) {
-    if (source.isEmpty() || character.isEmpty()) {
-      return source;
-    }
-
-    int start = 0;
-
-    while (start < source.length() && character.indexOf(source.charAt(start)) >= 0) start++;
-
-    if (start >= source.length()) {
-      return "";
-    }
-    return source.substring(start);
   }
 }

@@ -27,13 +27,15 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.regex.Pattern;
+
 public class RegexpLikeColumnTransformer extends UnaryColumnTransformer {
-  private final String regex;
+  private final Pattern pattern;
 
   public RegexpLikeColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, String regex) {
     super(returnType, childColumnTransformer);
-    this.regex = regex;
+    this.pattern = Pattern.compile(regex);
   }
 
   @Override
@@ -41,7 +43,7 @@ public class RegexpLikeColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBoolean(currentValue.matches(regex));
+        columnBuilder.writeBoolean(pattern.matcher(currentValue).matches());
       } else {
         columnBuilder.appendNull();
       }

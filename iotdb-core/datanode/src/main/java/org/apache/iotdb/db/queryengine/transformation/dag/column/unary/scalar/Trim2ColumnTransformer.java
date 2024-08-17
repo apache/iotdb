@@ -24,9 +24,10 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryCo
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer.trim;
 
 public class Trim2ColumnTransformer extends BinaryColumnTransformer {
   public Trim2ColumnTransformer(
@@ -44,29 +45,12 @@ public class Trim2ColumnTransformer extends BinaryColumnTransformer {
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(trim(leftValue, rightValue)));
+        byte[] leftValue = leftColumn.getBinary(i).getValues();
+        byte[] rightValue = rightColumn.getBinary(i).getValues();
+        columnBuilder.writeBinary(new Binary(trim(leftValue, rightValue)));
       } else {
         columnBuilder.appendNull();
       }
-    }
-  }
-
-  private String trim(String source, String character) {
-    if (source.isEmpty() || character.isEmpty()) {
-      return source;
-    }
-
-    int start = 0;
-    int end = source.length() - 1;
-
-    while (start <= end && character.indexOf(source.charAt(start)) >= 0) start++;
-    while (start <= end && character.indexOf(source.charAt(end)) >= 0) end--;
-    if (start > end) {
-      return "";
-    } else {
-      return source.substring(start, end + 1);
     }
   }
 }

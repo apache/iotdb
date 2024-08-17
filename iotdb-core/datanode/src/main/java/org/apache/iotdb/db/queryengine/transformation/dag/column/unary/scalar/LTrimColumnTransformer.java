@@ -24,44 +24,47 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
+
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer.isContain;
 
 public class LTrimColumnTransformer extends UnaryColumnTransformer {
-  private final String character;
+  private final byte[] character;
 
   public LTrimColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String character) {
+      Type returnType, ColumnTransformer childColumnTransformer, String characterStr) {
     super(returnType, childColumnTransformer);
-    this.character = character;
+    this.character = characterStr.getBytes();
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(ltrim(currentValue)));
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBinary(new Binary(ltrim(currentValue, character)));
       } else {
         columnBuilder.appendNull();
       }
     }
   }
 
-  private String ltrim(String value) {
-    if (value.isEmpty() || character.isEmpty()) {
-      return value;
+  public static byte[] ltrim(byte[] source, byte[] character) {
+    if (source.length == 0 || character.length == 0) {
+      return source;
     }
-
     int start = 0;
 
-    while (start < value.length() && character.indexOf(value.charAt(start)) >= 0) start++;
-
-    if (start >= value.length()) {
-      return "";
+    while (start < source.length && isContain(character, source[start])) {
+      start++;
+    }
+    if (start >= source.length) {
+      return new byte[0];
     } else {
-      return value.substring(start);
+      byte[] result = new byte[source.length - start];
+      System.arraycopy(source, start, result, 0, source.length - start);
+      return result;
     }
   }
 }

@@ -24,8 +24,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryCo
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 public class Strcmp2ColumnTransformer extends BinaryColumnTransformer {
   public Strcmp2ColumnTransformer(
@@ -43,8 +43,8 @@ public class Strcmp2ColumnTransformer extends BinaryColumnTransformer {
       Column leftColumn, Column rightColumn, ColumnBuilder columnBuilder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        Binary leftValue = leftColumn.getBinary(i);
+        Binary rightValue = rightColumn.getBinary(i);
         columnBuilder.writeInt(Integer.compare(leftValue.compareTo(rightValue), 0));
       } else {
         columnBuilder.appendNull();

@@ -24,46 +24,59 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
 
 public class TrimColumnTransformer extends UnaryColumnTransformer {
 
-  private final String character;
+  private final byte[] character;
 
   public TrimColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String character) {
+      Type returnType, ColumnTransformer childColumnTransformer, String characterStr) {
     super(returnType, childColumnTransformer);
-    this.character = character;
+    this.character = characterStr.getBytes();
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBinary(BytesUtils.valueOf(trim(currentValue)));
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBinary(new Binary(trim(currentValue, character)));
       } else {
         columnBuilder.appendNull();
       }
     }
   }
 
-  private String trim(String value) {
-    if (value.isEmpty() || character.isEmpty()) {
-      return value;
+  public static byte[] trim(byte[] source, byte[] character) {
+    if (source.length == 0 || character.length == 0) {
+      return source;
     }
-
     int start = 0;
-    int end = value.length() - 1;
+    int end = source.length - 1;
 
-    while (start <= end && character.indexOf(value.charAt(start)) >= 0) start++;
-    while (start <= end && character.indexOf(value.charAt(end)) >= 0) end--;
-    if (start > end) {
-      return "";
-    } else {
-      return value.substring(start, end + 1);
+    while (start <= end && isContain(character, source[start])) {
+      start++;
     }
+    while (start <= end && isContain(character, source[end])) {
+      end--;
+    }
+    if (start > end) {
+      return new byte[0];
+    } else {
+      byte[] result = new byte[end - start + 1];
+      System.arraycopy(source, start, result, 0, end - start + 1);
+      return result;
+    }
+  }
+
+  public static boolean isContain(byte[] character, byte target) {
+    for (byte b : character) {
+      if (b == target) {
+        return true;
+      }
+    }
+    return false;
   }
 }

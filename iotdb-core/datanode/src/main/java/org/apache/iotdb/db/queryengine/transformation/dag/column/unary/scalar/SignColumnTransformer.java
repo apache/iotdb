@@ -37,14 +37,14 @@ public class SignColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         if (TSDataType.DOUBLE.equals(column.getDataType())) {
-          columnBuilder.writeInt((int) Math.signum(column.getDouble(i)));
+          columnBuilder.writeDouble(Math.signum(column.getDouble(i)));
         } else if (TSDataType.FLOAT.equals(column.getDataType())) {
-          columnBuilder.writeInt((int) Math.signum(column.getFloat(i)));
+          columnBuilder.writeFloat(Math.signum(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeInt((int) Math.signum(column.getInt(i)));
         } else if (TSDataType.INT64.equals(column.getDataType())
             || TSDataType.TIMESTAMP.equals(column.getDataType())) {
-          columnBuilder.writeInt((int) Math.signum(column.getLong(i)));
+          columnBuilder.writeLong((long) Math.signum(column.getLong(i)));
         }
       } else {
         columnBuilder.appendNull();

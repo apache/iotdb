@@ -90,7 +90,7 @@ public class IoTDBStrposFunctionTableIT {
           "1970-01-01T00:00:00.003Z,efgh,0,efgh,0,",
         };
     tableResultSetEqualTest(
-        "select time,s1,locate(s1,'es'),s9,locate(s9,'es') from table1",
+        "select time,s1,strpos(s1,'es'),s9,strpos(s9,'es') from table1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -104,79 +104,79 @@ public class IoTDBStrposFunctionTableIT {
           "1970-01-01T00:00:00.003Z,efgh,efgh,1,",
         };
     tableResultSetEqualTest(
-        "select time,s1,s9,locate(s1,s9) from table1", expectedHeader, retArray, DATABASE_NAME);
+        "select time,s1,s9,strpos(s1,s9) from table1", expectedHeader, retArray, DATABASE_NAME);
   }
 
   @Test
   public void testFailTransformer() {
     // case 1: more than two argument
     tableAssertTestFail(
-        "select s1,locate(s1, 'es', 'ab') from table1",
+        "select s1,strpos(s1, 'es', 'ab') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 2: less than two argument
     tableAssertTestFail(
-        "select s1,locate(s1) from table1",
+        "select s1,strpos(s1) from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
-        "select s2,locate(s2, 'es') from table1",
+        "select s2,strpos(s2, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
-        "select s3,locate(s3, 'es') from table1",
+        "select s3,strpos(s3, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
-        "select s4,locate(s4, 'es') from table1",
+        "select s4,strpos(s4, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
-        "select s5,locate(s5, 'es') from table1",
+        "select s5,strpos(s5, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 7: wrong data type
     tableAssertTestFail(
-        "select s6,locate(s6, 'es') from table1",
+        "select s6,strpos(s6, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 8: wrong data type
     tableAssertTestFail(
-        "select s7,locate(s7, 'es') from table1",
+        "select s7,strpos(s7, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 9: wrong data type
     tableAssertTestFail(
-        "select s8,locate(s8, 'es') from table1",
+        "select s8,strpos(s8, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
 
     // case 10: wrong data type
     tableAssertTestFail(
-        "select s10,locate(s10, 'es') from table1",
+        "select s10,strpos(s10, 'es') from table1",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function locate only accepts two arguments and they must be text or string data type.",
+            + ": Scalar function strpos only accepts two arguments and they must be text or string data type.",
         DATABASE_NAME);
   }
 }

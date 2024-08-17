@@ -24,27 +24,38 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 
 public class StartsWithColumnTransformer extends UnaryColumnTransformer {
-  private final String prefix;
+  private final byte[] prefix;
 
   public StartsWithColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, String prefix) {
+      Type returnType, ColumnTransformer childColumnTransformer, String prefixStr) {
     super(returnType, childColumnTransformer);
-    this.prefix = prefix;
+    this.prefix = prefixStr.getBytes();
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeBoolean(currentValue.startsWith(prefix));
+        byte[] currentValue = column.getBinary(i).getValues();
+        columnBuilder.writeBoolean(equalCompare(currentValue, prefix, 0));
       } else {
         columnBuilder.appendNull();
       }
     }
+  }
+
+  public static boolean equalCompare(byte[] value, byte[] pattern, int offset) {
+    if (value.length < pattern.length) {
+      return false;
+    }
+    for (int i = offset; i < value.length; i++) {
+      if (value[i] != pattern[i - offset]) {
+        return false;
+      }
+    }
+    return true;
   }
 }

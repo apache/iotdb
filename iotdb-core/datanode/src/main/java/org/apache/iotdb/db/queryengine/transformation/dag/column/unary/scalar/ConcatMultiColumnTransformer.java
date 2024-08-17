@@ -24,9 +24,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MultiColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
-import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 
@@ -47,18 +46,28 @@ public class ConcatMultiColumnTransformer extends MultiColumnTransformer {
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
       boolean isNull = true;
-      StringBuilder result = new StringBuilder();
-      for (int j = 0; j < childrenColumns.size(); j++) {
-        if (!childrenColumns.get(j).isNull(i)) {
+      int length = 0;
+      // for loop to check whether all is null, and calc the real length
+      for (Column childrenColumn : childrenColumns) {
+        if (!childrenColumn.isNull(i)) {
           isNull = false;
-          result.append(
-              childrenColumns.get(j).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET));
+          length += childrenColumn.getBinary(i).getValues().length;
         }
       }
       if (isNull) {
         builder.appendNull();
       } else {
-        builder.writeBinary(BytesUtils.valueOf(result.toString()));
+        byte[] result = new byte[length];
+        // for loop to append the values which is not null
+        int index = 0;
+        for (Column childrenColumn : childrenColumns) {
+          if (!childrenColumn.isNull(i)) {
+            byte[] value = childrenColumn.getBinary(i).getValues();
+            System.arraycopy(value, 0, result, index, value.length);
+            index += value.length;
+          }
+        }
+        builder.writeBinary(new Binary(result));
       }
     }
   }

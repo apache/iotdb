@@ -24,24 +24,24 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColu
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
 public class StrcmpColumnTransformer extends UnaryColumnTransformer {
-  private final String str;
+  private final Binary binStr;
 
   public StrcmpColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, String str) {
     super(returnType, childColumnTransformer);
-    this.str = str;
+    this.binStr = new Binary(str.getBytes());
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeInt(Integer.compare(currentValue.compareTo(str), 0));
+        Binary currentValue = column.getBinary(i);
+        columnBuilder.writeInt(Integer.compare(currentValue.compareTo(binStr), 0));
       } else {
         columnBuilder.appendNull();
       }
