@@ -669,8 +669,6 @@ public class RegionMaintainHandler {
       TConsensusGroupId regionId, TDataNodeLocation originalDataNode, TDataNodeLocation coodinator)
       throws ProcedureException, InterruptedException {
     // find new leader
-    final int findNewLeaderTimeLimitSecond = 10;
-    long startTime = System.nanoTime();
     Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
     List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
     excludeDataNode.add(originalDataNode);
