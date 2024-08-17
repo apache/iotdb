@@ -56,7 +56,7 @@ public abstract class AbstractLoadCache {
       // And un-sequential heartbeats will be discarded.
       if (getLastSample() == null
           || getLastSample().getSampleLogicalTimestamp()
-              < newHeartbeatSample.getSampleLogicalTimestamp()) {
+              <= newHeartbeatSample.getSampleLogicalTimestamp()) {
         slidingWindow.add(newHeartbeatSample);
       }
 
