@@ -271,6 +271,7 @@ public class CommonConfig {
   private long subscriptionReadFileBufferSize = 8 * MB;
   private long subscriptionReadTabletBufferSize = 2 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
+  private int subscriptionPrefetchingQueueSerializeThreshold = 50;
 
   // default to SessionConfig.DEFAULT_MAX_FRAME_SIZE
   private long subscriptionPollPayloadMaxSize = 64 * MB;
@@ -1253,6 +1254,16 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
+  }
+
+  public int getSubscriptionPrefetchingQueueSerializeThreshold() {
+    return subscriptionPrefetchingQueueSerializeThreshold;
+  }
+
+  public void setSubscriptionPrefetchingQueueSerializeThreshold(
+      final int subscriptionPrefetchingQueueSerializeThreshold) {
+    this.subscriptionPrefetchingQueueSerializeThreshold =
+        subscriptionPrefetchingQueueSerializeThreshold;
   }
 
   public long getSubscriptionPollPayloadMaxSize() {

@@ -28,7 +28,6 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueu
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTabletBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
@@ -80,14 +79,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event) {
-    onEventInternal(event); // no exceptions will be thrown
-    if (shouldEmit()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      return events;
+    if (event instanceof TabletInsertionEvent) {
+      onEventInternal((TabletInsertionEvent) event); // no exceptions will be thrown
     }
-    return Collections.emptyList();
+    return onEvent();
   }
 
   @Override
@@ -115,7 +110,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     for (final Tablet tablet : tablets) {
       final long bufferSize = PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
       if (bufferSize > READ_TABLET_BUFFER_SIZE) {
-        LOGGER.warn("Detect large tablet with size {} in bytes", bufferSize);
+        LOGGER.warn("Detect large tablet with {} byte(s).", bufferSize);
         responses.add(
             new SubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
@@ -146,41 +141,25 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
         new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }
 
-  private void onEventInternal(final EnrichedEvent event) {
+  private void onEventInternal(final TabletInsertionEvent event) {
     constructBatch(event);
-    enrichedEvents.add(event);
+    enrichedEvents.add((EnrichedEvent) event);
     if (firstEventProcessingTime == Long.MIN_VALUE) {
       firstEventProcessingTime = System.currentTimeMillis();
     }
   }
 
-  private void constructBatch(final EnrichedEvent event) {
-    if (event instanceof TabletInsertionEvent) {
-      final List<Tablet> currentTablets = convertToTablets((TabletInsertionEvent) event);
-      if (currentTablets.isEmpty()) {
-        return;
-      }
-      tablets.addAll(currentTablets);
-      totalBufferSize +=
-          currentTablets.stream()
-              .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-              .reduce(Long::sum)
-              .orElse(0L);
-    } else if (event instanceof TsFileInsertionEvent) {
-      for (final TabletInsertionEvent tabletInsertionEvent :
-          ((TsFileInsertionEvent) event).toTabletInsertionEvents()) {
-        final List<Tablet> currentTablets = convertToTablets(tabletInsertionEvent);
-        if (Objects.isNull(currentTablets)) {
-          continue;
-        }
-        tablets.addAll(currentTablets);
-        totalBufferSize +=
-            currentTablets.stream()
-                .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
-                .reduce(Long::sum)
-                .orElse(0L);
-      }
+  private void constructBatch(final TabletInsertionEvent event) {
+    final List<Tablet> currentTablets = convertToTablets(event);
+    if (currentTablets.isEmpty()) {
+      return;
     }
+    tablets.addAll(currentTablets);
+    totalBufferSize +=
+        currentTablets.stream()
+            .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
+            .reduce(Long::sum)
+            .orElse(0L);
   }
 
   private boolean shouldEmit() {

@@ -231,8 +231,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
                 SubscriptionPollResponseType.FILE_INIT.getType(),
                 new FileInitPayload(((PipeTsFileInsertionEvent) event).getTsFile().getName()),
                 commitContext));
-    ev.trySerializeCurrentResponse();
-    prefetchingQueue.add(ev);
+    super.enqueueEventToPrefetchingQueue(ev);
     return true;
   }
 
@@ -244,11 +243,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
   private boolean onEventInternal(@Nullable final EnrichedEvent event) {
     final List<SubscriptionEvent> events = batches.onEvent(event);
     if (!events.isEmpty()) {
-      events.forEach(
-          ev -> {
-            ev.trySerializeCurrentResponse();
-            prefetchingQueue.add(ev);
-          });
+      events.forEach(super::enqueueEventToPrefetchingQueue);
       return true;
     }
     return false;

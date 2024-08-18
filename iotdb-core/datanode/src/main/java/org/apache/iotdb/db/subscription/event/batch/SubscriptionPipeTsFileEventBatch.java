@@ -72,13 +72,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
           SubscriptionPipeTsFileEventBatch.class.getName(),
           false); // missing releaseLastEvent decreases reference count
     }
-    if (batch.shouldEmit()) {
-      if (Objects.isNull(events)) {
-        events = generateSubscriptionEvents();
-      }
-      return events;
-    }
-    return Collections.emptyList();
+    return onEvent();
   }
 
   @Override

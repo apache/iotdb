@@ -662,6 +662,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
+    config.setSubscriptionPrefetchingQueueSerializeThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_prefetching_queue_serialize_threshold",
+                String.valueOf(config.getSubscriptionPrefetchingQueueSerializeThreshold()))));
     config.setSubscriptionPollPayloadMaxSize(
         Long.parseLong(
             properties.getProperty(

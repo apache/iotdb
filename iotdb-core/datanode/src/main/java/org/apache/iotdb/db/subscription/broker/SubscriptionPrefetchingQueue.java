@@ -57,6 +57,9 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPrefetchingQueue.class);
 
+  private static final int SERIALIZE_THRESHOLD =
+      SubscriptionConfig.getInstance().getSubscriptionPrefetchingQueueSerializeThreshold();
+
   private final String brokerId; // consumer group id
   private final String topicName;
 
@@ -253,7 +256,7 @@ public abstract class SubscriptionPrefetchingQueue {
             // nack pollable event and re-enqueue it to prefetchingQueue
             if (ev.pollable()) {
               ev.nack(); // now pollable
-              prefetchingQueue.add(ev);
+              enqueueEventToPrefetchingQueue(ev);
               LOGGER.warn(
                   "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
                   this,
@@ -273,6 +276,14 @@ public abstract class SubscriptionPrefetchingQueue {
             return ev;
           });
     }
+  }
+
+  protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
+    // TODO: consider more strategies, such as fairness...
+    if (prefetchingQueue.size() <= SERIALIZE_THRESHOLD) {
+      event.trySerializeCurrentResponse();
+    }
+    prefetchingQueue.add(event);
   }
 
   /**

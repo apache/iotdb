@@ -155,7 +155,11 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    return onEventInternal((EnrichedEvent) event);
+    LOGGER.warn(
+        "Subscription: SubscriptionPrefetchingTabletQueue {} ignore TsFileInsertionEvent {} when prefetching.",
+        this,
+        event);
+    return false;
   }
 
   @Override
@@ -166,11 +170,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   private boolean onEventInternal(@Nullable final EnrichedEvent event) {
     final List<SubscriptionEvent> events = batches.onEvent(event);
     if (!events.isEmpty()) {
-      events.forEach(
-          ev -> {
-            ev.trySerializeCurrentResponse();
-            prefetchingQueue.add(ev);
-          });
+      events.forEach(super::enqueueEventToPrefetchingQueue);
       return true;
     }
     return false;
