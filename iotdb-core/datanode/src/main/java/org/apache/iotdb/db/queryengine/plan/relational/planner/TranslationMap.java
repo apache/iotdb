@@ -25,11 +25,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.AstUtil;
 
 import com.google.common.collect.ImmutableMap;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -269,6 +272,22 @@ public class TranslationMap {
                     .map(TranslationMap.this::rewrite)
                     .collect(Collectors.toList());
             return new FunctionCall(node.getName(), node.isDistinct(), newArguments);
+          }
+
+          @Override
+          public Expression rewriteTrim(
+              Trim node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return mapped.get();
+            }
+
+            List<Expression> newArguments = new ArrayList<>();
+            newArguments.add(rewrite(node.getTrimSource()));
+            node.getTrimCharacter().ifPresent(argument -> newArguments.add(rewrite(argument)));
+
+            return new FunctionCall(
+                QualifiedName.of(node.getSpecification().getFunctionName()), newArguments);
           }
 
           @Override
