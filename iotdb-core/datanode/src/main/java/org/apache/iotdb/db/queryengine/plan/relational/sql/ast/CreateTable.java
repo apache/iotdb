@@ -40,11 +40,11 @@ public class CreateTable extends Statement {
   private final List<Property> properties;
 
   public CreateTable(
-      QualifiedName name,
-      List<ColumnDefinition> elements,
-      boolean ifNotExists,
-      @Nullable String charsetName,
-      List<Property> properties) {
+      final QualifiedName name,
+      final List<ColumnDefinition> elements,
+      final boolean ifNotExists,
+      final @Nullable String charsetName,
+      final List<Property> properties) {
     super(null);
     this.name = requireNonNull(name, "name is null");
     this.elements = ImmutableList.copyOf(requireNonNull(elements, "elements is null"));
@@ -54,12 +54,12 @@ public class CreateTable extends Statement {
   }
 
   public CreateTable(
-      NodeLocation location,
-      QualifiedName name,
-      List<ColumnDefinition> elements,
-      boolean ifNotExists,
-      @Nullable String charsetName,
-      List<Property> properties) {
+      final NodeLocation location,
+      final QualifiedName name,
+      final List<ColumnDefinition> elements,
+      final boolean ifNotExists,
+      final @Nullable String charsetName,
+      final List<Property> properties) {
     super(requireNonNull(location, "location is null"));
     this.name = requireNonNull(name, "name is null");
     this.elements = ImmutableList.copyOf(requireNonNull(elements, "elements is null"));
@@ -89,7 +89,7 @@ public class CreateTable extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitCreateTable(this, context);
   }
 
@@ -99,14 +99,14 @@ public class CreateTable extends Statement {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CreateTable that = (CreateTable) o;
+    final CreateTable that = (CreateTable) o;
     return ifNotExists == that.ifNotExists
         && Objects.equals(name, that.name)
         && Objects.equals(elements, that.elements)

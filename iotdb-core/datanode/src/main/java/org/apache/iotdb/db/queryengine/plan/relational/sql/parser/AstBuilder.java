@@ -255,7 +255,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableStatement(RelationalSqlParser.CreateTableStatementContext ctx) {
+  public Node visitCreateTableStatement(final RelationalSqlParser.CreateTableStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
@@ -272,11 +272,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitColumnDefinition(RelationalSqlParser.ColumnDefinitionContext ctx) {
+  public Node visitColumnDefinition(final RelationalSqlParser.ColumnDefinitionContext ctx) {
     return new ColumnDefinition(
         getLocation(ctx),
         lowerIdentifier((Identifier) visit(ctx.identifier())),
-        (DataType) visit(ctx.type()),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
             ? null
@@ -310,8 +310,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitAddColumn(RelationalSqlParser.AddColumnContext ctx) {
-    return new AddColumn(getQualifiedName(ctx.tableName), (ColumnDefinition) visit(ctx.column));
+  public Node visitAddColumn(final RelationalSqlParser.AddColumnContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.tableName),
+        (ColumnDefinition) visit(ctx.column),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()));
   }
 
   @Override
@@ -332,7 +337,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitSetTableProperties(RelationalSqlParser.SetTablePropertiesContext ctx) {
+  public Node visitSetTableProperties(final RelationalSqlParser.SetTablePropertiesContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.propertyAssignments() != null) {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
@@ -341,7 +346,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         SetProperties.Type.TABLE,
         getQualifiedName(ctx.qualifiedName()),
-        properties);
+        properties,
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override

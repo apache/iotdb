@@ -20,6 +20,7 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -27,7 +28,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,7 +45,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
-@Ignore
+// @Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBRestartIT {
@@ -54,12 +54,22 @@ public class IoTDBRestartIT {
 
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("SYNC");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.ratis.RatisConsensus");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+    EnvFactory.getEnv().getConfig().getCommonConfig().setWalMode("ASYNC");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setSchemaRegionConsensusProtocolClass("org.apache.iotdb.consensus.simple.SimpleConsensus");
   }
 
   @Test
@@ -71,8 +81,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      // TODO: replace restartDaemon() with new methods in Env.
-      // EnvironmentUtils.restartDaemon();
+      TestUtils.restartDataNodes();
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -83,7 +92,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      // EnvironmentUtils.restartDaemon();
+      TestUtils.restartDataNodes();
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -114,23 +123,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,3)");
     }
 
-    long time = 0;
-    /*
-    try {
-      EnvironmentUtils.restartDaemon();
-      StorageEngine.getInstance().recover();
-      // wait for recover
-      while (!StorageEngine.getInstance().isAllSgReady()) {
-        Thread.sleep(500);
-        time += 500;
-        if (time > 10000) {
-          logger.warn("wait too long in restart, wait for: " + time / 1000 + "s");
-        }
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-     */
+    TestUtils.restartDataNodes();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -174,7 +167,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      // EnvironmentUtils.restartDaemon();
+      TestUtils.restartDataNodes();
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -186,7 +179,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      // EnvironmentUtils.restartDaemon();
+      TestUtils.restartDataNodes();
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -221,7 +214,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      // EnvironmentUtils.restartDaemon();
+      TestUtils.restartDataNodes();
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -233,7 +226,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      // EnvironmentUtils.restartDaemon();
+      TestUtils.restartDataNodes();
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -265,7 +258,7 @@ public class IoTDBRestartIT {
           "create timeseries root.turbine1.d1.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
 
-    // EnvironmentUtils.restartDaemon();
+    TestUtils.restartDataNodes();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -293,7 +286,7 @@ public class IoTDBRestartIT {
       statement.execute("delete timeseries root.turbine1.d1.s1");
     }
 
-    // EnvironmentUtils.restartDaemon();
+    TestUtils.restartDataNodes();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -332,8 +325,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine1.d1(timestamp,s2) values(4,true)");
     }
 
-    Thread.sleep(1000);
-    // EnvironmentUtils.restartDaemon();
+    TestUtils.restartDataNodes();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -363,7 +355,7 @@ public class IoTDBRestartIT {
     }
 
     // mock exception during flush memtable
-    // EnvironmentUtils.restartDaemon();
+    TestUtils.restartDataNodes();
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
