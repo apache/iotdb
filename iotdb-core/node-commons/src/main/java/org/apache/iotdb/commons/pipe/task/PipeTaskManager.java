@@ -22,10 +22,7 @@ package org.apache.iotdb.commons.pipe.task;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class PipeTaskManager {
 
@@ -111,16 +108,16 @@ public class PipeTaskManager {
   }
 
   /**
-   * Get {@link PipeTask} by consensus group id.
+   * Judge whether there is a {@link PipeTask} related to the consensus group id.
    *
    * @param consensusGroupId consensus group id
-   * @return {@link List}
+   * @return true if there is at least one {@link PipeTask} related to the consensus group id, false
+   *     otherwise
    */
-  public synchronized List<PipeTask> getPipeTask(int consensusGroupId) {
+  public synchronized boolean hasPipeTaskInConsensusGroup(final int consensusGroupId) {
     return pipeMap.values().stream()
-        .map(integerPipeTaskMap -> integerPipeTaskMap.get(consensusGroupId))
-        .filter(Objects::nonNull)
-        .collect(Collectors.toList());
+        .anyMatch(
+            consensusGroupId2PipeTask -> consensusGroupId2PipeTask.containsKey(consensusGroupId));
   }
 
   /**

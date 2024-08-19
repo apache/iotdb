@@ -649,9 +649,15 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   }
 
   public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
-    acquireReadLock();
+    if (!tryReadLockWithTimeOut(10)) {
+      LOGGER.warn(
+          "Failed to check if pipe has release region related resource with consensus group id: {}.",
+          consensusGroupId);
+      return false;
+    }
+
     try {
-      return pipeTaskManager.getPipeTask(consensusGroupId).isEmpty();
+      return !pipeTaskManager.hasPipeTaskInConsensusGroup(consensusGroupId);
     } finally {
       releaseReadLock();
     }
