@@ -374,6 +374,8 @@ class RatisConsensus implements IConsensus {
       } else {
         throw new RatisRequestFailedException(e);
       }
+    } catch (GroupMismatchException e) {
+      throw new ConsensusGroupNotExistException(groupId);
     } catch (Exception e) {
       throw new RatisRequestFailedException(e);
     }

@@ -64,15 +64,14 @@ public class WALWriter extends LogWriter {
 
   private void endFile() throws IOException {
     WALSignalEntry endMarker = new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER);
-    int metaDataSize = metaData.serializedSize();
-    ByteBuffer buffer =
-        ByteBuffer.allocate(
-            endMarker.serializedSize()
-                + metaDataSize
-                + Integer.BYTES
-                + version.getVersionBytes().length);
+    ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
     // mark info part ends
-    endMarker.serialize(buffer);
+    endMarker.serialize(markerBuffer);
+    write(markerBuffer, false);
+    int metaDataSize = metaData.serializedSize();
+
+    ByteBuffer buffer =
+        ByteBuffer.allocate(metaDataSize + Integer.BYTES + version.getVersionBytes().length);
     // flush meta data
     metaData.serialize(buffer);
     buffer.putInt(metaDataSize);

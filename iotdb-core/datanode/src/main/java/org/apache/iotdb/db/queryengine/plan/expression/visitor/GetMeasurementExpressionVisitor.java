@@ -33,9 +33,8 @@ public class GetMeasurementExpressionVisitor extends ReconstructVisitor<Analysis
     if (expression.getViewPath() != null) {
       PartialPath viewPath = expression.getViewPath();
       return new TimeSeriesOperand(
-          new MeasurementPath(
-              new PartialPath(viewPath.getMeasurement(), false),
-              ExpressionTypeAnalyzer.analyzeExpression(analysis, expression)));
+          new PartialPath(viewPath.getMeasurement(), false),
+          ExpressionTypeAnalyzer.analyzeExpression(analysis, expression));
     }
     return expression.accept(this, analysis);
   }

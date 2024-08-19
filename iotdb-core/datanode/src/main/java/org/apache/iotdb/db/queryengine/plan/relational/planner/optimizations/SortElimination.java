@@ -57,7 +57,6 @@ public class SortElimination implements PlanOptimizer {
       Context newContext = new Context();
       PlanNode child = node.getChild().accept(this, newContext);
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      TableScanNode tableScanNode = newContext.getTableScanNode();
       if (newContext.getTotalDeviceEntrySize() == 1
           && TIMESTAMP_STR.equalsIgnoreCase(orderingScheme.getOrderBy().get(0).getName())) {
         return child;
@@ -75,14 +74,12 @@ public class SortElimination implements PlanOptimizer {
     @Override
     public PlanNode visitTableScan(TableScanNode node, Context context) {
       context.addDeviceEntrySize(node.getDeviceEntries().size());
-      context.setTableScanNode(node);
       return node;
     }
   }
 
   private static class Context {
     private int totalDeviceEntrySize = 0;
-    private TableScanNode tableScanNode;
 
     Context() {}
 
@@ -92,14 +89,6 @@ public class SortElimination implements PlanOptimizer {
 
     public int getTotalDeviceEntrySize() {
       return totalDeviceEntrySize;
-    }
-
-    public TableScanNode getTableScanNode() {
-      return tableScanNode;
-    }
-
-    public void setTableScanNode(TableScanNode tableScanNode) {
-      this.tableScanNode = tableScanNode;
     }
   }
 }

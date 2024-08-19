@@ -50,6 +50,8 @@ import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesReq;
 import org.apache.iotdb.consensus.iot.thrift.TSyncLogEntriesRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -227,13 +229,28 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       String message =
           String.format("unexpected consensusGroupId %s for waitSyncLogComplete request", groupId);
       LOGGER.error(message);
-      TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      status.setMessage(message);
       return new TWaitSyncLogCompleteRes(true, 0, 0);
     }
     long searchIndex = impl.getSearchIndex();
     long safeIndex = impl.getMinSyncIndex();
     return new TWaitSyncLogCompleteRes(searchIndex == safeIndex, searchIndex, safeIndex);
+  }
+
+  @Override
+  public TWaitReleaseAllRegionRelatedResourceRes waitReleaseAllRegionRelatedResource(
+      TWaitReleaseAllRegionRelatedResourceReq req) throws TException {
+    ConsensusGroupId groupId =
+        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    IoTConsensusServerImpl impl = consensus.getImpl(groupId);
+    if (impl == null) {
+      String message =
+          String.format(
+              "unexpected consensusGroupId %s for TWaitReleaseAllRegionRelatedResourceRes request",
+              groupId);
+      LOGGER.error(message);
+      return new TWaitReleaseAllRegionRelatedResourceRes(true);
+    }
+    return new TWaitReleaseAllRegionRelatedResourceRes(impl.hasReleaseAllRegionRelatedResource());
   }
 
   @Override

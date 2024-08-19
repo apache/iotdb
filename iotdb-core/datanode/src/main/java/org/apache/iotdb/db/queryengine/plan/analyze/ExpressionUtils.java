@@ -80,7 +80,7 @@ public class ExpressionUtils {
 
   public static Expression reconstructTimeSeriesOperand(
       TimeSeriesOperand rawExpression, PartialPath actualPath) {
-    Expression resultExpression = new TimeSeriesOperand(actualPath);
+    Expression resultExpression = new TimeSeriesOperand(actualPath, rawExpression.getType());
     return cloneCommonFields(rawExpression, resultExpression);
   }
 
