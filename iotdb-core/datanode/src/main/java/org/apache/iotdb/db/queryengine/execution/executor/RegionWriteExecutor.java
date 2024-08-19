@@ -148,11 +148,10 @@ public class RegionWriteExecutor {
       return planNode.accept(executionVisitor, context);
     } catch (Throwable e) {
       LOGGER.warn(e.getMessage(), e);
-      RegionExecutionResult result = new RegionExecutionResult();
-      result.setAccepted(false);
-      result.setMessage(e.getMessage());
-      result.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
-      return result;
+      return RegionExecutionResult.create(
+          false,
+          e.getMessage(),
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
   }
 
@@ -161,31 +160,29 @@ public class RegionWriteExecutor {
 
     @Override
     public RegionExecutionResult visitPlan(PlanNode node, WritePlanNodeExecutionContext context) {
-      RegionExecutionResult response = new RegionExecutionResult();
 
       if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-        response.setAccepted(false);
-        response.setMessage("Fail to do non-query operations because system is read-only.");
-        response.setStatus(
+        return RegionExecutionResult.create(
+            false,
+            "Fail to do non-query operations because system is read-only.",
             RpcUtils.getStatus(
                 TSStatusCode.SYSTEM_READ_ONLY,
                 "Fail to do non-query operations because system is read-only."));
-        return response;
       }
 
       try {
         TSStatus status = executePlanNodeInConsensusLayer(context.getRegionId(), node);
-        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
-        response.setMessage(status.getMessage());
-        response.setStatus(status);
+        return RegionExecutionResult.create(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode(),
+            status.getMessage(),
+            status);
       } catch (ConsensusException e) {
         LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-        response.setAccepted(false);
-        response.setMessage(e.toString());
-        response.setStatus(
+        return RegionExecutionResult.create(
+            false,
+            e.toString(),
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
       }
-      return response;
     }
 
     private TSStatus executePlanNodeInConsensusLayer(ConsensusGroupId groupId, PlanNode planNode)
@@ -241,28 +238,28 @@ public class RegionWriteExecutor {
 
     private RegionExecutionResult executeDataInsert(
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
-      RegionExecutionResult response = new RegionExecutionResult();
+      if (context.getRegionWriteValidationRWLock() == null) {
+        String message = "Failed to get the lock of the region.";
+        return RegionExecutionResult.create(
+            false, message, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, message));
+      }
 
+      context.getRegionWriteValidationRWLock().readLock().lock();
       try {
-        context.getRegionWriteValidationRWLock().readLock().lock();
-
         TSStatus status = fireTriggerAndInsert(context.getRegionId(), insertNode);
-        response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
-        response.setMessage(status.message);
-        if (!response.isAccepted()) {
-          response.setStatus(status);
-        }
+        return RegionExecutionResult.create(
+            TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode(),
+            status.message,
+            status);
       } catch (NullPointerException | ConsensusException e) {
         LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-        response.setAccepted(false);
-        response.setMessage(e.toString());
-        response.setStatus(RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString()));
+        return RegionExecutionResult.create(
+            false,
+            e.toString(),
+            RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString()));
       } finally {
-        if (context.getRegionWriteValidationRWLock() != null) {
-          context.getRegionWriteValidationRWLock().readLock().unlock();
-        }
+        context.getRegionWriteValidationRWLock().readLock().unlock();
       }
-      return response;
     }
 
     private TSStatus fireTriggerAndInsert(ConsensusGroupId groupId, InsertNode insertNode)
@@ -357,13 +354,11 @@ public class RegionWriteExecutor {
           } else {
             MetadataException metadataException = failingMeasurementMap.get(0);
             LOGGER.warn(METADATA_ERROR_MSG, metadataException);
-            result = new RegionExecutionResult();
-            result.setAccepted(false);
-            result.setMessage(metadataException.getMessage());
-            result.setStatus(
+            return RegionExecutionResult.create(
+                false,
+                metadataException.getMessage(),
                 RpcUtils.getStatus(
                     metadataException.getErrorCode(), metadataException.getMessage()));
-            return result;
           }
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
@@ -406,13 +401,11 @@ public class RegionWriteExecutor {
           } else {
             MetadataException metadataException = failingMeasurementMap.values().iterator().next();
             LOGGER.warn(METADATA_ERROR_MSG, metadataException);
-            result = new RegionExecutionResult();
-            result.setAccepted(false);
-            result.setMessage(metadataException.getMessage());
-            result.setStatus(
+            return RegionExecutionResult.create(
+                false,
+                metadataException.getMessage(),
                 RpcUtils.getStatus(
                     metadataException.getErrorCode(), metadataException.getMessage()));
-            return result;
           }
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
@@ -469,11 +462,7 @@ public class RegionWriteExecutor {
           }
 
           TSStatus status = RpcUtils.getStatus(failingStatus);
-          failingResult = new RegionExecutionResult();
-          failingResult.setAccepted(false);
-          failingResult.setMessage(status.getMessage());
-          failingResult.setStatus(status);
-          return failingResult;
+          return RegionExecutionResult.create(false, status.getMessage(), status);
         } finally {
           context.getRegionWriteValidationRWLock().writeLock().unlock();
         }
@@ -708,11 +697,8 @@ public class RegionWriteExecutor {
       try {
         schemaRegion.checkSchemaQuota(path, size);
       } catch (SchemaQuotaExceededException e) {
-        RegionExecutionResult result = new RegionExecutionResult();
-        result.setAccepted(false);
-        result.setMessage(e.getMessage());
-        result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        return result;
+        return RegionExecutionResult.create(
+            false, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
       return null;
     }
@@ -726,22 +712,17 @@ public class RegionWriteExecutor {
       separateMeasurementAlreadyExistException(
           failingStatus, executionStatus, alreadyExistingStatus);
 
-      RegionExecutionResult result = new RegionExecutionResult();
+      boolean isAccepted = true;
       TSStatus status;
       if (failingStatus.isEmpty() && alreadyExistingStatus.isEmpty()) {
         status = RpcUtils.SUCCESS_STATUS;
-        result.setAccepted(true);
       } else if (failingStatus.isEmpty()) {
         status = RpcUtils.getStatus(alreadyExistingStatus);
-        result.setAccepted(true);
       } else {
         status = RpcUtils.getStatus(failingStatus);
-        result.setAccepted(false);
+        isAccepted = false;
       }
-
-      result.setMessage(status.getMessage());
-      result.setStatus(status);
-      return result;
+      return RegionExecutionResult.create(isAccepted, status.getMessage(), status);
     }
 
     private void separateMeasurementAlreadyExistException(
@@ -794,11 +775,8 @@ public class RegionWriteExecutor {
             ? super.visitPipeEnrichedWritePlanNode(new PipeEnrichedWritePlanNode(node), context)
             : super.visitAlterTimeSeries(node, context);
       } catch (MetadataException e) {
-        RegionExecutionResult result = new RegionExecutionResult();
-        result.setAccepted(true);
-        result.setMessage(e.getMessage());
-        result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        return result;
+        return RegionExecutionResult.create(
+            true, e.getMessage(), RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     }
 
@@ -820,15 +798,12 @@ public class RegionWriteExecutor {
         if (templateSetInfo == null) {
           // The activation has already been validated during analyzing.
           // That means the template is being unset during the activation plan transport.
-          RegionExecutionResult result = new RegionExecutionResult();
-          result.setAccepted(false);
           String message =
               String.format(
                   "Template is being unsetting from path %s. Please try activating later.",
                   node.getPathSetTemplate());
-          result.setMessage(message);
-          result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
-          return result;
+          return RegionExecutionResult.create(
+              false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
         }
         ISchemaRegion schemaRegion =
             schemaEngine.getSchemaRegion((SchemaRegionId) context.getRegionId());
@@ -868,15 +843,12 @@ public class RegionWriteExecutor {
           if (templateSetInfo == null) {
             // The activation has already been validated during analyzing.
             // That means the template is being unset during the activation plan transport.
-            RegionExecutionResult result = new RegionExecutionResult();
-            result.setAccepted(false);
             String message =
                 String.format(
                     "Template is being unsetting from path %s. Please try activating later.",
                     node.getPathSetTemplate(devicePath));
-            result.setMessage(message);
-            result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
-            return result;
+            return RegionExecutionResult.create(
+                false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
           }
           RegionExecutionResult result =
               checkQuotaBeforeCreatingTimeSeries(
@@ -916,17 +888,14 @@ public class RegionWriteExecutor {
           if (templateSetInfo == null) {
             // The activation has already been validated during analyzing.
             // That means the template is being unset during the activation plan transport.
-            RegionExecutionResult result = new RegionExecutionResult();
-            result.setAccepted(false);
             String message =
                 String.format(
                     "Template is being unsetting from prefix path of %s. Please try activating later.",
                     new PartialPath(
                             Arrays.copyOf(entry.getKey().getNodes(), entry.getValue().right + 1))
                         .getFullPath());
-            result.setMessage(message);
-            result.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
-            return result;
+            return RegionExecutionResult.create(
+                false, message, RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, message));
           }
           RegionExecutionResult result =
               checkQuotaBeforeCreatingTimeSeries(
@@ -978,13 +947,11 @@ public class RegionWriteExecutor {
           if (!failingMetadataException.isEmpty()) {
             MetadataException metadataException = failingMetadataException.get(0);
             LOGGER.warn(METADATA_ERROR_MSG, metadataException);
-            RegionExecutionResult result = new RegionExecutionResult();
-            result.setAccepted(false);
-            result.setMessage(metadataException.getMessage());
-            result.setStatus(
+            return RegionExecutionResult.create(
+                false,
+                metadataException.getMessage(),
                 RpcUtils.getStatus(
                     metadataException.getErrorCode(), metadataException.getMessage()));
-            return result;
           }
           // step 2. make sure all source paths exist.
           return receivedFromPipe

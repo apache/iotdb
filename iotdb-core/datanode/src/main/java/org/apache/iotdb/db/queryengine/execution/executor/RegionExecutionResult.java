@@ -30,6 +30,17 @@ public class RegionExecutionResult {
   private TSStatus status;
   private boolean needRetry;
 
+  private RegionExecutionResult(boolean accepted, String message, TSStatus status) {
+    this.accepted = accepted;
+    this.message = message;
+    this.status = status;
+    this.needRetry = false;
+  }
+
+  public static RegionExecutionResult create(boolean accepted, String message, TSStatus status) {
+    return new RegionExecutionResult(accepted, message, status);
+  }
+
   public boolean isAccepted() {
     return accepted;
   }
