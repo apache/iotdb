@@ -32,11 +32,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class DevicePredicateTransformer extends DevicePredicateFilter {
+public class DeviceAttributeTransformer extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final Map<String, ColumnTransformer> attribute2ProjectOutputTransformerMap;
 
-  public DevicePredicateTransformer(
+  public DeviceAttributeTransformer(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
       final String database,

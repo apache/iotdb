@@ -42,11 +42,8 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
-import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
-import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -1563,12 +1560,7 @@ public class MTreeBelowSGMemoryImpl {
   public void updateTableDevice(
       final PartialPath pattern,
       final DevicePredicateFilter filter,
-      final String database,
-      final String tableName,
-      final List<ColumnHeader> columnHeaderList,
-      final List<UpdateAssignment> assignments,
-      final BiFunction<Integer, String, String> attributeProvider,
-      final ColumnTransformerBuilder.Context context)
+      final BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
     try (final EntityUpdater<IMemMNode> updater =
         new EntityUpdater<IMemMNode>(
