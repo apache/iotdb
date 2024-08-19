@@ -176,6 +176,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       currentSelectedDevices.addAll(currentFile.getDevices());
       currentSelectedFileTotalSize += currentFile.resource.getTsFileSize();
       lastSelectedFileIndex = idx;
+      // At this point we can be sure that these skipped files will be selected for the task
       if (!lastContinuousSkippedResources.isEmpty()) {
         currentSkippedResources.addAll(lastContinuousSkippedResources);
         for (TsFileResource resource : lastContinuousSkippedResources) {
@@ -214,6 +215,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
     private void endCurrentTaskSelection() {
       try {
+        // When the total files size does not exceed the upper limit of the
+        // size of a single file, merge all files together and try to include
+        // as many files as possible within the size range.
         long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
         nextTaskStartIndex = lastSelectedFileIndex + 1;
         for (TsFileResource resource : lastContinuousSkippedResources) {
