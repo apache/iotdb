@@ -239,7 +239,7 @@ public class RegionWriteExecutor {
     private RegionExecutionResult executeDataInsert(
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
       if (context.getRegionWriteValidationRWLock() == null) {
-        String message = "Failed to get the lock of the region.";
+        String message = "Failed to get the lock of the region because the region is not existed.";
         return RegionExecutionResult.create(
             false, message, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, message));
       }
@@ -251,7 +251,7 @@ public class RegionWriteExecutor {
             TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode(),
             status.message,
             status);
-      } catch (NullPointerException | ConsensusException e) {
+      } catch (ConsensusException e) {
         LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
         return RegionExecutionResult.create(
             false,
