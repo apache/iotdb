@@ -883,14 +883,11 @@ class RatisConsensus implements IConsensus {
     // notify the group leader of configuration change
     RaftClientReply reply;
     try (RatisClient client = getConfigurationRaftClient(newGroupConf)) {
-        reply =
-            client
-                .getRaftClient()
-                .admin()
-                .setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
-        if (!reply.isSuccess()) {
-          throw new RatisRequestFailedException(reply.getException());
-        }
+      reply =
+          client.getRaftClient().admin().setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
+      if (!reply.isSuccess()) {
+        throw new RatisRequestFailedException(reply.getException());
+      }
     } catch (Exception e) {
       throw new RatisRequestFailedException(e);
     }
