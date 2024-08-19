@@ -436,10 +436,10 @@ public final class ExpressionTreeRewriter<C> {
       List<Expression> expectedArguments = new ArrayList<>();
       expectedArguments.add(node.getTrimSource());
       node.getTrimCharacter().ifPresent(expectedArguments::add);
-      List<Expression> ActualArguments = rewrite(expectedArguments, context);
-      if (!sameElements(ActualArguments, expectedArguments)) {
+      List<Expression> actualArguments = rewrite(expectedArguments, context);
+      if (!sameElements(actualArguments, expectedArguments)) {
         return new FunctionCall(
-            QualifiedName.of(node.getSpecification().getFunctionName()), ActualArguments);
+            QualifiedName.of(node.getSpecification().getFunctionName()), actualArguments);
       }
       return node;
     }

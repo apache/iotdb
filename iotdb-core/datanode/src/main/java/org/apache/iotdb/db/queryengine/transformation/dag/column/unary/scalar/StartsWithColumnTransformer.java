@@ -56,7 +56,6 @@ public class StartsWithColumnTransformer extends UnaryColumnTransformer {
         return false;
       }
     }
-    // 简化代码后如下
     return true;
   }
 }
