@@ -522,6 +522,43 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertEquals(600L, targetFiles.get(0).getFileEndTime());
   }
 
+  @Test
+  public void testSkipToPreviousIndexAndSelectSkippedFiles() throws IOException {
+    for (int i = 0; i < 10; i++) {
+      String device;
+      if (i >= 5) {
+        device = "d5";
+      } else {
+        device = "d" + i;
+      }
+      TsFileResource resource =
+          generateSingleNonAlignedSeriesFile(
+              String.format("%d-%d-0-0.tsfile", i, i),
+              device,
+              new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
+              true);
+      seqResources.add(resource);
+    }
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(seqResources.get(0).getTsFileSize() + 1);
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(1, innerSpaceCompactionTasks.size());
+    InnerSpaceCompactionTask task = innerSpaceCompactionTasks.get(0);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(5, task.getSelectedTsFileResourceList().size());
+    Assert.assertEquals(5, task.getAllSourceTsFiles().size());
+    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(6, targetFiles.size());
+    Assert.assertEquals(5, targetFiles.get(5).getTsFileID().fileVersion);
+    Assert.assertEquals(501L, targetFiles.get(5).getFileStartTime());
+    Assert.assertEquals(1000L, targetFiles.get(5).getFileEndTime());
+  }
+
   private TsFileResource generateSingleNonAlignedSeriesFile(
       String fileName, String device, TimeRange[] chunkTimeRanges, boolean isSeq)
       throws IOException {
