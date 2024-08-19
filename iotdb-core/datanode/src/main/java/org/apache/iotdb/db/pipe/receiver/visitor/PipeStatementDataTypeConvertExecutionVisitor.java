@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -82,14 +80,6 @@ public class PipeStatementDataTypeConvertExecutionVisitor
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
     // TODO: judge if the exception is caused by data type mismatch
     // TODO: convert the data type of the statement
-    // Pipe enriched / paras in loadTsFileStatement
-
-    if (loadTsFileStatement.isDeleteAfterLoad()) {
-      loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
-    }
-
-    TsFileInsertionDataContainer
-
     return visitStatement(loadTsFileStatement, status);
   }
 
