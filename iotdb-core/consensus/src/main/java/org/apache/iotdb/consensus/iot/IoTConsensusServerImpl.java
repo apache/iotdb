@@ -298,7 +298,8 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  public void transmitSnapshot(Peer targetPeer, boolean needDataVerification)
+      throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
     List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
@@ -328,19 +329,29 @@ public class IoTConsensusServerImpl {
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
       for (File file : snapshotPaths) {
         SnapshotFragmentReader reader =
-            new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath(), needDataVerification);
         try {
-          while (reader.hasNext()) {
+          reader.hasNext();
+          while (true) {
             // TODO: zero copy ?
             TSendSnapshotFragmentReq req = reader.next().toTSendSnapshotFragmentReq();
             req.setConsensusGroupId(targetPeer.getGroupId().convertToTConsensusGroupId());
             ioTConsensusRateLimiter.acquireTransitDataSizeWithRateLimiter(req.getChunkLength());
             TSendSnapshotFragmentRes res = client.sendSnapshotFragment(req);
+            if (res.getStatus().getCode()
+                == TSStatusCode.SNAPSHOT_CHUNK_MD5_CHECK_NOT_PASS.getStatusCode()) {
+              // maybe network problem, retry
+              logger.info("Snapshot chunk md5 check not pass, automatically retry...");
+              continue;
+            }
             if (!isSuccess(res.getStatus())) {
               throw new ConsensusGroupModifyPeerException(
                   String.format(
                       "[SNAPSHOT TRANSMISSION] Error when transmitting snapshot fragment to %s",
                       targetPeer));
+            }
+            if (!reader.hasNext()) {
+              break;
             }
           }
           transitedSnapshotSizeSum += reader.getTotalReadSize();

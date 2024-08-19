@@ -62,6 +62,7 @@ struct TMaintainPeerReq {
   1: required common.TConsensusGroupId regionId
   2: required common.TDataNodeLocation destNode
   3: required i64 taskId
+  4: optional bool needDataVerification
 }
 
 struct TResetPeerListReq {

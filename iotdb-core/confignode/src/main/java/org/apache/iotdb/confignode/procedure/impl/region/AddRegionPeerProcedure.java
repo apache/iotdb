@@ -62,6 +62,8 @@ public class AddRegionPeerProcedure
 
   private TDataNodeLocation destDataNode;
 
+  private boolean needDataVerification;
+
   public AddRegionPeerProcedure() {
     super();
   }
@@ -69,11 +71,13 @@ public class AddRegionPeerProcedure
   public AddRegionPeerProcedure(
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation coordinator,
-      TDataNodeLocation destDataNode) {
+      TDataNodeLocation destDataNode,
+      boolean needDataVerification) {
     super();
     this.consensusGroupId = consensusGroupId;
     this.coordinator = coordinator;
     this.destDataNode = destDataNode;
+    this.needDataVerification = needDataVerification;
   }
 
   @Override
@@ -107,7 +111,11 @@ public class AddRegionPeerProcedure
           if (!this.isStateDeserialized()) {
             TSStatus tsStatus =
                 handler.submitAddRegionPeerTask(
-                    this.getProcId(), destDataNode, consensusGroupId, coordinator);
+                    this.getProcId(),
+                    destDataNode,
+                    consensusGroupId,
+                    coordinator,
+                    needDataVerification);
             setKillPoint(state);
             if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
               return warnAndRollBackAndNoMoreState(

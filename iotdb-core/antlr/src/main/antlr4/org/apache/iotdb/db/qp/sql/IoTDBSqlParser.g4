@@ -526,7 +526,7 @@ getSeriesSlotList
 
 // ---- Migrate Region
 migrateRegion
-    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL
+    : MIGRATE REGION regionId=INTEGER_LITERAL FROM fromId=INTEGER_LITERAL TO toId=INTEGER_LITERAL (WITH DATA VERIFICATION)?
     ;
 
 verifyConnection

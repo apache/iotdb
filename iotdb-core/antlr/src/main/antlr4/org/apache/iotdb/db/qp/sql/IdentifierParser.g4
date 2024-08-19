@@ -250,6 +250,7 @@ keyWords
     | VARIABLES
     | VARIATION
     | VERIFY
+    | VERIFICATION
     | VERSION
     | VIEW
     | WATERMARK_EMBEDDING

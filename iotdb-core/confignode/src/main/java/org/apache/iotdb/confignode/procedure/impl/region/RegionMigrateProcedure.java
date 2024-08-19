@@ -54,6 +54,7 @@ public class RegionMigrateProcedure
   private TDataNodeLocation destDataNode;
   private TDataNodeLocation coordinatorForAddPeer;
   private TDataNodeLocation coordinatorForRemovePeer;
+  private boolean needDataVerification;
 
   public RegionMigrateProcedure() {
     super();
@@ -64,13 +65,15 @@ public class RegionMigrateProcedure
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer,
-      TDataNodeLocation coordinatorForRemovePeer) {
+      TDataNodeLocation coordinatorForRemovePeer,
+      boolean needDataVerification) {
     super();
     this.consensusGroupId = consensusGroupId;
     this.originalDataNode = originalDataNode;
     this.destDataNode = destDataNode;
     this.coordinatorForAddPeer = coordinatorForAddPeer;
     this.coordinatorForRemovePeer = coordinatorForRemovePeer;
+    this.needDataVerification = needDataVerification;
   }
 
   @Override
@@ -82,17 +85,20 @@ public class RegionMigrateProcedure
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
+          String verificationStr = needDataVerification ? " with data verification" : "";
           LOGGER.info(
-              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {} to {}.",
+              "[pid{}][MigrateRegion] started, region {} will be migrated from DataNode {} to {}{}.",
               getProcId(),
               consensusGroupId.getId(),
               originalDataNode.getDataNodeId(),
-              destDataNode.getDataNodeId());
+              destDataNode.getDataNodeId(),
+              verificationStr);
           setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
         case ADD_REGION_PEER:
           addChildProcedure(
-              new AddRegionPeerProcedure(consensusGroupId, coordinatorForAddPeer, destDataNode));
+              new AddRegionPeerProcedure(
+                  consensusGroupId, coordinatorForAddPeer, destDataNode, needDataVerification));
           setNextState(RegionTransitionState.CHECK_ADD_REGION_PEER);
           break;
         case CHECK_ADD_REGION_PEER:

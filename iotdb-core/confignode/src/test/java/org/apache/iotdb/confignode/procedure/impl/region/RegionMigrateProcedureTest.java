@@ -66,7 +66,8 @@ public class RegionMigrateProcedureTest {
                 new TEndPoint("127.0.0.1", 16),
                 new TEndPoint("127.0.0.1", 17),
                 new TEndPoint("127.0.0.1", 18),
-                new TEndPoint("127.0.0.1", 19)));
+                new TEndPoint("127.0.0.1", 19)),
+            false);
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

@@ -82,6 +82,7 @@ struct TSendSnapshotFragmentReq {
   3: required string filePath
   4: required i64 chunkLength
   5: required binary fileChunk
+  6: optional string fileChunkMD5
 }
 
 struct TWaitSyncLogCompleteReq {

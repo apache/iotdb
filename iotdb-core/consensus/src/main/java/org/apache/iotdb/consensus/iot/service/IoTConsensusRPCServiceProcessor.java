@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.common.request.IoTConsensusRequest;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
+import org.apache.iotdb.consensus.iot.snapshot.SnapshotFragment;
 import org.apache.iotdb.consensus.iot.thrift.IoTConsensusIService;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerReq;
 import org.apache.iotdb.consensus.iot.thrift.TActivatePeerRes;
@@ -268,6 +269,18 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       return new TSendSnapshotFragmentRes(status);
     }
     TSStatus responseStatus;
+    // check file chunk md5
+    if (req.isSetFileChunkMD5()) {
+      String receiverMd5 = SnapshotFragment.calculateMd5(req.fileChunk);
+      if (!receiverMd5.isEmpty()) {
+        if (!receiverMd5.equals(req.getFileChunkMD5())) {
+          LOGGER.info("Snapshot chunk md5 check not pass, automatically retry...");
+          responseStatus =
+              new TSStatus(TSStatusCode.SNAPSHOT_CHUNK_MD5_CHECK_NOT_PASS.getStatusCode());
+          return new TSendSnapshotFragmentRes(responseStatus);
+        }
+      }
+    }
     try {
       impl.receiveSnapshotFragment(req.snapshotId, req.filePath, req.fileChunk);
       responseStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
