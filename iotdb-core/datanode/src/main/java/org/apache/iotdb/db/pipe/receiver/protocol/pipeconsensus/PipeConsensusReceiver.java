@@ -886,7 +886,7 @@ public class PipeConsensusReceiver {
     }
     // Every tsFileWriter has its own writing path.
     // 1 Thread --> 1 connection --> 1 tsFileWriter --> 1 path
-    tsFileWriter.setWritingFile(new File(receiverFileDirWithIdSuffix.get(), fileName));
+    tsFileWriter.setWritingFile(new File(tsFileWriter.getLocalWritingDirPath(), fileName));
     tsFileWriter.setWritingFileWriter(new RandomAccessFile(tsFileWriter.getWritingFile(), "rw"));
     LOGGER.info(
         "PipeConsensus-PipeName-{}: Writing file {} was created. Ready to write file pieces.",
@@ -1114,6 +1114,7 @@ public class PipeConsensusReceiver {
   private static class PipeConsensusTsFileWriter {
     private final ConsensusPipeName consensusPipeName;
     private final int index;
+    private String localWritingDirPath;
     // whether this buffer is used. this will be updated when first transfer tsFile piece or
     // when transfer seal.
     private boolean isUsed = false;
@@ -1128,8 +1129,8 @@ public class PipeConsensusReceiver {
     }
 
     public void setFilePath(String receiverBasePath) throws IOException {
-      String dirPath = receiverBasePath + File.separator + index;
-      File tsFileWriterDirectory = new File(dirPath);
+      this.localWritingDirPath = receiverBasePath + File.separator + index;
+      File tsFileWriterDirectory = new File(this.localWritingDirPath);
       // Remove exists dir
       if (tsFileWriterDirectory.exists()) {
         FileUtils.deleteDirectory(tsFileWriterDirectory);
@@ -1150,6 +1151,10 @@ public class PipeConsensusReceiver {
                 "PipeConsensus-PipeName-%s: Failed to create tsFileWriter-%d receiver file dir %s. May because authority or dir already exists etc.",
                 consensusPipeName, index, tsFileWriterDirectory.getPath()));
       }
+    }
+
+    public String getLocalWritingDirPath() {
+      return localWritingDirPath;
     }
 
     public File getWritingFile() {
