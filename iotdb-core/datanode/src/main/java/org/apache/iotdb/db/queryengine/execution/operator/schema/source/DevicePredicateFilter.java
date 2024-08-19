@@ -64,6 +64,10 @@ public class DevicePredicateFilter implements AutoCloseable {
     transformToTsBlockColumns(deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3);
 
     final TsBlock tsBlock = builder.build();
+    if (Objects.isNull(filterOutputTransformer)) {
+      return tsBlock;
+    }
+
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     filterLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
