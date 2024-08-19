@@ -97,6 +97,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -1559,7 +1560,8 @@ public class MTreeBelowSGMemoryImpl {
   public void updateTableDevice(
       final PartialPath pattern,
       final DeviceAttributeTransformer filter,
-      final BiFunction<Integer, String, String> attributeProvider)
+      final BiFunction<Integer, String, String> attributeProvider,
+      final BiConsumer<Integer, Object[]> attributeUpdater)
       throws MetadataException {
     try (final EntityUpdater<IMemMNode> updater =
         new EntityUpdater<IMemMNode>(
@@ -1578,7 +1580,10 @@ public class MTreeBelowSGMemoryImpl {
                     attributeProvider.apply(
                         ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
                         k));
-            final Map<String, Object> resultMap = filter.getTransformedObject(result);
+            attributeUpdater.accept(
+                ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                    .getAttributePointer(),
+                filter.getTransformedObject(result));
           }
         }) {
       updater.update();

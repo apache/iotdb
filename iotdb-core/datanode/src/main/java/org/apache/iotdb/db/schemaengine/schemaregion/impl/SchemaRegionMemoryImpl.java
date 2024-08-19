@@ -53,7 +53,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
@@ -1475,13 +1474,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             mockTypeProvider,
             metadata);
 
-    final Map<String, ColumnTransformer> attribute2ProjectOutputTransformerMap =
-        updateNode.getAssignments().stream()
-            .collect(
-                Collectors.toMap(
-                    assignment -> ((SymbolReference) assignment.getName()).getName(),
-                    assignment -> visitor.process(assignment, projectColumnTransformerContext)));
-
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     return new DeviceAttributeTransformer(
         filterLeafColumnTransformerList,
@@ -1490,7 +1482,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         tableName,
         columnHeaderList,
         projectLeafColumnTransformerList,
-        attribute2ProjectOutputTransformerMap);
+        updateNode.getAssignments().stream()
+            .map(assignment -> visitor.process(assignment, projectColumnTransformerContext))
+            .collect(Collectors.toList()));
   }
 
   @Override

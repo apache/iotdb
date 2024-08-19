@@ -26,15 +26,12 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class DeviceAttributeTransformer extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
-  private final Map<String, ColumnTransformer> attribute2ProjectOutputTransformerMap;
+  private final List<ColumnTransformer> projectOutputTransformers;
 
   public DeviceAttributeTransformer(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
@@ -43,7 +40,7 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
-      final Map<String, ColumnTransformer> attribute2ProjectOutputTransformerMap) {
+      final List<ColumnTransformer> projectOutputTransformers) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
@@ -51,32 +48,30 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
         tableName,
         columnHeaderList);
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
-    this.attribute2ProjectOutputTransformerMap = attribute2ProjectOutputTransformerMap;
+    this.projectOutputTransformers = projectOutputTransformers;
   }
 
-  public Map<String, Object> getTransformedObject(final IDeviceSchemaInfo deviceSchemaInfo) {
+  public Object[] getTransformedObject(final IDeviceSchemaInfo deviceSchemaInfo) {
     final TsBlock block = match(deviceSchemaInfo);
     if (Objects.isNull(block)) {
-      return Collections.emptyMap();
+      return new Object[0];
     }
 
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
 
-    return attribute2ProjectOutputTransformerMap.entrySet().stream()
-        .collect(
-            Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> {
-                  final ColumnTransformer transformer = entry.getValue();
-                  transformer.tryEvaluate();
-                  return transformer.getColumn().getObject(0);
-                }));
+    return projectOutputTransformers.stream()
+        .map(
+            columnTransformer -> {
+              columnTransformer.tryEvaluate();
+              return columnTransformer.getColumn().getObject(0);
+            })
+        .toArray(Object[]::new);
   }
 
   @Override
   public void close() throws Exception {
     super.close();
-    attribute2ProjectOutputTransformerMap.values().forEach(ColumnTransformer::close);
+    projectOutputTransformers.forEach(ColumnTransformer::close);
   }
 }
