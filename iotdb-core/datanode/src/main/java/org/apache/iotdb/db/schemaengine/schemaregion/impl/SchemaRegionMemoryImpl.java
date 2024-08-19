@@ -1493,7 +1493,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         columnHeaderList,
         projectLeafColumnTransformerList,
         updateNode.getAssignments().stream()
-            .map(assignment -> visitor.process(assignment, projectColumnTransformerContext))
+            .map(
+                assignment ->
+                    visitor.process(assignment.getValue(), projectColumnTransformerContext))
             .collect(Collectors.toList()));
   }
 
