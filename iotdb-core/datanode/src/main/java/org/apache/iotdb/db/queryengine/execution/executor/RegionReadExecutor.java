@@ -102,13 +102,13 @@ public class RegionReadExecutor {
       }
       return resp;
     } catch (ConsensusGroupNotExistException e) {
-      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
       resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
       resp.setNeedRetry(true);
       resp.setStatus(new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
       return resp;
     } catch (Throwable e) {
-      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
       resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
       Throwable t = e.getCause();
       if (t instanceof ReadException

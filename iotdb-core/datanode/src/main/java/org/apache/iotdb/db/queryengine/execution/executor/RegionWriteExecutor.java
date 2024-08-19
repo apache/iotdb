@@ -242,24 +242,27 @@ public class RegionWriteExecutor {
     private RegionExecutionResult executeDataInsert(
         InsertNode insertNode, WritePlanNodeExecutionContext context) {
       RegionExecutionResult response = new RegionExecutionResult();
-      context.getRegionWriteValidationRWLock().readLock().lock();
+
       try {
+        context.getRegionWriteValidationRWLock().readLock().lock();
+
         TSStatus status = fireTriggerAndInsert(context.getRegionId(), insertNode);
         response.setAccepted(TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode());
         response.setMessage(status.message);
         if (!response.isAccepted()) {
           response.setStatus(status);
         }
-        return response;
-      } catch (ConsensusException e) {
+      } catch (NullPointerException | ConsensusException e) {
         LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
         response.setAccepted(false);
         response.setMessage(e.toString());
         response.setStatus(RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString()));
-        return response;
       } finally {
-        context.getRegionWriteValidationRWLock().readLock().unlock();
+        if (context.getRegionWriteValidationRWLock() != null) {
+          context.getRegionWriteValidationRWLock().readLock().unlock();
+        }
       }
+      return response;
     }
 
     private TSStatus fireTriggerAndInsert(ConsensusGroupId groupId, InsertNode insertNode)
