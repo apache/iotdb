@@ -916,4 +916,27 @@ public class TestUtils {
       fail();
     }
   }
+
+  public static void restartDataNodes() {
+    EnvFactory.getEnv().shutdownAllDataNodes();
+    EnvFactory.getEnv().startAllDataNodes();
+    long waitStartMS = System.currentTimeMillis();
+    long maxWaitMS = 60_000L;
+    long retryIntervalMS = 1000;
+    while (true) {
+      try (Connection connection = EnvFactory.getEnv().getConnection()) {
+        break;
+      } catch (Exception e) {
+        try {
+          Thread.sleep(retryIntervalMS);
+        } catch (InterruptedException ex) {
+          break;
+        }
+      }
+      long waited = System.currentTimeMillis() - waitStartMS;
+      if (waited > maxWaitMS) {
+        fail("Timeout while waiting for datanodes restart");
+      }
+    }
+  }
 }

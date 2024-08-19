@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 
 public class ExpressionRewriter<C> {
 
@@ -132,6 +133,10 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteFunctionCall(
       FunctionCall node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteTrim(Trim node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 
