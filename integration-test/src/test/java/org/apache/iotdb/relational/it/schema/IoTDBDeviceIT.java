@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBDeviceQueryIT {
+public class IoTDBDeviceIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
@@ -54,10 +54,11 @@ public class IoTDBDeviceQueryIT {
   }
 
   @Test
-  public void testQueryDevice() throws SQLException {
+  public void testAccessDevice() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      // Prepare data
       statement.execute("create database test");
       statement.execute("use test");
       statement.execute(
@@ -165,6 +166,43 @@ public class IoTDBDeviceQueryIT {
           statement.executeQuery("count devices from test.table0"),
           "count(devices),",
           Collections.singleton("1,"));
+
+      // Test update
+      try {
+        statement.execute("update table2 set model = '1'");
+        fail("Update shall fail for non-exist table");
+      } catch (final Exception e) {
+        assertEquals("701: Table 'test.table2' does not exist.", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set device_id = '1'");
+        fail("Update shall fail for id");
+      } catch (final Exception e) {
+        assertEquals("701: Update can only specify attribute columns.", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set model = '1' and model = '2'");
+        fail("Update shall fail if an attribute occurs twice");
+      } catch (final Exception e) {
+        assertEquals("701: Update attribute shall specify a attribute only once.", e.getMessage());
+      }
+
+      try {
+        statement.execute("update table0 set col = '1'");
+        fail("Update shall fail for non-exist column");
+      } catch (final Exception e) {
+        assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
+      }
+
+      statement.execute(
+          "update table0 set model = 'B' where model like '_' and cast(region_id as int32) + cast(plant_id as int32) = 6");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from table0 where substring(region_id, 1, 1) in ('1', '2')"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,B,"));
     }
   }
 }
