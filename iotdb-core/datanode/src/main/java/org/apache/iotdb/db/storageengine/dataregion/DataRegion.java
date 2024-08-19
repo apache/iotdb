@@ -1415,7 +1415,7 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileProcessor,
           (k, v) -> {
             if (v == null) {
-              v = new InsertRowsNode(insertRowsNode.getPlanNodeId());
+              v = insertRowsNode.emptyClone();
               v.setSearchIndex(insertRowNode.getSearchIndex());
               v.setAligned(insertRowNode.isAligned());
               if (insertRowNode.isGeneratedByPipe()) {

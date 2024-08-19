@@ -185,4 +185,8 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
 
     return new ArrayList<>(splitMap.values());
   }
+
+  public RelationalInsertRowsNode emptyClone() {
+    return new RelationalInsertRowsNode(this.getPlanNodeId());
+  }
 }
