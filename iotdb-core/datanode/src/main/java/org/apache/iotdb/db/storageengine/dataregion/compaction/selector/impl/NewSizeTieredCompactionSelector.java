@@ -160,7 +160,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     long currentSelectedFileTotalSize = 0;
     long currentSkippedFileTotalSize = 0;
 
-    int lastAddedFileIndex = -1;
+    int lastSelectedFileIndex = -1;
+    int lastSkippedFileIndex = -1;
     int nextTaskStartIndex = -1;
 
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
@@ -175,16 +176,16 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       currentSelectedDevices.addAll(currentFile.getDevices());
       currentSelectedFileTotalSize += currentFile.resource.getTsFileSize();
       nextTaskStartIndex = idx + 1;
-      lastAddedFileIndex = idx;
+      lastSelectedFileIndex = idx;
     }
 
     private void addSkippedResource(TsFileResourceCandidate currentFile, int idx) {
       currentSkippedResources.add(currentFile.resource);
       currentSkippedFileTotalSize += currentFile.resource.getTsFileSize();
-      if (nextTaskStartIndex < lastAddedFileIndex) {
+      lastSkippedFileIndex = idx;
+      if (nextTaskStartIndex < lastSelectedFileIndex) {
         nextTaskStartIndex = idx;
       }
-      lastAddedFileIndex = idx;
     }
 
     private boolean currentFileSatisfied(TsFileResourceCandidate currentFile) {
@@ -237,7 +238,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
           selectedTaskList.add(task);
           if (canCompactAllFiles) {
-            nextTaskStartIndex = lastAddedFileIndex + 1;
+            nextTaskStartIndex = Math.max(lastSelectedFileIndex, lastSkippedFileIndex) + 1;
           }
         }
       } finally {
@@ -247,13 +248,14 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
     private int getNextTaskStartIndex() {
       try {
-        if (lastAddedFileIndex == -1) {
+        if (lastSelectedFileIndex == -1) {
           return Integer.MAX_VALUE;
         }
         return nextTaskStartIndex;
       } finally {
         nextTaskStartIndex = -1;
-        lastAddedFileIndex = -1;
+        lastSkippedFileIndex = -1;
+        lastSelectedFileIndex = -1;
       }
     }
 
