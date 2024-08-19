@@ -67,11 +67,11 @@ public class SubscriptionSession extends Session {
             .port(port)
             .username(username)
             .password(password)
+            .thriftMaxFrameSize(thriftMaxFrameSize)
             // disable auto fetch
             .enableAutoFetch(false)
             // disable redirection
-            .enableRedirection(false)
-            .thriftMaxFrameSize(thriftMaxFrameSize));
+            .enableRedirection(false));
   }
 
   @Override
