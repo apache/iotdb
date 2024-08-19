@@ -1,4 +1,4 @@
-name: Daily IT
+name: Daily UT
 
 on:
   schedule:
