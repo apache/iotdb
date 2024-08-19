@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -463,7 +464,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
       if (Objects.equals(
           PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE, loadTsFileStrategy)) {
-        return new TPipeTransferResp(asyncLoadTsFile(fileAbsolutePath));
+        return new TPipeTransferResp(asyncLoadTsFile(Collections.singletonList(fileAbsolutePath)));
       }
 
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
@@ -497,8 +498,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       deleteCurrentWritingFile();
     }
   }
-
-  protected abstract TSStatus asyncLoadTsFile(final String absolutePath) throws Exception;
 
   protected final TPipeTransferResp handleTransferFileSealV2(final PipeTransferFileSealReqV2 req) {
     final List<File> files =
@@ -547,6 +546,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
+      if (Objects.equals(
+          PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE, loadTsFileStrategy)) {
+        return new TPipeTransferResp(asyncLoadTsFile(fileAbsolutePaths));
+      }
+
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
@@ -576,6 +580,8 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
     }
   }
+
+  protected abstract TSStatus asyncLoadTsFile(final List<String> absolutePaths) throws Exception;
 
   private TPipeTransferResp checkNonFinalFileSeal(
       final File file, final String fileName, final long fileLength) throws IOException {

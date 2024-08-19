@@ -325,7 +325,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus asyncLoadTsFile(final String absolutePath) throws Exception {
+  protected TSStatus asyncLoadTsFile(final List<String> absolutePaths) throws Exception {
     // do nothing
     return null;
   }
