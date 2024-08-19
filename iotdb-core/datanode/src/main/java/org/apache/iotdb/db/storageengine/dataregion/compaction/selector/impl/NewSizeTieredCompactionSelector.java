@@ -113,35 +113,41 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   @SuppressWarnings("java:S135")
   private List<InnerSpaceCompactionTask> selectTasksByLevel(int level) throws IOException {
     InnerSpaceCompactionTaskSelection levelTaskSelection = new InnerSpaceCompactionTaskSelection();
-    for (TsFileResourceCandidate currentFile : tsFileResourceCandidateList) {
-      long innerCompactionCount = currentFile.resource.getTsFileID().getInnerCompactionCount();
+    int startSelectIndex = 0;
+    while (startSelectIndex < tsFileResourceCandidateList.size()) {
+      for (int i = startSelectIndex; i < tsFileResourceCandidateList.size(); i++) {
+        TsFileResourceCandidate currentFile = tsFileResourceCandidateList.get(i);
+        long innerCompactionCount = currentFile.resource.getTsFileID().getInnerCompactionCount();
 
-      if (levelTaskSelection.isCurrentTaskEmpty() && innerCompactionCount != level) {
-        continue;
-      }
+        if (levelTaskSelection.isCurrentTaskEmpty() && innerCompactionCount != level) {
+          continue;
+        }
 
-      if (!currentFile.isValidCandidate || Math.abs(innerCompactionCount - level) > maxLevelGap) {
-        levelTaskSelection.endCurrentTaskSelection();
-        continue;
-      }
+        if (!currentFile.isValidCandidate || Math.abs(innerCompactionCount - level) > maxLevelGap) {
+          levelTaskSelection.endCurrentTaskSelection();
+          break;
+        }
 
-      boolean skipCurrentFile = !levelTaskSelection.haveOverlappedDevices(currentFile);
-      if (skipCurrentFile) {
-        levelTaskSelection.addSkippedResource(currentFile);
-        continue;
-      }
+        boolean skipCurrentFile = !levelTaskSelection.haveOverlappedDevices(currentFile);
+        if (skipCurrentFile) {
+          levelTaskSelection.addSkippedResource(currentFile, i);
+          continue;
+        }
 
-      if (!levelTaskSelection.currentFileSatisfied(currentFile)) {
-        levelTaskSelection.endCurrentTaskSelection();
-        continue;
-      }
+        if (!levelTaskSelection.currentFileSatisfied(currentFile)) {
+          levelTaskSelection.endCurrentTaskSelection();
+          break;
+        }
 
-      if (levelTaskSelection.isTaskTooLarge(currentFile)) {
-        levelTaskSelection.endCurrentTaskSelection();
+        if (levelTaskSelection.isTaskTooLarge(currentFile)) {
+          levelTaskSelection.endCurrentTaskSelection();
+          break;
+        }
+        levelTaskSelection.addSelectedResource(currentFile, i);
       }
-      levelTaskSelection.addSelectedResource(currentFile);
+      levelTaskSelection.endCurrentTaskSelection();
+      startSelectIndex = levelTaskSelection.getNextTaskStartIndex();
     }
-    levelTaskSelection.endCurrentTaskSelection();
     return levelTaskSelection.getSelectedTaskList();
   }
 
@@ -154,21 +160,31 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     long currentSelectedFileTotalSize = 0;
     long currentSkippedFileTotalSize = 0;
 
+    int lastAddedFileIndex = -1;
+    int nextTaskStartIndex = -1;
+
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
         throws IOException {
       return currentSelectedDevices.isEmpty()
           || resourceCandidate.getDevices().stream().anyMatch(currentSelectedDevices::contains);
     }
 
-    private void addSelectedResource(TsFileResourceCandidate currentFile) throws IOException {
+    private void addSelectedResource(TsFileResourceCandidate currentFile, int idx)
+        throws IOException {
       currentSelectedResources.add(currentFile.resource);
       currentSelectedDevices.addAll(currentFile.getDevices());
       currentSelectedFileTotalSize += currentFile.resource.getTsFileSize();
+      nextTaskStartIndex = idx + 1;
+      lastAddedFileIndex = idx;
     }
 
-    private void addSkippedResource(TsFileResourceCandidate currentFile) {
+    private void addSkippedResource(TsFileResourceCandidate currentFile, int idx) {
       currentSkippedResources.add(currentFile.resource);
       currentSkippedFileTotalSize += currentFile.resource.getTsFileSize();
+      if (nextTaskStartIndex < lastAddedFileIndex) {
+        nextTaskStartIndex = idx;
+      }
+      lastAddedFileIndex = idx;
     }
 
     private boolean currentFileSatisfied(TsFileResourceCandidate currentFile) {
@@ -220,9 +236,24 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         if (isSatisfied) {
           InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
           selectedTaskList.add(task);
+          if (canCompactAllFiles) {
+            nextTaskStartIndex = lastAddedFileIndex + 1;
+          }
         }
       } finally {
         reset();
+      }
+    }
+
+    private int getNextTaskStartIndex() {
+      try {
+        if (lastAddedFileIndex == -1) {
+          return Integer.MAX_VALUE;
+        }
+        return nextTaskStartIndex;
+      } finally {
+        nextTaskStartIndex = -1;
+        lastAddedFileIndex = -1;
       }
     }
 
