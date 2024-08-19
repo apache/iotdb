@@ -291,6 +291,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    @Override
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      super.thriftMaxFrameSize(thriftMaxFrameSize);
+      return this;
+    }
+
     public Builder ackStrategy(final AckStrategy ackStrategy) {
       this.ackStrategy = ackStrategy;
       return this;

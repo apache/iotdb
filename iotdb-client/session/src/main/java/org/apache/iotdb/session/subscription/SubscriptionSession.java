@@ -46,11 +46,20 @@ import java.util.stream.Collectors;
 public class SubscriptionSession extends Session {
 
   public SubscriptionSession(final String host, final int port) {
-    this(host, port, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    this(
+        host,
+        port,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SubscriptionSession(
-      final String host, final int port, final String username, final String password) {
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize) {
     // TODO: more configs control
     super(
         new Session.Builder()
@@ -62,8 +71,7 @@ public class SubscriptionSession extends Session {
             .enableAutoFetch(false)
             // disable redirection
             .enableRedirection(false)
-            // TODO: config
-            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE));
+            .thriftMaxFrameSize(thriftMaxFrameSize));
   }
 
   @Override

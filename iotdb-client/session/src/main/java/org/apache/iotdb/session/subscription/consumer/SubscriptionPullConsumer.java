@@ -359,6 +359,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    @Override
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      super.thriftMaxFrameSize(thriftMaxFrameSize);
+      return this;
+    }
+
     public Builder autoCommit(final boolean autoCommit) {
       this.autoCommit = autoCommit;
       return this;

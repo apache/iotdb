@@ -80,8 +80,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       final String username,
       final String password,
       final String consumerId,
-      final String consumerGroupId) {
-    super(endPoint.ip, endPoint.port, username, password);
+      final String consumerGroupId,
+      final int thriftMaxFrameSize) {
+    super(endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize);
 
     this.endPoint = endPoint;
     this.consumerId = consumerId;

@@ -99,6 +99,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final String fileSaveDir;
   private final boolean fileSaveFsync;
 
+  private final int thriftMaxFrameSize;
+
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
 
@@ -152,6 +154,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     this.fileSaveDir = builder.fileSaveDir;
     this.fileSaveFsync = builder.fileSaveFsync;
+
+    this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
   }
 
   protected SubscriptionConsumer(final Builder builder, final Properties properties) {
@@ -193,7 +197,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 (Boolean)
                     properties.getOrDefault(
                         ConsumerConstant.FILE_SAVE_FSYNC_KEY,
-                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE)));
+                        ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE))
+            .thriftMaxFrameSize(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.THRIFT_MAX_FRAME_SIZE_KEY,
+                        SessionConfig.DEFAULT_MAX_FRAME_SIZE)));
   }
 
   /////////////////////////////// open & close ///////////////////////////////
@@ -330,7 +339,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     final SubscriptionProvider provider =
         new SubscriptionProvider(
-            endPoint, this.username, this.password, this.consumerId, this.consumerGroupId);
+            endPoint,
+            this.username,
+            this.password,
+            this.consumerId,
+            this.consumerGroupId,
+            this.thriftMaxFrameSize);
     try {
       provider.handshake();
     } catch (final Exception e) {
@@ -1095,6 +1109,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     protected String fileSaveDir = ConsumerConstant.FILE_SAVE_DIR_DEFAULT_VALUE;
     protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
+    protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+
     public Builder host(final String host) {
       this.host = host;
       return this;
@@ -1149,6 +1165,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     public Builder fileSaveFsync(final boolean fileSaveFsync) {
       this.fileSaveFsync = fileSaveFsync;
+      return this;
+    }
+
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
       return this;
     }
 
