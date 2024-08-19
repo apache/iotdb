@@ -131,6 +131,11 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         continue;
       }
 
+      if (!levelTaskSelection.currentFileSatisfied(currentFile)) {
+        levelTaskSelection.endCurrentTaskSelection();
+        continue;
+      }
+
       if (levelTaskSelection.isTaskTooLarge(currentFile)) {
         levelTaskSelection.endCurrentTaskSelection();
       }
@@ -164,6 +169,10 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     private void addSkippedResource(TsFileResourceCandidate currentFile) {
       currentSkippedResources.add(currentFile.resource);
       currentSkippedFileTotalSize += currentFile.resource.getTsFileSize();
+    }
+
+    private boolean currentFileSatisfied(TsFileResourceCandidate currentFile) {
+      return currentFile.resource.getTsFileSize() < singleFileSizeThreshold;
     }
 
     private boolean isCurrentTaskEmpty() {
