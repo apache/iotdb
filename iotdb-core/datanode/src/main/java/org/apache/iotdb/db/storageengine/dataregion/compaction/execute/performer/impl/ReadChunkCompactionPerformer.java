@@ -144,11 +144,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private void rollCompactionFileWriter() throws IOException {
     currentWriter.endFile();
+    endedFileSize += currentWriter.getPos();
     currentWriter.close();
     if (currentWriter.isEmptyTargetFile()) {
       targetResources.get(currentTargetFileIndex).forceMarkDeleted();
     }
-    endedFileSize += currentWriter.getPos();
     currentWriter = null;
 
     currentTargetFileIndex++;

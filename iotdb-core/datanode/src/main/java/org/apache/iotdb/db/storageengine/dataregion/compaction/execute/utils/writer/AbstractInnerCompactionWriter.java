@@ -83,11 +83,11 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   private void rollCompactionFileWriter() throws IOException {
     fileWriter.endFile();
+    endedFileSize += fileWriter.getPos();
     fileWriter.close();
     if (fileWriter.isEmptyTargetFile()) {
       targetResources.get(currentFileIndex).forceMarkDeleted();
     }
-    endedFileSize += fileWriter.getPos();
     fileWriter = null;
 
     currentFileIndex++;
