@@ -29,7 +29,9 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionExcepti
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
@@ -283,13 +285,35 @@ final class SubscriptionProvider extends SubscriptionSession {
     return unsubscribeResp.getTopics();
   }
 
-  List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeout)
-      throws SubscriptionException {
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames) throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL.getType(),
-            new PollPayload(topicNames, thriftMaxFrameSize),
-            timeout));
+            new PollPayload(topicNames),
+            0L,
+            thriftMaxFrameSize));
+  }
+
+  List<SubscriptionPollResponse> pollFile(
+      final SubscriptionCommitContext commitContext, final long writingOffset)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_FILE.getType(),
+            new PollFilePayload(commitContext, writingOffset),
+            0L,
+            thriftMaxFrameSize));
+  }
+
+  List<SubscriptionPollResponse> pollTablets(
+      final SubscriptionCommitContext commitContext, final int offset)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_TABLETS.getType(),
+            new PollTabletsPayload(commitContext, offset),
+            0L,
+            thriftMaxFrameSize));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

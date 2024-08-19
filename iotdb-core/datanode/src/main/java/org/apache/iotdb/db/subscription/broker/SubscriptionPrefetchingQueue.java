@@ -57,9 +57,6 @@ public abstract class SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPrefetchingQueue.class);
 
-  private static final int SERIALIZE_THRESHOLD =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchingQueueSerializeThreshold();
-
   private final String brokerId; // consumer group id
   private final String topicName;
 
@@ -279,10 +276,7 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   protected void enqueueEventToPrefetchingQueue(final SubscriptionEvent event) {
-    // TODO: consider more strategies, such as fairness...
-    if (prefetchingQueue.size() <= SERIALIZE_THRESHOLD) {
-      event.trySerializeCurrentResponse();
-    }
+    event.trySerializeCurrentResponse();
     prefetchingQueue.add(event);
   }
 

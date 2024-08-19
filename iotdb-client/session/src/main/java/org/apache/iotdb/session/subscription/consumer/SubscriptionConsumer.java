@@ -31,12 +31,8 @@ import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
-import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
@@ -775,7 +771,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(topicNames, 0L);
+        return provider.poll(topicNames);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -802,11 +798,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(
-            new SubscriptionPollRequest(
-                SubscriptionPollRequestType.POLL_FILE.getType(),
-                new PollFilePayload(commitContext, writingOffset),
-                0L));
+        return provider.pollFile(commitContext, writingOffset);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -833,11 +825,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(
-            new SubscriptionPollRequest(
-                SubscriptionPollRequestType.POLL_TABLETS.getType(),
-                new PollTabletsPayload(commitContext, offset),
-                0L));
+        return provider.pollTablets(commitContext, offset);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }

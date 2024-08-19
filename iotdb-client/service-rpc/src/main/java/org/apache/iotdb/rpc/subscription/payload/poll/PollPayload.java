@@ -33,33 +33,24 @@ public class PollPayload implements SubscriptionPollPayload {
   /** The set of topic names that need to be polled. */
   private transient Set<String> topicNames = new HashSet<>();
 
-  private transient long maxBytes;
-
   public PollPayload() {}
 
-  public PollPayload(final Set<String> topicNames, final long maxBytes) {
+  public PollPayload(final Set<String> topicNames) {
     this.topicNames = topicNames;
-    this.maxBytes = maxBytes;
   }
 
   public Set<String> getTopicNames() {
     return topicNames;
   }
 
-  public long getMaxBytes() {
-    return maxBytes;
-  }
-
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.writeObjectSet(topicNames, stream);
-    ReadWriteIOUtils.write(maxBytes, stream);
   }
 
   @Override
   public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     topicNames = ReadWriteIOUtils.readObjectSet(buffer);
-    maxBytes = ReadWriteIOUtils.readLong(buffer);
     return this;
   }
 
@@ -74,17 +65,16 @@ public class PollPayload implements SubscriptionPollPayload {
       return false;
     }
     final PollPayload that = (PollPayload) obj;
-    return Objects.equals(this.topicNames, that.topicNames)
-        && Objects.equals(this.maxBytes, that.maxBytes);
+    return Objects.equals(this.topicNames, that.topicNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicNames, maxBytes);
+    return Objects.hash(topicNames);
   }
 
   @Override
   public String toString() {
-    return "PollPayload{topicNames=" + topicNames + ", maxBytes=" + maxBytes + "}";
+    return "PollPayload{topicNames=" + topicNames + "}";
   }
 }

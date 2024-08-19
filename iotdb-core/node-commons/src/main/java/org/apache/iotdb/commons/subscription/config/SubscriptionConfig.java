@@ -79,14 +79,6 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
 
-  public int getSubscriptionPrefetchingQueueSerializeThreshold() {
-    return COMMON_CONFIG.getSubscriptionPrefetchingQueueSerializeThreshold();
-  }
-
-  public long getSubscriptionPollPayloadMaxSize() {
-    return COMMON_CONFIG.getSubscriptionPollPayloadMaxSize();
-  }
-
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -119,10 +111,6 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
-    LOGGER.info(
-        "SubscriptionPrefetchingQueueSerializeThreshold: {}",
-        getSubscriptionPrefetchingQueueSerializeThreshold());
-    LOGGER.info("SubscriptionPollPayloadMaxSize: {}", getSubscriptionPollPayloadMaxSize());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////
