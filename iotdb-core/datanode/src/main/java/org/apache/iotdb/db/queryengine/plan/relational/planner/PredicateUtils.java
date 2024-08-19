@@ -29,11 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 
 import org.apache.tsfile.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
@@ -304,54 +300,6 @@ public class PredicateUtils {
   //        new ConvertPredicateToFilterVisitor.Context(
   //            allMeasurements, isBuildPlanUseTemplate, typeProvider));
   //  }
-
-  /**
-   * Combine the given conjuncts into a single expression using "and".
-   *
-   * @param conjuncts given conjuncts
-   * @return the expression combined by the given conjuncts
-   */
-  public static Expression combineConjuncts(List<Expression> conjuncts) {
-    if (conjuncts.size() == 1) {
-      return conjuncts.get(0);
-    }
-    return constructRightDeepTreeWithAnd(conjuncts);
-  }
-
-  private static Expression constructRightDeepTreeWithAnd(List<Expression> conjuncts) {
-    // TODO: consider other structures of tree
-    if (conjuncts.size() == 2) {
-      return and(conjuncts.get(0), conjuncts.get(1));
-    } else {
-      return and(
-          conjuncts.get(0), constructRightDeepTreeWithAnd(conjuncts.subList(1, conjuncts.size())));
-    }
-  }
-
-  public static Expression removeDuplicateConjunct(Expression predicate) {
-    if (predicate == null) {
-      return null;
-    }
-    Set<Expression> conjuncts = new HashSet<>();
-    extractConjuncts(predicate, conjuncts);
-    return combineConjuncts(new ArrayList<>(conjuncts));
-  }
-
-  public static List<Expression> extractConjuncts(Expression predicate) {
-    Set<Expression> conjuncts = new HashSet<>();
-    extractConjuncts(predicate, conjuncts);
-    return new ArrayList<>(conjuncts);
-  }
-
-  private static void extractConjuncts(Expression predicate, Set<Expression> conjuncts) {
-    if (predicate instanceof LogicalExpression
-        && ((LogicalExpression) predicate).getOperator() == AND) {
-      extractConjuncts(((LogicalExpression) predicate).getTerms().get(0), conjuncts);
-      extractConjuncts(((LogicalExpression) predicate).getTerms().get(1), conjuncts);
-    } else {
-      conjuncts.add(predicate);
-    }
-  }
 
   /**
    * Extract the source symbol (full path for non-aligned path, device path for aligned path) from
