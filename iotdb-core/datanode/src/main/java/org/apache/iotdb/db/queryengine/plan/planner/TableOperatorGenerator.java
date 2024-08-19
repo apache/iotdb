@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -318,13 +319,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return tableScanOperator;
   }
 
-  private Map<Symbol, List<InputLocation>> makeLayout(List<PlanNode> children) {
-    Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
+  public static Map<Symbol, List<InputLocation>> makeLayout(final List<PlanNode> children) {
+    final Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
-    for (PlanNode childNode : children) {
+    for (final PlanNode childNode : children) {
 
       int valueColumnIndex = 0;
-      for (Symbol columnName : childNode.getOutputSymbols()) {
+      for (final Symbol columnName : childNode.getOutputSymbols()) {
         outputMappings
             .computeIfAbsent(columnName, key -> new ArrayList<>())
             .add(new InputLocation(tsBlockIndex, valueColumnIndex));
@@ -794,6 +795,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitTableDeviceQueryCount(
       final TableDeviceQueryCountNode node, final LocalExecutionPlanContext context) {
+    final String database = node.getDatabase();
+    final String tableName = node.getTableName();
+    final List<ColumnHeader> columnHeaderList = node.getColumnHeaderList();
+
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
     return new SchemaCountOperator<>(
@@ -805,10 +810,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
-            node.getDatabase(),
+            database,
             node.getTableName(),
             node.getIdDeterminedFilterList(),
-            node.getColumnHeaderList(),
+            columnHeaderList,
             Objects.nonNull(node.getIdFuzzyPredicate())
                 ? new DevicePredicateFilter(
                     filterLeafColumnTransformerList,
@@ -828,7 +833,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)))
+                                metadata)),
+                    database,
+                    tableName,
+                    columnHeaderList)
                 : null));
   }
 }

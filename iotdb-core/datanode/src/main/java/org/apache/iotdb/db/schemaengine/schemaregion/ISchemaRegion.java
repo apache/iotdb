@@ -324,7 +324,8 @@ public interface ISchemaRegion {
       final List<Object[]> attributeValueList)
       throws MetadataException;
 
-  void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode);
+  void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
+      throws MetadataException;
 
   void deleteTableDevice(String table) throws MetadataException;
 

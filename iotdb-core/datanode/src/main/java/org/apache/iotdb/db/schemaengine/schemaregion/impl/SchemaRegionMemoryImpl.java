@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -38,7 +39,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
+import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
+import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.DataNodeSchemaQuotaManager;
@@ -92,24 +103,31 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -1362,7 +1380,62 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTableDevice(String table) throws MetadataException {
+  public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
+      throws MetadataException {
+    final String database = updateNode.getDatabase();
+    final String tableName = updateNode.getTableName();
+    final List<ColumnHeader> columnHeaderList = updateNode.getColumnHeaderList();
+
+    final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    final DevicePredicateFilter filter =
+        Objects.nonNull(updateNode.getIdFuzzyPredicate())
+            ? new DevicePredicateFilter(
+                filterLeafColumnTransformerList,
+                new ColumnTransformerBuilder()
+                    .process(
+                        updateNode.getIdFuzzyPredicate(),
+                        new ColumnTransformerBuilder.Context(
+                            // Mock session info
+                            new SessionInfo(
+                                0,
+                                null,
+                                ZoneId.systemDefault(),
+                                IoTDBConstant.ClientVersion.V_1_0,
+                                updateNode.getDatabase(),
+                                IClientSession.SqlDialect.TABLE),
+                            filterLeafColumnTransformerList,
+                            makeLayout(Collections.singletonList(updateNode)),
+                            new HashMap<>(),
+                            ImmutableMap.of(),
+                            ImmutableList.of(),
+                            ImmutableList.of(),
+                            0,
+                            // Mock type provider
+                            new TypeProvider(
+                                columnHeaderList.stream()
+                                    .collect(
+                                        Collectors.toMap(
+                                            columnHeader ->
+                                                new Symbol(columnHeader.getColumnName()),
+                                            columnHeader ->
+                                                TypeFactory.getType(
+                                                    columnHeader.getColumnType())))),
+                            null)),
+                database,
+                tableName,
+                columnHeaderList)
+            : null;
+    final List<PartialPath> patterns =
+        TableDeviceQuerySource.getDevicePatternList(
+            database, tableName, updateNode.getIdDeterminedFilterList());
+    for (final PartialPath pattern : patterns) {
+      mtree.updateTableDevice(
+          pattern, filter, database, tableName, columnHeaderList, updateNode.getAssignments());
+    }
+  }
+
+  @Override
+  public void deleteTableDevice(String table) {
     mtree.deleteTableDevice(table);
   }
 

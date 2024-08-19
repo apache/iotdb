@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 
@@ -249,6 +250,13 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
   @Override
   public List<String> getOutputColumnNames() {
     return columnHeaderList.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return columnHeaderList.stream()
+        .map(columnHeader -> new Symbol(columnHeader.getColumnName()))
+        .collect(Collectors.toList());
   }
 
   @Override

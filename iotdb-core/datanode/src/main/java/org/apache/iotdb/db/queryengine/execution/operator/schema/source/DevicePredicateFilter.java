@@ -19,30 +19,51 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public class DevicePredicateFilter {
   private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
   private final ColumnTransformer filterOutputTransformer;
+  private final List<TSDataType> dataTypes;
+  private final String database;
+  private final String tableName;
+  final List<ColumnHeader> columnHeaderList;
 
   public DevicePredicateFilter(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
-      final ColumnTransformer filterOutputTransformer) {
+      final ColumnTransformer filterOutputTransformer,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList) {
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
     this.filterOutputTransformer = filterOutputTransformer;
+    this.database = database;
+    this.tableName = tableName;
+    this.columnHeaderList = columnHeaderList;
+    this.dataTypes =
+        columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
   // Single row tsBlock
-  public boolean match(final TsBlock input) {
+  public boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
+    final TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+    transformToTsBlockColumns(deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3);
+
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     filterLeafColumnTransformerList.forEach(
-        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(input));
+        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(builder.build()));
     filterOutputTransformer.tryEvaluate();
 
     final Column filterColumn = filterOutputTransformer.getColumn();
