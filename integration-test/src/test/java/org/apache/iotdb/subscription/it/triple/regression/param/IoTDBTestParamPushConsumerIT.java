@@ -162,8 +162,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     }
   }
 
-  @Test // TODO: After the data is deleted, when it is written again, the deleted data will also be
-  // synchronized
+  @Test
   public void testAlterPollTime() throws IoTDBConnectionException, StatementExecutionException {
     String sql = "select count(s_0) from " + device;
     long count = getCount(session_src, sql);
