@@ -152,6 +152,10 @@ public final class IrUtils {
     return combineConjuncts(Arrays.asList(expressions));
   }
 
+  public static Expression filterDeterministicConjuncts(Expression expression) {
+    return filterConjuncts(expression, DeterminismEvaluator::isDeterministic);
+  }
+
   public static Expression combineConjuncts(Collection<Expression> expressions) {
     requireNonNull(expressions, "expressions is null");
 

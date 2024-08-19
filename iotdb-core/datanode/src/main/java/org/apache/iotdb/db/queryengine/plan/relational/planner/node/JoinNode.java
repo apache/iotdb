@@ -33,6 +33,7 @@ public class JoinNode extends TwoChildProcessNode {
   private final List<Symbol> leftOutputSymbols;
   private final List<Symbol> rightOutputSymbols;
   private final boolean maySkipOutputDuplicates;
+  // some filter like 'a.xx_column < b.yy_column'
   private final Optional<Expression> filter;
   private final Optional<Symbol> leftHashSymbol;
   private final Optional<Symbol> rightHashSymbol;
