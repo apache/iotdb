@@ -551,5 +551,29 @@ public abstract class InsertBaseStatement extends Statement {
   public Optional<String> getDatabaseName() {
     return Optional.ofNullable(databaseName);
   }
+
   // endregion
+
+  @TableModel
+  public void measurementsToLowerCase() {
+    if (measurements == null) {
+      return;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        measurements[i] = measurements[i].toLowerCase();
+      }
+    }
+  }
+
+  @TableModel
+  public List<String> getAttributeColumnNameList() {
+    List<String> attributeColumnNameList = new ArrayList<>();
+    for (int i = 0; i < getColumnCategories().length; i++) {
+      if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+        attributeColumnNameList.add(getMeasurements()[i]);
+      }
+    }
+    return attributeColumnNameList;
+  }
 }

@@ -119,7 +119,7 @@ public class SortTest {
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
-    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, tableScanNode.getIdAndAttributeIndexMap().size());
     // TODO change scan order in logical plan
     assertEquals(ASC, tableScanNode.getScanOrder());
     assertEquals(0, tableScanNode.getPushDownLimit());
@@ -368,7 +368,7 @@ public class SortTest {
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
-    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(ASC, tableScanNode.getScanOrder());
     assertEquals(0, tableScanNode.getPushDownLimit());
     assertEquals(0, tableScanNode.getPushDownOffset());
@@ -448,7 +448,7 @@ public class SortTest {
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
-    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, tableScanNode.getIdAndAttributeIndexMap().size());
 
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
@@ -614,7 +614,6 @@ public class SortTest {
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
-    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
     assertTrue(
         tableScanNode.getPushDownLimit() == expectedPushDownLimit
             && tableScanNode.getPushDownOffset() == expectedPushDownOffset);
@@ -683,7 +682,7 @@ public class SortTest {
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
-    assertEquals(5, tableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, tableScanNode.getIdAndAttributeIndexMap().size());
     assertEquals(expectedPushDownLimit, tableScanNode.getPushDownLimit());
     assertEquals(expectedPushDownOffset, tableScanNode.getPushDownOffset());
     assertEquals(isPushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());

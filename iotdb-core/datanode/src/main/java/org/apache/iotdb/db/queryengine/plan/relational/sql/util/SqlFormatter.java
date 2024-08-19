@@ -508,16 +508,16 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitCreateTable(CreateTable node, Integer indent) {
+    protected Void visitCreateTable(final CreateTable node, final Integer indent) {
       builder.append("CREATE TABLE ");
       if (node.isIfNotExists()) {
         builder.append("IF NOT EXISTS ");
       }
-      String tableName = formatName(node.getName());
+      final String tableName = formatName(node.getName());
       builder.append(tableName).append(" (\n");
 
-      String elementIndent = indentString(indent + 1);
-      String columnList =
+      final String elementIndent = indentString(indent + 1);
+      final String columnList =
           node.getElements().stream()
               .map(
                   element -> {
@@ -602,14 +602,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitSetProperties(SetProperties node, Integer context) {
-      SetProperties.Type type = node.getType();
+    protected Void visitSetProperties(final SetProperties node, final Integer context) {
+      final SetProperties.Type type = node.getType();
       builder.append("ALTER ");
       switch (type) {
         case TABLE:
           builder.append("TABLE ");
         case MATERIALIZED_VIEW:
           builder.append("MATERIALIZED VIEW ");
+      }
+      if (node.ifExists()) {
+        builder.append("IF EXISTS ");
       }
 
       builder
@@ -654,10 +657,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitAddColumn(AddColumn node, Integer indent) {
+    protected Void visitAddColumn(final AddColumn node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
 
       builder.append(formatName(node.getTableName())).append(" ADD COLUMN ");
+      if (node.columnIfNotExists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+
       builder.append(formatColumnDefinition(node.getColumn()));
 
       return null;
