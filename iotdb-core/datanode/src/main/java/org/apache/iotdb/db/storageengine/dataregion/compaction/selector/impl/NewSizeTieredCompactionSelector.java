@@ -172,7 +172,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
 
     private boolean currentFileSatisfied(TsFileResourceCandidate currentFile) {
-      return currentFile.resource.getTsFileSize() < singleFileSizeThreshold;
+      return currentFile.resource.getTsFileSize() < totalFileSizeThreshold;
     }
 
     private boolean isCurrentTaskEmpty() {
@@ -188,9 +188,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
 
     private boolean isTaskTooLarge(TsFileResourceCandidate currentFile) {
-      if (!currentFile.isValidCandidate) {
-        return true;
-      }
       return (currentFile.resource.getTsFileSize() + currentSelectedFileTotalSize
               > totalFileSizeThreshold)
           || currentSelectedResources.size() + 1 > totalFileNumThreshold;
