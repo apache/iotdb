@@ -1388,24 +1388,25 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
       throws MetadataException {
-    final DeviceAttributeTransformer filter = constructDevicePredicateTransformer(updateNode);
-
-    final List<PartialPath> patterns =
-        TableDeviceQuerySource.getDevicePatternList(
-            updateNode.getDatabase(),
-            updateNode.getTableName(),
-            updateNode.getIdDeterminedFilterList());
-    final List<String> attributeNames =
-        updateNode.getAssignments().stream()
-            .map(assignment -> ((SymbolReference) assignment.getName()).getName())
-            .collect(Collectors.toList());
-    for (final PartialPath pattern : patterns) {
-      mtree.updateTableDevice(
-          pattern,
-          filter,
-          (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
-          (pointer, values) ->
-              deviceAttributeStore.alterAttribute(pointer, attributeNames, values));
+    try (final DeviceAttributeTransformer filter =
+        constructDevicePredicateTransformer(updateNode)) {
+      final List<PartialPath> patterns =
+          TableDeviceQuerySource.getDevicePatternList(
+              updateNode.getDatabase(),
+              updateNode.getTableName(),
+              updateNode.getIdDeterminedFilterList());
+      final List<String> attributeNames =
+          updateNode.getAssignments().stream()
+              .map(assignment -> ((SymbolReference) assignment.getName()).getName())
+              .collect(Collectors.toList());
+      for (final PartialPath pattern : patterns) {
+        mtree.updateTableDevice(
+            pattern,
+            filter,
+            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+            (pointer, values) ->
+                deviceAttributeStore.alterAttribute(pointer, attributeNames, values));
+      }
     }
   }
 

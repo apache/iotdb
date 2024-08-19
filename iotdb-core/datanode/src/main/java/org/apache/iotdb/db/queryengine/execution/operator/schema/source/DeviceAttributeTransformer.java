@@ -70,7 +70,7 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     super.close();
     projectOutputTransformers.forEach(ColumnTransformer::close);
   }

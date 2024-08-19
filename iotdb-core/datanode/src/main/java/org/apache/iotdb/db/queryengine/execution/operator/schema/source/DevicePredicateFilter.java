@@ -74,7 +74,7 @@ public class DevicePredicateFilter implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     if (Objects.nonNull(filterOutputTransformer)) {
       filterOutputTransformer.close();
     }
