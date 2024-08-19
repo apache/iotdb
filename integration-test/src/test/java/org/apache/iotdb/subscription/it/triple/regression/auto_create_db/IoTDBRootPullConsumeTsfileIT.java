@@ -65,6 +65,8 @@ public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionRegression
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
+    session_src.executeNonQueryStatement("create database root.auto_create_db");
+    session_src.executeNonQueryStatement("create database root.RootPullConsumeTsfile");
   }
 
   @Override

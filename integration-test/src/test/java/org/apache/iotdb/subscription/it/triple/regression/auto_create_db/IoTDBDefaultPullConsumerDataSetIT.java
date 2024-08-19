@@ -60,6 +60,10 @@ public class IoTDBDefaultPullConsumerDataSetIT extends AbstractSubscriptionRegre
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
+    for (int i = 0; i < deviceCount; i++) {
+      session_src.executeNonQueryStatement("create database " + databasePrefix + i);
+      session_dest.executeNonQueryStatement("create database " + databasePrefix + i);
+    }
   }
 
   @Override
