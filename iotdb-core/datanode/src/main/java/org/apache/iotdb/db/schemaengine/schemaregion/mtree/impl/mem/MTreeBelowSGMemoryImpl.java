@@ -43,7 +43,7 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeTransformer;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -77,7 +77,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -1559,7 +1558,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public void updateTableDevice(
       final PartialPath pattern,
-      final DevicePredicateFilter filter,
+      final DeviceAttributeTransformer filter,
       final BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
     try (final EntityUpdater<IMemMNode> updater =
@@ -1579,7 +1578,7 @@ public class MTreeBelowSGMemoryImpl {
                     attributeProvider.apply(
                         ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
                         k));
-            final TsBlock block = filter.match(result);
+            final Map<String, Object> resultMap = filter.getTransformedObject(result);
           }
         }) {
       updater.update();

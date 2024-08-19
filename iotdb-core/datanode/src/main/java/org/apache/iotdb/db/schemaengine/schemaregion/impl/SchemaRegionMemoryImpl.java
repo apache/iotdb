@@ -44,7 +44,6 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeTransformer;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -1389,7 +1388,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
       throws MetadataException {
-    final DevicePredicateFilter filter = constructDevicePredicateTransformer(updateNode);
+    final DeviceAttributeTransformer filter = constructDevicePredicateTransformer(updateNode);
 
     final List<PartialPath> patterns =
         TableDeviceQuerySource.getDevicePatternList(
