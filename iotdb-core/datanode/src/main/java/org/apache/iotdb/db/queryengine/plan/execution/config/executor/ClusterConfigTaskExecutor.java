@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
@@ -80,6 +81,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
@@ -98,11 +100,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -159,6 +164,8 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowAINodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowTablesTask;
@@ -200,6 +207,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -2689,6 +2698,90 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(e);
     }
 
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TCreateModelReq req =
+          new TCreateModelReq(createModelStatement.getModelName(), createModelStatement.getUri());
+      final TSStatus status = client.createModel(req);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
+        LOGGER.warn(
+            "[{}] Failed to create model {}. TSStatus is {}",
+            status,
+            createModelStatement.getModelName(),
+            status.message);
+        future.setException(new IoTDBException(status.message, status.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropModel(String modelName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TSStatus executionStatus = client.dropModel(new TDropModelReq(modelName));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
+        LOGGER.warn("[{}] Failed to drop model {}.", executionStatus, modelName);
+        future.setException(new IoTDBException(executionStatus.message, executionStatus.code));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showModels(String modelName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TShowModelReq req = new TShowModelReq();
+      if (modelName != null) {
+        req.setModelId(modelName);
+      }
+      TShowModelResp showModelResp = client.showModel(req);
+      if (showModelResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(
+            new IoTDBException(showModelResp.getStatus().message, showModelResp.getStatus().code));
+        return future;
+      }
+      // convert model info list and buildTsBlock
+      ShowModelsTask.buildTsBlock(showModelResp.getModelInfoList(), future);
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showAINodes(ShowAINodesStatement showAINodesStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowAINodesResp resp = new TShowAINodesResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      resp = client.showAINodes();
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
+        return future;
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    ShowAINodesTask.buildTsBlock(resp, future);
     return future;
   }
 

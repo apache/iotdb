@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -53,8 +54,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME;
@@ -132,6 +135,57 @@ public class QueryStatement extends AuthorityInformationStatement {
   // ASTVisitor,
   // we can skip the query
   private boolean isResultSetEmpty = false;
+
+  // [IoTDB-AI] used for model inference, which will be removed in the future
+  private String modelName;
+  private boolean hasModelInference = false;
+  private InferenceWindow inferenceWindow = null;
+  private Map<String, String> inferenceAttribute = null;
+
+  public void setModelName(String modelName) {
+    this.modelName = modelName;
+  }
+
+  public String getModelName() {
+    return modelName;
+  }
+
+  public void setHasModelInference(boolean hasModelInference) {
+    this.hasModelInference = hasModelInference;
+  }
+
+  public boolean hasModelInference() {
+    return hasModelInference;
+  }
+
+  public void setInferenceWindow(InferenceWindow inferenceWindow) {
+    this.inferenceWindow = inferenceWindow;
+  }
+
+  public boolean isSetInferenceWindow() {
+    return this.inferenceWindow != null;
+  }
+
+  public InferenceWindow getInferenceWindow() {
+    return inferenceWindow;
+  }
+
+  public void addInferenceAttribute(String key, String value) {
+    if (inferenceAttribute == null) {
+      inferenceAttribute = new HashMap<>();
+    }
+    inferenceAttribute.put(key, value);
+  }
+
+  public Map<String, String> getInferenceAttributes() {
+    return inferenceAttribute;
+  }
+
+  public boolean hasInferenceAttributes() {
+    return inferenceAttribute != null;
+  }
+
+  // [IoTDB-AI] END
 
   public QueryStatement() {
     this.statementType = StatementType.QUERY;
@@ -546,6 +600,16 @@ public class QueryStatement extends AuthorityInformationStatement {
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"}) // Suppress high Cognitive Complexity warning
   public void semanticCheck() {
+
+    if (hasModelInference) {
+      if (isAlignByDevice()) {
+        throw new SemanticException("Model inference does not support align by device now.");
+      }
+      if (isSelectInto()) {
+        throw new SemanticException("Model inference does not support select into now.");
+      }
+    }
+
     if (isAggregationQuery()) {
       if (groupByComponent != null && isGroupByLevel()) {
         throw new SemanticException("GROUP BY CLAUSES doesn't support GROUP BY LEVEL now.");

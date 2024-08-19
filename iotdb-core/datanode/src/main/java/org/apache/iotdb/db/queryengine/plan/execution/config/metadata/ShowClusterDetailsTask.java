@@ -41,6 +41,7 @@ import org.apache.tsfile.utils.Binary;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.NODE_TYPE_AI_NODE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 
@@ -82,6 +83,56 @@ public class ShowClusterDetailsTask implements IConfigTask {
         .getColumnBuilder(5)
         .writeBinary(
             new Binary(Integer.toString(configConsensusPort), TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(6).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(7).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(8).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(9).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    builder.getColumnBuilder(10).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
+    if (versionInfo == null || versionInfo.getVersion() == null) {
+      builder.getColumnBuilder(11).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(11)
+          .writeBinary(new Binary(versionInfo.getVersion(), TSFileConfig.STRING_CHARSET));
+    }
+    if (versionInfo == null || versionInfo.getBuildInfo() == null) {
+      builder.getColumnBuilder(12).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(12)
+          .writeBinary(new Binary(versionInfo.getBuildInfo(), TSFileConfig.STRING_CHARSET));
+    }
+    builder.declarePosition();
+  }
+
+  private static void buildAINodeTsBlock(
+      TsBlockBuilder builder,
+      int nodeId,
+      String nodeStatus,
+      String internalAddress,
+      int internalPort,
+      TNodeVersionInfo versionInfo) {
+
+    builder.getTimeColumnBuilder().writeLong(0L);
+    builder.getColumnBuilder(0).writeInt(nodeId);
+    builder
+        .getColumnBuilder(1)
+        .writeBinary(new Binary(NODE_TYPE_AI_NODE, TSFileConfig.STRING_CHARSET));
+    if (nodeStatus == null) {
+      builder.getColumnBuilder(2).appendNull();
+    } else {
+      builder.getColumnBuilder(2).writeBinary(new Binary(nodeStatus, TSFileConfig.STRING_CHARSET));
+    }
+
+    if (internalAddress == null) {
+      builder.getColumnBuilder(3).appendNull();
+    } else {
+      builder
+          .getColumnBuilder(3)
+          .writeBinary(new Binary(internalAddress, TSFileConfig.STRING_CHARSET));
+    }
+    builder.getColumnBuilder(4).writeInt(internalPort);
+    builder.getColumnBuilder(5).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
     builder.getColumnBuilder(6).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
     builder.getColumnBuilder(7).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
     builder.getColumnBuilder(8).writeBinary(new Binary("", TSFileConfig.STRING_CHARSET));
@@ -208,6 +259,17 @@ public class ShowClusterDetailsTask implements IConfigTask {
                     e.getSchemaRegionConsensusEndPoint().getPort(),
                     e.getDataRegionConsensusEndPoint().getPort(),
                     clusterNodeInfos.getNodeVersionInfo().get(e.getDataNodeId())));
+    clusterNodeInfos
+        .getAiNodeList()
+        .forEach(
+            e ->
+                buildAINodeTsBlock(
+                    builder,
+                    e.getAiNodeId(),
+                    clusterNodeInfos.getNodeStatus().get(e.getAiNodeId()),
+                    e.getInternalEndPoint().getIp(),
+                    e.getInternalEndPoint().getPort(),
+                    clusterNodeInfos.getNodeVersionInfo().get(e.getAiNodeId())));
 
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowClusterDetailsHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
