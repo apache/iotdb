@@ -158,6 +158,11 @@ public interface IStateMachine {
     default void notifyLeaderReady() {
       // do nothing default
     }
+
+    /** Notify the {@link IStateMachine} that this server is no longer the leader. */
+    default void notifyNotLeader() {
+      // do nothing default
+    }
   }
 
   /**
