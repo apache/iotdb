@@ -34,7 +34,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class TableDeviceFetchNode extends TableDeviceSourceNode {
 
@@ -73,11 +72,6 @@ public class TableDeviceFetchNode extends TableDeviceSourceNode {
         deviceIdList,
         columnHeaderList,
         schemaRegionReplicaSet);
-  }
-
-  @Override
-  public List<String> getOutputColumnNames() {
-    return columnHeaderList.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList());
   }
 
   @Override

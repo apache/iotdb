@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 
 public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   public R process(Expression node) {
@@ -71,6 +72,10 @@ public abstract class IrVisitor<R, C> extends AstVisitor<R, C> {
   }
 
   protected R visitFunctionCall(FunctionCall node, C context) {
+    return visitExpression(node, context);
+  }
+
+  protected R visitTrim(Trim node, C context) {
     return visitExpression(node, context);
   }
 

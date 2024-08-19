@@ -89,6 +89,7 @@ public enum TSStatusCode {
 
   TABLE_NOT_EXISTS(550),
   TABLE_ALREADY_EXISTS(551),
+  COLUMN_ALREADY_EXISTS(552),
   ONLY_LOGICAL_VIEW(560),
 
   // Storage Engine

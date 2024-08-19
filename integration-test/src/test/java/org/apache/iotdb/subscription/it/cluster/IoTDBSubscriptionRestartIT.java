@@ -39,6 +39,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -48,9 +49,11 @@ import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -65,7 +68,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
 
     EnvFactory.getEnv()
@@ -82,10 +85,10 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
 
   @Override
   @After
-  public void tearDown() {
-    super.tearDown();
-
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
+
+    super.tearDown();
   }
 
   @Test
@@ -104,9 +107,10 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
 
     // Subscription
-    final SubscriptionPullConsumer consumer;
+    final SubscriptionPullConsumer consumer1;
+    final SubscriptionPullConsumer consumer2;
     try {
-      consumer =
+      consumer1 =
           new SubscriptionPullConsumer.Builder()
               .host(host)
               .port(port)
@@ -116,8 +120,21 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
               .heartbeatIntervalMs(1000) // narrow heartbeat interval
               .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
               .buildPullConsumer();
-      consumer.open();
-      consumer.subscribe(topicName);
+      consumer1.open();
+      consumer1.subscribe(topicName);
+
+      consumer2 =
+          new SubscriptionPullConsumer.Builder()
+              .host(host)
+              .port(port)
+              .consumerId("c2")
+              .consumerGroupId("cg2")
+              .autoCommit(true)
+              .heartbeatIntervalMs(1000) // narrow heartbeat interval
+              .endpointsSyncIntervalMs(5000) // narrow endpoints sync interval
+              .buildPullConsumer();
+      consumer2.open();
+      consumer2.subscribe(topicName);
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -145,7 +162,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
           client.showSubscription(new TShowSubscriptionReq());
       Assert.assertEquals(RpcUtils.SUCCESS_STATUS.getCode(), showSubscriptionResp.status.getCode());
       Assert.assertNotNull(showSubscriptionResp.subscriptionInfoList);
-      Assert.assertEquals(1, showSubscriptionResp.subscriptionInfoList.size());
+      Assert.assertEquals(2, showSubscriptionResp.subscriptionInfoList.size());
     }
 
     // Insert some historical data
@@ -162,17 +179,18 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
 
     // Subscription again
-    final Map<Long, Long> timestamps = new HashMap<>();
+    final Map<Pair<Long, String>, Long> timestamps = new ConcurrentHashMap<>();
     final AtomicBoolean isClosed = new AtomicBoolean(false);
-    final Thread thread =
+    final List<Thread> threads = new ArrayList<>();
+    threads.add(
         new Thread(
             () -> {
-              try (final SubscriptionPullConsumer consumerRef = consumer) {
+              try (final SubscriptionPullConsumer consumerRef1 = consumer1) {
                 while (!isClosed.get()) {
                   LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
                   final List<SubscriptionMessage> messages;
                   try {
-                    messages = consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                    messages = consumerRef1.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   } catch (final Exception e) {
                     e.printStackTrace();
                     // Avoid failure
@@ -183,13 +201,13 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                         message.getSessionDataSetsHandler()) {
                       while (dataSet.hasNext()) {
                         final long timestamp = dataSet.next().getTimestamp();
-                        timestamps.put(timestamp, timestamp);
+                        timestamps.put(new Pair<>(timestamp, consumerRef1.toString()), timestamp);
                       }
                     }
                   }
                   // Auto commit
                 }
-                consumerRef.unsubscribe(topicName);
+                consumerRef1.unsubscribe(topicName);
               } catch (final Exception e) {
                 e.printStackTrace();
                 // Avoid failure
@@ -197,19 +215,57 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - %s", testName.getMethodName(), consumer));
-    thread.start();
+            String.format("%s - %s", testName.getDisplayName(), consumer1)));
+    threads.add(
+        new Thread(
+            () -> {
+              try (final SubscriptionPullConsumer consumerRef2 = consumer2) {
+                while (!isClosed.get()) {
+                  LockSupport.parkNanos(IoTDBSubscriptionITConstant.SLEEP_NS); // wait some time
+                  final List<SubscriptionMessage> messages;
+                  try {
+                    messages = consumerRef2.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
+                  } catch (final Exception e) {
+                    e.printStackTrace();
+                    // Avoid failure
+                    continue;
+                  }
+                  for (final SubscriptionMessage message : messages) {
+                    for (final SubscriptionSessionDataSet dataSet :
+                        message.getSessionDataSetsHandler()) {
+                      while (dataSet.hasNext()) {
+                        final long timestamp = dataSet.next().getTimestamp();
+                        timestamps.put(new Pair<>(timestamp, consumerRef2.toString()), timestamp);
+                      }
+                    }
+                  }
+                  // Auto commit
+                }
+                consumerRef2.unsubscribe(topicName);
+              } catch (final Exception e) {
+                e.printStackTrace();
+                // Avoid failure
+              } finally {
+                LOGGER.info("consumer exiting...");
+              }
+            },
+            String.format("%s - %s", testName.getDisplayName(), consumer2)));
+    for (final Thread thread : threads) {
+      thread.start();
+    }
 
     // Check timestamps size
     try {
       // Keep retrying if there are execution failures
-      AWAIT.untilAsserted(() -> Assert.assertEquals(100, timestamps.size()));
+      AWAIT.untilAsserted(() -> Assert.assertEquals(200, timestamps.size()));
     } catch (final Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
       isClosed.set(true);
-      thread.join();
+      for (final Thread thread : threads) {
+        thread.join();
+      }
     }
   }
 
@@ -310,7 +366,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - %s", testName.getMethodName(), consumer));
+            String.format("%s - %s", testName.getDisplayName(), consumer));
     thread.start();
 
     // Start DN 1 & DN 2
@@ -437,7 +493,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - %s", testName.getMethodName(), consumer));
+            String.format("%s - %s", testName.getDisplayName(), consumer));
     thread.start();
 
     // Shutdown leader CN
