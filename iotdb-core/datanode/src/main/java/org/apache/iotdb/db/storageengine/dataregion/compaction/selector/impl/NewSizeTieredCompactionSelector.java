@@ -156,12 +156,12 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
     List<TsFileResource> currentSelectedResources = new ArrayList<>();
     List<TsFileResource> currentSkippedResources = new ArrayList<>();
+    List<TsFileResource> lastContinuousSkippedResources = new ArrayList<>();
     HashSet<IDeviceID> currentSelectedDevices = new HashSet<>();
     long currentSelectedFileTotalSize = 0;
     long currentSkippedFileTotalSize = 0;
 
     int lastSelectedFileIndex = -1;
-    int lastSkippedFileIndex = -1;
     int nextTaskStartIndex = -1;
 
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
@@ -175,17 +175,18 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       currentSelectedResources.add(currentFile.resource);
       currentSelectedDevices.addAll(currentFile.getDevices());
       currentSelectedFileTotalSize += currentFile.resource.getTsFileSize();
-      nextTaskStartIndex = idx + 1;
       lastSelectedFileIndex = idx;
+      if (!lastContinuousSkippedResources.isEmpty()) {
+        currentSkippedResources.addAll(lastContinuousSkippedResources);
+        for (TsFileResource resource : lastContinuousSkippedResources) {
+          currentSkippedFileTotalSize += resource.getTsFileSize();
+        }
+        lastContinuousSkippedResources.clear();
+      }
     }
 
     private void addSkippedResource(TsFileResourceCandidate currentFile, int idx) {
-      currentSkippedResources.add(currentFile.resource);
-      currentSkippedFileTotalSize += currentFile.resource.getTsFileSize();
-      lastSkippedFileIndex = idx;
-      if (nextTaskStartIndex < lastSelectedFileIndex) {
-        nextTaskStartIndex = idx;
-      }
+      lastContinuousSkippedResources.add(currentFile.resource);
     }
 
     private boolean currentFileSatisfied(TsFileResourceCandidate currentFile) {
@@ -200,6 +201,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       currentSelectedResources = new ArrayList<>();
       currentSkippedResources = new ArrayList<>();
       currentSelectedDevices = new HashSet<>();
+      lastContinuousSkippedResources = new ArrayList<>();
       currentSelectedFileTotalSize = 0;
       currentSkippedFileTotalSize = 0;
     }
@@ -213,6 +215,18 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     private void endCurrentTaskSelection() {
       try {
         long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
+        nextTaskStartIndex = lastSelectedFileIndex + 1;
+        for (TsFileResource resource : lastContinuousSkippedResources) {
+          long currentFileSize = resource.getTsFileSize();
+          if (totalFileSize + currentFileSize > singleFileSizeThreshold) {
+            break;
+          }
+          currentSkippedResources.add(resource);
+          totalFileSize += currentFileSize;
+          currentSkippedFileTotalSize += currentFileSize;
+          nextTaskStartIndex++;
+        }
+
         int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
         if (totalFileNum < 2) {
           return;
@@ -237,9 +251,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         if (isSatisfied) {
           InnerSpaceCompactionTask task = createInnerSpaceCompactionTask();
           selectedTaskList.add(task);
-          if (canCompactAllFiles) {
-            nextTaskStartIndex = Math.max(lastSelectedFileIndex, lastSkippedFileIndex) + 1;
-          }
         }
       } finally {
         reset();
@@ -254,7 +265,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         return nextTaskStartIndex;
       } finally {
         nextTaskStartIndex = -1;
-        lastSkippedFileIndex = -1;
         lastSelectedFileIndex = -1;
       }
     }
