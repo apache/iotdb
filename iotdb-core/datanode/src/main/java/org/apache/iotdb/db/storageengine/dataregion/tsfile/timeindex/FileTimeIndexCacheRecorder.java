@@ -148,12 +148,12 @@ public class FileTimeIndexCacheRecorder {
               File logFile = SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
               try {
                 if (!partitionDir.exists() && !partitionDir.mkdirs()) {
-                  LOGGER.warn(
+                  LOGGER.debug(
                       "Partition directory has existed，filePath:{}",
                       partitionDir.getAbsolutePath());
                 }
                 if (!logFile.createNewFile()) {
-                  LOGGER.warn(
+                  LOGGER.debug(
                       "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
                 }
                 return new FileTimeIndexCacheWriter(logFile, false);

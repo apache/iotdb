@@ -121,11 +121,10 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new PartitionLastFlushTime(maxFlushedTime));
 
+    // todo
     long memIncr = Long.BYTES;
     flushTimeMapForPartition.updateLastFlushTime(null, maxFlushedTime);
-    ;
-    memCostForEachPartition.compute(
-        timePartitionId, (k1, v1) -> v1 == null ? memIncr : v1 + memIncr);
+    memCostForEachPartition.putIfAbsent(timePartitionId, memIncr);
   }
 
   @Override
