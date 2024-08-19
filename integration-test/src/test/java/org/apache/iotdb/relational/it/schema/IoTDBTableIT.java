@@ -21,8 +21,8 @@ package org.apache.iotdb.relational.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
@@ -44,7 +44,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBTableIT {
 
   @BeforeClass
@@ -88,8 +88,10 @@ public class IoTDBTableIT {
 
       // or use full qualified table name
       // test "TTL=INF"
+      // "MEASUREMENT" can be omitted when type is specified
+      // "STRING" can be omitted when id/attribute is specified
       statement.execute(
-          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL='INF')");
+          "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE) with (TTL='INF')");
 
       try {
         statement.execute(
@@ -123,6 +125,27 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
+      // Alter table properties
+      statement.execute("alter table test1.table1 set properties ttl=1");
+      ttls = new String[] {"1"};
+
+      // Alter non-exist table
+      try {
+        statement.execute("alter table test1.nonExist set properties ttl=1");
+      } catch (final SQLException e) {
+        assertEquals("550: Table 'test1.nonexist' does not exist", e.getMessage());
+      }
+
+      // If exists
+      statement.execute("alter table if exists test1.nonExist set properties ttl=1");
+
+      // Alter non-supported properties
+      try {
+        statement.execute("alter table test1.table1 set properties nonSupport=1");
+      } catch (final SQLException e) {
+        assertEquals("701: Table property 'nonsupport' is currently not allowed.", e.getMessage());
+      }
+
       // using SHOW tables from
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
         int cnt = 0;
@@ -140,6 +163,27 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
+      // Set back to default
+      statement.execute("alter table test1.table1 set properties ttl=DEFAULT");
+      ttls = new String[] {"INF"};
+
+      try (final ResultSet resultSet = statement.executeQuery("SHOW tables from test1")) {
+        int cnt = 0;
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showTablesColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showTablesColumnHeaders.size(); i++) {
+          assertEquals(
+              showTablesColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(tableNames[cnt], resultSet.getString(1));
+          assertEquals(ttls[cnt], resultSet.getString(2));
+          cnt++;
+        }
+        assertEquals(tableNames.length, cnt);
+      }
+
+      // Create if not exist
       statement.execute(
           "create table if not exists test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT)");
 
@@ -157,7 +201,26 @@ public class IoTDBTableIT {
             "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (UNKNOWN=3600000)");
         fail();
       } catch (final SQLException e) {
-        assertEquals("701: Table property unknown is currently not allowed.", e.getMessage());
+        assertEquals("701: Table property 'unknown' is currently not allowed.", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=null)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: TTL' value must be a LongLiteral, but now is NullLiteral, value: null",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create table table2(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=-1)");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: TTL' value must be equal to or greater than 0, but now is: -1", e.getMessage());
       }
 
       try {
@@ -199,7 +262,25 @@ public class IoTDBTableIT {
       }
 
       statement.execute(
-          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)");
+          "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT) with (TTL=6600000)");
+
+      statement.execute("alter table table2 add column speed DOUBLE MEASUREMENT");
+
+      try {
+        statement.execute("alter table table2 add column speed DOUBLE MEASUREMENT");
+      } catch (final SQLException e) {
+        assertEquals("552: Column 'speed' already exist", e.getMessage());
+      }
+
+      statement.execute("alter table table2 add column if not exists speed DOUBLE MEASUREMENT");
+
+      try {
+        statement.execute("alter table table3 add column speed DOUBLE MEASUREMENT");
+      } catch (final SQLException e) {
+        assertEquals("550: Table 'test2.table3' does not exist", e.getMessage());
+      }
+
+      statement.execute("alter table if exists table3 add column speed DOUBLE MEASUREMENT");
 
       tableNames = new String[] {"table2"};
       ttls = new String[] {"6600000"};

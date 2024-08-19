@@ -110,6 +110,9 @@ public abstract class WALEntry implements SerializedSize {
       case MEMORY_TABLE_SNAPSHOT:
         value = AbstractMemTable.Factory.create(stream);
         break;
+      case OLD_MEMORY_TABLE_SNAPSHOT:
+        value = AbstractMemTable.Factory.createFromOldMemTableSnapshot(stream);
+        break;
       case INSERT_ROW_NODE:
         value = (InsertRowNode) PlanNodeType.deserializeFromWAL(stream);
         break;

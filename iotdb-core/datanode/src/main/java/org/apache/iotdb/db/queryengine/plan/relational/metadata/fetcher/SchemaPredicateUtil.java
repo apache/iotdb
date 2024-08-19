@@ -55,12 +55,13 @@ public class SchemaPredicateUtil {
   static Pair<List<Expression>, List<Expression>> separateIdDeterminedPredicate(
       final List<Expression> expressionList,
       final TsTable table,
-      final MPPQueryContext queryContext) {
+      final MPPQueryContext queryContext,
+      final boolean isDirectDeviceQuery) {
     final List<Expression> idDeterminedList = new ArrayList<>();
     final List<Expression> idFuzzyList = new ArrayList<>();
     final CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
     final CheckSchemaPredicateVisitor.Context context =
-        new CheckSchemaPredicateVisitor.Context(table, queryContext);
+        new CheckSchemaPredicateVisitor.Context(table, queryContext, isDirectDeviceQuery);
     for (final Expression expression : expressionList) {
       if (expression == null) {
         continue;

@@ -2031,7 +2031,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+      if (!req.isWriteToTable) {
+        req.setMeasurements(
+            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+      }
 
       InsertRowStatement statement = StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it
@@ -2166,8 +2169,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      // check whether measurement is legal according to syntax convention
-      req.setMeasurements(PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+      // check whether measurement is legal according to syntax convention (only for tree model)
+      if (!req.isWriteToTable()) {
+        req.setMeasurements(
+            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(req.getMeasurements()));
+      }
+
       // Step 1: transfer from TSInsertTabletReq to Statement
       InsertTabletStatement statement = StatementGenerator.createStatement(req);
       // return success when this statement is empty because server doesn't need to execute it

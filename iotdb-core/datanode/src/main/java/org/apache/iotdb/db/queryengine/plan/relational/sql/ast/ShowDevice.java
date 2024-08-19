@@ -19,27 +19,42 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.List;
+import java.util.stream.Collectors;
 
-public class ShowDevice extends AbstractQueryDevice {
+public class ShowDevice extends AbstractQueryDeviceWithCache {
 
-  // For sql-input show device usage
   public ShowDevice(final QualifiedName name, final Expression rawExpression) {
     super(name, rawExpression);
   }
 
-  // For device fetch serving data query
-  public ShowDevice(
-      final String database,
-      final String tableName,
-      final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyFilterList,
-      final List<IDeviceID> partitionKeyList) {
-    super(database, tableName, idDeterminedPredicateList, idFuzzyFilterList, partitionKeyList);
+  public ShowDevice(final String database, final String tableName) {
+    super(database, tableName);
+  }
+
+  @Override
+  public DatasetHeader getDataSetHeader() {
+    return new DatasetHeader(columnHeaderList, true);
+  }
+
+  @Override
+  public TsBlock getTsBlock() {
+    final TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(
+            columnHeaderList.stream()
+                .map(ColumnHeader::getColumnType)
+                .collect(Collectors.toList()));
+    results.forEach(
+        result ->
+            TableDeviceQuerySource.transformToTsBlockColumns(
+                result, tsBlockBuilder, database, tableName, columnHeaderList, 1));
+    return tsBlockBuilder.build();
   }
 
   @Override

@@ -58,6 +58,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -566,7 +567,9 @@ public abstract class AbstractEnv implements BaseEnv {
         lastException = e;
       }
     }
-    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    if (!(lastException.getCause() instanceof TTransportException)) {
+      logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    }
     throw lastException;
   }
 
