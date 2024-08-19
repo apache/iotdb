@@ -1580,10 +1580,13 @@ public class MTreeBelowSGMemoryImpl {
                     attributeProvider.apply(
                         ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
                         k));
-            attributeUpdater.accept(
-                ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
-                    .getAttributePointer(),
-                filter.getTransformedObject(result));
+            final Object[] values = filter.getTransformedObject(result);
+            if (values.length > 0) {
+              attributeUpdater.accept(
+                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
+                      .getAttributePointer(),
+                  values);
+            }
           }
         }) {
       updater.update();

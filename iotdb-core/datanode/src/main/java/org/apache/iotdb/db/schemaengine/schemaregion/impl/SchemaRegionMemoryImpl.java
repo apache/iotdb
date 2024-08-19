@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
@@ -1394,9 +1395,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             updateNode.getDatabase(),
             updateNode.getTableName(),
             updateNode.getIdDeterminedFilterList());
+    final List<String> attributeNames =
+        updateNode.getAssignments().stream()
+            .map(assignment -> ((SymbolReference) assignment.getName()).getName())
+            .collect(Collectors.toList());
     for (final PartialPath pattern : patterns) {
       mtree.updateTableDevice(
-          pattern, filter, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+          pattern,
+          filter,
+          (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+          (pointer, values) ->
+              deviceAttributeStore.alterAttribute(pointer, attributeNames, values));
     }
   }
 
