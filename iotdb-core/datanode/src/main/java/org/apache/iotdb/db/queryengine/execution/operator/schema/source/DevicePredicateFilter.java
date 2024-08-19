@@ -25,56 +25,56 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumn
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public class DevicePredicateFilter implements AutoCloseable {
-  private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
-  private final ColumnTransformer filterOutputTransformer;
-  private final List<TSDataType> dataTypes;
-  private final String database;
-  private final String tableName;
-  final List<ColumnHeader> columnHeaderList;
+  protected final List<LeafColumnTransformer> filterLeafColumnTransformerList;
+  protected final ColumnTransformer filterOutputTransformer;
+  protected final List<ColumnTransformer> commonTransformerList;
+  protected final List<TSDataType> filterOutputDataTypes;
+  protected final String database;
+  protected final String tableName;
+  protected final List<ColumnHeader> columnHeaderList;
+
+  // Batch logic
+  private static final int DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+  protected final List<IDeviceSchemaInfo> deviceSchemaBatch =
+      new ArrayList<>(DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES);
+  protected final TsBlockBuilder filterTsBlockBuilder;
 
   public DevicePredicateFilter(
+      final List<TSDataType> filterOutputDataTypes,
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
+      final List<ColumnTransformer> commonTransformerList,
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList) {
+    this.filterOutputDataTypes = filterOutputDataTypes;
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
     this.filterOutputTransformer = filterOutputTransformer;
+    this.commonTransformerList = commonTransformerList;
     this.database = database;
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
-    this.dataTypes =
-        columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
   }
 
-  // Single row tsBlock
-  public TsBlock match(final IDeviceSchemaInfo deviceSchemaInfo) {
-    final TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
-    transformToTsBlockColumns(deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3);
-
-    final TsBlock tsBlock = builder.build();
-    if (Objects.isNull(filterOutputTransformer)) {
-      return tsBlock;
-    }
-
-    // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
-    filterLeafColumnTransformerList.forEach(
-        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
-    filterOutputTransformer.tryEvaluate();
-
-    final Column filterColumn = filterOutputTransformer.getColumn();
-    return (!filterColumn.isNull(0) && filterColumn.getBoolean(0)) ? tsBlock : null;
+  public boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
+    deviceSchemaBatch.add(deviceSchemaInfo);
+    return deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
   }
 
   @Override

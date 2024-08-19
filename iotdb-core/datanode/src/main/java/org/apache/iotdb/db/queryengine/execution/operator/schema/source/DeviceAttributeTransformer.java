@@ -24,26 +24,39 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public class DeviceAttributeTransformer extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformers;
 
+  @SuppressWarnings("squid:S107")
   public DeviceAttributeTransformer(
+      final List<TSDataType> filterOutputDataTypes,
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
+      final List<ColumnTransformer> commonTransformerList,
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
       final List<ColumnTransformer> projectOutputTransformers) {
     super(
+        filterOutputDataTypes,
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        commonTransformerList,
         database,
         tableName,
         columnHeaderList);
@@ -67,6 +80,41 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
               return columnTransformer.getColumn().getObject(0);
             })
         .toArray(Object[]::new);
+  }
+
+  public TsBlock getTsBlock() {
+    final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
+    deviceSchemaBatch.forEach(
+        deviceSchemaInfo ->
+            transformToTsBlockColumns(
+                deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
+
+    final TsBlock tsBlock = builder.build();
+    if (Objects.isNull(filterOutputTransformer)) {
+      return tsBlock;
+    }
+
+    // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
+    filterLeafColumnTransformerList.forEach(
+        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
+    filterOutputTransformer.tryEvaluate();
+    final Column filterColumn = filterOutputTransformer.getColumn();
+
+    // reuse this builder
+    filterTsBlockBuilder.reset();
+
+    final List<Column> resultColumns = Arrays.asList(tsBlock.getValueColumns());
+
+    // get result of calculated common sub expressions
+    commonTransformerList.forEach(
+        columnTransformer -> resultColumns.add(columnTransformer.getColumn()));
+    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
+
+    filterTsBlockBuilder.declarePositions(
+        constructFilteredTsBlock(
+            resultColumns, filterColumn, columnBuilders, deviceSchemaBatch.size()));
+
+    return filterTsBlockBuilder.build();
   }
 
   @Override

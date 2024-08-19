@@ -1451,7 +1451,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     mockSessionInfo,
                     filterLeafColumnTransformerList,
                     inputLocations,
-                    new HashMap<>(),
+                    filterExpressionColumnTransformerMap,
                     ImmutableMap.of(),
                     ImmutableList.of(),
                     ImmutableList.of(),
@@ -1486,8 +1486,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     return new DeviceAttributeTransformer(
+        filterOutputDataTypes,
         filterLeafColumnTransformerList,
         filterOutputTransformer,
+        commonTransformerList,
         database,
         tableName,
         columnHeaderList,

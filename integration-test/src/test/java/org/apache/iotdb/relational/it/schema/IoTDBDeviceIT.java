@@ -54,7 +54,7 @@ public class IoTDBDeviceIT {
   }
 
   @Test
-  public void testAccessDevice() throws SQLException {
+  public void testDevice() throws SQLException {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
