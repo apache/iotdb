@@ -38,7 +38,6 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -67,7 +66,7 @@ public class IoTDBDevicePatternTsfilePushConsumerIT extends AbstractSubscription
   private static final String database2 = "root.DevicePatternTsfilePushConsumer";
   private static final String device = database + ".d_0";
   private static final String topicName = "topic_DevicePatternTsfilePushConsumer";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   private static String pattern = device + ".**";
   private SubscriptionPushConsumer consumer;

@@ -31,7 +31,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -50,7 +49,7 @@ public class IoTDBRealTimePullConsumerDataSetIT extends AbstractSubscriptionRegr
   private String device = database + ".d_0";
   private String pattern = device + ".s_0";
   private String topicName = "topic_RealTimePullConsumerDataSet";
-  private List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private List<MeasurementSchema> schemaList = new ArrayList<>();
   private SubscriptionPullConsumer consumer;
 
   @Override

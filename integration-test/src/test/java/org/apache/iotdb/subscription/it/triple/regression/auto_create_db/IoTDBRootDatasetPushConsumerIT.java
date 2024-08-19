@@ -32,7 +32,6 @@ import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRe
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -61,7 +60,7 @@ public class IoTDBRootDatasetPushConsumerIT extends AbstractSubscriptionRegressi
   private static final String databasePrefix = "root.RootDatasetPushConsumer";
   private static final String database2 = "root.RootDatasetPushConsumer2.test";
   private static String topicName = "topicAutoCreateDB_RootDatasetPushConsumer";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   @Override
   @Before

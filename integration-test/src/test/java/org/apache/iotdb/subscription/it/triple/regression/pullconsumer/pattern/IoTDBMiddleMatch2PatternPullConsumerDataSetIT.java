@@ -31,7 +31,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +58,7 @@ public class IoTDBMiddleMatch2PatternPullConsumerDataSetIT
   private static final String device2 = database2 + ".sd_1";
   private static final String device3 = database2 + ".d_2";
   private static final String topicName = "topicMiddleMatch2PatternPullConsumerDataSet";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   private String pattern = "root.*.d_*.*";
   private static SubscriptionPullConsumer consumer;

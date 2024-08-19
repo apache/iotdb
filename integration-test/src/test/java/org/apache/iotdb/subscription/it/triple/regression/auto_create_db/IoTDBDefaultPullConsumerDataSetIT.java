@@ -29,7 +29,6 @@ import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRe
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -49,7 +48,7 @@ public class IoTDBDefaultPullConsumerDataSetIT extends AbstractSubscriptionRegre
   private int deviceCount = 3;
   private static final String databasePrefix = "root.DefaultPullConsumerDataSet";
   private static String topicName = "topic_autodb_DefaultPullConsumerDataSet";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   @Override
   @Before

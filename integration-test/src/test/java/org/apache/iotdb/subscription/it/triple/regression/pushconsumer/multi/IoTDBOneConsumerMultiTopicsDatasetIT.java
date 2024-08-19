@@ -34,7 +34,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -60,7 +59,7 @@ public class IoTDBOneConsumerMultiTopicsDatasetIT extends AbstractSubscriptionRe
   private static final String database2 = "root.OneConsumerMultiTopicsDataset";
   private static final String device = database + ".d_0";
   private static final String topicName = "topic_OneConsumerMultiTopicsDataset_1";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   private String pattern = database + ".**";
   private String pattern2 = database2 + ".**";

@@ -35,7 +35,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -59,7 +58,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 public class IoTDBPushConsumerPullConsumerWith1TopicShareProcessMixIT
     extends AbstractSubscriptionRegressionIT {
   private static String topicName = "`1-group.1-consumer.db`";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
   private final String database = "root.PushConsumerPullConsumerWith1TopicShareProcessMix";
   private final String device = database + ".d_0";
   private final String pattern = database + ".**";

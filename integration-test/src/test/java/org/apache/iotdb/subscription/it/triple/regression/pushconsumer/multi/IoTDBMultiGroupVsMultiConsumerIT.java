@@ -37,7 +37,6 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -74,7 +73,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
   private String databasePrefix = "root.test.pushMultiGroupVsMultiConsumer_";
   private int tsCount = 10;
   private int consumertCount = 10;
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   private List<SubscriptionPushConsumer> consumers = new ArrayList<>(consumertCount);
   private AtomicInteger rowCount00 = new AtomicInteger(0);

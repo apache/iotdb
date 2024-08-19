@@ -35,7 +35,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -65,7 +64,7 @@ public class IoTDBTimeLooseTsDatasetPushConsumerIT extends AbstractSubscriptionR
   private static final String device = database + ".d_0";
   private static final String device2 = database + ".d_1";
   private static final String topicName = "topic_TimeLooseTsDatasetPushConsumer";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
 
   private static String pattern = device + ".s_0";
   private static SubscriptionPushConsumer consumer;

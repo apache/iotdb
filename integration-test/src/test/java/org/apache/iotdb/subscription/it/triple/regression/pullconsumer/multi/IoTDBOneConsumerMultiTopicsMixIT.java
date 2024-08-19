@@ -38,7 +38,6 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -69,7 +68,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
   private String pattern2 = "root.**";
   private String topicName = "topic1_OneConsumerMultiTopicsMix";
   private String topicName2 = "topic2_OneConsumerMultiTopicsMix";
-  private List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private List<MeasurementSchema> schemaList = new ArrayList<>();
   private SubscriptionPullConsumer consumer;
 
   @Override
