@@ -250,7 +250,8 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
       LOGGER.error(message);
       return new TWaitReleaseAllRegionRelatedResourceRes(true);
     }
-    return new TWaitReleaseAllRegionRelatedResourceRes(impl.hasReleaseAllRegionRelatedResource());
+    return new TWaitReleaseAllRegionRelatedResourceRes(
+        impl.hasReleaseAllRegionRelatedResource(groupId));
   }
 
   @Override
