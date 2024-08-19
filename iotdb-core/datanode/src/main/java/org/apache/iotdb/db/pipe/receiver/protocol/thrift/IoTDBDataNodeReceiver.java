@@ -329,16 +329,21 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   @Override
-  protected TSStatus asyncLoadTsFile(final String fileAbsolutePath) throws Exception {
+  protected TSStatus asyncLoadTsFile(final List<String> absolutePaths) throws Exception {
     moveToLoadTsFileDirBySequence.set(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
-    final File sourceFile = new File(fileAbsolutePath);
-    // whether the move folder equal the listening folder
-    if (moveToLoadTsFileDirBySequence.get().equals(sourceFile.getParentFile().getAbsolutePath())) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+    for (String absolutePath : absolutePaths) {
+      final File sourceFile = new File(absolutePath);
 
-    moveFileWithMD5Check(sourceFile, new File(moveToLoadTsFileDirBySequence.get()));
+      // whether the move folder equal the listening folder
+      if (moveToLoadTsFileDirBySequence
+          .get()
+          .equals(sourceFile.getParentFile().getAbsolutePath())) {
+        continue;
+      }
+
+      moveFileWithMD5Check(sourceFile, new File(moveToLoadTsFileDirBySequence.get()));
+    }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
