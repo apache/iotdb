@@ -382,6 +382,7 @@ public class StatementAnalyzer {
               .collect(Collectors.toList()),
           queryContext);
 
+      final Set<SymbolReference> attributeNames = new HashSet<>();
       node.setAssignments(
           node.getAssignments().stream()
               .map(
@@ -394,9 +395,14 @@ public class StatementAnalyzer {
                                 .getColumnSchema(((SymbolReference) parsedColumn).getName())
                                 .getColumnCategory()
                             != TsTableColumnCategory.ATTRIBUTE) {
-                      throw new SemanticException(
-                          "Update attribute shall specify attribute column.");
+                      throw new SemanticException("Update can only specify attribute columns.");
                     }
+                    if (attributeNames.contains(parsedColumn)) {
+                      throw new SemanticException(
+                          "Update attribute shall specify a attribute only once.");
+                    }
+                    attributeNames.add((SymbolReference) parsedColumn);
+
                     return new UpdateAssignment(
                         parsedColumn,
                         analyzeAndRewriteExpression(
@@ -2595,7 +2601,6 @@ public class StatementAnalyzer {
         final Optional<Scope> context,
         final boolean shallCreateTranslationMap) {
       node.parseTable(sessionContext);
-      node.setColumnHeaderList();
 
       final String database = node.getDatabase();
       final String tableName = node.getTableName();
@@ -2603,6 +2608,13 @@ public class StatementAnalyzer {
       if (Objects.isNull(database)) {
         throw new SemanticException("The database must be set before show devices.");
       }
+
+      if (Objects.isNull(
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName()))) {
+        throw new SemanticException(
+            String.format("Table '%s.%s' does not exist.", database, tableName));
+      }
+      node.setColumnHeaderList();
 
       TranslationMap translationMap = null;
       if (shallCreateTranslationMap) {
