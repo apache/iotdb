@@ -562,8 +562,7 @@ class RatisConsensus implements IConsensus {
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
-    // pre-conditions: group exists and myself in this group
-    if (group == null || !group.getPeers().contains(myself)) {
+    if (group == null) {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
