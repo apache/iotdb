@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
+import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
@@ -79,6 +80,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -1209,7 +1211,7 @@ public class MTreeBelowSGMemoryImpl {
             final IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    deviceNode.getFullPath(),
+                    null,
                     deviceNode.isAlignedNullable(),
                     deviceNode.getSchemaTemplateId(),
                     deviceNode.getPartialPath().getNodes());
@@ -1564,14 +1566,29 @@ public class MTreeBelowSGMemoryImpl {
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
-      final List<UpdateAssignment> assignments)
+      final List<UpdateAssignment> assignments,
+      final BiFunction<Integer, String, String> attributeProvider,
+      final ColumnTransformerBuilder.Context context)
       throws MetadataException {
     try (final EntityUpdater<IMemMNode> updater =
         new EntityUpdater<IMemMNode>(
             rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
           @Override
-          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {}
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            final ShowDevicesResult result =
+                new ShowDevicesResult(
+                    null,
+                    node.isAlignedNullable(),
+                    node.getSchemaTemplateId(),
+                    node.getPartialPath().getNodes());
+            result.setAttributeProvider(
+                k ->
+                    attributeProvider.apply(
+                        ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
+                        k));
+            final TsBlock block = filter.match(result);
+          }
         }) {
       updater.update();
     }

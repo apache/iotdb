@@ -43,12 +43,19 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateTransformer;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
@@ -1385,53 +1392,146 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
     final List<ColumnHeader> columnHeaderList = updateNode.getColumnHeaderList();
+    final ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
+    final SessionInfo mockSessionInfo =
+        new SessionInfo(
+            0,
+            null,
+            ZoneId.systemDefault(),
+            IoTDBConstant.ClientVersion.V_1_0,
+            updateNode.getDatabase(),
+            IClientSession.SqlDialect.TABLE);
+    final TypeProvider mockTypeProvider =
+        new TypeProvider(
+            columnHeaderList.stream()
+                .collect(
+                    Collectors.toMap(
+                        columnHeader -> new Symbol(columnHeader.getColumnName()),
+                        columnHeader -> TypeFactory.getType(columnHeader.getColumnType()))));
+    final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
+    // Construct filter
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    final ColumnTransformerBuilder.Context filterContext =
+        new ColumnTransformerBuilder.Context(
+            mockSessionInfo,
+            filterLeafColumnTransformerList,
+            makeLayout(Collections.singletonList(updateNode)),
+            new HashMap<>(),
+            ImmutableMap.of(),
+            ImmutableList.of(),
+            ImmutableList.of(),
+            0,
+            // Mock type provider
+            mockTypeProvider,
+            metadata);
+
     final DevicePredicateFilter filter =
         Objects.nonNull(updateNode.getIdFuzzyPredicate())
             ? new DevicePredicateFilter(
                 filterLeafColumnTransformerList,
-                new ColumnTransformerBuilder()
-                    .process(
-                        updateNode.getIdFuzzyPredicate(),
-                        new ColumnTransformerBuilder.Context(
-                            // Mock session info
-                            new SessionInfo(
-                                0,
-                                null,
-                                ZoneId.systemDefault(),
-                                IoTDBConstant.ClientVersion.V_1_0,
-                                updateNode.getDatabase(),
-                                IClientSession.SqlDialect.TABLE),
-                            filterLeafColumnTransformerList,
-                            makeLayout(Collections.singletonList(updateNode)),
-                            new HashMap<>(),
-                            ImmutableMap.of(),
-                            ImmutableList.of(),
-                            ImmutableList.of(),
-                            0,
-                            // Mock type provider
-                            new TypeProvider(
-                                columnHeaderList.stream()
-                                    .collect(
-                                        Collectors.toMap(
-                                            columnHeader ->
-                                                new Symbol(columnHeader.getColumnName()),
-                                            columnHeader ->
-                                                TypeFactory.getType(
-                                                    columnHeader.getColumnType())))),
-                            null)),
+                visitor.process(updateNode.getIdFuzzyPredicate(), filterContext),
                 database,
                 tableName,
                 columnHeaderList)
             : null;
+
     final List<PartialPath> patterns =
         TableDeviceQuerySource.getDevicePatternList(
             database, tableName, updateNode.getIdDeterminedFilterList());
     for (final PartialPath pattern : patterns) {
       mtree.updateTableDevice(
-          pattern, filter, database, tableName, columnHeaderList, updateNode.getAssignments());
+          pattern,
+          filter,
+          database,
+          tableName,
+          columnHeaderList,
+          updateNode.getAssignments(),
+          (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+          filterContext);
     }
+  }
+
+  private DevicePredicateTransformer constructDevicePredicateTransformer(
+      final Expression predicate,
+      final Expression[] projectExpressions,
+      final List<TSDataType> inputDataTypes,
+      final Map<Symbol, List<InputLocation>> inputLocations,
+      final SessionInfo sessionInfo,
+      final TypeProvider typeProvider,
+      final Metadata metadata) {
+
+    final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
+
+    // records LeafColumnTransformer of filter
+    List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+
+    // records subexpression -> ColumnTransformer for filter
+    Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
+
+    ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
+
+    ColumnTransformer filterOutputTransformer =
+        predicate
+            .map(
+                p -> {
+                  ColumnTransformerBuilder.Context filterColumnTransformerContext =
+                      new ColumnTransformerBuilder.Context(
+                          sessionInfo,
+                          filterLeafColumnTransformerList,
+                          inputLocations,
+                          filterExpressionColumnTransformerMap,
+                          ImmutableMap.of(),
+                          ImmutableList.of(),
+                          ImmutableList.of(),
+                          0,
+                          typeProvider,
+                          metadata);
+
+                  return visitor.process(p, filterColumnTransformerContext);
+                })
+            .orElse(null);
+
+    // records LeafColumnTransformer of project expressions
+    List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
+
+    List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
+
+    Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
+
+    // records common ColumnTransformer between filter and project expressions
+    List<ColumnTransformer> commonTransformerList = new ArrayList<>();
+
+    ColumnTransformerBuilder.Context projectColumnTransformerContext =
+        new ColumnTransformerBuilder.Context(
+            sessionInfo,
+            projectLeafColumnTransformerList,
+            inputLocations,
+            projectExpressionColumnTransformerMap,
+            filterExpressionColumnTransformerMap,
+            commonTransformerList,
+            filterOutputDataTypes,
+            inputLocations.size(),
+            typeProvider,
+            metadata);
+
+    for (Expression expression : projectExpressions) {
+      projectOutputTransformerList.add(
+          visitor.process(expression, projectColumnTransformerContext));
+    }
+
+    // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
+    return new FilterAndProjectOperator(
+        operatorContext,
+        inputOperator,
+        filterOutputDataTypes,
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        commonTransformerList,
+        projectLeafColumnTransformerList,
+        projectOutputTransformerList,
+        false,
+        predicate.isPresent());
   }
 
   @Override

@@ -26,14 +26,16 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
-public class DevicePredicateFilter {
+public class DevicePredicateFilter implements AutoCloseable {
   private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
   private final ColumnTransformer filterOutputTransformer;
   private final List<TSDataType> dataTypes;
@@ -57,16 +59,24 @@ public class DevicePredicateFilter {
   }
 
   // Single row tsBlock
-  public boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
+  public TsBlock match(final IDeviceSchemaInfo deviceSchemaInfo) {
     final TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
     transformToTsBlockColumns(deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3);
 
+    final TsBlock tsBlock = builder.build();
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     filterLeafColumnTransformerList.forEach(
-        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(builder.build()));
+        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
     filterOutputTransformer.tryEvaluate();
 
     final Column filterColumn = filterOutputTransformer.getColumn();
-    return !filterColumn.isNull(0) && filterColumn.getBoolean(0);
+    return (!filterColumn.isNull(0) && filterColumn.getBoolean(0)) ? tsBlock : null;
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (Objects.nonNull(filterOutputTransformer)) {
+      filterOutputTransformer.close();
+    }
   }
 }
