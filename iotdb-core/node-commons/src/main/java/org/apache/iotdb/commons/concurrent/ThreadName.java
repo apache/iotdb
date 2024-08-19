@@ -172,6 +172,7 @@ public enum ThreadName {
   // -------------------------- Other --------------------------
   ACTIVE_LOAD_TSFILE_LOADER("Active-Load-TsFile-Loader"),
   ACTIVE_LOAD_DIR_SCANNER("Active-Load-Dir-Scanner"),
+  ACTIVE_LOAD_DIRS_COUNT("Active-Load-Dirs-Count"),
   SETTLE("Settle"),
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),

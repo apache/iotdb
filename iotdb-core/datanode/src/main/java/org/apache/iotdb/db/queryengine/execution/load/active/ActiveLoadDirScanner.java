@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.metric.load.ActiveLoadingFilesMetricsSet;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -65,6 +66,7 @@ public class ActiveLoadDirScanner {
 
   public ActiveLoadDirScanner(final ActiveLoadTsFileLoader activeLoadTsFileLoader) {
     this.activeLoadTsFileLoader = activeLoadTsFileLoader;
+    ActiveLoadListeningDirsCountExecutor.getInstance().register(this::countActiveListeningDirsFile);
   }
 
   public synchronized void start() {
@@ -126,6 +128,19 @@ public class ActiveLoadDirScanner {
     } catch (final Exception e) {
       return false;
     }
+  }
+
+  private void countActiveListeningDirsFile() {
+    final long[] fileCount = {0};
+    listeningDirs.forEach(
+        dirs -> {
+          try {
+            fileCount[0] += FileUtils.streamFiles(new File(dirs), true, (String[]) null).count();
+          } catch (IOException e) {
+            LOGGER.warn("failed to calculate all unprocess file num", e);
+          }
+        });
+    ActiveLoadingFilesMetricsSet.getInstance().recordPendingUnprocessFileCounter(fileCount[0]);
   }
 
   private void hotReloadActiveLoadDirs() {

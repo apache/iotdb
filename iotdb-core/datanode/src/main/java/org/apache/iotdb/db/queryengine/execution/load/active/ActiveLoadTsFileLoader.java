@@ -27,6 +27,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.metric.load.ActiveLoadingFilesMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -66,6 +67,10 @@ public class ActiveLoadTsFileLoader {
   private final AtomicReference<WrappedThreadPoolExecutor> activeLoadExecutor =
       new AtomicReference<>();
   private final AtomicReference<String> failDir = new AtomicReference<>();
+
+  public ActiveLoadTsFileLoader() {
+    ActiveLoadListeningDirsCountExecutor.getInstance().register(this::countFailedFile);
+  }
 
   public int getCurrentAllowedPendingSize() {
     return MAX_PENDING_SIZE - pendingQueue.size();
@@ -241,6 +246,22 @@ public class ActiveLoadTsFileLoader {
     removeToFailDir(filePath);
     removeToFailDir(filePath + ".resource");
     removeToFailDir(filePath + ".mods");
+  }
+
+  // Metrics
+  private void countFailedFile() {
+    try {
+      final long fileCount =
+          FileUtils.streamFiles(
+                  new File(
+                      IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir()),
+                  true,
+                  (String[]) null)
+              .count();
+      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount);
+    } catch (final IOException e) {
+      LOGGER.warn("failed to calculate fail file num", e);
+    }
   }
 
   private void removeToFailDir(final String filePath) {
