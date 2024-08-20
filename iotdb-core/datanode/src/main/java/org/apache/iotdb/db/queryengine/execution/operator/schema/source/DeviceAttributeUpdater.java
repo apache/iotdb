@@ -32,6 +32,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -104,11 +105,12 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
         columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
 
-    filterTsBlockBuilder.declarePositions(
+    final int rowCount =
         constructFilteredTsBlock(
-            filterResultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size()));
+            filterResultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size());
+    filterTsBlockBuilder.declarePositions(rowCount);
 
-    final TsBlock block = filterTsBlockBuilder.build();
+    final TsBlock block = filterTsBlockBuilder.build(new TimeColumn(rowCount, new long[rowCount]));
 
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
