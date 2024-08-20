@@ -33,6 +33,7 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
@@ -42,6 +43,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final ColumnTransformer filterOutputTransformer;
   protected final List<ColumnTransformer> commonTransformerList;
   protected final List<TSDataType> filterOutputDataTypes;
+  protected final List<TSDataType> inputDataTypes;
   protected final String database;
   protected final String tableName;
   protected final List<ColumnHeader> columnHeaderList;
@@ -71,7 +73,9 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     this.database = database;
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
-    this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
+    this.inputDataTypes =
+        columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+    this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
   }
 
   public boolean addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
@@ -94,7 +98,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     if (deviceSchemaBatch.isEmpty()) {
       return;
     }
-    final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
+    final TsBlockBuilder builder = new TsBlockBuilder(inputDataTypes);
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
             transformToTsBlockColumns(

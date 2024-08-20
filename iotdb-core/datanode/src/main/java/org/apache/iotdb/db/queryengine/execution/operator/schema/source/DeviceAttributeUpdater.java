@@ -31,6 +31,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -93,7 +94,8 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
   private void update() {
     filterTsBlockBuilder.reset();
 
-    final List<Column> filterResultColumns = Arrays.asList(curBlock.getValueColumns());
+    final List<Column> filterResultColumns =
+        new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
     // get result of calculated common sub expressions
     commonTransformerList.forEach(
