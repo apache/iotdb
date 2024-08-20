@@ -323,8 +323,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     } else {
       filesView.sourceFilesInLog = filesView.sourceFilesInCompactionPerformer;
     }
-    // To avoid increase the inner compaction cnt for skipped files, we increase the cross
-    // compaction cnt
+    // To avoid increasing the inner compaction cnt for skipped files, we increase the cross
+    // compaction cnt. These skipped files will not be actually compacted, and increasing the level
+    // may affect subsequent compaction task selections. The number of cross space compaction has
+    // no practical effect, so we choose to modify the number of cross space compaction to avoid the
+    // problem of the same file name.
     calculateRenamedTargetFiles(needToAdjustSourceFilesPosition);
 
     if (needToAdjustSourceFilesPosition) {

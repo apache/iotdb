@@ -111,8 +111,10 @@ public class DataRegionTest {
     CompactionTaskManager.getInstance().start();
     seqSelector = config.getInnerSequenceCompactionSelector();
     unseqSelector = config.getInnerUnsequenceCompactionSelector();
-    config.setInnerSequenceCompactionSelector(InnerSequenceCompactionSelector.SIZE_TIERED);
-    config.setInnerUnsequenceCompactionSelector(InnerUnsequenceCompactionSelector.SIZE_TIERED);
+    config.setInnerSequenceCompactionSelector(
+        InnerSequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
+    config.setInnerUnsequenceCompactionSelector(
+        InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
   }
 
   @After

@@ -43,7 +43,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
   private List<TsFileResourceCandidate> tsFileResourceCandidateList = new ArrayList<>();
   private final long totalFileSizeThreshold;
-  private final long totalFileNumThreshold;
+  private final long totalFileNumUpperBound;
   private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
@@ -58,7 +58,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
     super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager);
-    double availableDisk =
+    double availableDiskSpaceInByte =
         MetricService.getInstance()
             .getAutoGauge(
                 SystemMetric.SYS_DISK_AVAILABLE_SPACE.toString(),
@@ -66,14 +66,15 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
                 Tag.NAME.toString(),
                 "system")
             .getValue();
-    long maxDiskSizeForTempFiles = (long) availableDisk / config.getCompactionThreadCount();
+    long maxDiskSizeForTempFiles =
+        (long) availableDiskSpaceInByte / config.getCompactionThreadCount();
     maxDiskSizeForTempFiles =
         maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles;
     this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();
-    this.totalFileNumThreshold = config.getInnerCompactionTotalFileNumThreshold();
+    this.totalFileNumUpperBound = config.getInnerCompactionTotalFileNumThreshold();
     this.totalFileNumLowerBound = config.getInnerCompactionCandidateFileNum();
     this.totalFileSizeThreshold =
-        Math.min(config.getInnerCompactionTotalFileSizeThreshold(), maxDiskSizeForTempFiles);
+        Math.min(config.getInnerCompactionTotalFileSizeThresholdInByte(), maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
     this.context = context;
@@ -210,14 +211,14 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     private boolean isTaskTooLarge(TsFileResourceCandidate currentFile) {
       return (currentFile.resource.getTsFileSize() + currentSelectedFileTotalSize
               > totalFileSizeThreshold)
-          || currentSelectedResources.size() + 1 > totalFileNumThreshold;
+          || currentSelectedResources.size() + 1 > totalFileNumUpperBound;
     }
 
     private void endCurrentTaskSelection() {
       try {
-        // When the total files size does not exceed the upper limit of the
+        // When the total files size does not exceed the limit of the
         // size of a single file, merge all files together and try to include
-        // as many files as possible within the size range.
+        // as many files as possible within the limit.
         long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
         nextTaskStartIndex = lastSelectedFileIndex + 1;
         for (TsFileResource resource : lastContinuousSkippedResources) {

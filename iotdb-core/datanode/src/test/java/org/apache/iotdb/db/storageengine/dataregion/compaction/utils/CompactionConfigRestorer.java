@@ -34,7 +34,7 @@ public class CompactionConfigRestorer {
   private boolean enableCrossSpaceCompaction = true;
   private CrossCompactionSelector crossStrategy = CrossCompactionSelector.REWRITE;
   private InnerSequenceCompactionSelector innerStrategy =
-      InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET;
   private CompactionPriority priority = CompactionPriority.BALANCE;
   private long targetFileSize = 1073741824L;
   private long targetChunkSize = 1048576L;
