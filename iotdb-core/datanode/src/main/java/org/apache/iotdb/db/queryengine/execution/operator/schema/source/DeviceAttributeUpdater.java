@@ -41,7 +41,6 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
-import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
 
 public class DeviceAttributeUpdater extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
@@ -122,8 +121,6 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
   }
 
   public TsBlock getTsBlock() {
-    final Column filterColumn = getFilterColumnAndPrepareIndexes();
-
     // reuse this builder
     filterTsBlockBuilder.reset();
 
@@ -136,13 +133,7 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
 
     filterTsBlockBuilder.declarePositions(
         constructFilteredTsBlock(
-            resultColumns, filterColumn, columnBuilders, deviceSchemaBatch.size()));
-
-    for (int j = 0; j < deviceSchemaBatch.size(); j++) {
-      if (satisfy(filterColumn, j)) {
-        indexes.add(j);
-      }
-    }
+            resultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size()));
 
     return filterTsBlockBuilder.build();
   }

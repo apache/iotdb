@@ -54,6 +54,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final TsBlockBuilder filterTsBlockBuilder;
   protected final List<Integer> indexes = new ArrayList<>();
   protected TsBlock curBlock;
+  protected Column curFilterColumn;
 
   protected DevicePredicateHandler(
       final List<TSDataType> filterOutputDataTypes,
@@ -75,7 +76,11 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
 
   public boolean addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
     deviceSchemaBatch.add(deviceSchemaInfo);
-    return deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
+    final boolean result = deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
+    if (result) {
+      prepareBatchResult();
+    }
+    return result;
   }
 
   protected void clear() {
@@ -83,7 +88,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
     deviceSchemaBatch.clear();
   }
 
-  protected Column getFilterColumnAndPrepareIndexes() {
+  protected void prepareBatchResult() {
     final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
@@ -92,7 +97,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
 
     curBlock = builder.build();
     if (Objects.isNull(filterOutputTransformer)) {
-      return null;
+      return;
     }
 
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
@@ -106,7 +111,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
         indexes.add(j);
       }
     }
-    return filterColumn;
+    curFilterColumn = filterColumn;
   }
 
   @Override
