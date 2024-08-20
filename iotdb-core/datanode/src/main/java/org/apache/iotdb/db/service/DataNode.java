@@ -27,17 +27,14 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.ServerCommandLine;
-import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.service.JMXService;
@@ -65,7 +62,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRuntimeConfiguration;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.db.conf.DataNodeStartupCheck;
 import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -109,7 +105,6 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.service.TriggerInformationUpdater;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
-import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.InternalReporterType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -139,6 +134,7 @@ import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final String mbeanName =
       String.format(
@@ -153,44 +149,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    */
   private static final int DEFAULT_RETRY = 200;
 
-  private final IoTDBDescriptor descriptor;
-  private final CommonDescriptor commonDescriptor;
-  private final ConfigNodeInfo configNodeInfo;
-  private final IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager;
-  private final IoTDBStartCheck startCheck;
-  private final IConsensus schemaRegionConsensus;
-  private final IConsensus dataRegionConsensus;
-  private final SchemaEngine schemaEngine;
-  private final StorageEngine storageEngine;
-  private final MetricService metricService;
-  private final SystemPropertiesHandler dataNodeSystemPropertiesHandler;
-  private final TierManager tierManager;
-  private final FlushManager flushManager;
-  private final WALManager walManager;
-  private final CompactionScheduleTaskManager compactionScheduleTaskManager;
-  private final ClusterTemplateManager clusterTemplateManager;
-  private final DataNodeRegionManager dataNodeRegionManager;
-  private final DataNodeTableCache dataNodeTableCache;
-  private final CacheHitRatioMonitor cacheHitRatioMonitor;
-  private final MPPDataExchangeService mppDataExchangeService;
-  private final DriverScheduler driverScheduler;
-  private final RegionMigrateService regionMigrateService;
-  private final CompactionTaskManager compactionTaskManager;
-  private final DataNodeInternalRPCService dataNodeInternalRPCService;
-  private final RPCService rpcService;
-  private final MetricConfigDescriptor metricConfigDescriptor;
-  private final TemporaryQueryDataFileService temporaryQueryDataFileService;
-  private final UDFManagementService udfManagementService;
-  private final UDFExecutableManager udfExecutableManager;
-  private final TriggerManagementService triggerManagementService;
-  private final TriggerExecutableManager triggerExecutableManager;
-  private final DataNodeTTLCache dataNodeTTLCache;
-  private final MQTTService mqttService;
-  private final RestService restService;
-  private final IoTDBRestServiceDescriptor restServiceDescriptor;
-  private final PipeConfig pipeConfig;
-
-  private final long defaultRetryIntervalInMs;
+  private static final long DEFAULT_RETRY_INTERVAL_IN_MS = config.getJoinClusterRetryIntervalMs();
 
   private final TEndPoint thisNode = new TEndPoint();
 
@@ -208,146 +167,28 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private boolean schemaRegionConsensusStarted = false;
   private boolean dataRegionConsensusStarted = false;
 
-  /** Default constructor using the singletons for initializing the relationship. */
-  public DataNode() {
-    this(
-        // Initialized in the oder of which they were initialized before.
-        CommonDescriptor.getInstance(),
-        IoTDBDescriptor.getInstance(),
-        MetricConfigDescriptor.getInstance(),
-        DataNodeSystemPropertiesHandler.getInstance(),
-        ConfigNodeInfo.getInstance(),
-        IoTDBStartCheck.getInstance(),
-        WALManager.getInstance(),
-        ClusterTemplateManager.getInstance(),
-        DataNodeTTLCache.getInstance(),
-        DataNodeTableCache.getInstance(),
-        TierManager.getInstance(),
-        UDFExecutableManager.getInstance(),
-        TriggerExecutableManager.getInstance(),
-        PipeConfig.getInstance(),
-        SchemaEngine.getInstance(),
-        MetricService.getInstance(),
-        FlushManager.getInstance(),
-        CacheHitRatioMonitor.getInstance(),
-        CompactionScheduleTaskManager.getInstance(),
-        StorageEngine.getInstance(),
-        MPPDataExchangeService.getInstance(),
-        DriverScheduler.getInstance(),
-        TemporaryQueryDataFileService.getInstance(),
-        DataNodeRegionManager.getInstance(),
-        RegionMigrateService.getInstance(),
-        CompactionTaskManager.getInstance(),
-        DataNodeInternalRPCService.getInstance(),
-        RPCService.getInstance(),
-        IoTDBRestServiceDescriptor.getInstance(),
-        TriggerManagementService.getInstance(),
-        // The following I don't know the oder they come in.
-        ConfigNodeClientManager.getInstance(),
-        SchemaRegionConsensusImpl.getInstance(),
-        DataRegionConsensusImpl.getInstance(),
-        UDFManagementService.getInstance(),
-        MQTTService.getInstance(),
-        RestService.getInstance());
-  }
-
-  /**
-   * Additional constructor allowing injection of custom instances (mainly for testing)
-   *
-   * @param configNodeInfo config node info
-   * @param configNodeClientManager config node client manager
-   */
-  public DataNode(
-      CommonDescriptor commonDescriptor,
-      IoTDBDescriptor descriptor,
-      MetricConfigDescriptor metricConfigDescriptor,
-      SystemPropertiesHandler dataNodeSystemPropertiesHandler,
-      ConfigNodeInfo configNodeInfo,
-      IoTDBStartCheck startCheck,
-      WALManager walManager,
-      ClusterTemplateManager clusterTemplateManager,
-      DataNodeTTLCache dataNodeTTLCache,
-      DataNodeTableCache dataNodeTableCache,
-      TierManager tierManager,
-      UDFExecutableManager udfExecutableManager,
-      TriggerExecutableManager triggerExecutableManager,
-      PipeConfig pipeConfig,
-      SchemaEngine schemaEngine,
-      MetricService metricService,
-      FlushManager flushManager,
-      CacheHitRatioMonitor cacheHitRatioMonitor,
-      CompactionScheduleTaskManager compactionScheduleTaskManager,
-      StorageEngine storageEngine,
-      MPPDataExchangeService mppDataExchangeService,
-      DriverScheduler driverScheduler,
-      TemporaryQueryDataFileService temporaryQueryDataFileService,
-      DataNodeRegionManager dataNodeRegionManager,
-      RegionMigrateService regionMigrateService,
-      CompactionTaskManager compactionTaskManager,
-      DataNodeInternalRPCService dataNodeInternalRPCService,
-      RPCService rpcService,
-      IoTDBRestServiceDescriptor restServiceDescriptor,
-      TriggerManagementService triggerManagementService,
-      // The following I don't know the oder they come in.
-      IClientManager<ConfigRegionId, ConfigNodeClient> configNodeClientManager,
-      IConsensus schemaRegionConsensus,
-      IConsensus dataRegionConsensus,
-      UDFManagementService udfManagementService,
-      MQTTService mqttService,
-      RestService restService) {
+  private DataNode() {
     super("DataNode");
-    this.descriptor = descriptor;
-    this.commonDescriptor = commonDescriptor;
-    this.configNodeInfo = configNodeInfo;
-    this.configNodeClientManager = configNodeClientManager;
-    this.startCheck = startCheck;
-    this.schemaRegionConsensus = schemaRegionConsensus;
-    this.dataRegionConsensus = dataRegionConsensus;
-    this.schemaEngine = schemaEngine;
-    this.storageEngine = storageEngine;
-    this.metricService = metricService;
-    this.dataNodeSystemPropertiesHandler = dataNodeSystemPropertiesHandler;
-    this.tierManager = tierManager;
-    this.flushManager = flushManager;
-    this.walManager = walManager;
-    this.compactionScheduleTaskManager = compactionScheduleTaskManager;
-    this.clusterTemplateManager = clusterTemplateManager;
-    this.dataNodeRegionManager = dataNodeRegionManager;
-    this.dataNodeTableCache = dataNodeTableCache;
-    this.cacheHitRatioMonitor = cacheHitRatioMonitor;
-    this.mppDataExchangeService = mppDataExchangeService;
-    this.driverScheduler = driverScheduler;
-    this.regionMigrateService = regionMigrateService;
-    this.compactionTaskManager = compactionTaskManager;
-    this.dataNodeInternalRPCService = dataNodeInternalRPCService;
-    this.rpcService = rpcService;
-    this.metricConfigDescriptor = metricConfigDescriptor;
-    this.temporaryQueryDataFileService = temporaryQueryDataFileService;
-    this.udfManagementService = udfManagementService;
-    this.udfExecutableManager = udfExecutableManager;
-    this.triggerManagementService = triggerManagementService;
-    this.triggerExecutableManager = triggerExecutableManager;
-    this.dataNodeTTLCache = dataNodeTTLCache;
-    this.mqttService = mqttService;
-    this.restService = restService;
-    this.restServiceDescriptor = restServiceDescriptor;
-    this.pipeConfig = pipeConfig;
-
-    this.defaultRetryIntervalInMs = descriptor.getConfig().getJoinClusterRetryIntervalMs();
-    // Save this instance in the singleton.
-    setInstance(this);
+    // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
   // TODO: This needs removal of statics ...
-  public void reinitializeStatics() {
+  public static void reinitializeStatics() {
     registerManager = new RegisterManager();
-    dataNodeSystemPropertiesHandler.resetFilePath(
-        descriptor.getConfig().getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
+    DataNodeSystemPropertiesHandler.getInstance()
+        .resetFilePath(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
+                + File.separator
+                + PROPERTIES_FILE_NAME);
   }
 
   private static RegisterManager registerManager = new RegisterManager();
 
-  public static void main(String[] args) throws Exception {
+  public static DataNode getInstance() {
+    return DataNodeHolder.INSTANCE;
+  }
+
+  public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     DataNode dataNode = new DataNode();
@@ -366,12 +207,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       if (isFirstStart) {
         logger.info("DataNode is starting for the first time...");
-        configNodeInfo.updateConfigNodeList(
-            Collections.singletonList(descriptor.getConfig().getSeedConfigNode()));
+        ConfigNodeInfo.getInstance()
+            .updateConfigNodeList(Collections.singletonList(config.getSeedConfigNode()));
       } else {
         logger.info("DataNode is restarting...");
         // Load registered ConfigNodes from system.properties
-        configNodeInfo.loadConfigNodeList();
+        ConfigNodeInfo.getInstance().loadConfigNodeList();
       }
 
       // Pull and check system configurations from ConfigNode-leader
@@ -379,8 +220,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       if (isFirstStart) {
         sendRegisterRequestToConfigNode(true);
-        startCheck.generateOrOverwriteSystemPropertiesFile();
-        configNodeInfo.storeConfigNodeList();
+        IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
+        ConfigNodeInfo.getInstance().storeConfigNodeList();
         // Register this DataNode to the cluster when first start
         sendRegisterRequestToConfigNode(false);
       } else {
@@ -389,7 +230,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
       // TierManager need DataNodeId to do some operations so the reset method need to be invoked
       // after DataNode adding
-      tierManager.resetFolders();
+      TierManager.getInstance().resetFolders();
       // Active DataNode
       active();
 
@@ -400,9 +241,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       setUpRPCService();
 
       // Serialize mutable system properties
-      startCheck.serializeMutableSystemPropertiesIfNecessary();
+      IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
 
-      logger.info("IoTDB configuration: {}", descriptor.getConfig().getConfigMessage());
+      logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
     } catch (StartupException | IOException e) {
@@ -417,17 +258,17 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // If the nodeId was null, this is a shorthand for removing the current dataNode.
     // In this case we need to find our nodeId.
     if (nodeId == null) {
-      nodeId = (long) descriptor.getConfig().getDataNodeId();
+      nodeId = (long) config.getDataNodeId();
     }
 
     logger.info("Starting to remove DataNode with node-id {} from cluster", nodeId);
 
     // Load ConfigNodeList from system.properties file
-    configNodeInfo.loadConfigNodeList();
+    ConfigNodeInfo.getInstance().loadConfigNodeList();
 
     int removeNodeId = nodeId.intValue();
     try (ConfigNodeClient configNodeClient =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Find a datanode location with the given node id.
       Optional<TDataNodeLocation> dataNodeLocationOpt =
           configNodeClient
@@ -466,7 +307,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   /** Prepare cluster IoTDB-DataNode */
   private boolean prepareDataNode() throws StartupException, IOException {
     long startTime = System.currentTimeMillis();
-    IoTDBConfig config = descriptor.getConfig();
 
     // Init system properties handler
     IoTDBStartCheck.checkOldSystemConfig();
@@ -480,7 +320,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     checks.startUpCheck();
     long endTime = System.currentTimeMillis();
     logger.info("The DataNode is prepared successfully, which takes {} ms", (endTime - startTime));
-    return dataNodeSystemPropertiesHandler.isFirstStart();
+    return DataNodeSystemPropertiesHandler.getInstance().isFirstStart();
   }
 
   /**
@@ -502,7 +342,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     TSystemConfigurationResp configurationResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         configurationResp = configNodeClient.getSystemConfiguration();
         break;
       } catch (TException | ClientManagerException e) {
@@ -512,7 +352,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       try {
         // wait to start the next try
-        Thread.sleep(defaultRetryIntervalInMs);
+        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn(REGISTER_INTERRUPTION, e);
@@ -532,30 +372,31 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
 
     /* Load system configurations */
-    descriptor.loadGlobalConfig(configurationResp.globalConfig);
-    descriptor.loadRatisConfig(configurationResp.ratisConfig);
-    descriptor.loadCQConfig(configurationResp.cqConfig);
-    commonDescriptor.loadGlobalConfig(configurationResp.globalConfig);
+    IoTDBDescriptor.getInstance().loadGlobalConfig(configurationResp.globalConfig);
+    IoTDBDescriptor.getInstance().loadRatisConfig(configurationResp.ratisConfig);
+    IoTDBDescriptor.getInstance().loadCQConfig(configurationResp.cqConfig);
+    CommonDescriptor.getInstance().loadGlobalConfig(configurationResp.globalConfig);
 
-    IoTDBConfig config = descriptor.getConfig();
     /* Set cluster consensus protocol class */
-    if (!startCheck.checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+    if (!IoTDBStartCheck.getInstance()
+        .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
       config.setDataRegionConsensusProtocolClass(
           configurationResp.globalConfig.getDataRegionConsensusProtocolClass());
     }
 
-    if (!startCheck.checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+    if (!IoTDBStartCheck.getInstance()
+        .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
       config.setSchemaRegionConsensusProtocolClass(
           configurationResp.globalConfig.getSchemaRegionConsensusProtocolClass());
     }
 
     /* Check system configurations */
     try {
-      startCheck.checkSystemConfig();
-      startCheck.checkDirectory();
+      IoTDBStartCheck.getInstance().checkSystemConfig();
+      IoTDBStartCheck.getInstance().checkDirectory();
       if (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
         // In current implementation, only IoTConsensus need separated memory from Consensus
-        descriptor.reclaimConsensusMemory();
+        IoTDBDescriptor.getInstance().reclaimConsensusMemory();
       }
     } catch (Exception e) {
       throw new StartupException(e.getMessage());
@@ -589,10 +430,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     for (TConfigNodeLocation configNodeLocation : configNodeLocations) {
       configNodeList.add(configNodeLocation.getInternalEndPoint());
     }
-    configNodeInfo.updateConfigNodeList(configNodeList);
+    ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeList);
 
     /* Store templateSetInfo */
-    clusterTemplateManager.updateTemplateSetInfo(runtimeConfiguration.getTemplateInfo());
+    ClusterTemplateManager.getInstance()
+        .updateTemplateSetInfo(runtimeConfiguration.getTemplateInfo());
 
     /* Store udfInformationList */
     getUDFInformationList(runtimeConfiguration.getAllUDFInformation());
@@ -607,10 +449,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     initTTLInformation(runtimeConfiguration.getAllTTLInformation());
 
     /* Store cluster ID */
-    descriptor.getConfig().setClusterId(runtimeConfiguration.getClusterId());
+    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
 
     /* Store table info*/
-    dataNodeTableCache.init(runtimeConfiguration.getTableInfo());
+    DataNodeTableCache.getInstance().init(runtimeConfiguration.getTableInfo());
   }
 
   /**
@@ -624,7 +466,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       throws StartupException, IOException {
     logger.info("Sending register request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
-    IoTDBConfig config = descriptor.getConfig();
     /* Send register request */
     int retry = DEFAULT_RETRY;
     TDataNodeRegisterReq req = new TDataNodeRegisterReq();
@@ -635,7 +476,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     TDataNodeRegisterResp dataNodeRegisterResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeRegisterResp = configNodeClient.registerDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
@@ -645,7 +486,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       try {
         // Wait to start the next try
-        Thread.sleep(defaultRetryIntervalInMs);
+        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn(REGISTER_INTERRUPTION, e);
@@ -668,7 +509,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       /* Store runtime configurations when register success */
       int dataNodeID = dataNodeRegisterResp.getDataNodeId();
       config.setDataNodeId(dataNodeID);
-      startCheck.serializeDataNodeId(dataNodeID);
+      IoTDBStartCheck.getInstance().serializeDataNodeId(dataNodeID);
 
       storeRuntimeConfigurations(
           dataNodeRegisterResp.getConfigNodeList(), dataNodeRegisterResp.getRuntimeConfiguration());
@@ -687,12 +528,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
     List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
-        dataRegionConsensus.getAllConsensusGroupIdsWithoutStarting().stream()
+        DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
 
     List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
-        schemaRegionConsensus.getAllConsensusGroupIdsWithoutStarting().stream()
+        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
     removeInvalidDataRegions(invalidDataRegionConsensusGroupIds);
@@ -703,7 +544,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info("Remove invalid dataRegion directories... {}", invalidConsensusGroupId);
     for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
       File oldDir =
-          new File(dataRegionConsensus.getRegionDirFromConsensusGroupId(consensusGroupId));
+          new File(
+              DataRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
       removeRegionsDir(oldDir);
     }
   }
@@ -712,7 +555,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info("Remove invalid schemaRegion directories... {}", invalidConsensusGroupId);
     for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
       File oldDir =
-          new File(schemaRegionConsensus.getRegionDirFromConsensusGroupId(consensusGroupId));
+          new File(
+              SchemaRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
       removeRegionsDir(oldDir);
     }
   }
@@ -733,7 +578,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void sendRestartRequestToConfigNode() throws StartupException {
     logger.info("Sending restart request to ConfigNode-leader...");
     long startTime = System.currentTimeMillis();
-    IoTDBConfig config = descriptor.getConfig();
     /* Send restart request */
     int retry = DEFAULT_RETRY;
     TDataNodeRestartReq req = new TDataNodeRestartReq();
@@ -744,7 +588,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeRestartResp = configNodeClient.restartDataNode(req);
         break;
       } catch (TException | ClientManagerException e) {
@@ -755,7 +599,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       try {
         // Wait to start the next try
-        Thread.sleep(defaultRetryIntervalInMs);
+        Thread.sleep(DEFAULT_RETRY_INTERVAL_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn(REGISTER_INTERRUPTION, e);
@@ -818,13 +662,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     try {
       long startTime = System.currentTimeMillis();
-      schemaRegionConsensus.start();
+      SchemaRegionConsensusImpl.getInstance().start();
       long schemaRegionEndTime = System.currentTimeMillis();
       logger.info(
           "SchemaRegion consensus start successfully, which takes {} ms.",
           (schemaRegionEndTime - startTime));
       schemaRegionConsensusStarted = true;
-      dataRegionConsensus.start();
+      DataRegionConsensusImpl.getInstance().start();
       long dataRegionEndTime = System.currentTimeMillis();
       logger.info(
           "DataRegion consensus start successfully, which takes {} ms.",
@@ -845,7 +689,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void setUp() throws StartupException {
     logger.info("Setting up IoTDB DataNode...");
     registerManager.register(new JMXService());
-    JMXService.registerMBean(this, mbeanName);
+    JMXService.registerMBean(getInstance(), mbeanName);
 
     // Get resources for trigger,udf,pipe...
     prepareResources();
@@ -856,30 +700,29 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info("Recover the schema...");
     initSchemaEngine();
     classLoader();
-    registerManager.register(flushManager);
-    registerManager.register(cacheHitRatioMonitor);
+    registerManager.register(FlushManager.getInstance());
+    registerManager.register(CacheHitRatioMonitor.getInstance());
 
     // Close wal when using ratis consensus
-    IoTDBConfig config = descriptor.getConfig();
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)) {
       config.setWalMode(WALMode.DISABLE);
     }
-    registerManager.register(walManager);
+    registerManager.register(WALManager.getInstance());
 
     // Must init before StorageEngine
-    registerManager.register(compactionScheduleTaskManager);
+    registerManager.register(CompactionScheduleTaskManager.getInstance());
 
     // In mpp mode we need to start some other services
-    registerManager.register(storageEngine);
-    registerManager.register(mppDataExchangeService);
-    registerManager.register(driverScheduler);
+    registerManager.register(StorageEngine.getInstance());
+    registerManager.register(MPPDataExchangeService.getInstance());
+    registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
 
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
     long startTime = System.currentTimeMillis();
-    while (!storageEngine.isAllSgReady()) {
+    while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
       } catch (InterruptedException e) {
@@ -891,12 +734,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     long endTime = System.currentTimeMillis();
     logger.info("Wait for all databases ready, which takes {} ms.", (endTime - startTime));
     // Must init after SchemaEngine and StorageEngine prepared well
-    dataNodeRegionManager.init();
+    DataNodeRegionManager.getInstance().init();
 
     // Start region migrate service
-    registerManager.register(regionMigrateService);
+    registerManager.register(RegionMigrateService.getInstance());
 
-    registerManager.register(compactionTaskManager);
+    registerManager.register(CompactionTaskManager.getInstance());
 
     // Register subscription agent before pipe agent
     registerManager.register(SubscriptionAgent.runtime());
@@ -906,39 +749,40 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
-    registerManager.register(dataNodeInternalRPCService);
-
-    IoTDBConfig config = descriptor.getConfig();
+    registerManager.register(DataNodeInternalRPCService.getInstance());
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
     // DataNode is not marked as RUNNING by ConfigNode-leader yet.
 
     // Start client RPCService to indicate that the current DataNode provide external services
-    descriptor.getConfig().setRpcImplClassName(ClientRPCServiceImpl.class.getName());
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
     if (config.isEnableRpcService()) {
-      registerManager.register(rpcService);
+      registerManager.register(RPCService.getInstance());
     }
     // init service protocols
     initProtocols();
   }
 
   private void setUpMetricService() throws StartupException {
-    MetricConfig metricConfig = metricConfigDescriptor.getMetricConfig();
-    metricConfig.setNodeId(descriptor.getConfig().getDataNodeId());
-    registerManager.register(metricService);
+    MetricConfigDescriptor.getInstance().getMetricConfig().setNodeId(config.getDataNodeId());
+    registerManager.register(MetricService.getInstance());
 
     // init metric service
-    if (metricConfig.getInternalReportType().equals(InternalReporterType.IOTDB)) {
-      metricService.updateInternalReporter(new IoTDBInternalLocalReporter());
+    if (MetricConfigDescriptor.getInstance()
+        .getMetricConfig()
+        .getInternalReportType()
+        .equals(InternalReporterType.IOTDB)) {
+      MetricService.getInstance().updateInternalReporter(new IoTDBInternalLocalReporter());
     }
-    metricService.startInternalReporter();
+    MetricService.getInstance().startInternalReporter();
     // bind predefined metrics
     DataNodeMetricsHelper.bind();
   }
 
-  public TDataNodeLocation generateDataNodeLocation() {
-    IoTDBConfig config = descriptor.getConfig();
+  public static TDataNodeLocation generateDataNodeLocation() {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
     location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
@@ -971,14 +815,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void registerUdfServices() throws StartupException {
-    registerManager.register(temporaryQueryDataFileService);
-    registerManager.register(
-        UDFClassLoaderManager.setupAndGetInstance(descriptor.getConfig().getUdfDir()));
+    registerManager.register(TemporaryQueryDataFileService.getInstance());
+    registerManager.register(UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir()));
   }
 
   private void initUDFRelatedInstance() throws StartupException {
     try {
-      IoTDBConfig config = descriptor.getConfig();
       UDFExecutableManager.setupAndGetInstance(config.getUdfTemporaryLibDir(), config.getUdfDir());
       UDFClassLoaderManager.setupAndGetInstance(config.getUdfDir());
     } catch (IOException e) {
@@ -1012,7 +854,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Create instances of udf and do registration
     try {
       for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
-        udfManagementService.doRegister(udfInformation);
+        UDFManagementService.getInstance().doRegister(udfInformation);
       }
     } catch (Exception e) {
       throw new StartupException(e);
@@ -1020,7 +862,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     long endTime = System.currentTimeMillis();
     logger.debug("successfully registered all the UDFs, which takes {} ms.", (endTime - startTime));
     if (logger.isDebugEnabled()) {
-      for (UDFInformation udfInformation : udfManagementService.getAllUDFInformation()) {
+      for (UDFInformation udfInformation :
+          UDFManagementService.getInstance().getAllUDFInformation()) {
         logger.debug("get udf: {}", udfInformation.getFunctionName());
       }
     }
@@ -1028,7 +871,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void getJarOfUDFs(List<UDFInformation> udfInformationList) throws StartupException {
     try (ConfigNodeClient configNodeClient =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       List<String> jarNameList =
           udfInformationList.stream().map(UDFInformation::getJarName).collect(Collectors.toList());
       TGetJarInListResp resp = configNodeClient.getUDFJar(new TGetJarInListReq(jarNameList));
@@ -1037,8 +880,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < udfInformationList.size(); i++) {
-        udfExecutableManager.saveToInstallDir(
-            jarList.get(i), udfInformationList.get(i).getJarName());
+        UDFExecutableManager.getInstance()
+            .saveToInstallDir(jarList.get(i), udfInformationList.get(i).getJarName());
       }
     } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
@@ -1051,13 +894,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     for (UDFInformation udfInformation : resourcesInformationHolder.getUDFInformationList()) {
       if (udfInformation.isUsingURI()) {
         // Jar does not exist, add current udfInformation to list
-        if (!udfExecutableManager.hasFileUnderInstallDir(udfInformation.getJarName())) {
+        if (!UDFExecutableManager.getInstance()
+            .hasFileUnderInstallDir(udfInformation.getJarName())) {
           res.add(udfInformation);
         } else {
           try {
             // Local jar has conflicts with jar on config node, add current triggerInformation to
             // list
-            if (udfManagementService.isLocalJarConflicted(udfInformation)) {
+            if (UDFManagementService.getInstance().isLocalJarConflicted(udfInformation)) {
               res.add(udfInformation);
             }
           } catch (UDFManagementException e) {
@@ -1081,7 +925,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void initTriggerRelatedInstance() throws StartupException {
     try {
-      IoTDBConfig config = descriptor.getConfig();
       TriggerExecutableManager.setupAndGetInstance(
           config.getTriggerTemporaryLibDir(), config.getTriggerDir());
     } catch (IOException e) {
@@ -1116,7 +959,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     try {
       for (TriggerInformation triggerInformation :
           resourcesInformationHolder.getTriggerInformationList()) {
-        triggerManagementService.doRegister(triggerInformation, true);
+        TriggerManagementService.getInstance().doRegister(triggerInformation, true);
       }
     } catch (Exception e) {
       throw new StartupException(e);
@@ -1124,10 +967,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     if (logger.isDebugEnabled()) {
       for (TriggerInformation triggerInformation :
-          triggerManagementService.getAllTriggerInformationInTriggerTable()) {
+          TriggerManagementService.getInstance().getAllTriggerInformationInTriggerTable()) {
         logger.debug("get trigger: {}", triggerInformation.getTriggerName());
       }
-      for (TriggerExecutor triggerExecutor : triggerManagementService.getAllTriggerExecutors()) {
+      for (TriggerExecutor triggerExecutor :
+          TriggerManagementService.getInstance().getAllTriggerExecutors()) {
         logger.debug(
             "get trigger executor: {}", triggerExecutor.getTriggerInformation().getTriggerName());
       }
@@ -1142,7 +986,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void getJarOfTriggers(List<TriggerInformation> triggerInformationList)
       throws StartupException {
     try (ConfigNodeClient configNodeClient =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       List<String> jarNameList =
           triggerInformationList.stream()
               .map(TriggerInformation::getJarName)
@@ -1153,8 +997,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
       List<ByteBuffer> jarList = resp.getJarList();
       for (int i = 0; i < triggerInformationList.size(); i++) {
-        triggerExecutableManager.saveToInstallDir(
-            jarList.get(i), triggerInformationList.get(i).getJarName());
+        TriggerExecutableManager.getInstance()
+            .saveToInstallDir(jarList.get(i), triggerInformationList.get(i).getJarName());
       }
     } catch (IOException | TException | ClientManagerException e) {
       throw new StartupException(e);
@@ -1168,13 +1012,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         resourcesInformationHolder.getTriggerInformationList()) {
       if (triggerInformation.isUsingURI()) {
         // jar does not exist, add current triggerInformation to list
-        if (!triggerExecutableManager.hasFileUnderInstallDir(triggerInformation.getJarName())) {
+        if (!TriggerExecutableManager.getInstance()
+            .hasFileUnderInstallDir(triggerInformation.getJarName())) {
           res.add(triggerInformation);
         } else {
           try {
             // local jar has conflicts with jar on config node, add current triggerInformation to
             // list
-            if (triggerManagementService.isLocalJarConflicted(triggerInformation)) {
+            if (TriggerManagementService.getInstance().isLocalJarConflicted(triggerInformation)) {
               res.add(triggerInformation);
             }
           } catch (TriggerManagementException e) {
@@ -1221,10 +1066,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     int mapSize = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < mapSize; i++) {
       try {
-        dataNodeTTLCache.setTTL(
-            PathUtils.splitPathToDetachedNodes(
-                Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
-            ReadWriteIOUtils.readLong(buffer));
+        DataNodeTTLCache.getInstance()
+            .setTTL(
+                PathUtils.splitPathToDetachedNodes(
+                    Objects.requireNonNull(ReadWriteIOUtils.readString(buffer))),
+                ReadWriteIOUtils.readLong(buffer));
       } catch (IllegalPathException e) {
         throw new StartupException(e);
       }
@@ -1233,7 +1079,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void initSchemaEngine() {
     long startTime = System.currentTimeMillis();
-    schemaEngine.init();
+    SchemaEngine.getInstance().init();
     long endTime = System.currentTimeMillis();
     logger.info("Recover schema successfully, which takes {} ms.", (endTime - startTime));
   }
@@ -1261,14 +1107,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   public void stop() {
     deactivate();
-    schemaEngine.clear();
+    SchemaEngine.getInstance().clear();
     try {
-      metricService.stop();
+      MetricService.getInstance().stop();
       if (schemaRegionConsensusStarted) {
-        schemaRegionConsensus.stop();
+        SchemaRegionConsensusImpl.getInstance().stop();
       }
       if (dataRegionConsensusStarted) {
-        dataRegionConsensus.stop();
+        DataRegionConsensusImpl.getInstance().stop();
       }
     } catch (Exception e) {
       logger.error("Stop data node error", e);
@@ -1276,13 +1122,13 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
-    if (descriptor.getConfig().isEnableMQTTService()) {
-      registerManager.register(mqttService);
+    if (config.isEnableMQTTService()) {
+      registerManager.register(MQTTService.getInstance());
     }
-    if (restServiceDescriptor.getConfig().isEnableRestService()) {
-      registerManager.register(restService);
+    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
+      registerManager.register(RestService.getInstance());
     }
-    if (pipeConfig.getPipeAirGapReceiverEnabled()) {
+    if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       registerManager.register(PipeDataNodeAgent.receiver().airGap());
     }
   }
@@ -1305,25 +1151,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static class DataNodeHolder {
 
-    private static DataNode instance;
+    private static final DataNode INSTANCE = new DataNode();
 
     private DataNodeHolder() {
       // Empty constructor
     }
-  }
-
-  public static DataNode getInstance() {
-    // Make sure the singleton is initialized (Mainly in Unit-Tests)
-    if (DataNodeHolder.instance == null) {
-      new DataNode();
-    }
-    return DataNodeHolder.instance;
-  }
-
-  public static void setInstance(DataNode dataNode) {
-    if (DataNodeHolder.instance != null) {
-      throw new RuntimeException("DataNode has already been initialized");
-    }
-    DataNodeHolder.instance = dataNode;
   }
 }
