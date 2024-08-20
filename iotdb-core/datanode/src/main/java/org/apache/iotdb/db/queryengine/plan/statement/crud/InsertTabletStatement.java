@@ -229,6 +229,17 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
+  public void removeAllFailedMeasurementMarks() {
+    failedMeasurementIndex2Info.forEach(
+        (index, info) -> {
+          measurements[index] = info.getMeasurement();
+          dataTypes[index] = info.getDataType();
+          columns[index] = info.getValue();
+        });
+    failedMeasurementIndex2Info.clear();
+  }
+
+  @Override
   public void semanticCheck() {
     super.semanticCheck();
     if (measurements.length != columns.length) {
