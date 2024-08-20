@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
-public class DeviceAttributeUpdater extends DevicePredicateFilter {
+public class DeviceAttributeUpdater extends DevicePredicateHandler {
   private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
