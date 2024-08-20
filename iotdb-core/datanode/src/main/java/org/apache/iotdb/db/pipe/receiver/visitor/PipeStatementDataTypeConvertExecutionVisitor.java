@@ -102,19 +102,15 @@ public class PipeStatementDataTypeConvertExecutionVisitor
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
                       .constructStatement());
-          try {
-            TSStatus result = statementExecutor.execute(statement);
+          TSStatus result = statementExecutor.execute(statement);
 
-            // Retry once if the write process is rejected
-            if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-              result = statementExecutor.execute(statement);
-            }
+          // Retry once if the write process is rejected
+          if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+            result = statementExecutor.execute(statement);
+          }
 
-            if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
-              return Optional.empty();
-            }
-          } catch (final Exception e) {
+          if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
             return Optional.empty();
           }
         }
