@@ -53,7 +53,6 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     chunkWriter.write(timestamps, columns, batchSize);
     chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, subTaskId);
-    isEmptyFile = false;
   }
 
   @Override

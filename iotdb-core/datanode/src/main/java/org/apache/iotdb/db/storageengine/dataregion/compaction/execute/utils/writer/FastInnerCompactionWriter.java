@@ -70,7 +70,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     }
     flushNonAlignedChunkToFileWriter(fileWriter, chunk, chunkMetadata, subTaskId);
 
-    isEmptyFile = false;
     lastTime[subTaskId] = chunkMetadata.getEndTime();
     return true;
   }
@@ -106,7 +105,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     flushAlignedChunkToFileWriter(
         fileWriter, timeChunk, timeChunkMetadata, valueChunks, valueChunkMetadatas, subTaskId);
 
-    isEmptyFile = false;
     lastTime[subTaskId] = timeChunkMetadata.getEndTime();
     return true;
   }
@@ -145,7 +143,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
         valuePageHeaders,
         subTaskId);
 
-    isEmptyFile = false;
     lastTime[subTaskId] = timePageHeader.getEndTime();
     return true;
   }
@@ -171,7 +168,6 @@ public class FastInnerCompactionWriter extends AbstractInnerCompactionWriter {
     flushNonAlignedPageToChunkWriter(
         (ChunkWriterImpl) chunkWriters[subTaskId], compressedPageData, pageHeader, subTaskId);
 
-    isEmptyFile = false;
     lastTime[subTaskId] = pageHeader.getEndTime();
     return true;
   }

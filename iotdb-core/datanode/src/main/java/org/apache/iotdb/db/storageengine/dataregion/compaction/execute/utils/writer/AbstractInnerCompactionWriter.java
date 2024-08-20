@@ -40,8 +40,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected int currentFileIndex;
   protected long endedFileSize = 0;
 
-  protected boolean isEmptyFile;
-
   protected final long sizeForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
@@ -56,7 +54,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
       throws IOException {
     this.targetResources = targetFileResources;
     this.fileWriter = getAvailableWriter();
-    isEmptyFile = true;
   }
 
   @Override
@@ -124,7 +121,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     writeDataPoint(timeValuePair.getTimestamp(), timeValuePair.getValue(), chunkWriters[subTaskId]);
     chunkPointNumArray[subTaskId]++;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriters[subTaskId], subTaskId);
-    isEmptyFile = false;
     lastTime[subTaskId] = timeValuePair.getTimestamp();
   }
 
