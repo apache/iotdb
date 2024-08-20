@@ -64,7 +64,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
   private transient List<IDeviceID> partitionKeyList;
 
   public static final CreateTableDeviceNode MOCK_INSTANCE =
-      new CreateTableDeviceNode(null, null, null, null, null, null);
+      new CreateTableDeviceNode(new PlanNodeId(""), null, null, null, null, null);
 
   public CreateTableDeviceNode(
       final PlanNodeId id,
