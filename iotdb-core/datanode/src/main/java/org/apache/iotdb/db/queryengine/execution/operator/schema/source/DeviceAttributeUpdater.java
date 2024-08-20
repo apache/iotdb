@@ -50,7 +50,6 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
   private final List<ColumnTransformer> projectOutputTransformerList;
   final BiFunction<Integer, String, String> attributeProvider;
   private final BiConsumer<Integer, Object[]> attributeUpdater;
-  private final List<Integer> indexes = new ArrayList<>();
   private final List<Integer> attributePointers = new ArrayList<>();
 
   @SuppressWarnings("squid:S107")

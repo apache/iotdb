@@ -24,13 +24,17 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public class DevicePredicateFilter implements AutoCloseable {
   protected final List<LeafColumnTransformer> filterLeafColumnTransformerList;
@@ -47,6 +51,7 @@ public class DevicePredicateFilter implements AutoCloseable {
   protected final List<IDeviceSchemaInfo> deviceSchemaBatch =
       new ArrayList<>(DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES);
   protected final TsBlockBuilder filterTsBlockBuilder;
+  protected final List<Integer> indexes = new ArrayList<>();
 
   public DevicePredicateFilter(
       final List<TSDataType> filterOutputDataTypes,
@@ -73,6 +78,25 @@ public class DevicePredicateFilter implements AutoCloseable {
 
   protected void clear() {
     deviceSchemaBatch.clear();
+  }
+
+  protected Column getFilterColumn() {
+    final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
+    deviceSchemaBatch.forEach(
+        deviceSchemaInfo ->
+            transformToTsBlockColumns(
+                deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
+
+    final TsBlock tsBlock = builder.build();
+    if (Objects.isNull(filterOutputTransformer)) {
+      return null;
+    }
+
+    // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
+    filterLeafColumnTransformerList.forEach(
+        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
+    filterOutputTransformer.tryEvaluate();
+    return filterOutputTransformer.getColumn();
   }
 
   @Override
