@@ -26,6 +26,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchem
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 public class DevicePredicateFilter extends DevicePredicateHandler
@@ -50,6 +51,7 @@ public class DevicePredicateFilter extends DevicePredicateHandler
   public boolean hasNext() {
     final boolean result = curIndex < indexes.size();
     if (!result && !deviceSchemaBatch.isEmpty() && Objects.nonNull(curBlock)) {
+      curIndex = 0;
       clear();
     }
     return result;
@@ -57,6 +59,9 @@ public class DevicePredicateFilter extends DevicePredicateHandler
 
   @Override
   public IDeviceSchemaInfo next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
     return deviceSchemaBatch.get(indexes.get(curIndex++));
   }
 }
