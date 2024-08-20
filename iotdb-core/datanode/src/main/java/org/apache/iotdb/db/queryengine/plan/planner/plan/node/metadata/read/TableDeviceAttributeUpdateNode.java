@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -41,6 +42,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -61,6 +63,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
   protected final Expression idFuzzyPredicate;
 
   private final List<UpdateAssignment> assignments;
+  private final SessionInfo sessionInfo;
 
   @SuppressWarnings("squid:S107")
   public TableDeviceAttributeUpdateNode(
@@ -71,7 +74,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
       final TRegionReplicaSet schemaRegionReplicaSet,
-      final List<UpdateAssignment> assignments) {
+      final List<UpdateAssignment> assignments,
+      final SessionInfo sessionInfo) {
     super(planNodeId);
     this.database = database;
     this.tableName = tableName;
@@ -80,6 +84,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
     this.idDeterminedPredicateList = idDeterminedPredicateList;
     this.idFuzzyPredicate = idFuzzyPredicate;
     this.assignments = assignments;
+    this.sessionInfo = sessionInfo;
   }
 
   public String getDatabase() {
@@ -104,6 +109,10 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   public List<UpdateAssignment> getAssignments() {
     return assignments;
+  }
+
+  public SessionInfo getSessionInfo() {
+    return sessionInfo;
   }
 
   @Override
@@ -139,6 +148,11 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
     for (final UpdateAssignment assignment : assignments) {
       assignment.serialize(byteBuffer);
     }
+
+    ReadWriteIOUtils.write(Objects.nonNull(sessionInfo), byteBuffer);
+    if (Objects.nonNull(sessionInfo)) {
+      sessionInfo.serialize(byteBuffer);
+    }
   }
 
   @Override
@@ -168,6 +182,11 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
     ReadWriteIOUtils.write(assignments.size(), stream);
     for (final UpdateAssignment assignment : assignments) {
       assignment.serialize(stream);
+    }
+
+    ReadWriteIOUtils.write(Objects.nonNull(sessionInfo), stream);
+    if (Objects.nonNull(sessionInfo)) {
+      sessionInfo.serialize(stream);
     }
   }
 
@@ -204,6 +223,11 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
       assignments.add(UpdateAssignment.deserialize(buffer));
     }
 
+    SessionInfo sessionInfo = null;
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      sessionInfo = SessionInfo.deserializeFrom(buffer);
+    }
+
     return new TableDeviceAttributeUpdateNode(
         planNodeId,
         database,
@@ -212,7 +236,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
         idFuzzyFilter,
         columnHeaderList,
         null,
-        assignments);
+        assignments,
+        sessionInfo);
   }
 
   @Override
@@ -240,7 +265,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
         idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet,
-        assignments);
+        assignments,
+        sessionInfo);
   }
 
   @Override
@@ -305,7 +331,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
                         idFuzzyPredicate,
                         columnHeaderList,
                         replicaSet,
-                        assignments))
+                        assignments,
+                        sessionInfo))
             .collect(Collectors.toList());
   }
 }

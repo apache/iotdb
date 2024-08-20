@@ -319,7 +319,8 @@ public class LogicalPlanner {
         statement.getIdFuzzyPredicate(),
         statement.getColumnHeaderList(),
         null,
-        statement.getAssignments());
+        statement.getAssignments(),
+        queryContext.getSession());
   }
 
   private void planTraverseDevice(final AbstractTraverseDevice statement, final Analysis analysis) {

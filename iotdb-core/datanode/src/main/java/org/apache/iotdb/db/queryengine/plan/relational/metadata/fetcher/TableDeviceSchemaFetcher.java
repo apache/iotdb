@@ -296,6 +296,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   // Return whether all of required info of current device is in cache
+  @SuppressWarnings("squid:S107")
   private boolean tryGetDeviceInCache(
       final List<DeviceEntry> deviceEntryList,
       final String database,

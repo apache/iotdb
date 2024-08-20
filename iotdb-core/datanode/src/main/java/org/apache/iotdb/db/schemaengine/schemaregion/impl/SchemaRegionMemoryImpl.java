@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -39,7 +38,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
@@ -121,7 +119,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1408,14 +1405,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final List<ColumnHeader> columnHeaderList = updateNode.getColumnHeaderList();
     final Map<Symbol, List<InputLocation>> inputLocations =
         makeLayout(Collections.singletonList(updateNode));
-    final SessionInfo mockSessionInfo =
-        new SessionInfo(
-            0,
-            null,
-            ZoneId.systemDefault(),
-            IoTDBConstant.ClientVersion.V_1_0,
-            updateNode.getDatabase(),
-            IClientSession.SqlDialect.TABLE);
+    final SessionInfo sessionInfo = updateNode.getSessionInfo();
     final TypeProvider mockTypeProvider =
         new TypeProvider(
             columnHeaderList.stream()
@@ -1438,7 +1428,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             ? visitor.process(
                 predicate,
                 new ColumnTransformerBuilder.Context(
-                    mockSessionInfo,
+                    sessionInfo,
                     filterLeafColumnTransformerList,
                     inputLocations,
                     filterExpressionColumnTransformerMap,
@@ -1463,7 +1453,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     final ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
-            mockSessionInfo,
+            sessionInfo,
             projectLeafColumnTransformerList,
             inputLocations,
             projectExpressionColumnTransformerMap,
