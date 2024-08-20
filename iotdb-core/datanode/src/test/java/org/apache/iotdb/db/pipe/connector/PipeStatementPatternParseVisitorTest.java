@@ -125,7 +125,7 @@ public class PipeStatementPatternParseVisitorTest {
     final AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement(true);
 
     final Map<String, String> attributeMap = Collections.singletonMap("k1", "v1");
-    alterTimeSeriesStatement.setPath(new MeasurementPath("root.db.device.s1"));
+    alterTimeSeriesStatement.setPath(new PartialPath("root.db.device.s1"));
     alterTimeSeriesStatement.setAlterMap(attributeMap);
     alterTimeSeriesStatement.setTagsMap(Collections.emptyMap());
     alterTimeSeriesStatement.setAttributesMap(attributeMap);
@@ -134,7 +134,7 @@ public class PipeStatementPatternParseVisitorTest {
     final AlterTimeSeriesStatement alterTimeSeriesStatementToFilter =
         new AlterTimeSeriesStatement(true);
 
-    alterTimeSeriesStatementToFilter.setPath(new MeasurementPath("root.db1.device.s1"));
+    alterTimeSeriesStatementToFilter.setPath(new PartialPath("root.db1.device.s1"));
     alterTimeSeriesStatementToFilter.setAlterMap(attributeMap);
     alterTimeSeriesStatementToFilter.setTagsMap(Collections.emptyMap());
     alterTimeSeriesStatementToFilter.setAttributesMap(attributeMap);
