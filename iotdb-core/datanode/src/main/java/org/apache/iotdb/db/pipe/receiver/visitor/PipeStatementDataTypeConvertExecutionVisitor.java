@@ -86,18 +86,27 @@ public class PipeStatementDataTypeConvertExecutionVisitor
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
     // TODO: judge if the exception is caused by data type mismatch
     // TODO: convert the data type of the statement
+    LOGGER.error(
+        "Failed to execute LoadTsFileStatement and try to exec data type conversion. LoadTsFileStatement: {}. Status: {}",
+        loadTsFileStatement,
+        status);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionScanDataContainer container =
           new TsFileInsertionScanDataContainer(
               file, new IoTDBPipePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
         for (final Tablet tablet : container.toTablets()) {
-          final TSStatus result =
-              statementExecutor.execute(
-                  new PipeConvertedInsertTabletStatement(
-                      PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
-                          .constructStatement()));
-          // TODO: handle memory not enough
+          final PipeConvertedInsertTabletStatement statement =
+              new PipeConvertedInsertTabletStatement(
+                  PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
+                      .constructStatement());
+          TSStatus result = statementExecutor.execute(statement);
+
+          // Retry once if the write process is rejected
+          if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+            result = statementExecutor.execute(statement);
+          }
+
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
             return Optional.empty();
