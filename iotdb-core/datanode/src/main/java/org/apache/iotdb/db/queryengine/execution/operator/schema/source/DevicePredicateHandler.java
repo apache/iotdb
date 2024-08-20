@@ -96,7 +96,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
                 deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
 
     curBlock = builder.build();
-    if (Objects.isNull(filterOutputTransformer)) {
+    if (withoutFilter()) {
       return;
     }
 
@@ -112,6 +112,10 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
       }
     }
     curFilterColumn = filterColumn;
+  }
+
+  protected boolean withoutFilter() {
+    return Objects.isNull(filterOutputTransformer);
   }
 
   protected boolean hasComputedResult() {

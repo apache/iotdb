@@ -37,7 +37,6 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -111,10 +110,10 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
                 })
             .collect(Collectors.toList());
 
-    for (int i = 0; i < indexes.size(); ++i) {
+    for (int i = 0; i < (withoutFilter() ? attributePointers.size() : indexes.size()); ++i) {
       final int finalI = i;
       attributeUpdater.accept(
-          attributePointers.get(indexes.get(i)),
+          attributePointers.get(withoutFilter() ? i : indexes.get(i)),
           resultColumns.stream().map(column -> column.getObject(finalI)).toArray(Object[]::new));
     }
 
@@ -123,7 +122,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
   }
 
   private TsBlock getFilterTsBlock() {
-    if (Objects.isNull(filterOutputTransformer)) {
+    if (withoutFilter()) {
       return curBlock;
     }
     filterTsBlockBuilder.reset();
