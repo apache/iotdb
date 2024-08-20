@@ -262,7 +262,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         connect(configLeader, timeoutMs);
         return;
       } catch (TException ignore) {
-        logger.warn("The current node may have been down {},try next node", configLeader);
+        logger.warn("The current node leader may have been down {}, try next node", configLeader);
         configLeader = null;
       }
     } else {
@@ -358,12 +358,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
    */
   private <T> T executeRemoteCallWithRetry(final Operation<T> call, final Predicate<T> check)
       throws TException {
+    int detectedNodeNum = 0;
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         final T result = call.execute();
         if (check.test(result)) {
           return result;
         }
+        detectedNodeNum++;
       } catch (TException e) {
         final String message =
             String.format(
@@ -374,6 +376,22 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         logger.warn(message, e);
         configLeader = null;
       }
+
+      // If we have detected all configNodes and still not return
+      if (detectedNodeNum >= configNodes.size()) {
+        // Clear count
+        detectedNodeNum = 0;
+        // Wait to start the next try
+        try {
+          Thread.sleep(RETRY_INTERVAL_MS);
+        } catch (InterruptedException ignore) {
+          Thread.currentThread().interrupt();
+          logger.warn(
+              "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.");
+          break;
+        }
+      }
+
       connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
