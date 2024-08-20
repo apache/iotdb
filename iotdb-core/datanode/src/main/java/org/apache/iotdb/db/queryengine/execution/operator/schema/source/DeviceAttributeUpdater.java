@@ -100,7 +100,7 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
     final List<Column> filterResultColumns =
         new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
 
-    // get result of calculated common sub expressions
+    // Get result of calculated common sub expressions
     commonTransformerList.forEach(
         columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();

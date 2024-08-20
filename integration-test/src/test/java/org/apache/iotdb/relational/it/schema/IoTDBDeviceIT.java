@@ -196,13 +196,14 @@ public class IoTDBDeviceIT {
         assertEquals("701: Column 'col' cannot be resolved", e.getMessage());
       }
 
+      // Test common result column
       statement.execute(
-          "update table0 set model = 'B' where model like '_' and cast(region_id as int32) + cast(plant_id as int32) = 6");
+          "update table0 set model = substring(device_id, 1, 1) where model <> substring(device_id, 1, 1) and cast(region_id as int32) + cast(plant_id as int32) = 6");
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),
           "region_id,plant_id,device_id,model,",
-          Collections.singleton("1,5,3,B,"));
+          Collections.singleton("1,5,3,3,"));
     }
   }
 }
