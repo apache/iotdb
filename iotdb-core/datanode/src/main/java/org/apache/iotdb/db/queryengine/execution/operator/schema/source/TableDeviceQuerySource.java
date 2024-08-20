@@ -74,6 +74,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
       private Throwable throwable;
       private int index = 0;
+      private IDeviceSchemaInfo next;
 
       @Override
       public boolean isSuccess() {
@@ -97,13 +98,32 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
       @Override
       public boolean hasNext() {
+        if (Objects.isNull(filter)) {
+          if (innerHasNext()) {
+            next = deviceReader.next();
+            return true;
+          }
+          return false;
+        }
+
         if (filter.hasNext()) {
+          next = filter.next();
           return true;
         }
+
         while (innerHasNext() && !filter.hasNext()) {
           filter.addBatch(deviceReader.next());
         }
-        return filter.hasNext();
+
+        if (!filter.hasNext()) {
+          filter.prepareBatchResult();
+        }
+
+        if (filter.hasNext()) {
+          next = filter.next();
+          return true;
+        }
+        return false;
       }
 
       private boolean innerHasNext() {
@@ -143,7 +163,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        return filter.next();
+        final IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
       }
 
       @Override

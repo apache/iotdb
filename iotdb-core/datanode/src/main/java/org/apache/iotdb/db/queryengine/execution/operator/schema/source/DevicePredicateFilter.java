@@ -28,6 +28,7 @@ import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 public class DevicePredicateFilter extends DevicePredicateHandler
     implements Iterator<IDeviceSchemaInfo> {
@@ -54,7 +55,7 @@ public class DevicePredicateFilter extends DevicePredicateHandler
   @Override
   public boolean hasNext() {
     final boolean result = curIndex < indexes.size();
-    if (!result && !deviceSchemaBatch.isEmpty()) {
+    if (!result && !deviceSchemaBatch.isEmpty() && Objects.nonNull(curBlock)) {
       clear();
     }
     return result;

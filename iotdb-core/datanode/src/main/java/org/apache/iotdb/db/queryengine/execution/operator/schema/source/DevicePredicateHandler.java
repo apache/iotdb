@@ -84,11 +84,16 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
   }
 
   protected void clear() {
+    curBlock = null;
+    curFilterColumn = null;
     indexes.clear();
     deviceSchemaBatch.clear();
   }
 
-  protected void prepareBatchResult() {
+  public void prepareBatchResult() {
+    if (deviceSchemaBatch.isEmpty()) {
+      return;
+    }
     final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
     deviceSchemaBatch.forEach(
         deviceSchemaInfo ->
@@ -116,6 +121,7 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
 
   @Override
   public void close() {
+    clear();
     if (Objects.nonNull(filterOutputTransformer)) {
       filterOutputTransformer.close();
     }
