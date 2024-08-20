@@ -293,6 +293,17 @@ public class StorageEngine implements IService {
 
     startTimedService();
 
+    // wait here for dataRegionMap recovered
+    while (!isReadyForReadAndWrite.get()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+      } catch (InterruptedException e) {
+        LOGGER.warn("Storage engine failed to set up.", e);
+        Thread.currentThread().interrupt();
+        return;
+      }
+    }
+
     asyncRecoverTsFileResource();
   }
 
