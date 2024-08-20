@@ -206,6 +206,18 @@ struct TLicense {
     9: required i16 mlNodeNumLimit
 }
 
+struct TLoadSample {
+  // Percentage of occupied cpu in Node
+  1: required double cpuUsageRate
+  // Percentage of occupied memory space in Node
+  2: required double memoryUsageRate
+  // Percentage of occupied disk space in Node
+  3: required double diskUsageRate
+  // The size of free disk space
+  // Unit: Byte
+  4: required double freeDiskSpace
+}
+
 enum TServiceType {
   ConfigNodeInternalService,
   DataNodeInternalService,
@@ -276,19 +288,7 @@ struct TShowConfigurationResp {
   2: required string content
 }
 
-struct TLoadSample {
-  // Percentage of occupied cpu in Node
-  1: required double cpuUsageRate
-  // Percentage of occupied memory space in Node
-  2: required double memoryUsageRate
-  // Percentage of occupied disk space in Node
-  3: required double diskUsageRate
-  // The size of free disk space
-  // Unit: Byte
-  4: required double freeDiskSpace
-}
-
-// For AINode
+// for AINode
 enum TrainingState {
   PENDING,
   RUNNING,
@@ -296,4 +296,3 @@ enum TrainingState {
   FAILED,
   DROPPING
 }
-

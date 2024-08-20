@@ -182,6 +182,12 @@
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-ainode</artifactId>
+            <version>1.4.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
     <build>
         <resources>

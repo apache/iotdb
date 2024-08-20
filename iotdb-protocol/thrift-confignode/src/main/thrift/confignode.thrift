@@ -921,6 +921,34 @@ struct TUnsetSchemaTemplateReq {
   4: optional bool isGeneratedByPipe
 }
 
+struct TCreateModelReq {
+  1: required string modelName
+  2: required string uri
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<binary> modelInfoList
+}
+
+struct TGetModelInfoReq {
+  1: required string modelId
+}
+
+struct TGetModelInfoResp {
+  1: required common.TSStatus status
+  2: optional binary modelInfo
+  3: optional common.TEndPoint aiNodeAddress
+}
+
 // ====================================================
 // Quota
 // ====================================================
@@ -953,6 +981,43 @@ enum TActivationControl {
 }
 
 // ====================================================
+// AINode
+// ====================================================
+
+struct TAINodeConfigurationResp {
+  1: required common.TSStatus status
+  2: optional map<i32, common.TAINodeConfiguration> aiNodeConfigurationMap
+}
+
+
+struct TAINodeRegisterReq{
+  1: required string clusterName
+  2: required common.TAINodeConfiguration aiNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
+}
+
+struct TAINodeRegisterResp{
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional i32 aiNodeId
+}
+
+struct TAINodeRestartReq{
+  1: required string clusterName
+  2: required common.TAINodeConfiguration aiNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
+}
+
+struct TAINodeRestartResp{
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+}
+
+struct TAINodeRemoveReq{
+  1: required common.TAINodeLocation aiNodeLocation
+}
+
+// ====================================================
 // Test only
 // ====================================================
 enum TTestOperation {
@@ -981,42 +1046,6 @@ struct TTableInfo {
    1: required string tableName
    // TTL is stored as string in table props
    2: required string TTL
-}
-
-// ======================================================
-// AINode
-// ======================================================
-
-struct TAINodeConfigurationResp {
-  1: required common.TSStatus status
-  2: optional map<i32, common.TAINodeConfiguration> aiNodeConfigurationMap
-}
-
-struct TAINodeRegisterReq{
-  1: required string clusterName
-  2: required common.TAINodeConfiguration aiNodeConfiguration
-  3: optional TNodeVersionInfo versionInfo
-}
-
-struct TAINodeRegisterResp{
-  1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: optional i32 aiNodeId
-}
-
-struct TAINodeRestartReq{
-  1: required string clusterName
-  2: required common.TAINodeConfiguration aiNodeConfiguration
-  3: optional TNodeVersionInfo versionInfo
-}
-
-struct TAINodeRestartResp{
-  1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-}
-
-struct TAINodeRemoveReq{
-  1: required common.TAINodeLocation aiNodeLocation
 }
 
 service IConfigNodeRPCService {
@@ -1051,6 +1080,24 @@ service IConfigNodeRPCService {
    *                           and a detailed error message will be returned.
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
+
+
+   // ======================================================
+   // AINode
+   // ======================================================
+
+  /**
+  * node management for ainode, it's similar to datanode above
+  */
+  TAINodeRegisterResp registerAINode(TAINodeRegisterReq req)
+
+  TAINodeRestartResp restartAINode(TAINodeRestartReq req)
+
+  common.TSStatus removeAINode(TAINodeRemoveReq req)
+
+  TShowAINodesResp showAINodes()
+
+  TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
@@ -1678,6 +1725,34 @@ service IConfigNodeRPCService {
    */
   TShowCQResp showCQ()
 
+  // ====================================================
+  // AI Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+   /**
+   * Return the model info by model_id
+   */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
+
   // ======================================================
   // Quota
   // ======================================================
@@ -1708,25 +1783,5 @@ service IConfigNodeRPCService {
   common.TSStatus alterTable(TAlterTableReq req)
 
   TShowTableResp showTables(string database)
-
-
-  // ======================================================
-  // AINode
-  // ======================================================
-
-  /**
-  * node management for ainode, it's similar to datanode above
-  */
-  TAINodeRegisterResp registerAINode(TAINodeRegisterReq req)
-
-  TAINodeRestartResp restartAINode(TAINodeRestartReq req)
-
-  common.TSStatus removeAINode(TAINodeRemoveReq req)
-
-  TShowAINodesResp showAINodes()
-
-  TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
-
-
 }
 

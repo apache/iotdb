@@ -536,6 +536,37 @@ struct TExecuteCQ {
   7: required string username
 }
 
+// ====================================================
+// AI Node
+// ====================================================
+
+struct TFetchMoreDataReq{
+    1: required i64 queryId
+    2: optional i64 timeout
+    3: optional i32 fetchSize
+}
+
+struct TFetchMoreDataResp{
+    1: required common.TSStatus status
+    2: optional list<binary> tsDataset
+    3: optional bool hasMoreData
+}
+
+struct TFetchTimeseriesReq {
+  1: required string queryBody
+  2: optional i32 fetchSize
+  3: optional i64 timeout
+}
+
+struct TFetchTimeseriesResp {
+  1: required common.TSStatus status
+  2: optional i64 queryId
+  3: optional list<string> columnNameList
+  4: optional list<string> columnTypeList
+  5: optional map<string, i32> columnNameIndexMap
+  6: optional list<binary> tsDataset
+  7: optional bool hasMoreData
+}
 /**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
@@ -1028,44 +1059,8 @@ service MPPDataExchangeService {
   common.TSStatus testConnectionEmptyRPC()
 }
 
-// ======================================================
-// AINode
-// ======================================================
-
-// ====================================================
-// AINode
-// ====================================================
-
-struct TFetchMoreDataReq{
-    1: required i64 queryId
-    2: optional i64 timeout
-    3: optional i32 fetchSize
-}
-
-struct TFetchMoreDataResp{
-    1: required common.TSStatus status
-    2: optional list<binary> tsDataset
-    3: optional bool hasMoreData
-}
-
-struct TFetchTimeseriesReq {
-  1: required string queryBody
-  2: optional i32 fetchSize
-  3: optional i64 timeout
-}
-
-struct TFetchTimeseriesResp {
-  1: required common.TSStatus status
-  2: optional i64 queryId
-  3: optional list<string> columnNameList
-  4: optional list<string> columnTypeList
-  5: optional map<string, i32> columnNameIndexMap
-  6: optional list<binary> tsDataset
-  7: optional bool hasMoreData
-}
-
 service IAINodeInternalRPCService{
-  /**
+ /**
   * Fecth the data of the specified time series
   */
   TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
@@ -1074,5 +1069,5 @@ service IAINodeInternalRPCService{
   * Fetch rest data for a specified fetchTimeseries
   */
   TFetchMoreDataResp fetchMoreData(TFetchMoreDataReq req)
-}
 
+}
