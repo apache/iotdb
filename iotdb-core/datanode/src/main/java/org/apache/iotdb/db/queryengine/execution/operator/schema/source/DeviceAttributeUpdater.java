@@ -31,7 +31,6 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +42,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
-import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public class DeviceAttributeUpdater extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
@@ -119,33 +117,17 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
           resultColumns.stream().map(column -> column.getObject(finalI)).toArray(Object[]::new));
     }
 
-    indexes.clear();
     attributePointers.clear();
     super.clear();
   }
 
   public TsBlock getTsBlock() {
-    final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
-    deviceSchemaBatch.forEach(
-        deviceSchemaInfo ->
-            transformToTsBlockColumns(
-                deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
-
-    final TsBlock tsBlock = builder.build();
-    if (Objects.isNull(filterOutputTransformer)) {
-      return tsBlock;
-    }
-
-    // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
-    filterLeafColumnTransformerList.forEach(
-        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
-    filterOutputTransformer.tryEvaluate();
-    final Column filterColumn = filterOutputTransformer.getColumn();
+    final Column filterColumn = getFilterColumnAndPrepareIndexes();
 
     // reuse this builder
     filterTsBlockBuilder.reset();
 
-    final List<Column> resultColumns = Arrays.asList(tsBlock.getValueColumns());
+    final List<Column> resultColumns = Arrays.asList(curBlock.getValueColumns());
 
     // get result of calculated common sub expressions
     commonTransformerList.forEach(

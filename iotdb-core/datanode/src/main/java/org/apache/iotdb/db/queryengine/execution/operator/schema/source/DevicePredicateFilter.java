@@ -24,34 +24,14 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
-import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 
-import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
-
-public class DevicePredicateFilter implements AutoCloseable {
-  protected final List<LeafColumnTransformer> filterLeafColumnTransformerList;
-  protected final ColumnTransformer filterOutputTransformer;
-  protected final List<ColumnTransformer> commonTransformerList;
-  protected final List<TSDataType> filterOutputDataTypes;
-  protected final String database;
-  protected final String tableName;
-  protected final List<ColumnHeader> columnHeaderList;
-
-  // Batch logic
-  private static final int DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES =
-      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
-  protected final List<IDeviceSchemaInfo> deviceSchemaBatch =
-      new ArrayList<>(DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES);
-  protected final TsBlockBuilder filterTsBlockBuilder;
-  protected final List<Integer> indexes = new ArrayList<>();
+public class DevicePredicateFilter extends DevicePredicateHandler
+    implements Iterator<IDeviceSchemaInfo> {
+  private int curIndex = 0;
 
   public DevicePredicateFilter(
       final List<TSDataType> filterOutputDataTypes,
@@ -61,48 +41,27 @@ public class DevicePredicateFilter implements AutoCloseable {
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList) {
-    this.filterOutputDataTypes = filterOutputDataTypes;
-    this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
-    this.filterOutputTransformer = filterOutputTransformer;
-    this.commonTransformerList = commonTransformerList;
-    this.database = database;
-    this.tableName = tableName;
-    this.columnHeaderList = columnHeaderList;
-    this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
-  }
-
-  public boolean addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
-    deviceSchemaBatch.add(deviceSchemaInfo);
-    return deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
-  }
-
-  protected void clear() {
-    deviceSchemaBatch.clear();
-  }
-
-  protected Column getFilterColumn() {
-    final TsBlockBuilder builder = new TsBlockBuilder(filterOutputDataTypes);
-    deviceSchemaBatch.forEach(
-        deviceSchemaInfo ->
-            transformToTsBlockColumns(
-                deviceSchemaInfo, builder, database, tableName, columnHeaderList, 3));
-
-    final TsBlock tsBlock = builder.build();
-    if (Objects.isNull(filterOutputTransformer)) {
-      return null;
-    }
-
-    // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
-    filterLeafColumnTransformerList.forEach(
-        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(tsBlock));
-    filterOutputTransformer.tryEvaluate();
-    return filterOutputTransformer.getColumn();
+    super(
+        filterOutputDataTypes,
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        commonTransformerList,
+        database,
+        tableName,
+        columnHeaderList);
   }
 
   @Override
-  public void close() {
-    if (Objects.nonNull(filterOutputTransformer)) {
-      filterOutputTransformer.close();
+  public boolean hasNext() {
+    final boolean result = curIndex < indexes.size();
+    if (!result) {
+      clear();
     }
+    return result;
+  }
+
+  @Override
+  public IDeviceSchemaInfo next() {
+    return deviceSchemaBatch.get(indexes.get(curIndex++));
   }
 }
