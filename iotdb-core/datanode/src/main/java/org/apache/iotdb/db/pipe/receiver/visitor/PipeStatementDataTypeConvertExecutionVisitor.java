@@ -84,12 +84,14 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
-    // TODO: judge if the exception is caused by data type mismatch
-    // TODO: convert the data type of the statement
-    LOGGER.error(
-        "Failed to execute LoadTsFileStatement and try to exec data type conversion. LoadTsFileStatement: {}. Status: {}",
-        loadTsFileStatement,
-        status);
+    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()) {
+      return Optional.empty();
+    }
+
+    LOGGER.warn(
+        "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type conversion.",
+        status,
+        loadTsFileStatement);
 
     for (final File file : loadTsFileStatement.getTsFiles()) {
       try (final TsFileInsertionScanDataContainer container =
@@ -100,23 +102,25 @@ public class PipeStatementDataTypeConvertExecutionVisitor
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
                       .constructStatement());
-          TSStatus result = statementExecutor.execute(statement);
+          try {
+            TSStatus result = statementExecutor.execute(statement);
 
-          // Retry once if the write process is rejected
-          if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
-            result = statementExecutor.execute(statement);
-          }
+            // Retry once if the write process is rejected
+            if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+              result = statementExecutor.execute(statement);
+            }
 
-          if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
+            if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
+              return Optional.empty();
+            }
+          } catch (final Exception e) {
             return Optional.empty();
           }
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
-            "Failed to scan TsFile for data type conversion. LoadTsFileStatement: {}",
-            loadTsFileStatement,
-            e);
+            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
         return Optional.empty();
       }
     }
@@ -124,6 +128,9 @@ public class PipeStatementDataTypeConvertExecutionVisitor
     if (loadTsFileStatement.isDeleteAfterLoad()) {
       loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
     }
+
+    LOGGER.warn(
+        "Data type conversion for LoadTsFileStatement: {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
