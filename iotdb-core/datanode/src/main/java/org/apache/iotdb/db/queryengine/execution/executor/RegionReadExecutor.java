@@ -95,7 +95,7 @@ public class RegionReadExecutor {
             .ifPresent(
                 s -> {
                   resp.setStatus(s);
-                  resp.setNeedRetry(StatusUtils.needRetryHelper(s));
+                  resp.setReadNeedRetry(StatusUtils.needRetryHelper(s));
                 });
         return resp;
       }
@@ -106,7 +106,7 @@ public class RegionReadExecutor {
               false,
               String.format(ERROR_MSG_FORMAT, e.getMessage()),
               new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
-      resp.setNeedRetry(true);
+      resp.setReadNeedRetry(true);
       return resp;
     } catch (Throwable e) {
       LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
@@ -118,7 +118,7 @@ public class RegionReadExecutor {
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException
           || t instanceof ServerNotReadyException) {
-        resp.setNeedRetry(true);
+        resp.setReadNeedRetry(true);
         resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
       }
       return resp;
