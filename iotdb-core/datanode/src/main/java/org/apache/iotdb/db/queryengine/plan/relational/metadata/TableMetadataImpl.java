@@ -455,6 +455,20 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
+    } else if (TableBuiltinScalarFunction.DATE_BIN
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 4
+          && isNumericType(argumentTypes.get(0))
+          && isNumericType(argumentTypes.get(1))
+          && isNumericType(argumentTypes.get(2))
+          && isNumericType(argumentTypes.get(3)))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two or three arguments and the first must be TimeStamp data type, the second must be numeric data type [INT32, INT64].");
+      }
+      return argumentTypes.get(2);
     }
 
     // builtin aggregation function

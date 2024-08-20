@@ -95,6 +95,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Co
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ConcatMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CosColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.CoshColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DegreesColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DiffFunctionColumnTransformer;
@@ -896,6 +897,18 @@ public class ColumnTransformerBuilder
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
         return new SqrtColumnTransformer(DOUBLE, first);
+      }
+    } else if (TableBuiltinScalarFunction.DATE_BIN
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      ColumnTransformer source = this.process(children.get(2), context);
+      if (children.size() == 4) {
+        return new DateBinFunctionColumnTransformer(
+            source.getType(),
+            ((LongLiteral) children.get(0)).getParsedValue(),
+            ((LongLiteral) children.get(1)).getParsedValue(),
+            source,
+            ((LongLiteral) children.get(3)).getParsedValue());
       }
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
