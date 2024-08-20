@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IChangeAliasPlan;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeactivateTem
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeleteTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeleteTimeSeriesPlan;
-import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IUpdateTableDeviceAttributePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogicalViewPlan;
@@ -119,7 +119,7 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   }
 
   public R visitUpdateTableDeviceAttribute(
-      final IUpdateTableDeviceAttributePlan updateTableDeviceAttributePlan, final C context) {
+      final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan, final C context) {
     return visitSchemaRegionPlan(updateTableDeviceAttributePlan, context);
   }
 }

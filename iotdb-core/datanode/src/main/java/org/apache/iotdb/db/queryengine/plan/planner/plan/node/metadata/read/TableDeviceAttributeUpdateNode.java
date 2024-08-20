@@ -68,6 +68,9 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   private final List<UpdateAssignment> assignments;
   private final SessionInfo sessionInfo;
 
+  public static TableDeviceAttributeUpdateNode MOCK_INSTANCE =
+      new TableDeviceAttributeUpdateNode(null, null, null, null, null, null, null, null, null);
+
   @SuppressWarnings("squid:S107")
   public TableDeviceAttributeUpdateNode(
       final PlanNodeId planNodeId,
@@ -159,7 +162,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   }
 
   @Override
-  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+  public void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
@@ -346,6 +349,6 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
 
   @Override
   public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
-    return null;
+    return visitor.visitUpdateTableDeviceAttribute(this, context);
   }
 }

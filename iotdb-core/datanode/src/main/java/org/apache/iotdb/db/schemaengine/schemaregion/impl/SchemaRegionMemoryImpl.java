@@ -1549,7 +1549,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     private final Exception e;
 
-    private RecoverOperationResult(Exception e) {
+    private RecoverOperationResult(final Exception e) {
       this.e = e;
     }
 
@@ -1567,7 +1567,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitSchemaRegionPlan(
-        ISchemaRegionPlan plan, SchemaRegionMemoryImpl context) {
+        final ISchemaRegionPlan plan, final SchemaRegionMemoryImpl context) {
       throw new UnsupportedOperationException(
           String.format(
               "SchemaRegionPlan of type %s doesn't support recover operation in SchemaRegionMemoryImpl.",
@@ -1576,11 +1576,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitCreateTimeSeries(
-        ICreateTimeSeriesPlan createTimeSeriesPlan, SchemaRegionMemoryImpl context) {
+        final ICreateTimeSeriesPlan createTimeSeriesPlan, final SchemaRegionMemoryImpl context) {
       try {
         createTimeSeries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
@@ -1598,120 +1598,124 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitDeleteTimeSeries(
-        IDeleteTimeSeriesPlan deleteTimeSeriesPlan, SchemaRegionMemoryImpl context) {
+        final IDeleteTimeSeriesPlan deleteTimeSeriesPlan, final SchemaRegionMemoryImpl context) {
       try {
         // since we only has one path for one DeleteTimeSeriesPlan
         deleteOneTimeseriesUpdateStatistics(deleteTimeSeriesPlan.getDeletePathList().get(0));
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException | IOException e) {
+      } catch (final MetadataException | IOException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitChangeAlias(
-        IChangeAliasPlan changeAliasPlan, SchemaRegionMemoryImpl context) {
+        final IChangeAliasPlan changeAliasPlan, final SchemaRegionMemoryImpl context) {
       try {
         upsertAlias(changeAliasPlan.getAlias(), changeAliasPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException | IOException e) {
+      } catch (final MetadataException | IOException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitChangeTagOffset(
-        IChangeTagOffsetPlan changeTagOffsetPlan, SchemaRegionMemoryImpl context) {
+        final IChangeTagOffsetPlan changeTagOffsetPlan, final SchemaRegionMemoryImpl context) {
       try {
         changeOffset(changeTagOffsetPlan.getPath(), changeTagOffsetPlan.getOffset());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitAutoCreateDeviceMNode(
-        IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, SchemaRegionMemoryImpl context) {
+        final IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitActivateTemplateInCluster(
-        IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
-        SchemaRegionMemoryImpl context) {
+        final IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitPreDeleteTimeSeries(
-        IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, SchemaRegionMemoryImpl context) {
+        final IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         recoverPreDeleteTimeseries(preDeleteTimeSeriesPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitRollbackPreDeleteTimeSeries(
-        IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
-        SchemaRegionMemoryImpl context) {
+        final IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         recoverRollbackPreDeleteTimeseries(rollbackPreDeleteTimeSeriesPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitPreDeactivateTemplate(
-        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, SchemaRegionMemoryImpl context) {
+        final IPreDeactivateTemplatePlan preDeactivateTemplatePlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         constructSchemaBlackListWithTemplate(preDeactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitRollbackPreDeactivateTemplate(
-        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
-        SchemaRegionMemoryImpl context) {
+        final IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         rollbackSchemaBlackListWithTemplate(rollbackPreDeactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitDeactivateTemplate(
-        IDeactivateTemplatePlan deactivateTemplatePlan, SchemaRegionMemoryImpl context) {
+        final IDeactivateTemplatePlan deactivateTemplatePlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         deactivateTemplateInBlackList(deactivateTemplatePlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     public RecoverOperationResult visitCreateLogicalView(
-        ICreateLogicalViewPlan createLogicalViewPlan, SchemaRegionMemoryImpl context) {
+        final ICreateLogicalViewPlan createLogicalViewPlan, final SchemaRegionMemoryImpl context) {
       try {
         createLogicalView(createLogicalViewPlan);
         return RecoverOperationResult.SUCCESS;
@@ -1722,34 +1726,47 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitPreDeleteLogicalView(
-        IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, SchemaRegionMemoryImpl context) {
+        final IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         recoverPreDeleteTimeseries(preDeleteLogicalViewPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitRollbackPreDeleteLogicalView(
-        IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
-        SchemaRegionMemoryImpl context) {
+        final IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         recoverRollbackPreDeleteTimeseries(rollbackPreDeleteLogicalViewPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
 
     @Override
     public RecoverOperationResult visitDeleteLogicalView(
-        IDeleteLogicalViewPlan deleteLogicalViewPlan, SchemaRegionMemoryImpl context) {
+        final IDeleteLogicalViewPlan deleteLogicalViewPlan, final SchemaRegionMemoryImpl context) {
       try {
         deleteOneTimeseriesUpdateStatistics(deleteLogicalViewPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException | IOException e) {
+      } catch (final MetadataException | IOException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        updateTableDeviceAttribute(updateTableDeviceAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
