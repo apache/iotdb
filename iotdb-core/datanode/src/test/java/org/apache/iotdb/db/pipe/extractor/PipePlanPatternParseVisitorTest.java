@@ -160,7 +160,7 @@ public class PipePlanPatternParseVisitorTest {
     final AlterTimeSeriesNode alterTimeSeriesNode =
         new AlterTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            new MeasurementPath("root.db.device.s1"),
+            new PartialPath("root.db.device.s1"),
             AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES,
             attributesMap,
             "",
@@ -170,7 +170,7 @@ public class PipePlanPatternParseVisitorTest {
     final AlterTimeSeriesNode alterTimeSeriesNodeToFilter =
         new AlterTimeSeriesNode(
             new PlanNodeId("2024-04-30-2"),
-            new MeasurementPath("root.db1.device.s1"),
+            new PartialPath("root.db1.device.s1"),
             AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES,
             attributesMap,
             "",
