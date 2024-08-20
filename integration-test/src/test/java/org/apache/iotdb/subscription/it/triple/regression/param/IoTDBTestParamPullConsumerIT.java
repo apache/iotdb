@@ -67,6 +67,11 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
   private final String pattern = "root.**";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
 
+  static {
+    schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
+  }
+
   @Override
   @Before
   public void setUp() throws Exception {
@@ -89,9 +94,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_dest.createTimeseries(
         device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
-    schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
-    subs.getTopics().forEach((System.out::println));
+    subs.getTopics().forEach(System.out::println);
     assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
     session_src.executeNonQueryStatement("create user user02 'user02';");
   }
@@ -426,7 +429,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     String t1 = "tsTopic";
     createTopic_s(t1, database + ".d_0.s_0", null, null, true);
     try (SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder().host(SRC_HOST).buildPullConsumer()) {
+        new SubscriptionPullConsumer.Builder().host(SRC_HOST).port(SRC_PORT).buildPullConsumer()) {
       consumer1.open();
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
@@ -455,7 +458,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     String device = database + ".d_1";
     createTopic_s(t1, device + ".s_0", null, null, true);
     try (SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder().host(SRC_HOST).buildPullConsumer()) {
+        new SubscriptionPullConsumer.Builder().host(SRC_HOST).port(SRC_PORT).buildPullConsumer()) {
       consumer1.open();
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(
@@ -497,7 +500,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionRegression
     String device = database + ".d2";
     createTopic_s(t1, device + ".**", null, null, true);
     try (SubscriptionPullConsumer consumer1 =
-        new SubscriptionPullConsumer.Builder().host(SRC_HOST).buildPullConsumer()) {
+        new SubscriptionPullConsumer.Builder().host(SRC_HOST).port(SRC_PORT).buildPullConsumer()) {
       consumer1.open();
       consumer1.subscribe(t1);
       session_src.executeNonQueryStatement(

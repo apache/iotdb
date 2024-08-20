@@ -61,6 +61,11 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
   private String sql = "select count(s_0) from " + device;
 
+  static {
+    schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
+  }
+
   @Override
   @Before
   public void setUp() throws Exception {
@@ -75,9 +80,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_dest.createTimeseries(
         device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
-    schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
-    schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
-    subs.getTopics().forEach((System.out::println));
+    subs.getTopics().forEach(System.out::println);
     session_src.executeNonQueryStatement("create user user02 'user02';");
     consumer =
         new SubscriptionPushConsumer.Builder()

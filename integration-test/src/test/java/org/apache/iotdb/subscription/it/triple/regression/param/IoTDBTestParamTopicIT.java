@@ -209,7 +209,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     dropDB(database);
   }
 
-  @Test
+  @Test(expected = StatementExecutionException.class) // drop non-existent topic
   public void testDropTopic_null() throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic(null);
   }
@@ -219,7 +219,7 @@ public class IoTDBTestParamTopicIT extends AbstractSubscriptionRegressionIT {
     subs.dropTopic("");
   }
 
-  @Test(expected = StatementExecutionException.class) // drop non-existent topic, no error reported
+  @Test(expected = StatementExecutionException.class) // drop non-existent topic
   public void testDropTopic_notCreate()
       throws IoTDBConnectionException, StatementExecutionException {
     subs.dropTopic("abab");
