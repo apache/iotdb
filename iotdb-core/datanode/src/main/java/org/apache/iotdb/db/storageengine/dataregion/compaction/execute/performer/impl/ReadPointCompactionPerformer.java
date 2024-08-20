@@ -130,7 +130,7 @@ public class ReadPointCompactionPerformer
           compactNonAlignedSeries(
               device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
         }
-        summary.setTemporalFileSize(compactionWriter.getWriterSize());
+        summary.setTemporaryFileSize(compactionWriter.getWriterSize());
       }
 
       compactionWriter.endFile();

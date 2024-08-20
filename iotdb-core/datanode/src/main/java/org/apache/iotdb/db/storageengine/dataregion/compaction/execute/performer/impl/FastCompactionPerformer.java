@@ -163,7 +163,7 @@ public class FastCompactionPerformer
         // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
         // Add temp file metrics
-        subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
+        subTaskSummary.setTemporaryFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
       compactionWriter.endFile();

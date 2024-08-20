@@ -440,13 +440,13 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-      InnerSequenceCompactionSelector.NEW_SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
       InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-      InnerUnsequenceCompactionSelector.NEW_SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
       InnerUnseqCompactionPerformer.FAST;
@@ -469,7 +469,7 @@ public class IoTDBConfig {
 
   private double chunkMetadataSizeProportion = 0.1;
 
-  private long innerCompactionTotalFileSizeThreshold = 10737418240L;
+  private long innerCompactionTotalFileSizeThresholdInByte = 10737418240L;
 
   private int innerCompactionTotalFileNumThreshold = 100;
 
@@ -502,7 +502,10 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in one inner space compaction task */
+  /**
+   * When the number of selected files reaches this value, the conditions for constructing a merge
+   * task are met.
+   */
   private volatile int innerCompactionCandidateFileNum = 30;
 
   /** The max candidate file num in one cross space compaction task */
@@ -2906,12 +2909,13 @@ public class IoTDBConfig {
     this.maxLevelGapInInnerCompaction = maxLevelGapInInnerCompaction;
   }
 
-  public long getInnerCompactionTotalFileSizeThreshold() {
-    return innerCompactionTotalFileSizeThreshold;
+  public long getInnerCompactionTotalFileSizeThresholdInByte() {
+    return innerCompactionTotalFileSizeThresholdInByte;
   }
 
-  public void setInnerCompactionTotalFileSizeThreshold(long innerCompactionTotalFileSizeThreshold) {
-    this.innerCompactionTotalFileSizeThreshold = innerCompactionTotalFileSizeThreshold;
+  public void setInnerCompactionTotalFileSizeThresholdInByte(
+      long innerCompactionTotalFileSizeThresholdInByte) {
+    this.innerCompactionTotalFileSizeThresholdInByte = innerCompactionTotalFileSizeThresholdInByte;
   }
 
   public int getInnerCompactionTotalFileNumThreshold() {

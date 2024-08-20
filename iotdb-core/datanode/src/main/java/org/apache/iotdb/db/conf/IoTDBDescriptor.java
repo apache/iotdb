@@ -616,11 +616,11 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
-    conf.setInnerCompactionTotalFileSizeThreshold(
+    conf.setInnerCompactionTotalFileSizeThresholdInByte(
         Long.parseLong(
             properties.getProperty(
                 "inner_compaction_total_file_size_threshold",
-                Long.toString(conf.getInnerCompactionTotalFileSizeThreshold()))));
+                Long.toString(conf.getInnerCompactionTotalFileSizeThresholdInByte()))));
     conf.setInnerCompactionTotalFileNumThreshold(
         Integer.parseInt(
             properties.getProperty(

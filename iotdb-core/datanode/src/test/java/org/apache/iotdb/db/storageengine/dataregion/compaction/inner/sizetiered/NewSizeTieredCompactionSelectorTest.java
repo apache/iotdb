@@ -50,7 +50,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   private long defaultTargetCompactionFileSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
   private long defaultTotalCompactionFileSize =
-      IoTDBDescriptor.getInstance().getConfig().getInnerCompactionTotalFileSizeThreshold();
+      IoTDBDescriptor.getInstance().getConfig().getInnerCompactionTotalFileSizeThresholdInByte();
   private int defaultFileNumLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
   private int defaultFileNumLimit =
@@ -70,7 +70,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         .setTargetCompactionFileSize(defaultTargetCompactionFileSize);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setInnerCompactionTotalFileSizeThreshold(defaultTotalCompactionFileSize);
+        .setInnerCompactionTotalFileSizeThresholdInByte(defaultTotalCompactionFileSize);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerCompactionTotalFileNumThreshold(defaultFileNumLimit);
@@ -127,6 +127,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertEquals(8, task1.getSelectedTsFileResourceList().size());
     Assert.assertEquals(8, task1.getAllSourceTsFiles().size());
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
+    InnerSpaceCompactionTask task2 = innerSpaceCompactionTasks.get(1);
+    Assert.assertEquals(2, task2.getSelectedTsFileResourceList().size());
+    Assert.assertEquals(2, task2.getAllSourceTsFiles().size());
+    Assert.assertTrue(task2.start());
+    Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
   }
 
   @Test
@@ -193,11 +198,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(2, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(10, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(9, targetFiles.size());
-    Assert.assertEquals(0, targetFiles.get(0).getTsFileID().fileVersion);
-    Assert.assertEquals(101L, targetFiles.get(0).getFileStartTime());
-    Assert.assertEquals(200L, targetFiles.get(0).getFileEndTime());
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(9, filesAfterCompaction.size());
+    Assert.assertEquals(0, filesAfterCompaction.get(0).getTsFileID().fileVersion);
+    Assert.assertEquals(101L, filesAfterCompaction.get(0).getFileStartTime());
+    Assert.assertEquals(200L, filesAfterCompaction.get(0).getFileEndTime());
   }
 
   @Test
@@ -247,13 +252,17 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
     InnerSpaceCompactionTask task = innerSpaceCompactionTasks.get(0);
     Assert.assertTrue(task.start());
+    // select resource1, resource3, resource5
     Assert.assertEquals(3, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(5, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(5, targetFiles.size());
-    Assert.assertEquals(5, targetFiles.get(targetFiles.size() - 1).getTsFileID().fileVersion);
-    for (int i = 0; i < targetFiles.size(); i++) {
-      TsFileResource targetFile = targetFiles.get(i);
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(5, filesAfterCompaction.size());
+    Assert.assertEquals(
+        5, filesAfterCompaction.get(filesAfterCompaction.size() - 1).getTsFileID().fileVersion);
+    // expected result:
+    // renamed resource2[d3,d4], renamed resource4[d4,d5], target1[d1], target2[d2], target3[d3,d4]
+    for (int i = 0; i < filesAfterCompaction.size(); i++) {
+      TsFileResource targetFile = filesAfterCompaction.get(i);
       if (i == 4 || i < 2) {
         Assert.assertEquals(2, targetFile.getDevices().size());
       } else {
@@ -314,11 +323,12 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(3, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(5, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(3, targetFiles.size());
-    Assert.assertEquals(5, targetFiles.get(targetFiles.size() - 1).getTsFileID().fileVersion);
-    for (int i = 0; i < targetFiles.size(); i++) {
-      TsFileResource targetFile = targetFiles.get(i);
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(3, filesAfterCompaction.size());
+    Assert.assertEquals(
+        5, filesAfterCompaction.get(filesAfterCompaction.size() - 1).getTsFileID().fileVersion);
+    for (int i = 0; i < filesAfterCompaction.size(); i++) {
+      TsFileResource targetFile = filesAfterCompaction.get(i);
       if (i == 2) {
         Assert.assertEquals(4, targetFile.getDevices().size());
       } else {
@@ -364,19 +374,19 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(2, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(10, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(9, targetFiles.size());
-    Assert.assertEquals(0, targetFiles.get(0).getTsFileID().fileVersion);
-    Assert.assertEquals(101L, targetFiles.get(0).getFileStartTime());
-    Assert.assertEquals(200L, targetFiles.get(0).getFileEndTime());
-    for (int i = 0; i < targetFiles.size(); i++) {
-      TsFileResource targetFile = targetFiles.get(i);
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(9, filesAfterCompaction.size());
+    Assert.assertEquals(0, filesAfterCompaction.get(0).getTsFileID().fileVersion);
+    Assert.assertEquals(101L, filesAfterCompaction.get(0).getFileStartTime());
+    Assert.assertEquals(200L, filesAfterCompaction.get(0).getFileEndTime());
+    for (int i = 0; i < filesAfterCompaction.size(); i++) {
+      TsFileResource resource = filesAfterCompaction.get(i);
       if (i == 8) {
-        Assert.assertTrue(targetFile.modFileExists());
+        Assert.assertTrue(resource.modFileExists());
       } else {
-        Assert.assertFalse(targetFile.modFileExists());
+        Assert.assertFalse(resource.modFileExists());
       }
-      Assert.assertFalse(targetFile.compactionModFileExists());
+      Assert.assertFalse(resource.compactionModFileExists());
     }
   }
 
@@ -415,8 +425,8 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(2, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(2, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(0, targetFiles.size());
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(0, filesAfterCompaction.size());
   }
 
   @Test
@@ -484,12 +494,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(3, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(5, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(2, targetFiles.size());
-    Assert.assertEquals(4, targetFiles.get(targetFiles.size() - 1).getTsFileID().fileVersion);
-    for (int i = 0; i < targetFiles.size(); i++) {
-      TsFileResource targetFile = targetFiles.get(i);
-      Assert.assertEquals(2, targetFile.getDevices().size());
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(2, filesAfterCompaction.size());
+    Assert.assertEquals(
+        4, filesAfterCompaction.get(filesAfterCompaction.size() - 1).getTsFileID().fileVersion);
+    for (int i = 0; i < filesAfterCompaction.size(); i++) {
+      TsFileResource resource = filesAfterCompaction.get(i);
+      Assert.assertEquals(2, resource.getDevices().size());
     }
   }
 
@@ -515,11 +526,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(6, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(6, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(5, targetFiles.size());
-    Assert.assertEquals(0, targetFiles.get(0).getTsFileID().fileVersion);
-    Assert.assertEquals(1L, targetFiles.get(0).getFileStartTime());
-    Assert.assertEquals(600L, targetFiles.get(0).getFileEndTime());
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(5, filesAfterCompaction.size());
+    Assert.assertEquals(0, filesAfterCompaction.get(0).getTsFileID().fileVersion);
+    Assert.assertEquals(1L, filesAfterCompaction.get(0).getFileStartTime());
+    Assert.assertEquals(600L, filesAfterCompaction.get(0).getFileEndTime());
   }
 
   @Test
@@ -552,11 +563,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertTrue(task.start());
     Assert.assertEquals(5, task.getSelectedTsFileResourceList().size());
     Assert.assertEquals(5, task.getAllSourceTsFiles().size());
-    List<TsFileResource> targetFiles = tsFileManager.getTsFileList(true);
-    Assert.assertEquals(6, targetFiles.size());
-    Assert.assertEquals(5, targetFiles.get(5).getTsFileID().fileVersion);
-    Assert.assertEquals(501L, targetFiles.get(5).getFileStartTime());
-    Assert.assertEquals(1000L, targetFiles.get(5).getFileEndTime());
+    List<TsFileResource> filesAfterCompaction = tsFileManager.getTsFileList(true);
+    Assert.assertEquals(6, filesAfterCompaction.size());
+    Assert.assertEquals(5, filesAfterCompaction.get(5).getTsFileID().fileVersion);
+    Assert.assertEquals(501L, filesAfterCompaction.get(5).getFileStartTime());
+    Assert.assertEquals(1000L, filesAfterCompaction.get(5).getFileEndTime());
   }
 
   @Test
@@ -599,6 +610,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
 
   @Test
   public void testSkipToPreviousIndexAndSelectSkippedFiles3() throws IOException {
+    // TsFiles: [d0], [d1], [d0], [d3], [d4], [d4], [d4], [d4], [d4], [d4]
     for (int i = 0; i < 10; i++) {
       String device;
       if (i == 2) {
@@ -629,9 +641,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(2, innerSpaceCompactionTasks.size());
+    // task1: [d0], [d1], [d0], [d3]
     InnerSpaceCompactionTask task1 = innerSpaceCompactionTasks.get(0);
     Assert.assertEquals(4, task1.getSelectedTsFileResourceList().size());
     Assert.assertEquals(4, task1.getAllSourceTsFiles().size());
+    // task2: [d4], [d4], [d4], [d4], [d4], [d4]
     InnerSpaceCompactionTask task2 = innerSpaceCompactionTasks.get(1);
     Assert.assertEquals(6, task2.getSelectedTsFileResourceList().size());
     Assert.assertEquals(6, task2.getAllSourceTsFiles().size());

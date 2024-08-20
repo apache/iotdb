@@ -213,7 +213,6 @@ public class SizeTieredCompactionSelector
     for (TsFileResource resource : tsFileResources) {
       if (resource.getStatus() == TsFileResourceStatus.NORMAL
           && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
-        System.out.println("select repair task " + resource);
         taskList.add(
             new RepairUnsortedFileCompactionTask(
                 timePartition,

@@ -103,7 +103,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
               device, targetResources.get(currentTargetFileIndex), currentWriter, deviceIterator);
         }
         // update temporal file metrics
-        summary.setTemporalFileSize(endedFileSize + currentWriter.getPos());
+        summary.setTemporaryFileSize(endedFileSize + currentWriter.getPos());
       }
 
       for (TsFileResource tsFileResource : seqFiles) {
