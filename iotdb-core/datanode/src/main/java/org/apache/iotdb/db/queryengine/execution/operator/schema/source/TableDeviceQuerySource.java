@@ -98,6 +98,10 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
       @Override
       public boolean hasNext() {
+        if (Objects.nonNull(next)) {
+          return true;
+        }
+
         if (Objects.isNull(filter)) {
           if (innerHasNext()) {
             next = deviceReader.next();
