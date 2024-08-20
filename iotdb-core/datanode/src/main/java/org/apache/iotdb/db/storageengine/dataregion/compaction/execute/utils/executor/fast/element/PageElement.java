@@ -53,7 +53,7 @@ public abstract class PageElement {
   }
 
   public boolean needForceDecoding() {
-    return chunkMetadataElement.needForceDecoding;
+    return chunkMetadataElement.needForceDecodingPage;
   }
 
   public boolean isLastPage() {

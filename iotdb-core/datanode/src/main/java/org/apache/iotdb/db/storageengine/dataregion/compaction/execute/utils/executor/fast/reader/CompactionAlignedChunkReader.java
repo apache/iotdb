@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
+
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -78,6 +80,31 @@ public class CompactionAlignedChunkReader {
       ByteBuffer compressedTimePageData,
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
+    AlignedPageReader alignedPageReader =
+        getAlignedPageReader(
+            timePageHeader, valuePageHeaders, compressedTimePageData, compressedValuePageDatas);
+    return alignedPageReader.getLazyPointReader();
+  }
+
+  public IPointReader getBatchedPagePointReader(
+      PageHeader timePageHeader,
+      List<PageHeader> valuePageHeaders,
+      ByteBuffer compressedTimePageData,
+      List<ByteBuffer> compressedValuePageDatas)
+      throws IOException {
+    AlignedPageReader alignedPageReader =
+        getAlignedPageReader(
+            timePageHeader, valuePageHeaders, compressedTimePageData, compressedValuePageDatas);
+    return new BatchedCompactionAlignedPagePointReader(
+        alignedPageReader.getTimePageReader(), alignedPageReader.getValuePageReaderList());
+  }
+
+  public AlignedPageReader getAlignedPageReader(
+      PageHeader timePageHeader,
+      List<PageHeader> valuePageHeaders,
+      ByteBuffer compressedTimePageData,
+      List<ByteBuffer> compressedValuePageDatas)
+      throws IOException {
 
     // uncompress time page data
     ByteBuffer uncompressedTimePageData =
@@ -117,6 +144,6 @@ public class CompactionAlignedChunkReader {
             null);
     alignedPageReader.initTsBlockBuilder(valueTypes);
     alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return alignedPageReader.getLazyPointReader();
+    return alignedPageReader;
   }
 }
