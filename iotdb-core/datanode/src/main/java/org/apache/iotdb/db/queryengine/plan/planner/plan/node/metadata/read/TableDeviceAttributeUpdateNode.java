@@ -62,6 +62,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
 
   private final List<UpdateAssignment> assignments;
 
+  @SuppressWarnings("squid:S107")
   public TableDeviceAttributeUpdateNode(
       final PlanNodeId planNodeId,
       final String database,
