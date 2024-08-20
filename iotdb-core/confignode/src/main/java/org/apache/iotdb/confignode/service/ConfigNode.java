@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.ClientManagerMetrics;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -83,8 +84,13 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
 
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
+
   private static final int STARTUP_RETRY_NUM = 10;
   private static final long STARTUP_RETRY_INTERVAL_IN_MS = TimeUnit.SECONDS.toMillis(3);
+  private static final int SCHEDULE_WAITING_RETRY_NUM =
+      (int) (COMMON_CONFIG.getConnectionTimeoutInMS() / STARTUP_RETRY_INTERVAL_IN_MS);
   private static final int SEED_CONFIG_NODE_ID = 0;
 
   private static final int INIT_NON_SEED_CONFIG_NODE_ID = -1;
@@ -97,65 +103,13 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
           IoTDBConstant.IOTDB_SERVICE_JMX_NAME,
           IoTDBConstant.JMX_TYPE,
           ServiceType.CONFIG_NODE.getJmxName());
-  protected final ConfigNodeDescriptor configNodeDescriptor;
-  protected final ConfigNodeConfig conf;
-  protected final RegisterManager registerManager;
-  protected final SyncConfigNodeClientPool syncConfigNodeClientPool;
-  protected final ConfigNodeRemoveCheck configNodeRemoveCheck;
-  protected final MetricConfigDescriptor metricConfigDescriptor;
-  protected final MetricService metricService;
-  protected final JvmGcMonitorMetrics jvmGcMonitorMetrics;
-  protected final ClientManagerMetrics clientManagerMetrics;
-  protected final ThreadPoolMetrics threadPoolMetrics;
-  protected final SystemMetrics systemMetrics;
+  protected final RegisterManager registerManager = new RegisterManager();
+
   protected ConfigManager configManager;
 
-  private final long defaultRetryIntervalInMs;
-
   protected ConfigNode() {
-    this(
-        ConfigNodeDescriptor.getInstance(),
-        new RegisterManager(),
-        SyncConfigNodeClientPool.getInstance(),
-        ConfigNodeRemoveCheck.getInstance(),
-        MetricConfigDescriptor.getInstance(),
-        MetricService.getInstance(),
-        JvmGcMonitorMetrics.getInstance(),
-        ClientManagerMetrics.getInstance(),
-        ThreadPoolMetrics.getInstance(),
-        SystemMetrics.getInstance(),
-        (int)
-            (CommonDescriptor.getInstance().getConfig().getConnectionTimeoutInMS()
-                / STARTUP_RETRY_INTERVAL_IN_MS));
-  }
-
-  protected ConfigNode(
-      ConfigNodeDescriptor configNodeDescriptor,
-      RegisterManager registerManager,
-      SyncConfigNodeClientPool syncConfigNodeClientPool,
-      ConfigNodeRemoveCheck configNodeRemoveCheck,
-      MetricConfigDescriptor metricConfigDescriptor,
-      MetricService metricService,
-      JvmGcMonitorMetrics jvmGcMonitorMetrics,
-      ClientManagerMetrics clientManagerMetrics,
-      ThreadPoolMetrics threadPoolMetrics,
-      SystemMetrics systemMetrics,
-      int defaultRetryIntervalInMs) {
     super("ConfigNode");
-    this.configNodeDescriptor = configNodeDescriptor;
-    this.conf = configNodeDescriptor.getConf();
-    this.registerManager = registerManager;
-    this.syncConfigNodeClientPool = syncConfigNodeClientPool;
-    this.configNodeRemoveCheck = configNodeRemoveCheck;
-    this.metricConfigDescriptor = metricConfigDescriptor;
-    this.metricService = metricService;
-    this.jvmGcMonitorMetrics = jvmGcMonitorMetrics;
-    this.clientManagerMetrics = clientManagerMetrics;
-    this.threadPoolMetrics = threadPoolMetrics;
-    this.systemMetrics = systemMetrics;
-    this.defaultRetryIntervalInMs = defaultRetryIntervalInMs;
-    // Save this instance in the singleton.
-    setInstance(this);
+    // We do not init anything here, so that we can re-initialize the instance in IT.
   }
 
   public static void main(String[] args) throws Exception {
@@ -193,7 +147,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     // If the nodeId was null, this is a shorthand for removing the current dataNode.
     // In this case we need to find our nodeId.
     if (nodeId == null) {
-      nodeId = (long) conf.getConfigNodeId();
+      nodeId = (long) CONF.getConfigNodeId();
     }
 
     try {
@@ -201,14 +155,14 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
       try {
         TConfigNodeLocation removeConfigNodeLocation =
-            configNodeRemoveCheck.removeCheck(Long.toString(nodeId));
+            ConfigNodeRemoveCheck.getInstance().removeCheck(Long.toString(nodeId));
         if (removeConfigNodeLocation == null) {
           LOGGER.error(
               "The ConfigNode to be removed is not in the cluster, or the input format is incorrect.");
           return;
         }
 
-        configNodeRemoveCheck.removeConfigNode(removeConfigNodeLocation);
+        ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
       } catch (BadNodeUrlException e) {
         LOGGER.warn("No ConfigNodes need to be removed.", e);
         return;
@@ -239,7 +193,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
 
-        int configNodeId = conf.getConfigNodeId();
+        int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
         upgrade();
         waitForLeaderElected();
@@ -247,11 +201,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
         setUpRPCService();
-        LOGGER.info(CONFIGURATION, conf.getConfigMessage());
+        LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
         LOGGER.info(
             "{} has successfully restarted and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
-            conf.getClusterName());
+            CONF.getClusterName());
 
         // Update item during restart
         // This will always be executed until the consensus write succeeds
@@ -272,13 +226,13 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       }
 
       /* Initial startup of Seed-ConfigNode */
-      if (configNodeDescriptor.isSeedConfigNode()) {
+      if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
         LOGGER.info(
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
         /* Always set ClusterId and ConfigNodeId before initConsensusManager */
-        conf.setConfigNodeId(SEED_CONFIG_NODE_ID);
+        CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
         // Persistence system parameters after the consensusGroup is built,
@@ -292,18 +246,18 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         configManager
             .getNodeManager()
             .applyConfigNode(
-                conf.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
+                CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(SEED_CONFIG_NODE_ID),
                 new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until Seed-ConfigNode is fully initialized
         setUpRPCService();
         // The initial startup of Seed-ConfigNode finished
-        LOGGER.info(CONFIGURATION, conf.getConfigMessage());
+        LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
         LOGGER.info(
             "{} has successfully started and joined the cluster: {}.",
             ConfigNodeConstant.GLOBAL_NAME,
-            conf.getClusterName());
+            CONF.getClusterName());
         return;
       }
 
@@ -314,16 +268,16 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       sendRegisterConfigNodeRequest();
       // The initial startup of Non-Seed-ConfigNode is not yet finished,
       // we should wait for leader's scheduling
-      LOGGER.info(CONFIGURATION, conf.getConfigMessage());
+      LOGGER.info(CONFIGURATION, CONF.getConfigMessage());
       LOGGER.info(
           "{} {} has registered successfully. Waiting for the leader's scheduling to join the cluster: {}.",
           ConfigNodeConstant.GLOBAL_NAME,
-          conf.getConfigNodeId(),
-          conf.getClusterName());
+          CONF.getConfigNodeId(),
+          CONF.getClusterName());
       setUpMetricService();
 
       boolean isJoinedCluster = false;
-      for (int retry = 0; retry < defaultRetryIntervalInMs; retry++) {
+      for (int retry = 0; retry < SCHEDULE_WAITING_RETRY_NUM; retry++) {
         if (!configManager
             .getConsensusManager()
             .getConsensusImpl()
@@ -365,29 +319,30 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   private void setUpMetricService() throws StartupException {
-    metricConfigDescriptor.getMetricConfig().setNodeId(conf.getConfigNodeId());
-    registerManager.register(metricService);
+    MetricConfigDescriptor.getInstance().getMetricConfig().setNodeId(CONF.getConfigNodeId());
+    registerManager.register(MetricService.getInstance());
     // Bind predefined metric sets
-    metricService.addMetricSet(new UpTimeMetrics());
-    metricService.addMetricSet(new JvmMetrics());
-    metricService.addMetricSet(new LogbackMetrics());
-    metricService.addMetricSet(new ProcessMetrics());
-    metricService.addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
-    metricService.addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
-    metricService.addMetricSet(jvmGcMonitorMetrics);
-    metricService.addMetricSet(clientManagerMetrics);
-    metricService.addMetricSet(threadPoolMetrics);
+    MetricService.getInstance().addMetricSet(new UpTimeMetrics());
+    MetricService.getInstance().addMetricSet(new JvmMetrics());
+    MetricService.getInstance().addMetricSet(new LogbackMetrics());
+    MetricService.getInstance().addMetricSet(new ProcessMetrics());
+    MetricService.getInstance().addMetricSet(new DiskMetrics(IoTDBConstant.CN_ROLE));
+    MetricService.getInstance().addMetricSet(new NetMetrics(IoTDBConstant.CN_ROLE));
+    MetricService.getInstance().addMetricSet(JvmGcMonitorMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(ClientManagerMetrics.getInstance());
+    MetricService.getInstance().addMetricSet(ThreadPoolMetrics.getInstance());
     initCpuMetrics();
     initSystemMetrics();
-    metricService.addMetricSet(new PipeConfigNodeMetrics(configManager.getPipeManager()));
+    MetricService.getInstance()
+        .addMetricSet(new PipeConfigNodeMetrics(configManager.getPipeManager()));
   }
 
   private void initSystemMetrics() {
     ArrayList<String> diskDirs = new ArrayList<>();
-    diskDirs.add(conf.getSystemDir());
-    diskDirs.add(conf.getConsensusDir());
-    systemMetrics.setDiskDirs(diskDirs);
-    metricService.addMetricSet(systemMetrics);
+    diskDirs.add(CONF.getSystemDir());
+    diskDirs.add(CONF.getConsensusDir());
+    SystemMetrics.getInstance().setDiskDirs(diskDirs);
+    MetricService.getInstance().addMetricSet(SystemMetrics.getInstance());
   }
 
   private void initCpuMetrics() {
@@ -395,22 +350,27 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     Arrays.stream(ThreadModule.values()).forEach(x -> threadModules.add(x.toString()));
     List<String> pools = new ArrayList<>();
     Arrays.stream(ThreadName.values()).forEach(x -> pools.add(x.name()));
-    metricService.addMetricSet(
-        new CpuUsageMetrics(
-            threadModules,
-            pools,
-            x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
-            x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
+    MetricService.getInstance()
+        .addMetricSet(
+            new CpuUsageMetrics(
+                threadModules,
+                pools,
+                x -> ThreadName.getModuleTheThreadBelongs(x).toString(),
+                x -> ThreadName.getThreadPoolTheThreadBelongs(x).name()));
   }
 
   void initConfigManager() {
     try {
-      this.configManager = new ConfigManager();
+      setConfigManager();
     } catch (Exception e) {
       LOGGER.error("Can't start ConfigNode consensus group!", e);
       stop();
     }
     LOGGER.info("Successfully initialize ConfigManager.");
+  }
+
+  protected void setConfigManager() throws Exception {
+    this.configManager = new ConfigManager();
   }
 
   /**
@@ -423,11 +383,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             configManager.getClusterParameters(),
-            conf.generateLocalConfigNodeLocationWithSpecifiedNodeId(INIT_NON_SEED_CONFIG_NODE_ID));
+            CONF.generateLocalConfigNodeLocationWithSpecifiedNodeId(INIT_NON_SEED_CONFIG_NODE_ID));
 
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
 
-    TEndPoint seedConfigNode = conf.getSeedConfigNode();
+    TEndPoint seedConfigNode = CONF.getSeedConfigNode();
     if (seedConfigNode == null) {
       LOGGER.error("Please set the cn_seed_config_node parameter in iotdb-system.properties file.");
       throw new StartupException("The seedConfigNode setting in conf is empty");
@@ -437,8 +397,9 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       TSStatus status;
       TConfigNodeRegisterResp resp = null;
       Object obj =
-          syncConfigNodeClientPool.sendSyncRequestToConfigNodeWithRetry(
-              seedConfigNode, req, CnToCnNodeRequestType.REGISTER_CONFIG_NODE);
+          SyncConfigNodeClientPool.getInstance()
+              .sendSyncRequestToConfigNodeWithRetry(
+                  seedConfigNode, req, CnToCnNodeRequestType.REGISTER_CONFIG_NODE);
 
       if (obj instanceof TConfigNodeRegisterResp) {
         resp = (TConfigNodeRegisterResp) obj;
@@ -453,7 +414,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
           throw new StartupException("The result of register ConfigNode is empty!");
         }
         /* Always set ConfigNodeId before initConsensusManager */
-        conf.setConfigNodeId(resp.getConfigNodeId());
+        CONF.setConfigNodeId(resp.getConfigNodeId());
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -475,8 +436,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private TConfigNodeLocation generateConfigNodeLocation(int configNodeId) {
     return new TConfigNodeLocation(
         configNodeId,
-        new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
-        new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()));
+        new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort()),
+        new TEndPoint(CONF.getInternalAddress(), CONF.getConsensusPort()));
   }
 
   private void startUpSleep(String errorMessage) throws StartupException {
@@ -564,7 +525,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private static class ConfigNodeHolder {
 
-    private static ConfigNode instance;
+    private static ConfigNode instance = new ConfigNode();
 
     private ConfigNodeHolder() {
       // Empty constructor
@@ -572,17 +533,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   }
 
   public static ConfigNode getInstance() {
-    // Make sure the singleton is initialized (Mainly in Unit-Tests)
-    if (ConfigNodeHolder.instance == null) {
-      new ConfigNode();
-    }
     return ConfigNodeHolder.instance;
   }
 
   public static void setInstance(ConfigNode configNode) {
-    if (ConfigNode.ConfigNodeHolder.instance != null) {
-      throw new RuntimeException("ConfigNode has already been initialized");
-    }
     ConfigNodeHolder.instance = configNode;
   }
 }
