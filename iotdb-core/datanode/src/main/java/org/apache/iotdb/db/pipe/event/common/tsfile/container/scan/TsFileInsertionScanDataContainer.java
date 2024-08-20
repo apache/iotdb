@@ -53,8 +53,10 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -71,6 +73,12 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private IDeviceID currentDevice;
   private boolean currentIsAligned;
   private final List<IMeasurementSchema> currentMeasurements = new ArrayList<>();
+
+  // Cached time chunk
+  private final List<Chunk> timeChunkList = new ArrayList<>();
+  private final Map<String, Integer> measurementIndexMap = new HashMap<>();
+  private int lastIndex = -1;
+  private ChunkHeader firstChunkHeader4NextSequentialValueChunks;
 
   private byte lastMarker = Byte.MIN_VALUE;
 
@@ -263,7 +271,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private void moveToNextChunkReader() throws IOException, IllegalStateException {
     ChunkHeader chunkHeader;
-    Chunk timeChunk = null;
     final List<Chunk> valueChunkList = new ArrayList<>();
     currentMeasurements.clear();
 
@@ -281,16 +288,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         case MetaMarker.TIME_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
-          if (Objects.nonNull(timeChunk) && !currentMeasurements.isEmpty()) {
-            chunkReader =
-                isMultiPage
-                    ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-                    : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
-            currentIsAligned = true;
-            lastMarker = marker;
-            return;
-          }
-
+          // Notice that the data in one chunk group is either aligned or non-aligned
+          // There is no need to consider non-aligned chunks when there are value chunks
           isMultiPage = marker == MetaMarker.CHUNK_HEADER || marker == MetaMarker.TIME_CHUNK_HEADER;
 
           chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
@@ -303,9 +302,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
           if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
               == TsFileConstant.TIME_COLUMN_MASK) {
-            timeChunk =
+            timeChunkList.add(
                 new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()));
+                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
             break;
           }
 
@@ -332,35 +331,56 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           return;
         case MetaMarker.VALUE_CHUNK_HEADER:
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
-          chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
+          if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
+            chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-          if (Objects.isNull(currentDevice)
-              || !pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
-            tsFileSequenceReader.position(
-                tsFileSequenceReader.position() + chunkHeader.getDataSize());
-            break;
+            if (Objects.isNull(currentDevice)
+                || !pattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+              tsFileSequenceReader.position(
+                  tsFileSequenceReader.position() + chunkHeader.getDataSize());
+              break;
+            }
+
+            // Increase value index
+            final int valueIndex =
+                measurementIndexMap.compute(
+                    chunkHeader.getMeasurementID(),
+                    (measurement, index) -> Objects.nonNull(index) ? index + 1 : 0);
+
+            // Emit when encountered non-sequential value chunk
+            // Do not record or end current value chunks when there are empty chunks
+            if (chunkHeader.getDataSize() == 0) {
+              break;
+            }
+            boolean needReturn = false;
+            if (lastIndex >= 0 && valueIndex != lastIndex) {
+              needReturn = recordAlignedChunk(valueChunkList, marker);
+            }
+            lastIndex = valueIndex;
+            if (needReturn) {
+              firstChunkHeader4NextSequentialValueChunks = chunkHeader;
+              return;
+            }
+          } else {
+            chunkHeader = firstChunkHeader4NextSequentialValueChunks;
+            firstChunkHeader4NextSequentialValueChunks = null;
           }
 
-          // Do not record empty chunk
-          if (chunkHeader.getDataSize() > 0) {
-            valueChunkList.add(
-                new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
-            currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
-          }
+          valueChunkList.add(
+              new Chunk(
+                  chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+          currentMeasurements.add(
+              new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
           break;
         case MetaMarker.CHUNK_GROUP_HEADER:
           // Return before "currentDevice" changes
-          if (Objects.nonNull(timeChunk) && !currentMeasurements.isEmpty()) {
-            chunkReader =
-                isMultiPage
-                    ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-                    : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
-            currentIsAligned = true;
-            lastMarker = marker;
+          if (recordAlignedChunk(valueChunkList, marker)) {
             return;
           }
+          // Clear because the cached data will never be used in the next chunk group
+          lastIndex = -1;
+          timeChunkList.clear();
+          measurementIndexMap.clear();
           final IDeviceID deviceID = tsFileSequenceReader.readChunkGroupHeader().getDeviceID();
           currentDevice = pattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
           break;
@@ -373,14 +393,22 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     }
 
     lastMarker = marker;
-    if (Objects.nonNull(timeChunk) && !currentMeasurements.isEmpty()) {
-      chunkReader =
-          isMultiPage
-              ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
-      currentIsAligned = true;
-    } else {
+    if (!recordAlignedChunk(valueChunkList, marker)) {
       chunkReader = null;
     }
+  }
+
+  private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
+      throws IOException {
+    if (!valueChunkList.isEmpty()) {
+      chunkReader =
+          isMultiPage
+              ? new AlignedChunkReader(timeChunkList.get(lastIndex), valueChunkList, filter)
+              : new AlignedSinglePageWholeChunkReader(timeChunkList.get(lastIndex), valueChunkList);
+      currentIsAligned = true;
+      lastMarker = marker;
+      return true;
+    }
+    return false;
   }
 }

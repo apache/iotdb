@@ -326,7 +326,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check row count
