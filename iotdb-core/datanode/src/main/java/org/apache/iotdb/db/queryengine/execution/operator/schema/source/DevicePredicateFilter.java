@@ -28,6 +28,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import static java.util.Objects.requireNonNull;
+
 public class DevicePredicateFilter extends DevicePredicateHandler
     implements Iterator<IDeviceSchemaInfo> {
   private int curIndex = 0;
@@ -44,6 +46,7 @@ public class DevicePredicateFilter extends DevicePredicateHandler
         database,
         tableName,
         columnHeaderList);
+    requireNonNull(filterOutputTransformer);
   }
 
   @Override
