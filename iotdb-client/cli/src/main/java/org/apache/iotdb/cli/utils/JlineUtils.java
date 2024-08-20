@@ -36,6 +36,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -54,6 +56,8 @@ public class JlineUtils {
 
   public static LineReader getLineReader(CliContext ctx, String username, String host, String port)
       throws IOException {
+    Logger.getLogger("org.jline").setLevel(Level.OFF);
+
     // Defaulting to a dumb terminal when a supported terminal can not be correctly created
     // see https://github.com/jline/jline3/issues/291
     Terminal terminal;
