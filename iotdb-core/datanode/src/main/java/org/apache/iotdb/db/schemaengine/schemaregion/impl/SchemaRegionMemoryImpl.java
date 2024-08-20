@@ -43,7 +43,7 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeTransformer;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -1388,29 +1388,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
       throws MetadataException {
-    try (final DeviceAttributeTransformer filter =
-        constructDevicePredicateTransformer(updateNode)) {
+    try (final DeviceAttributeUpdater batchUpdater = constructDevicePredicateUpdater(updateNode)) {
       final List<PartialPath> patterns =
           TableDeviceQuerySource.getDevicePatternList(
               updateNode.getDatabase(),
               updateNode.getTableName(),
               updateNode.getIdDeterminedFilterList());
-      final List<String> attributeNames =
-          updateNode.getAssignments().stream()
-              .map(assignment -> ((SymbolReference) assignment.getName()).getName())
-              .collect(Collectors.toList());
       for (final PartialPath pattern : patterns) {
-        mtree.updateTableDevice(
-            pattern,
-            filter,
-            (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
-            (pointer, values) ->
-                deviceAttributeStore.alterAttribute(pointer, attributeNames, values));
+        mtree.updateTableDevice(pattern, batchUpdater);
       }
     }
   }
 
-  private DeviceAttributeTransformer constructDevicePredicateTransformer(
+  private DeviceAttributeUpdater constructDevicePredicateUpdater(
       final TableDeviceAttributeUpdateNode updateNode) {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
@@ -1484,8 +1474,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             mockTypeProvider,
             metadata);
 
+    final List<String> attributeNames =
+        updateNode.getAssignments().stream()
+            .map(assignment -> ((SymbolReference) assignment.getName()).getName())
+            .collect(Collectors.toList());
+
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
-    return new DeviceAttributeTransformer(
+    return new DeviceAttributeUpdater(
         filterOutputDataTypes,
         filterLeafColumnTransformerList,
         filterOutputTransformer,
@@ -1498,7 +1493,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             .map(
                 assignment ->
                     visitor.process(assignment.getValue(), projectColumnTransformerContext))
-            .collect(Collectors.toList()));
+            .collect(Collectors.toList()),
+        (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
+        (pointer, values) -> deviceAttributeStore.alterAttribute(pointer, attributeNames, values));
   }
 
   @Override

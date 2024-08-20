@@ -43,7 +43,7 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeTransformer;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -97,7 +97,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -1558,10 +1557,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void updateTableDevice(
-      final PartialPath pattern,
-      final DeviceAttributeTransformer filter,
-      final BiFunction<Integer, String, String> attributeProvider,
-      final BiConsumer<Integer, Object[]> attributeUpdater)
+      final PartialPath pattern, final DeviceAttributeUpdater batchUpdater)
       throws MetadataException {
     try (final EntityUpdater<IMemMNode> updater =
         new EntityUpdater<IMemMNode>(
@@ -1569,24 +1565,7 @@ public class MTreeBelowSGMemoryImpl {
 
           @Override
           protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
-            final ShowDevicesResult result =
-                new ShowDevicesResult(
-                    null,
-                    node.isAlignedNullable(),
-                    node.getSchemaTemplateId(),
-                    node.getPartialPath().getNodes());
-            result.setAttributeProvider(
-                k ->
-                    attributeProvider.apply(
-                        ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(),
-                        k));
-            final Object[] values = filter.getTransformedObject(result);
-            if (values.length > 0) {
-              attributeUpdater.accept(
-                  ((TableDeviceInfo<IMemMNode>) node.getAsDeviceMNode().getDeviceInfo())
-                      .getAttributePointer(),
-                  values);
-            }
+            batchUpdater.handleDeviceNode(node);
           }
         }) {
       updater.update();

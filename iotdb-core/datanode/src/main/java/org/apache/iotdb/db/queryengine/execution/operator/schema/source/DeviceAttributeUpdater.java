@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -33,16 +37,20 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
-public class DeviceAttributeTransformer extends DevicePredicateFilter {
+public class DeviceAttributeUpdater extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformers;
+  final BiFunction<Integer, String, String> attributeProvider;
+  private final BiConsumer<Integer, Object[]> attributeUpdater;
 
   @SuppressWarnings("squid:S107")
-  public DeviceAttributeTransformer(
+  public DeviceAttributeUpdater(
       final List<TSDataType> filterOutputDataTypes,
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
@@ -51,7 +59,9 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
-      final List<ColumnTransformer> projectOutputTransformers) {
+      final List<ColumnTransformer> projectOutputTransformers,
+      final BiFunction<Integer, String, String> attributeProvider,
+      final BiConsumer<Integer, Object[]> attributeUpdater) {
     super(
         filterOutputDataTypes,
         filterLeafColumnTransformerList,
@@ -62,10 +72,28 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
         columnHeaderList);
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformers = projectOutputTransformers;
+    this.attributeProvider = attributeProvider;
+    this.attributeUpdater = attributeUpdater;
+  }
+
+  public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {
+    final ShowDevicesResult result =
+        new ShowDevicesResult(
+            null,
+            node.isAlignedNullable(),
+            node.getSchemaTemplateId(),
+            node.getPartialPath().getNodes());
+    result.setAttributeProvider(
+        k ->
+            attributeProvider.apply(
+                ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(), k));
+    if (addBatch(result)) {
+      return;
+    }
   }
 
   public Object[] getTransformedObject(final IDeviceSchemaInfo deviceSchemaInfo) {
-    final TsBlock block = match(deviceSchemaInfo);
+    final TsBlock block = getTsBlock();
     if (Objects.isNull(block)) {
       return new Object[0];
     }
@@ -73,6 +101,21 @@ public class DeviceAttributeTransformer extends DevicePredicateFilter {
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
 
+    for (int i = 0, n = resultColumns.size(); i < n; i++) {
+      Column curColumn = resultColumns.get(i);
+      for (int j = 0; j < positionCount; j++) {
+        if (satisfy(filterColumn, j)) {
+          if (i == 0) {
+            rowCount++;
+          }
+          if (curColumn.isNull(j)) {
+            columnBuilders[i].appendNull();
+          } else {
+            columnBuilders[i].write(curColumn, j);
+          }
+        }
+      }
+    }
     return projectOutputTransformers.stream()
         .map(
             columnTransformer -> {

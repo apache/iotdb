@@ -183,7 +183,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  public static int constructFilteredTsBlock(
+  private static int constructFilteredTsBlock(
       List<Column> resultColumns,
       TimeColumnBuilder timeBuilder,
       Column filterColumn,

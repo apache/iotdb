@@ -150,7 +150,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       }
 
       private boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
-        return Objects.isNull(filter) || Objects.nonNull(filter.match(deviceSchemaInfo));
+        return Objects.isNull(filter) || Objects.nonNull(filter.addBatch(deviceSchemaInfo));
       }
 
       @Override
