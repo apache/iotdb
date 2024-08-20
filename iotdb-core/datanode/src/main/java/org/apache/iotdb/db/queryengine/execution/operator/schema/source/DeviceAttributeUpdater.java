@@ -37,6 +37,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -96,22 +97,7 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
   }
 
   private void update() {
-    filterTsBlockBuilder.reset();
-
-    final List<Column> filterResultColumns =
-        new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
-
-    // Get result of calculated common sub expressions
-    commonTransformerList.forEach(
-        columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
-    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
-
-    final int rowCount =
-        constructFilteredTsBlock(
-            filterResultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size());
-    filterTsBlockBuilder.declarePositions(rowCount);
-
-    final TsBlock block = filterTsBlockBuilder.build(new TimeColumn(rowCount, new long[rowCount]));
+    final TsBlock block = getFilterTsBlock();
 
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
@@ -134,6 +120,28 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
 
     attributePointers.clear();
     super.clear();
+  }
+
+  private TsBlock getFilterTsBlock() {
+    if (Objects.isNull(filterOutputTransformer)) {
+      return curBlock;
+    }
+    filterTsBlockBuilder.reset();
+
+    final List<Column> filterResultColumns =
+        new ArrayList<>(Arrays.asList(curBlock.getValueColumns()));
+
+    // Get result of calculated common sub expressions
+    commonTransformerList.forEach(
+        columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
+    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
+
+    final int rowCount =
+        constructFilteredTsBlock(
+            filterResultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size());
+    filterTsBlockBuilder.declarePositions(rowCount);
+
+    return filterTsBlockBuilder.build(new TimeColumn(rowCount, new long[rowCount]));
   }
 
   @Override

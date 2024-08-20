@@ -39,12 +39,12 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterA
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public abstract class DevicePredicateHandler implements AutoCloseable {
-  protected final List<LeafColumnTransformer> filterLeafColumnTransformerList;
+  private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
   protected final ColumnTransformer filterOutputTransformer;
-  protected final List<TSDataType> inputDataTypes;
-  protected final String database;
-  protected final String tableName;
-  protected final List<ColumnHeader> columnHeaderList;
+  private final List<TSDataType> inputDataTypes;
+  private final String database;
+  private final String tableName;
+  private final List<ColumnHeader> columnHeaderList;
 
   // Batch logic
   private static final int DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES =
