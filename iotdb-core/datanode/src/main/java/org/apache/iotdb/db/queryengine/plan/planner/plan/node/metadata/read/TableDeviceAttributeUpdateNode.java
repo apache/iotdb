@@ -68,7 +68,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   private final List<UpdateAssignment> assignments;
   private final SessionInfo sessionInfo;
 
-  public static TableDeviceAttributeUpdateNode MOCK_INSTANCE =
+  public static final TableDeviceAttributeUpdateNode MOCK_INSTANCE =
       new TableDeviceAttributeUpdateNode(null, null, null, null, null, null, null, null, null);
 
   @SuppressWarnings("squid:S107")

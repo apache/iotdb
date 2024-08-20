@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -406,6 +407,12 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       alterLogicalViewPlan.setViewPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
       alterLogicalViewPlan.setSourceExpression(ViewExpression.deserialize(buffer));
       return alterLogicalViewPlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitCreateTableDevice(
+        final CreateTableDeviceNode createTableDeviceNode, final ByteBuffer buffer) {
+      return (CreateTableDeviceNode) PlanNodeType.deserialize(buffer);
     }
 
     @Override

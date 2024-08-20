@@ -26,6 +26,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -44,7 +47,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.convertRawDeviceIDs2PartitionKeys;
 
-public class CreateTableDeviceNode extends WritePlanNode {
+public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegionPlan {
 
   private final String database;
 
@@ -59,6 +62,9 @@ public class CreateTableDeviceNode extends WritePlanNode {
   private TRegionReplicaSet regionReplicaSet;
 
   private transient List<IDeviceID> partitionKeyList;
+
+  public static final CreateTableDeviceNode MOCK_INSTANCE =
+      new CreateTableDeviceNode(null, null, null, null, null, null);
 
   public CreateTableDeviceNode(
       final PlanNodeId id,
@@ -188,7 +194,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
   }
 
   @Override
-  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+  public void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.CREATE_TABLE_DEVICE.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
@@ -315,5 +321,15 @@ public class CreateTableDeviceNode extends WritePlanNode {
         attributeValueList,
         regionReplicaSet,
         partitionKeyList);
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.CREATE_TABLE_DEVICE;
+  }
+
+  @Override
+  public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitCreateTableDevice(this, context);
   }
 }

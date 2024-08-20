@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Tabl
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -303,9 +304,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             config.getSyncMlogPeriodInMs() == 0);
   }
 
-  public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
+  public void writeToMLog(final ISchemaRegionPlan schemaRegionPlan) throws MetadataException {
     if (usingMLog && !isRecovering) {
-      logWriter.write(schemaRegionPlan);
+      try {
+        logWriter.write(schemaRegionPlan);
+      } catch (final IOException e) {
+        throw new MetadataException(e);
+      }
     }
   }
 
@@ -821,11 +826,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final List<PartialPath> paths = mtree.constructSchemaBlackList(pathPattern, isAllLogicalView);
       preDeletedNum += paths.size();
       for (final PartialPath path : paths) {
-        try {
-          writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(path));
-        } catch (final IOException e) {
-          throw new MetadataException(e);
-        }
+        writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteTimeSeriesPlan(path));
       }
     }
     return new Pair<>(preDeletedNum, isAllLogicalView.get());
@@ -841,11 +842,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       final List<PartialPath> paths = mtree.rollbackSchemaBlackList(pathPattern);
       for (final PartialPath path : paths) {
-        try {
-          writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));
-        } catch (final IOException e) {
-          throw new MetadataException(e);
-        }
+        writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteTimeSeriesPlan(path));
       }
     }
   }
@@ -879,26 +876,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createLogicalView(ICreateLogicalViewPlan plan) throws MetadataException {
+  public void createLogicalView(final ICreateLogicalViewPlan plan) throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
-    try {
-      List<PartialPath> pathList = plan.getViewPathList();
-      Map<PartialPath, ViewExpression> viewPathToSourceMap =
-          plan.getViewPathToSourceExpressionMap();
-      for (PartialPath path : pathList) {
-        // create one logical view
-        mtree.createLogicalView(path, viewPathToSourceMap.get(path));
-      }
-      // write log
-      if (!isRecovering) {
-        writeToMLog(plan);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
+    final List<PartialPath> pathList = plan.getViewPathList();
+    final Map<PartialPath, ViewExpression> viewPathToSourceMap =
+        plan.getViewPathToSourceExpressionMap();
+    for (final PartialPath path : pathList) {
+      // create one logical view
+      mtree.createLogicalView(path, viewPathToSourceMap.get(path));
+    }
+    // write log
+    if (!isRecovering) {
+      writeToMLog(plan);
     }
     // update statistics
     regionStatistics.addView(1L);
@@ -907,45 +900,38 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public long constructLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       // Given pathPatterns may match one logical view multi times, which may results in the
       // preDeletedNum larger than the actual num of logical view. It doesn't matter since the main
       // purpose is to check whether there's logical view to be deleted.
-      List<PartialPath> paths = mtree.constructLogicalViewBlackList(pathPattern);
+      final List<PartialPath> paths = mtree.constructLogicalViewBlackList(pathPattern);
       preDeletedNum += paths.size();
-      for (PartialPath path : paths) {
-        try {
-          writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteLogicalViewPlan(path));
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        }
+      for (final PartialPath path : paths) {
+        writeToMLog(SchemaRegionWritePlanFactory.getPreDeleteLogicalViewPlan(path));
       }
     }
     return preDeletedNum;
   }
 
   @Override
-  public void rollbackLogicalViewBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      List<PartialPath> paths = mtree.rollbackLogicalViewBlackList(pathPattern);
-      for (PartialPath path : paths) {
-        try {
-          writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteLogicalViewPlan(path));
-        } catch (IOException e) {
-          throw new MetadataException(e);
-        }
+  public void rollbackLogicalViewBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      final List<PartialPath> paths = mtree.rollbackLogicalViewBlackList(pathPattern);
+      for (final PartialPath path : paths) {
+        writeToMLog(SchemaRegionWritePlanFactory.getRollbackPreDeleteLogicalViewPlan(path));
       }
     }
   }
 
   @Override
-  public void deleteLogicalView(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getPreDeletedLogicalView(pathPattern)) {
+  public void deleteLogicalView(final PathPatternTree patternTree) throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mtree.getPreDeletedLogicalView(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(SchemaRegionWritePlanFactory.getDeleteLogicalViewPlan(path));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
@@ -953,9 +939,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void alterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan)
+  public void alterLogicalView(final IAlterLogicalViewPlan alterLogicalViewPlan)
       throws MetadataException {
-    IMeasurementMNode<IMemMNode> leafMNode =
+    final IMeasurementMNode<IMemMNode> leafMNode =
         mtree.getMeasurementMNode(alterLogicalViewPlan.getViewPath());
     if (!leafMNode.isLogicalView()) {
       throw new MetadataException(
@@ -965,17 +951,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         new LogicalViewSchema(leafMNode.getName(), alterLogicalViewPlan.getSourceExpression()));
     // write log
     if (!isRecovering) {
-      try {
-        writeToMLog(alterLogicalViewPlan);
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      }
+      writeToMLog(alterLogicalViewPlan);
     }
   }
 
-  private void deleteSingleTimeseriesInBlackList(PartialPath path)
+  private void deleteSingleTimeseriesInBlackList(final PartialPath path)
       throws MetadataException, IOException {
-    IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
     if (measurementMNode.isLogicalView()) {
       regionStatistics.deleteView(1L);
@@ -984,17 +966,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
   }
 
-  private void recoverRollbackPreDeleteTimeseries(PartialPath path) throws MetadataException {
-    IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
+  private void recoverRollbackPreDeleteTimeseries(final PartialPath path) throws MetadataException {
+    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setPreDeleted(false);
   }
 
   /**
    * @param path full path from root to leaf node
    */
-  private void deleteOneTimeseriesUpdateStatistics(PartialPath path)
+  private void deleteOneTimeseriesUpdateStatistics(final PartialPath path)
       throws MetadataException, IOException {
-    IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
     removeFromTagInvertedIndex(measurementMNode);
     if (measurementMNode.isLogicalView()) {
       regionStatistics.deleteView(1L);
@@ -1013,20 +995,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    *
    * @param path path
    */
-  private IMemMNode getDeviceNodeWithAutoCreate(PartialPath path)
-      throws IOException, MetadataException {
-    IMemMNode node = mtree.getDeviceNodeWithAutoCreating(path);
+  private IMemMNode getDeviceNodeWithAutoCreate(final PartialPath path) throws MetadataException {
+    final IMemMNode node = mtree.getDeviceNodeWithAutoCreating(path);
     writeToMLog(SchemaRegionWritePlanFactory.getAutoCreateDeviceMNodePlan(node.getPartialPath()));
     return node;
   }
 
-  private void autoCreateDeviceMNode(IAutoCreateDeviceMNodePlan plan) throws MetadataException {
+  private void autoCreateDeviceMNode(final IAutoCreateDeviceMNodePlan plan)
+      throws MetadataException {
     mtree.getDeviceNodeWithAutoCreating(plan.getPath());
-    try {
-      writeToMLog(plan);
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    writeToMLog(plan);
   }
 
   // endregion
@@ -1038,25 +1016,25 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // region Interfaces for timeseries, measurement and schema info Query
 
   @Override
-  public MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode<IMemMNode> node = mtree.getMeasurementMNode(fullPath);
-    MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
+  public MeasurementPath fetchMeasurementPath(final PartialPath fullPath) throws MetadataException {
+    final IMeasurementMNode<IMemMNode> node = mtree.getMeasurementMNode(fullPath);
+    final MeasurementPath res = new MeasurementPath(node.getPartialPath(), node.getSchema());
     res.setUnderAlignedEntity(node.getParent().getAsDeviceMNode().isAligned());
     return res;
   }
 
   @Override
   public ClusterSchemaTree fetchSeriesSchema(
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean withAttributes,
-      boolean withTemplate,
-      boolean withAliasForce)
+      final PathPatternTree patternTree,
+      final Map<Integer, Template> templateMap,
+      final boolean withTags,
+      final boolean withAttributes,
+      final boolean withTemplate,
+      final boolean withAliasForce)
       throws MetadataException {
     if (patternTree.isContainWildcard()) {
-      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      for (PartialPath path : patternTree.getAllPathPatterns()) {
+      final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      for (final PartialPath path : patternTree.getAllPathPatterns()) {
         schemaTree.mergeSchemaTree(
             mtree.fetchSchema(
                 path, templateMap, withTags, withAttributes, withTemplate, withAliasForce));
@@ -1070,7 +1048,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ClusterSchemaTree fetchDeviceSchema(
-      PathPatternTree patternTree, PathPatternTree authorityScope) throws MetadataException {
+      final PathPatternTree patternTree, final PathPatternTree authorityScope)
+      throws MetadataException {
     return mtree.fetchDeviceSchema(patternTree, authorityScope);
   }
 
@@ -1086,14 +1065,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param path timeseries
    * @param offset offset in the tag file
    */
-  private void changeOffset(PartialPath path, long offset) throws MetadataException {
-    IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
+  private void changeOffset(final PartialPath path, final long offset) throws MetadataException {
+    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.getMeasurementMNode(path);
     measurementMNode.setOffset(offset);
 
     if (isRecovering) {
       try {
         tagManager.recoverIndex(offset, measurementMNode);
-      } catch (IOException e) {
+      } catch (final IOException e) {
         throw new MetadataException(e);
       }
     }
@@ -1111,10 +1090,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void upsertAliasAndTagsAndAttributes(
-      String alias,
-      Map<String, String> tagsMap,
-      Map<String, String> attributesMap,
-      PartialPath fullPath)
+      final String alias,
+      final Map<String, String> tagsMap,
+      final Map<String, String> attributesMap,
+      final PartialPath fullPath)
       throws MetadataException, IOException {
     // upsert alias
     upsertAlias(alias, fullPath);
@@ -1122,14 +1101,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (tagsMap == null && attributesMap == null) {
       return;
     }
 
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeTagFile(tagsMap, attributesMap);
+      final long offset = tagManager.writeTagFile(tagsMap, attributesMap);
       writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       // update inverted Index map
@@ -1142,8 +1121,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     tagManager.updateTagsAndAttributes(tagsMap, attributesMap, leafMNode);
   }
 
-  private void upsertAlias(String alias, PartialPath fullPath)
-      throws MetadataException, IOException {
+  private void upsertAlias(final String alias, final PartialPath fullPath)
+      throws MetadataException {
     if (alias != null) {
       if (!regionStatistics.isAllowToCreateNewSeries()) {
         throw new SeriesOverflowException(
@@ -1164,9 +1143,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @throws MetadataException tagLogFile write error or attributes already exist
    */
   @Override
-  public void addAttributes(Map<String, String> attributesMap, PartialPath fullPath)
+  public void addAttributes(final Map<String, String> attributesMap, final PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
 
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
@@ -1187,16 +1166,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @throws MetadataException tagLogFile write error or tags already exist
    */
   @Override
-  public void addTags(Map<String, String> tagsMap, PartialPath fullPath)
+  public void addTags(final Map<String, String> tagsMap, final PartialPath fullPath)
       throws MetadataException, IOException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, we need to add a new record in log
     if (leafMNode.getOffset() < 0) {
-      long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
+      final long offset = tagManager.writeTagFile(tagsMap, Collections.emptyMap());
       writeToMLog(SchemaRegionWritePlanFactory.getChangeTagOffsetPlan(fullPath, offset));
       leafMNode.setOffset(offset);
       // update inverted Index map
@@ -1216,9 +1195,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void dropTagsOrAttributes(Set<String> keySet, PartialPath fullPath)
+  public void dropTagsOrAttributes(final Set<String> keySet, final PartialPath fullPath)
       throws MetadataException, IOException {
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     // no tag or attribute, just do nothing.
     if (leafMNode.getOffset() != -1) {
       tagManager.dropTagsOrAttributes(keySet, fullPath, leafMNode);
@@ -1234,13 +1213,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void setTagsOrAttributesValue(Map<String, String> alterMap, PartialPath fullPath)
+  public void setTagsOrAttributesValue(
+      final Map<String, String> alterMap, final PartialPath fullPath)
       throws MetadataException, IOException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
@@ -1261,13 +1241,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   @Override
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void renameTagOrAttributeKey(String oldKey, String newKey, PartialPath fullPath)
+  public void renameTagOrAttributeKey(
+      final String oldKey, final String newKey, final PartialPath fullPath)
       throws MetadataException, IOException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
-    IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
+    final IMeasurementMNode<IMemMNode> leafMNode = mtree.getMeasurementMNode(fullPath);
     if (leafMNode.getOffset() < 0) {
       throw new MetadataException(
           String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey),
@@ -1279,7 +1260,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void removeFromTagInvertedIndex(IMeasurementMNode<IMemMNode> node) throws IOException {
+  private void removeFromTagInvertedIndex(final IMeasurementMNode<IMemMNode> node)
+      throws IOException {
     tagManager.removeFromTagInvertedIndex(node);
   }
 
@@ -1287,114 +1269,93 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // region Interfaces and Implementation for Template operations
   @Override
-  public void activateSchemaTemplate(IActivateTemplateInClusterPlan plan, Template template)
-      throws MetadataException {
+  public void activateSchemaTemplate(
+      final IActivateTemplateInClusterPlan plan, final Template template) throws MetadataException {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       throw new SeriesOverflowException(
           regionStatistics.getGlobalMemoryUsage(), regionStatistics.getGlobalSeriesNumber());
     }
 
-    try {
-      plan.setAligned(template.isDirectAligned());
-      getDeviceNodeWithAutoCreate(plan.getActivatePath());
+    plan.setAligned(template.isDirectAligned());
+    getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
-      mtree.activateTemplate(plan.getActivatePath(), template);
-      writeToMLog(plan);
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      throw new MetadataException(e);
-    }
+    mtree.activateTemplate(plan.getActivatePath(), template);
+    writeToMLog(plan);
   }
 
-  private void recoverActivatingSchemaTemplate(IActivateTemplateInClusterPlan plan)
-      throws MetadataException {
+  private void recoverActivatingSchemaTemplate(final IActivateTemplateInClusterPlan plan) {
     mtree.activateTemplateWithoutCheck(
         plan.getActivatePath(), plan.getTemplateId(), plan.isAligned());
   }
 
   @Override
-  public long constructSchemaBlackListWithTemplate(IPreDeactivateTemplatePlan plan)
+  public long constructSchemaBlackListWithTemplate(final IPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+    final Map<PartialPath, List<Integer>> resultTemplateSetInfo =
         mtree.constructSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
-    try {
-      writeToMLog(SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(resultTemplateSetInfo));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    writeToMLog(SchemaRegionWritePlanFactory.getPreDeactivateTemplatePlan(resultTemplateSetInfo));
     return resultTemplateSetInfo.size();
   }
 
   @Override
-  public void rollbackSchemaBlackListWithTemplate(IRollbackPreDeactivateTemplatePlan plan)
+  public void rollbackSchemaBlackListWithTemplate(final IRollbackPreDeactivateTemplatePlan plan)
       throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+    final Map<PartialPath, List<Integer>> resultTemplateSetInfo =
         mtree.rollbackSchemaBlackListWithTemplate(plan.getTemplateSetInfo());
-    try {
-      writeToMLog(
-          SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    writeToMLog(
+        SchemaRegionWritePlanFactory.getRollbackPreDeactivateTemplatePlan(resultTemplateSetInfo));
   }
 
   @Override
-  public void deactivateTemplateInBlackList(IDeactivateTemplatePlan plan) throws MetadataException {
+  public void deactivateTemplateInBlackList(final IDeactivateTemplatePlan plan)
+      throws MetadataException {
     // TODO: We can consider implement this as a consumer passed to MTree which takes responsibility
     // of operating tree structure and concurrency control in future work.
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo =
+    final Map<PartialPath, List<Integer>> resultTemplateSetInfo =
         mtree.deactivateTemplateInBlackList(plan.getTemplateSetInfo());
-    try {
-      writeToMLog(SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(resultTemplateSetInfo));
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
+    writeToMLog(SchemaRegionWritePlanFactory.getDeactivateTemplatePlan(resultTemplateSetInfo));
   }
 
   @Override
-  public long countPathsUsingTemplate(int templateId, PathPatternTree patternTree)
+  public long countPathsUsingTemplate(final int templateId, final PathPatternTree patternTree)
       throws MetadataException {
     long result = 0;
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
       result += mtree.countPathsUsingTemplate(pathPattern, templateId);
     }
     return result;
   }
 
   @Override
-  public void createTableDevice(
-      final String tableName,
-      final List<Object[]> devicePathList,
-      final List<String> attributeNameList,
-      final List<Object[]> attributeValueList)
-      throws MetadataException {
-    for (int i = 0; i < devicePathList.size(); i++) {
+  public void createTableDevice(final CreateTableDeviceNode node) throws MetadataException {
+    for (int i = 0; i < node.getDeviceIdList().size(); i++) {
       int finalI = i;
       mtree.createTableDevice(
-          tableName,
-          devicePathList.get(i),
+          node.getTableName(),
+          node.getDeviceIdList().get(i),
           () ->
               deviceAttributeStore.createAttribute(
-                  attributeNameList, attributeValueList.get(finalI)),
+                  node.getAttributeNameList(), node.getAttributeValueList().get(finalI)),
           pointer ->
               deviceAttributeStore.alterAttribute(
-                  pointer, attributeNameList, attributeValueList.get(finalI)));
+                  pointer, node.getAttributeNameList(), node.getAttributeValueList().get(finalI)));
     }
+    writeToMLog(node);
   }
 
   @Override
   public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
       throws MetadataException {
     try (final DeviceAttributeUpdater batchUpdater = constructDevicePredicateUpdater(updateNode)) {
-      final List<PartialPath> patterns =
+      for (final PartialPath pattern :
           TableDeviceQuerySource.getDevicePatternList(
               updateNode.getDatabase(),
               updateNode.getTableName(),
-              updateNode.getIdDeterminedFilterList());
-      for (final PartialPath pattern : patterns) {
+              updateNode.getIdDeterminedFilterList())) {
         mtree.updateTableDevice(pattern, batchUpdater);
       }
     }
+    writeToMLog(updateNode);
   }
 
   private DeviceAttributeUpdater constructDevicePredicateUpdater(
@@ -1489,12 +1450,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTableDevice(String table) {
+  public void deleteTableDevice(final String table) {
     mtree.deleteTableDevice(table);
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
+  public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(final IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(
         showDevicesPlan, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
@@ -1502,7 +1463,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
-      IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
+      final IShowTimeSeriesPlan showTimeSeriesPlan) throws MetadataException {
     if (showTimeSeriesPlan.getSchemaFilter() != null
         && new FilterContainsVisitor()
             .process(showTimeSeriesPlan.getSchemaFilter(), SchemaFilterType.TAGS_FILTER)) {
@@ -1522,7 +1483,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+  public ISchemaReader<INodeSchemaInfo> getNodeReader(final IShowNodesPlan showNodesPlan)
       throws MetadataException {
     return mtree.getNodeReader(showNodesPlan);
   }
@@ -1614,7 +1575,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       try {
         upsertAlias(changeAliasPlan.getAlias(), changeAliasPlan.getPath());
         return RecoverOperationResult.SUCCESS;
-      } catch (final MetadataException | IOException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
@@ -1646,12 +1607,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     public RecoverOperationResult visitActivateTemplateInCluster(
         final IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
         final SchemaRegionMemoryImpl context) {
-      try {
-        recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
-        return RecoverOperationResult.SUCCESS;
-      } catch (final MetadataException e) {
-        return new RecoverOperationResult(e);
-      }
+      recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
+      return RecoverOperationResult.SUCCESS;
     }
 
     @Override
@@ -1714,12 +1671,13 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
 
+    @Override
     public RecoverOperationResult visitCreateLogicalView(
         final ICreateLogicalViewPlan createLogicalViewPlan, final SchemaRegionMemoryImpl context) {
       try {
         createLogicalView(createLogicalViewPlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }
