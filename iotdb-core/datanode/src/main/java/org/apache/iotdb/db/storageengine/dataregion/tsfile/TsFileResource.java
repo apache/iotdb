@@ -301,6 +301,7 @@ public class TsFileResource {
     buffer.putLong(tsFileID.compactionVersion);
     buffer.putLong(timeIndex.getMinStartTime());
     buffer.putLong(timeIndex.getMaxEndTime());
+    buffer.flip();
     return buffer;
   }
 

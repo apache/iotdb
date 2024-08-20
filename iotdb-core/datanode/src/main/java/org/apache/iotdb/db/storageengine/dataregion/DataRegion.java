@@ -900,7 +900,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       if (!resourceListForAsyncRecover.isEmpty()) {
         asyncRecoverTask =
-            asyncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);
+            asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover, isSeq);
       }
       if (!resourceListForSyncRecover.isEmpty()) {
         syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);

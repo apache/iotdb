@@ -55,7 +55,7 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
     try {
       channel.write(logBuffer);
       if (this.forceEachWrite) {
-        channel.force(false);
+        channel.force(true);
       }
     } catch (ClosedChannelException ignored) {
       logger.warn("someone interrupt current thread, so no need to do write for io safety");

@@ -61,7 +61,7 @@ public class FileTimeIndexCacheRecorder {
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.FILE_TIMEINDEX_RECORD.getName());
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        recordFileIndexThread, this::executeTasks, 1, 1, TimeUnit.SECONDS);
+        recordFileIndexThread, this::executeTasks, 10, 10, TimeUnit.MILLISECONDS);
   }
 
   private void executeTasks() {
@@ -156,7 +156,7 @@ public class FileTimeIndexCacheRecorder {
                   LOGGER.debug(
                       "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
                 }
-                return new FileTimeIndexCacheWriter(logFile, false);
+                return new FileTimeIndexCacheWriter(logFile, true);
               } catch (IOException e) {
                 throw new RuntimeException(e);
               }
