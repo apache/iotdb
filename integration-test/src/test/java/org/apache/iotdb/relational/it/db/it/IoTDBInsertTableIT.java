@@ -176,7 +176,7 @@ public class IoTDBInsertTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("USE \"test\"");
-      statement.execute("SET CONFIGURATION enable_auto_create_schema=false");
+      statement.execute("SET CONFIGURATION enable_auto_create_schema='false'");
       statement.execute(
           "create table sg5 (id1 string id, s1 text measurement, s2 double measurement)");
 
@@ -188,7 +188,7 @@ public class IoTDBInsertTableIT {
     } finally {
       try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
           Statement statement = connection.createStatement()) {
-        statement.execute("SET CONFIGURATION enable_auto_create_schema=true");
+        statement.execute("SET CONFIGURATION enable_auto_create_schema='true'");
       }
     }
 
@@ -235,7 +235,7 @@ public class IoTDBInsertTableIT {
   public void testPartialInsertTablet() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("use \"test\"");
-      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema=false");
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       session.executeNonQueryStatement(
           "create table sg6 (id1 string id, s1 int64 measurement, s2 int64 measurement)");
       List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -285,7 +285,7 @@ public class IoTDBInsertTableIT {
           fail(e.getMessage());
         }
       } finally {
-        session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema=false");
+        session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='false'");
       }
       try (SessionDataSet dataSet = session.executeQueryStatement("SELECT * FROM sg6")) {
         assertEquals(dataSet.getColumnNames().size(), 4);
