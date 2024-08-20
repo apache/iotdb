@@ -65,6 +65,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -98,7 +100,7 @@ public class TableDeviceSchemaFetcher {
     return cache;
   }
 
-  Map<TableDeviceId, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
+  Map<TableDeviceId, ConcurrentMap<String, String>> fetchMissingDeviceSchemaForDataInsertion(
       final FetchDevice statement, final MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
@@ -127,7 +129,7 @@ public class TableDeviceSchemaFetcher {
     final List<ColumnHeader> columnHeaderList =
         coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
     final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    final Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema = new HashMap<>();
+    final Map<TableDeviceId, ConcurrentMap<String, String>> fetchedDeviceSchema = new HashMap<>();
 
     try {
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -144,7 +146,7 @@ public class TableDeviceSchemaFetcher {
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           final String[] nodes = new String[idLength];
-          final Map<String, String> attributeMap = new HashMap<>();
+          final ConcurrentMap<String, String> attributeMap = new ConcurrentHashMap<>();
 
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 0, columnHeaderList, columns, tableInstance, i);
@@ -412,7 +414,7 @@ public class TableDeviceSchemaFetcher {
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String[] nodes = new String[idLength + 1];
           nodes[0] = table;
-          final Map<String, String> attributeMap = new HashMap<>();
+          final ConcurrentMap<String, String> attributeMap = new ConcurrentHashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
           nodes = (String[]) truncateTailingNull(nodes);

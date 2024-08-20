@@ -1548,11 +1548,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
     @Override
     public RecoverOperationResult visitCreateAlignedTimeSeries(
-        ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan, SchemaRegionMemoryImpl context) {
+        final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan,
+        final SchemaRegionMemoryImpl context) {
       try {
         createAlignedTimeSeries(createAlignedTimeSeriesPlan);
         return RecoverOperationResult.SUCCESS;
-      } catch (MetadataException e) {
+      } catch (final MetadataException e) {
         return new RecoverOperationResult(e);
       }
     }

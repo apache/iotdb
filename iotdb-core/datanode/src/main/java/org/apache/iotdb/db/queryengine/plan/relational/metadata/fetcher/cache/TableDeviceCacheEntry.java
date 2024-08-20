@@ -21,7 +21,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.Collections;
 import java.util.Map;
 
 public class TableDeviceCacheEntry {
@@ -37,7 +36,11 @@ public class TableDeviceCacheEntry {
   private final Map<String, String> attributeMap;
 
   public TableDeviceCacheEntry(final Map<String, String> attributeMap) {
-    this.attributeMap = Collections.unmodifiableMap(attributeMap);
+    this.attributeMap = attributeMap;
+  }
+
+  public void update(final Map<String, String> updateMap) {
+    this.attributeMap.putAll(updateMap);
   }
 
   public String getAttribute(final String key) {

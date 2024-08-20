@@ -42,6 +42,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
@@ -132,13 +133,13 @@ public class TableDeviceSchemaValidator {
       targetDeviceList.add(schemaValidation.getDeviceIdList().get(index));
     }
 
-    final Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema =
+    final Map<TableDeviceId, ConcurrentMap<String, String>> fetchedDeviceSchema =
         fetcher.fetchMissingDeviceSchemaForDataInsertion(
             new FetchDevice(
                 schemaValidation.getDatabase(), schemaValidation.getTableName(), targetDeviceList),
             context);
 
-    for (final Map.Entry<TableDeviceId, Map<String, String>> entry :
+    for (final Map.Entry<TableDeviceId, ConcurrentMap<String, String>> entry :
         fetchedDeviceSchema.entrySet()) {
       fetcher
           .getTableDeviceCache()
