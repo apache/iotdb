@@ -130,7 +130,7 @@ public class PipeStatementDataTypeConvertExecutionVisitor
     }
 
     LOGGER.warn(
-        "Data type conversion for LoadTsFileStatement: {} is successful.", loadTsFileStatement);
+        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
 
     return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
