@@ -31,7 +31,7 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,10 +43,12 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
 
 public class DeviceAttributeUpdater extends DevicePredicateFilter {
+  private final List<ColumnTransformer> commonTransformerList;
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
   final BiFunction<Integer, String, String> attributeProvider;
   private final BiConsumer<Integer, Object[]> attributeUpdater;
+  private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
 
   @SuppressWarnings("squid:S107")
@@ -63,17 +65,17 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
       final BiFunction<Integer, String, String> attributeProvider,
       final BiConsumer<Integer, Object[]> attributeUpdater) {
     super(
-        filterOutputDataTypes,
         filterLeafColumnTransformerList,
         filterOutputTransformer,
-        commonTransformerList,
         database,
         tableName,
         columnHeaderList);
+    this.commonTransformerList = commonTransformerList;
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
     this.projectOutputTransformerList = projectOutputTransformerList;
     this.attributeProvider = attributeProvider;
     this.attributeUpdater = attributeUpdater;
+    this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
   }
 
   public void handleDeviceNode(final IDeviceMNode<IMemMNode> node) {

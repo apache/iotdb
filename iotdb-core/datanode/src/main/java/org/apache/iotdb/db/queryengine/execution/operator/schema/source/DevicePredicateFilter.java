@@ -24,8 +24,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
-import org.apache.tsfile.enums.TSDataType;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -35,18 +33,14 @@ public class DevicePredicateFilter extends DevicePredicateHandler
   private int curIndex = 0;
 
   public DevicePredicateFilter(
-      final List<TSDataType> filterOutputDataTypes,
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
-      final List<ColumnTransformer> commonTransformerList,
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList) {
     super(
-        filterOutputDataTypes,
         filterLeafColumnTransformerList,
         filterOutputTransformer,
-        commonTransformerList,
         database,
         tableName,
         columnHeaderList);

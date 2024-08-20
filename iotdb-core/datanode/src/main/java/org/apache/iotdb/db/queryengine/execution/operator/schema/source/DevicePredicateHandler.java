@@ -41,8 +41,6 @@ import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.T
 public abstract class DevicePredicateHandler implements AutoCloseable {
   protected final List<LeafColumnTransformer> filterLeafColumnTransformerList;
   protected final ColumnTransformer filterOutputTransformer;
-  protected final List<ColumnTransformer> commonTransformerList;
-  protected final List<TSDataType> filterOutputDataTypes;
   protected final List<TSDataType> inputDataTypes;
   protected final String database;
   protected final String tableName;
@@ -53,29 +51,24 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
   protected final List<IDeviceSchemaInfo> deviceSchemaBatch =
       new ArrayList<>(DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES);
-  protected final TsBlockBuilder filterTsBlockBuilder;
+
   protected final List<Integer> indexes = new ArrayList<>();
   protected TsBlock curBlock;
   protected Column curFilterColumn;
 
   protected DevicePredicateHandler(
-      final List<TSDataType> filterOutputDataTypes,
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
       final ColumnTransformer filterOutputTransformer,
-      final List<ColumnTransformer> commonTransformerList,
       final String database,
       final String tableName,
       final List<ColumnHeader> columnHeaderList) {
-    this.filterOutputDataTypes = filterOutputDataTypes;
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
     this.filterOutputTransformer = filterOutputTransformer;
-    this.commonTransformerList = commonTransformerList;
     this.database = database;
     this.tableName = tableName;
     this.columnHeaderList = columnHeaderList;
     this.inputDataTypes =
         columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
-    this.filterTsBlockBuilder = new TsBlockBuilder(filterOutputDataTypes);
   }
 
   public boolean addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {

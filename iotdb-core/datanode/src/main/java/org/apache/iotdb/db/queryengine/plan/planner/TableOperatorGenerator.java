@@ -816,9 +816,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             columnHeaderList,
             Objects.nonNull(node.getIdFuzzyPredicate())
                 ? new DevicePredicateFilter(
-                    columnHeaderList.stream()
-                        .map(ColumnHeader::getColumnType)
-                        .collect(Collectors.toList()),
                     filterLeafColumnTransformerList,
                     new ColumnTransformerBuilder()
                         .process(
@@ -837,7 +834,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 0,
                                 context.getTypeProvider(),
                                 metadata)),
-                    Collections.emptyList(),
                     database,
                     tableName,
                     columnHeaderList)
