@@ -198,7 +198,7 @@ public class IoTDBDeviceIT {
 
       // Test common result column
       statement.execute(
-          "update table0 set model = substring(device_id, 1, 1) where model <> substring(device_id, 1, 1) and cast(region_id as int32) + cast(plant_id as int32) = 6");
+          "update table0 set model = substring(device_id, 1, 1) where model <> substring(device_id, 1, 1) and cast(region_id as int32) + cast(plant_id as int32) = 6 and region_id = '1'");
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "show devices from table0 where substring(region_id, 1, 1) in ('1', '2') and 1 + 1 = 2"),

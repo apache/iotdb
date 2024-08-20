@@ -1718,6 +1718,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     @Override
+    public RecoverOperationResult visitCreateTableDevice(
+        final CreateTableDeviceNode createTableDeviceNode, final SchemaRegionMemoryImpl context) {
+      try {
+        createTableDevice(createTableDeviceNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
     public RecoverOperationResult visitUpdateTableDeviceAttribute(
         final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
         final SchemaRegionMemoryImpl context) {

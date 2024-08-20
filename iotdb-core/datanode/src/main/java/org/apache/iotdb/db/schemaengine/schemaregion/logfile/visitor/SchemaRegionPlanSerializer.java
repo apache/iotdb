@@ -480,7 +480,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     public SchemaRegionPlanSerializationResult visitCreateTableDevice(
         final CreateTableDeviceNode createTableDeviceNode, final DataOutputStream outputStream) {
       try {
-        createTableDeviceNode.serializeAttributes(outputStream);
+        createTableDeviceNode.serialize(outputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
@@ -492,7 +492,7 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
         final DataOutputStream outputStream) {
       try {
-        updateTableDeviceAttributePlan.serializeAttributes(outputStream);
+        updateTableDeviceAttributePlan.serialize(outputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);

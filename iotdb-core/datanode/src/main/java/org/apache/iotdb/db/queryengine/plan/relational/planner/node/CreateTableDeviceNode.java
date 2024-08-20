@@ -194,7 +194,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
   }
 
   @Override
-  public void serializeAttributes(final DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     PlanNodeType.CREATE_TABLE_DEVICE.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);

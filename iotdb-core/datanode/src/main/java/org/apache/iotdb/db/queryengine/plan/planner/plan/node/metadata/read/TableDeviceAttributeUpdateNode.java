@@ -163,7 +163,7 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
   }
 
   @Override
-  public void serializeAttributes(final DataOutputStream stream) throws IOException {
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
@@ -222,8 +222,6 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
-    final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-
     size = ReadWriteIOUtils.readInt(buffer);
     final List<UpdateAssignment> assignments = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
@@ -234,6 +232,8 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISc
     if (ReadWriteIOUtils.readBool(buffer)) {
       sessionInfo = SessionInfo.deserializeFrom(buffer);
     }
+
+    final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
 
     return new TableDeviceAttributeUpdateNode(
         planNodeId,

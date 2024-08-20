@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
@@ -422,7 +423,7 @@ public class SchemaRegionTestUtil {
       throws MetadataException {
     schemaRegion.createTableDevice(
         new CreateTableDeviceNode(
-            null,
+            new PlanNodeId(""),
             null,
             table,
             Collections.singletonList(deviceIds),
