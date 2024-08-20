@@ -109,7 +109,7 @@ public class PipeStatementPatternParseVisitor
   public Optional<Statement> visitAlterTimeSeries(
       final AlterTimeSeriesStatement alterTimeSeriesStatement, final IoTDBPipePattern pattern) {
     return pattern.matchesMeasurement(
-            alterTimeSeriesStatement.getPath().getIDeviceID(),
+            alterTimeSeriesStatement.getPath().getDevice(),
             alterTimeSeriesStatement.getPath().getMeasurement())
         ? Optional.of(alterTimeSeriesStatement)
         : Optional.empty();
