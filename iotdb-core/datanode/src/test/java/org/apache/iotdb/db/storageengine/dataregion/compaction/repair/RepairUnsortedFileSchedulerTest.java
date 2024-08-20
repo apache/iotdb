@@ -53,6 +53,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
       IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
   private boolean enableCrossSpaceCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+  private String threadName = Thread.currentThread().getName();
 
   @Before
   public void setUp()
@@ -71,6 +72,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    Thread.currentThread().setName(threadName);
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()

@@ -42,7 +42,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest {
@@ -85,9 +84,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(
               String.format("%d-%d-0-0.tsfile", i, i),
-              "d" + i,
               new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-              true);
+              true,
+              "d" + i);
       seqResources.add(resource);
     }
     NewSizeTieredCompactionSelector selector =
@@ -111,9 +110,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(
               String.format("%d-%d-0-0.tsfile", i, i),
-              "d" + 1,
               new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-              true);
+              true,
+              "d" + 1);
       seqResources.add(resource);
     }
     NewSizeTieredCompactionSelector selector =
@@ -142,16 +141,16 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         resource =
             generateSingleNonAlignedSeriesFile(
                 String.format("%d-%d-0-0.tsfile", System.currentTimeMillis(), i),
-                "d" + i,
                 new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true);
+                true,
+                "d" + i);
       } else {
         resource =
             generateSingleNonAlignedSeriesFile(
                 String.format("%d-%d-0-0.tsfile", i, i),
-                "d" + i,
                 new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true);
+                true,
+                "d" + i);
       }
       seqResources.add(resource);
     }
@@ -175,16 +174,16 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         resource =
             generateSingleNonAlignedSeriesFile(
                 String.format("%d-%d-0-0.tsfile", i, i),
-                "d" + 0,
                 new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true);
+                true,
+                "d" + 0);
       } else {
         resource =
             generateSingleNonAlignedSeriesFile(
                 String.format("%d-%d-0-0.tsfile", i, i),
-                "d" + i,
                 new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true);
+                true,
+                "d" + i);
       }
       seqResources.add(resource);
     }
@@ -210,38 +209,23 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(1);
     TsFileResource resource1 =
         generateSingleNonAlignedSeriesFile(
-            "1-1-0-0.tsfile",
-            Arrays.asList("d1", "d2"),
-            new TimeRange[] {new TimeRange(100, 200)},
-            true);
+            "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
-            "2-2-0-0.tsfile",
-            Arrays.asList("d3", "d4"),
-            new TimeRange[] {new TimeRange(300, 400)},
-            true);
+            "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     seqResources.add(resource2);
     TsFileResource resource3 =
         generateSingleNonAlignedSeriesFile(
-            "3-3-0-0.tsfile",
-            Arrays.asList("d1", "d3"),
-            new TimeRange[] {new TimeRange(500, 600)},
-            true);
+            "3-3-0-0.tsfile", new TimeRange[] {new TimeRange(500, 600)}, true, "d1", "d3");
     seqResources.add(resource3);
     TsFileResource resource4 =
         generateSingleNonAlignedSeriesFile(
-            "4-4-0-0.tsfile",
-            Arrays.asList("d4", "d5"),
-            new TimeRange[] {new TimeRange(700, 800)},
-            true);
+            "4-4-0-0.tsfile", new TimeRange[] {new TimeRange(700, 800)}, true, "d4", "d5");
     seqResources.add(resource4);
     TsFileResource resource5 =
         generateSingleNonAlignedSeriesFile(
-            "5-5-0-0.tsfile",
-            Arrays.asList("d1", "d4"),
-            new TimeRange[] {new TimeRange(900, 1000)},
-            true);
+            "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     seqResources.add(resource5);
 
     NewSizeTieredCompactionSelector selector =
@@ -275,38 +259,23 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   public void testSkipSomeFiles() throws IOException {
     TsFileResource resource1 =
         generateSingleNonAlignedSeriesFile(
-            "1-1-0-0.tsfile",
-            Arrays.asList("d1", "d2"),
-            new TimeRange[] {new TimeRange(100, 200)},
-            true);
+            "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
-            "2-2-0-0.tsfile",
-            Arrays.asList("d3", "d4"),
-            new TimeRange[] {new TimeRange(300, 400)},
-            true);
+            "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     seqResources.add(resource2);
     TsFileResource resource3 =
         generateSingleNonAlignedSeriesFile(
-            "3-3-0-0.tsfile",
-            Arrays.asList("d1", "d3"),
-            new TimeRange[] {new TimeRange(500, 600)},
-            true);
+            "3-3-0-0.tsfile", new TimeRange[] {new TimeRange(500, 600)}, true, "d1", "d3");
     seqResources.add(resource3);
     TsFileResource resource4 =
         generateSingleNonAlignedSeriesFile(
-            "4-4-0-0.tsfile",
-            Arrays.asList("d4", "d5"),
-            new TimeRange[] {new TimeRange(700, 800)},
-            true);
+            "4-4-0-0.tsfile", new TimeRange[] {new TimeRange(700, 800)}, true, "d4", "d5");
     seqResources.add(resource4);
     TsFileResource resource5 =
         generateSingleNonAlignedSeriesFile(
-            "5-5-0-0.tsfile",
-            Arrays.asList("d1", "d4"),
-            new TimeRange[] {new TimeRange(900, 1000)},
-            true);
+            "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     seqResources.add(resource5);
 
     IoTDBDescriptor.getInstance()
@@ -347,16 +316,16 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         resource =
             generateSingleNonAlignedSeriesFile(
                 String.format("%d-%d-0-0.tsfile", i, i),
-                "d" + 0,
                 new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true);
+                true,
+                "d" + 0);
       } else {
         resource =
             generateSingleNonAlignedSeriesFile(
                 String.format("%d-%d-0-0.tsfile", i, i),
-                "d" + i,
                 new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-                true);
+                true,
+                "d" + i);
       }
       resource
           .getCompactionModFile()
@@ -394,10 +363,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   public void testAllTargetFilesEmpty() throws IOException, IllegalPathException {
     TsFileResource resource1 =
         generateSingleNonAlignedSeriesFile(
-            "1-1-0-0.tsfile",
-            Arrays.asList("d1", "d2"),
-            new TimeRange[] {new TimeRange(100, 200)},
-            true);
+            "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
         .getModFile()
         .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
@@ -405,10 +371,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
-            "2-2-0-0.tsfile",
-            Arrays.asList("d3", "d4"),
-            new TimeRange[] {new TimeRange(300, 400)},
-            true);
+            "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     resource2
         .getModFile()
         .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
@@ -434,10 +397,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       throws IOException, IllegalPathException {
     TsFileResource resource1 =
         generateSingleNonAlignedSeriesFile(
-            "1-1-0-0.tsfile",
-            Arrays.asList("d1", "d2"),
-            new TimeRange[] {new TimeRange(100, 200)},
-            true);
+            "1-1-0-0.tsfile", new TimeRange[] {new TimeRange(100, 200)}, true, "d1", "d2");
     resource1
         .getModFile()
         .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
@@ -445,17 +405,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     seqResources.add(resource1);
     TsFileResource resource2 =
         generateSingleNonAlignedSeriesFile(
-            "2-2-0-0.tsfile",
-            Arrays.asList("d3", "d4"),
-            new TimeRange[] {new TimeRange(300, 400)},
-            true);
+            "2-2-0-0.tsfile", new TimeRange[] {new TimeRange(300, 400)}, true, "d3", "d4");
     seqResources.add(resource2);
     TsFileResource resource3 =
         generateSingleNonAlignedSeriesFile(
-            "3-3-0-0.tsfile",
-            Arrays.asList("d1", "d3"),
-            new TimeRange[] {new TimeRange(500, 600)},
-            true);
+            "3-3-0-0.tsfile", new TimeRange[] {new TimeRange(500, 600)}, true, "d1", "d3");
     resource3
         .getModFile()
         .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
@@ -463,17 +417,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     seqResources.add(resource3);
     TsFileResource resource4 =
         generateSingleNonAlignedSeriesFile(
-            "4-4-0-0.tsfile",
-            Arrays.asList("d4", "d5"),
-            new TimeRange[] {new TimeRange(700, 800)},
-            true);
+            "4-4-0-0.tsfile", new TimeRange[] {new TimeRange(700, 800)}, true, "d4", "d5");
     seqResources.add(resource4);
     TsFileResource resource5 =
         generateSingleNonAlignedSeriesFile(
-            "5-5-0-0.tsfile",
-            Arrays.asList("d1", "d4"),
-            new TimeRange[] {new TimeRange(900, 1000)},
-            true);
+            "5-5-0-0.tsfile", new TimeRange[] {new TimeRange(900, 1000)}, true, "d1", "d4");
     resource5
         .getModFile()
         .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
@@ -511,9 +459,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(
               String.format("%d-%d-%d-0.tsfile", i, i, i),
-              "d" + i,
               new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-              true);
+              true,
+              "d" + i);
       seqResources.add(resource);
     }
     NewSizeTieredCompactionSelector selector =
@@ -545,9 +493,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(
               String.format("%d-%d-0-0.tsfile", i, i),
-              device,
               new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-              true);
+              true,
+              device);
       seqResources.add(resource);
     }
     IoTDBDescriptor.getInstance()
@@ -582,9 +530,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(
               String.format("%d-%d-0-0.tsfile", i, i),
-              device,
               new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-              true);
+              true,
+              device);
       seqResources.add(resource);
     }
     IoTDBDescriptor.getInstance()
@@ -623,9 +571,9 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       TsFileResource resource =
           generateSingleNonAlignedSeriesFile(
               String.format("%d-%d-0-0.tsfile", i, i),
-              device,
               new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
-              true);
+              true,
+              device);
       seqResources.add(resource);
     }
     IoTDBDescriptor.getInstance()
@@ -652,22 +600,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
   }
 
   private TsFileResource generateSingleNonAlignedSeriesFile(
-      String fileName, String device, TimeRange[] chunkTimeRanges, boolean isSeq)
-      throws IOException {
-    TsFileResource resource = createEmptyFileAndResourceWithName(fileName, 0, isSeq);
-    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
-      writer.startChunkGroup(device);
-      writer.generateSimpleNonAlignedSeriesToCurrentDevice(
-          "s1", chunkTimeRanges, TSEncoding.RLE, CompressionType.LZ4);
-      writer.endChunkGroup();
-      writer.endFile();
-    }
-    tsFileManager.keepOrderInsert(resource, isSeq);
-    return resource;
-  }
-
-  private TsFileResource generateSingleNonAlignedSeriesFile(
-      String fileName, List<String> devices, TimeRange[] chunkTimeRanges, boolean isSeq)
+      String fileName, TimeRange[] chunkTimeRanges, boolean isSeq, String... devices)
       throws IOException {
     TsFileResource resource = createEmptyFileAndResourceWithName(fileName, 0, isSeq);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
