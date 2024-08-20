@@ -607,6 +607,15 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "compaction_thread_count", Integer.toString(conf.getCompactionThreadCount()))));
+    int maxConcurrentAlignedSeriesInCompaction =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_max_aligned_series_num_in_one_batch",
+                Integer.toString(conf.getCompactionMaxAlignedSeriesNumInOneBatch())));
+    conf.setCompactionMaxAlignedSeriesNumInOneBatch(
+        maxConcurrentAlignedSeriesInCompaction <= 0
+            ? Integer.MAX_VALUE
+            : maxConcurrentAlignedSeriesInCompaction);
     conf.setChunkMetadataSizeProportion(
         Double.parseDouble(
             properties.getProperty(
@@ -1289,6 +1298,20 @@ public class IoTDBDescriptor {
         innerCompactionTaskSelectionModsFileThreshold
             != conf.getInnerCompactionTaskSelectionModsFileThreshold();
 
+    int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
+    int newCompactionMaxAlignedSeriesNumInOneBatch =
+        Integer.parseInt(
+            properties.getProperty(
+                "compaction_max_aligned_series_num_in_one_batch",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "compaction_max_aligned_series_num_in_one_batch")));
+    conf.setCompactionMaxAlignedSeriesNumInOneBatch(
+        newCompactionMaxAlignedSeriesNumInOneBatch > 0
+            ? newCompactionMaxAlignedSeriesNumInOneBatch
+            : Integer.MAX_VALUE);
+    configModified |=
+        compactionMaxAlignedSeriesNumInOneBatch
+            != conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     return configModified;
   }
 
