@@ -295,14 +295,11 @@ public class TsFileResource {
     }
   }
 
-  public ByteBuffer serializeFileTimeIndexToByteBuffer() {
-    ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES);
+  public void serializeFileTimeIndexToByteBuffer(ByteBuffer buffer) {
     buffer.putLong(tsFileID.fileVersion);
     buffer.putLong(tsFileID.compactionVersion);
     buffer.putLong(timeIndex.getMinStartTime());
     buffer.putLong(timeIndex.getMaxEndTime());
-    buffer.flip();
-    return buffer;
   }
 
   public void updateStartTime(IDeviceID device, long time) {

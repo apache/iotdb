@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -71,6 +73,36 @@ public class FileTimeIndexCacheRecorder {
     }
   }
 
+  public void logFileTimeIndexes(List<TsFileResource> tsFileResources) {
+    if (!tsFileResources.isEmpty()) {
+      TsFileResource firstResource = tsFileResources.get(0);
+      TsFileID tsFileID = firstResource.getTsFileID();
+      int dataRegionId = tsFileID.regionId;
+      long partitionId = tsFileID.timePartitionId;
+      File dataRegionSysDir =
+          StorageEngine.getDataRegionSystemDir(
+              firstResource.getDatabaseName(), firstResource.getDataRegionId());
+      FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
+      boolean result =
+          taskQueue.offer(
+              () -> {
+                try {
+                  ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES * tsFileResources.size());
+                  for (TsFileResource tsFileResource : tsFileResources) {
+                    tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
+                  }
+                  buffer.flip();
+                  writer.write(buffer);
+                } catch (IOException e) {
+                  LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage());
+                }
+              });
+      if (!result) {
+        LOGGER.warn("Meet error when record FileTimeIndexCache");
+      }
+    }
+  }
+
   public void logFileTimeIndex(TsFileResource tsFileResource) {
     TsFileID tsFileID = tsFileResource.getTsFileID();
     int dataRegionId = tsFileID.regionId;
@@ -84,7 +116,10 @@ public class FileTimeIndexCacheRecorder {
         taskQueue.offer(
             () -> {
               try {
-                writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES);
+                tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
+                buffer.flip();
+                writer.write(buffer);
               } catch (IOException e) {
                 LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage());
               }
@@ -116,15 +151,22 @@ public class FileTimeIndexCacheRecorder {
               () -> {
                 try {
                   writer.clearFile();
-                  if (sequenceFiles != null) {
+                  if (sequenceFiles != null && !sequenceFiles.isEmpty()) {
+                    ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES * sequenceFiles.size());
                     for (TsFileResource tsFileResource : sequenceFiles) {
-                      writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                      tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                     }
+                    buffer.flip();
+                    writer.write(buffer);
                   }
-                  if (unsequenceFiles != null) {
+                  if (unsequenceFiles != null && !unsequenceFiles.isEmpty()) {
+                    ByteBuffer buffer =
+                        ByteBuffer.allocate(4 * Long.BYTES * unsequenceFiles.size());
                     for (TsFileResource tsFileResource : unsequenceFiles) {
-                      writer.write(tsFileResource.serializeFileTimeIndexToByteBuffer());
+                      tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                     }
+                    buffer.flip();
+                    writer.write(buffer);
                   }
                 } catch (IOException e) {
                   LOGGER.warn("Meet error when compact FileTimeIndexCache: {}", e.getMessage());

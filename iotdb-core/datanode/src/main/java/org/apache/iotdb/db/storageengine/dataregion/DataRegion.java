@@ -969,8 +969,8 @@ public class DataRegion implements IDataRegionForQuery {
       boolean isSeq) {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
-      FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
     }
+    FileTimeIndexCacheRecorder.getInstance().logFileTimeIndexes(resourceList);
     if (config.isEnableSeparateData()) {
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId, true)) {
         TimePartitionManager.getInstance()
