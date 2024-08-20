@@ -32,6 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -48,7 +51,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
-public class TableDeviceAttributeUpdateNode extends WritePlanNode {
+public class TableDeviceAttributeUpdateNode extends WritePlanNode implements ISchemaRegionPlan {
 
   protected String database;
 
@@ -334,5 +337,15 @@ public class TableDeviceAttributeUpdateNode extends WritePlanNode {
                         assignments,
                         sessionInfo))
             .collect(Collectors.toList());
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.UPDATE_TABLE_DEVICE_ATTRIBUTE;
+  }
+
+  @Override
+  public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
+    return null;
   }
 }
