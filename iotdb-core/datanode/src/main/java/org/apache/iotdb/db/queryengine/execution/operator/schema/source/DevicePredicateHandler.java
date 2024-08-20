@@ -71,13 +71,11 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
         columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
   }
 
-  public boolean addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
+  public void addBatch(final IDeviceSchemaInfo deviceSchemaInfo) {
     deviceSchemaBatch.add(deviceSchemaInfo);
-    final boolean result = deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
-    if (result) {
+    if (deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES) {
       prepareBatchResult();
     }
-    return result;
   }
 
   protected void clear() {
@@ -114,6 +112,10 @@ public abstract class DevicePredicateHandler implements AutoCloseable {
       }
     }
     curFilterColumn = filterColumn;
+  }
+
+  protected boolean hasComputedResult() {
+    return Objects.nonNull(curBlock);
   }
 
   @Override

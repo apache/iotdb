@@ -89,7 +89,8 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
     final int pointer = ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer();
     result.setAttributeProvider(k -> attributeProvider.apply(pointer, k));
     attributePointers.add(pointer);
-    if (addBatch(result)) {
+    addBatch(result);
+    if (hasComputedResult()) {
       update();
     }
   }
@@ -137,8 +138,8 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
 
   @Override
   public void close() {
-    if (!deviceSchemaBatch.isEmpty()) {
-      prepareBatchResult();
+    prepareBatchResult();
+    if (hasComputedResult()) {
       update();
     }
     super.close();
