@@ -20,6 +20,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.MetadataExpressionTransformForJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
@@ -73,11 +76,11 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.PredicateUtils.combineConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.PredicateUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
@@ -126,7 +129,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     private final Analysis analysis;
     private final Metadata metadata;
     private Expression predicate;
-    private SymbolAllocator symbolAllocator;
+    private final SymbolAllocator symbolAllocator;
+    private final QueryId queryId;
+    private boolean hasJoinNode;
 
     Rewriter(
         MPPQueryContext queryContext,
@@ -137,6 +142,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       this.analysis = analysis;
       this.metadata = metadata;
       this.symbolAllocator = symbolAllocator;
+      this.queryId = queryContext.getQueryId();
     }
 
     @Override
@@ -229,20 +235,21 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      tableMetadataIndexScan(tableScanNode, splitExpression.getMetadataExpressions());
+      PlanNode resultNode =
+          tableMetadataIndexScan(tableScanNode, splitExpression.getMetadataExpressions());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
         List<Expression> expressions = splitExpression.getExpressionsCannotPushDown();
         return new FilterNode(
-            queryContext.getQueryId().genPlanNodeId(),
-            tableScanNode,
+            queryId.genPlanNodeId(),
+            resultNode,
             expressions.size() == 1
                 ? expressions.get(0)
                 : new LogicalExpression(LogicalExpression.Operator.AND, expressions));
       }
 
-      return tableScanNode;
+      return resultNode;
     }
 
     private SplitExpression splitPredicate(TableScanNode node) {
@@ -295,6 +302,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitJoin(JoinNode node, Void context) {
+      hasJoinNode = true;
       Expression inheritedPredicate = predicate;
 
       // See if we can rewrite outer joins in terms of a plain inner join
@@ -382,19 +390,47 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       // leftPredicate = combineConjuncts(metadata, leftPredicate, combineConjuncts(metadata,
       // dynamicFiltersResult.getPredicates()));
 
-      PlanNode leftSource = node.getLeftChild();
-      PlanNode rightSource = node.getRightChild();
+      PlanNode leftSource;
+      PlanNode rightSource;
       boolean equiJoinClausesUnmodified =
           ImmutableSet.copyOf(equiJoinClauses).equals(ImmutableSet.copyOf(node.getCriteria()));
+      // TODO(beyyes) make the judgement code tidy
       if (!equiJoinClausesUnmodified) {
-        // leftSource = context.rewrite(new ProjectNode(queryContext.getQueryId().genPlanNodeId(),
-        // node.getLeftChild(), leftProjections.build()), leftPredicate);
-        // rightSource = context.rewrite(new ProjectNode(queryContext.getQueryId().genPlanNodeId(),
-        // node.getRightChild(), rightProjections.build()), rightPredicate);
+        ProjectNode projectNode =
+            new ProjectNode(queryId.genPlanNodeId(), node.getLeftChild(), leftProjections.build());
+        if (TRUE_LITERAL.equals(leftPredicate)) {
+          leftSource = projectNode.accept(this, context);
+        } else {
+          FilterNode filterNode =
+              new FilterNode(queryId.genPlanNodeId(), projectNode, leftPredicate);
+          leftSource = filterNode.accept(this, context);
+        }
+
+        projectNode =
+            new ProjectNode(
+                queryId.genPlanNodeId(), node.getRightChild(), rightProjections.build());
+        if (TRUE_LITERAL.equals(rightPredicate)) {
+          rightSource = projectNode.accept(this, context);
+        } else {
+          FilterNode filterNode =
+              new FilterNode(queryId.genPlanNodeId(), projectNode, rightPredicate);
+          rightSource = filterNode.accept(this, context);
+        }
       } else {
-        // leftSource = context.rewrite(node.getLeftChild(), leftPredicate);
-        // rightSource = context.rewrite(node.getRightChild(), rightPredicate);
-        // TODO rewrite
+        if (TRUE_LITERAL.equals(leftPredicate)) {
+          leftSource = node.getLeftChild().accept(this, context);
+        } else {
+          FilterNode filterNode =
+              new FilterNode(queryId.genPlanNodeId(), node.getLeftChild(), leftPredicate);
+          leftSource = filterNode.accept(this, context);
+        }
+        if (TRUE_LITERAL.equals(rightPredicate)) {
+          rightSource = node.getRightChild().accept(this, context);
+        } else {
+          FilterNode filterNode =
+              new FilterNode(queryId.genPlanNodeId(), node.getRightChild(), rightPredicate);
+          rightSource = filterNode.accept(this, context);
+        }
       }
 
       Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
@@ -403,12 +439,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       if (node.getJoinType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
+        throw new IllegalStateException("INNER JOIN only support equiJoinClauses");
         // if we do not have any equi conjunct we do not pushdown non-equality condition into
         // inner join, so we plan execution as nested-loops-join followed by filter instead
         // hash join.
-        // todo: remove the code when we have support for filter function in nested loop join
         // postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
-        newJoinFilter = Optional.empty();
+        // newJoinFilter = Optional.empty();
       }
 
       boolean filtersEquivalent =
@@ -419,9 +455,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       if (leftSource != node.getLeftChild()
           || rightSource != node.getRightChild()
           || !filtersEquivalent
-          ||
           // !dynamicFilters.equals(node.getDynamicFilters()) ||
-          !equiJoinClausesUnmodified) {
+          || !equiJoinClausesUnmodified) {
         leftSource =
             new ProjectNode(
                 queryContext.getQueryId().genPlanNodeId(), leftSource, leftProjections.build());
@@ -726,8 +761,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitTableScan(TableScanNode node, Void context) {
-      tableMetadataIndexScan(node, Collections.emptyList());
-      return node;
+      return tableMetadataIndexScan(node, Collections.emptyList());
     }
 
     @Override
@@ -741,30 +775,70 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     /** Get deviceEntries and DataPartition used in TableScan. */
-    private void tableMetadataIndexScan(TableScanNode node, List<Expression> metadataExpressions) {
+    private PlanNode tableMetadataIndexScan(
+        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
+      // for join operator, columnSymbols in TableScanNode is renamed, which adds suffix for origin
+      // column name,
+      // add a new ProjectNode above TableScanNode.
+      boolean tableScanNodeColumnsRenamed = false;
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+        Symbol columnSymbol = entry.getKey();
+        ColumnSchema columnSchema = entry.getValue();
+        if (!columnSymbol.getName().equals(columnSchema.getName())) {
+          tableScanNodeColumnsRenamed = true;
+          break;
+        }
+      }
+      ProjectNode newProjectNode = null;
+      if (tableScanNodeColumnsRenamed) {
+        metadataExpressions.replaceAll(
+            expression1 ->
+                MetadataExpressionTransformForJoin.transform(
+                    expression1, tableScanNode.getAssignments()));
+
+        Assignments.Builder projectAssignments = Assignments.builder();
+        ImmutableMap.Builder<Symbol, ColumnSchema> tableScanAssignments = ImmutableMap.builder();
+        for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+          Symbol columnSymbol = entry.getKey();
+          ColumnSchema columnSchema = entry.getValue();
+          projectAssignments.put(columnSymbol, new SymbolReference(columnSchema.getName()));
+          tableScanAssignments.put(Symbol.of(columnSchema.getName()), columnSchema);
+        }
+        newProjectNode =
+            new ProjectNode(queryId.genPlanNodeId(), tableScanNode, projectAssignments.build());
+        tableScanNode.setAssignments(tableScanAssignments.build());
+      }
+
       List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
-      for (Symbol columnName : node.getAssignments().keySet()) {
-        if (ATTRIBUTE.equals(node.getAssignments().get(columnName).getColumnCategory())) {
-          attributeColumns.add(columnName.getName());
-          node.getIdAndAttributeIndexMap().put(columnName, attributeIndex++);
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+        Symbol columnSymbol = entry.getKey();
+        ColumnSchema columnSchema = entry.getValue();
+        if (ATTRIBUTE.equals(columnSchema.getColumnCategory())) {
+          attributeColumns.add(columnSchema.getName());
+          tableScanNode.getIdAndAttributeIndexMap().put(columnSymbol, attributeIndex++);
         }
       }
       List<DeviceEntry> deviceEntries =
           metadata.indexScan(
-              node.getQualifiedObjectName(), metadataExpressions, attributeColumns, queryContext);
-      node.setDeviceEntries(deviceEntries);
+              tableScanNode.getQualifiedObjectName(),
+              metadataExpressions,
+              attributeColumns,
+              queryContext);
+      tableScanNode.setDeviceEntries(deviceEntries);
 
       if (deviceEntries.isEmpty()) {
         analysis.setFinishQueryAfterAnalyze();
         analysis.setEmptyDataSource(true);
       } else {
         Filter timeFilter =
-            node.getTimePredicate()
+            tableScanNode
+                .getTimePredicate()
                 .map(value -> value.accept(new ConvertPredicateToTimeFilterVisitor(), null))
                 .orElse(null);
-        node.setTimeFilter(timeFilter);
-        String treeModelDatabase = "root." + node.getQualifiedObjectName().getDatabaseName();
+        tableScanNode.setTimeFilter(timeFilter);
+        String treeModelDatabase =
+            "root." + tableScanNode.getQualifiedObjectName().getDatabaseName();
         DataPartition dataPartition =
             fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
 
@@ -779,6 +853,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         } else {
           analysis.upsertDataPartition(dataPartition);
         }
+      }
+
+      if (tableScanNodeColumnsRenamed) {
+        return newProjectNode;
+      } else {
+        return tableScanNode;
       }
     }
 
