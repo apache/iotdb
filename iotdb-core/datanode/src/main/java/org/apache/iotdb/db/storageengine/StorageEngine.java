@@ -348,9 +348,14 @@ public class StorageEngine implements IService {
         List<Callable<Void>> asyncTsFileResourceRecoverTasks =
             dataRegion.getAsyncTsFileResourceRecoverTaskList();
         if (asyncTsFileResourceRecoverTasks != null) {
-          for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
-            futures.add(cachedThreadPool.submit(task));
-          }
+          Callable<Void> taskOfRegion =
+              () -> {
+                for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
+                  task.call();
+                }
+                return null;
+              };
+          futures.add(cachedThreadPool.submit(taskOfRegion));
         }
       }
     }
