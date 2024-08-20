@@ -102,7 +102,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
         new CompactionTsFileWriter(
             targetResources.get(currentFileIndex).getTsFile(),
             sizeForFileWriter,
-            CompactionType.INNER_SEQ_COMPACTION);
+            targetResources.get(currentFileIndex).isSeq()
+                ? CompactionType.INNER_SEQ_COMPACTION
+                : CompactionType.INNER_UNSEQ_COMPACTION);
   }
 
   @Override
@@ -131,9 +133,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endFile() throws IOException {
-    if (targetResources == null) {
-      System.out.println();
-    }
     for (int i = currentFileIndex + 1; i < targetResources.size(); i++) {
       targetResources.get(i).forceMarkDeleted();
     }
