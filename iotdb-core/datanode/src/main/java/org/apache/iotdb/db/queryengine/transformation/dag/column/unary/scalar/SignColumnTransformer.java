@@ -42,8 +42,7 @@ public class SignColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeFloat(Math.signum(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeInt((int) Math.signum(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeLong((long) Math.signum(column.getLong(i)));
         }
       } else {

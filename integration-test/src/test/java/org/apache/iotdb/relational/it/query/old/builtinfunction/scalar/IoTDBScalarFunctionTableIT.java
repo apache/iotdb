@@ -60,8 +60,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO absTable(Time,device_id,s4) values(3, 'd1',  -2.5)",
         "INSERT INTO absTable(Time,device_id,s5) values(2, 'd1',  -1.5)",
         "INSERT INTO absTable(Time,device_id,s5) values(3, 'd1',  -2.5)",
-        "INSERT INTO absTable(Time,device_id,s8) values(2, 'd1',  1)",
-        "INSERT INTO absTable(Time,device_id,s8) values(3, 'd1',  2)",
         // acosSQL
         "create table acosTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO acosTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1, 'abcd', X'abcd')",
@@ -69,7 +67,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO acosTable(Time,device_id,s3) values(2, 'd1',  2)",
         "INSERT INTO acosTable(Time,device_id,s4) values(2, 'd1',  0.5)",
         "INSERT INTO acosTable(Time,device_id,s5) values(2, 'd1',  0.5)",
-        "INSERT INTO acosTable(Time,device_id,s8) values(2, 'd1',  2)",
         // asinSQL
         "create table asinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO asinTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1, 'abcd', X'abcd')",
@@ -77,7 +74,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO asinTable(Time,device_id,s3) values(2, 'd1',  2)",
         "INSERT INTO asinTable(Time,device_id,s4) values(2, 'd1',  0.5)",
         "INSERT INTO asinTable(Time,device_id,s5) values(2, 'd1',  0.5)",
-        "INSERT INTO asinTable(Time,device_id,s8) values(2, 'd1',  2)",
         // atanSQL
         "create table atanTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO atanTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -89,8 +85,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO atanTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO atanTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO atanTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO atanTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO atanTable(Time,device_id,s8) values(3, 'd1',  3)",
         // ceilSQL
         "create table ceilTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO ceilTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -102,8 +96,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO ceilTable(Time,device_id,s4) values(3, 'd1',  -2.5)",
         "INSERT INTO ceilTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO ceilTable(Time,device_id,s5) values(3, 'd1',  -2.5)",
-        "INSERT INTO ceilTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO ceilTable(Time,device_id,s8) values(3, 'd1',  3)",
         // concatSQL
         "create table concatTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO concatTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
@@ -124,8 +116,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO cosTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO cosTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO cosTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO cosTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO cosTable(Time,device_id,s8) values(3, 'd1',  3)",
         // coshSQL
         "create table coshTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO coshTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -137,8 +127,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO coshTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO coshTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO coshTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO coshTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO coshTable(Time,device_id,s8) values(3, 'd1',  3)",
         // degreesSQL
         "create table degreesTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO degreesTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -150,8 +138,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO degreesTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO degreesTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO degreesTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO degreesTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO degreesTable(Time,device_id,s8) values(3, 'd1',  3)",
         // endsWithSQL
         "create table endsWithTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO endsWithTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
@@ -170,8 +156,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO expTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO expTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO expTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO expTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO expTable(Time,device_id,s8) values(3, 'd1',  3)",
         // floorSQL
         "create table floorTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO floorTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -183,8 +167,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO floorTable(Time,device_id,s4) values(3, 'd1',  -2.5)",
         "INSERT INTO floorTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO floorTable(Time,device_id,s5) values(3, 'd1',  -2.5)",
-        "INSERT INTO floorTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO floorTable(Time,device_id,s8) values(3, 'd1',  3)",
         // lengthSQL
         "create table lengthTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO lengthTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -203,8 +185,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO lnTable(Time,device_id,s4) values(3, 'd1',  -3.5)",
         "INSERT INTO lnTable(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO lnTable(Time,device_id,s5) values(3, 'd1',  -3.5)",
-        "INSERT INTO lnTable(Time,device_id,s8) values(2, 'd1',  0)",
-        "INSERT INTO lnTable(Time,device_id,s8) values(3, 'd1',  3)",
         // log10SQL
         "create table log10Table(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO log10Table(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -216,8 +196,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO log10Table(Time,device_id,s4) values(3, 'd1',  -3.5)",
         "INSERT INTO log10Table(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO log10Table(Time,device_id,s5) values(3, 'd1',  -3.5)",
-        "INSERT INTO log10Table(Time,device_id,s8) values(2, 'd1',  0)",
-        "INSERT INTO log10Table(Time,device_id,s8) values(3, 'd1',  3)",
         // lowerSQL
         "create table lowerTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO lowerTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'ABCD', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ABCD', X'abcd')",
@@ -236,8 +214,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO radiansTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO radiansTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO radiansTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO radiansTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO radiansTable(Time,device_id,s8) values(3, 'd1',  3)",
         // regexpLikeSQL
         "create table regexpLikeTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO regexpLikeTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
@@ -256,8 +232,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO signTable(Time,device_id,s4) values(3, 'd1',  -1.0)",
         "INSERT INTO signTable(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO signTable(Time,device_id,s5) values(3, 'd1',  -1.0)",
-        "INSERT INTO signTable(Time,device_id,s8) values(2, 'd1',  0)",
-        "INSERT INTO signTable(Time,device_id,s8) values(3, 'd1',  1)",
         // sinSQL
         "create table sinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO sinTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -269,8 +243,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO sinTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO sinTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO sinTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO sinTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO sinTable(Time,device_id,s8) values(3, 'd1',  3)",
         // sinhSQL
         "create table sinhTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO sinhTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -282,8 +254,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO sinhTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO sinhTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO sinhTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO sinhTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO sinhTable(Time,device_id,s8) values(3, 'd1',  3)",
         // sqrtSQL
         "create table sqrtTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO sqrtTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -295,8 +265,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO sqrtTable(Time,device_id,s4) values(3, 'd1',  -1.5)",
         "INSERT INTO sqrtTable(Time,device_id,s5) values(2, 'd1',  0.0)",
         "INSERT INTO sqrtTable(Time,device_id,s5) values(3, 'd1',  -1.5)",
-        "INSERT INTO sqrtTable(Time,device_id,s8) values(2, 'd1',  0)",
-        "INSERT INTO sqrtTable(Time,device_id,s8) values(3, 'd1',  3)",
         // startsWithSQL
         "create table startsWithTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO startsWithTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
@@ -329,8 +297,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO tanTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO tanTable(Time,device_id,s5) values(2, 'd1',  1.57079632675)",
         "INSERT INTO tanTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO tanTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO tanTable(Time,device_id,s8) values(3, 'd1',  3)",
         // tanhSQL
         "create table tanhTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO tanhTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
@@ -342,8 +308,6 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO tanhTable(Time,device_id,s4) values(3, 'd1',  3.5)",
         "INSERT INTO tanhTable(Time,device_id,s5) values(2, 'd1',  2.5)",
         "INSERT INTO tanhTable(Time,device_id,s5) values(3, 'd1',  3.5)",
-        "INSERT INTO tanhTable(Time,device_id,s8) values(2, 'd1',  2)",
-        "INSERT INTO tanhTable(Time,device_id,s8) values(3, 'd1',  3)",
         // trimSQL
         "create table trimTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         "INSERT INTO trimTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'ab', X'abcd')",
@@ -388,17 +352,15 @@ public class IoTDBScalarFunctionTableIT {
   public void absTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1,1,1,1.0,1.0,1.0,1.0,2021-10-01T00:00:00.000Z,2021-10-01T00:00:00.000Z,",
-          "1970-01-01T00:00:00.002Z,-1,1,-1,1,-1.5,1.5,-1.5,1.5,1970-01-01T00:00:00.001Z,1970-01-01T00:00:00.001Z,",
-          "1970-01-01T00:00:00.003Z,-2,2,-2,2,-2.5,2.5,-2.5,2.5,1970-01-01T00:00:00.002Z,1970-01-01T00:00:00.002Z,",
+          "1970-01-01T00:00:00.001Z,1,1,1,1,1.0,1.0,1.0,1.0,",
+          "1970-01-01T00:00:00.002Z,-1,1,-1,1,-1.5,1.5,-1.5,1.5,",
+          "1970-01-01T00:00:00.003Z,-2,2,-2,2,-2.5,2.5,-2.5,2.5,",
         };
     tableResultSetEqualTest(
-        "select time,s2,abs(s2),s3,abs(s3),s4,abs(s4),s5,abs(s5),s8,abs(s8) from absTable",
+        "select time,s2,abs(s2),s3,abs(s3),s4,abs(s4),s5,abs(s5) from absTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -453,16 +415,14 @@ public class IoTDBScalarFunctionTableIT {
   public void acosTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP And range of input value is [-1, 1]
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,1970-01-01T00:00:00.001Z,0.0,",
-          "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,1.0471975511965979,0.5,1.0471975511965979,1970-01-01T00:00:00.002Z,NaN,",
+          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
+          "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,1.0471975511965979,0.5,1.0471975511965979,",
         };
     tableResultSetEqualTest(
-        "select time,s2,acos(s2),s3,acos(s3),s4,acos(s4),s5,acos(s5),s8,acos(s8) from acosTable",
+        "select time,s2,acos(s2),s3,acos(s3),s4,acos(s4),s5,acos(s5) from acosTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -517,16 +477,14 @@ public class IoTDBScalarFunctionTableIT {
   public void asinTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP And range of input value is [-1, 1]
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.5707963267948966,1,1.5707963267948966,1.0,1.5707963267948966,1.0,1.5707963267948966,1970-01-01T00:00:00.001Z,1.5707963267948966,",
-          "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,0.5235987755982989,0.5,0.5235987755982989,1970-01-01T00:00:00.002Z,NaN,",
+          "1970-01-01T00:00:00.001Z,1,1.5707963267948966,1,1.5707963267948966,1.0,1.5707963267948966,1.0,1.5707963267948966,",
+          "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,0.5235987755982989,0.5,0.5235987755982989,",
         };
     tableResultSetEqualTest(
-        "select time,s2,asin(s2),s3,asin(s3),s4,asin(s4),s5,asin(s5),s8,asin(s8) from asinTable",
+        "select time,s2,asin(s2),s3,asin(s3),s4,asin(s4),s5,asin(s5) from asinTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -581,17 +539,15 @@ public class IoTDBScalarFunctionTableIT {
   public void atanTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.7853981633974483,1,0.7853981633974483,1.0,0.7853981633974483,1.0,0.7853981633974483,2021-10-01T00:00:00.000Z,1.5707963267942842,",
-          "1970-01-01T00:00:00.002Z,2,1.1071487177940904,2,1.1071487177940904,2.5,1.1902899496825317,2.5,1.1902899496825317,1970-01-01T00:00:00.002Z,1.1071487177940904,",
-          "1970-01-01T00:00:00.003Z,3,1.2490457723982544,3,1.2490457723982544,3.5,1.2924966677897853,3.5,1.2924966677897853,1970-01-01T00:00:00.003Z,1.2490457723982544,",
+          "1970-01-01T00:00:00.001Z,1,0.7853981633974483,1,0.7853981633974483,1.0,0.7853981633974483,1.0,0.7853981633974483,",
+          "1970-01-01T00:00:00.002Z,2,1.1071487177940904,2,1.1071487177940904,2.5,1.1902899496825317,2.5,1.1902899496825317,",
+          "1970-01-01T00:00:00.003Z,3,1.2490457723982544,3,1.2490457723982544,3.5,1.2924966677897853,3.5,1.2924966677897853,",
         };
     tableResultSetEqualTest(
-        "select time,s2,atan(s2),s3,atan(s3),s4,atan(s4),s5,atan(s5),s8,atan(s8) from atanTable",
+        "select time,s2,atan(s2),s3,atan(s3),s4,atan(s4),s5,atan(s5) from atanTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -646,17 +602,15 @@ public class IoTDBScalarFunctionTableIT {
   public void ceilTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,2021-10-01T00:00:00.000Z,1.6330464E12,",
-          "1970-01-01T00:00:00.002Z,2,2.0,2,2.0,2.5,3.0,2.5,3.0,1970-01-01T00:00:00.002Z,2.0,",
-          "1970-01-01T00:00:00.003Z,-2,-2.0,-2,-2.0,-2.5,-2.0,-2.5,-2.0,1970-01-01T00:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,",
+          "1970-01-01T00:00:00.002Z,2,2.0,2,2.0,2.5,3.0,2.5,3.0,",
+          "1970-01-01T00:00:00.003Z,-2,-2.0,-2,-2.0,-2.5,-2.0,-2.5,-2.0,",
         };
     tableResultSetEqualTest(
-        "select time,s2,ceil(s2),s3,ceil(s3),s4,ceil(s4),s5,ceil(s5),s8,ceil(s8) from ceilTable",
+        "select time,s2,ceil(s2),s3,ceil(s3),s4,ceil(s4),s5,ceil(s5) from ceilTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -840,17 +794,15 @@ public class IoTDBScalarFunctionTableIT {
   public void cosTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.5403023058681398,1,0.5403023058681398,1.0,0.5403023058681398,1.0,0.5403023058681398,2021-10-01T00:00:00.000Z,-0.8897114604104552,",
-          "1970-01-01T00:00:00.002Z,2,-0.4161468365471424,2,-0.4161468365471424,2.5,-0.8011436155469337,2.5,-0.8011436155469337,1970-01-01T00:00:00.002Z,-0.4161468365471424,",
-          "1970-01-01T00:00:00.003Z,3,-0.9899924966004454,3,-0.9899924966004454,3.5,-0.9364566872907963,3.5,-0.9364566872907963,1970-01-01T00:00:00.003Z,-0.9899924966004454,",
+          "1970-01-01T00:00:00.001Z,1,0.5403023058681398,1,0.5403023058681398,1.0,0.5403023058681398,1.0,0.5403023058681398,",
+          "1970-01-01T00:00:00.002Z,2,-0.4161468365471424,2,-0.4161468365471424,2.5,-0.8011436155469337,2.5,-0.8011436155469337,",
+          "1970-01-01T00:00:00.003Z,3,-0.9899924966004454,3,-0.9899924966004454,3.5,-0.9364566872907963,3.5,-0.9364566872907963,",
         };
     tableResultSetEqualTest(
-        "select time,s2,cos(s2),s3,cos(s3),s4,cos(s4),s5,cos(s5),s8,cos(s8) from cosTable",
+        "select time,s2,cos(s2),s3,cos(s3),s4,cos(s4),s5,cos(s5) from cosTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -905,17 +857,15 @@ public class IoTDBScalarFunctionTableIT {
   public void coshTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.543080634815244,1,1.543080634815244,1.0,1.543080634815244,1.0,1.543080634815244,2021-10-01T00:00:00.000Z,Infinity,",
-          "1970-01-01T00:00:00.002Z,2,3.7621956910836314,2,3.7621956910836314,2.5,6.132289479663686,2.5,6.132289479663686,1970-01-01T00:00:00.002Z,3.7621956910836314,",
-          "1970-01-01T00:00:00.003Z,3,10.067661995777765,3,10.067661995777765,3.5,16.572824671057315,3.5,16.572824671057315,1970-01-01T00:00:00.003Z,10.067661995777765,",
+          "1970-01-01T00:00:00.001Z,1,1.543080634815244,1,1.543080634815244,1.0,1.543080634815244,1.0,1.543080634815244,",
+          "1970-01-01T00:00:00.002Z,2,3.7621956910836314,2,3.7621956910836314,2.5,6.132289479663686,2.5,6.132289479663686,",
+          "1970-01-01T00:00:00.003Z,3,10.067661995777765,3,10.067661995777765,3.5,16.572824671057315,3.5,16.572824671057315,",
         };
     tableResultSetEqualTest(
-        "select time,s2,cosh(s2),s3,cosh(s3),s4,cosh(s4),s5,cosh(s5),s8,cosh(s8) from coshTable",
+        "select time,s2,cosh(s2),s3,cosh(s3),s4,cosh(s4),s5,cosh(s5) from coshTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -970,17 +920,15 @@ public class IoTDBScalarFunctionTableIT {
   public void degreesTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,57.29577951308232,1,57.29577951308232,1.0,57.29577951308232,1.0,57.29577951308232,2021-10-01T00:00:00.000Z,9.356666646903284E13,",
-          "1970-01-01T00:00:00.002Z,2,114.59155902616465,2,114.59155902616465,2.5,143.2394487827058,2.5,143.2394487827058,1970-01-01T00:00:00.002Z,114.59155902616465,",
-          "1970-01-01T00:00:00.003Z,3,171.88733853924697,3,171.88733853924697,3.5,200.53522829578813,3.5,200.53522829578813,1970-01-01T00:00:00.003Z,171.88733853924697,",
+          "1970-01-01T00:00:00.001Z,1,57.29577951308232,1,57.29577951308232,1.0,57.29577951308232,1.0,57.29577951308232,",
+          "1970-01-01T00:00:00.002Z,2,114.59155902616465,2,114.59155902616465,2.5,143.2394487827058,2.5,143.2394487827058,",
+          "1970-01-01T00:00:00.003Z,3,171.88733853924697,3,171.88733853924697,3.5,200.53522829578813,3.5,200.53522829578813,",
         };
     tableResultSetEqualTest(
-        "select time,s2,degrees(s2),s3,degrees(s3),s4,degrees(s4),s5,degrees(s5),s8,degrees(s8) from degreesTable",
+        "select time,s2,degrees(s2),s3,degrees(s3),s4,degrees(s4),s5,degrees(s5) from degreesTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1139,17 +1087,15 @@ public class IoTDBScalarFunctionTableIT {
   public void expTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,2.718281828459045,1,2.718281828459045,1.0,2.718281828459045,1.0,2.718281828459045,2021-10-01T00:00:00.000Z,Infinity,",
-          "1970-01-01T00:00:00.002Z,2,7.38905609893065,2,7.38905609893065,2.5,12.182493960703473,2.5,12.182493960703473,1970-01-01T00:00:00.002Z,7.38905609893065,",
-          "1970-01-01T00:00:00.003Z,3,20.085536923187668,3,20.085536923187668,3.5,33.11545195869231,3.5,33.11545195869231,1970-01-01T00:00:00.003Z,20.085536923187668,",
+          "1970-01-01T00:00:00.001Z,1,2.718281828459045,1,2.718281828459045,1.0,2.718281828459045,1.0,2.718281828459045,",
+          "1970-01-01T00:00:00.002Z,2,7.38905609893065,2,7.38905609893065,2.5,12.182493960703473,2.5,12.182493960703473,",
+          "1970-01-01T00:00:00.003Z,3,20.085536923187668,3,20.085536923187668,3.5,33.11545195869231,3.5,33.11545195869231,",
         };
     tableResultSetEqualTest(
-        "select time,s2,exp(s2),s3,exp(s3),s4,exp(s4),s5,exp(s5),s8,exp(s8) from expTable",
+        "select time,s2,exp(s2),s3,exp(s3),s4,exp(s4),s5,exp(s5) from expTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1204,17 +1150,15 @@ public class IoTDBScalarFunctionTableIT {
   public void floorTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,2021-10-01T00:00:00.000Z,1.6330464E12,",
-          "1970-01-01T00:00:00.002Z,2,2.0,2,2.0,2.5,2.0,2.5,2.0,1970-01-01T00:00:00.002Z,2.0,",
-          "1970-01-01T00:00:00.003Z,-2,-2.0,-2,-2.0,-2.5,-3.0,-2.5,-3.0,1970-01-01T00:00:00.003Z,3.0,",
+          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,",
+          "1970-01-01T00:00:00.002Z,2,2.0,2,2.0,2.5,2.0,2.5,2.0,",
+          "1970-01-01T00:00:00.003Z,-2,-2.0,-2,-2.0,-2.5,-3.0,-2.5,-3.0,",
         };
     tableResultSetEqualTest(
-        "select time,s2,floor(s2),s3,floor(s3),s4,floor(s4),s5,floor(s5),s8,floor(s8) from floorTable",
+        "select time,s2,floor(s2),s3,floor(s3),s4,floor(s4),s5,floor(s5) from floorTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1360,17 +1304,15 @@ public class IoTDBScalarFunctionTableIT {
   public void lnTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,2021-10-01T00:00:00.000Z,28.12146834347524,",
-          "1970-01-01T00:00:00.002Z,0,-Infinity,0,-Infinity,0.0,-Infinity,0.0,-Infinity,1970-01-01T00:00:00.000Z,-Infinity,",
-          "1970-01-01T00:00:00.003Z,-3,NaN,-3,NaN,-3.5,NaN,-3.5,NaN,1970-01-01T00:00:00.003Z,1.0986122886681098,",
+          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
+          "1970-01-01T00:00:00.002Z,0,-Infinity,0,-Infinity,0.0,-Infinity,0.0,-Infinity,",
+          "1970-01-01T00:00:00.003Z,-3,NaN,-3,NaN,-3.5,NaN,-3.5,NaN,",
         };
     tableResultSetEqualTest(
-        "select time,s2,ln(s2),s3,ln(s3),s4,ln(s4),s5,ln(s5),s8,ln(s8) from lnTable",
+        "select time,s2,ln(s2),s3,ln(s3),s4,ln(s4),s5,ln(s5) from lnTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1425,17 +1367,15 @@ public class IoTDBScalarFunctionTableIT {
   public void log10TestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,2021-10-01T00:00:00.000Z,12.212998524588278,",
-          "1970-01-01T00:00:00.002Z,0,-Infinity,0,-Infinity,0.0,-Infinity,0.0,-Infinity,1970-01-01T00:00:00.000Z,-Infinity,",
-          "1970-01-01T00:00:00.003Z,-3,NaN,-3,NaN,-3.5,NaN,-3.5,NaN,1970-01-01T00:00:00.003Z,0.47712125471966244,",
+          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
+          "1970-01-01T00:00:00.002Z,0,-Infinity,0,-Infinity,0.0,-Infinity,0.0,-Infinity,",
+          "1970-01-01T00:00:00.003Z,-3,NaN,-3,NaN,-3.5,NaN,-3.5,NaN,",
         };
     tableResultSetEqualTest(
-        "select time,s2,log10(s2),s3,log10(s3),s4,log10(s4),s5,log10(s5),s8,log10(s8) from log10Table",
+        "select time,s2,log10(s2),s3,log10(s3),s4,log10(s4),s5,log10(s5) from log10Table",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1572,21 +1512,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void radiansTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     int[] expectedBodyInt = new int[] {1, 2, 3};
     long[] expectedBodyLong = new long[] {1, 2, 3};
     float[] expectedBodyFloat = new float[] {1, 2.5f, 3.5f};
     double[] expectedBodyDouble = new double[] {1, 2.5, 3.5};
-    long[] expectedBodyTimestamp = new long[] {1633046400000L, 2, 3};
     testRadiansDoubleResult(
-        "select time,radians(s2),radians(s3),radians(s4),radians(s5),radians(s8) from radiansTable",
+        "select time,radians(s2),radians(s3),radians(s4),radians(s5) from radiansTable",
         expectedHeader,
         DATABASE_NAME,
         expectedBodyInt,
         expectedBodyLong,
         expectedBodyFloat,
-        expectedBodyDouble,
-        expectedBodyTimestamp);
+        expectedBodyDouble);
   }
 
   private void testRadiansDoubleResult(
@@ -1596,8 +1534,7 @@ public class IoTDBScalarFunctionTableIT {
       int[] expectedBodyInt,
       long[] expectedBodyLong,
       float[] expectedBodyFloat,
-      double[] expectedBodyDouble,
-      long[] expectedBodyTimestamp) {
+      double[] expectedBodyDouble) {
     try (Connection connection =
         EnvFactory.getEnv()
             .getConnection(
@@ -1631,10 +1568,6 @@ public class IoTDBScalarFunctionTableIT {
             assertEquals(
                 Math.toRadians(expectedBodyDouble[cnt]),
                 Double.parseDouble(resultSet.getString(5)),
-                0.00001);
-            assertEquals(
-                Math.toRadians(expectedBodyTimestamp[cnt]),
-                Double.parseDouble(resultSet.getString(6)),
                 0.00001);
 
             for (int i = 1; i < expectedHeader.length; i++) {
@@ -1804,17 +1737,15 @@ public class IoTDBScalarFunctionTableIT {
   public void signTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1,1,1,1.0,1.0,1.0,1.0,2021-10-01T00:00:00.000Z,1,",
-          "1970-01-01T00:00:00.002Z,0,0,0,0,0.0,0.0,0.0,0.0,1970-01-01T00:00:00.000Z,0,",
-          "1970-01-01T00:00:00.003Z,-1,-1,-1,-1,-1.0,-1.0,-1.0,-1.0,1970-01-01T00:00:00.001Z,1,",
+          "1970-01-01T00:00:00.001Z,1,1,1,1,1.0,1.0,1.0,1.0,",
+          "1970-01-01T00:00:00.002Z,0,0,0,0,0.0,0.0,0.0,0.0,",
+          "1970-01-01T00:00:00.003Z,-1,-1,-1,-1,-1.0,-1.0,-1.0,-1.0,",
         };
     tableResultSetEqualTest(
-        "select time,s2,sign(s2),s3,sign(s3),s4,sign(s4),s5,sign(s5),s8,sign(s8) from signTable",
+        "select time,s2,sign(s2),s3,sign(s3),s4,sign(s4),s5,sign(s5) from signTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1869,17 +1800,15 @@ public class IoTDBScalarFunctionTableIT {
   public void sinTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.8414709848078965,1,0.8414709848078965,1.0,0.8414709848078965,1.0,0.8414709848078965,2021-10-01T00:00:00.000Z,0.4565232931782287,",
-          "1970-01-01T00:00:00.002Z,2,0.9092974268256817,2,0.9092974268256817,2.5,0.5984721441039564,2.5,0.5984721441039564,1970-01-01T00:00:00.002Z,0.9092974268256817,",
-          "1970-01-01T00:00:00.003Z,3,0.1411200080598672,3,0.1411200080598672,3.5,-0.35078322768961984,3.5,-0.35078322768961984,1970-01-01T00:00:00.003Z,0.1411200080598672,",
+          "1970-01-01T00:00:00.001Z,1,0.8414709848078965,1,0.8414709848078965,1.0,0.8414709848078965,1.0,0.8414709848078965,",
+          "1970-01-01T00:00:00.002Z,2,0.9092974268256817,2,0.9092974268256817,2.5,0.5984721441039564,2.5,0.5984721441039564,",
+          "1970-01-01T00:00:00.003Z,3,0.1411200080598672,3,0.1411200080598672,3.5,-0.35078322768961984,3.5,-0.35078322768961984,",
         };
     tableResultSetEqualTest(
-        "select time,s2,sin(s2),s3,sin(s3),s4,sin(s4),s5,sin(s5),s8,sin(s8) from sinTable",
+        "select time,s2,sin(s2),s3,sin(s3),s4,sin(s4),s5,sin(s5) from sinTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1934,17 +1863,15 @@ public class IoTDBScalarFunctionTableIT {
   public void sinhTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.1752011936438014,1,1.1752011936438014,1.0,1.1752011936438014,1.0,1.1752011936438014,2021-10-01T00:00:00.000Z,Infinity,",
-          "1970-01-01T00:00:00.002Z,2,3.626860407847019,2,3.626860407847019,2.5,6.0502044810397875,2.5,6.0502044810397875,1970-01-01T00:00:00.002Z,3.626860407847019,",
-          "1970-01-01T00:00:00.003Z,3,10.017874927409903,3,10.017874927409903,3.5,16.542627287634996,3.5,16.542627287634996,1970-01-01T00:00:00.003Z,10.017874927409903,",
+          "1970-01-01T00:00:00.001Z,1,1.1752011936438014,1,1.1752011936438014,1.0,1.1752011936438014,1.0,1.1752011936438014,",
+          "1970-01-01T00:00:00.002Z,2,3.626860407847019,2,3.626860407847019,2.5,6.0502044810397875,2.5,6.0502044810397875,",
+          "1970-01-01T00:00:00.003Z,3,10.017874927409903,3,10.017874927409903,3.5,16.542627287634996,3.5,16.542627287634996,",
         };
     tableResultSetEqualTest(
-        "select time,s2,sinh(s2),s3,sinh(s3),s4,sinh(s4),s5,sinh(s5),s8,sinh(s8) from sinhTable",
+        "select time,s2,sinh(s2),s3,sinh(s3),s4,sinh(s4),s5,sinh(s5) from sinhTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -1999,17 +1926,15 @@ public class IoTDBScalarFunctionTableIT {
   public void sqrtTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,2021-10-01T00:00:00.000Z,1277907.0388725465,",
-          "1970-01-01T00:00:00.002Z,0,0.0,0,0.0,0.0,0.0,0.0,0.0,1970-01-01T00:00:00.000Z,0.0,",
-          "1970-01-01T00:00:00.003Z,-1,NaN,-1,NaN,-1.5,NaN,-1.5,NaN,1970-01-01T00:00:00.003Z,1.7320508075688772,",
+          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,",
+          "1970-01-01T00:00:00.002Z,0,0.0,0,0.0,0.0,0.0,0.0,0.0,",
+          "1970-01-01T00:00:00.003Z,-1,NaN,-1,NaN,-1.5,NaN,-1.5,NaN,",
         };
     tableResultSetEqualTest(
-        "select time,s2,sqrt(s2),s3,sqrt(s3),s4,sqrt(s4),s5,sqrt(s5),s8,sqrt(s8) from sqrtTable",
+        "select time,s2,sqrt(s2),s3,sqrt(s3),s4,sqrt(s4),s5,sqrt(s5) from sqrtTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -2376,17 +2301,15 @@ public class IoTDBScalarFunctionTableIT {
   public void tanTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.5574077246549023,1,1.5574077246549023,1.0,1.5574077246549023,1.0,1.5574077246549023,2021-10-01T00:00:00.000Z,-0.513113872858981,",
-          "1970-01-01T00:00:00.002Z,2,-2.185039863261519,2,-2.185039863261519,1.5707964,-2.287733242885646E7,1.57079632675,2.227340543395435E10,1970-01-01T00:00:00.002Z,-2.185039863261519,",
-          "1970-01-01T00:00:00.003Z,3,-0.1425465430742778,3,-0.1425465430742778,3.5,0.3745856401585947,3.5,0.3745856401585947,1970-01-01T00:00:00.003Z,-0.1425465430742778,",
+          "1970-01-01T00:00:00.001Z,1,1.5574077246549023,1,1.5574077246549023,1.0,1.5574077246549023,1.0,1.5574077246549023,",
+          "1970-01-01T00:00:00.002Z,2,-2.185039863261519,2,-2.185039863261519,1.5707964,-2.287733242885646E7,1.57079632675,2.227340543395435E10,",
+          "1970-01-01T00:00:00.003Z,3,-0.1425465430742778,3,-0.1425465430742778,3.5,0.3745856401585947,3.5,0.3745856401585947,",
         };
     tableResultSetEqualTest(
-        "select time,s2,tan(s2),s3,tan(s3),s4,tan(s4),s5,tan(s5),s8,tan(s8) from tanTable",
+        "select time,s2,tan(s2),s3,tan(s3),s4,tan(s4),s5,tan(s5) from tanTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
@@ -2441,17 +2364,15 @@ public class IoTDBScalarFunctionTableIT {
   public void tanhTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader =
-        new String[] {
-          "time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8", "s8", "_col10"
-        };
+        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
     String[] expectedAns =
         new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.7615941559557649,1,0.7615941559557649,1.0,0.7615941559557649,1.0,0.7615941559557649,2021-10-01T00:00:00.000Z,1.0,",
-          "1970-01-01T00:00:00.002Z,2,0.9640275800758169,2,0.9640275800758169,2.5,0.9866142981514303,2.5,0.9866142981514303,1970-01-01T00:00:00.002Z,0.9640275800758169,",
-          "1970-01-01T00:00:00.003Z,3,0.9950547536867305,3,0.9950547536867305,3.5,0.9981778976111987,3.5,0.9981778976111987,1970-01-01T00:00:00.003Z,0.9950547536867305,",
+          "1970-01-01T00:00:00.001Z,1,0.7615941559557649,1,0.7615941559557649,1.0,0.7615941559557649,1.0,0.7615941559557649,",
+          "1970-01-01T00:00:00.002Z,2,0.9640275800758169,2,0.9640275800758169,2.5,0.9866142981514303,2.5,0.9866142981514303,",
+          "1970-01-01T00:00:00.003Z,3,0.9950547536867305,3,0.9950547536867305,3.5,0.9981778976111987,3.5,0.9981778976111987,",
         };
     tableResultSetEqualTest(
-        "select time,s2,tanh(s2),s3,tanh(s3),s4,tanh(s4),s5,tanh(s5),s8,tanh(s8) from tanhTable",
+        "select time,s2,tanh(s2),s3,tanh(s3),s4,tanh(s4),s5,tanh(s5) from tanhTable",
         expectedHeader,
         expectedAns,
         DATABASE_NAME);

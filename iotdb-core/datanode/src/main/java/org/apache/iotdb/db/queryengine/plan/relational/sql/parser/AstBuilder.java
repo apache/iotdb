@@ -144,6 +144,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -1429,7 +1430,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitConcatenation(RelationalSqlParser.ConcatenationContext ctx) {
     return new FunctionCall(
         getLocation(ctx.CONCAT()),
-        QualifiedName.of("concat"),
+        QualifiedName.of(TableBuiltinScalarFunction.CONCAT.getFunctionName()),
         ImmutableList.of((Expression) visit(ctx.left), (Expression) visit(ctx.right)));
   }
 
