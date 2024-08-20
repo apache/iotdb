@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
 import org.apache.tsfile.block.column.Column;
@@ -34,20 +33,25 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.constructFilteredTsBlock;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator.satisfy;
 import static org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource.transformToTsBlockColumns;
 
 public class DeviceAttributeUpdater extends DevicePredicateFilter {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
-  private final List<ColumnTransformer> projectOutputTransformers;
+  private final List<ColumnTransformer> projectOutputTransformerList;
   final BiFunction<Integer, String, String> attributeProvider;
   private final BiConsumer<Integer, Object[]> attributeUpdater;
+  private final List<Integer> indexes = new ArrayList<>();
+  private final List<Integer> attributePointers = new ArrayList<>();
 
   @SuppressWarnings("squid:S107")
   public DeviceAttributeUpdater(
@@ -59,7 +63,7 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
       final String tableName,
       final List<ColumnHeader> columnHeaderList,
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
-      final List<ColumnTransformer> projectOutputTransformers,
+      final List<ColumnTransformer> projectOutputTransformerList,
       final BiFunction<Integer, String, String> attributeProvider,
       final BiConsumer<Integer, Object[]> attributeUpdater) {
     super(
@@ -71,7 +75,7 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
         tableName,
         columnHeaderList);
     this.projectLeafColumnTransformerList = projectLeafColumnTransformerList;
-    this.projectOutputTransformers = projectOutputTransformers;
+    this.projectOutputTransformerList = projectOutputTransformerList;
     this.attributeProvider = attributeProvider;
     this.attributeUpdater = attributeUpdater;
   }
@@ -83,46 +87,42 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
             node.isAlignedNullable(),
             node.getSchemaTemplateId(),
             node.getPartialPath().getNodes());
-    result.setAttributeProvider(
-        k ->
-            attributeProvider.apply(
-                ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer(), k));
+    final int pointer = ((TableDeviceInfo<IMemMNode>) node.getDeviceInfo()).getAttributePointer();
+    result.setAttributeProvider(k -> attributeProvider.apply(pointer, k));
+    attributePointers.add(pointer);
     if (addBatch(result)) {
-      return;
+      update();
     }
   }
 
-  public Object[] getTransformedObject(final IDeviceSchemaInfo deviceSchemaInfo) {
+  private void update() {
     final TsBlock block = getTsBlock();
     if (Objects.isNull(block)) {
-      return new Object[0];
+      return;
     }
 
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
 
-    for (int i = 0, n = resultColumns.size(); i < n; i++) {
-      Column curColumn = resultColumns.get(i);
-      for (int j = 0; j < positionCount; j++) {
-        if (satisfy(filterColumn, j)) {
-          if (i == 0) {
-            rowCount++;
-          }
-          if (curColumn.isNull(j)) {
-            columnBuilders[i].appendNull();
-          } else {
-            columnBuilders[i].write(curColumn, j);
-          }
-        }
-      }
+    final List<Column> resultColumns =
+        projectOutputTransformerList.stream()
+            .map(
+                columnTransformer -> {
+                  columnTransformer.tryEvaluate();
+                  return columnTransformer.getColumn();
+                })
+            .collect(Collectors.toList());
+
+    for (int i = 0; i < indexes.size(); ++i) {
+      final int finalI = i;
+      attributeUpdater.accept(
+          attributePointers.get(indexes.get(i)),
+          resultColumns.stream().map(column -> column.getObject(finalI)).toArray(Object[]::new));
     }
-    return projectOutputTransformers.stream()
-        .map(
-            columnTransformer -> {
-              columnTransformer.tryEvaluate();
-              return columnTransformer.getColumn().getObject(0);
-            })
-        .toArray(Object[]::new);
+
+    indexes.clear();
+    attributePointers.clear();
+    super.clear();
   }
 
   public TsBlock getTsBlock() {
@@ -157,12 +157,19 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
         constructFilteredTsBlock(
             resultColumns, filterColumn, columnBuilders, deviceSchemaBatch.size()));
 
+    for (int j = 0; j < deviceSchemaBatch.size(); j++) {
+      if (satisfy(filterColumn, j)) {
+        indexes.add(j);
+      }
+    }
+
     return filterTsBlockBuilder.build();
   }
 
   @Override
   public void close() {
+    update();
     super.close();
-    projectOutputTransformers.forEach(ColumnTransformer::close);
+    projectOutputTransformerList.forEach(ColumnTransformer::close);
   }
 }

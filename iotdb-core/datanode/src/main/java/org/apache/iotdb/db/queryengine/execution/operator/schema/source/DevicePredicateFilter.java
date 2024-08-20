@@ -71,6 +71,10 @@ public class DevicePredicateFilter implements AutoCloseable {
     return deviceSchemaBatch.size() >= DEFAULT_MAX_TS_BLOCK_SIZE_IN_BYTES;
   }
 
+  protected void clear() {
+    deviceSchemaBatch.clear();
+  }
+
   @Override
   public void close() {
     if (Objects.nonNull(filterOutputTransformer)) {
