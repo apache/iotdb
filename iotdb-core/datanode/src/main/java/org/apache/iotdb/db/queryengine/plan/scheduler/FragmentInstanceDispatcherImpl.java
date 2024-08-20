@@ -455,7 +455,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 : readExecutor.execute(groupId, instance);
         if (!readResult.isAccepted()) {
           LOGGER.warn(readResult.getMessage());
-          if (readResult.isNeedRetry()) {
+          if (readResult.isReadNeedRetry()) {
             if (readResult.getStatus() != null
                 && readResult.getStatus().getCode()
                     == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
