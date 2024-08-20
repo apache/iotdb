@@ -72,7 +72,7 @@ public interface IStateMachine {
    *
    * @return true if all resources are released successfully
    */
-  default boolean hasReleaseAllRegionRelatedResource() {
+  default boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
     return true;
   }
 
