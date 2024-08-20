@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.param;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT3;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionException;
@@ -52,7 +52,7 @@ import java.util.Properties;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT3.class})
 public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegressionIT {
   private static SubscriptionPushConsumer consumer;
   private static final String topicName = "TestParamPushConsumerTopic1";
