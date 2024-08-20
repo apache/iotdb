@@ -99,7 +99,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
         new CompactionTsFileWriter(
             targetResources.get(currentFileIndex).getTsFile(),
             sizeForFileWriter,
-            CompactionType.INNER_SEQ_COMPACTION);
+            targetResources.get(currentFileIndex).isSeq()
+                ? CompactionType.INNER_SEQ_COMPACTION
+                : CompactionType.INNER_UNSEQ_COMPACTION);
     fileWriter.setSchema(CompactionTableSchemaCollector.copySchema(schemas.get(0)));
   }
 
