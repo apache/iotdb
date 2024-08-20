@@ -35,7 +35,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
@@ -92,10 +91,20 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
   }
 
   private void update() {
-    final TsBlock block = getTsBlock();
-    if (Objects.isNull(block)) {
-      return;
-    }
+    filterTsBlockBuilder.reset();
+
+    final List<Column> filterResultColumns = Arrays.asList(curBlock.getValueColumns());
+
+    // get result of calculated common sub expressions
+    commonTransformerList.forEach(
+        columnTransformer -> filterResultColumns.add(columnTransformer.getColumn()));
+    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
+
+    filterTsBlockBuilder.declarePositions(
+        constructFilteredTsBlock(
+            filterResultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size()));
+
+    final TsBlock block = filterTsBlockBuilder.build();
 
     projectLeafColumnTransformerList.forEach(
         leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(block));
@@ -120,27 +129,12 @@ public class DeviceAttributeUpdater extends DevicePredicateFilter {
     super.clear();
   }
 
-  public TsBlock getTsBlock() {
-    // reuse this builder
-    filterTsBlockBuilder.reset();
-
-    final List<Column> resultColumns = Arrays.asList(curBlock.getValueColumns());
-
-    // get result of calculated common sub expressions
-    commonTransformerList.forEach(
-        columnTransformer -> resultColumns.add(columnTransformer.getColumn()));
-    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
-
-    filterTsBlockBuilder.declarePositions(
-        constructFilteredTsBlock(
-            resultColumns, curFilterColumn, columnBuilders, deviceSchemaBatch.size()));
-
-    return filterTsBlockBuilder.build();
-  }
-
   @Override
   public void close() {
-    update();
+    if (!deviceSchemaBatch.isEmpty()) {
+      prepareBatchResult();
+      update();
+    }
     super.close();
     projectOutputTransformerList.forEach(ColumnTransformer::close);
   }
