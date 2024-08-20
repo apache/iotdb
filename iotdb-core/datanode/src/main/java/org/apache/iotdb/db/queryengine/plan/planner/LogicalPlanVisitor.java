@@ -411,7 +411,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitCreateMultiTimeseries(
+  public PlanNode visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, MPPQueryContext context) {
     return new CreateMultiTimeSeriesNode(
         context.getQueryId().genPlanNodeId(),
@@ -435,7 +435,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   }
 
   @Override
-  public PlanNode visitAlterTimeseries(
+  public PlanNode visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     return new AlterTimeSeriesNode(
         context.getQueryId().genPlanNodeId(),

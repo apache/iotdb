@@ -491,7 +491,7 @@ public class ConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQueryCon
   }
 
   @Override
-  public IConfigTask visitDeleteTimeseries(
+  public IConfigTask visitDeleteTimeSeries(
       DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
     return new DeleteTimeSeriesTask(context.getQueryId().getId(), deleteTimeSeriesStatement);
   }
