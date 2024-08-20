@@ -54,7 +54,7 @@ public class DevicePredicateFilter extends DevicePredicateHandler
   @Override
   public boolean hasNext() {
     final boolean result = curIndex < indexes.size();
-    if (!result) {
+    if (!result && !deviceSchemaBatch.isEmpty()) {
       clear();
     }
     return result;
