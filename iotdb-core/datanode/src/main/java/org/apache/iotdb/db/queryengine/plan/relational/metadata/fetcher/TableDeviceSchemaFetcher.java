@@ -451,14 +451,10 @@ public class TableDeviceSchemaFetcher {
               columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET);
         }
         startIndex++;
-      } else {
-        if (columns[j].isNull(rowIndex)) {
-          attributeMap.put(columnSchema.getColumnName(), null);
-        } else {
-          attributeMap.put(
-              columnSchema.getColumnName(),
-              columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
-        }
+      } else if (!columns[j].isNull(rowIndex)) {
+        attributeMap.put(
+            columnSchema.getColumnName(),
+            columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
       }
     }
   }
