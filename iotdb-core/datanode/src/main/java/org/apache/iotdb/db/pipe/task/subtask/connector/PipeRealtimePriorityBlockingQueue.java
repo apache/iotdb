@@ -33,7 +33,6 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
@@ -153,9 +152,19 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public void removeIf(final Predicate<? super Event> filter) {
-    super.removeIf(filter);
-    pendingQueue.removeIf(filter);
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
+    super.discardEventsOfPipe(pipeNameToDrop);
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            ((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName());
+            eventCounter.decreaseEventCount(event);
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override

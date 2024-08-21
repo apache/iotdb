@@ -223,16 +223,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    */
   public void discardEventsOfPipe(final String pipeNameToDrop) {
     // Try to remove the events as much as possible
-    inputPendingQueue.removeIf(
-        event -> {
-          if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
-            ((EnrichedEvent) event)
-                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
-            return true;
-          }
-          return false;
-        });
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
 
     // synchronized to use the lastEvent and lastExceptionEvent
     synchronized (this) {
