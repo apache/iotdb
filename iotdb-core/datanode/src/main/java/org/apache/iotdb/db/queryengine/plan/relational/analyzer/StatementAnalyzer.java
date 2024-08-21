@@ -48,8 +48,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -261,7 +261,7 @@ public class StatementAnalyzer {
     @Override
     public Scope process(final Node node, final Optional<Scope> scope) {
       final Scope returnScope = super.process(node, scope);
-      if (node instanceof CreateDevice
+      if (node instanceof CreateOrUpdateDevice
           || node instanceof FetchDevice
           || node instanceof ShowDevice
           || node instanceof CountDevice
@@ -2552,7 +2552,8 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(final CreateDevice node, final Optional<Scope> context) {
+    protected Scope visitCreateDevice(
+        final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       return null;
     }

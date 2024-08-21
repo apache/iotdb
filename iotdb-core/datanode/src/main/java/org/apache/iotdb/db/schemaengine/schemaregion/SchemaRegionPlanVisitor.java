@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IChangeAliasPlan;
@@ -126,9 +126,9 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
     return visitSchemaRegionPlan(deleteLogicalViewPlan, context);
   }
 
-  public R visitCreateTableDevice(
-      final CreateTableDeviceNode createTableDeviceNode, final C context) {
-    return visitSchemaRegionPlan(createTableDeviceNode, context);
+  public R visitCreateOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode, final C context) {
+    return visitSchemaRegionPlan(createOrUpdateTableDeviceNode, context);
   }
 
   public R visitUpdateTableDeviceAttribute(

@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
@@ -318,7 +318,7 @@ public interface ISchemaRegion {
 
   // region table device management
 
-  void createTableDevice(final CreateTableDeviceNode createTableDeviceNode)
+  void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode)
       throws MetadataException;
 
   void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)

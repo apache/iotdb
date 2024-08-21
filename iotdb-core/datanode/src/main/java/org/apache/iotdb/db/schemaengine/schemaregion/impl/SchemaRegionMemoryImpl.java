@@ -51,7 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -1329,7 +1329,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createTableDevice(final CreateTableDeviceNode node) throws MetadataException {
+  public void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode node)
+      throws MetadataException {
     for (int i = 0; i < node.getDeviceIdList().size(); i++) {
       final String databaseName = storageGroupFullPath.substring(5);
       final String tableName = node.getTableName();
@@ -1749,10 +1750,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
 
     @Override
-    public RecoverOperationResult visitCreateTableDevice(
-        final CreateTableDeviceNode createTableDeviceNode, final SchemaRegionMemoryImpl context) {
+    public RecoverOperationResult visitCreateOrUpdateTableDevice(
+        final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode,
+        final SchemaRegionMemoryImpl context) {
       try {
-        createTableDevice(createTableDeviceNode);
+        createOrUpdateTableDevice(createOrUpdateTableDeviceNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

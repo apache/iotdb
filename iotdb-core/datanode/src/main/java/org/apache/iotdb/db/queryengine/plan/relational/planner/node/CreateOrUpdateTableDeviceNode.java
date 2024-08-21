@@ -47,7 +47,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.convertRawDeviceIDs2PartitionKeys;
 
-public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegionPlan {
+public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISchemaRegionPlan {
 
   private final String database;
 
@@ -63,10 +63,10 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
 
   private transient List<IDeviceID> partitionKeyList;
 
-  public static final CreateTableDeviceNode MOCK_INSTANCE =
-      new CreateTableDeviceNode(new PlanNodeId(""), null, null, null, null, null);
+  public static final CreateOrUpdateTableDeviceNode MOCK_INSTANCE =
+      new CreateOrUpdateTableDeviceNode(new PlanNodeId(""), null, null, null, null, null);
 
-  public CreateTableDeviceNode(
+  public CreateOrUpdateTableDeviceNode(
       final PlanNodeId id,
       final String database,
       final String tableName,
@@ -83,7 +83,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
 
   // In this constructor, we don't need to truncate tailing nulls for deviceIdList, because this
   // constructor can only be generated from another CreateTableDeviceNode
-  public CreateTableDeviceNode(
+  public CreateOrUpdateTableDeviceNode(
       final PlanNodeId id,
       final TRegionReplicaSet regionReplicaSet,
       final String database,
@@ -149,7 +149,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
 
   @Override
   public PlanNode clone() {
-    return new CreateTableDeviceNode(
+    return new CreateOrUpdateTableDeviceNode(
         getPlanNodeId(),
         regionReplicaSet,
         database,
@@ -216,7 +216,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
     }
   }
 
-  public static CreateTableDeviceNode deserialize(final ByteBuffer buffer) {
+  public static CreateOrUpdateTableDeviceNode deserialize(final ByteBuffer buffer) {
     final String database = ReadWriteIOUtils.readString(buffer);
     final String tableName = ReadWriteIOUtils.readString(buffer);
     final int deviceNum = ReadWriteIOUtils.readInt(buffer);
@@ -246,7 +246,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
       attributeValueList.add(deviceAttributeValues);
     }
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new CreateTableDeviceNode(
+    return new CreateOrUpdateTableDeviceNode(
         planNodeId, database, tableName, deviceIdList, attributeNameList, attributeValueList);
   }
 
@@ -272,7 +272,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
         subAttributeValueList.add(attributeValueList.get(index));
       }
       result.add(
-          new CreateTableDeviceNode(
+          new CreateOrUpdateTableDeviceNode(
               getPlanNodeId(),
               entry.getKey(),
               database,
@@ -300,7 +300,7 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
     if (!super.equals(o)) {
       return false;
     }
-    final CreateTableDeviceNode node = (CreateTableDeviceNode) o;
+    final CreateOrUpdateTableDeviceNode node = (CreateOrUpdateTableDeviceNode) o;
     return Objects.equals(database, node.database)
         && Objects.equals(tableName, node.tableName)
         && Objects.equals(deviceIdList, node.deviceIdList)
@@ -330,6 +330,6 @@ public class CreateTableDeviceNode extends WritePlanNode implements ISchemaRegio
 
   @Override
   public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
-    return visitor.visitCreateTableDevice(this, context);
+    return visitor.visitCreateOrUpdateTableDevice(this, context);
   }
 }

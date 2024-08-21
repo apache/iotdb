@@ -324,19 +324,11 @@ public class TableDeviceSchemaFetcher {
       }
       return false;
     }
-    final List<String> attributeValues = new ArrayList<>(attributeColumns.size());
-    for (final String attributeKey : attributeColumns) {
-      if (!attributeMap.containsKey(attributeKey)) {
-        // The attributes may be updated and the cache entry is stale
-        if (Objects.nonNull(fetchPaths)) {
-          fetchPaths.add(deviceID);
-        }
-        return false;
-      }
-      attributeValues.add(attributeMap.get(attributeKey));
-    }
 
-    final DeviceEntry deviceEntry = new DeviceEntry(deviceID, attributeValues);
+    final DeviceEntry deviceEntry =
+        new DeviceEntry(
+            deviceID,
+            attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {

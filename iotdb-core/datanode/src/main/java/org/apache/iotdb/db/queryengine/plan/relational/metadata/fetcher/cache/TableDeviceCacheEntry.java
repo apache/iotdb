@@ -46,7 +46,7 @@ public class TableDeviceCacheEntry {
     updateMap.forEach(
         (k, v) -> {
           if (Objects.nonNull(v)) {
-            attributeMap.replace(k, v);
+            attributeMap.put(k, v);
           } else {
             attributeMap.remove(k);
           }

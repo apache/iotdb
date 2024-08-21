@@ -34,7 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
@@ -42,7 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Pla
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
@@ -129,8 +129,8 @@ public class LogicalPlanner {
   }
 
   private PlanNode planStatement(final Analysis analysis, final Statement statement) {
-    if (statement instanceof CreateDevice) {
-      return planCreateDevice((CreateDevice) statement, analysis);
+    if (statement instanceof CreateOrUpdateDevice) {
+      return planCreateDevice((CreateOrUpdateDevice) statement, analysis);
     }
     if (statement instanceof FetchDevice) {
       return planFetchDevice((FetchDevice) statement, analysis);
@@ -215,9 +215,9 @@ public class LogicalPlanner {
         analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
   }
 
-  private PlanNode planCreateDevice(final CreateDevice statement, final Analysis analysis) {
-    final CreateTableDeviceNode node =
-        new CreateTableDeviceNode(
+  private PlanNode planCreateDevice(final CreateOrUpdateDevice statement, final Analysis analysis) {
+    final CreateOrUpdateTableDeviceNode node =
+        new CreateOrUpdateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
             statement.getTable(),

@@ -58,7 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeriesPlan;
@@ -569,10 +569,10 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
 
   @Override
   public TSStatus visitCreateTableDevice(
-      final CreateTableDeviceNode node, final ISchemaRegion schemaRegion) {
+      final CreateOrUpdateTableDeviceNode node, final ISchemaRegion schemaRegion) {
     try {
       // todo implement storage for device of diverse data types
-      schemaRegion.createTableDevice(node);
+      schemaRegion.createOrUpdateTableDevice(node);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (final MetadataException e) {
       logger.error(e.getMessage(), e);

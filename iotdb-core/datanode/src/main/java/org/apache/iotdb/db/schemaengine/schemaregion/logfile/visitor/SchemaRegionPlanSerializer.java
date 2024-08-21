@@ -22,7 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.ISerializer;
@@ -477,10 +477,11 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
     }
 
     @Override
-    public SchemaRegionPlanSerializationResult visitCreateTableDevice(
-        final CreateTableDeviceNode createTableDeviceNode, final DataOutputStream outputStream) {
+    public SchemaRegionPlanSerializationResult visitCreateOrUpdateTableDevice(
+        final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode,
+        final DataOutputStream outputStream) {
       try {
-        createTableDeviceNode.serialize(outputStream);
+        createOrUpdateTableDeviceNode.serialize(outputStream);
         return SchemaRegionPlanSerializationResult.SUCCESS;
       } catch (final IOException e) {
         return new SchemaRegionPlanSerializationResult(e);
