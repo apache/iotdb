@@ -192,7 +192,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     protected void setTargetFileForRecover(List<TsFileResource> resources) {
       targetFilesInLog = resources;
       targetFilesInPerformer = resources;
-      renamedTargetFiles = resources;
+      renamedTargetFiles = Collections.emptyList();
     }
   }
 
@@ -503,33 +503,31 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected void recoverTargetResource(
       List<TsFileIdentifier> targetFileIdentifiers,
       List<TsFileIdentifier> deletedTargetFileIdentifiers) {
-    if (targetFileIdentifiers.isEmpty()) {
-      filesView.setTargetFileForRecover(Collections.emptyList());
-      return;
+    List<TsFileResource> targetResources = new ArrayList<>(targetFileIdentifiers.size());
+    for (TsFileIdentifier targetIdentifier : targetFileIdentifiers) {
+      File tmpTargetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+      targetIdentifier.setFilename(
+          targetIdentifier
+              .getFilename()
+              .replace(
+                  CompactionUtils.getTmpFileSuffix(getCompactionTaskType()),
+                  TsFileConstant.TSFILE_SUFFIX));
+      File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+      if (tmpTargetFile != null) {
+        targetResources.add(new TsFileResource(tmpTargetFile));
+      } else if (targetFile != null) {
+        targetResources.add(new TsFileResource(targetFile));
+      } else {
+        // target file does not exist, then create empty resource
+        targetResources.add(new TsFileResource(new File(targetIdentifier.getFilePath())));
+      }
+      // check if target file is deleted after compaction or not
+      if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
+        // target file is deleted after compaction
+        filesView.targetFilesInLog.get(0).forceMarkDeleted();
+      }
     }
-    TsFileIdentifier targetIdentifier = targetFileIdentifiers.get(0);
-    File tmpTargetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
-    targetIdentifier.setFilename(
-        targetIdentifier
-            .getFilename()
-            .replace(
-                CompactionUtils.getTmpFileSuffix(getCompactionTaskType()),
-                TsFileConstant.TSFILE_SUFFIX));
-    File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
-    if (tmpTargetFile != null) {
-      filesView.setTargetFileForRecover(new TsFileResource(tmpTargetFile));
-    } else if (targetFile != null) {
-      filesView.setTargetFileForRecover(new TsFileResource(targetFile));
-    } else {
-      // target file does not exist, then create empty resource
-      filesView.setTargetFileForRecover(
-          new TsFileResource(new File(targetIdentifier.getFilePath())));
-    }
-    // check if target file is deleted after compaction or not
-    if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
-      // target file is deleted after compaction
-      filesView.targetFilesInLog.get(0).forceMarkDeleted();
-    }
+    filesView.setTargetFileForRecover(targetResources);
   }
 
   protected void rollback() throws IOException {
