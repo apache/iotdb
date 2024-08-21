@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.multi;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
@@ -59,7 +59,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * The timing of flush is very critical. If the data inside the filter and the data outside the filter are within one tsfile, they will all be extracted.
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.OneConsumerMultiTopicsTsfile";
   private static final String database2 = "root.OneConsumerMultiTopicsTsfile";

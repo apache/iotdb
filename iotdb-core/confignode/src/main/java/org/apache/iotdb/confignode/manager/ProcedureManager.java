@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -1278,7 +1277,7 @@ public class ProcedureManager {
     while (currentTime < endTime) {
       try {
         Thread.sleep(endTime - currentTime);
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         interrupted = true;
       }
       currentTime = System.currentTimeMillis();
@@ -1289,81 +1288,61 @@ public class ProcedureManager {
   }
 
   public TSStatus createTable(final String database, final TsTable table) {
-    final Pair<Long, Boolean> procedureIdDuplicatePair =
-        awaitDuplicateTableTask(
-            database, table, table.getTableName(), null, ProcedureType.CREATE_TABLE_PROCEDURE);
-    long procedureId = procedureIdDuplicatePair.getLeft();
-
-    if (procedureId == -1) {
-      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            "Some other task is operating table with same name.");
-      }
-      procedureId = this.executor.submitProcedure(new CreateTableProcedure(database, table));
-    }
-    final List<TSStatus> procedureStatus = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return executeWithoutDuplicate(
+        database,
+        table,
+        table.getTableName(),
+        null,
+        ProcedureType.CREATE_TABLE_PROCEDURE,
+        new CreateTableProcedure(database, table));
   }
 
   public TSStatus alterTableAddColumn(final TAlterTableReq req) {
-    final String database = req.database;
-    final String tableName = req.tableName;
-    final String queryId = req.queryId;
-    final List<TsTableColumnSchema> columnSchemaList =
-        TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo);
-
-    final Pair<Long, Boolean> procedureIdDuplicatePair =
-        awaitDuplicateTableTask(
-            database, null, tableName, queryId, ProcedureType.ADD_TABLE_COLUMN_PROCEDURE);
-    long procedureId = procedureIdDuplicatePair.getLeft();
-
-    if (procedureId == -1) {
-      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            "Some other task is operating table with same name.");
-      }
-      procedureId =
-          this.executor.submitProcedure(
-              new AddTableColumnProcedure(database, tableName, queryId, columnSchemaList));
-    }
-    final List<TSStatus> procedureStatus = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
+        new AddTableColumnProcedure(
+            req.database,
+            req.tableName,
+            req.queryId,
+            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo)));
   }
 
   public TSStatus alterTableSetProperties(final TAlterTableReq req) {
-    final String database = req.database;
-    final String tableName = req.tableName;
-    final String queryId = req.queryId;
-    final Map<String, String> properties = ReadWriteIOUtils.readMap(req.updateInfo);
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
+        new SetTablePropertiesProcedure(
+            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
+  }
 
-    final Pair<Long, Boolean> procedureIdDuplicatePair =
-        awaitDuplicateTableTask(
-            database, null, tableName, queryId, ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE);
-    long procedureId = procedureIdDuplicatePair.getLeft();
+  private TSStatus executeWithoutDuplicate(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure) {
+    long procedureId;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          awaitDuplicateTableTask(database, table, tableName, queryId, thisType);
+      procedureId = procedureIdDuplicatePair.getLeft();
 
-    if (procedureId == -1) {
-      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            "Some other task is operating table with same name.");
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is operating table with same name.");
+        }
+        procedureId = this.executor.submitProcedure(procedure);
       }
-      procedureId =
-          this.executor.submitProcedure(
-              new SetTablePropertiesProcedure(database, tableName, queryId, properties));
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
     final boolean isSucceed =
@@ -1375,7 +1354,7 @@ public class ProcedureManager {
     }
   }
 
-  private synchronized Pair<Long, Boolean> awaitDuplicateTableTask(
+  private Pair<Long, Boolean> awaitDuplicateTableTask(
       final String database,
       final TsTable table,
       final String tableName,

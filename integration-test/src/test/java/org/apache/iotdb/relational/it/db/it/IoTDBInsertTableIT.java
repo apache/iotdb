@@ -711,6 +711,45 @@ public class IoTDBInsertTableIT {
     }
   }
 
+  @Test
+  public void testInsertSingleColumn() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement st1 = connection.createStatement()) {
+      st1.execute("use \"test\"");
+      st1.execute(
+          "create table if not exists sg21 (id1 string id, ss1 string attribute, ss2 int32 measurement)");
+      // only id
+      st1.execute("insert into sg21(id1) values('1')");
+      // only time
+      try {
+        st1.execute("insert into sg21(time) values(1)");
+      } catch (SQLException e) {
+        assertEquals(
+            "305: [INTERNAL_SERVER_ERROR(305)] Exception occurred: \"insert into sg21(time) values(1)\". executeStatement failed. No column other than Time present, please check the request",
+            e.getMessage());
+      }
+      // only attribute
+      st1.execute("insert into sg21(ss1) values('1')");
+      // only measurement
+      st1.execute("insert into sg21(ss2) values(1)");
+
+      ResultSet rs1 = st1.executeQuery("show devices from sg21");
+      assertTrue(rs1.next());
+      // from "insert into sg21(ss2) values(1)"
+      assertEquals(null, rs1.getString("id1"));
+      assertTrue(rs1.next());
+      // from "insert into sg21(id1) values('1')"
+      assertEquals("1", rs1.getString("id1"));
+      assertFalse(rs1.next());
+
+      rs1 = st1.executeQuery("select time, ss1, ss2 from sg21 order by time");
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("ss1"));
+      assertEquals(1, rs1.getInt("ss2"));
+      assertFalse(rs1.next());
+    }
+  }
+
   private List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {
