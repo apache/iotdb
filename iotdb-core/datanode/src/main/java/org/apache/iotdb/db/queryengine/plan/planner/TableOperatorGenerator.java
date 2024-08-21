@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -776,20 +777,24 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   public Operator visitTableDeviceQueryScan(
       final TableDeviceQueryScanNode node, final LocalExecutionPlanContext context) {
     // Query scan use filterNode directly
-    return new SchemaQueryScanOperator<>(
-        node.getPlanNodeId(),
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SchemaQueryScanOperator.class.getSimpleName()),
-        SchemaSourceFactory.getTableDeviceQuerySource(
-            node.getDatabase(),
-            node.getTableName(),
-            node.getIdDeterminedFilterList(),
-            node.getColumnHeaderList(),
-            null));
+    final SchemaQueryScanOperator<IDeviceSchemaInfo> operator =
+        new SchemaQueryScanOperator<>(
+            node.getPlanNodeId(),
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    SchemaQueryScanOperator.class.getSimpleName()),
+            SchemaSourceFactory.getTableDeviceQuerySource(
+                node.getDatabase(),
+                node.getTableName(),
+                node.getIdDeterminedFilterList(),
+                node.getColumnHeaderList(),
+                null));
+    operator.setOffset(node.getOffset());
+    operator.setLimit(node.getLimit());
+    return operator;
   }
 
   @Override

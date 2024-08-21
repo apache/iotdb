@@ -2566,6 +2566,13 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
       analyzeQueryDevice(node, context);
+      // TODO: use real scope when parameter in offset and limit is supported
+      if (Objects.nonNull(node.getOffset())) {
+        analyzeOffset(node.getOffset(), null);
+      }
+      if (Objects.nonNull(node.getLimit())) {
+        analyzeLimit(node.getLimit(), null);
+      }
       return null;
     }
 

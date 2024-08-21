@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -46,7 +47,7 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   }
 
   @Override
-  public TsBlock getTsBlock() {
+  public TsBlock getTsBlock(final Analysis analysis) {
     final TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);

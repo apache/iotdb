@@ -273,7 +273,11 @@ public class LogicalPlanner {
             statement.getIdDeterminedFilterList(),
             null,
             statement.getColumnHeaderList(),
-            null);
+            null,
+            Objects.nonNull(statement.getOffset()) ? analysis.getOffset(statement.getOffset()) : 0,
+            Objects.nonNull(statement.getLimit())
+                ? analysis.getLimit(statement.getLimit()).orElse(-1)
+                : -1);
     return Objects.nonNull(statement.getIdFuzzyPredicate())
         ? new FilterNode(
             queryContext.getQueryId().genPlanNodeId(), node, statement.getIdFuzzyPredicate())

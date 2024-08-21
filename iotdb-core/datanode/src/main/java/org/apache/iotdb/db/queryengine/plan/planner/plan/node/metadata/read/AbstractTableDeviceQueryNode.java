@@ -146,6 +146,9 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
       columnHeaderList.add(ColumnHeader.deserialize(buffer));
     }
 
+    final long offset = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
+    final long limit = isScan ? ReadWriteIOUtils.readLong(buffer) : 0;
+
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return isScan
         ? new TableDeviceQueryScanNode(
@@ -155,7 +158,9 @@ public abstract class AbstractTableDeviceQueryNode extends TableDeviceSourceNode
             idDeterminedFilterList,
             idFuzzyFilter,
             columnHeaderList,
-            null)
+            null,
+            offset,
+            limit)
         : new TableDeviceQueryCountNode(
             planNodeId,
             database,
