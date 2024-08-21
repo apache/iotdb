@@ -43,7 +43,10 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
   private List<TsFileResourceCandidate> tsFileResourceCandidateList = new ArrayList<>();
   private final long totalFileSizeThreshold;
+  // the total file num in one task can not exceed this value
   private final long totalFileNumUpperBound;
+  // When the number of selected files exceeds this value, the conditions for constructing a
+  // compaction task are met.
   private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
