@@ -42,8 +42,7 @@ public class AcosColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.acos(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.acos(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.acos((double) column.getLong(i)));
         }
       } else {

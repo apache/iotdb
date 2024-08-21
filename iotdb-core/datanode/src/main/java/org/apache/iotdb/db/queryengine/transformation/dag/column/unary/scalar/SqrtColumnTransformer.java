@@ -42,8 +42,7 @@ public class SqrtColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.sqrt(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.sqrt(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.sqrt((double) column.getLong(i)));
         }
       } else {
