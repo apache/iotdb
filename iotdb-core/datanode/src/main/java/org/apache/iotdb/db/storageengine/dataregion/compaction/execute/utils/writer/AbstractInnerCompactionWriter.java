@@ -152,6 +152,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     fileWriter.checkMetadataSizeAndMayFlush();
   }
 
+  @Override
   public void setSchemaForAllTargetFile(List<Schema> schemas) {
     this.schemas = schemas;
   }
