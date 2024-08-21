@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.time;
+package org.apache.iotdb.subscription.it.triple.regression.user;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -31,10 +31,10 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -42,16 +42,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/***
+ * Permission Test: Username currently only serves for connection, no permissions defined.
+ */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
-public class IoTDBAllPullConsumerDataSetIT extends AbstractSubscriptionRegressionIT {
-  private String database = "root.AllPullConsumerDataSet";
-  private String device = database + ".d_0";
-  private String pattern = device + ".s_0";
-  //    private String topicName = "`1-group.1-consumer.ts`";
-  private String topicName = "topic_AllPullConsumerDataSet";
-  private List<MeasurementSchema> schemaList = new ArrayList<>();
-  private SubscriptionPullConsumer consumer;
+@Category({MultiClusterIT2SubscriptionRegressionMisc.class})
+public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionRegressionIT {
+  private static final String database = "root.test.OtherUserConsumer";
+  private static final String device = database + ".d_0";
+  private static final String topicName = "topic_OtherUserConsumer";
+  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static final String pattern = "root.**";
+  private static final String userName = "other_user";
+  private static final String passwd = "other_user";
+  private static SubscriptionPullConsumer consumer;
 
   @Override
   @Before
@@ -60,13 +64,13 @@ public class IoTDBAllPullConsumerDataSetIT extends AbstractSubscriptionRegressio
     createDB(database);
     createTopic_s(topicName, pattern, null, null, false);
     session_src.createTimeseries(
-        pattern, TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
+        device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_src.createTimeseries(
-        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
+        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZ4);
     session_dest.createTimeseries(
-        pattern, TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
+        device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_dest.createTimeseries(
-        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
+        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZ4);
     schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
@@ -76,15 +80,19 @@ public class IoTDBAllPullConsumerDataSetIT extends AbstractSubscriptionRegressio
   @Override
   @After
   public void tearDown() throws Exception {
-    consumer.close();
+    session_src.executeNonQueryStatement("drop user " + userName);
+    try {
+      consumer.close();
+    } catch (Exception e) {
+    }
     subs.dropTopic(topicName);
     dropDB(database);
     super.tearDown();
   }
 
   private void insert_data(long timestamp)
-      throws IoTDBConnectionException, StatementExecutionException {
-    Tablet tablet = new Tablet(device, schemaList, 10);
+      throws IoTDBConnectionException, StatementExecutionException, InterruptedException {
+    Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
       rowIndex = tablet.rowSize++;
@@ -94,37 +102,42 @@ public class IoTDBAllPullConsumerDataSetIT extends AbstractSubscriptionRegressio
       timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
+    Thread.sleep(1000);
   }
 
-  @Test
-  public void do_test()
-      throws InterruptedException,
-          TException,
+  // @Test
+  public void testPrivilege() throws IoTDBConnectionException, StatementExecutionException {
+    session_src.executeNonQueryStatement("create user " + userName + " '" + passwd + "';");
+    session_src.executeNonQueryStatement("grant read,write on root.** to user " + userName);
+  }
+
+  // @Test
+  // TODO: Failed to fetch all endpoints, only the admin user can perform this operation...
+  public void testNormal()
+      throws TException,
           IoTDBConnectionException,
           IOException,
-          StatementExecutionException {
-    consumer = create_pull_consumer("pull_time", "ts_time_default_dataset", false, null);
-    // Write data before subscribing
+          StatementExecutionException,
+          InterruptedException {
+    session_src.executeNonQueryStatement("create user " + userName + " '" + passwd + "';");
+    session_src.executeNonQueryStatement("grant read,write on root.** to user " + userName);
+    consumer =
+        new SubscriptionPullConsumer.Builder()
+            .host(SRC_HOST)
+            .port(SRC_PORT)
+            .username(userName)
+            .password(passwd)
+            .buildPullConsumer();
+    consumer.open();
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
     consumer.subscribe(topicName);
-    Thread.sleep(10000);
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-    insert_data(System.currentTimeMillis());
+    Thread.sleep(1000);
+    subs.getSubscriptions().forEach(System.out::println);
     // Consumption data
     consume_data(consumer, session_dest);
-    check_count(8, "select count(s_0) from " + device, "Consumption data:" + pattern);
-    check_count(0, "select count(s_1) from " + device, "Consumption data: s_1");
-    // Unsubscribe
-    consumer.unsubscribe(topicName);
-    // Subscribe and then write data
-    consumer.subscribe(topicName);
-    assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after re-subscribing");
-    insert_data(1707782400000L); // 2024-02-13 08:00:00+08:00
-    // Consumption data: Progress is not retained after unsubscribing and re-subscribing. Full
-    // synchronization.
-    consume_data(consumer, session_dest);
-    check_count(12, "select count(s_0) from " + device, "consume data again:" + pattern);
-    check_count(0, "select count(s_1) from " + device, "Consumption data: s_1");
+    check_count(4, "select count(s_0) from " + device, "Consumption Data: s_0");
+    check_count(4, "select count(s_1) from " + device, "Consumption Data: s_1");
   }
 }
