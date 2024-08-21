@@ -45,15 +45,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -74,7 +73,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected boolean shouldConvertDataTypeOnTypeMismatch =
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
-  protected String loadTsFileStrategy = CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE;
+  // Used to determine current strategy is sync or async
+  protected static final AtomicBoolean IS_USING_ASYNC_LOAD_TS_FILE_STRATEGY =
+      new AtomicBoolean(false);
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -236,7 +237,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     final String loadTsFileStrategyString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY);
     if (loadTsFileStrategyString != null) {
-      loadTsFileStrategy = loadTsFileStrategyString;
+      IS_USING_ASYNC_LOAD_TS_FILE_STRATEGY.set(
+          Objects.equals(
+              PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
+              loadTsFileStrategyString));
     }
 
     // Handle the handshake request as a v1 request.
@@ -462,11 +466,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // writingFile will be deleted after load if no exception occurs
       writingFile = null;
 
-      if (Objects.equals(
-          PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE, loadTsFileStrategy)) {
-        return new TPipeTransferResp(asyncLoadTsFile(Collections.singletonList(fileAbsolutePath)));
-      }
-
       final TSStatus status = loadFileV1(req, fileAbsolutePath);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
@@ -546,11 +545,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final List<String> fileAbsolutePaths =
           files.stream().map(File::getAbsolutePath).collect(Collectors.toList());
 
-      if (Objects.equals(
-          PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE, loadTsFileStrategy)) {
-        return new TPipeTransferResp(asyncLoadTsFile(fileAbsolutePaths));
-      }
-
       final TSStatus status = loadFileV2(req, fileAbsolutePaths);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info(
@@ -580,8 +574,6 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       IoTDBReceiverAgent.cleanPipeReceiverDir(receiverFileDirWithIdSuffix.get());
     }
   }
-
-  protected abstract TSStatus asyncLoadTsFile(final List<String> absolutePaths) throws Exception;
 
   private TPipeTransferResp checkNonFinalFileSeal(
       final File file, final String fileName, final long fileLength) throws IOException {
