@@ -493,6 +493,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   }
 
   @Override
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
+    tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop);
+  }
+
+  @Override
   public void close() {
     if (tabletBatchBuilder != null) {
       tabletBatchBuilder.close();
