@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<jqassistant-rules xmlns="http://schema.jqassistant.org/rule/v2.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.jqassistant.org/rule/v2.2 https://jqassistant.github.io/jqassistant/current/schema/jqassistant-rule-v2.2.xsd">
+    <group id="logging">
+        <includeConstraint refId="logging:*"/>
+    </group>
+    <constraint id="logging:InvalidLoggingFrameworkDependency">
+        <description>Log4j and Commons Logging must not be used as dependencies.</description>
+        <cypher><![CDATA[
+            WITH
+              [
+                { group: "org.apache.logging.log4j", name: "log4j-api" },
+                { group: "commons-logging", name: "commons-logging" }
+              ] as unwantedDependencies
+            UNWIND
+              unwantedDependencies as unwantedDependency
+            MATCH
+              (:Maven:Project)-[:CREATES]->(artifact:Artifact),
+              shortestPath((artifact)-[:DEPENDS_ON*]->(invalidDependency:Artifact))
+            WHERE
+              invalidDependency.group = unwantedDependency.group
+              and invalidDependency.name = unwantedDependency.name
+            RETURN
+              artifact.fqn as Artifact, invalidDependency.fqn as InvalidDependency
+        ]]></cypher>
+        <report primaryColumn="Invocation"/>
+    </constraint>
+    <constraint id="logging:Slf4jMustBeUsedForLogging">
+        <requiresConcept refId="logging:Logger"/>
+        <requiresConcept refId="logging:Slf4jLogger"/>
+        <description>Slf4j logger must be used for logging</description>
+        <cypher><![CDATA[
+            MATCH
+              (type:Type)-[:DECLARES]->(method:Method)-[invocation:INVOKES]->(:Method)<-[:DECLARES]-(logger:Type:Logger)
+            WHERE NOT
+              logger:Slf4j
+            RETURN
+              type as Type, invocation as Invocation, logger as InvalidLogger
+            ORDER BY
+              invocation.lineNumber
+        ]]></cypher>
+        <report primaryColumn="Invocation"/>
+    </constraint>
+    <concept id="logging:Logger">
+        <description>Identifies the loggers used in the application</description>
+        <cypher><![CDATA[
+            MATCH
+              (logger:Type:Logger)
+            RETURN
+              logger
+            ORDER BY
+              logger.fqn
+        ]]></cypher>
+    </concept>
+    <concept id="logging:Slf4jLogger">
+        <providesConcept refId="logging:Logger"/>
+        <description>Identifies the Slf4j loggers used in the application</description>
+        <cypher><![CDATA[
+            MATCH
+              (logger:Type{fqn:"org.slf4j.Logger"})
+            SET
+              logger:Logger:Slf4j
+            RETURN
+              logger
+            ORDER BY
+              logger.fqn
+        ]]></cypher>
+    </concept>
+    <concept id="logging:LogbackLogger">
+        <providesConcept refId="logging:Logger"/>
+        <description>Identifies the Logback loggers used in the application</description>
+        <cypher><![CDATA[
+            MATCH
+              (logger:Type{fqn:"ch.qos.logback.classic.Logger"})
+            SET
+              logger:Logger:Logback
+            RETURN
+              logger
+            ORDER BY
+              logger.fqn
+        ]]></cypher>
+    </concept>
+</jqassistant-rules>
