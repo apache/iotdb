@@ -1587,9 +1587,6 @@ public class IoTDBScalarFunctionTableIT {
                 expectedResultDouble[cnt],
                 Double.parseDouble(resultSet.getString(5)),
                 0.00001);
-            for (int i = 1; i < expectedHeader.length; i++) {
-              System.out.println(resultSet.getString(i));
-            }
             cnt++;
           }
           assertEquals(expectedResultInt.length, cnt);
