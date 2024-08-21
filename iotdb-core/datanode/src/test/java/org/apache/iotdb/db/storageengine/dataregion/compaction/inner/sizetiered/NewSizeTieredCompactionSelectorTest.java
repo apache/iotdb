@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
@@ -40,10 +41,15 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
+@RunWith(Parameterized.class)
 public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest {
 
   private long defaultTargetCompactionFileSize =
@@ -54,11 +60,30 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
   private int defaultFileNumLimit =
       IoTDBDescriptor.getInstance().getConfig().getTotalFileLimitForCompactionTask();
+  private InnerSeqCompactionPerformer defaultPerformer =
+      IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer();
+  private String performer;
+
+  @Parameterized.Parameters(name = "{0}")
+  public static Collection<Object[]> data() {
+    return Arrays.asList(
+        new Object[][] {
+          {"read_chunk"}, {"fast"},
+        });
+  }
+
+  public NewSizeTieredCompactionSelectorTest(String performer) {
+    this.performer = performer;
+  }
 
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setInnerSeqCompactionPerformer(
+            InnerSeqCompactionPerformer.getInnerSeqCompactionPerformer(performer));
   }
 
   @After
@@ -76,6 +101,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setInnerCompactionCandidateFileNum(defaultFileNumLowerBound);
+    IoTDBDescriptor.getInstance().getConfig().setInnerSeqCompactionPerformer(defaultPerformer);
   }
 
   @Test
