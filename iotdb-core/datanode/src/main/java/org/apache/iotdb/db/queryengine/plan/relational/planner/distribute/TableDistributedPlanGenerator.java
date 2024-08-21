@@ -322,7 +322,18 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitJoin(JoinNode node, PlanContext context) {
     List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
+    OrderingScheme leftChildOrdering =
+        nodeOrderingMap.get(leftChildrenNodes.get(0).getPlanNodeId());
+    PlanNode leftNode = mergeChildrenViaCollectOrMergeSort(leftChildOrdering, leftChildrenNodes);
+    node.setLeftChild(leftNode);
+
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
+    OrderingScheme rightChildOrdering =
+        nodeOrderingMap.get(rightChildrenNodes.get(0).getPlanNodeId());
+    PlanNode rightNode = mergeChildrenViaCollectOrMergeSort(rightChildOrdering, leftChildrenNodes);
+    node.setLeftChild(rightNode);
+
+    return Collections.singletonList(node);
   }
 
   @Override

@@ -126,6 +126,7 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
               context.isEnablePushDown(),
               context.canPushLimitToEachDevice());
       PlanNode child = node.getChild().accept(this, newContext);
+      context.setTableScanNode(newContext.getTableScanNode());
       if (!newContext.isEnablePushDown()) {
         return node;
       }

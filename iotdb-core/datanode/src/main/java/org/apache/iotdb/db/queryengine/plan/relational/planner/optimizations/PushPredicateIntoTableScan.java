@@ -37,12 +37,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.MetadataExpressionTransformForJoin;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -76,6 +78,7 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
@@ -479,6 +482,27 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.getRightHashSymbol(),
                 node.isSpillable());
       }
+      Symbol timeSymbol = Symbol.of("time");
+      OrderingScheme orderingScheme =
+          new OrderingScheme(
+              Collections.singletonList(timeSymbol),
+              Collections.singletonMap(timeSymbol, ASC_NULLS_LAST));
+      SortNode leftSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(),
+              ((JoinNode) output).getLeftChild(),
+              orderingScheme,
+              false,
+              false);
+      SortNode rightSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(),
+              ((JoinNode) output).getRightChild(),
+              orderingScheme,
+              false,
+              false);
+      ((JoinNode) output).setLeftChild(leftSortNode);
+      ((JoinNode) output).setRightChild(rightSortNode);
 
       if (!postJoinPredicate.equals(TRUE_LITERAL)) {
         output =
