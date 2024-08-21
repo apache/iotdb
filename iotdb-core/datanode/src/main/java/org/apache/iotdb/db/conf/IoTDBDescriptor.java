@@ -1336,6 +1336,41 @@ public class IoTDBDescriptor {
     configModified |=
         innerUnsequenceCompactionSelector != conf.getInnerUnsequenceCompactionSelector();
 
+    // update inner_compaction_total_file_size_threshold
+    long innerCompactionFileSizeThresholdInByte =
+        conf.getInnerCompactionTotalFileSizeThresholdInByte();
+    conf.setInnerCompactionTotalFileSizeThresholdInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_total_file_size_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "inner_compaction_total_file_size_threshold"))));
+    configModified |=
+        innerCompactionFileSizeThresholdInByte
+            != conf.getInnerCompactionTotalFileSizeThresholdInByte();
+
+    // update inner_compaction_total_file_num_threshold
+    int innerCompactionTotalFileNumThreshold = conf.getInnerCompactionTotalFileNumThreshold();
+    conf.setInnerCompactionTotalFileNumThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "inner_compaction_total_file_num_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "inner_compaction_total_file_num_threshold"))));
+    configModified |=
+        innerCompactionTotalFileNumThreshold != conf.getInnerCompactionTotalFileNumThreshold();
+
+    // update max_level_gap_in_inner_compaction
+    int maxLevelGapInInnerCompaction = conf.getMaxLevelGapInInnerCompaction();
+    conf.setMaxLevelGapInInnerCompaction(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_level_gap_in_inner_compaction",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "max_level_gap_in_inner_compaction"))));
+    configModified |= maxLevelGapInInnerCompaction != conf.getMaxLevelGapInInnerCompaction();
+
+    // update compaction_max_aligned_series_num_in_one_batch
     int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     int newCompactionMaxAlignedSeriesNumInOneBatch =
         Integer.parseInt(
