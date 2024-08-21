@@ -41,7 +41,7 @@ public class CompactionPathUtils {
     if (plainDeviceId.contains(TsFileConstant.BACK_QUOTE_STRING)) {
       path = DataNodeDevicePathCache.getInstance().getPartialPath(plainDeviceId);
     } else {
-      path = new PartialPath(plainDeviceId);
+      path = new PartialPath(plainDeviceId.split(TsFileConstant.PATH_SEPARATER_NO_REGEX));
     }
     return path;
   }

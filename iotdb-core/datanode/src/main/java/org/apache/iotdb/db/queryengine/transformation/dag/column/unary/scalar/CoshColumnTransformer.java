@@ -42,8 +42,7 @@ public class CoshColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.cosh(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.cosh(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.cosh((double) column.getLong(i)));
         }
       } else {

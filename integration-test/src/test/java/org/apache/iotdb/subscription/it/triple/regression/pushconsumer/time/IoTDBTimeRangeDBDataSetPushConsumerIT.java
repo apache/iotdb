@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.time;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
@@ -52,7 +52,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * Start time, end time are both closed intervals. If not specified, the time will be 00:00:00.
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBTimeRangeDBDataSetPushConsumerIT extends AbstractSubscriptionRegressionIT {
   private String database = "root.TimeRangeDBDataSetPushConsumer";
   private String device = database + ".d_0";

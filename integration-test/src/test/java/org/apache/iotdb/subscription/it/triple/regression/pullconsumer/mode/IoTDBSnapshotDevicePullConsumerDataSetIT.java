@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.mode;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
@@ -45,7 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBSnapshotDevicePullConsumerDataSetIT extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.SnapshotDevicePullConsumerDataSet";
   private static final String database2 = "root.SnapshotDevicePullConsumerDataSet";

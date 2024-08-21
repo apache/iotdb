@@ -2610,7 +2610,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitCreateMultiTimeseries(
+  public Analysis visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement,
       final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
@@ -2644,7 +2644,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitAlterTimeseries(
+  public Analysis visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();

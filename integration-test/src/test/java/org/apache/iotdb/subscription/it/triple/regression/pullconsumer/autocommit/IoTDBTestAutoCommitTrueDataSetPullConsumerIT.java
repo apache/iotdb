@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.autocommit;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -53,7 +53,7 @@ import java.util.List;
  * pattern: device
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.TestAutoCommitTrueDataSetPullConsumer";
   private static final String device = database + ".d_0";
