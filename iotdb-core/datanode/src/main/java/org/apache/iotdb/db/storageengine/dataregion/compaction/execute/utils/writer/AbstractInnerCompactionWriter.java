@@ -43,7 +43,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected long endedFileSize = 0;
   protected List<Schema> schemas;
 
-  protected final long sizeForFileWriter =
+  protected final long memoryBudgetForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
@@ -82,8 +82,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   private void rollCompactionFileWriter() throws IOException {
     fileWriter.endFile();
-    endedFileSize += fileWriter.getPos();
-    fileWriter.close();
+    endedFileSize += fileWriter.getFile().length();
     if (fileWriter.isEmptyTargetFile()) {
       targetResources.get(currentFileIndex).forceMarkDeleted();
     }
@@ -97,7 +96,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     fileWriter =
         new CompactionTsFileWriter(
             targetResources.get(currentFileIndex).getTsFile(),
-            sizeForFileWriter,
+            memoryBudgetForFileWriter,
             targetResources.get(currentFileIndex).isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION);

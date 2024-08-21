@@ -55,8 +55,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private CompactionTsFileWriter currentWriter;
   private long endedFileSize = 0;
   private int currentTargetFileIndex = 0;
-  // size for file writer is 5% of per compaction task memory budget
-  private final long sizeForFileWriter =
+  // memory budget for file writer is 5% of per compaction task memory budget
+  private final long memoryBudgetForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
@@ -119,7 +119,6 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         targetResources.get(currentTargetFileIndex).forceMarkDeleted();
       } else {
         currentWriter.endFile();
-        currentWriter.close();
         if (currentWriter.isEmptyTargetFile()) {
           targetResources.get(currentTargetFileIndex).forceMarkDeleted();
         }
@@ -144,8 +143,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
   private void rollCompactionFileWriter() throws IOException {
     currentWriter.endFile();
-    endedFileSize += currentWriter.getPos();
-    currentWriter.close();
+    endedFileSize += currentWriter.getFile().length();
     if (currentWriter.isEmptyTargetFile()) {
       targetResources.get(currentTargetFileIndex).forceMarkDeleted();
     }
@@ -159,7 +157,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     currentWriter =
         new CompactionTsFileWriter(
             targetResources.get(currentTargetFileIndex).getTsFile(),
-            sizeForFileWriter,
+            memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION);
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
