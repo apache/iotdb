@@ -35,8 +35,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadDirScanner;
-import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadTsFileLoader;
+import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.queryengine.execution.load.splitter.ChunkData;
 import org.apache.iotdb.db.queryengine.execution.load.splitter.DeletionData;
 import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileData;
@@ -97,14 +96,10 @@ public class LoadTsFileManager {
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
-  private final ActiveLoadTsFileLoader activeLoadTsFileLoader = new ActiveLoadTsFileLoader();
-  private final ActiveLoadDirScanner activeLoadDirScanner =
-      new ActiveLoadDirScanner(activeLoadTsFileLoader);
-
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
-    activeLoadDirScanner.start();
+    ActiveLoadAgent.scanner().start();
   }
 
   private void registerCleanupTaskExecutor() {

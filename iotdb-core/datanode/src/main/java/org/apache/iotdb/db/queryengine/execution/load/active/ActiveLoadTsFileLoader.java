@@ -47,8 +47,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
@@ -67,10 +71,6 @@ public class ActiveLoadTsFileLoader {
   private final AtomicReference<WrappedThreadPoolExecutor> activeLoadExecutor =
       new AtomicReference<>();
   private final AtomicReference<String> failDir = new AtomicReference<>();
-
-  public ActiveLoadTsFileLoader() {
-    ActiveLoadListeningDirsCountExecutor.getInstance().register(this::countFailedFile);
-  }
 
   public int getCurrentAllowedPendingSize() {
     return MAX_PENDING_SIZE - pendingQueue.size();
@@ -248,22 +248,6 @@ public class ActiveLoadTsFileLoader {
     removeToFailDir(filePath + ".mods");
   }
 
-  // Metrics
-  private void countFailedFile() {
-    try {
-      final long fileCount =
-          FileUtils.streamFiles(
-                  new File(
-                      IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir()),
-                  true,
-                  (String[]) null)
-              .count();
-      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount);
-    } catch (final IOException e) {
-      LOGGER.warn("failed to calculate fail file num", e);
-    }
-  }
-
   private void removeToFailDir(final String filePath) {
     final File sourceFile = new File(filePath);
     // prevent the resource or mods not exist
@@ -327,5 +311,26 @@ public class ActiveLoadTsFileLoader {
 
       FileUtils.moveFile(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
     }
+  }
+
+  // Metrics
+  public long countFailedFile() {
+    final long[] fileCount = {0};
+    try {
+      Files.walkFileTree(
+          new File(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir())
+              .toPath(),
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+              fileCount[0]++;
+              return FileVisitResult.CONTINUE;
+            }
+          });
+      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+    } catch (final IOException e) {
+      LOGGER.warn("failed to calculate fail file num", e);
+    }
+    return fileCount[0];
   }
 }

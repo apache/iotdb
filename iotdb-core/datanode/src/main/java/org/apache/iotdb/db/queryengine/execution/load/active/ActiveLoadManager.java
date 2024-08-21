@@ -23,9 +23,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,27 +35,26 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class ActiveLoadListeningDirsCountExecutor {
+public abstract class ActiveLoadManager {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ActiveLoadListeningDirsCountExecutor.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadManager.class);
 
-  private static final ScheduledExecutorService DIRS_SCAN_JOB_EXECUTOR =
+  protected static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private final ScheduledExecutorService DIRS_SCAN_JOB_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.ACTIVE_LOAD_DIRS_COUNT.name());
+
   private static final long MIN_SCAN_INTERVAL_SECONDS =
-      IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningCheckIntervalSeconds();
+      IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds();
 
   private long rounds;
   private Future<?> dirsScanJobFuture;
 
-  private final List<Pair<WrappedRunnable, Long>> fileCountPeriodicalJobs =
-      new CopyOnWriteArrayList<>();
-
-  private ActiveLoadListeningDirsCountExecutor() {}
+  private final List<Pair<WrappedRunnable, Long>> fileScanPeriodicalJobs = new CopyOnWriteArrayList<>();
 
   public void register(Runnable runnable) {
-    fileCountPeriodicalJobs.add(
+    fileScanPeriodicalJobs.add(
         new Pair<>(
             new WrappedRunnable() {
               @Override
@@ -71,7 +69,7 @@ public class ActiveLoadListeningDirsCountExecutor {
             Math.max(MIN_SCAN_INTERVAL_SECONDS, 1)));
   }
 
-  public synchronized void start() {
+  public void start() {
     if (dirsScanJobFuture == null) {
       rounds = 0;
 
@@ -80,17 +78,15 @@ public class ActiveLoadListeningDirsCountExecutor {
               DIRS_SCAN_JOB_EXECUTOR,
               this::execute,
               MIN_SCAN_INTERVAL_SECONDS,
-              MIN_SCAN_INTERVAL_SECONDS,
+              1L,
               TimeUnit.SECONDS);
-      LOGGER.info(
-          "Active load file metric job started. Scan interval: {}s.", MIN_SCAN_INTERVAL_SECONDS);
     }
   }
 
   private void execute() {
     ++rounds;
 
-    for (final Pair<WrappedRunnable, Long> periodicalJob : fileCountPeriodicalJobs) {
+    for (final Pair<WrappedRunnable, Long> periodicalJob : fileScanPeriodicalJobs) {
       if (rounds % periodicalJob.right == 0) {
         periodicalJob.left.run();
       }
@@ -103,22 +99,5 @@ public class ActiveLoadListeningDirsCountExecutor {
       dirsScanJobFuture = null;
       LOGGER.info("Active load file metric periodical jobs executor is stopped successfully.");
     }
-  }
-
-  @TestOnly
-  public void clear() {
-    fileCountPeriodicalJobs.clear();
-    LOGGER.info("All Active load file metric periodical jobs are cleared successfully.");
-  }
-
-  private static class ActiveLoadListeningDirsCountExecutorHolder {
-    private static final ActiveLoadListeningDirsCountExecutor INSTANCE =
-        new ActiveLoadListeningDirsCountExecutor();
-
-    private ActiveLoadListeningDirsCountExecutorHolder() {}
-  }
-
-  public static ActiveLoadListeningDirsCountExecutor getInstance() {
-    return ActiveLoadListeningDirsCountExecutorHolder.INSTANCE;
   }
 }

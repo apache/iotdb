@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.metric.load;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadListeningDirsCountExecutor;
+import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadAgent;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -33,22 +33,22 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
 
   private static final ActiveLoadingFilesMetricsSet INSTANCE = new ActiveLoadingFilesMetricsSet();
 
-  public static final String PENDING_UNPROCESS_FILE = "pendingUnprocessFile";
-  public static final String QUEUING_FILE = "queuingFile";
-  public static final String LOADING_FILE = "loadingFile";
-  public static final String FAILED_FILE = "failedFile";
+  public static final String PENDING = "pending";
+  public static final String QUEUING = "queuing";
+  public static final String LOADING = "loading";
+  public static final String FAILED = "failed";
 
   private ActiveLoadingFilesMetricsSet() {
     // empty construct
   }
 
-  private Counter pendingUnprocessFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  private Counter pendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  public void recordPendingUnprocessFileCounter(final long number) {
-    pendingUnprocessFileCounter.inc(number - pendingUnprocessFileCounter.getCount());
+  public void recordPendingFileCounter(final long number) {
+    pendingFileCounter.inc(number - pendingFileCounter.getCount());
   }
 
   public void recordQueuingFileCounter(final long number) {
@@ -65,45 +65,45 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
-    pendingUnprocessFileCounter =
+    pendingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            PENDING_UNPROCESS_FILE,
+            PENDING,
             Tag.TYPE.toString(),
-            PENDING_UNPROCESS_FILE);
+            PENDING);
     queuingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            QUEUING_FILE,
+            QUEUING,
             Tag.TYPE.toString(),
-            QUEUING_FILE);
+            QUEUING);
     loadingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            LOADING_FILE,
+            LOADING,
             Tag.TYPE.toString(),
-            LOADING_FILE);
+            LOADING);
     failedFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            FAILED_FILE,
+            FAILED,
             Tag.TYPE.toString(),
-            FAILED_FILE);
+            FAILED);
 
-    ActiveLoadListeningDirsCountExecutor.getInstance().start();
+    ActiveLoadAgent.executor().start();
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    pendingUnprocessFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+    pendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
@@ -112,32 +112,32 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
         MetricType.COUNTER,
         Metric.ACTIVE_LOADING_FILES.toString(),
         Tag.NAME.toString(),
-        PENDING_UNPROCESS_FILE,
+        PENDING,
         Tag.TYPE.toString(),
-        PENDING_UNPROCESS_FILE);
+        PENDING);
     metricService.remove(
         MetricType.COUNTER,
         Metric.ACTIVE_LOADING_FILES.toString(),
         Tag.NAME.toString(),
-        QUEUING_FILE,
+        QUEUING,
         Tag.TYPE.toString(),
-        QUEUING_FILE);
+        QUEUING);
     metricService.remove(
         MetricType.COUNTER,
         Metric.ACTIVE_LOADING_FILES.toString(),
         Tag.NAME.toString(),
-        LOADING_FILE,
+        LOADING,
         Tag.TYPE.toString(),
-        LOADING_FILE);
+        LOADING);
     metricService.remove(
         MetricType.COUNTER,
         Metric.ACTIVE_LOADING_FILES.toString(),
         Tag.NAME.toString(),
-        FAILED_FILE,
+        FAILED,
         Tag.TYPE.toString(),
-        FAILED_FILE);
+        FAILED);
 
-    ActiveLoadListeningDirsCountExecutor.getInstance().stop();
+    ActiveLoadAgent.executor().stop();
   }
 
   public static ActiveLoadingFilesMetricsSet getInstance() {
