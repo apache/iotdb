@@ -165,17 +165,17 @@ public abstract class StatementVisitor<R, C> {
   }
 
   // Create Multi Timeseries
-  public R visitCreateMultiTimeseries(
+  public R visitCreateMultiTimeSeries(
       CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, C context) {
     return visitStatement(createMultiTimeSeriesStatement, context);
   }
 
-  // Alter Timeseries
-  public R visitAlterTimeseries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
+  // Alter TimeSeries
+  public R visitAlterTimeSeries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
-  public R visitDeleteTimeseries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
+  public R visitDeleteTimeSeries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
     return visitStatement(deleteTimeSeriesStatement, context);
   }
 
