@@ -184,7 +184,7 @@ public class IoTDBDeviceIT {
       }
 
       try {
-        statement.execute("update table0 set model = '1' and model = '2'");
+        statement.execute("update table0 set model = '1', model = '2'");
         fail("Update shall fail if an attribute occurs twice");
       } catch (final Exception e) {
         assertEquals("701: Update attribute shall specify a attribute only once.", e.getMessage());
