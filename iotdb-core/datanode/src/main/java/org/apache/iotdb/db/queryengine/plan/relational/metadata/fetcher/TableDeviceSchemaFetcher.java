@@ -52,8 +52,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,9 +73,6 @@ import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFact
 public class TableDeviceSchemaFetcher {
 
   private final SqlParser relationSqlParser = new SqlParser();
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaFetcher.class);
-
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();

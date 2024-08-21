@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -121,6 +122,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1329,16 +1331,28 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void createTableDevice(final CreateTableDeviceNode node) throws MetadataException {
     for (int i = 0; i < node.getDeviceIdList().size(); i++) {
-      int finalI = i;
+      final String databaseName = storageGroupFullPath.substring(5);
+      final String tableName = node.getTableName();
+      final String[] deviceId =
+          Arrays.stream(node.getDeviceIdList().get(i))
+              .map(o -> Objects.nonNull(o) ? o.toString() : null)
+              .toArray(String[]::new);
+      final List<String> attributeNameList = node.getAttributeNameList();
+      final Object[] attributeValueList = node.getAttributeValueList().get(i);
+
       mtree.createTableDevice(
-          node.getTableName(),
-          node.getDeviceIdList().get(i),
-          () ->
-              deviceAttributeStore.createAttribute(
-                  node.getAttributeNameList(), node.getAttributeValueList().get(finalI)),
+          tableName,
+          deviceId,
+          () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
           pointer ->
-              deviceAttributeStore.alterAttribute(
-                  pointer, node.getAttributeNameList(), node.getAttributeValueList().get(finalI)));
+              TableDeviceSchemaFetcher.getInstance()
+                  .getTableDeviceCache()
+                  .update(
+                      databaseName,
+                      node.getTableName(),
+                      deviceId,
+                      deviceAttributeStore.alterAttribute(
+                          pointer, attributeNameList, attributeValueList)));
     }
     writeToMLog(node);
   }

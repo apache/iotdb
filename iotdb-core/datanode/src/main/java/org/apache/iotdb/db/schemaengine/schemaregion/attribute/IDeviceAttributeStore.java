@@ -22,18 +22,21 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public interface IDeviceAttributeStore {
 
   void clear();
 
-  boolean createSnapshot(File targetDir);
+  boolean createSnapshot(final File targetDir);
 
-  void loadFromSnapshot(File snapshotDir, String sgSchemaDirPath) throws IOException;
+  void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath) throws IOException;
 
-  int createAttribute(List<String> nameList, Object[] valueList);
+  int createAttribute(final List<String> nameList, final Object[] valueList);
 
-  void alterAttribute(int pointer, List<String> nameList, Object[] valueList);
+  // Returns the actually updated map
+  Map<String, String> alterAttribute(
+      final int pointer, final List<String> nameList, final Object[] valueList);
 
-  String getAttribute(int pointer, String name);
+  String getAttribute(final int pointer, final String name);
 }

@@ -1513,7 +1513,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public void createTableDevice(
       final String tableName,
-      final Object[] devicePath,
+      final String[] devicePath,
       final IntSupplier attributePointerGetter,
       final IntConsumer attributeUpdater)
       throws MetadataException {
@@ -1526,8 +1526,7 @@ public class MTreeBelowSGMemoryImpl {
               storageGroupMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
     }
 
-    for (final Object o : devicePath) {
-      final String childName = o == null ? null : o.toString();
+    for (final String childName : devicePath) {
       IMemMNode child = cur.getChild(childName);
       if (child == null) {
         child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
