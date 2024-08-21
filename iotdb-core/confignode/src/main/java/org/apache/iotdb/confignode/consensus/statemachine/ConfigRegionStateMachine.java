@@ -240,40 +240,48 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
     if (currentNodeId != newLeaderId) {
       LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
+          "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
               + "the new leader is [nodeId:{}]",
           currentNodeId,
           currentNodeTEndPoint,
           newLeaderId);
-
-      // Stop leader scheduling services
-      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
-      configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
-      configManager
-          .getSubscriptionManager()
-          .getSubscriptionCoordinator()
-          .stopSubscriptionMetaSync();
-      configManager.getLoadManager().stopLoadServices();
-      configManager.getProcedureManager().stopExecutor();
-      configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
-      configManager.getPartitionManager().stopRegionCleaner();
-      configManager.getCQManager().stopCQScheduler();
-      configManager.getClusterSchemaManager().clearSchemaQuotaCache();
-      // Remove Metric after leader change
-      configManager.removeMetrics();
-
-      // Shutdown leader related service for config pipe
-      PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
-
-      // Clean receiver file dir
-      PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
-
-      LOGGER.info(
-          "Current node [nodeId:{}, ip:port: {}] is not longer the leader, "
-              + "all services on old leader are unavailable now.",
-          currentNodeId,
-          currentNodeTEndPoint);
     }
+  }
+
+  @Override
+  public void notifyNotLeader() {
+    // We get currentNodeId here because the currentNodeId
+    // couldn't initialize earlier than the ConfigRegionStateMachine
+    int currentNodeId = ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId();
+    LOGGER.info(
+        "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+            + "start cleaning up related services",
+        currentNodeId,
+        currentNodeTEndPoint);
+    // Stop leader scheduling services
+    configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeMetaSync();
+    configManager.getPipeManager().getPipeRuntimeCoordinator().stopPipeHeartbeat();
+    configManager.getSubscriptionManager().getSubscriptionCoordinator().stopSubscriptionMetaSync();
+    configManager.getLoadManager().stopLoadServices();
+    configManager.getProcedureManager().stopExecutor();
+    configManager.getRetryFailedTasksThread().stopRetryFailedTasksService();
+    configManager.getPartitionManager().stopRegionCleaner();
+    configManager.getCQManager().stopCQScheduler();
+    configManager.getClusterSchemaManager().clearSchemaQuotaCache();
+    // Remove Metric after leader change
+    configManager.removeMetrics();
+
+    // Shutdown leader related service for config pipe
+    PipeConfigNodeAgent.runtime().notifyLeaderUnavailable();
+
+    // Clean receiver file dir
+    PipeConfigNodeAgent.receiver().cleanPipeReceiverDir();
+
+    LOGGER.info(
+        "Current node [nodeId:{}, ip:port: {}] is no longer the leader, "
+            + "all services on old leader are unavailable now.",
+        currentNodeId,
+        currentNodeTEndPoint);
   }
 
   @Override
@@ -482,6 +490,7 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
   }
 
   static class FileComparator implements Comparator<String> {
+
     @Override
     public int compare(String filename1, String filename2) {
       long id1 = parseEndIndex(filename1);

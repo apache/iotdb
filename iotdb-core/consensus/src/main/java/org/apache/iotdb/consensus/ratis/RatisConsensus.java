@@ -122,6 +122,7 @@ class RatisConsensus implements IConsensus {
   private final RaftClientRpc clientRpc;
 
   private final IClientManager<RaftGroup, RatisClient> clientManager;
+  private final IClientManager<RaftGroup, RatisClient> reconfigurationClientManager;
 
   private final DiskGuardian diskGuardian;
 
@@ -190,7 +191,10 @@ class RatisConsensus implements IConsensus {
 
     clientManager =
         new IClientManager.Factory<RaftGroup, RatisClient>()
-            .createClientManager(new RatisClientPoolFactory());
+            .createClientManager(new RatisClientPoolFactory(false));
+    reconfigurationClientManager =
+        new IClientManager.Factory<RaftGroup, RatisClient>()
+            .createClientManager(new RatisClientPoolFactory(true));
 
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
@@ -228,6 +232,7 @@ class RatisConsensus implements IConsensus {
       Thread.currentThread().interrupt();
     } finally {
       clientManager.close();
+      reconfigurationClientManager.close();
       server.get().close();
       MetricService.getInstance().removeMetricSet(this.ratisMetricSet);
     }
@@ -374,6 +379,8 @@ class RatisConsensus implements IConsensus {
       } else {
         throw new RatisRequestFailedException(e);
       }
+    } catch (GroupMismatchException e) {
+      throw new ConsensusGroupNotExistException(groupId);
     } catch (Exception e) {
       throw new RatisRequestFailedException(e);
     }
@@ -560,8 +567,7 @@ class RatisConsensus implements IConsensus {
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
-    // pre-conditions: group exists and myself in this group
-    if (group == null || !group.getPeers().contains(myself)) {
+    if (group == null) {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
@@ -580,9 +586,7 @@ class RatisConsensus implements IConsensus {
     final RaftGroup raftGroup =
         Optional.ofNullable(getGroupInfo(raftGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-
     final RaftPeer newRaftLeader = Utils.fromPeerAndPriorityToRaftPeer(newLeader, DEFAULT_PRIORITY);
-
     final RaftClientReply reply;
     try {
       reply = transferLeader(raftGroup, newRaftLeader);
@@ -838,6 +842,7 @@ class RatisConsensus implements IConsensus {
       if (lastSeenGroup != null && !lastSeenGroup.equals(raftGroup)) {
         // delete the pooled raft-client of the out-dated group and cache the latest
         clientManager.clear(lastSeenGroup);
+        reconfigurationClientManager.clear(lastSeenGroup);
         lastSeen.put(raftGroupId, raftGroup);
       }
     } catch (IOException e) {
@@ -862,11 +867,21 @@ class RatisConsensus implements IConsensus {
     }
   }
 
+  private RatisClient getConfigurationRaftClient(RaftGroup group) throws ClientManagerException {
+    try {
+      return reconfigurationClientManager.borrowClient(group);
+    } catch (ClientManagerException e) {
+      logger.error("Borrow client from pool for group {} failed.", group, e);
+      // rethrow the exception
+      throw e;
+    }
+  }
+
   private RaftClientReply sendReconfiguration(RaftGroup newGroupConf)
       throws RatisRequestFailedException {
     // notify the group leader of configuration change
     RaftClientReply reply;
-    try (RatisClient client = getRaftClient(newGroupConf)) {
+    try (RatisClient client = getConfigurationRaftClient(newGroupConf)) {
       reply =
           client.getRaftClient().admin().setConfiguration(new ArrayList<>(newGroupConf.getPeers()));
       if (!reply.isSuccess()) {
@@ -899,12 +914,21 @@ class RatisConsensus implements IConsensus {
 
   private class RatisClientPoolFactory implements IClientPoolFactory<RaftGroup, RatisClient> {
 
+    private final boolean isReconfiguration;
+
+    RatisClientPoolFactory(boolean isReconfiguration) {
+      this.isReconfiguration = isReconfiguration;
+    }
+
     @Override
     public KeyedObjectPool<RaftGroup, RatisClient> createClientPool(
         ClientManager<RaftGroup, RatisClient> manager) {
       GenericKeyedObjectPool<RaftGroup, RatisClient> clientPool =
           new GenericKeyedObjectPool<>(
-              new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
+              isReconfiguration
+                  ? new RatisClient.EndlessRetryFactory(
+                      manager, properties, clientRpc, config.getClient())
+                  : new RatisClient.Factory(manager, properties, clientRpc, config.getClient()),
               new ClientPoolProperty.Builder<RatisClient>()
                   .setMaxClientNumForEachNode(config.getClient().getMaxClientNumForEachNode())
                   .build()
