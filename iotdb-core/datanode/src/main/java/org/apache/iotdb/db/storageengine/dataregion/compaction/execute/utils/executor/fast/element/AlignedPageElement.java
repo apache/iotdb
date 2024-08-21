@@ -39,6 +39,7 @@ public class AlignedPageElement extends PageElement {
   private List<ByteBuffer> valuePageDataList;
 
   private final CompactionAlignedChunkReader chunkReader;
+  private boolean isBatchedCompaction;
 
   @SuppressWarnings("squid:S107")
   public AlignedPageElement(
@@ -48,22 +49,30 @@ public class AlignedPageElement extends PageElement {
       List<ByteBuffer> valuePageDataList,
       CompactionAlignedChunkReader alignedChunkReader,
       ChunkMetadataElement chunkMetadataElement,
-      boolean isLastPage) {
+      boolean isLastPage,
+      boolean isBatchedCompaction) {
     super(chunkMetadataElement, isLastPage);
     this.timePageHeader = timePageHeader;
     this.valuePageHeaders = valuePageHeaders;
     this.timePageData = timePageData;
     this.valuePageDataList = valuePageDataList;
     this.chunkReader = alignedChunkReader;
+    this.isBatchedCompaction = isBatchedCompaction;
   }
 
   @Override
   public void deserializePage() throws IOException {
     // For aligned page, we use pointReader rather than deserialize all data point to get rid of
     // huge memory cost
-    pointReader =
-        chunkReader.getPagePointReader(
-            timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    if (isBatchedCompaction) {
+      pointReader =
+          chunkReader.getBatchedPagePointReader(
+              timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    } else {
+      pointReader =
+          chunkReader.getPagePointReader(
+              timePageHeader, valuePageHeaders, timePageData, valuePageDataList);
+    }
     // friendly for gc
     timePageData = null;
     valuePageDataList = null;
@@ -93,5 +102,9 @@ public class AlignedPageElement extends PageElement {
 
   public List<ByteBuffer> getValuePageDataList() {
     return valuePageDataList;
+  }
+
+  public boolean isBatchedCompaction() {
+    return isBatchedCompaction;
   }
 }
