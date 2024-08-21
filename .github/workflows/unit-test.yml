@@ -8,7 +8,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - pipe-meta-sync
       - "rc/*"
     paths-ignore:
       - 'docs/**'
@@ -17,7 +16,6 @@ on:
     branches:
       - master
       - 'rel/*'
-      - pipe-meta-sync
       - "rc/*"
     paths-ignore:
       - 'docs/**'
