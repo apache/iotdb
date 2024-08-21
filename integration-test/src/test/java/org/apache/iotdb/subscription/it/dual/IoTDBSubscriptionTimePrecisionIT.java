@@ -22,7 +22,7 @@ package org.apache.iotdb.subscription.it.dual;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -49,7 +49,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2Subscription.class})
+@Category({MultiClusterIT2SubscriptionArchVerification.class})
 public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
@@ -160,7 +160,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
                 LOGGER.info("consumer exiting...");
               }
             },
-            String.format("%s - consumer", testName.getMethodName()));
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver

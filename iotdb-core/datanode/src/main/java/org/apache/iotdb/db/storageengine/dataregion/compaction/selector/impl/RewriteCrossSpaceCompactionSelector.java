@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCrossSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
@@ -229,9 +230,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           new ArrayList<>(taskResource.getUnseqFiles());
       newSelectedUnseqResources.add(unseqFile);
 
-      long memoryCost =
-          compactionEstimator.estimateCrossCompactionMemory(
+      long roughEstimatedMemoryCost =
+          compactionEstimator.roughEstimateCrossCompactionMemory(
               newSelectedSeqResources, newSelectedUnseqResources);
+      long memoryCost =
+          CompactionEstimateUtils.shouldAccurateEstimate(roughEstimatedMemoryCost)
+              ? roughEstimatedMemoryCost
+              : compactionEstimator.estimateCrossCompactionMemory(
+                  newSelectedSeqResources, newSelectedUnseqResources);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }

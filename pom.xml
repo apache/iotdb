@@ -114,7 +114,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.10</milo.version>
+        <milo.version>0.6.14</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
@@ -154,7 +154,7 @@
         <spotless.skip>false</spotless.skip>
         <spotless.version>2.43.0</spotless.version>
         <!-- This was the last version to support Java 8 -->
-        <swagger.version>1.6.11</swagger.version>
+        <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
         <!--

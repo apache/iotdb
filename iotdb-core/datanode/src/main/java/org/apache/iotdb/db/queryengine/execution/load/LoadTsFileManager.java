@@ -382,6 +382,11 @@ public class LoadTsFileManager {
       }
     }
 
+    /**
+     * It should be noted that all AlignedChunkData of the same partition split from a source file
+     * should be guaranteed to be written to the same new file. Otherwise, for detached
+     * BatchedAlignedChunkData, it may result in no data for the time column in the new file.
+     */
     @SuppressWarnings("squid:S3824")
     private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
       if (isClosed) {

@@ -20,7 +20,10 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
+import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
+import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
@@ -34,9 +37,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -78,9 +84,51 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
-    // TODO: judge if the exception is caused by data type mismatch
-    // TODO: convert the data type of the statement
-    return visitStatement(loadTsFileStatement, status);
+    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()) {
+      return Optional.empty();
+    }
+
+    LOGGER.warn(
+        "Data type mismatch detected (TSStatus: {}) for LoadTsFileStatement: {}. Start data type conversion.",
+        status,
+        loadTsFileStatement);
+
+    for (final File file : loadTsFileStatement.getTsFiles()) {
+      try (final TsFileInsertionScanDataContainer container =
+          new TsFileInsertionScanDataContainer(
+              file, new IoTDBPipePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+        for (final Tablet tablet : container.toTablets()) {
+          final PipeConvertedInsertTabletStatement statement =
+              new PipeConvertedInsertTabletStatement(
+                  PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
+                      .constructStatement());
+          TSStatus result = statementExecutor.execute(statement);
+
+          // Retry once if the write process is rejected
+          if (result.getCode() == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode()) {
+            result = statementExecutor.execute(statement);
+          }
+
+          if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+              || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())) {
+            return Optional.empty();
+          }
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
+        return Optional.empty();
+      }
+    }
+
+    if (loadTsFileStatement.isDeleteAfterLoad()) {
+      loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
+    }
+
+    LOGGER.warn(
+        "Data type conversion for LoadTsFileStatement {} is successful.", loadTsFileStatement);
+
+    return Optional.of(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
   }
 
   @Override

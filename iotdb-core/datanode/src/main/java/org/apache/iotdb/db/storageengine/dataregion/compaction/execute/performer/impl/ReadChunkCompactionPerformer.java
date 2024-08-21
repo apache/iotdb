@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -181,8 +181,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       return;
     }
     writer.startChunkGroup(device);
-    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
-        new ReadChunkAlignedSeriesCompactionExecutor(
+    BatchedReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
+        new BatchedReadChunkAlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
