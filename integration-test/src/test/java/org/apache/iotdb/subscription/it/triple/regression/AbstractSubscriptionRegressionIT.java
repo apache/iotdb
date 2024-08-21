@@ -438,6 +438,14 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
     Assert.assertTrue(message, condition);
   }
 
+  public static void assertFalse(boolean condition) {
+    Assert.assertFalse(condition);
+  }
+
+  public static void assertFalse(boolean condition, String message) {
+    Assert.assertFalse(message, condition);
+  }
+
   //////////////////////////// non-strict assertions ////////////////////////////
 
   public static void assertGte(int actual, int expected) {
