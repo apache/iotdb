@@ -156,7 +156,6 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
@@ -666,53 +665,50 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new UpperColumnTransformer(first.getType(), first);
+        return new UpperColumnTransformer(STRING, first);
       }
     } else if (TableBuiltinScalarFunction.LOWER.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new LowerColumnTransformer(first.getType(), first);
+        return new LowerColumnTransformer(STRING, first);
       }
     } else if (TableBuiltinScalarFunction.TRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new TrimColumnTransformer(first.getType(), first, " ");
+        return new TrimColumnTransformer(STRING, first, " ");
       } else {
         // children.size() == 2
         if (isStringLiteral(children.get(1))) {
           return new TrimColumnTransformer(
-              first.getType(), first, ((StringLiteral) children.get(1)).getValue());
+              STRING, first, ((StringLiteral) children.get(1)).getValue());
         } else {
-          return new Trim2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+          return new Trim2ColumnTransformer(STRING, first, this.process(children.get(1), context));
         }
       }
     } else if (TableBuiltinScalarFunction.LTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new LTrimColumnTransformer(first.getType(), first, " ");
+        return new LTrimColumnTransformer(STRING, first, " ");
       } else {
         // children.size() == 2
         if (isStringLiteral(children.get(1))) {
           return new LTrimColumnTransformer(
-              first.getType(), first, ((StringLiteral) children.get(1)).getValue());
+              STRING, first, ((StringLiteral) children.get(1)).getValue());
         } else {
-          return new LTrim2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+          return new LTrim2ColumnTransformer(STRING, first, this.process(children.get(1), context));
         }
       }
     } else if (TableBuiltinScalarFunction.RTRIM.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        return new RTrimColumnTransformer(first.getType(), first, " ");
+        return new RTrimColumnTransformer(STRING, first, " ");
       } else {
         // children.size() == 2
         if (isStringLiteral(children.get(1))) {
           return new RTrimColumnTransformer(
-              first.getType(), first, ((StringLiteral) children.get(1)).getValue());
+              STRING, first, ((StringLiteral) children.get(1)).getValue());
         } else {
-          return new RTrim2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+          return new RTrim2ColumnTransformer(STRING, first, this.process(children.get(1), context));
         }
       }
     } else if (TableBuiltinScalarFunction.REGEXP_LIKE
@@ -868,11 +864,7 @@ public class ColumnTransformerBuilder
     } else if (TableBuiltinScalarFunction.SIGN.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);
       if (children.size() == 1) {
-        if (isTimestampType(first.getType())) {
-          return new SignColumnTransformer(INT64, first);
-        } else {
-          return new SignColumnTransformer(first.getType(), first);
-        }
+        return new SignColumnTransformer(first.getType(), first);
       }
     } else if (TableBuiltinScalarFunction.CEIL.getFunctionName().equalsIgnoreCase(functionName)) {
       ColumnTransformer first = this.process(children.get(0), context);

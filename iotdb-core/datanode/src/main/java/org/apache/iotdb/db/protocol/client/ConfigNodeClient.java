@@ -173,14 +173,15 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
-  private static final int RETRY_NUM = 10;
+  private static final int RETRY_NUM = 15;
 
   public static final String MSG_RECONNECTION_FAIL =
       "Fail to connect to any config node. Please check status of ConfigNodes or logs of connected DataNode";
 
   private static final String MSG_RECONNECTION_DATANODE_FAIL =
       "Failed to connect to ConfigNode %s from DataNode %s when executing %s, Exception:";
-  private static final int RETRY_INTERVAL_MS = 1000;
+  private static final long RETRY_INTERVAL_MS = 1000L;
+  private static final long WAIT_CN_LEADER_ELECTION_INTERVAL_MS = 2000L;
 
   private final ThriftClientProperty property;
 
@@ -262,7 +263,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         connect(configLeader, timeoutMs);
         return;
       } catch (TException ignore) {
-        logger.warn("The current node may have been down {},try next node", configLeader);
+        logger.warn("The current node leader may have been down {}, try next node", configLeader);
         configLeader = null;
       }
     } else {
@@ -358,12 +359,14 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
    */
   private <T> T executeRemoteCallWithRetry(final Operation<T> call, final Predicate<T> check)
       throws TException {
+    int detectedNodeNum = 0;
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
         final T result = call.execute();
         if (check.test(result)) {
           return result;
         }
+        detectedNodeNum++;
       } catch (TException e) {
         final String message =
             String.format(
@@ -374,6 +377,22 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
         logger.warn(message, e);
         configLeader = null;
       }
+
+      // If we have detected all configNodes and still not return
+      if (detectedNodeNum >= configNodes.size()) {
+        // Clear count
+        detectedNodeNum = 0;
+        // Wait to start the next try
+        try {
+          Thread.sleep(WAIT_CN_LEADER_ELECTION_INTERVAL_MS);
+        } catch (InterruptedException ignore) {
+          Thread.currentThread().interrupt();
+          logger.warn(
+              "Unexpected interruption when waiting to try to connect to ConfigNode, may because current node has been down. Will break current execution process to avoid meaningless wait.");
+          break;
+        }
+      }
+
       connectAndSync();
     }
     throw new TException(MSG_RECONNECTION_FAIL);

@@ -42,8 +42,7 @@ public class CosColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.cos(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.cos(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.cos((double) column.getLong(i)));
         }
       } else {

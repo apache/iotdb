@@ -42,8 +42,7 @@ public class AsinColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.asin(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.asin(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.asin((double) column.getLong(i)));
         }
       } else {

@@ -42,8 +42,7 @@ public class DegreesColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.toDegrees(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.toDegrees(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.toDegrees((double) column.getLong(i)));
         }
       } else {
