@@ -475,14 +475,19 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (!tryWriteLockWithTimeOut(5)) {
       return;
     }
+
+    final Set<PipeMeta> stuckPipes;
     try {
-      restartAllStuckPipesInternal();
+      stuckPipes = findAllStuckPipes();
     } finally {
       releaseWriteLock();
     }
+
+    // Restart all stuck pipes
+    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
   }
 
-  private void restartAllStuckPipesInternal() {
+  private Set<PipeMeta> findAllStuckPipes() {
     final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
 
@@ -525,8 +530,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     }
 
-    // Restart all stuck pipes
-    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+    return stuckPipes;
   }
 
   private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
