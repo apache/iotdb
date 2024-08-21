@@ -565,59 +565,18 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private void restartStuckPipe(final PipeMeta pipeMeta) {
     LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
-    final long startTime = System.currentTimeMillis();
-    changePipeStatusBeforeRestart(pipeMeta.getStaticMeta().getPipeName());
-    handleSinglePipeMetaChangesInternal(pipeMeta);
-    LOGGER.warn(
-        "Pipe {} was restarted because of stuck, time cost: {} ms.",
-        pipeMeta.getStaticMeta(),
-        System.currentTimeMillis() - startTime);
-  }
-
-  private void changePipeStatusBeforeRestart(final String pipeName) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
-    final Set<Integer> taskRegionIds = new HashSet<>(pipeTasks.keySet());
-    final Set<Integer> dataRegionIds =
-        StorageEngine.getInstance().getAllDataRegionIds().stream()
-            .map(DataRegionId::getId)
-            .collect(Collectors.toSet());
-    final Set<PipeTask> dataRegionPipeTasks =
-        taskRegionIds.stream()
-            .filter(dataRegionIds::contains)
-            .map(regionId -> pipeTaskManager.removePipeTask(pipeMeta.getStaticMeta(), regionId))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
-
-    // Drop data region tasks
-    dataRegionPipeTasks.parallelStream().forEach(PipeTask::drop);
-
-    // Stop schema region tasks
-    pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta()).values().parallelStream()
-        .forEach(PipeTask::stop);
-
-    // Re-create data region tasks
-    dataRegionPipeTasks.parallelStream()
-        .forEach(
-            pipeTask -> {
-              final PipeTask newPipeTask =
-                  new PipeDataNodeTaskBuilder(
-                          pipeMeta.getStaticMeta(),
-                          ((PipeDataNodeTask) pipeTask).getRegionId(),
-                          pipeMeta
-                              .getRuntimeMeta()
-                              .getConsensusGroupId2TaskMetaMap()
-                              .get(((PipeDataNodeTask) pipeTask).getRegionId()))
-                      .build();
-              newPipeTask.create();
-              pipeTaskManager.addPipeTask(
-                  pipeMeta.getStaticMeta(),
-                  ((PipeDataNodeTask) pipeTask).getRegionId(),
-                  newPipeTask);
-            });
-
-    // Set pipe meta status to STOPPED
-    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+    try {
+      final long startTime = System.currentTimeMillis();
+      final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
+      handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
+      handleSinglePipeMetaChanges(originalPipeMeta);
+      LOGGER.warn(
+          "Pipe {} was restarted because of stuck, time cost: {} ms.",
+          originalPipeMeta.getStaticMeta(),
+          System.currentTimeMillis() - startTime);
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to restart stuck pipe {}.", pipeMeta.getStaticMeta(), e);
+    }
   }
 
   ///////////////////////// Terminate Logic /////////////////////////
