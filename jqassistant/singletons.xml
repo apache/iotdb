@@ -26,12 +26,14 @@
     <constraint id="singleton:">
         <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
         <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingletonClient"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingletonClient"/>
         <description>No singletons should be used.</description>
         <cypher><![CDATA[
             MATCH
-              (type:Type)-[:DECLARES]->(method:Method)-[invocation:INVOKES]->(:Method)<-[:DECLARES]-(singleton:Type:Singleton)
-            WHERE NOT
-              singleton:Singleton
+              (type:Type) -[:DECLARES]-> (method:Method) -[invocation:INVOKES]-> (:Method) <-[:DECLARES]- (singleton:Type:Singleton)
+            WHERE
+              singleton:SingletonClient
             RETURN
               type as Type, invocation as Invocation, singleton as SingletonDefinition
             ORDER BY
@@ -39,6 +41,7 @@
         ]]></cypher>
         <report primaryColumn="Invocation"/>
     </constraint>
+
     <concept id="singleton:Singleton">
         <description>Identifies singletons as a general concept.</description>
         <cypher><![CDATA[
@@ -56,9 +59,9 @@
         <description>Identifies singletons that are accessed by a public static getInstance() method that returns the type of the main class.</description>
         <cypher><![CDATA[
             MATCH
-              (singleton:Class:Type)-[:DECLARES]->(method:Method) -[:RETURNS]-> (singleton) WHERE method.name = "getInstance" AND method.static = true AND method.visibility = "public"
+              (singleton:Class:Type) -[:DECLARES]-> (method:Method) -[:RETURNS]-> (singleton) WHERE method.name = "getInstance" AND method.static = true AND method.visibility = "public"
             SET
-              singleton:Singleton:PublicStaticMethod
+              method:Singleton:PublicStaticMethod
             RETURN
               singleton
             ORDER BY
@@ -70,13 +73,52 @@
         <description>Identifies singletons that are accessed by a public static property of the type of the main class.</description>
         <cypher><![CDATA[
             MATCH
-              (singleton:Class:Type)-[:DECLARES*]->(instance:Field)-[:OF_TYPE]->(singleton) WHERE instance.static = true AND instance.visibility = "public"
+              (singleton:Class:Type) -[:DECLARES*]-> (field:Field) -[:OF_TYPE]-> (singleton) WHERE field.static = true AND field.visibility = "public"
             SET
-              singleton:Singleton:PublicStaticProperty
+              field:Singleton:PublicStaticField
             RETURN
               singleton
             ORDER BY
               singleton.fqn
+        ]]></cypher>
+    </concept>
+    <concept id="singleton:SingletonClient">
+        <description>Identifies singleton client as a general concept.</description>
+        <cypher><![CDATA[
+            MATCH
+              (client:Type:SingletonClient)
+            RETURN
+              client
+            ORDER BY
+              client.fqn
+        ]]></cypher>
+    </concept>
+    <concept id="singleton:PublicStaticMethodSingletonClient">
+        <providesConcept refId="singleton:SingletonClient"/>
+        <description>Identifies classes that accesses a singleton via public static getInstance() method.</description>
+        <cypher><![CDATA[
+            MATCH
+              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:INVOKES]-> (s:Singleton)
+            SET
+              client:SingletonClient:PublicStaticMethod
+            RETURN
+              client
+            ORDER BY
+              client.fqn
+        ]]></cypher>
+    </concept>
+    <concept id="singleton:PublicStaticPropertySingletonClient">
+        <providesConcept refId="singleton:SingletonClient"/>
+        <description>Identifies classes that accesses a singleton via public static property.</description>
+        <cypher><![CDATA[
+            MATCH
+              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:READS]-> (s:Singleton)
+            SET
+              client:SingletonClient:PublicStaticField
+            RETURN
+              client
+            ORDER BY
+              client.fqn
         ]]></cypher>
     </concept>
 </jqassistant-rules>

@@ -21,6 +21,5 @@
 jqassistant:
   analyze:
     groups:
-      - logging
       - singleton
     execute-applied-concepts: true
