@@ -1288,7 +1288,7 @@ public class ProcedureManager {
   }
 
   public TSStatus createTable(final String database, final TsTable table) {
-    return submitWithoutDuplicate(
+    return executeWithoutDuplicate(
         database,
         table,
         table.getTableName(),
@@ -1298,7 +1298,7 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTableAddColumn(final TAlterTableReq req) {
-    return submitWithoutDuplicate(
+    return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
@@ -1312,7 +1312,7 @@ public class ProcedureManager {
   }
 
   public TSStatus alterTableSetProperties(final TAlterTableReq req) {
-    return submitWithoutDuplicate(
+    return executeWithoutDuplicate(
         req.database,
         null,
         req.tableName,
@@ -1322,7 +1322,7 @@ public class ProcedureManager {
             req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
   }
 
-  private TSStatus submitWithoutDuplicate(
+  private TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
       final String tableName,
