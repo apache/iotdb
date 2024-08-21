@@ -24,7 +24,7 @@
         <includeConstraint refId="singleton:*"/>
     </group>
     <constraint id="singleton:">
-        <requiresConcept refId="singleton:PublicStaticGetInstanceSingleton"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
         <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
         <description>No singletons should be used.</description>
         <cypher><![CDATA[
@@ -51,14 +51,14 @@
         ]]></cypher>
     </concept>
     <!-- Detects singleton patterns where a public static "getInstance()" method is called -->
-    <concept id="singleton:PublicStaticGetInstanceSingleton">
+    <concept id="singleton:PublicStaticMethodSingleton">
         <providesConcept refId="singleton:Singleton"/>
         <description>Identifies singletons that are accessed by a public static getInstance() method that returns the type of the main class.</description>
         <cypher><![CDATA[
             MATCH
-              (singleton:Class:Type)-[:DECLARES*]->(instance:Field)-[:OF_TYPE]->(singleton) WHERE instance.static = true
+              (singleton:Class:Type)-[:DECLARES]->(method:Method) -[:RETURNS]-> (singleton) WHERE method.name = "getInstance" AND method.static = true AND method.visibility = "public"
             SET
-              singleton:Singleton:GetInstance
+              singleton:Singleton:PublicStaticMethod
             RETURN
               singleton
             ORDER BY
@@ -70,9 +70,9 @@
         <description>Identifies singletons that are accessed by a public static property of the type of the main class.</description>
         <cypher><![CDATA[
             MATCH
-              (singleton:Class:Type)-[:DECLARES*]->(instance:Field)-[:OF_TYPE]->(singleton)
+              (singleton:Class:Type)-[:DECLARES*]->(instance:Field)-[:OF_TYPE]->(singleton) WHERE instance.static = true AND instance.visibility = "public"
             SET
-              singleton:Singleton:PublicProperty
+              singleton:Singleton:PublicStaticProperty
             RETURN
               singleton
             ORDER BY
