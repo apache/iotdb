@@ -1315,6 +1315,27 @@ public class IoTDBDescriptor {
         innerCompactionTaskSelectionModsFileThreshold
             != conf.getInnerCompactionTaskSelectionModsFileThreshold();
 
+    // update inner_seq_selector
+    InnerSequenceCompactionSelector innerSequenceCompactionSelector =
+        conf.getInnerSequenceCompactionSelector();
+    conf.setInnerSequenceCompactionSelector(
+        InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
+            properties.getProperty(
+                "inner_seq_selector",
+                ConfigurationFileUtils.getConfigurationDefaultValue("inner_seq_selector"))));
+    configModified |= innerSequenceCompactionSelector != conf.getInnerSequenceCompactionSelector();
+
+    // update inner_unseq_selector
+    InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
+        conf.getInnerUnsequenceCompactionSelector();
+    conf.setInnerUnsequenceCompactionSelector(
+        InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
+            properties.getProperty(
+                "inner_unseq_selector",
+                ConfigurationFileUtils.getConfigurationDefaultValue("inner_unseq_selector"))));
+    configModified |=
+        innerUnsequenceCompactionSelector != conf.getInnerUnsequenceCompactionSelector();
+
     int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     int newCompactionMaxAlignedSeriesNumInOneBatch =
         Integer.parseInt(
