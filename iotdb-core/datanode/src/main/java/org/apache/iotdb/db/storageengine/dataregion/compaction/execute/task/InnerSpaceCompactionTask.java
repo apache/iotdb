@@ -513,18 +513,20 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                   CompactionUtils.getTmpFileSuffix(getCompactionTaskType()),
                   TsFileConstant.TSFILE_SUFFIX));
       File targetFile = targetIdentifier.getFileFromDataDirsIfAnyAdjuvantFileExists();
+      TsFileResource resource;
       if (tmpTargetFile != null) {
-        targetResources.add(new TsFileResource(tmpTargetFile));
+        resource = new TsFileResource(tmpTargetFile);
       } else if (targetFile != null) {
-        targetResources.add(new TsFileResource(targetFile));
+        resource = new TsFileResource(targetFile);
       } else {
         // target file does not exist, then create empty resource
-        targetResources.add(new TsFileResource(new File(targetIdentifier.getFilePath())));
+        resource = new TsFileResource(new File(targetIdentifier.getFilePath()));
       }
       // check if target file is deleted after compaction or not
+      targetResources.add(resource);
       if (deletedTargetFileIdentifiers.contains(targetIdentifier)) {
         // target file is deleted after compaction
-        filesView.targetFilesInLog.get(0).forceMarkDeleted();
+        resource.forceMarkDeleted();
       }
     }
     filesView.setTargetFileForRecover(targetResources);
