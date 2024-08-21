@@ -69,7 +69,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
       fileWriter =
           new CompactionTsFileWriter(
               targetResources.get(currentFileIndex).getTsFile(),
-              sizeForFileWriter,
+              memoryBudgetForFileWriter,
               targetResources.get(currentFileIndex).isSeq()
                   ? CompactionType.INNER_SEQ_COMPACTION
                   : CompactionType.INNER_UNSEQ_COMPACTION);

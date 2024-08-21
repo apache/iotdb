@@ -126,7 +126,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       currentWriter =
           new CompactionTsFileWriter(
               targetResources.get(currentTargetFileIndex).getTsFile(),
-              sizeForFileWriter,
+              memoryBudgetForFileWriter,
               CompactionType.INNER_SEQ_COMPACTION);
       return currentWriter;
     }
