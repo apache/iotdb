@@ -168,6 +168,7 @@ public class IoTDBDeviceIT {
           Collections.singleton("1,"));
 
       // Test update
+      statement.execute("use test");
       try {
         statement.execute("update table2 set model = '1'");
         fail("Update shall fail for non-exist table");
