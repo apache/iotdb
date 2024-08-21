@@ -27,6 +27,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMN
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.TableDeviceInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 
+import org.apache.ratis.util.function.TriConsumer;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -37,7 +38,6 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -48,7 +48,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
   private final List<LeafColumnTransformer> projectLeafColumnTransformerList;
   private final List<ColumnTransformer> projectOutputTransformerList;
   final BiFunction<Integer, String, String> attributeProvider;
-  private final BiConsumer<Integer, Object[]> attributeUpdater;
+  private final TriConsumer<String[], Integer, Object[]> attributeUpdater;
   private final TsBlockBuilder filterTsBlockBuilder;
   private final List<Integer> attributePointers = new ArrayList<>();
 
@@ -64,7 +64,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
       final List<LeafColumnTransformer> projectLeafColumnTransformerList,
       final List<ColumnTransformer> projectOutputTransformerList,
       final BiFunction<Integer, String, String> attributeProvider,
-      final BiConsumer<Integer, Object[]> attributeUpdater) {
+      final TriConsumer<String[], Integer, Object[]> attributeUpdater) {
     super(
         filterLeafColumnTransformerList,
         filterOutputTransformer,
@@ -113,6 +113,7 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
     for (int i = 0; i < (withoutFilter() ? attributePointers.size() : indexes.size()); ++i) {
       final int finalI = i;
       attributeUpdater.accept(
+          deviceSchemaBatch.get(withoutFilter() ? i : indexes.get(i)).getRawNodes(),
           attributePointers.get(withoutFilter() ? i : indexes.get(i)),
           resultColumns.stream().map(column -> column.getObject(finalI)).toArray(Object[]::new));
     }

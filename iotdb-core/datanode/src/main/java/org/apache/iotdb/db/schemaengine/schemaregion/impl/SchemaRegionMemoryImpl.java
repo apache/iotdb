@@ -1345,16 +1345,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           deviceId,
           () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
           pointer ->
-              TableDeviceSchemaFetcher.getInstance()
-                  .getTableDeviceCache()
-                  .update(
-                      databaseName,
-                      node.getTableName(),
-                      deviceId,
-                      deviceAttributeStore.alterAttribute(
-                          pointer, attributeNameList, attributeValueList)));
+              updateAttribute(
+                  databaseName,
+                  tableName,
+                  deviceId,
+                  pointer,
+                  attributeNameList,
+                  attributeValueList));
     }
     writeToMLog(node);
+  }
+
+  private void updateAttribute(
+      final String databaseName,
+      final String tableName,
+      final String[] deviceId,
+      final int pointer,
+      final List<String> attributeNameList,
+      final Object[] attributeValueList) {
+    final Map<String, String> resultMap =
+        deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
+    if (!isRecovering) {
+      TableDeviceSchemaFetcher.getInstance()
+          .getTableDeviceCache()
+          .update(databaseName, tableName, deviceId, resultMap);
+    }
   }
 
   @Override
@@ -1460,7 +1475,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     visitor.process(assignment.getValue(), projectColumnTransformerContext))
             .collect(Collectors.toList()),
         (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name),
-        (pointer, values) -> deviceAttributeStore.alterAttribute(pointer, attributeNames, values));
+        (deviceId, pointer, values) ->
+            updateAttribute(database, tableName, deviceId, pointer, attributeNames, values));
   }
 
   @Override
