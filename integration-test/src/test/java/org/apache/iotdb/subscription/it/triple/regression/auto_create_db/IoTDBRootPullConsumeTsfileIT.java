@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.auto_create_db;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -47,7 +47,7 @@ import java.util.List;
  * Tsfile
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionMisc.class})
 public class IoTDBRootPullConsumeTsfileIT extends AbstractSubscriptionRegressionIT {
   private static final String pattern = "root.**";
   private static final String device = "root.auto_create_db.RootPullConsumeTsfile.d_0";
