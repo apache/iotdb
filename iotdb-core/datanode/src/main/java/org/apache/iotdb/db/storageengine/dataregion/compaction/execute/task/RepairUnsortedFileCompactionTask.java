@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -169,15 +170,22 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     do {
       String fileNameStr =
           String.format(
-              "%d-%d-%d-%d.tsfile",
-              tsFileName.getTime(), 0, tsFileName.getInnerCompactionCnt() + 1, 0);
+              "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+              tsFileName.getTime(),
+              0,
+              tsFileName.getInnerCompactionCnt() + 1,
+              0);
       targetTsFile = new File(path + File.separator + fileNameStr);
       if (!targetTsFile.getParentFile().exists()) {
         targetTsFile.getParentFile().mkdirs();
       }
       // avoid same file name
       tsFileName.setTime(tsFileName.getTime() + 1);
-    } while (targetTsFile.exists());
+      // Use the log file method to determine whether there are other concurrent
+      // repair tasks using the file with the same name.
+      logFile =
+          new File(targetTsFile.getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+    } while (!logFile.createNewFile());
     return targetTsFile;
   }
 

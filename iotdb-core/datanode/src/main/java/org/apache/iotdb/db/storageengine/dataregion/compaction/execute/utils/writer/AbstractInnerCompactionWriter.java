@@ -159,6 +159,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public long getWriterSize() throws IOException {
-    return endedFileSize + fileWriter.getPos();
+    return endedFileSize + (fileWriter == null ? 0 : fileWriter.getPos());
   }
 }
