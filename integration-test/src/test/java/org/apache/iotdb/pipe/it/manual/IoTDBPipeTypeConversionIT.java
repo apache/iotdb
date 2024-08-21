@@ -23,6 +23,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
+import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -36,12 +37,12 @@ import org.junit.runner.RunWith;
 
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 
 @RunWith(IoTDBTestRunner.class)
@@ -53,160 +54,185 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting BOOLEAN to OtherType
   @Test
   public void testBooleanToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.TIMESTAMP);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.BOOLEAN, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.DATE);
   }
 
   // Test for converting INT32 to OtherType
   @Test
   public void testInt32ToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.TIMESTAMP);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.INT32, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.DATE);
   }
 
   // Test for converting INT64 to OtherType
   @Test
   public void testInt64ToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.TIMESTAMP);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.INT64, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.DATE);
   }
 
   // Test for converting FLOAT to OtherType
   @Test
   public void testFloatToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.TIMESTAMP);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.FLOAT, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.DATE);
   }
 
   // Test for converting DOUBLE to OtherType
   @Test
   public void testDoubleToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.TIMESTAMP);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.DOUBLE, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.DATE);
   }
 
   // Test for converting TEXT to OtherType
   @Test
   public void testTextToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.STRING);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.TEXT, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.DATE);
   }
 
   // Test for converting TIMESTAMP to OtherType
   @Test
   public void testTimestampToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.TIMESTAMP, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.DATE);
   }
 
   // Test for converting DATE to OtherType
   @Test
   public void testDateToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.STRING);
-    encapsulateAndAssertConversion(TSDataType.DATE, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.BLOB);
   }
 
   // Test for converting BLOB to OtherType
   @Test
   public void testBlobToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.STRING);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.BLOB, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.DATE);
   }
 
   // Test for converting STRING to OtherType
   @Test
   public void testStringToOtherTypeConversion() {
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.TEXT);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.BLOB);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.BOOLEAN);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.INT32);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.INT64);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.FLOAT);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.DOUBLE);
-    encapsulateAndAssertConversion(TSDataType.STRING, TSDataType.TIMESTAMP);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.BLOB);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.TIMESTAMP);
   }
 
-  private void encapsulateAndAssertConversion(TSDataType source, TSDataType target) {
-    List<Pair> pairs = encapsulateConversion(source, target);
+  private void executeAndVerifyTypeConversion(TSDataType source, TSDataType target) {
+    List<Pair> pairs = prepareTypeConversionTest(source, target);
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         String.format("select * from root.%s2%s.**", source.name(), target.name()),
         String.format("Time,root.%s2%s.test.status,", source.name(), target.name()),
-        generateResultSet(pairs, source, target),
-        20);
+        createExpectedResultSet(pairs, source, target),
+        10);
   }
 
-  private List<Pair> encapsulateConversion(TSDataType sourceType, TSDataType targetType) {
+  private List<Pair> prepareTypeConversionTest(TSDataType sourceType, TSDataType targetType) {
     String sourceTypeName = sourceType.name();
     String targetTypeName = targetType.name();
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        senderEnv,
-        Collections.singletonList(
-            String.format(
-                "create timeseries root.%s2%s.test.status with datatype=%s,encoding=PLAIN",
-                sourceTypeName, targetTypeName, sourceTypeName)));
 
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        receiverEnv,
-        Collections.singletonList(
-            String.format(
-                "create timeseries root.%s2%s.test.status with datatype=%s,encoding=PLAIN",
-                sourceTypeName, targetTypeName, targetTypeName)));
+    createTimeSeries(sourceTypeName, targetTypeName, sourceTypeName, senderEnv);
+    createTimeSeries(sourceTypeName, targetTypeName, targetTypeName, receiverEnv);
 
+    createDataPipe(sourceTypeName, targetTypeName);
+
+    List<Pair> pairs = createTestDataForType(sourceTypeName);
+
+    // wait pipe start
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+
+    executeDataInsertions(pairs, sourceType, targetType);
+    return pairs;
+  }
+
+  private void createTimeSeries(
+      String sourceTypeName, String targetTypeName, String dataType, BaseEnv env) {
+    String timeSeriesCreationQuery =
+        String.format(
+            "create timeseries root.%s2%s.test.status with datatype=%s,encoding=PLAIN",
+            sourceTypeName, targetTypeName, dataType);
+    TestUtils.tryExecuteNonQueriesWithRetry(
+        env, Collections.singletonList(timeSeriesCreationQuery));
+  }
+
+  private void createDataPipe(String sourceTypeName, String targetTypeName) {
     String sql =
         String.format(
             "create pipe %s2%s"
@@ -219,77 +245,68 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
             targetTypeName,
             receiverEnv.getIP(),
             receiverEnv.getPort());
-
     TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
-
-    List<Pair> pairs = generateTestData(sourceTypeName);
-
-    // wait pipe start
-    try {
-      Thread.sleep(2000);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-
-    executeInserts(pairs, sourceType, targetType);
-    return pairs;
   }
 
-  private List<Pair> generateTestData(String sourceType) {
+  private List<Pair> createTestDataForType(String sourceType) {
     switch (sourceType) {
       case "BOOLEAN":
-        return generateBooleanTestData();
+        return createTestDataForBoolean();
       case "INT32":
-        return generateInt32TestData();
+        return createTestDataForInt32();
       case "INT64":
-        return generateInt64TestData();
+        return createTestDataForInt64();
       case "FLOAT":
-        return generateFloatTestData();
+        return createTestDataForFloat();
       case "DOUBLE":
-        return generateDoubleTestData();
+        return createTestDataForDouble();
       case "TEXT":
-        return generateTextTestData();
+        return createTestDataForText();
       case "TIMESTAMP":
-        return generateTimestampTestData();
+        return createTestDataForTimestamp();
       case "DATE":
-        return generateDateTestData();
+        return createTestDataForDate();
       case "BLOB":
-        return generateBlobTestData();
+        return createTestDataForBlob();
       case "STRING":
-        return generateStringTestData();
+        return createTestDataForString();
       default:
         throw new UnsupportedOperationException("Unsupported data type: " + sourceType);
     }
   }
 
-  private void executeInserts(List<Pair> testData, TSDataType sourceType, TSDataType targetType) {
+  private void executeDataInsertions(
+      List<Pair> testData, TSDataType sourceType, TSDataType targetType) {
     switch (sourceType) {
       case STRING:
       case TEXT:
         TestUtils.tryExecuteNonQueriesWithRetry(
-            senderEnv, generateInsertsStringData(testData, sourceType.name(), targetType.name()));
+            senderEnv,
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()));
         return;
       case TIMESTAMP:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            generateInsertsTimestampData(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()));
         return;
       case DATE:
         TestUtils.tryExecuteNonQueriesWithRetry(
             senderEnv,
-            generateInsertsLocalDateData(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()));
         return;
       case BLOB:
         TestUtils.tryExecuteNonQueriesWithRetry(
-            senderEnv, generateInsertsBlobData(testData, sourceType.name(), targetType.name()));
+            senderEnv,
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()));
         return;
       default:
         TestUtils.tryExecuteNonQueriesWithRetry(
-            senderEnv, generateInsertsNumericData(testData, sourceType.name(), targetType.name()));
+            senderEnv,
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()));
     }
   }
 
-  private List<String> generateInsertsStringData(
+  private List<String> createInsertStatementsForString(
       List<Pair> testData, String sourceType, String targetType) {
     List<String> executes = new ArrayList<>();
     for (Pair pair : testData) {
@@ -305,7 +322,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return executes;
   }
 
-  private List<String> generateInsertsNumericData(
+  private List<String> createInsertStatementsForNumeric(
       List<Pair> testData, String sourceType, String targetType) {
     List<String> executes = new ArrayList<>();
     for (Pair pair : testData) {
@@ -318,10 +335,9 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return executes;
   }
 
-  private List<String> generateInsertsTimestampData(
+  private List<String> createInsertStatementsForTimestamp(
       List<Pair> testData, String sourceType, String targetType) {
     List<String> executes = new ArrayList<>();
-    DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
     for (Pair pair : testData) {
       executes.add(
           String.format(
@@ -332,7 +348,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return executes;
   }
 
-  private List<String> generateInsertsLocalDateData(
+  private List<String> createInsertStatementsForLocalDate(
       List<Pair> testData, String sourceType, String targetType) {
     List<String> executes = new ArrayList<>();
     for (Pair pair : testData) {
@@ -345,7 +361,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return executes;
   }
 
-  private List<String> generateInsertsBlobData(
+  private List<String> createInsertStatementsForBlob(
       List<Pair> testData, String sourceType, String targetType) {
     List<String> executes = new ArrayList<>();
     for (Pair pair : testData) {
@@ -359,7 +375,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return executes;
   }
 
-  private Set<String> generateResultSet(
+  private Set<String> createExpectedResultSet(
       List<Pair> pairs, TSDataType sourceType, TSDataType targetType) {
     switch (targetType) {
       case TIMESTAMP:
@@ -367,10 +383,10 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
       case DATE:
         return generateLocalDateResultSet(pairs, sourceType, targetType);
       case BLOB:
-        return generateBlobDateResultSet(pairs, sourceType, targetType);
+        return generateBlobResultSet(pairs, sourceType, targetType);
       case TEXT:
       case STRING:
-        return generateStringDateResultSet(pairs, sourceType, targetType);
+        return generateStringResultSet(pairs, sourceType, targetType);
       default:
         HashSet<String> resultSet = new HashSet<>();
         for (Pair pair : pairs) {
@@ -385,17 +401,16 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   private Set<String> generateTimestampResultSet(
       List<Pair> pairs, TSDataType sourceType, TSDataType targetType) {
     HashSet<String> resultSet = new HashSet<>();
-    DateTimeFormatter formatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
     for (Pair pair : pairs) {
       resultSet.add(
           String.format(
               "%s,%s,",
               pair.left,
-              RpcUtils.parseLongToDateWithPrecision(
-                  formatter,
-                  (Long) ValueConverter.convert(sourceType, targetType, pair.right),
-                  ZoneId.of("+0000"),
-                  "ms")));
+              RpcUtils.formatDatetime(
+                  "default",
+                  "ms",
+                  (long) ValueConverter.convert(sourceType, targetType, pair.right),
+                  ZoneId.systemDefault())));
     }
     return resultSet;
   }
@@ -414,7 +429,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return resultSet;
   }
 
-  private Set<String> generateBlobDateResultSet(
+  private Set<String> generateBlobResultSet(
       List<Pair> pairs, TSDataType sourceType, TSDataType targetType) {
     HashSet<String> resultSet = new HashSet<>();
     for (Pair pair : pairs) {
@@ -429,7 +444,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return resultSet;
   }
 
-  private Set<String> generateStringDateResultSet(
+  private Set<String> generateStringResultSet(
       List<Pair> pairs, TSDataType sourceType, TSDataType targetType) {
     HashSet<String> resultSet = new HashSet<>();
     for (Pair pair : pairs) {
@@ -444,64 +459,91 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return resultSet;
   }
 
-  private List<Pair> generateBooleanTestData() {
+  private List<Pair> createTestDataForBoolean() {
     List<Pair> pairs = new java.util.ArrayList<>();
+    Random random = new Random();
     for (long i = 0; i < generateDataSize; i++) {
-      pairs.add(new Pair<>(i, Math.random() > 0.5));
+      pairs.add(new Pair<>(i, random.nextBoolean()));
     }
     return pairs;
   }
 
-  private List<Pair> generateInt32TestData() {
+  private List<Pair> createTestDataForInt32() {
     List<Pair> pairs = new ArrayList<>();
+    Random random = new Random();
     for (long i = 0; i < generateDataSize; i++) {
-      pairs.add(new Pair<>(i, (int) i));
+      pairs.add(new Pair<>(i, random.nextInt()));
     }
+    pairs.add(new Pair<>(generateDataSize + 1, -1));
+    pairs.add(new Pair<>(generateDataSize + 2, -2));
+    pairs.add(new Pair<>(generateDataSize + 3, -3));
     return pairs;
   }
 
-  private List<Pair> generateInt64TestData() {
+  private List<Pair> createTestDataForInt64() {
     List<Pair> pairs = new ArrayList<>();
+    Random random = new Random();
     for (long i = 0; i < generateDataSize; i++) {
-      pairs.add(new Pair<>(i, i));
+      pairs.add(new Pair<>(i, random.nextLong()));
     }
+    pairs.add(new Pair<>(generateDataSize + 1, -1L));
+    pairs.add(new Pair<>(generateDataSize + 2, -2L));
+    pairs.add(new Pair<>(generateDataSize + 3, -3L));
     return pairs;
   }
 
-  private List<Pair> generateFloatTestData() {
+  private List<Pair> createTestDataForFloat() {
     List<Pair> pairs = new ArrayList<>();
+    Random random = new Random();
     for (long i = 0; i < generateDataSize; i++) {
-      pairs.add(new Pair<>(i, ((float) Math.random() * 100)));
+      pairs.add(new Pair<>(i, random.nextFloat()));
     }
     return pairs;
   }
 
-  private List<Pair> generateDoubleTestData() {
+  private List<Pair> createTestDataForDouble() {
     List<Pair> pairs = new ArrayList<>();
+    Random random = new Random();
     for (long i = 0; i < generateDataSize; i++) {
-      pairs.add(new Pair<>(i, Math.random() * 1000000));
+      pairs.add(new Pair<>(i, random.nextDouble()));
     }
     return pairs;
   }
 
-  private List<Pair> generateTextTestData() {
+  private List<Pair> createTestDataForText() {
     List<Pair> pairs = new ArrayList<>();
     for (long i = 0; i < generateDataSize; i++) {
       pairs.add(new Pair<>(i, new Binary((String.valueOf(i)).getBytes(StandardCharsets.UTF_8))));
     }
+    pairs.add(new Pair(generateDataSize + 1, new Binary("Hello".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 2, new Binary("Hello World!".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 3, new Binary("This is a test.".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 4,
+            new Binary("IoTDB Hello World!!!!".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 5,
+            new Binary(
+                "IoTDB is an excellent time series database!!!!!!!!!"
+                    .getBytes(StandardCharsets.UTF_8))));
     return pairs;
   }
 
-  private List<Pair> generateTimestampTestData() {
+  private List<Pair> createTestDataForTimestamp() {
     List<Pair> pairs = new ArrayList<>();
     for (long i = 0; i < generateDataSize; i++) {
-      long timestamp = new Date().getTime();
-      pairs.add(new Pair<>(i, timestamp));
+      pairs.add(new Pair<>(i, new Date().getTime() + i));
     }
     return pairs;
   }
 
-  private List<Pair> generateDateTestData() {
+  private List<Pair> createTestDataForDate() {
     List<Pair> pairs = new ArrayList<>();
     int year = 2023;
     int month = 1;
@@ -523,19 +565,53 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     return pairs;
   }
 
-  private List<Pair> generateBlobTestData() {
+  private List<Pair> createTestDataForBlob() {
     List<Pair> pairs = new ArrayList<>();
     for (long i = 0; i < generateDataSize; i++) {
       pairs.add(new Pair<>(i, new Binary((String.valueOf(i)).getBytes(StandardCharsets.UTF_8))));
     }
+    pairs.add(new Pair(generateDataSize + 1, new Binary("Hello".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 2, new Binary("Hello World!".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 3, new Binary("This is a test.".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 4,
+            new Binary("IoTDB Hello World!!!!".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 5,
+            new Binary(
+                "IoTDB is an excellent time series database!!!!!!!!!"
+                    .getBytes(StandardCharsets.UTF_8))));
     return pairs;
   }
 
-  private List<Pair> generateStringTestData() {
+  private List<Pair> createTestDataForString() {
     List<Pair> pairs = new ArrayList<>();
     for (long i = 0; i < generateDataSize; i++) {
       pairs.add(new Pair<>(i, new Binary((String.valueOf(i)).getBytes(StandardCharsets.UTF_8))));
     }
+    pairs.add(new Pair(generateDataSize + 1, new Binary("Hello".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 2, new Binary("Hello World!".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 3, new Binary("This is a test.".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 4,
+            new Binary("IoTDB Hello World!!!!".getBytes(StandardCharsets.UTF_8))));
+    pairs.add(
+        new Pair(
+            generateDataSize + 5,
+            new Binary(
+                "IoTDB is an excellent time series database!!!!!!!!!"
+                    .getBytes(StandardCharsets.UTF_8))));
     return pairs;
   }
 }

@@ -26,7 +26,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 
 public class ValueConverter {
@@ -299,6 +301,11 @@ public class ValueConverter {
 
   private static final Binary BINARY_TRUE = parseString(Boolean.TRUE.toString());
   private static final Binary BINARY_FALSE = parseString(Boolean.FALSE.toString());
+  private static final int TRUE_DATE = DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
+  private static final int FALSE_DATE =
+      DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 2));
+  private static final int DEFAULT_DATE =
+      DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
 
   public static int convertBooleanToInt32(final boolean value) {
     return value ? 1 : 0;
@@ -325,7 +332,8 @@ public class ValueConverter {
   }
 
   public static int convertBooleanToDate(final boolean value) {
-    return value ? 1 : 0;
+    System.out.println(value ? TRUE_DATE : FALSE_DATE);
+    return value ? TRUE_DATE : FALSE_DATE;
   }
 
   public static Binary convertBooleanToBlob(final boolean value) {
@@ -363,7 +371,12 @@ public class ValueConverter {
   }
 
   public static int convertInt32ToDate(final int value) {
-    return value;
+    try {
+      DateUtils.parseIntToLocalDate(value);
+      return value;
+    } catch (Exception e) {
+      return DEFAULT_DATE;
+    }
   }
 
   public static Binary convertInt32ToBlob(final int value) {
@@ -401,7 +414,13 @@ public class ValueConverter {
   }
 
   public static int convertInt64ToDate(final long value) {
-    return (int) value;
+    try {
+      int data = (int) value;
+      DateUtils.parseIntToLocalDate(data);
+      return data;
+    } catch (Exception e) {
+      return DEFAULT_DATE;
+    }
   }
 
   public static Binary convertInt64ToBlob(final long value) {
@@ -439,7 +458,13 @@ public class ValueConverter {
   }
 
   public static int convertFloatToDate(final float value) {
-    return (int) value;
+    try {
+      int data = (int) value;
+      DateUtils.parseIntToLocalDate(data);
+      return data;
+    } catch (Exception e) {
+      return DEFAULT_DATE;
+    }
   }
 
   public static Binary convertFloatToBlob(final float value) {
@@ -477,7 +502,13 @@ public class ValueConverter {
   }
 
   public static int convertDoubleToDate(final double value) {
-    return (int) value;
+    try {
+      int data = (int) value;
+      DateUtils.parseIntToLocalDate(data);
+      return data;
+    } catch (Exception e) {
+      return DEFAULT_DATE;
+    }
   }
 
   public static Binary convertDoubleToBlob(final double value) {
@@ -567,7 +598,7 @@ public class ValueConverter {
   ///////////// DATE //////////////
 
   public static boolean convertDateToBoolean(final int value) {
-    return value != 0;
+    return value == TRUE_DATE;
   }
 
   public static int convertDateToInt32(final int value) {
@@ -762,14 +793,17 @@ public class ValueConverter {
 
   private static int parseDate(final String value) {
     if (value == null || value.isEmpty()) {
-      return 0;
+      return DEFAULT_DATE;
     }
     try {
-      return TypeInferenceUtils.isNumber(value)
-          ? Integer.parseInt(value)
-          : DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
+      if (TypeInferenceUtils.isNumber(value)) {
+        int date = Integer.parseInt(value);
+        DateUtils.parseIntToLocalDate(date);
+        return date;
+      }
+      return DateTimeUtils.parseDateExpressionToInt(StringUtils.trim(value));
     } catch (final Exception e) {
-      return 0;
+      return DEFAULT_DATE;
     }
   }
 
