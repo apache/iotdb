@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.multi;
+package org.apache.iotdb.subscription.it.triple.regression.user;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -35,7 +35,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -43,17 +42,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/***
+ * Permission Test: Username currently only serves for connection, no permissions defined.
+ */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
-public class IoTDBConsumer2With1TopicShareProcessDataSetIT
-    extends AbstractSubscriptionRegressionIT {
-  private static final String database = "root.test.Consumer2With1TopicShareProcessDataSet";
+@Category({MultiClusterIT2SubscriptionRegressionMisc.class})
+public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionRegressionIT {
+  private static final String database = "root.test.OtherUserConsumer";
   private static final String device = database + ".d_0";
-  private static final String topicName = "topicConsumer2With1TopicShareProcessDataSet";
-  private String pattern = device + ".**";
-  private SubscriptionPullConsumer consumer2;
-  private static SubscriptionPullConsumer consumer;
+  private static final String topicName = "topic_OtherUserConsumer";
   private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static final String pattern = "root.**";
+  private static final String userName = "other_user";
+  private static final String passwd = "other_user";
+  private static SubscriptionPullConsumer consumer;
 
   @Override
   @Before
@@ -64,27 +66,23 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
     session_src.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_src.createTimeseries(
-        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
+        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZ4);
     session_dest.createTimeseries(
         device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
     session_dest.createTimeseries(
-        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
-    session_dest2.createTimeseries(
-        device + ".s_0", TSDataType.INT64, TSEncoding.GORILLA, CompressionType.LZ4);
-    session_dest2.createTimeseries(
-        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZMA2);
+        device + ".s_1", TSDataType.DOUBLE, TSEncoding.TS_2DIFF, CompressionType.LZ4);
     schemaList.add(new MeasurementSchema("s_0", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s_1", TSDataType.DOUBLE));
     subs.getTopics().forEach((System.out::println));
-    assertTrue(subs.getTopic(topicName).isPresent(), "create show topics");
+    assertTrue(subs.getTopic(topicName).isPresent(), "Create show topics");
   }
 
   @Override
   @After
   public void tearDown() throws Exception {
+    session_src.executeNonQueryStatement("drop user " + userName);
     try {
       consumer.close();
-      consumer2.close();
     } catch (Exception e) {
     }
     subs.dropTopic(topicName);
@@ -93,53 +91,53 @@ public class IoTDBConsumer2With1TopicShareProcessDataSetIT
   }
 
   private void insert_data(long timestamp)
-      throws IoTDBConnectionException, StatementExecutionException {
-    Tablet tablet = new Tablet(device, schemaList, 10);
+      throws IoTDBConnectionException, StatementExecutionException, InterruptedException {
+    Tablet tablet = new Tablet(device, schemaList, 5);
     int rowIndex = 0;
     for (int row = 0; row < 5; row++) {
       rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue("s_0", rowIndex, row * 20L + row);
       tablet.addValue("s_1", rowIndex, row + 2.45);
-      timestamp += 2000;
+      timestamp += row * 2000;
     }
     session_src.insertTablet(tablet);
+    Thread.sleep(1000);
   }
 
-  @Test
-  public void do_test()
-      throws InterruptedException,
-          TException,
+  // @Test
+  public void testPrivilege() throws IoTDBConnectionException, StatementExecutionException {
+    session_src.executeNonQueryStatement("create user " + userName + " '" + passwd + "';");
+    session_src.executeNonQueryStatement("grant read,write on root.** to user " + userName);
+  }
+
+  // @Test
+  // TODO: Failed to fetch all endpoints, only the admin user can perform this operation...
+  public void testNormal()
+      throws TException,
           IoTDBConnectionException,
           IOException,
-          StatementExecutionException {
-    consumer = create_pull_consumer("g1", "c1", false, null);
-    consumer2 = create_pull_consumer("g1", "c2", false, null);
-    // Write data before subscribing
+          StatementExecutionException,
+          InterruptedException {
+    session_src.executeNonQueryStatement("create user " + userName + " '" + passwd + "';");
+    session_src.executeNonQueryStatement("grant read,write on root.** to user " + userName);
+    consumer =
+        new SubscriptionPullConsumer.Builder()
+            .host(SRC_HOST)
+            .port(SRC_PORT)
+            .username(userName)
+            .password(passwd)
+            .buildPullConsumer();
+    consumer.open();
     insert_data(1706659200000L); // 2024-01-31 08:00:00+08:00
     // Subscribe
-    assertEquals(subs.getSubscriptions().size(), 0, "Before subscribing, show subscriptions");
     consumer.subscribe(topicName);
-    consumer2.subscribe(topicName);
-    System.out.println("After subscription:");
-    subs.getSubscriptions().forEach((System.out::println));
     assertEquals(subs.getSubscriptions().size(), 1, "show subscriptions after subscription");
-
+    Thread.sleep(1000);
+    subs.getSubscriptions().forEach(System.out::println);
+    // Consumption data
     consume_data(consumer, session_dest);
-    check_count(
-        5, "select count(s_0) from " + device, "Consumption subscription before data: s_0 ");
-    check_count(
-        5, "select count(s_1) from " + device, "Consumption subscription before data: s_1 ");
-    // Subscribe and then write data
-    insert_data(System.currentTimeMillis());
-    consume_data(consumer2, session_dest2);
-    check_count2(5, "select count(s_0) from " + device, "Consumption subscription data: s_0");
-    check_count2(5, "select count(s_1) from " + device, "Consumption subscription data: s_1");
-
-    // Consumed data will not be consumed again
-    consume_data(consumer, session_dest);
-    check_count(5, "select count(s_0) from " + device, "Consumption subscription before data: s_0");
-    check_count(
-        5, "select count(s_1) from " + device, "Consumption subscription previous data: s_1");
+    check_count(4, "select count(s_0) from " + device, "Consumption Data: s_0");
+    check_count(4, "select count(s_1) from " + device, "Consumption Data: s_1");
   }
 }

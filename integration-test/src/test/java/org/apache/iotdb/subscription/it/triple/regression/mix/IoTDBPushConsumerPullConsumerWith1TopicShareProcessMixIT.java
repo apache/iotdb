@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.mix;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionMisc;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
@@ -55,7 +55,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * Dataset
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionMisc.class})
 public class IoTDBPushConsumerPullConsumerWith1TopicShareProcessMixIT
     extends AbstractSubscriptionRegressionIT {
   private static String topicName = "`1-group.1-consumer.db`";
