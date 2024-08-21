@@ -28,6 +28,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
@@ -584,7 +585,13 @@ public class ValueConverter {
   }
 
   public static int convertTimestampToDate(final long value) {
-    return (int) value;
+    try {
+      Instant instant = Instant.ofEpochMilli(value);
+      return DateUtils.parseDateExpressionToInt(
+          instant.atZone(ZoneId.systemDefault()).toLocalDate());
+    } catch (Exception e) {
+      return DEFAULT_DATE;
+    }
   }
 
   public static Binary convertTimestampToBlob(final long value) {
