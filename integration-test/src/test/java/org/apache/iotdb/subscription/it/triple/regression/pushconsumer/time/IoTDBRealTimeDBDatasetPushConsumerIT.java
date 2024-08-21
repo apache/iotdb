@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.time;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
@@ -49,7 +49,7 @@ import java.util.List;
 import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBRealTimeDBDatasetPushConsumerIT extends AbstractSubscriptionRegressionIT {
   private String database = "root.RealTimeDBDatasetPushConsumer";
   private String device = database + ".d_0";

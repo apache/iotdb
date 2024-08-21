@@ -665,23 +665,19 @@ public class RegionMaintainHandler {
    * @param regionId The region to be migrated
    * @param originalDataNode The DataNode where the region locates
    */
-  public void transferRegionLeader(TConsensusGroupId regionId, TDataNodeLocation originalDataNode)
+  public void transferRegionLeader(
+      TConsensusGroupId regionId, TDataNodeLocation originalDataNode, TDataNodeLocation coodinator)
       throws ProcedureException, InterruptedException {
     // find new leader
-    final int findNewLeaderTimeLimitSecond = 10;
-    long startTime = System.nanoTime();
     Optional<TDataNodeLocation> newLeaderNode = Optional.empty();
-    while (System.nanoTime() - startTime < TimeUnit.SECONDS.toNanos(findNewLeaderTimeLimitSecond)) {
-      newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, originalDataNode);
-      if (newLeaderNode.isPresent()) {
-        break;
-      }
+    List<TDataNodeLocation> excludeDataNode = new ArrayList<>();
+    excludeDataNode.add(originalDataNode);
+    excludeDataNode.add(coodinator);
+    newLeaderNode = filterDataNodeWithOtherRegionReplica(regionId, excludeDataNode);
+    if (!newLeaderNode.isPresent()) {
+      // If we have no choice, we use it
+      newLeaderNode = Optional.of(coodinator);
     }
-    newLeaderNode.orElseThrow(
-        () ->
-            new ProcedureException(
-                "Cannot find the new leader after " + findNewLeaderTimeLimitSecond + " seconds"));
-
     // ratis needs DataNode to do election by itself
     long timestamp = System.nanoTime();
     if (TConsensusGroupType.SchemaRegion.equals(regionId.getType())
@@ -693,6 +689,14 @@ public class RegionMaintainHandler {
           (CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMaxMs()
                   + CONF.getSchemaRegionRatisRpcLeaderElectionTimeoutMinMs())
               / 2;
+      Integer leaderId = configManager.getLoadManager().getRegionLeaderMap().get(regionId);
+
+      if (leaderId != -1) {
+        // The migrated node is not leader, so we don't need to transfer temporarily
+        if (originalDataNode.getDataNodeId() != leaderId) {
+          return;
+        }
+      }
       while (true) {
         TRegionLeaderChangeResp resp =
             SyncDataNodeClientPool.getInstance()
@@ -742,12 +746,26 @@ public class RegionMaintainHandler {
    */
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation) {
+    List<TDataNodeLocation> filterLocations = Collections.singletonList(filterLocation);
+    return filterDataNodeWithOtherRegionReplica(regionId, filterLocations);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId, List<TDataNodeLocation> filterLocations) {
     return filterDataNodeWithOtherRegionReplica(
-        regionId, filterLocation, NodeStatus.Running, NodeStatus.ReadOnly);
+        regionId, filterLocations, NodeStatus.Running, NodeStatus.ReadOnly);
   }
 
   public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
       TConsensusGroupId regionId, TDataNodeLocation filterLocation, NodeStatus... allowingStatus) {
+    List<TDataNodeLocation> excludeLocations = Collections.singletonList(filterLocation);
+    return filterDataNodeWithOtherRegionReplica(regionId, excludeLocations, allowingStatus);
+  }
+
+  public Optional<TDataNodeLocation> filterDataNodeWithOtherRegionReplica(
+      TConsensusGroupId regionId,
+      List<TDataNodeLocation> excludeLocations,
+      NodeStatus... allowingStatus) {
     List<TDataNodeLocation> regionLocations = findRegionLocations(regionId);
     if (regionLocations.isEmpty()) {
       LOGGER.warn("Cannot find DataNodes contain the given region: {}", regionId);
@@ -762,11 +780,10 @@ public class RegionMaintainHandler {
             .collect(Collectors.toList());
     Collections.shuffle(aliveDataNodes);
     for (TDataNodeLocation aliveDataNode : aliveDataNodes) {
-      if (regionLocations.contains(aliveDataNode) && !aliveDataNode.equals(filterLocation)) {
+      if (regionLocations.contains(aliveDataNode) && !excludeLocations.contains(aliveDataNode)) {
         return Optional.of(aliveDataNode);
       }
     }
-
     return Optional.empty();
   }
 

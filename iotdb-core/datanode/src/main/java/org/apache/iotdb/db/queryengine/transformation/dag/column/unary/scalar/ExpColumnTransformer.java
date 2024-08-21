@@ -42,8 +42,7 @@ public class ExpColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.exp(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.exp(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.exp((double) column.getLong(i)));
         }
       } else {

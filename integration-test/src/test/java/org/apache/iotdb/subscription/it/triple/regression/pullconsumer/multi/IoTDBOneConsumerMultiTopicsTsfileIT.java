@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.multi;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 1 consumer subscribes to 2 topics: historical data
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.OneConsumerMultiTopicsTsfile";
   private static final String device = database + ".d_0";

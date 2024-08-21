@@ -149,8 +149,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -161,10 +160,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -227,8 +223,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -237,10 +232,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -297,8 +289,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -307,10 +298,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -370,8 +358,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -380,10 +367,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -441,8 +425,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -451,10 +434,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -514,8 +494,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -524,10 +503,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -588,8 +564,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -598,10 +573,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
@@ -673,8 +645,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
               IDeviceID.Factory.DEFAULT_FACTORY.create(device), measurementIds, schemas));
     }
     Map<IFullPath, List<TimeValuePair>> originData =
-        CompactionCheckerUtils.getDataByQuery(
-            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+        CompactionCheckerUtils.getDataByQuery(fullPaths, resources, new ArrayList<>());
     performer.setSourceFiles(resources);
     performer.setTargetFiles(Collections.singletonList(targetResource));
     performer.setSummary(new CompactionTaskSummary());
@@ -683,10 +654,7 @@ public class ReadChunkCompactionPerformerAlignedTest {
         Collections.singletonList(targetResource), CompactionTaskType.INNER_SEQ, storageGroup);
     Map<IFullPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
-            fullPaths,
-            iMeasurementSchemas,
-            Collections.singletonList(targetResource),
-            new ArrayList<>());
+            fullPaths, Collections.singletonList(targetResource), new ArrayList<>());
     CompactionCheckerUtils.validDataByValueList(originData, compactedData);
   }
 
