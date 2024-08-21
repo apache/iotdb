@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -40,6 +41,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected List<TsFileResource> targetResources;
   protected int currentFileIndex;
   protected long endedFileSize = 0;
+  protected List<Schema> schemas;
 
   protected final long sizeForFileWriter =
       (long)
@@ -148,6 +150,10 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   @Override
   public void checkAndMayFlushChunkMetadata() throws IOException {
     fileWriter.checkMetadataSizeAndMayFlush();
+  }
+
+  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+    this.schemas = schemas;
   }
 
   @Override

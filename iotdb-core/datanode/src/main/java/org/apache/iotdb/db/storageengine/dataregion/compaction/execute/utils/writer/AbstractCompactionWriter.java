@@ -97,8 +97,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String[] measurementId = new String[subTaskNum];
 
-  protected List<Schema> schemas;
-
   public abstract void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
@@ -324,7 +322,5 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  public void setSchemaForAllTargetFile(List<Schema> schemas) {
-    this.schemas = schemas;
-  }
+  public abstract void setSchemaForAllTargetFile(List<Schema> schemas);
 }
