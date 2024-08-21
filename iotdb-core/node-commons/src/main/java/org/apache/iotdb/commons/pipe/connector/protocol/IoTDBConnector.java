@@ -452,6 +452,14 @@ public abstract class IoTDBConnector implements PipeConnector {
     GLOBAL_RATE_LIMITER.acquire(bytesLength);
   }
 
+  /**
+   * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
+   * its batched or queued events in the output pipe connector.
+   */
+  public synchronized void discardEventsOfPipe(final String pipeName) {
+    // Do nothing by default
+  }
+
   public PipeReceiverStatusHandler statusHandler() {
     return receiverStatusHandler;
   }
