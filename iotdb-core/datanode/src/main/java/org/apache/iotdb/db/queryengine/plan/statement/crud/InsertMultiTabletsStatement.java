@@ -151,8 +151,8 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   @TableModel
   @Override
-  public void measurementsToLowerCase() {
-    insertTabletStatementList.forEach(InsertTabletStatement::measurementsToLowerCase);
+  public void toLowerCase() {
+    insertTabletStatementList.forEach(InsertTabletStatement::toLowerCase);
   }
 
   @Override
