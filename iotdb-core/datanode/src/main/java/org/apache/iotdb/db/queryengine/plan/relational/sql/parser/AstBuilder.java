@@ -125,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
@@ -180,7 +181,6 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
-import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -710,8 +710,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
-      String key = parseStringLiteral(property.getName().getValue());
-      String value = parseStringLiteral(property.getNonDefaultValue().toString());
+      String key = property.getName().getValue();
+      Expression propertyValue = property.getNonDefaultValue();
+      if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
+        throw new IllegalArgumentException(
+            propertyValue.getExpressionType() + " is not supported for 'set configuration'");
+      }
+      String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key, value);
     }
     setConfigurationStatement.setNodeId(nodeId);
