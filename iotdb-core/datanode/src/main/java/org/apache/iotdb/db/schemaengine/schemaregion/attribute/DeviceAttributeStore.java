@@ -52,7 +52,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   private final MemSchemaRegionStatistics regionStatistics;
 
-  public DeviceAttributeStore(MemSchemaRegionStatistics regionStatistics) {
+  public DeviceAttributeStore(final MemSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
   }
 
@@ -62,15 +62,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public synchronized boolean createSnapshot(File targetDir) {
-    File snapshotTmp =
+  public synchronized boolean createSnapshot(final File targetDir) {
+    final File snapshotTmp =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT_TMP);
-    File snapshot =
+    final File snapshot =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
 
     try {
-      FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
-      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         serialize(outputStream);
       } finally {
@@ -94,7 +94,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       }
 
       return true;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
@@ -104,25 +104,27 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void loadFromSnapshot(File snapshotDir, String sgSchemaDirPath) throws IOException {
-    try (BufferedInputStream inputStream =
+  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath) {
+    try (final BufferedInputStream inputStream =
         new BufferedInputStream(
             Files.newInputStream(
                 SystemFileFactory.INSTANCE
                     .getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT)
                     .toPath()))) {
       deserialize(inputStream);
-    } catch (IOException e) {
-      logger.warn("Load device attribute snapshot from {} failed", snapshotDir);
-      throw e;
+    } catch (final IOException e) {
+      logger.warn(
+          "Load device attribute snapshot from {} failed, message: {}, use empty attributes",
+          snapshotDir,
+          e.getMessage());
     }
   }
 
   @Override
-  public synchronized int createAttribute(List<String> nameList, Object[] valueList) {
+  public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsage = 0L;
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
       value =
