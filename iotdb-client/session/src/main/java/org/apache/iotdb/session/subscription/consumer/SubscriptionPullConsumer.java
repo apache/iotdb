@@ -151,7 +151,6 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return poll(topicNames, timeout.toMillis());
   }
 
-  @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     // parse topic names from external source
@@ -176,8 +175,7 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return Collections.emptyList();
     }
 
-    // poll messages
-    final List<SubscriptionMessage> messages = super.poll(parsedTopicNames, timeoutMs);
+    final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
     if (messages.isEmpty()) {
       LOGGER.info(
           "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
@@ -362,6 +360,12 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     @Override
     public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
       super.thriftMaxFrameSize(thriftMaxFrameSize);
+      return this;
+    }
+
+    @Override
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      super.maxPollParallelism(maxPollParallelism);
       return this;
     }
 
