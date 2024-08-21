@@ -112,8 +112,10 @@ public class DeviceAttributeUpdater extends DevicePredicateHandler {
 
     for (int i = 0; i < (withoutFilter() ? attributePointers.size() : indexes.size()); ++i) {
       final int finalI = i;
+      final String[] nodes =
+          deviceSchemaBatch.get(withoutFilter() ? i : indexes.get(i)).getRawNodes();
       attributeUpdater.accept(
-          deviceSchemaBatch.get(withoutFilter() ? i : indexes.get(i)).getRawNodes(),
+          Arrays.copyOfRange(nodes, 3, nodes.length),
           attributePointers.get(withoutFilter() ? i : indexes.get(i)),
           resultColumns.stream().map(column -> column.getObject(finalI)).toArray(Object[]::new));
     }

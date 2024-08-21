@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -88,9 +89,11 @@ public class TableDeviceSchemaCache {
       final Map<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
-      dualKeyCache
-          .get(new TableId(database, tableName), new TableDeviceId(deviceId))
-          .update(attributeMap);
+      final TableDeviceCacheEntry entry =
+          dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+      if (Objects.nonNull(entry)) {
+        entry.update(attributeMap);
+      }
     } finally {
       readWriteLock.readLock().unlock();
     }
