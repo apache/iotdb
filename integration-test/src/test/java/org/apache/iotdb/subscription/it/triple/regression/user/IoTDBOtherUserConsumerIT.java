@@ -31,7 +31,6 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
@@ -51,7 +50,7 @@ public class IoTDBOtherUserConsumerIT extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.test.OtherUserConsumer";
   private static final String device = database + ".d_0";
   private static final String topicName = "topic_OtherUserConsumer";
-  private static List<IMeasurementSchema> schemaList = new ArrayList<>();
+  private static List<MeasurementSchema> schemaList = new ArrayList<>();
   private static final String pattern = "root.**";
   private static final String userName = "other_user";
   private static final String passwd = "other_user";
