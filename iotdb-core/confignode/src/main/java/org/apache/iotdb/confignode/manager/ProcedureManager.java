@@ -1289,18 +1289,21 @@ public class ProcedureManager {
   }
 
   public TSStatus createTable(final String database, final TsTable table) {
-    final Pair<Long, Boolean> procedureIdDuplicatePair =
-        awaitDuplicateTableTask(
-            database, table, table.getTableName(), null, ProcedureType.CREATE_TABLE_PROCEDURE);
-    long procedureId = procedureIdDuplicatePair.getLeft();
+    long procedureId;
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          awaitDuplicateTableTask(
+              database, table, table.getTableName(), null, ProcedureType.CREATE_TABLE_PROCEDURE);
+      procedureId = procedureIdDuplicatePair.getLeft();
 
-    if (procedureId == -1) {
-      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            "Some other task is operating table with same name.");
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is operating table with same name.");
+        }
+        procedureId = this.executor.submitProcedure(new CreateTableProcedure(database, table));
       }
-      procedureId = this.executor.submitProcedure(new CreateTableProcedure(database, table));
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
     final boolean isSucceed =
@@ -1318,21 +1321,24 @@ public class ProcedureManager {
     final String queryId = req.queryId;
     final List<TsTableColumnSchema> columnSchemaList =
         TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo);
+    long procedureId;
 
-    final Pair<Long, Boolean> procedureIdDuplicatePair =
-        awaitDuplicateTableTask(
-            database, null, tableName, queryId, ProcedureType.ADD_TABLE_COLUMN_PROCEDURE);
-    long procedureId = procedureIdDuplicatePair.getLeft();
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          awaitDuplicateTableTask(
+              database, null, tableName, queryId, ProcedureType.ADD_TABLE_COLUMN_PROCEDURE);
+      procedureId = procedureIdDuplicatePair.getLeft();
 
-    if (procedureId == -1) {
-      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            "Some other task is operating table with same name.");
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is operating table with same name.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new AddTableColumnProcedure(database, tableName, queryId, columnSchemaList));
       }
-      procedureId =
-          this.executor.submitProcedure(
-              new AddTableColumnProcedure(database, tableName, queryId, columnSchemaList));
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
     final boolean isSucceed =
@@ -1349,21 +1355,24 @@ public class ProcedureManager {
     final String tableName = req.tableName;
     final String queryId = req.queryId;
     final Map<String, String> properties = ReadWriteIOUtils.readMap(req.updateInfo);
+    long procedureId;
 
-    final Pair<Long, Boolean> procedureIdDuplicatePair =
-        awaitDuplicateTableTask(
-            database, null, tableName, queryId, ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE);
-    long procedureId = procedureIdDuplicatePair.getLeft();
+    synchronized (this) {
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          awaitDuplicateTableTask(
+              database, null, tableName, queryId, ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE);
+      procedureId = procedureIdDuplicatePair.getLeft();
 
-    if (procedureId == -1) {
-      if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            "Some other task is operating table with same name.");
+      if (procedureId == -1) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              "Some other task is operating table with same name.");
+        }
+        procedureId =
+            this.executor.submitProcedure(
+                new SetTablePropertiesProcedure(database, tableName, queryId, properties));
       }
-      procedureId =
-          this.executor.submitProcedure(
-              new SetTablePropertiesProcedure(database, tableName, queryId, properties));
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
     final boolean isSucceed =
@@ -1375,7 +1384,7 @@ public class ProcedureManager {
     }
   }
 
-  private synchronized Pair<Long, Boolean> awaitDuplicateTableTask(
+  private Pair<Long, Boolean> awaitDuplicateTableTask(
       final String database,
       final TsTable table,
       final String tableName,
