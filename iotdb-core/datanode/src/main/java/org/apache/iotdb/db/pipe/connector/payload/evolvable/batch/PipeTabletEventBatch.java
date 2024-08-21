@@ -120,7 +120,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
    * Discard all events of the given pipe. This method only clears the reference count of the events
    * and discard them, but do not modify other objects (such as buffers) for simplicity.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop) {
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
     events.removeIf(
         event -> {
           if (pipeNameToDrop.equals(event.getPipeName())) {
@@ -131,7 +131,8 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
         });
   }
 
-  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
+  public synchronized void decreaseEventsReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
   }
 
