@@ -59,10 +59,15 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
       return plan;
     }
 
-    return plan.accept(new Rewriter(), new Context(context.getAnalysis()));
+    return plan.accept(new Rewriter(context.getAnalysis()), new Context());
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {
+    private final Analysis analysis;
+
+    public Rewriter(Analysis analysis) {
+      this.analysis = analysis;
+    }
 
     @Override
     public PlanNode visitPlan(PlanNode node, Context context) {
@@ -80,14 +85,14 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitLimit(LimitNode node, Context context) {
-      context.setLimit(node.getCount());
+      context.setPushDownLimit(node.getCount());
       node.setChild(node.getChild().accept(this, context));
       return node;
     }
 
     @Override
     public PlanNode visitOffset(OffsetNode node, Context context) {
-      context.setOffset(node.getCount());
+      context.setPushDownOffset(node.getCount());
       // already use rule {@link PushLimitThroughOffset}
       //      if (context.getLimit() > 0) {
       //        context.setLimit(context.getLimit() + context.getOffset());
@@ -118,22 +123,15 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitSort(SortNode node, Context context) {
-      Context newContext =
-          new Context(
-              context.analysis,
-              context.getLimit(),
-              context.getOffset(),
-              context.isEnablePushDown(),
-              context.canPushLimitToEachDevice());
-      PlanNode child = node.getChild().accept(this, newContext);
-      if (!newContext.isEnablePushDown()) {
+      PlanNode child = node.getChild().accept(this, context);
+      if (!context.isEnablePushDown()) {
         return node;
       }
 
       OrderingScheme orderingScheme = node.getOrderingScheme();
-      TableScanNode tableScanNode = newContext.getTableScanNode();
+      TableScanNode tableScanNode = context.getTableScanNode();
       Map<Symbol, ColumnSchema> tableColumnSchema =
-          context.getAnalysis().getTableColumnSchema(tableScanNode.getQualifiedObjectName());
+          analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
       Set<Symbol> sortSymbols = new HashSet<>();
       for (Symbol orderBy : orderingScheme.getOrderBy()) {
         if (TIMESTAMP_STR.equalsIgnoreCase(orderBy.getName())) {
@@ -189,8 +187,10 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     public PlanNode visitTableScan(TableScanNode node, Context context) {
       context.setTableScanNode(node);
       if (context.isEnablePushDown()) {
-        if (context.getLimit() > 0) {
-          node.setPushDownLimit(context.getLimit());
+        if (context.getPushDownLimit() > 0 && node.getPushDownLimit() == 0) {
+          // notice if both outer query and inner query has limit value, only the limit value in
+          // inner query can be pushed into TableScan
+          node.setPushDownLimit(context.getPushDownLimit());
         }
         // TODO only one data region, pushDownOffset can be set
         //      if (context.getOffset() > 0) {
@@ -205,48 +205,29 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
   }
 
   private static class Context {
-    private final Analysis analysis;
-    private long limit;
-    private long offset;
+    // when have filter and diff function, limit and offset cannot be pushed down into TableScanNode
     private boolean enablePushDown = true;
+    private long pushDownLimit;
+    private long pushDownOffset;
     private boolean pushLimitToEachDevice = false;
     private TableScanNode tableScanNode;
 
-    public Context(Analysis analysis) {
-      this.analysis = analysis;
+    public Context() {}
+
+    public long getPushDownLimit() {
+      return pushDownLimit;
     }
 
-    public Context(
-        Analysis analysis,
-        long limit,
-        long offset,
-        boolean enablePushDown,
-        boolean pushLimitToEachDevice) {
-      this.analysis = analysis;
-      this.limit = limit;
-      this.offset = offset;
-      this.enablePushDown = enablePushDown;
-      this.pushLimitToEachDevice = pushLimitToEachDevice;
+    public void setPushDownLimit(long pushDownLimit) {
+      this.pushDownLimit = pushDownLimit;
     }
 
-    public Analysis getAnalysis() {
-      return analysis;
+    public long getPushDownOffset() {
+      return pushDownOffset;
     }
 
-    public long getLimit() {
-      return limit;
-    }
-
-    public void setLimit(long limit) {
-      this.limit = limit;
-    }
-
-    public long getOffset() {
-      return offset;
-    }
-
-    public void setOffset(long offset) {
-      this.offset = offset;
+    public void setPushDownOffset(long pushDownOffset) {
+      this.pushDownOffset = pushDownOffset;
     }
 
     public boolean isEnablePushDown() {

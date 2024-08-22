@@ -18,6 +18,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkState;
 
 public class OffsetMatcher implements Matcher {
@@ -41,5 +42,10 @@ public class OffsetMatcher implements Matcher {
       PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases) {
     checkState(shapeMatches(node));
     return MatchResult.match();
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).add("offset", rowCount).toString();
   }
 }
