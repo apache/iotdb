@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.AlterConsumerGroupProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -193,6 +194,9 @@ public class ProcedureFactory implements IProcedureFactory {
         break;
       case SET_TABLE_PROPERTIES_PROCEDURE:
         procedure = new SetTablePropertiesProcedure();
+        break;
+      case RENAME_TABLE_COLUMN_PROCEDURE:
+        procedure = new RenameTableColumnProcedure();
         break;
       case CREATE_PIPE_PLUGIN_PROCEDURE:
         procedure = new CreatePipePluginProcedure();

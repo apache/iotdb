@@ -2440,6 +2440,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableAddColumn(req);
         case SET_PROPERTIES:
           return procedureManager.alterTableSetProperties(req);
+        case RENAME_COLUMN:
+          return procedureManager.alterTableRenameColumn(req);
         default:
           throw new IllegalArgumentException();
       }

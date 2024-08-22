@@ -81,6 +81,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
@@ -1320,6 +1321,21 @@ public class ProcedureManager {
         ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
         new SetTablePropertiesProcedure(
             req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
+  }
+
+  public TSStatus alterTableRenameColumn(final TAlterTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
+        new RenameTableColumnProcedure(
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readString(req.updateInfo),
+            ReadWriteIOUtils.readString(req.updateInfo)));
   }
 
   private TSStatus executeWithoutDuplicate(
