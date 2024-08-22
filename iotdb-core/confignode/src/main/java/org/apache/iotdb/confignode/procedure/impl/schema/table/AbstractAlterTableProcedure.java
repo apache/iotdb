@@ -68,6 +68,24 @@ public abstract class AbstractAlterTableProcedure<T>
     return queryId;
   }
 
+  protected void preRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
+
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to pre-release {} for table {}.{} to DataNode, failure results: {}",
+          getActionMessage(),
+          database,
+          table.getTableName(),
+          failedResults);
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Pre-release " + getActionMessage() + " failed")));
+    }
+  }
+
   protected void commitRelease(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
         SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());

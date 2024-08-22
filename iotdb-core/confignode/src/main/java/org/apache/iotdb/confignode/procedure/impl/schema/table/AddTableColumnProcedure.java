@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -29,7 +28,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,7 +40,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
 
 public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTableColumnState> {
 
@@ -112,23 +109,9 @@ public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTabl
     setNextState(AddTableColumnState.PRE_RELEASE);
   }
 
-  private void preRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
-
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to pre-release column extension info of table {}.{} to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Pre-release table column extension info failed")));
-      return;
-    }
-
+  @Override
+  protected void preRelease(final ConfigNodeProcedureEnv env) {
+    super.preRelease(env);
     setNextState(AddTableColumnState.ADD_COLUMN);
   }
 

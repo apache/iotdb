@@ -21,13 +21,11 @@ package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -130,23 +128,9 @@ public class SetTablePropertiesProcedure
     setNextState(PRE_RELEASE);
   }
 
-  private void preRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager());
-
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to pre-release properties info of table {}.{} to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Pre-release table properties info failed")));
-      return;
-    }
-
+  @Override
+  protected void preRelease(final ConfigNodeProcedureEnv env) {
+    super.preRelease(env);
     setNextState(SET_PROPERTIES);
   }
 
