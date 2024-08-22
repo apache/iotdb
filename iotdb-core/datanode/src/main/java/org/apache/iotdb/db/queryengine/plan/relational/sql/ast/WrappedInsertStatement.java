@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -164,7 +165,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       // the column does not exist and auto-creation is disabled
       SemanticException semanticException =
           new SemanticException(
-              "Column " + incoming.getName() + " does not exists or fails to be " + "created");
+              "Column " + incoming.getName() + " does not exists or fails to be " + "created",
+              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
       if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
@@ -184,7 +186,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
           new SemanticException(
               String.format(
                   "Inconsistent data type of column %s: %s/%s",
-                  incoming.getName(), incoming.getType(), real.getType()));
+                  incoming.getName(), incoming.getType(), real.getType()),
+              TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
       if (incoming.getColumnCategory() != TsTableColumnCategory.MEASUREMENT) {
         // non-measurement columns cannot be partially inserted
         throw semanticException;
@@ -200,7 +203,8 @@ public abstract class WrappedInsertStatement extends WrappedStatement
       throw new SemanticException(
           String.format(
               "Inconsistent column category of column %s: %s/%s",
-              incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()));
+              incoming.getName(), incoming.getColumnCategory(), real.getColumnCategory()),
+          TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
     }
     TSDataType tsDataType = InternalTypeManager.getTSDataType(real.getType());
     MeasurementSchema measurementSchema =

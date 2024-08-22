@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -120,14 +121,14 @@ public class TableHeaderSchemaValidator {
               String.format(
                   "Unknown column category for %s. Cannot auto create column.",
                   columnSchema.getName()),
-              TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
+              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
         }
         if (columnSchema.getType() == null) {
           throw new SemanticException(
               String.format(
                   "Unknown column data type for %s. Cannot auto create column.",
                   columnSchema.getName()),
-              TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
+              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
         }
         missingColumnList.add(columnSchema);
       } else {
@@ -151,6 +152,13 @@ public class TableHeaderSchemaValidator {
       // check id or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
       table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+    } else if (!missingColumnList.isEmpty()
+        && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      throw new SemanticException(
+          String.format(
+              "Missing columns %s.",
+              missingColumnList.stream().map(ColumnSchema::getName).collect(Collectors.toList())),
+          TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
     }
 
     table
