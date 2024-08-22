@@ -330,7 +330,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
-      throws FileNotFoundException {
+      throws IOException {
     return isUsingAsyncLoadTsFileStrategy.get()
         ? loadTsFileAsync(Collections.singletonList(fileAbsolutePath))
         : loadTsFileSync(fileAbsolutePath);
@@ -348,22 +348,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
-  // load tsfile async
-  protected TSStatus loadTsFileAsync(final List<String> absolutePaths) {
-    final String moveToLoadTsFileDirBySequence = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
+  private TSStatus loadTsFileAsync(final List<String> absolutePaths) throws IOException {
+    final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
 
-    for (String absolutePath : absolutePaths) {
-      final File sourceFile = new File(absolutePath);
-
-      // whether the move folder equal the listening folder
-      if (moveToLoadTsFileDirBySequence.equals(sourceFile.getParentFile().getAbsolutePath())) {
+    for (final String absolutePath : absolutePaths) {
+      if (absolutePath == null) {
         continue;
       }
-
-      try {
-        FileUtils.moveFileWithMD5Check(sourceFile, new File(moveToLoadTsFileDirBySequence));
-      } catch (IOException e) {
-        LOGGER.warn("failed to move {} to {}", absolutePath, moveToLoadTsFileDirBySequence, e);
+      final File sourceFile = new File(absolutePath);
+      if (!Objects.equals(
+          loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
+        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
       }
     }
 
