@@ -58,8 +58,8 @@ public class SchemaQueryScanOperator<T extends ISchemaInfo> implements SourceOpe
 
   private final ISchemaSource<T> schemaSource;
 
-  private long limit;
-  private long offset;
+  private long limit = -1;
+  private long offset = 0;
 
   private String database;
 
