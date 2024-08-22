@@ -152,13 +152,13 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting DATE to OtherType
   @Test
   public void testDateToOtherTypeConversion() {
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.BOOLEAN);
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT32);
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT64);
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.FLOAT);
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.DOUBLE);
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TEXT);
-    //    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.STRING);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.BOOLEAN);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT32);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT64);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.FLOAT);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.DOUBLE);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TEXT);
+    executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.STRING);
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TIMESTAMP);
     //  x
   }

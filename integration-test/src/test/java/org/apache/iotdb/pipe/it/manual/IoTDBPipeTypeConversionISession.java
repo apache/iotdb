@@ -489,7 +489,7 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
             insertRecord.add(String.valueOf(((float[]) values[j])[i]));
             break;
           case DATE:
-            insertRecord.add(DateUtils.formatDate(((int[]) values[j])[i]));
+            insertRecord.add(((LocalDate[]) values[j])[i].toString());
             break;
           case TEXT:
           case STRING:
@@ -497,8 +497,9 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
                 new String(((Binary[]) values[j])[i].getValues(), TSFileConfig.STRING_CHARSET));
             break;
           case BLOB:
-            insertRecord.add(
-                BytesUtils.parseBlobByteArrayToString(((Binary[]) values[j])[i].getValues()));
+            String value = BytesUtils.parseBlobByteArrayToString(((Binary[]) values[j])[i].getValues())
+                    .substring(2);
+            insertRecord.add(String.format("X'%s'",value));
             break;
           case BOOLEAN:
             insertRecord.add(String.valueOf(((boolean[]) values[j])[i]));
