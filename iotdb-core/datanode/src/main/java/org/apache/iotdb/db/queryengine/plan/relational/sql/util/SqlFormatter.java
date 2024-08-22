@@ -656,9 +656,17 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitDropColumn(DropColumn node, Integer indent) {
+    protected Void visitDropColumn(final DropColumn node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
+      if (node.columnIfNotExists()) {
+        builder.append("IF NOT EXISTS ");
+      }
+
       builder.append(formatName(node.getField()));
 
       return null;

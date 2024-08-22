@@ -3208,6 +3208,54 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> alterTableDropColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(columnName, stream);
+      } catch (final IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterTableOperationType.RENAME_COLUMN,
+              stream.toByteArray(),
+              client);
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to drop column {} for table {}.{}, status is {}.",
+            columnName,
+            database,
+            tableName,
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,

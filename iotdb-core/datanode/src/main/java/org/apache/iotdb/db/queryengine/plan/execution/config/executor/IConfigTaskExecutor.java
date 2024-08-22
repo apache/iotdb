@@ -302,6 +302,14 @@ public interface IConfigTaskExecutor {
       final boolean tableIfExists,
       final boolean columnIfExists);
 
+  SettableFuture<ConfigTaskResult> alterTableDropColumn(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
   SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,

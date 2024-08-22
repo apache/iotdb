@@ -343,7 +343,15 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new DropColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
-        lowerIdentifier((Identifier) visit(ctx.column)));
+        lowerIdentifier((Identifier) visit(ctx.column)),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
   }
 
   @Override
