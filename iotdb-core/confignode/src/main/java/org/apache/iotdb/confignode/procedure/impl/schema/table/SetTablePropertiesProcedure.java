@@ -267,14 +267,8 @@ public class SetTablePropertiesProcedure
 
   @Override
   public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof SetTablePropertiesProcedure)) {
-      return false;
-    }
-    final SetTablePropertiesProcedure that = (SetTablePropertiesProcedure) o;
-    return super.equals(o) && Objects.equals(updatedProperties, that.updatedProperties);
+    return super.equals(o)
+        && Objects.equals(updatedProperties, ((SetTablePropertiesProcedure) o).updatedProperties);
   }
 
   @Override

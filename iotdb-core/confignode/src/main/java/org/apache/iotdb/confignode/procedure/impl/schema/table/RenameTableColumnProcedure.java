@@ -24,8 +24,14 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddTableColumnState> {
   private String oldName;
@@ -73,5 +79,34 @@ public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddT
   @Override
   protected AddTableColumnState getInitialState() {
     return null;
+  }
+
+  @Override
+  public void serialize(final DataOutputStream stream) throws IOException {
+    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    super.serialize(stream);
+
+    ReadWriteIOUtils.write(oldName, stream);
+    ReadWriteIOUtils.write(newName, stream);
+  }
+
+  @Override
+  public void deserialize(final ByteBuffer byteBuffer) {
+    super.deserialize(byteBuffer);
+
+    this.oldName = ReadWriteIOUtils.readString(byteBuffer);
+    this.newName = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    return super.equals(o)
+        && Objects.equals(oldName, ((RenameTableColumnProcedure) o).oldName)
+        && Objects.equals(newName, ((RenameTableColumnProcedure) o).newName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), oldName, newName);
   }
 }
