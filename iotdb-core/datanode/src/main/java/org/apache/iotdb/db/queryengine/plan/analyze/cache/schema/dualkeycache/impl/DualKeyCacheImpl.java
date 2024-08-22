@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -192,6 +193,41 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           return cacheEntryGroup;
         });
     return usedMemorySize.get();
+  }
+
+  @Override
+  public V putIfAbsent(final FK firstKey, final SK secondKey, final V value) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+    final AtomicReference<V> result = new AtomicReference<>();
+
+    firstKeyMap.compute(
+        firstKey,
+        (k, cacheEntryGroup) -> {
+          if (cacheEntryGroup == null) {
+            cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
+            usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
+          }
+          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+          result.set(
+              cacheEntryGroup
+                  .computeCacheEntryIfAbsent(
+                      secondKey,
+                      sk -> {
+                        final T cacheEntry =
+                            cacheEntryManager.createCacheEntry(
+                                secondKey, value, finalCacheEntryGroup);
+                        cacheEntryManager.put(cacheEntry);
+                        usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
+                        return cacheEntry;
+                      })
+                  .getValue());
+          return cacheEntryGroup;
+        });
+    cacheStats.increaseMemoryUsage(usedMemorySize.get());
+    if (cacheStats.isExceedMemoryCapacity()) {
+      executeCacheEviction(usedMemorySize.get());
+    }
+    return result.get();
   }
 
   /**

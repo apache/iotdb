@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
@@ -42,12 +43,26 @@ public class TableDeviceCacheEntry {
     this.attributeMap = Collections.unmodifiableMap(attributeMap);
   }
 
+  /////////////////////////////// Attribute ///////////////////////////////
+
   public String getAttribute(final String key) {
     return attributeMap.get(key);
   }
 
   public Map<String, String> getAttributeMap() {
     return attributeMap;
+  }
+
+  /////////////////////////////// Last Cache ///////////////////////////////
+
+  public void update(
+      final String database,
+      final String tableName,
+      final Map<String, TimeValuePair> measurementUpdateMap) {
+    if (Objects.isNull(lastCache)) {
+      lastCache = new TableDeviceLastCache();
+    }
+    lastCache.update(database, tableName, measurementUpdateMap);
   }
 
   public int estimateSize() {

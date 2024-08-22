@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.tsfile.read.TimeValuePair;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TableDeviceSchemaCache {
@@ -89,7 +90,12 @@ public class TableDeviceSchemaCache {
       final Map<String, TimeValuePair> measurementUpdateMap) {
     readWriteLock.readLock().lock();
     try {
-      dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+      dualKeyCache
+          .putIfAbsent(
+              new TableId(database, tableName),
+              new TableDeviceId(deviceId),
+              new TableDeviceCacheEntry(new ConcurrentHashMap<>()))
+          .update(database, tableName, measurementUpdateMap);
     } finally {
       readWriteLock.readLock().unlock();
     }
