@@ -1764,6 +1764,8 @@ public class DataRegion implements IDataRegionForQuery {
         "{} will close all files for deleting data folder {}",
         databaseName + "-" + dataRegionId,
         systemDir);
+    FileTimeIndexCacheRecorder.getInstance()
+        .removeFileTimeIndexCache(Integer.parseInt(dataRegionId));
     writeLock("deleteFolder");
     try {
       File dataRegionSystemFolder =

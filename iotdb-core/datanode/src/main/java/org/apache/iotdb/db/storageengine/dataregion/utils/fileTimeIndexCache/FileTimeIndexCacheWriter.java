@@ -65,7 +65,7 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   @Override
   public void force() throws IOException {
     if (channel != null && channel.isOpen()) {
-      channel.force(false);
+      channel.force(true);
     }
   }
 

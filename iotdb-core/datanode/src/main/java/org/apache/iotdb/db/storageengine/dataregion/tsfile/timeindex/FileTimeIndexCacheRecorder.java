@@ -43,6 +43,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import static org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent;
+
 public class FileTimeIndexCacheRecorder {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FileTimeIndexCacheRecorder.class);
@@ -203,6 +205,28 @@ public class FileTimeIndexCacheRecorder {
                 throw new RuntimeException(e);
               }
             });
+  }
+
+  public void close() throws IOException {
+    for (Map<Long, FileTimeIndexCacheWriter> partitionWriterMap : writerMap.values()) {
+      for (FileTimeIndexCacheWriter writer : partitionWriterMap.values()) {
+        writer.close();
+      }
+    }
+  }
+
+  public void removeFileTimeIndexCache(int dataRegionId) {
+    Map<Long, FileTimeIndexCacheWriter> partitionWriterMap = writerMap.get(dataRegionId);
+    if (partitionWriterMap != null) {
+      for (FileTimeIndexCacheWriter writer : partitionWriterMap.values()) {
+        try {
+          writer.close();
+          deleteDirectoryAndEmptyParent(writer.getLogFile());
+        } catch (IOException e) {
+          LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage());
+        }
+      }
+    }
   }
 
   public static FileTimeIndexCacheRecorder getInstance() {
