@@ -83,7 +83,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -488,28 +487,12 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     stuckPipes.parallelStream().forEach(this::restartStuckPipe);
   }
 
-  private static final AtomicLong lastExecTime = new AtomicLong(0);
-
   private Set<PipeMeta> findAllStuckPipes() {
-    if (lastExecTime.get() == 0) {
-      lastExecTime.set(System.currentTimeMillis());
-    }
-    boolean shouldForceRestart = false;
-    if (System.currentTimeMillis() - lastExecTime.get() > 10 * 60 * 1000) { // 10 minutes
-      shouldForceRestart = true;
-      lastExecTime.set(System.currentTimeMillis());
-    }
-
     final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
 
     final Set<PipeMeta> stuckPipes = new HashSet<>();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-      if (shouldForceRestart) {
-        stuckPipes.add(pipeMeta);
-        continue;
-      }
-
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
       final List<IoTDBDataRegionExtractor> extractors =
           taskId2ExtractorMap.values().stream()
