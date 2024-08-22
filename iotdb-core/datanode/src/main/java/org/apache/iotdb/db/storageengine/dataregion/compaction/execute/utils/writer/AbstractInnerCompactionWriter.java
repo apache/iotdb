@@ -46,12 +46,11 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
               / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
-  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
+  protected AbstractInnerCompactionWriter(TsFileResource targetFileResource) {
     this(Collections.singletonList(targetFileResource));
   }
 
-  protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources)
-      throws IOException {
+  protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources) {
     this.targetResources = targetFileResources;
   }
 
