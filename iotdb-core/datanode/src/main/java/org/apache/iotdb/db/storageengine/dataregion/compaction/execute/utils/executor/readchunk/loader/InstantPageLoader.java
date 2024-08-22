@@ -25,14 +25,13 @@ import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
 
@@ -43,14 +42,15 @@ public class InstantPageLoader extends PageLoader {
   public InstantPageLoader() {}
 
   public InstantPageLoader(
+      String file,
       PageHeader pageHeader,
       ByteBuffer pageData,
       CompressionType compressionType,
       TSDataType dataType,
       TSEncoding encoding,
-      List<TimeRange> deleteIntervalList,
+      ChunkMetadata chunkMetadata,
       ModifiedStatus modifiedStatus) {
-    super(pageHeader, compressionType, dataType, encoding, deleteIntervalList, modifiedStatus);
+    super(file, pageHeader, compressionType, dataType, encoding, chunkMetadata, modifiedStatus);
     this.pageData = pageData;
   }
 

@@ -108,6 +108,19 @@ public class PipeTaskManager {
   }
 
   /**
+   * Judge whether there is a {@link PipeTask} related to the consensus group id.
+   *
+   * @param consensusGroupId consensus group id
+   * @return true if there is at least one {@link PipeTask} related to the consensus group id, false
+   *     otherwise
+   */
+  public synchronized boolean hasPipeTaskInConsensusGroup(final int consensusGroupId) {
+    return pipeMap.values().stream()
+        .anyMatch(
+            consensusGroupId2PipeTask -> consensusGroupId2PipeTask.containsKey(consensusGroupId));
+  }
+
+  /**
    * Get leader region count in this node.
    *
    * @return leader region count
