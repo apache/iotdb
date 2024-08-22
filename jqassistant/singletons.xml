@@ -56,11 +56,10 @@
     <!-- Detects singleton patterns where a type has a "public static getInstance()" method which returns the same type as the class itself -->
     <concept id="singleton:PublicStaticMethodSingleton">
         <providesConcept refId="singleton:Singleton"/>
-        <!-- TODO: It would be nicer, if I could select any no-args method, because omitting the "getInstance" name filter will result in loads of "valueOf" methods being reported -->
         <description>Identifies singletons that are accessed by a public static getInstance() method that returns the type of the main class.</description>
         <cypher><![CDATA[
             MATCH
-              (singleton:Class:Type) -[:DECLARES]-> (method:Method) -[:RETURNS]-> (singleton) WHERE method.name = "getInstance" AND method.static = true AND method.visibility = "public"
+              (singleton:Class:Type) -[:DECLARES]-> (method:Method) -[:RETURNS]-> (singleton) WHERE NOT (method) -[:HAS]-> (:Parameter) AND method.static = true AND method.visibility = "public"
             SET
               method:Singleton:PublicStaticMethod
             RETURN
@@ -91,12 +90,15 @@
             MATCH
               (client:Type:SingletonClient)
             RETURN
-              client
+              DISTINCT client
             ORDER BY
               client.fqn
         ]]></cypher>
     </concept>
-    <!-- Marks types as SingletonClients, that call "getInstance()" methods of types marked as "Singleton" -->
+    <!--
+        Marks types as SingletonClients, that call "getInstance()" methods of types marked as "Singleton"
+        and adds a USES_SINGLETON relation between client and singleton.
+    -->
     <concept id="singleton:PublicStaticMethodSingletonClient">
         <providesConcept refId="singleton:SingletonClient"/>
         <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
@@ -107,15 +109,18 @@
               (client:Type:Class) -[:DECLARES*]-> (whatever) -[:INVOKES]-> (singleton:Singleton)
             SET
               client:SingletonClient:PublicStaticMethod
-            CREATE
+            MERGE
               (client) -[:USES_SINGLETON]-> (singleton)
             RETURN
-              client
+              DISTINCT client, singleton
             ORDER BY
               client.fqn
         ]]></cypher>
     </concept>
-    <!-- Marks types as SingletonClients, that read the public static singleton variable of types marked as "Singleton" -->
+    <!--
+        Marks types as SingletonClients, that read the public static singleton variable of types marked as "Singleton"
+        and adds a USES_SINGLETON relation between client and singleton.
+    -->
     <concept id="singleton:PublicStaticPropertySingletonClient">
         <providesConcept refId="singleton:SingletonClient"/>
         <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
@@ -126,10 +131,10 @@
               (client:Type:Class) -[:DECLARES*]-> (whatever) -[:READS]-> (singleton:Singleton)
             SET
               client:SingletonClient:PublicStaticField
-            CREATE
+            MERGE
               (client) -[:USES_SINGLETON]-> (singleton)
             RETURN
-              client
+              DISTINCT client, singleton
             ORDER BY
               client.fqn
         ]]></cypher>
