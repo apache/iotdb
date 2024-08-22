@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements ICacheEntryGroup<FK, SK, V, T> {
@@ -54,6 +55,11 @@ public class CacheEntryGroupImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public T computeCacheEntry(SK secondKey, BiFunction<SK, T, T> computation) {
     return cacheEntryMap.compute(secondKey, computation);
+  }
+
+  @Override
+  public T computeCacheEntryIfAbsent(SK secondKey, Function<SK, T> computation) {
+    return cacheEntryMap.computeIfAbsent(secondKey, computation);
   }
 
   @Override

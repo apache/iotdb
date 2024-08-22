@@ -25,6 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 
+import org.apache.tsfile.read.TimeValuePair;
+
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -75,6 +77,19 @@ public class TableDeviceSchemaCache {
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(attributeMap));
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public void updateCache(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final Map<String, TimeValuePair> measurementUpdateMap) {
+    readWriteLock.readLock().lock();
+    try {
+      dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
     } finally {
       readWriteLock.readLock().unlock();
     }
