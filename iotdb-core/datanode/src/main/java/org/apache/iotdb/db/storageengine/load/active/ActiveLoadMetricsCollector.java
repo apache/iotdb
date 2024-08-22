@@ -31,8 +31,8 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
   private final ActiveLoadDirScanner activeLoadDirScanner;
 
-  private long remainingCountPendingFileSkipRound = 0;
-  private long remainingCountFailedFileSkipRound = 0;
+  private long countPendingFileRemainingSkipRound = 0;
+  private long countFailedFileRemainingSkipRound = 0;
 
   public ActiveLoadMetricsCollector(
       final ActiveLoadTsFileLoader activeLoadTsFileLoader,
@@ -44,31 +44,53 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
     register(this::countAndReportPendingFile);
     register(this::countAndReportFailedFile);
-    LOGGER.info("Active load metric collector periodical job registered");
+    LOGGER.info("Active load metric collector periodical jobs registered");
   }
 
   private void countAndReportPendingFile() {
-    if (remainingCountPendingFileSkipRound > 0) {
-      --remainingCountPendingFileSkipRound;
+    if (countPendingFileRemainingSkipRound > 0) {
+      --countPendingFileRemainingSkipRound;
       return;
     }
 
-    final long currentPendingFileNum =
+    final long currentPendingFileNumber =
         activeLoadDirScanner.countAndReportActiveListeningDirsFileNumber();
-    // skip skipCountPendingFile * 5 second
-    // for example 10000 file will skip 150 second, 100000 will skip 1500 second
-    remainingCountPendingFileSkipRound = currentPendingFileNum / 1000 * 3;
+
+    if (currentPendingFileNumber < 100) {
+      countPendingFileRemainingSkipRound = 6; // 30 seconds
+      return;
+    }
+    if (currentPendingFileNumber < 1000) {
+      countPendingFileRemainingSkipRound = 18; // 90 seconds
+      return;
+    }
+    if (currentPendingFileNumber < 10000) {
+      countPendingFileRemainingSkipRound = 120; // 600 seconds
+      return;
+    }
+    countPendingFileRemainingSkipRound = 180; // 900 seconds
   }
 
   private void countAndReportFailedFile() {
-    if (remainingCountFailedFileSkipRound > 0) {
-      --remainingCountFailedFileSkipRound;
+    if (countFailedFileRemainingSkipRound > 0) {
+      --countFailedFileRemainingSkipRound;
       return;
     }
 
-    final long currentFailedFileNum = activeLoadTsFileLoader.countAndReportFailedFileNumber();
-    // skip skipCountFailedFile * 5 second
-    // for example 10000 file will skip 150 second, 100000 will skip 1500 second
-    remainingCountFailedFileSkipRound = currentFailedFileNum / 1000 * 3;
+    final long currentFailedFileNumber = activeLoadTsFileLoader.countAndReportFailedFileNumber();
+
+    if (currentFailedFileNumber < 100) {
+      countFailedFileRemainingSkipRound = 6; // 30 seconds
+      return;
+    }
+    if (currentFailedFileNumber < 1000) {
+      countFailedFileRemainingSkipRound = 18; // 90 seconds
+      return;
+    }
+    if (currentFailedFileNumber < 10000) {
+      countFailedFileRemainingSkipRound = 120; // 600 seconds
+      return;
+    }
+    countFailedFileRemainingSkipRound = currentFailedFileNumber / 50;
   }
 }
