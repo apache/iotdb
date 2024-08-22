@@ -125,7 +125,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 = '2024-01-01'")) {
+          statement.executeQuery("select s1 from sg1 where s4 = CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -150,7 +150,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 != '2024-01-01'")) {
+          statement.executeQuery("select s1 from sg1 where s4 != CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -185,7 +185,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 > '2024-01-01'")) {
+          statement.executeQuery("select s1 from sg1 where s4 > CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -210,7 +210,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 < '2024-01-02'")) {
+          statement.executeQuery("select s1 from sg1 where s4 < CAST('2024-01-02' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -235,7 +235,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 >= '2024-01-01'")) {
+          statement.executeQuery("select s1 from sg1 where s4 >= CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -260,7 +260,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 <= '2024-01-01'")) {
+          statement.executeQuery("select s1 from sg1 where s4 <= CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -303,7 +303,7 @@ public class IoTDBQueryWithComplexValueFilterTableIT {
       }
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s1 from sg1 where s4 = '2024-01-01'")) {
+          statement.executeQuery("select s1 from sg1 where s4 = CAST('2024-01-01' AS DATE)")) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
