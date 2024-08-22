@@ -31,8 +31,8 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
   private final ActiveLoadDirScanner activeLoadDirScanner;
 
-  private long skipCountPendingFile = 0;
-  private long skipCountFailedFile = 0;
+  private long remainingCountPendingFileSkipRound = 0;
+  private long remainingCountFailedFileSkipRound = 0;
 
   public ActiveLoadMetricsCollector(
       final ActiveLoadTsFileLoader activeLoadTsFileLoader,
@@ -42,31 +42,33 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
     this.activeLoadTsFileLoader = activeLoadTsFileLoader;
     this.activeLoadDirScanner = activeLoadDirScanner;
 
-    register(this::countPendingFile);
-    register(this::countFailedFile);
+    register(this::countAndReportPendingFile);
+    register(this::countAndReportFailedFile);
     LOGGER.info("Active load metric collector periodical job registered");
   }
 
-  private void countPendingFile() {
-    if (skipCountPendingFile == 0) {
-      final long currentPendingFileNum =
-          activeLoadDirScanner.countAndReportActiveListeningDirsFileNumber();
-      // skip skipCountPendingFile * 5 second
-      // for example 10000 file will skip 150 second, 100000 will skip 1500 second
-      skipCountPendingFile = currentPendingFileNum / 1000 * 3;
-    } else {
-      --skipCountPendingFile;
+  private void countAndReportPendingFile() {
+    if (remainingCountPendingFileSkipRound > 0) {
+      --remainingCountPendingFileSkipRound;
+      return;
     }
+
+    final long currentPendingFileNum =
+        activeLoadDirScanner.countAndReportActiveListeningDirsFileNumber();
+    // skip skipCountPendingFile * 5 second
+    // for example 10000 file will skip 150 second, 100000 will skip 1500 second
+    remainingCountPendingFileSkipRound = currentPendingFileNum / 1000 * 3;
   }
 
-  private void countFailedFile() {
-    if (skipCountFailedFile == 0) {
-      final long currentFailedFileNum = activeLoadTsFileLoader.countAndReportFailedFileNumber();
-      // skip skipCountFailedFile * 5 second
-      // for example 10000 file will skip 150 second, 100000 will skip 1500 second
-      skipCountFailedFile = currentFailedFileNum / 1000 * 3;
-    } else {
-      --skipCountFailedFile;
+  private void countAndReportFailedFile() {
+    if (remainingCountFailedFileSkipRound > 0) {
+      --remainingCountFailedFileSkipRound;
+      return;
     }
+
+    final long currentFailedFileNum = activeLoadTsFileLoader.countAndReportFailedFileNumber();
+    // skip skipCountFailedFile * 5 second
+    // for example 10000 file will skip 150 second, 100000 will skip 1500 second
+    remainingCountFailedFileSkipRound = currentFailedFileNum / 1000 * 3;
   }
 }
