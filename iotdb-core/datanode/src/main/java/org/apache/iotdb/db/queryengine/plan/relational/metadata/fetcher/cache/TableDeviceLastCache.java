@@ -60,7 +60,10 @@ public class TableDeviceLastCache {
     return new Pair<>(
         lastTime,
         measurement2CachedLastMap.entrySet().stream()
-            .filter(entry -> entry.getValue().getTimestamp() == lastTime)
+            .filter(
+                entry ->
+                    measurements.contains(entry.getKey())
+                        && entry.getValue().getTimestamp() == lastTime)
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getValue())));
   }
 
