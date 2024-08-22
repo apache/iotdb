@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
@@ -301,13 +302,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TAINodeRegisterResp registerAINode(TAINodeRegisterReq req) {
-    throw new UnsupportedOperationException();
+    TAINodeRegisterResp resp =
+        ((AINodeRegisterResp) configManager.registerAINode(req)).convertToAINodeRegisterResp();
+    LOGGER.info("Execute RegisterAINodeRequest {} with result {}", req, resp);
+    return resp;
   }
 
   @Override
   public TAINodeRestartResp restartAINode(TAINodeRestartReq req) {
     TAINodeRestartResp resp = configManager.restartAINode(req);
-
     LOGGER.info("Execute RestartAINodeRequest {} with result {}", req, resp);
     return resp;
   }

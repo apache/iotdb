@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -560,10 +562,22 @@ public class ConfigManager implements IManager {
               nodeStatus.putIfAbsent(
                   dataNodeLocation.getDataNodeId(), NodeStatus.Unknown.toString()));
 
+      List<TAINodeLocation> aiNodeLocations =
+          getNodeManager().getRegisteredAINodes().stream()
+              .map(TAINodeConfiguration::getLocation)
+              .sorted(Comparator.comparingInt(TAINodeLocation::getAiNodeId))
+              .collect(Collectors.toList());
+      Map<Integer, String> nodeStatusMap = getLoadManager().getNodeStatusWithReason();
+      aiNodeLocations.forEach(
+          aiNodeLocation ->
+              nodeStatusMap.putIfAbsent(
+                  aiNodeLocation.getAiNodeId(), NodeStatus.Unknown.toString()));
+
       return new TShowClusterResp()
           .setStatus(status)
           .setConfigNodeList(configNodeLocations)
           .setDataNodeList(dataNodeLocations)
+          .setAiNodeList(aiNodeLocations)
           .setNodeStatus(nodeStatus)
           .setNodeVersionInfo(nodeVersionInfo);
     } else {
@@ -571,6 +585,7 @@ public class ConfigManager implements IManager {
           .setStatus(status)
           .setConfigNodeList(Collections.emptyList())
           .setDataNodeList(Collections.emptyList())
+          .setAiNodeList(Collections.emptyList())
           .setNodeStatus(Collections.emptyMap())
           .setNodeVersionInfo(Collections.emptyMap());
     }

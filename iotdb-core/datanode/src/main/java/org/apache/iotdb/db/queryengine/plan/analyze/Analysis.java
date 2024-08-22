@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByParame
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -239,6 +241,8 @@ public class Analysis implements IAnalysis {
 
   // indicate whether the Nodes produce source data are VirtualSourceNodes
   private boolean isVirtualSource = false;
+
+  private ModelInferenceDescriptor modelInferenceDescriptor;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // SELECT INTO Analysis
@@ -895,6 +899,21 @@ public class Analysis implements IAnalysis {
   public void setLastQueryNonWritableViewSourceExpressionMap(
       Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap) {
     this.lastQueryNonWritableViewSourceExpressionMap = lastQueryNonWritableViewSourceExpressionMap;
+  }
+
+  public ModelInferenceDescriptor getModelInferenceDescriptor() {
+    return modelInferenceDescriptor;
+  }
+
+  public ModelInformation getModelInformation() {
+    if (modelInferenceDescriptor == null) {
+      return null;
+    }
+    return modelInferenceDescriptor.getModelInformation();
+  }
+
+  public void setModelInferenceDescriptor(ModelInferenceDescriptor modelInferenceDescriptor) {
+    this.modelInferenceDescriptor = modelInferenceDescriptor;
   }
 
   public Map<IDeviceID, IDeviceID> getOutputDeviceToQueriedDevicesMap() {

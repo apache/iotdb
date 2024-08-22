@@ -484,7 +484,7 @@ public class NodeManager {
     }
 
     int aiNodeId = nodeInfo.generateNextNodeId();
-
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.AINode, aiNodeId);
     RegisterAINodePlan registerAINodePlan = new RegisterAINodePlan(req.getAiNodeConfiguration());
     // Register new DataNode
     registerAINodePlan.getAINodeConfiguration().getLocation().setAiNodeId(aiNodeId);
