@@ -93,7 +93,7 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
       long startTime = System.nanoTime();
-          statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -133,7 +133,8 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       if (statement != null) {
-        addStatementExecutionLatency(OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
       }
       if (queryId != null) {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -152,8 +153,8 @@ public class RestApiServiceImpl extends RestApiService {
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-        startTime = System.nanoTime();
-          statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      startTime = System.nanoTime();
+      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
 
       if (statement == null) {
         return Response.ok()
@@ -211,7 +212,8 @@ public class RestApiServiceImpl extends RestApiService {
     } finally {
       long costTime = System.nanoTime() - startTime;
       if (statement != null) {
-        addStatementExecutionLatency(OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
+        addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
       }
       if (queryId != null) {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -250,7 +252,7 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
-        finish = true;
+      finish = true;
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
@@ -258,12 +260,14 @@ public class RestApiServiceImpl extends RestApiService {
     } finally {
       long costTime = System.nanoTime() - startTime;
       if (insertRowsStatement != null) {
-        addStatementExecutionLatency(OperationType.INSERT_RECORDS, insertRowsStatement.getType().name(), costTime);
+        addStatementExecutionLatency(
+            OperationType.INSERT_RECORDS, insertRowsStatement.getType().name(), costTime);
       }
       if (queryId != null) {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         if (finish)
-          addQueryLatency(insertRowsStatement.getType(), executionTime > 0 ? executionTime : costTime);
+          addQueryLatency(
+              insertRowsStatement.getType(), executionTime > 0 ? executionTime : costTime);
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -314,12 +318,14 @@ public class RestApiServiceImpl extends RestApiService {
     } finally {
       long costTime = System.nanoTime() - startTime;
       if (insertTabletStatement != null) {
-        addStatementExecutionLatency(OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
+        addStatementExecutionLatency(
+            OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
       }
       if (queryId != null) {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         if (finish)
-          addQueryLatency(insertTabletStatement.getType(), executionTime > 0 ? executionTime : costTime);
+          addQueryLatency(
+              insertTabletStatement.getType(), executionTime > 0 ? executionTime : costTime);
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -358,23 +364,24 @@ public class RestApiServiceImpl extends RestApiService {
           .build();
     }
   }
+
   /** Add stat of operation into metrics */
   private void addStatementExecutionLatency(
-          OperationType operation, String statementType, long costTime) {
+      OperationType operation, String statementType, long costTime) {
     if (statementType == null) {
       return;
     }
 
     MetricService.getInstance()
-            .timer(
-                    costTime,
-                    TimeUnit.NANOSECONDS,
-                    Metric.PERFORMANCE_OVERVIEW.toString(),
-                    MetricLevel.CORE,
-                    Tag.INTERFACE.toString(),
-                    operation.toString(),
-                    Tag.TYPE.toString(),
-                    statementType);
+        .timer(
+            costTime,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            operation.toString(),
+            Tag.TYPE.toString(),
+            statementType);
   }
 
   private void addQueryLatency(StatementType statementType, long costTimeInNanos) {
