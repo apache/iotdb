@@ -56,7 +56,8 @@ public enum TableBuiltinScalarFunction {
   LN("ln"),
   LOG10("log10"),
   SQRT("sqrt"),
-  DATE_BIN("date_bin");
+  DATE_BIN("date_bin"),
+  ;
 
   private final String functionName;
 

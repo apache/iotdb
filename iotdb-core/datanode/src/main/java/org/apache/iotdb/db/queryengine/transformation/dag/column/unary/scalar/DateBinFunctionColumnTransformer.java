@@ -21,42 +21,136 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.db.utils.DateTimeUtils.TIMESTAMP_PRECISION;
+
 public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
 
-  private final long monthDuration;
-  private final long nonMonthDuration;
-  private final long origin;
+  private static final long NANOSECONDS_IN_MILLISECOND = 1_000_000;
+  private static final long NANOSECONDS_IN_MICROSECOND = 1_000;
+
+  private static long monthDuration;
+  private static long nonMonthDuration;
+  private static long origin;
+  private static ZoneId zoneId;
 
   public DateBinFunctionColumnTransformer(
       Type returnType,
       long monthDuration,
       long nonMonthDuration,
       ColumnTransformer childColumnTransformer,
-      long origin) {
+      long origin,
+      ZoneId zoneId) {
     super(returnType, childColumnTransformer);
     this.monthDuration = monthDuration;
     this.nonMonthDuration = nonMonthDuration;
     this.origin = origin;
+    this.zoneId = zoneId;
   }
 
-  protected long dateBin(long interval, long source) {
-    long offset = (source - origin) % interval;
-    return source - offset;
+  // Harmonized to nanosecond timestamp accuracy
+  public LocalDateTime convertToLocalDateTime(long timestamp) {
+    Instant instant;
+
+    switch (TIMESTAMP_PRECISION) {
+      case "ms":
+        instant = Instant.ofEpochMilli(timestamp);
+        break;
+      case "us":
+        instant =
+            Instant.ofEpochSecond(
+                TimeUnit.MICROSECONDS.toSeconds(timestamp), (timestamp % 1_000_000) * 1000);
+        break;
+      case "ns":
+        instant =
+            Instant.ofEpochSecond(
+                TimeUnit.NANOSECONDS.toSeconds(timestamp), timestamp % 1_000_000_000);
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported precision: " + TIMESTAMP_PRECISION);
+    }
+
+    return LocalDateTime.ofInstant(instant, zoneId);
+  }
+
+  public long convertToTimestamp(LocalDateTime dateTime) {
+    // Converting LocalDateTime to Seconds since epoch
+    long epochMilliSecond = dateTime.atZone(zoneId).toInstant().toEpochMilli();
+    // Get the nanoseconds section
+    long nanoAdjustment = dateTime.getNano();
+
+    switch (TIMESTAMP_PRECISION) {
+      case "ms":
+        return epochMilliSecond + nanoAdjustment / NANOSECONDS_IN_MILLISECOND;
+      case "us":
+        return TimeUnit.MILLISECONDS.toMicros(epochMilliSecond)
+            + nanoAdjustment / NANOSECONDS_IN_MICROSECOND;
+      case "ns":
+        return TimeUnit.MILLISECONDS.toNanos(epochMilliSecond) + nanoAdjustment;
+      default:
+        throw new IllegalArgumentException("Unknown precision: " + TIMESTAMP_PRECISION);
+    }
+  }
+
+  public long getNanoTimeStamp(long timestamp) {
+    switch (TIMESTAMP_PRECISION) {
+      case "ms":
+        return TimeUnit.MILLISECONDS.toNanos(timestamp);
+      case "us":
+        return TimeUnit.MICROSECONDS.toNanos(timestamp);
+      case "ns":
+        return timestamp;
+      default:
+        throw new IllegalArgumentException("Unknown precision: " + TIMESTAMP_PRECISION);
+    }
+  }
+
+  public long dateBin(long source, long origin) {
+    // return source if interval is 0
+    if (monthDuration == 0 && nonMonthDuration == 0) {
+      return source;
+    }
+    if (monthDuration != 0) {
+      // convert to LocalDateTime
+      LocalDateTime sourceDate = convertToLocalDateTime(source);
+      LocalDateTime originDate = convertToLocalDateTime(origin);
+
+      // calculate the number of months between the origin and source
+      long monthsDiff = ChronoUnit.MONTHS.between(originDate, sourceDate);
+      // calculate the number of month cycles completed
+      long completedMonthCycles = monthsDiff / monthDuration;
+
+      LocalDateTime binStart =
+          originDate
+              .plusNanos(getNanoTimeStamp(nonMonthDuration) * completedMonthCycles)
+              .plusMonths(completedMonthCycles * monthDuration);
+
+      if (binStart.isAfter(sourceDate)) {
+        binStart =
+            binStart.minusMonths(monthDuration).minusNanos(getNanoTimeStamp(nonMonthDuration));
+      }
+
+      return convertToTimestamp(binStart);
+    }
+
+    long diff = source - origin;
+    long n = diff >= 0 ? diff / nonMonthDuration : (diff - nonMonthDuration + 1) / nonMonthDuration;
+    return origin + (n * nonMonthDuration);
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        // not do date_bin yet
-        if (monthDuration == 0) {
-          dateBin(nonMonthDuration, column.getLong(i));
-        } else {
-
-        }
-        columnBuilder.writeLong(column.getLong(i));
+        long result = dateBin(column.getLong(i), origin);
+        columnBuilder.writeLong(result);
       } else {
+        // If source is null, return null
         columnBuilder.appendNull();
       }
     }

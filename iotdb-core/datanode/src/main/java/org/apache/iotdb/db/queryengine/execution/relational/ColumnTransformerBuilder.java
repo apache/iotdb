@@ -908,7 +908,8 @@ public class ColumnTransformerBuilder
             ((LongLiteral) children.get(0)).getParsedValue(),
             ((LongLiteral) children.get(1)).getParsedValue(),
             source,
-            ((LongLiteral) children.get(3)).getParsedValue());
+            ((LongLiteral) children.get(3)).getParsedValue(),
+            context.sessionInfo.getZoneId());
       }
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
