@@ -42,8 +42,7 @@ public class RadiansColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.toRadians(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.toRadians(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.toRadians((double) column.getLong(i)));
         }
       } else {

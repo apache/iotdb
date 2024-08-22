@@ -219,7 +219,7 @@ public abstract class WrappedInsertStatement extends WrappedStatement
     return databaseName;
   }
 
-  public void columnsToLowerCase() {
-    getInnerTreeStatement().measurementsToLowerCase();
+  public void toLowerCase() {
+    getInnerTreeStatement().toLowerCase();
   }
 }

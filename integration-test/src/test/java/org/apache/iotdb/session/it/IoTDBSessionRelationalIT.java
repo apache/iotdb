@@ -922,9 +922,10 @@ public class IoTDBSessionRelationalIT {
       session.executeNonQueryStatement("FLush");
 
       for (long row = 15; row < 30; row++) {
+        // check case sensitivity
         session.executeNonQueryStatement(
             String.format(
-                "INSERT INTO db1.table11 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
+                "INSERT INTO DB1.TaBle11 (time, id1, attr1, m1) VALUES (%d, '%s', '%s', %f)",
                 row, "id:" + row, "attr:" + row, row * 1.0));
       }
 

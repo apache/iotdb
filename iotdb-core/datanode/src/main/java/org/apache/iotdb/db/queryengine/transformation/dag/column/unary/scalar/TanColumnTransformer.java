@@ -42,8 +42,7 @@ public class TanColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.tan(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.tan(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.tan((double) column.getLong(i)));
         }
       } else {

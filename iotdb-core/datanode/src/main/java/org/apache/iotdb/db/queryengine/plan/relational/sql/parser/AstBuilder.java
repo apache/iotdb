@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
@@ -125,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
@@ -143,6 +145,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -180,7 +183,6 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
-import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
@@ -416,9 +418,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     List<InsertRowStatement> rowStatements =
         rows.stream()
             .map(
-                r ->
-                    toInsertRowStatement(
-                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName, databaseName))
+                r -> {
+                  List<Expression> expressions;
+                  if (r instanceof Row) {
+                    expressions = ((Row) r).getItems();
+                  } else if (r instanceof Literal) {
+                    expressions = Collections.singletonList(r);
+                  } else {
+                    throw new SemanticException("unexpected expression: " + r);
+                  }
+                  return toInsertRowStatement(
+                      expressions, finalTimeColumnIndex, columnNameArray, tableName, databaseName);
+                })
             .collect(toList());
 
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
@@ -428,7 +439,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private InsertRowStatement toInsertRowStatement(
-      Row row,
+      List<Expression> expressions,
       int timeColumnIndex,
       String[] nonTimeColumnNames,
       String tableName,
@@ -440,9 +451,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     int nonTimeColCnt;
     if (timeColumnIndex == -1) {
       timestamp = CommonDateTimeUtils.currentTime();
-      nonTimeColCnt = row.getItems().size();
+      nonTimeColCnt = expressions.size();
     } else {
-      Expression timeExpression = row.getItems().get(timeColumnIndex);
+      Expression timeExpression = expressions.get(timeColumnIndex);
       if (timeExpression instanceof LongLiteral) {
         timestamp = ((LongLiteral) timeExpression).getParsedValue();
       } else {
@@ -452,7 +463,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 CommonDateTimeUtils.currentTime(),
                 zoneId);
       }
-      nonTimeColCnt = row.getItems().size() - 1;
+      nonTimeColCnt = expressions.size() - 1;
     }
 
     if (nonTimeColCnt != nonTimeColumnNames.length) {
@@ -468,15 +479,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     Object[] values = new Object[nonTimeColumnNames.length];
     int valuePos = 0;
-    for (int i = 0; i < row.getItems().size(); i++) {
+    for (int i = 0; i < expressions.size(); i++) {
       if (i != timeColumnIndex) {
-        values[valuePos++] = AstUtil.expressionToTsValue(row.getItems().get(i));
+        values[valuePos++] = AstUtil.expressionToTsValue(expressions.get(i));
       }
     }
 
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
-    databaseName.ifPresent(insertRowStatement::setDatabaseName);
+    databaseName.ifPresent(
+        databaseName1 -> insertRowStatement.setDatabaseName(databaseName1.toLowerCase()));
     return insertRowStatement;
   }
 
@@ -710,8 +722,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
-      String key = parseStringLiteral(property.getName().getValue());
-      String value = parseStringLiteral(property.getNonDefaultValue().toString());
+      String key = property.getName().getValue();
+      Expression propertyValue = property.getNonDefaultValue();
+      if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
+        throw new IllegalArgumentException(
+            propertyValue.getExpressionType() + " is not supported for 'set configuration'");
+      }
+      String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key, value);
     }
     setConfigurationStatement.setNodeId(nodeId);
@@ -1424,7 +1441,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitConcatenation(RelationalSqlParser.ConcatenationContext ctx) {
     return new FunctionCall(
         getLocation(ctx.CONCAT()),
-        QualifiedName.of("concat"),
+        QualifiedName.of(TableBuiltinScalarFunction.CONCAT.getFunctionName()),
         ImmutableList.of((Expression) visit(ctx.left), (Expression) visit(ctx.right)));
   }
 

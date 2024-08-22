@@ -88,7 +88,7 @@ public class TableHeaderSchemaValidator {
     List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
       throw new IllegalArgumentException(
-          "Column List in TableSchema should never be null or empty.");
+          "No column other than Time present, please check the request");
     }
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     List<ColumnSchema> missingColumnList = new ArrayList<>();
