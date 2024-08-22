@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.load.active;
+package org.apache.iotdb.db.queryengine.execution.load.active;
 
 import org.apache.iotdb.db.queryengine.metric.load.ActiveLoadingFilesMetricsSet;
 
