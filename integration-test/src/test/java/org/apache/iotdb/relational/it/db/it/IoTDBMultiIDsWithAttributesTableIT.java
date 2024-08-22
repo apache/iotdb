@@ -349,34 +349,34 @@ public class IoTDBMultiIDsWithAttributesTableIT {
 
   @Test
   public void projectSortTest() {
-    String[] expectedHeader = new String[] {"time", "level", "attr1", "device", "num", "date"};
+    String[] expectedHeader = new String[] {"level", "attr1", "device", "num", "date"};
     String[] retArray =
         new String[] {
-          "1971-04-26T17:46:40.000Z,l2,yy,d1,12,null,",
-          "1970-01-01T00:00:00.020Z,l2,yy,d1,2,null,",
-          "1971-01-01T00:00:00.100Z,l2,yy,d1,10,null,",
-          "1970-01-01T00:00:00.000Z,l1,c,d1,3,null,",
-          "1971-01-01T00:01:40.000Z,l1,c,d1,11,null,",
-          "1971-01-01T00:00:00.000Z,l1,c,d1,6,null,",
+          "l2,yy,d1,2,null,",
+          "l2,yy,d1,10,null,",
+          "l2,yy,d1,12,null,",
+          "l1,c,d1,3,null,",
+          "l1,c,d1,6,null,",
+          "l1,c,d1,11,null,",
         };
     tableResultSetEqualTest(
-        "select time,level,attr1,device,num,date from table0 order by attr2 desc limit 6",
+        "select level,attr1,device,num,date from table0 order by attr2 desc,time limit 6",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    expectedHeader = new String[] {"time", "level", "attr1", "str"};
+    expectedHeader = new String[] {"time", "level", "attr2", "str"};
     retArray =
         new String[] {
+          "1970-01-01T00:00:00.040Z,l3,a,apricot,",
           "1970-01-01T00:00:00.040Z,l3,null,apricot,",
-          "1970-01-01T00:00:00.040Z,l3,t,apricot,",
-          "1970-01-01T00:00:00.020Z,l2,vv,pineapple,",
-          "1970-01-01T00:00:00.020Z,l2,yy,pineapple,",
+          "1970-01-01T00:00:00.020Z,l2,null,pineapple,",
+          "1970-01-01T00:00:00.020Z,l2,zz,pineapple,",
           "1970-01-01T00:00:00.000Z,l1,d,coconut,",
           "1970-01-01T00:00:00.000Z,l1,c,coconut,",
         };
     tableResultSetEqualTest(
-        "select time,level,attr1,str from table0 order by num+1 limit 6",
+        "select time,level,attr2,str from table0 order by num+1,attr1 limit 6",
         expectedHeader,
         retArray,
         DATABASE_NAME);
