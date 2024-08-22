@@ -28,19 +28,11 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadMetricsCollector.class);
 
-  private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
-  private final ActiveLoadDirScanner activeLoadDirScanner;
-
   private long skipCountPendingFile = 0;
   private long skipCountFailedFile = 0;
 
-  public ActiveLoadMetricsCollector(
-      final ActiveLoadTsFileLoader activeLoadTsFileLoader,
-      final ActiveLoadDirScanner activeLoadDirScanner) {
+  public ActiveLoadMetricsCollector() {
     super(ThreadName.ACTIVE_LOAD_METRICS_COLLECTOR);
-
-    this.activeLoadTsFileLoader = activeLoadTsFileLoader;
-    this.activeLoadDirScanner = activeLoadDirScanner;
 
     register(this::countPendingFile);
     register(this::countFailedFile);
@@ -49,7 +41,7 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
   private void countPendingFile() {
     if (skipCountPendingFile == 0) {
-      final long currentPendingFileNum = activeLoadDirScanner.countActiveListeningDirsFile();
+      final long currentPendingFileNum = ActiveLoadAgent.scanner().countActiveListeningDirsFile();
       // skip skipCountPendingFile * 5 second
       // for example 10000 file will skip 150 second, 100000 will skip 1500 second
       skipCountPendingFile = currentPendingFileNum / 1000 * 3;
@@ -60,7 +52,7 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
   private void countFailedFile() {
     if (skipCountFailedFile == 0) {
-      final long currentFailedFileNum = activeLoadTsFileLoader.countFailedFile();
+      final long currentFailedFileNum = ActiveLoadAgent.loader().countFailedFile();
       // skip skipCountFailedFile * 5 second
       // for example 10000 file will skip 150 second, 100000 will skip 1500 second
       skipCountFailedFile = currentFailedFileNum / 1000 * 3;

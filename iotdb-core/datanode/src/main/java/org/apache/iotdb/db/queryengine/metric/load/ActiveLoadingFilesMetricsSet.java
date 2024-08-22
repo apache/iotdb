@@ -98,7 +98,7 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
             Tag.TYPE.toString(),
             FAILED);
 
-    ActiveLoadAgent.metrics().start();
+    ActiveLoadAgent.executor().start();
   }
 
   @Override
@@ -137,7 +137,7 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
         Tag.TYPE.toString(),
         FAILED);
 
-    ActiveLoadAgent.metrics().stop();
+    ActiveLoadAgent.executor().stop();
   }
 
   public static ActiveLoadingFilesMetricsSet getInstance() {

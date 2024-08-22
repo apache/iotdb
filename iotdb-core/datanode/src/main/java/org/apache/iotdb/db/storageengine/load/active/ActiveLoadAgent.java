@@ -28,8 +28,7 @@ public class ActiveLoadAgent {
   public ActiveLoadAgent() {
     this.activeLoadTsFileLoader = new ActiveLoadTsFileLoader();
     this.activeLoadDirScanner = new ActiveLoadDirScanner(activeLoadTsFileLoader);
-    this.activeLoadMetricsCollector =
-        new ActiveLoadMetricsCollector(activeLoadTsFileLoader, activeLoadDirScanner);
+    this.activeLoadMetricsCollector = new ActiveLoadMetricsCollector();
   }
 
   public ActiveLoadTsFileLoader loader() {
@@ -40,7 +39,7 @@ public class ActiveLoadAgent {
     return activeLoadDirScanner;
   }
 
-  public ActiveLoadMetricsCollector metrics() {
+  public ActiveLoadMetricsCollector executor() {
     return activeLoadMetricsCollector;
   }
 
