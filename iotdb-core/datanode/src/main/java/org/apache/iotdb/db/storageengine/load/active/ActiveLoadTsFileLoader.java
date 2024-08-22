@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load.active;
+package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -46,8 +47,12 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
@@ -306,5 +311,26 @@ public class ActiveLoadTsFileLoader {
 
       FileUtils.moveFile(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
     }
+  }
+
+  // Metrics
+  public long countAndReportFailedFileNumber() {
+    final long[] fileCount = {0};
+    try {
+      initFailDirIfNecessary();
+      Files.walkFileTree(
+          new File(failDir.get()).toPath(),
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+              fileCount[0]++;
+              return FileVisitResult.CONTINUE;
+            }
+          });
+      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+    } catch (final IOException e) {
+      LOGGER.warn("Failed to count failed files in fail directory.", e);
+    }
+    return fileCount[0];
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.load;
+package org.apache.iotdb.db.storageengine.load.memory;
 
 import org.apache.iotdb.db.exception.LoadRuntimeOutOfMemoryException;
 
