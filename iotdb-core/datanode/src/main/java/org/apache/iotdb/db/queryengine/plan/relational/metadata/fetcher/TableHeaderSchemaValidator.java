@@ -119,13 +119,15 @@ public class TableHeaderSchemaValidator {
           throw new SemanticException(
               String.format(
                   "Unknown column category for %s. Cannot auto create column.",
-                  columnSchema.getName()));
+                  columnSchema.getName()),
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
         }
         if (columnSchema.getType() == null) {
           throw new SemanticException(
               String.format(
                   "Unknown column data type for %s. Cannot auto create column.",
-                  columnSchema.getName()));
+                  columnSchema.getName()),
+              TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode());
         }
         missingColumnList.add(columnSchema);
       } else {
@@ -136,7 +138,8 @@ public class TableHeaderSchemaValidator {
         if (columnSchema.getColumnCategory() != null
             && !existingColumn.getColumnCategory().equals(columnSchema.getColumnCategory())) {
           throw new SemanticException(
-              String.format("Wrong category at column %s.", columnSchema.getName()));
+              String.format("Wrong category at column %s.", columnSchema.getName()),
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
         }
       }
     }

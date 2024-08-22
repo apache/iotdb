@@ -210,7 +210,7 @@ public class AnalyzeUtils {
         analysis.setFailStatus(
             RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
       } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+        analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
       }
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);

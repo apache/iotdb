@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.annotations.TableModel;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -247,7 +248,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {
-          markFailedMeasurement(i, e);
+          markFailedMeasurement(
+              i, new SemanticException(e, TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()));
         }
       }
     }

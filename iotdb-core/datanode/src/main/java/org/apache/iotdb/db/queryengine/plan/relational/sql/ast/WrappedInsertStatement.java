@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -82,7 +83,9 @@ public abstract class WrappedInsertStatement extends WrappedStatement
                 insertBaseStatement.getMeasurements()[i],
                 insertBaseStatement.getDataType(i) != null
                     ? TypeFactory.getType(insertBaseStatement.getDataType(i))
-                    : null,
+                    : TypeFactory.getType(
+                        TypeInferenceUtils.getPredictedDataType(
+                            insertBaseStatement.getFirstValueOfIndex(i), true)),
                 false,
                 insertBaseStatement.getColumnCategory(i)));
       } else {

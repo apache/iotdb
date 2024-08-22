@@ -346,6 +346,37 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void partialInsertSQLTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TREE_SQL_DIALECT)) {
+      // disable auto-creation only for this test
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_auto_create_schema\"=\"false\"");
+    }
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // the table is missing column "m2"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table2_2 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+      try {
+        session.executeNonQueryStatement(
+            "INSERT INTO table2_2 (time, id1, attr1, m1, m2) values (1, '1', '1', 1.0, 2.0)");
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "615: Unknown column category for m2. Cannot auto create column.", e.getMessage());
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection(TREE_SQL_DIALECT)) {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"enable_auto_create_schema\"=\"true\"");
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalRowTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
