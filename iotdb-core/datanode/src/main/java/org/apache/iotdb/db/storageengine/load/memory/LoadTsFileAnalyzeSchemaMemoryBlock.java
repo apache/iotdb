@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.load.memory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileMemMetricSet;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileMemMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;

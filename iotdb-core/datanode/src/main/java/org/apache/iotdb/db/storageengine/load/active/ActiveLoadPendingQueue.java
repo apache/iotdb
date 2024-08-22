@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
-import org.apache.iotdb.db.queryengine.metric.load.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
 
 import org.apache.tsfile.utils.Pair;
 

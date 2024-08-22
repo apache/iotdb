@@ -17,11 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.metric.load;
+package org.apache.iotdb.db.storageengine.load.metrics;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
@@ -98,7 +97,7 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
             Tag.TYPE.toString(),
             FAILED);
 
-    ActiveLoadAgent.metrics().start();
+    //    ActiveLoadAgent.metrics().start();
   }
 
   @Override
@@ -137,7 +136,7 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
         Tag.TYPE.toString(),
         FAILED);
 
-    ActiveLoadAgent.metrics().stop();
+    //    ActiveLoadAgent.metrics().stop();
   }
 
   public static ActiveLoadingFilesMetricsSet getInstance() {
