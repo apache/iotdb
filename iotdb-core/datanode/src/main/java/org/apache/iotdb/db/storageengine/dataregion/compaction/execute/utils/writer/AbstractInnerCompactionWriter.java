@@ -53,7 +53,6 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected AbstractInnerCompactionWriter(List<TsFileResource> targetFileResources)
       throws IOException {
     this.targetResources = targetFileResources;
-    this.fileWriter = getAvailableWriter();
   }
 
   @Override
