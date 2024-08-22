@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.active;
 
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.queryengine.metric.load.ActiveLoadingFilesMetricsSet;
 
 import org.apache.commons.io.FileUtils;
@@ -39,7 +40,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ActiveLoadDirScanner extends ActiveLoadManager {
+public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadDirScanner.class);
 
@@ -52,13 +53,11 @@ public class ActiveLoadDirScanner extends ActiveLoadManager {
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
   public ActiveLoadDirScanner(final ActiveLoadTsFileLoader activeLoadTsFileLoader) {
+    super(ThreadName.ACTIVE_LOAD_DIR_SCANNER);
     this.activeLoadTsFileLoader = activeLoadTsFileLoader;
-  }
 
-  public void start() {
     register(this::scanSafely);
-    super.start();
-    LOGGER.info("Registering active load scan periodical job");
+    LOGGER.info("Active load dir scanner periodical job registered");
   }
 
   private void scanSafely() {
