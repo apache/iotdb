@@ -569,6 +569,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private void restartStuckPipe(final PipeMeta pipeMeta) {
     LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
+    acquireWriteLock();
     try {
       final long startTime = System.currentTimeMillis();
       final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
@@ -580,6 +581,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.warn("Failed to restart stuck pipe {}.", pipeMeta.getStaticMeta(), e);
+    } finally {
+      releaseWriteLock();
     }
   }
 
