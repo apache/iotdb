@@ -3231,7 +3231,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               database,
               tableName,
               queryId,
-              AlterTableOperationType.RENAME_COLUMN,
+              AlterTableOperationType.DROP_COLUMN,
               stream.toByteArray(),
               client);
 

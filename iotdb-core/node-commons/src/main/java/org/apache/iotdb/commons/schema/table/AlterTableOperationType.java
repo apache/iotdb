@@ -22,7 +22,8 @@ package org.apache.iotdb.commons.schema.table;
 public enum AlterTableOperationType {
   ADD_COLUMN((byte) 0),
   SET_PROPERTIES((byte) 1),
-  RENAME_COLUMN((byte) 2);
+  RENAME_COLUMN((byte) 2),
+  DROP_COLUMN((byte) 3);
 
   private final byte type;
 
