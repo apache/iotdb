@@ -23,6 +23,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 
 public class TableDeviceCacheEntry {
 
@@ -35,6 +36,7 @@ public class TableDeviceCacheEntry {
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
   private final Map<String, String> attributeMap;
+  private TableDeviceLastCache lastCache = null;
 
   public TableDeviceCacheEntry(final Map<String, String> attributeMap) {
     this.attributeMap = Collections.unmodifiableMap(attributeMap);
@@ -49,6 +51,9 @@ public class TableDeviceCacheEntry {
   }
 
   public int estimateSize() {
-    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOfMap(attributeMap));
+    return (int)
+        (INSTANCE_SIZE
+            + RamUsageEstimator.sizeOfMap(attributeMap)
+            + (Objects.nonNull(lastCache) ? lastCache.estimateSize() : 0));
   }
 }
