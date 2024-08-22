@@ -170,6 +170,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private DataNode() {
     super("DataNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
+    DataNodeHolder.INSTANCE = this;
   }
 
   // TODO: This needs removal of statics ...
@@ -1151,7 +1152,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static class DataNodeHolder {
 
-    private static final DataNode INSTANCE = new DataNode();
+    private static DataNode INSTANCE;
 
     private DataNodeHolder() {
       // Empty constructor
