@@ -110,6 +110,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   protected ConfigNode() {
     super("ConfigNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
+    ConfigNodeHolder.instance = this;
   }
 
   public static void main(String[] args) throws Exception {
@@ -525,7 +526,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private static class ConfigNodeHolder {
 
-    private static ConfigNode instance = new ConfigNode();
+    private static ConfigNode instance;
 
     private ConfigNodeHolder() {
       // Empty constructor
