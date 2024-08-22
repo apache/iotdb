@@ -19,28 +19,17 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 
 import java.io.IOException;
 
-public class RenameTableColumnProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, AddTableColumnState> {
-
-  private String database;
-
-  private String tableName;
-
-  private String queryId;
-
+public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddTableColumnState> {
   private String oldName;
   private String newName;
-  private TsTable table;
 
   public RenameTableColumnProcedure() {
     super();
@@ -52,9 +41,7 @@ public class RenameTableColumnProcedure
       final String queryId,
       final String oldName,
       final String newName) {
-    this.database = database;
-    this.tableName = tableName;
-    this.queryId = queryId;
+    super(database, tableName, queryId);
     this.oldName = oldName;
     this.newName = newName;
   }

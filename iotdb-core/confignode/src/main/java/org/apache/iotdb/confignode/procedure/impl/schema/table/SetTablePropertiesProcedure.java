@@ -27,7 +27,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -51,19 +50,12 @@ import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropert
 import static org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState.VALIDATE_TABLE;
 
 public class SetTablePropertiesProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, SetTablePropertiesState> {
+    extends AbstractAlterTableProcedure<SetTablePropertiesState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTablePropertiesProcedure.class);
 
-  private String database;
-
-  private String tableName;
-
-  private String queryId;
-
   private Map<String, String> originalProperties = new HashMap<>();
   private Map<String, String> updatedProperties;
-  private TsTable table;
 
   public SetTablePropertiesProcedure() {
     super();
@@ -74,9 +66,7 @@ public class SetTablePropertiesProcedure
       final String tableName,
       final String queryId,
       final Map<String, String> properties) {
-    this.database = database;
-    this.tableName = tableName;
-    this.queryId = queryId;
+    super(database, tableName, queryId);
     this.updatedProperties = properties;
   }
 
@@ -258,49 +248,21 @@ public class SetTablePropertiesProcedure
     return VALIDATE_TABLE;
   }
 
-  public String getDatabase() {
-    return database;
-  }
-
-  public String getTableName() {
-    return tableName;
-  }
-
-  public String getQueryId() {
-    return queryId;
-  }
-
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
-    ReadWriteIOUtils.write(database, stream);
-    ReadWriteIOUtils.write(tableName, stream);
-    ReadWriteIOUtils.write(queryId, stream);
-
     ReadWriteIOUtils.write(originalProperties, stream);
     ReadWriteIOUtils.write(updatedProperties, stream);
-    if (Objects.nonNull(table)) {
-      ReadWriteIOUtils.write(true, stream);
-      table.serialize(stream);
-    } else {
-      ReadWriteIOUtils.write(false, stream);
-    }
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
-    this.database = ReadWriteIOUtils.readString(byteBuffer);
-    this.tableName = ReadWriteIOUtils.readString(byteBuffer);
-    this.queryId = ReadWriteIOUtils.readString(byteBuffer);
 
     this.originalProperties = ReadWriteIOUtils.readMap(byteBuffer);
     this.updatedProperties = ReadWriteIOUtils.readMap(byteBuffer);
-    if (ReadWriteIOUtils.readBool(byteBuffer)) {
-      this.table = TsTable.deserialize(byteBuffer);
-    }
   }
 
   @Override
@@ -312,14 +274,11 @@ public class SetTablePropertiesProcedure
       return false;
     }
     final SetTablePropertiesProcedure that = (SetTablePropertiesProcedure) o;
-    return Objects.equals(database, that.database)
-        && Objects.equals(tableName, that.tableName)
-        && Objects.equals(updatedProperties, that.updatedProperties)
-        && Objects.equals(queryId, that.queryId);
+    return super.equals(o) && Objects.equals(updatedProperties, that.updatedProperties);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, updatedProperties, queryId);
+    return Objects.hash(super.hashCode(), updatedProperties);
   }
 }
