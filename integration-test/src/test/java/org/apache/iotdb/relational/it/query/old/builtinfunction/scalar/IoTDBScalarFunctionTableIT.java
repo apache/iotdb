@@ -414,20 +414,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void acosTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP And range of input value is [-1, 1]
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.acos(1), Math.acos(2)};
     Double[] expectedResultLong = new Double[] {Math.acos(1), Math.acos(2)};
     Double[] expectedResultFloat = new Double[] {Math.acos(1.0f), Math.acos(0.5f)};
     Double[] expectedResultDouble = new Double[] {Math.acos(1.0), Math.acos(0.5)};
     testDoubleResult(
-            "select time,acos(s2),acos(s3),acos(s4),acos(s5) from acosTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,acos(s2),acos(s3),acos(s4),acos(s5) from acosTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
     String[] expectedAns =
         new String[] {
           "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
@@ -483,20 +482,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void asinTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP And range of input value is [-1, 1]
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.asin(1), Math.asin(2)};
     Double[] expectedResultLong = new Double[] {Math.asin(1), Math.asin(2)};
     Double[] expectedResultFloat = new Double[] {Math.asin(1.0f), Math.asin(0.5f)};
     Double[] expectedResultDouble = new Double[] {Math.asin(1.0), Math.asin(0.5)};
     testDoubleResult(
-            "select time,asin(s2),asin(s3),asin(s4),asin(s5) from asinTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,asin(s2),asin(s3),asin(s4),asin(s5) from asinTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -547,20 +545,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void atanTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.atan(1), Math.atan(2), Math.atan(3)};
     Double[] expectedResultLong = new Double[] {Math.atan(1), Math.atan(2), Math.atan(3)};
     Double[] expectedResultFloat = new Double[] {Math.atan(1.0f), Math.atan(2.5f), Math.atan(3.5f)};
     Double[] expectedResultDouble = new Double[] {Math.atan(1.0), Math.atan(2.5), Math.atan(3.5)};
     testDoubleResult(
-            "select time,atan(s2),atan(s3),atan(s4),atan(s5) from atanTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,atan(s2),atan(s3),atan(s4),atan(s5) from atanTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -611,20 +608,20 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void ceilTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.ceil(1), Math.ceil(2), Math.ceil(-2)};
     Double[] expectedResultLong = new Double[] {Math.ceil(1), Math.ceil(2), Math.ceil(-2)};
-    Double[] expectedResultFloat = new Double[] {Math.ceil(1.0f), Math.ceil(2.5f), Math.ceil(-2.5f)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.ceil(1.0f), Math.ceil(2.5f), Math.ceil(-2.5f)};
     Double[] expectedResultDouble = new Double[] {Math.ceil(1.0), Math.ceil(2.5), Math.ceil(-2.5)};
     testDoubleResult(
-            "select time,ceil(s2),ceil(s3),ceil(s4),ceil(s5) from ceilTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,ceil(s2),ceil(s3),ceil(s4),ceil(s5) from ceilTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -804,20 +801,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void cosTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.cos(1), Math.cos(2), Math.cos(3)};
     Double[] expectedResultLong = new Double[] {Math.cos(1), Math.cos(2), Math.cos(3)};
     Double[] expectedResultFloat = new Double[] {Math.cos(1), Math.cos(2.5), Math.cos(3.5)};
     Double[] expectedResultDouble = new Double[] {Math.cos(1), Math.cos(2.5), Math.cos(3.5)};
     testDoubleResult(
-            "select time,cos(s2),cos(s3),cos(s4),cos(s5) from cosTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,cos(s2),cos(s3),cos(s4),cos(s5) from cosTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -868,20 +864,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void coshTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.cosh(1), Math.cosh(2), Math.cosh(3)};
     Double[] expectedResultLong = new Double[] {Math.cosh(1), Math.cosh(2), Math.cosh(3)};
     Double[] expectedResultFloat = new Double[] {Math.cosh(1), Math.cosh(2.5), Math.cosh(3.5)};
     Double[] expectedResultDouble = new Double[] {Math.cosh(1), Math.cosh(2.5), Math.cosh(3.5)};
     testDoubleResult(
-            "select time,cosh(s2),cosh(s3),cosh(s4),cosh(s5) from coshTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,cosh(s2),cosh(s3),cosh(s4),cosh(s5) from coshTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -932,20 +927,23 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void degreesTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
-    Double[] expectedResultInt = new Double[] {Math.toDegrees(1), Math.toDegrees(2), Math.toDegrees(3)};
-    Double[] expectedResultLong = new Double[] {Math.toDegrees(1), Math.toDegrees(2), Math.toDegrees(3)};
-    Double[] expectedResultFloat = new Double[] {Math.toDegrees(1), Math.toDegrees(2.5), Math.toDegrees(3.5)};
-    Double[] expectedResultDouble = new Double[] {Math.toDegrees(1), Math.toDegrees(2.5), Math.toDegrees(3.5)};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2), Math.toDegrees(3)};
+    Double[] expectedResultLong =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2), Math.toDegrees(3)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2.5), Math.toDegrees(3.5)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2.5), Math.toDegrees(3.5)};
     testDoubleResult(
-            "select time,degrees(s2),degrees(s3),degrees(s4),degrees(s5) from degreesTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,degrees(s2),degrees(s3),degrees(s4),degrees(s5) from degreesTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1100,20 +1098,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void expTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.exp(1), Math.exp(2), Math.exp(3)};
     Double[] expectedResultLong = new Double[] {Math.exp(1), Math.exp(2), Math.exp(3)};
     Double[] expectedResultFloat = new Double[] {Math.exp(1), Math.exp(2.5), Math.exp(3.5)};
     Double[] expectedResultDouble = new Double[] {Math.exp(1), Math.exp(2.5), Math.exp(3.5)};
     testDoubleResult(
-            "select time,exp(s2),exp(s3),exp(s4),exp(s5) from expTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,exp(s2),exp(s3),exp(s4),exp(s5) from expTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1164,20 +1161,21 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void floorTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.floor(1), Math.floor(2), Math.floor(-2)};
     Double[] expectedResultLong = new Double[] {Math.floor(1), Math.floor(2), Math.floor(-2)};
-    Double[] expectedResultFloat = new Double[] {Math.floor(1.0f), Math.floor(2.5f), Math.floor(-2.5f)};
-    Double[] expectedResultDouble = new Double[] {Math.floor(1.0), Math.floor(2.5), Math.floor(-2.5)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.floor(1.0f), Math.floor(2.5f), Math.floor(-2.5f)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.floor(1.0), Math.floor(2.5), Math.floor(-2.5)};
     testDoubleResult(
-            "select time,floor(s2),floor(s3),floor(s4),floor(s5) from floorTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,floor(s2),floor(s3),floor(s4),floor(s5) from floorTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1319,20 +1317,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void lnTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.log(1), Math.log(0), Math.log(-3)};
     Double[] expectedResultLong = new Double[] {Math.log(1), Math.log(0), Math.log(-3)};
     Double[] expectedResultFloat = new Double[] {Math.log(1), Math.log(0), Math.log(-3.5)};
     Double[] expectedResultDouble = new Double[] {Math.log(1), Math.log(0), Math.log(-3.5)};
     testDoubleResult(
-            "select time,ln(s2),ln(s3),ln(s4),ln(s5) from lnTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,ln(s2),ln(s3),ln(s4),ln(s5) from lnTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1383,20 +1380,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void log10TestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3)};
     Double[] expectedResultLong = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3)};
     Double[] expectedResultFloat = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3.5)};
     Double[] expectedResultDouble = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3.5)};
     testDoubleResult(
-            "select time,log10(s2),log10(s3),log10(s4),log10(s5) from log10Table",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,log10(s2),log10(s3),log10(s4),log10(s5) from log10Table",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1531,10 +1527,14 @@ public class IoTDBScalarFunctionTableIT {
   public void radiansTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
-    Double[] expectedResultInt = new Double[] {Math.toRadians(1), Math.toRadians(2), Math.toRadians(3)};
-    Double[] expectedResultLong = new Double[] {Math.toRadians(1), Math.toRadians(2), Math.toRadians(3)};
-    Double[] expectedResultFloat = new Double[] {Math.toRadians(1), Math.toRadians(2.5), Math.toRadians(3.5)};
-    Double[] expectedResultDouble = new Double[] {Math.toRadians(1), Math.toRadians(2.5), Math.toRadians(3.5)};
+    Double[] expectedResultInt =
+        new Double[] {Math.toRadians(1), Math.toRadians(2), Math.toRadians(3)};
+    Double[] expectedResultLong =
+        new Double[] {Math.toRadians(1), Math.toRadians(2), Math.toRadians(3)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.toRadians(1), Math.toRadians(2.5), Math.toRadians(3.5)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.toRadians(1), Math.toRadians(2.5), Math.toRadians(3.5)};
     testDoubleResult(
         "select time,radians(s2),radians(s3),radians(s4),radians(s5) from radiansTable",
         expectedHeader,
@@ -1572,21 +1572,13 @@ public class IoTDBScalarFunctionTableIT {
           int cnt = 0;
           while (resultSet.next()) {
             assertEquals(
-                expectedResultInt[cnt],
-                Double.parseDouble(resultSet.getString(2)),
-                0.00001);
+                expectedResultInt[cnt], Double.parseDouble(resultSet.getString(2)), 0.00001);
             assertEquals(
-                expectedResultLong[cnt],
-                Double.parseDouble(resultSet.getString(3)),
-                0.00001);
+                expectedResultLong[cnt], Double.parseDouble(resultSet.getString(3)), 0.00001);
             assertEquals(
-                expectedResultFloat[cnt],
-                Double.parseDouble(resultSet.getString(4)),
-                0.00001);
+                expectedResultFloat[cnt], Double.parseDouble(resultSet.getString(4)), 0.00001);
             assertEquals(
-                expectedResultDouble[cnt],
-                Double.parseDouble(resultSet.getString(5)),
-                0.00001);
+                expectedResultDouble[cnt], Double.parseDouble(resultSet.getString(5)), 0.00001);
             cnt++;
           }
           assertEquals(expectedResultInt.length, cnt);
@@ -1813,8 +1805,7 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void sinTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.sin(1), Math.sin(2), Math.sin(3)};
     Double[] expectedResultLong = new Double[] {Math.sin(1), Math.sin(2), Math.sin(3)};
     Double[] expectedResultFloat = new Double[] {Math.sin(1), Math.sin(2.5), Math.sin(3.5)};
@@ -1877,20 +1868,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void sinhTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.sinh(1), Math.sinh(2), Math.sinh(3)};
     Double[] expectedResultLong = new Double[] {Math.sinh(1), Math.sinh(2), Math.sinh(3)};
     Double[] expectedResultFloat = new Double[] {Math.sinh(1), Math.sinh(2.5), Math.sinh(3.5)};
     Double[] expectedResultDouble = new Double[] {Math.sinh(1), Math.sinh(2.5), Math.sinh(3.5)};
     testDoubleResult(
-            "select time,sinh(s2),sinh(s3),sinh(s4),sinh(s5) from sinhTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,sinh(s2),sinh(s3),sinh(s4),sinh(s5) from sinhTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1941,20 +1931,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void sqrtTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1)};
     Double[] expectedResultLong = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1)};
     Double[] expectedResultFloat = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1.5)};
     Double[] expectedResultDouble = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1.5)};
     testDoubleResult(
-            "select time,sqrt(s2),sqrt(s3),sqrt(s4),sqrt(s5) from sqrtTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,sqrt(s2),sqrt(s3),sqrt(s4),sqrt(s5) from sqrtTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -2317,20 +2306,21 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void tanTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.tan(1), Math.tan(2), Math.tan(3)};
     Double[] expectedResultLong = new Double[] {Math.tan(1), Math.tan(2), Math.tan(3)};
-    Double[] expectedResultFloat = new Double[] {Math.tan(1), Math.tan((float)1.57079632675), Math.tan(3.5)};
-    Double[] expectedResultDouble = new Double[] {Math.tan(1), Math.tan(1.57079632675), Math.tan(3.5)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.tan(1), Math.tan((float) 1.57079632675), Math.tan(3.5)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.tan(1), Math.tan(1.57079632675), Math.tan(3.5)};
     testDoubleResult(
-            "select time,tan(s2),tan(s3),tan(s4),tan(s5) from tanTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,tan(s2),tan(s3),tan(s4),tan(s5) from tanTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -2381,20 +2371,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void tanhTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-            new String[] {"time","_col1", "_col2", "_col3", "_col4"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
     Double[] expectedResultInt = new Double[] {Math.tanh(1), Math.tanh(2), Math.tanh(3)};
     Double[] expectedResultLong = new Double[] {Math.tanh(1), Math.tanh(2), Math.tanh(3)};
     Double[] expectedResultFloat = new Double[] {Math.tanh(1), Math.tanh(2.5), Math.tanh(3.5)};
     Double[] expectedResultDouble = new Double[] {Math.tanh(1), Math.tanh(2.5), Math.tanh(3.5)};
     testDoubleResult(
-            "select time,tanh(s2),tanh(s3),tanh(s4),tanh(s5) from tanhTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResultInt,
-            expectedResultLong,
-            expectedResultFloat,
-            expectedResultDouble);
+        "select time,tanh(s2),tanh(s3),tanh(s4),tanh(s5) from tanhTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
