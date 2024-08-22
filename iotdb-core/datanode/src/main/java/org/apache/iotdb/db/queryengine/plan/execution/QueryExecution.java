@@ -432,6 +432,12 @@ public class QueryExecution implements IQueryExecution {
             throw new IoTDBException(
                 stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
+            Throwable rootCause = stateMachine.getFailureException();
+            if (rootCause instanceof IoTDBRuntimeException) {
+              throw (IoTDBRuntimeException) rootCause;
+            } else if (rootCause instanceof IoTDBException) {
+              throw (IoTDBException) rootCause;
+            }
             throw new IoTDBException(
                 stateMachine.getFailureMessage(),
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
