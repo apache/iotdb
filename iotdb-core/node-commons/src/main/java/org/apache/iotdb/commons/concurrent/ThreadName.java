@@ -172,7 +172,7 @@ public enum ThreadName {
   // -------------------------- Other --------------------------
   ACTIVE_LOAD_TSFILE_LOADER("Active-Load-TsFile-Loader"),
   ACTIVE_LOAD_DIR_SCANNER("Active-Load-Dir-Scanner"),
-  ACTIVE_LOAD_METRICS_COLLECTOR("Active-Load-Metrics-Collector"),
+  ACTIVE_LOAD_DIRS_COUNT("Active-Load-Dirs-Count"),
   SETTLE("Settle"),
   INFLUXDB_RPC_SERVICE("InfluxdbRPC-Service"),
   INFLUXDB_RPC_PROCESSOR("InfluxdbRPC-Processor"),
@@ -358,7 +358,6 @@ public enum ThreadName {
           Arrays.asList(
               ACTIVE_LOAD_TSFILE_LOADER,
               ACTIVE_LOAD_DIR_SCANNER,
-              ACTIVE_LOAD_METRICS_COLLECTOR,
               SETTLE,
               INFLUXDB_RPC_SERVICE,
               INFLUXDB_RPC_PROCESSOR,

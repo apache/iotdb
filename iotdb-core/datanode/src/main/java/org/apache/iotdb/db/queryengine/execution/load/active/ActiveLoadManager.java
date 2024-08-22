@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,28 +35,26 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public abstract class ActiveLoadScheduledExecutorService {
+public abstract class ActiveLoadManager {
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ActiveLoadScheduledExecutorService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadManager.class);
 
   protected static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final long MIN_EXECUTION_INTERVAL_SECONDS =
+  private final ScheduledExecutorService DIRS_SCAN_JOB_EXECUTOR =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.ACTIVE_LOAD_DIRS_COUNT.name());
+
+  private static final long MIN_SCAN_INTERVAL_SECONDS =
       IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds();
-  private final ScheduledExecutorService scheduledExecutorService;
-  private Future<?> future;
+
   private long rounds;
+  private Future<?> dirsScanJobFuture;
 
-  private final List<Pair<WrappedRunnable, Long>> jobs = new CopyOnWriteArrayList<>();
-
-  protected ActiveLoadScheduledExecutorService(final ThreadName threadName) {
-    scheduledExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(threadName.name());
-  }
+  private final List<Pair<WrappedRunnable, Long>> fileScanPeriodicalJobs = new CopyOnWriteArrayList<>();
 
   public void register(Runnable runnable) {
-    jobs.add(
+    fileScanPeriodicalJobs.add(
         new Pair<>(
             new WrappedRunnable() {
               @Override
@@ -65,32 +62,31 @@ public abstract class ActiveLoadScheduledExecutorService {
                 try {
                   runnable.run();
                 } catch (Exception e) {
-                  LOGGER.warn("Error occurred when executing active load periodical job.", e);
+                  LOGGER.warn("active load file metric job failed.", e);
                 }
               }
             },
-            Math.max(MIN_EXECUTION_INTERVAL_SECONDS, 1)));
+            Math.max(MIN_SCAN_INTERVAL_SECONDS, 1)));
   }
 
-  public synchronized void start() {
-    if (future == null) {
+  public void start() {
+    if (dirsScanJobFuture == null) {
       rounds = 0;
 
-      future =
+      dirsScanJobFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              scheduledExecutorService,
+              DIRS_SCAN_JOB_EXECUTOR,
               this::execute,
-              MIN_EXECUTION_INTERVAL_SECONDS,
-              MIN_EXECUTION_INTERVAL_SECONDS,
+              MIN_SCAN_INTERVAL_SECONDS,
+              1L,
               TimeUnit.SECONDS);
-      LOGGER.info("Active load periodical jobs executor is started successfully.");
     }
   }
 
   private void execute() {
     ++rounds;
 
-    for (final Pair<WrappedRunnable, Long> periodicalJob : jobs) {
+    for (final Pair<WrappedRunnable, Long> periodicalJob : fileScanPeriodicalJobs) {
       if (rounds % periodicalJob.right == 0) {
         periodicalJob.left.run();
       }
@@ -98,10 +94,10 @@ public abstract class ActiveLoadScheduledExecutorService {
   }
 
   public synchronized void stop() {
-    if (future != null) {
-      future.cancel(false);
-      future = null;
-      LOGGER.info("Active load periodical jobs executor is stopped successfully.");
+    if (dirsScanJobFuture != null) {
+      dirsScanJobFuture.cancel(false);
+      dirsScanJobFuture = null;
+      LOGGER.info("Active load file metric periodical jobs executor is stopped successfully.");
     }
   }
 }

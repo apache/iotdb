@@ -19,24 +19,22 @@
 
 package org.apache.iotdb.db.queryengine.execution.load.active;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorService {
+public class ActiveLoadListeningFileCounter extends ActiveLoadManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadMetricsCollector.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ActiveLoadListeningFileCounter.class);
 
   private long skipCountPendingFile = 0;
   private long skipCountFailedFile = 0;
 
-  public ActiveLoadMetricsCollector() {
-    super(ThreadName.ACTIVE_LOAD_METRICS_COLLECTOR);
-
+  public void start() {
     register(this::countPendingFile);
     register(this::countFailedFile);
-    LOGGER.info("Active load metric collector periodical job registered");
+    super.start();
+    LOGGER.info("Registering active load metric periodical job");
   }
 
   private void countPendingFile() {

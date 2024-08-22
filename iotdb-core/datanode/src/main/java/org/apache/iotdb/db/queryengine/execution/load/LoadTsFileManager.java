@@ -96,12 +96,10 @@ public class LoadTsFileManager {
   private final Map<String, CleanupTask> uuid2CleanupTask = new ConcurrentHashMap<>();
   private final PriorityBlockingQueue<CleanupTask> cleanupTaskQueue = new PriorityBlockingQueue<>();
 
-  private final ActiveLoadAgent activeLoadAgent = new ActiveLoadAgent();
-
   public LoadTsFileManager() {
     registerCleanupTaskExecutor();
     recover();
-    activeLoadAgent.start();
+    ActiveLoadAgent.scanner().start();
   }
 
   private void registerCleanupTaskExecutor() {
