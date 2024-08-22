@@ -46,6 +46,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -250,49 +251,6 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
     TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
   }
 
-  private void insertTablet(ISession session, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    session.insertTablet(tablet);
-  }
-
-  private void insertAlignedTablet(ISession session, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    session.insertAlignedTablet(tablet);
-  }
-
-  private void insertRecords(ISession session, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<Long> timestamps = getTimestampList(tablet);
-    Pair<List<List<String>>, List<List<TSDataType>>> pair = getMeasurementSchemasAndType(tablet);
-    List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
-    session.insertRecords(getDeviceID(tablet), timestamps, pair.left, pair.right, values);
-  }
-
-  private void insertAlignedRecords(ISession session, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<Long> timestamps = getTimestampList(tablet);
-    Pair<List<List<String>>, List<List<TSDataType>>> pair = getMeasurementSchemasAndType(tablet);
-    List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
-    session.insertAlignedRecords(getDeviceID(tablet), timestamps, pair.left, pair.right, values);
-  }
-
-  private void insertStrRecords(ISession session, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<Long> timestamps = getTimestampList(tablet);
-    Pair<List<List<String>>, List<List<TSDataType>>> pair = getMeasurementSchemasAndType(tablet);
-    List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
-    session.insertStringRecordsOfOneDevice(tablet.getDeviceId(), timestamps, pair.left, values);
-  }
-
-  private void insertAlignedStrRecords(ISession session, Tablet tablet)
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<Long> timestamps = getTimestampList(tablet);
-    Pair<List<List<String>>, List<List<TSDataType>>> pair = getMeasurementSchemasAndType(tablet);
-    List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
-    session.insertAlignedStringRecordsOfOneDevice(
-        tablet.getDeviceId(), timestamps, pair.left, values);
-  }
-
   private void validateResultSet(
       SessionDataSet dataSet, List<List<Object>> values, long[] timestamps)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -389,13 +347,13 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
     return data;
   }
 
-  private int[] createTestDataForDate() {
-    int[] data = new int[generateDataSize];
+  private LocalDate[] createTestDataForDate() {
+    LocalDate[] data = new LocalDate[generateDataSize];
     int year = 2023;
     int month = 1;
     int day = 1;
     for (int i = 0; i < data.length; i++) {
-      data[i] = year * 10000 + (month * 100) + day;
+      data[i] = DateUtils.parseIntToLocalDate(year * 10000 + (month * 100) + day);
       // update
       day++;
       if (day > 28) {
@@ -472,30 +430,30 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
         switch (schemas.get(j).getType()) {
           case INT64:
           case TIMESTAMP:
-            insertRecord.add(((long[]) values[i])[j]);
+            insertRecord.add(((long[]) values[j])[i]);
             break;
           case INT32:
-            insertRecord.add(((int[]) values[i])[j]);
+            insertRecord.add(((int[]) values[j])[i]);
             break;
           case DOUBLE:
-            insertRecord.add(((double[]) values[i])[j]);
+            insertRecord.add(((double[]) values[j])[i]);
             break;
           case FLOAT:
-            insertRecord.add(((float[]) values[i])[j]);
+            insertRecord.add(((float[]) values[j])[i]);
             break;
           case DATE:
-            insertRecord.add(DateUtils.parseIntToDate(((int[]) values[i])[j]));
+            insertRecord.add(((LocalDate[]) values[j])[i]);
             break;
           case TEXT:
           case STRING:
             insertRecord.add(
-                new String(((Binary[]) values[i])[j].getValues(), TSFileConfig.STRING_CHARSET));
+                new String(((Binary[]) values[j])[i].getValues(), TSFileConfig.STRING_CHARSET));
             break;
           case BLOB:
-            insertRecord.add(((Binary[]) values[i])[j]);
+            insertRecord.add(((Binary[]) values[j])[i]);
             break;
           case BOOLEAN:
-            insertRecord.add(((boolean[]) values[i])[j]);
+            insertRecord.add(((boolean[]) values[j])[i]);
             break;
         }
       }
@@ -514,36 +472,36 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
       for (int j = 0; j < schemas.size(); j++) {
         switch (schemas.get(j).getType()) {
           case INT64:
-            insertRecord.add(String.valueOf(((long[]) values[i])[j]));
+            insertRecord.add(String.valueOf(((long[]) values[j])[i]));
             break;
           case TIMESTAMP:
             insertRecord.add(
                 RpcUtils.formatDatetime(
-                    "default", "ms", ((long[]) values[i])[j], ZoneId.systemDefault()));
+                    "default", "ms", ((long[]) values[j])[i], ZoneId.systemDefault()));
             break;
           case INT32:
-            insertRecord.add(String.valueOf(((int[]) values[i])[j]));
+            insertRecord.add(String.valueOf(((int[]) values[j])[i]));
             break;
           case DOUBLE:
-            insertRecord.add(String.valueOf(((double[]) values[i])[j]));
+            insertRecord.add(String.valueOf(((double[]) values[j])[i]));
             break;
           case FLOAT:
-            insertRecord.add(String.valueOf(((float[]) values[i])[j]));
+            insertRecord.add(String.valueOf(((float[]) values[j])[i]));
             break;
           case DATE:
-            insertRecord.add(DateUtils.formatDate(((int[]) values[i])[j]));
+            insertRecord.add(DateUtils.formatDate(((int[]) values[j])[i]));
             break;
           case TEXT:
           case STRING:
             insertRecord.add(
-                new String(((Binary[]) values[i])[j].getValues(), TSFileConfig.STRING_CHARSET));
+                new String(((Binary[]) values[j])[i].getValues(), TSFileConfig.STRING_CHARSET));
             break;
           case BLOB:
             insertRecord.add(
-                BytesUtils.parseBlobByteArrayToString(((Binary[]) values[i])[j].getValues()));
+                BytesUtils.parseBlobByteArrayToString(((Binary[]) values[j])[i].getValues()));
             break;
           case BOOLEAN:
-            insertRecord.add(String.valueOf(((boolean[]) values[i])[j]));
+            insertRecord.add(String.valueOf(((boolean[]) values[j])[i]));
             break;
         }
       }
@@ -558,20 +516,16 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
     long[] timestamp = createTestDataForTimestamp();
     Object[] objects = new Object[pairs.size()];
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(pairs.size());
-    List<MeasurementSchema> measurementSchemaList = new ArrayList<>(pairs.size());
     BitMap[] bitMaps = new BitMap[generateDataSize];
-    List<List<MeasurementSchema>> result = new ArrayList<>(generateDataSize);
     for (int i = 0; i < bitMaps.length; i++) {
-      result.add(measurementSchemaList);
       bitMaps[i] = new BitMap(pairs.size());
     }
     List<Tablet.ColumnType> columnTypes = new ArrayList<>(pairs.size());
     for (int i = 0; i < objects.length; i++) {
       MeasurementSchema schema = pairs.get(i).left;
       measurementSchemas.add(schema);
-      measurementSchemaList.add(schema);
       columnTypes.add(Tablet.ColumnType.MEASUREMENT);
-      switch (pairs.get(i).right.getType()) {
+      switch (schema.getType()) {
         case INT64:
           objects[i] = createTestDataForInt64();
           break;
