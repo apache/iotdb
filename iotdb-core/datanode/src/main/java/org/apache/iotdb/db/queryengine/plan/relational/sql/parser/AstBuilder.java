@@ -487,7 +487,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
-    databaseName.ifPresent(insertRowStatement::setDatabaseName);
+    databaseName.ifPresent(
+        databaseName1 -> insertRowStatement.setDatabaseName(databaseName1.toLowerCase()));
     return insertRowStatement;
   }
 

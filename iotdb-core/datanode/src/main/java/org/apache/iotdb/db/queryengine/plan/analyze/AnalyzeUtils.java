@@ -210,7 +210,14 @@ public class AnalyzeUtils {
         analysis.setFailStatus(
             RpcUtils.getStatus(exception.getErrorCode(), exception.getMessage()));
       } else {
-        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
+        if (e.getErrorCode() != TSStatusCode.SEMANTIC_ERROR.getStatusCode()) {
+          // a specific code has been set, use it
+          analysis.setFailStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        } else {
+          // use METADATA_ERROR by default
+          analysis.setFailStatus(
+              RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), e.getMessage()));
+        }
       }
     } finally {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleSchemaValidateCost(System.nanoTime() - startTime);
