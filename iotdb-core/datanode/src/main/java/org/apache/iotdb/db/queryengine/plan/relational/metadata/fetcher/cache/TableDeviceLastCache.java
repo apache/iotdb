@@ -27,7 +27,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -56,14 +56,16 @@ public class TableDeviceLastCache {
     return measurement2CachedLastMap.get(measurement);
   }
 
-  public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final Set<String> measurements) {
+  // Shall pass in "null" if last by time
+  public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final String measurement) {
+    final long alignTime =
+        Objects.nonNull(measurement)
+            ? measurement2CachedLastMap.get(measurement).getTimestamp()
+            : lastTime;
     return new Pair<>(
         lastTime,
         measurement2CachedLastMap.entrySet().stream()
-            .filter(
-                entry ->
-                    measurements.contains(entry.getKey())
-                        && entry.getValue().getTimestamp() == lastTime)
+            .filter(entry -> entry.getValue().getTimestamp() == alignTime)
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getValue())));
   }
 
