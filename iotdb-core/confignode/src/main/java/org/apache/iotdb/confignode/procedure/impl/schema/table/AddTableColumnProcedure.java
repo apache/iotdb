@@ -144,17 +144,9 @@ public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTabl
     }
   }
 
-  private void commitRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
-    if (!failedResults.isEmpty()) {
-      LOGGER.warn(
-          "Failed to commit column extension info of table {}.{} to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-      // TODO: Handle commit failure
-    }
+  @Override
+  protected String getActionMessage() {
+    return "add table column";
   }
 
   @Override
@@ -191,23 +183,6 @@ public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTabl
             .rollbackAddTableColumn(database, tableName, addedColumnList);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
-    }
-  }
-
-  private void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
-    final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
-
-    if (!failedResults.isEmpty()) {
-      // All dataNodes must clear the related schema cache
-      LOGGER.warn(
-          "Failed to rollback pre-release column extension info of table {}.{} info to DataNode, failure results: {}",
-          database,
-          table.getTableName(),
-          failedResults);
-      setFailure(
-          new ProcedureException(
-              new MetadataException("Rollback pre-release table column extension info failed")));
     }
   }
 

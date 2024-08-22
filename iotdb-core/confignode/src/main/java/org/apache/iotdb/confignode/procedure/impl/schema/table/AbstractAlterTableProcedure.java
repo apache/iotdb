@@ -19,19 +19,28 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.Objects;
 
 public abstract class AbstractAlterTableProcedure<T>
     extends StateMachineProcedure<ConfigNodeProcedureEnv, T> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAlterTableProcedure.class);
+
   protected String database;
   protected String tableName;
   protected String queryId;
@@ -58,6 +67,40 @@ public abstract class AbstractAlterTableProcedure<T>
   public String getQueryId() {
     return queryId;
   }
+
+  protected void commitRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.commitReleaseTable(database, table.getTableName(), env.getConfigManager());
+    if (!failedResults.isEmpty()) {
+      LOGGER.warn(
+          "Failed to {} for table {}.{} to DataNode, failure results: {}",
+          getActionMessage(),
+          database,
+          table.getTableName(),
+          failedResults);
+      // TODO: Handle commit failure
+    }
+  }
+
+  protected void rollbackPreRelease(final ConfigNodeProcedureEnv env) {
+    final Map<Integer, TSStatus> failedResults =
+        SchemaUtils.rollbackPreRelease(database, table.getTableName(), env.getConfigManager());
+
+    if (!failedResults.isEmpty()) {
+      // All dataNodes must clear the related schema cache
+      LOGGER.warn(
+          "Failed to rollback pre-release {} for table {}.{} info to DataNode, failure results: {}",
+          getActionMessage(),
+          database,
+          table.getTableName(),
+          failedResults);
+      setFailure(
+          new ProcedureException(
+              new MetadataException("Rollback pre-release " + getActionMessage() + " failed")));
+    }
+  }
+
+  protected abstract String getActionMessage();
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
