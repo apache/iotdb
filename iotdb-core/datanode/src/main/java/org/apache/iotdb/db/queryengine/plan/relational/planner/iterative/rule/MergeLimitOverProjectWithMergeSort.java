@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
- * Transforms:
+ * <b>Optimization phase:</b> Distributed plan planning. Transforms:
  *
  * <pre>
  * - Limit (limit = x)

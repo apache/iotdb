@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.query.old.orderBy;
+package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -342,6 +342,41 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         };
     tableResultSetEqualTest(
         "select time,level,attr1,device,num,date from table0 order by time desc,device desc limit 5",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void selectSortTest() {
+    String[] expectedHeader = new String[] {"time", "level", "attr1", "device", "num", "date"};
+    String[] retArray =
+        new String[] {
+          "1971-04-26T17:46:40.000Z,l2,yy,d1,12,null,",
+          "1970-01-01T00:00:00.020Z,l2,yy,d1,2,null,",
+          "1971-01-01T00:00:00.100Z,l2,yy,d1,10,null,",
+          "1970-01-01T00:00:00.000Z,l1,c,d1,3,null,",
+          "1971-01-01T00:01:40.000Z,l1,c,d1,11,null,",
+          "1971-01-01T00:00:00.000Z,l1,c,d1,6,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,level,attr1,device,num,date from table0 order by attr2 desc limit 6",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "level", "attr1", "str"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.040Z,l3,null,apricot,",
+          "1970-01-01T00:00:00.040Z,l3,t,apricot,",
+          "1970-01-01T00:00:00.020Z,l2,vv,pineapple,",
+          "1970-01-01T00:00:00.020Z,l2,yy,pineapple,",
+          "1970-01-01T00:00:00.000Z,l1,d,coconut,",
+          "1970-01-01T00:00:00.000Z,l1,c,coconut,",
+        };
+    tableResultSetEqualTest(
+        "select time,level,attr1,str from table0 order by num+1 limit 6",
         expectedHeader,
         retArray,
         DATABASE_NAME);
