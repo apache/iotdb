@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load.limiter;
+package org.apache.iotdb.db.storageengine.load.limiter;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
