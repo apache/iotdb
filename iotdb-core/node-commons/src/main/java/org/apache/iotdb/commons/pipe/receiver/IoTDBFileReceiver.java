@@ -74,8 +74,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
 
   // Used to determine current strategy is sync or async
-  protected static final AtomicBoolean IS_USING_ASYNC_LOAD_TS_FILE_STRATEGY =
-      new AtomicBoolean(false);
+  protected final AtomicBoolean isUsingAsyncLoadTsFileStrategy = new AtomicBoolean(false);
 
   @Override
   public IoTDBConnectorRequestVersion getVersion() {
@@ -237,7 +236,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     final String loadTsFileStrategyString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY);
     if (loadTsFileStrategyString != null) {
-      IS_USING_ASYNC_LOAD_TS_FILE_STRATEGY.set(
+      isUsingAsyncLoadTsFileStrategy.set(
           Objects.equals(
               PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
               loadTsFileStrategyString));

@@ -331,7 +331,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
       throws FileNotFoundException {
-    return IS_USING_ASYNC_LOAD_TS_FILE_STRATEGY.get()
+    return isUsingAsyncLoadTsFileStrategy.get()
         ? loadTsFileAsync(Collections.singletonList(fileAbsolutePath))
         : loadTsFileSync(fileAbsolutePath);
   }
@@ -342,7 +342,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IOException, IllegalPathException {
     return req instanceof PipeTransferTsFileSealWithModReq
         // TsFile's absolute path will be the second element
-        ? (IS_USING_ASYNC_LOAD_TS_FILE_STRATEGY.get()
+        ? (isUsingAsyncLoadTsFileStrategy.get()
             ? loadTsFileAsync(fileAbsolutePaths)
             : loadTsFileSync(fileAbsolutePaths.get(1)))
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
