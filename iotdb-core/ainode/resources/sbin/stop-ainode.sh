@@ -35,7 +35,8 @@ while getopts "i:t:r" opt; do
     ;;
   esac
 done
-# 如果p_ain_remove_target存在的话取p_ain_remove_target冒号后面的值作为ain_inference_rpc_port
+
+# If p_ain_remove_target exists, take the value after the colon of p_ain_remove_target as ain_inference_rpc_port
 if [ -n "$p_ain_remove_target" ]; then
   ain_inference_rpc_port=${p_ain_remove_target#*:}
 fi
@@ -55,6 +56,7 @@ else
 fi
 
 PID_VERIFY=$(ps ax | grep -i 'ainode' | grep -v grep | awk '{print $1}')
+
 if [ -z "$PID" ]; then
   echo "No AINode to stop"
   if [ "$(id -u)" -ne 0 ]; then

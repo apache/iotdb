@@ -45,7 +45,6 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-
 :initial
 if "%1"=="" goto interpreter
 set aux=%1
@@ -84,6 +83,7 @@ if "%_ain_system_dir%"=="" (
 )
 
 echo Script got parameters: ain_interpreter_dir: %_ain_interpreter_dir%, ain_system_dir: %_ain_system_dir%
+
 cd %REMOVE_SCRIPT_DIR%\\..
 for %%i in ("%_ain_interpreter_dir%") do set "parent=%%~dpi"
 set ain_\ainode_dir=%parent%\\\ainode.exe
