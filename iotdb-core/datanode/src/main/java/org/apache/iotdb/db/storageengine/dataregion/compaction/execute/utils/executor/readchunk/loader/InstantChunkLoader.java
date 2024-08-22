@@ -93,7 +93,8 @@ public class InstantChunkLoader extends ChunkLoader {
               chunk.getHeader().getDataType(),
               chunk.getHeader().getEncodingType(),
               chunkMetadata,
-              pageModifiedStatus));
+              pageModifiedStatus,
+              chunk.getDecryptor()));
     }
     return pageList;
   }

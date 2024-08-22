@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -46,6 +47,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   private final IDeviceID deviceID;
   private final String measurement;
   private final String filePath;
+  private IDecryptor decryptor;
   protected ChunkHeader currentChunkHeader;
   protected PageHeader currentPageHeader;
   protected ByteBuffer currentChunkDataBuffer;
@@ -81,6 +83,7 @@ public class DiskChunkHandleImpl implements IChunkHandle {
     Chunk chunk = reader.readMemChunk(offset);
     this.currentChunkDataBuffer = chunk.getData();
     this.currentChunkHeader = chunk.getHeader();
+    this.decryptor = chunk.getDecryptor();
   }
 
   // Check if there is more pages to be scanned in Chunk.
@@ -127,7 +130,10 @@ public class DiskChunkHandleImpl implements IChunkHandle {
   public long[] getDataTime() throws IOException {
     ByteBuffer currentPageDataBuffer =
         ChunkReader.deserializePageData(
-            currentPageHeader, this.currentChunkDataBuffer, this.currentChunkHeader);
+            currentPageHeader,
+            this.currentChunkDataBuffer,
+            this.currentChunkHeader,
+            this.decryptor);
     int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(currentPageDataBuffer);
     ByteBuffer timeBuffer = currentPageDataBuffer.slice();
     timeBuffer.limit(timeBufferLength);

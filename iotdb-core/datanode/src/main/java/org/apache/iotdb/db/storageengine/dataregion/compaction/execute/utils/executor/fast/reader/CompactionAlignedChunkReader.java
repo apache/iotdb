@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -46,6 +47,8 @@ public class CompactionAlignedChunkReader {
   private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
 
   private final IUnCompressor timeUnCompressor;
+
+  private final IDecryptor decryptor;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -61,7 +64,7 @@ public class CompactionAlignedChunkReader {
   public CompactionAlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) {
     ChunkHeader timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
-
+    this.decryptor = timeChunk.getDecryptor();
     valueChunkList.forEach(
         chunk -> {
           this.valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
@@ -108,7 +111,7 @@ public class CompactionAlignedChunkReader {
 
     // uncompress time page data
     ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
+        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData, decryptor);
     // uncompress value page datas
     List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>();
     List<TSDataType> valueTypes = new ArrayList<>();
@@ -124,7 +127,8 @@ public class CompactionAlignedChunkReader {
             uncompressPageData(
                 valuePageHeaders.get(i),
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                compressedValuePageDatas.get(i)));
+                compressedValuePageDatas.get(i),
+                decryptor));
         TSDataType valueType = valueChunkHeader.getDataType();
         valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
         valueTypes.add(valueType);

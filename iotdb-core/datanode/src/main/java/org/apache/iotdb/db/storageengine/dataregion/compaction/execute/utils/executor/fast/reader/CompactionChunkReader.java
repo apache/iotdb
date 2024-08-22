@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -46,6 +47,8 @@ public class CompactionChunkReader {
   private final ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
   private final IUnCompressor unCompressor;
+
+  private final IDecryptor decryptor;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -66,6 +69,7 @@ public class CompactionChunkReader {
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     this.deleteIntervalList = chunk.getDeleteIntervalList();
     this.chunkStatistic = chunk.getChunkStatistic();
+    this.decryptor = chunk.getDecryptor();
   }
 
   /**
@@ -127,7 +131,8 @@ public class CompactionChunkReader {
   public TsBlock readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
       throws IOException {
     // uncompress page data
-    ByteBuffer pageData = uncompressPageData(pageHeader, unCompressor, compressedPageData);
+    ByteBuffer pageData =
+        uncompressPageData(pageHeader, unCompressor, compressedPageData, decryptor);
 
     // decode page data
     TSDataType dataType = chunkHeader.getDataType();

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.IDecryptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -45,6 +46,8 @@ public class SharedTimeDataBuffer {
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
 
+  private IDecryptor decryptor;
+
   public SharedTimeDataBuffer(IChunkMetadata timeChunkMetaData) {
     this.timeChunkMetaData = timeChunkMetaData;
     this.timeData = new ArrayList<>();
@@ -58,6 +61,7 @@ public class SharedTimeDataBuffer {
     Chunk timeChunk = reader.readMemChunk(timeChunkMetaData.getOffsetOfChunkHeader());
     timeChunkHeader = timeChunk.getHeader();
     timeBuffer = timeChunk.getData();
+    decryptor = timeChunk.getDecryptor();
   }
 
   public long[] getPageTime(int pageId) throws IOException {
@@ -82,7 +86,7 @@ public class SharedTimeDataBuffer {
             ? PageHeader.deserializeFrom(timeBuffer, timeChunkMetaData.getStatistics())
             : PageHeader.deserializeFrom(timeBuffer, timeChunkHeader.getDataType());
     ByteBuffer timePageData =
-        ChunkReader.deserializePageData(timePageHeader, timeBuffer, timeChunkHeader);
+        ChunkReader.deserializePageData(timePageHeader, timeBuffer, timeChunkHeader, decryptor);
     long[] pageData = new long[(int) timePageHeader.getNumOfValues()];
     int index = 0;
     while (defaultTimeDecoder.hasNext(timePageData)) {
