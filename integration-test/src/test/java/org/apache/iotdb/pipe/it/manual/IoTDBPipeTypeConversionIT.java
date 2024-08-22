@@ -49,7 +49,7 @@ import java.util.Set;
 @Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
 
-  private static final long generateDataSize = 100;
+  private static final int generateDataSize = 100;
 
   // Test for converting BOOLEAN to OtherType
   @Test
