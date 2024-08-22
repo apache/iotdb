@@ -43,8 +43,10 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -60,9 +62,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final Set<TEndPoint> endPointSet;
 
-  private static final AtomicReference<
-          IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
-      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new AtomicReference<>();
+  private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
+      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
 
   private final LoadBalancer loadBalancer;
@@ -81,17 +82,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     endPointSet = new HashSet<>(endPoints);
 
-    if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
+    final String receiverAttributes =
+        String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
+    if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
       synchronized (IoTDBDataRegionAsyncConnector.class) {
-        if (ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get() == null) {
-          ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.set(
-              new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
-                  .createClientManager(
-                      new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
-        }
+        ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
+            receiverAttributes,
+            new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
+                .createClientManager(
+                    new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
       }
     }
-    endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get();
+    endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
 
     switch (loadBalanceStrategy) {
       case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
