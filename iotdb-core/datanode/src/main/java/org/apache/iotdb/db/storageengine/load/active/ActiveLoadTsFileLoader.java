@@ -317,9 +317,9 @@ public class ActiveLoadTsFileLoader {
   public long countAndReportFailedFileNumber() {
     final long[] fileCount = {0};
     try {
+      initFailDirIfNecessary();
       Files.walkFileTree(
-          new File(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir())
-              .toPath(),
+          new File(failDir.get()).toPath(),
           new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
