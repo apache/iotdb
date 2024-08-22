@@ -31,6 +31,8 @@ import org.apache.tsfile.utils.DateUtils;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 public class ValueConverter {
 
@@ -629,7 +631,14 @@ public class ValueConverter {
   }
 
   public static long convertDateToTimestamp(final int value) {
-    return value;
+    try {
+      LocalDate date = DateUtils.parseIntToLocalDate(value);
+      ZonedDateTime dateTime = date.atStartOfDay(ZoneOffset.UTC);
+      Instant instant = dateTime.toInstant();
+      return instant.toEpochMilli();
+    } catch (Exception e) {
+      return 0L;
+    }
   }
 
   public static Binary convertDateToBlob(final int value) {

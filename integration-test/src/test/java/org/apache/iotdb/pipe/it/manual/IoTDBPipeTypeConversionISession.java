@@ -420,7 +420,8 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
     };
     Binary[] data = new Binary[generateDataSize];
     for (int i = 0; i < data.length; i++) {
-      data[i] = new Binary(stringData[(i % data.length)].getBytes(TSFileConfig.STRING_CHARSET));
+      data[i] =
+          new Binary(stringData[(i % stringData.length)].getBytes(TSFileConfig.STRING_CHARSET));
     }
     return data;
   }
