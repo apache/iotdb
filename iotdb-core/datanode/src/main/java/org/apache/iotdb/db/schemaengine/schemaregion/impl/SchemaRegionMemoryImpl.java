@@ -1366,7 +1366,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final Object[] attributeValueList) {
     final Map<String, String> resultMap =
         deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
-    if (!isRecovering) {
+    if (!isRecovering && IoTDBDescriptor.getInstance().getConfig().getDataNodeId() != -1) {
       TableDeviceSchemaFetcher.getInstance()
           .getTableDeviceCache()
           .update(databaseName, tableName, deviceId, resultMap);
