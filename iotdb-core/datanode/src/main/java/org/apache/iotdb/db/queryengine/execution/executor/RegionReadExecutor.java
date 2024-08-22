@@ -77,7 +77,6 @@ public class RegionReadExecutor {
   public RegionExecutionResult execute(
       ConsensusGroupId groupId, FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
-    RegionExecutionResult resp = new RegionExecutionResult();
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
       DataSet readResponse;
       if (groupId instanceof DataRegionId) {
@@ -87,35 +86,39 @@ public class RegionReadExecutor {
       }
       if (readResponse == null) {
         LOGGER.error(RESPONSE_NULL_ERROR_MSG);
-        resp.setAccepted(false);
-        resp.setMessage(RESPONSE_NULL_ERROR_MSG);
+        return RegionExecutionResult.create(false, RESPONSE_NULL_ERROR_MSG, null);
       } else {
         FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse;
-        resp.setAccepted(!info.getState().isFailed());
-        resp.setMessage(info.getMessage());
+        RegionExecutionResult resp =
+            RegionExecutionResult.create(!info.getState().isFailed(), info.getMessage(), null);
         info.getErrorCode()
             .ifPresent(
                 s -> {
                   resp.setStatus(s);
-                  resp.setNeedRetry(StatusUtils.needRetryHelper(s));
+                  resp.setReadNeedRetry(StatusUtils.needRetryHelper(s));
                 });
+        return resp;
       }
-      return resp;
     } catch (ConsensusGroupNotExistException e) {
-      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
-      resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
-      resp.setNeedRetry(true);
-      resp.setStatus(new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
+      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      RegionExecutionResult resp =
+          RegionExecutionResult.create(
+              false,
+              String.format(ERROR_MSG_FORMAT, e.getMessage()),
+              new TSStatus(TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()));
+      resp.setReadNeedRetry(true);
       return resp;
     } catch (Throwable e) {
-      LOGGER.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
-      resp.setMessage(String.format(ERROR_MSG_FORMAT, e.getMessage()));
+      LOGGER.warn("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, e);
+      RegionExecutionResult resp =
+          RegionExecutionResult.create(
+              false, String.format(ERROR_MSG_FORMAT, e.getMessage()), null);
       Throwable t = e.getCause();
       if (t instanceof ReadException
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException
           || t instanceof ServerNotReadyException) {
-        resp.setNeedRetry(true);
+        resp.setReadNeedRetry(true);
         resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
       }
       return resp;
@@ -126,20 +129,15 @@ public class RegionReadExecutor {
   public RegionExecutionResult execute(FragmentInstance fragmentInstance) {
     // execute fragment instance in state machine
     try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
-      RegionExecutionResult resp = new RegionExecutionResult();
       // FI with queryExecutor will be executed directly
       FragmentInstanceInfo info =
           fragmentInstanceManager.execDataQueryFragmentInstance(
               fragmentInstance, VirtualDataRegion.getInstance());
-      resp.setAccepted(!info.getState().isFailed());
-      resp.setMessage(info.getMessage());
-      return resp;
+      return RegionExecutionResult.create(!info.getState().isFailed(), info.getMessage(), null);
     } catch (Throwable t) {
       LOGGER.error("Execute FragmentInstance in QueryExecutor failed.", t);
-      RegionExecutionResult resp = new RegionExecutionResult();
-      resp.setAccepted(false);
-      resp.setMessage(String.format(ERROR_MSG_FORMAT, t.getMessage()));
-      return resp;
+      return RegionExecutionResult.create(
+          false, String.format(ERROR_MSG_FORMAT, t.getMessage()), null);
     }
   }
 }

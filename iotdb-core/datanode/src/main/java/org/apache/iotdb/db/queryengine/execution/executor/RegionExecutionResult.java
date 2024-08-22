@@ -28,7 +28,18 @@ public class RegionExecutionResult {
   private String message;
 
   private TSStatus status;
-  private boolean needRetry;
+  private boolean readNeedRetry;
+
+  private RegionExecutionResult(boolean accepted, String message, TSStatus status) {
+    this.accepted = accepted;
+    this.message = message;
+    this.status = status;
+    this.readNeedRetry = false;
+  }
+
+  public static RegionExecutionResult create(boolean accepted, String message, TSStatus status) {
+    return new RegionExecutionResult(accepted, message, status);
+  }
 
   public boolean isAccepted() {
     return accepted;
@@ -54,11 +65,11 @@ public class RegionExecutionResult {
     this.status = status;
   }
 
-  public boolean isNeedRetry() {
-    return needRetry;
+  public boolean isReadNeedRetry() {
+    return readNeedRetry;
   }
 
-  public void setNeedRetry(boolean needRetry) {
-    this.needRetry = needRetry;
+  public void setReadNeedRetry(boolean readNeedRetry) {
+    this.readNeedRetry = readNeedRetry;
   }
 }

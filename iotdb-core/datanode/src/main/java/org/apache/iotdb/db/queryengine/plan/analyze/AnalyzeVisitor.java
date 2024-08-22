@@ -60,7 +60,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -147,6 +146,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -189,7 +189,6 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
-import static org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
@@ -206,6 +205,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.const
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT_DOT;
 
@@ -2610,7 +2610,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitCreateMultiTimeseries(
+  public Analysis visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement,
       final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
@@ -2644,7 +2644,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitAlterTimeseries(
+  public Analysis visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();

@@ -35,6 +35,7 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -56,6 +57,22 @@ public class DateTimeUtils {
 
   private static final String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+
+  public static long correctPrecision(long millis) {
+    switch (TIMESTAMP_PRECISION) {
+      case "us":
+      case "microsecond":
+        return millis * 1_000L;
+      case "ns":
+      case "nanosecond":
+        return millis * 1_000_000L;
+      case "ms":
+      case "millisecond":
+      default:
+        return millis;
+    }
+  }
+
   private static Function<Long, Long> CAST_TIMESTAMP_TO_MS;
 
   static {
@@ -716,10 +733,21 @@ public class DateTimeUtils {
 
   public static String convertLongToDate(long timestamp) {
     return convertLongToDate(
-        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+        timestamp,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
+        ZoneId.systemDefault());
+  }
+
+  public static String convertLongToDate(long timestamp, ZoneId zoneId) {
+    return convertLongToDate(
+        timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision(), zoneId);
   }
 
   public static String convertLongToDate(long timestamp, String sourcePrecision) {
+    return convertLongToDate(timestamp, sourcePrecision, ZoneId.systemDefault());
+  }
+
+  public static String convertLongToDate(long timestamp, String sourcePrecision, ZoneId zoneId) {
     switch (sourcePrecision) {
       case "ns":
       case "nanosecond":
@@ -730,8 +758,12 @@ public class DateTimeUtils {
         timestamp /= 1000;
         break;
     }
-    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
-        .toString();
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId).toString();
+  }
+
+  public static LocalDate convertToLocalDate(long timestamp, ZoneId zoneId) {
+    timestamp = CAST_TIMESTAMP_TO_MS.apply(timestamp);
+    return Instant.ofEpochMilli(timestamp).atZone(zoneId).toLocalDate();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
@@ -47,15 +48,22 @@ import java.util.Map;
 
 public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompactionTest {
 
+  int oldAlignedSeriesCompactionBatchSize;
+
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
+    oldAlignedSeriesCompactionBatchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
+    IoTDBDescriptor.getInstance().getConfig().setCompactionMaxAlignedSeriesNumInOneBatch(10);
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setCompactionMaxAlignedSeriesNumInOneBatch(oldAlignedSeriesCompactionBatchSize);
   }
 
   @Test
