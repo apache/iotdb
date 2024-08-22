@@ -68,36 +68,26 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            PENDING,
             Tag.TYPE.toString(),
             PENDING);
     queuingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            QUEUING,
             Tag.TYPE.toString(),
             QUEUING);
     loadingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            LOADING,
             Tag.TYPE.toString(),
             LOADING);
     failedFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
             MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            FAILED,
             Tag.TYPE.toString(),
             FAILED);
-
-    //    ActiveLoadAgent.metrics().start();
   }
 
   @Override
@@ -108,35 +98,13 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
     failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
     metricService.remove(
-        MetricType.COUNTER,
-        Metric.ACTIVE_LOADING_FILES.toString(),
-        Tag.NAME.toString(),
-        PENDING,
-        Tag.TYPE.toString(),
-        PENDING);
+        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), PENDING);
     metricService.remove(
-        MetricType.COUNTER,
-        Metric.ACTIVE_LOADING_FILES.toString(),
-        Tag.NAME.toString(),
-        QUEUING,
-        Tag.TYPE.toString(),
-        QUEUING);
+        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), QUEUING);
     metricService.remove(
-        MetricType.COUNTER,
-        Metric.ACTIVE_LOADING_FILES.toString(),
-        Tag.NAME.toString(),
-        LOADING,
-        Tag.TYPE.toString(),
-        LOADING);
+        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), LOADING);
     metricService.remove(
-        MetricType.COUNTER,
-        Metric.ACTIVE_LOADING_FILES.toString(),
-        Tag.NAME.toString(),
-        FAILED,
-        Tag.TYPE.toString(),
-        FAILED);
-
-    //    ActiveLoadAgent.metrics().stop();
+        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), FAILED);
   }
 
   public static ActiveLoadingFilesMetricsSet getInstance() {
