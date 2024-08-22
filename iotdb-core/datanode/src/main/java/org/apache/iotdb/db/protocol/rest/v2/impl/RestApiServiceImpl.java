@@ -165,7 +165,7 @@ public class RestApiServiceImpl extends RestApiService {
             .build();
       }
 
-      if (!ExecuteStatementHandler.validateStatement(statement)) {
+      if (ExecuteStatementHandler.validateStatement(statement)) {
         return Response.ok()
             .entity(
                 new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
@@ -228,7 +228,6 @@ public class RestApiServiceImpl extends RestApiService {
   public Response insertRecords(
       InsertRecordsRequest insertRecordsRequest, SecurityContext securityContext) {
     Long queryId = null;
-    boolean finish = false;
     long startTime = 0;
     InsertRowsStatement insertRowsStatement = null;
     try {
@@ -252,7 +251,6 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
-      finish = true;
       return responseGenerateHelper(result);
 
     } catch (Exception e) {
@@ -264,10 +262,6 @@ public class RestApiServiceImpl extends RestApiService {
             OperationType.INSERT_RECORDS, insertRowsStatement.getType().name(), costTime);
       }
       if (queryId != null) {
-        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
-        if (finish)
-          addQueryLatency(
-              insertRowsStatement.getType(), executionTime > 0 ? executionTime : costTime);
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -278,7 +272,6 @@ public class RestApiServiceImpl extends RestApiService {
       InsertTabletRequest insertTabletRequest, SecurityContext securityContext) {
     Long queryId = null;
     long startTime = 0;
-    boolean finish = false;
     InsertTabletStatement insertTabletStatement = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
@@ -311,7 +304,6 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
-      finish = true;
       return responseGenerateHelper(result);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -322,10 +314,6 @@ public class RestApiServiceImpl extends RestApiService {
             OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
       }
       if (queryId != null) {
-        long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
-        if (finish)
-          addQueryLatency(
-              insertTabletStatement.getType(), executionTime > 0 ? executionTime : costTime);
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }

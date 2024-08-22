@@ -17,6 +17,9 @@
 
 package org.apache.iotdb.db.protocol.rest.v1.impl;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
@@ -32,6 +35,7 @@ import org.apache.iotdb.db.protocol.rest.v1.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.v1.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.v1.model.SQL;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
@@ -41,14 +45,17 @@ import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -76,11 +83,13 @@ public class RestApiServiceImpl extends RestApiService {
   @Override
   public Response executeNonQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
+    long startTime = 0;
+    boolean finish = false;
+    Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      Statement statement =
-          StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -89,6 +98,7 @@ public class RestApiServiceImpl extends RestApiService {
                     .message("This operation type is not supported"))
             .build();
       }
+      startTime = System.nanoTime();
       if (!ExecuteStatementHandler.validateStatement(statement)) {
         return Response.ok()
             .entity(
@@ -112,7 +122,7 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
-
+      finish = true;
       return Response.ok()
           .entity(
               (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -125,9 +135,17 @@ public class RestApiServiceImpl extends RestApiService {
                       .message(result.status.getMessage()))
           .build();
     } catch (Exception e) {
+      finish = true;
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
+      long costTime = System.nanoTime() - startTime;
+      addStatementExecutionLatency(
+          OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
       if (queryId != null) {
+        if (finish) {
+          long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
+          addQueryLatency(statement.getType(), executeTime);
+        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -136,11 +154,13 @@ public class RestApiServiceImpl extends RestApiService {
   @Override
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
+    long startTime = 0;
+    boolean finish = false;
+    Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-
-      Statement statement =
-          StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
+      startTime = System.nanoTime();
+      statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
             .entity(
@@ -173,6 +193,7 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
+      finish = true;
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
         return Response.ok()
@@ -190,9 +211,17 @@ public class RestApiServiceImpl extends RestApiService {
             sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
       }
     } catch (Exception e) {
+      finish = true;
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
+      long costTime = System.nanoTime() - startTime;
+      addStatementExecutionLatency(
+          OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
       if (queryId != null) {
+        if (finish) {
+          long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
+          addQueryLatency(statement.getType(), executeTime);
+        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -202,6 +231,8 @@ public class RestApiServiceImpl extends RestApiService {
   public Response insertTablet(
       InsertTabletRequest insertTabletRequest, SecurityContext securityContext) {
     Long queryId = null;
+    long startTime = 0;
+    InsertTabletStatement insertTabletStatement = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
 
@@ -214,8 +245,8 @@ public class RestApiServiceImpl extends RestApiService {
             InsertTabletSortDataUtils.sortList(
                 insertTabletRequest.getValues(), index, insertTabletRequest.getDataTypes().size()));
       }
-
-      InsertTabletStatement insertTabletStatement =
+      startTime = System.nanoTime();
+      insertTabletStatement =
           StatementConstructionHandler.constructInsertTabletStatement(insertTabletRequest);
 
       Response response =
@@ -233,7 +264,6 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
-
       return Response.ok()
           .entity(
               (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -248,9 +278,48 @@ public class RestApiServiceImpl extends RestApiService {
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
+      long costTime = System.nanoTime() - startTime;
+      addStatementExecutionLatency(
+          OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
+  }
+
+  /** Add stat of operation into metrics */
+  private void addStatementExecutionLatency(
+      OperationType operation, String statementType, long costTime) {
+    if (statementType == null) {
+      return;
+    }
+
+    MetricService.getInstance()
+        .timer(
+            costTime,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            operation.toString(),
+            Tag.TYPE.toString(),
+            statementType);
+  }
+
+  private void addQueryLatency(StatementType statementType, long costTimeInNanos) {
+    if (statementType == null) {
+      return;
+    }
+
+    MetricService.getInstance()
+        .timer(
+            costTimeInNanos,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            OperationType.QUERY_LATENCY.toString(),
+            Tag.TYPE.toString(),
+            statementType.name());
   }
 }
