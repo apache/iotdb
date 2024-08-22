@@ -57,11 +57,17 @@ if "%i%"=="" (
 )
 
 echo Script got parameter: ain_interpreter_dir: %_ain_interpreter_dir%
+
 cd %START_SCRIPT_DIR%\\..
+
 for %%i in ("%_ain_interpreter_dir%") do set "parent=%%~dpi"
+
 set ain_ainode_dir=%parent%\ainode.exe
+
 set ain_ainode_dir_new=%parent%\Scripts\\ainode.exe
+
 echo Starting AINode...
+
 %ain_ainode_dir% start
 if %errorlevel% neq 0 (
     echo ain_ainode_dir_new is %ain_ainode_dir_new%

@@ -54,6 +54,7 @@ if defined t (
 )
 
 echo Target AINode to be stopped: %ain_inference_rpc%
+
 for /f "tokens=5" %%a in ('netstat /ano ^| findstr /r /c:"^ *TCP *%ain_inference_rpc%.*$"') do (
   taskkill /f /pid %%a
   echo Close AINode, PID: %%a

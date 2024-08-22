@@ -63,10 +63,16 @@ fi
 if [[ "$ain_interpreter_dir" != /* ]]; then
   ain_interpreter_dir="$SCRIPT_DIR/$ain_interpreter_dir"
 fi
+
 echo Script got parameter: ain_interpreter_dir: $ain_interpreter_dir
+
 # Change the working directory to the parent directory
 cd "$SCRIPT_DIR/.."
+
 ain_ainode_dir=$(dirname "$ain_interpreter_dir")/ainode
+
 echo Script got ainode dir: ain_ainode_dir: $ain_ainode_dir
+
 echo Starting AINode...
+
 $ain_ainode_dir start
