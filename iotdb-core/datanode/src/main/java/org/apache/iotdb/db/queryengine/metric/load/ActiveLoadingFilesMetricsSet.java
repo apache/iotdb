@@ -21,7 +21,7 @@ package org.apache.iotdb.db.queryengine.metric.load;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.queryengine.execution.load.active.ActiveLoadAgent;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
