@@ -188,6 +188,19 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  public String tryGetInternMeasurement(
+      final String database, final String tableName, final String measurement) {
+    try {
+      return databaseTableMap
+          .get(database)
+          .get(tableName)
+          .getColumnSchema(measurement)
+          .getColumnName();
+    } catch (final Exception e) {
+      return measurement;
+    }
+  }
+
   /** Check whether the given path overlap with some table existence. */
   public Pair<String, String> checkTableCreateAndPreCreateOnGivenPath(final PartialPath path) {
     readWriteLock.writeLock().lock();
