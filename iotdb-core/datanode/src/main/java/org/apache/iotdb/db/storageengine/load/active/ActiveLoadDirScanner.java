@@ -36,8 +36,8 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
@@ -48,7 +48,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private static final String MODS = ".mods";
 
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
-  private final Set<String> listeningDirs = new HashSet<>();
+  private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
