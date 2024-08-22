@@ -83,6 +83,9 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_BALANCE_STRATEGY_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SET;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_RATE_LIMIT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_COMPRESSOR_KEY;
@@ -101,6 +104,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_NODE_URLS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_BALANCE_STRATEGY_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LOAD_TSFILE_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_RATE_LIMIT_KEY;
 
 public abstract class IoTDBConnector implements PipeConnector {
@@ -115,6 +119,8 @@ public abstract class IoTDBConnector implements PipeConnector {
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
 
   protected String loadBalanceStrategy;
+
+  protected String loadTsFileStrategy;
 
   private boolean isRpcCompressionEnabled;
   private final List<PipeCompressor> compressors = new ArrayList<>();
@@ -182,6 +188,20 @@ public abstract class IoTDBConnector implements PipeConnector {
             "Load balance strategy should be one of %s, but got %s.",
             CONNECTOR_LOAD_BALANCE_STRATEGY_SET, loadBalanceStrategy),
         loadBalanceStrategy);
+
+    loadTsFileStrategy =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(CONNECTOR_LOAD_TSFILE_STRATEGY_KEY, SINK_LOAD_TSFILE_STRATEGY_KEY),
+                CONNECTOR_LOAD_TSFILE_STRATEGY_SYNC_VALUE)
+            .trim()
+            .toLowerCase();
+    validator.validate(
+        arg -> CONNECTOR_LOAD_TSFILE_STRATEGY_SET.contains(loadTsFileStrategy),
+        String.format(
+            "Load tsfile strategy should be one of %s, but got %s.",
+            CONNECTOR_LOAD_TSFILE_STRATEGY_SET, loadTsFileStrategy),
+        loadTsFileStrategy);
 
     final int zstdCompressionLevel =
         parameters.getIntOrDefault(
