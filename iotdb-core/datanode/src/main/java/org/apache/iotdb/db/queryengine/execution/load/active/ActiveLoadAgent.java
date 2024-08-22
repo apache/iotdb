@@ -20,29 +20,31 @@
 package org.apache.iotdb.db.queryengine.execution.load.active;
 
 public class ActiveLoadAgent {
-    private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
-    private final ActiveLoadDirScanner activeLoadDirScanner;
-    private final ActiveLoadListeningFileCounter activeLoadListeningDirsCountExecutor;
 
-    private ActiveLoadAgent() {
-        this.activeLoadTsFileLoader = new ActiveLoadTsFileLoader();
-        this.activeLoadDirScanner = new ActiveLoadDirScanner(activeLoadTsFileLoader);
-        this.activeLoadListeningDirsCountExecutor = new ActiveLoadListeningFileCounter();
-    }
+  private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
+  private final ActiveLoadDirScanner activeLoadDirScanner;
+  private final ActiveLoadMetricsCollector activeLoadMetricsCollector;
 
-    private static class ActiveLoadAgentHolder {
-        private static final ActiveLoadAgent INSTANCE = new ActiveLoadAgent();
-    }
+  public ActiveLoadAgent() {
+    this.activeLoadTsFileLoader = new ActiveLoadTsFileLoader();
+    this.activeLoadDirScanner = new ActiveLoadDirScanner(activeLoadTsFileLoader);
+    this.activeLoadMetricsCollector = new ActiveLoadMetricsCollector();
+  }
 
-    public static ActiveLoadDirScanner scanner() {
-        return ActiveLoadAgentHolder.INSTANCE.activeLoadDirScanner;
-    }
+  public ActiveLoadTsFileLoader loader() {
+    return activeLoadTsFileLoader;
+  }
 
-    public static ActiveLoadTsFileLoader loader() {
-        return ActiveLoadAgentHolder.INSTANCE.activeLoadTsFileLoader;
-    }
+  public ActiveLoadDirScanner scanner() {
+    return activeLoadDirScanner;
+  }
 
-    public static ActiveLoadListeningFileCounter executor() {
-        return ActiveLoadAgentHolder.INSTANCE.activeLoadListeningDirsCountExecutor;
-    }
+  public ActiveLoadMetricsCollector executor() {
+    return activeLoadMetricsCollector;
+  }
+
+  public synchronized void start() {
+    activeLoadDirScanner.start();
+    activeLoadMetricsCollector.start();
+  }
 }
