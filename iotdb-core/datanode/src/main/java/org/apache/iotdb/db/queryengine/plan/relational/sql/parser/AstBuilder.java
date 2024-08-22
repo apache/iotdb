@@ -322,16 +322,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitRenameColumn(RelationalSqlParser.RenameColumnContext ctx) {
+  public Node visitRenameColumn(final RelationalSqlParser.RenameColumnContext ctx) {
     return new RenameColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
         (Identifier) visit(ctx.from),
-        (Identifier) visit(ctx.to));
+        (Identifier) visit(ctx.to),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() < ctx.COLUMN().getSymbol().getTokenIndex()),
+        ctx.EXISTS().stream()
+            .anyMatch(
+                node ->
+                    node.getSymbol().getTokenIndex() > ctx.COLUMN().getSymbol().getTokenIndex()));
   }
 
   @Override
-  public Node visitDropColumn(RelationalSqlParser.DropColumnContext ctx) {
+  public Node visitDropColumn(final RelationalSqlParser.DropColumnContext ctx) {
     return new DropColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),

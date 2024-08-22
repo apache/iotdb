@@ -3170,6 +3170,70 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> alterTableRenameColumn(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient client =
+        CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      TSStatus tsStatus;
+      final TAlterTableReq req = new TAlterTableReq();
+      req.setDatabase(database);
+      req.setTableName(tableName);
+      req.setQueryId(queryId);
+      req.setOperationType(AlterTableOperationType.RENAME_COLUMN.getTypeValue());
+
+      final ByteArrayOutputStream stream = new ByteArrayOutputStream();
+      try {
+        ReadWriteIOUtils.write(oldName, stream);
+        ReadWriteIOUtils.write(newName, stream);
+      } catch (IOException ignored) {
+        // ByteArrayOutputStream won't throw IOException
+      }
+      req.setUpdateInfo(stream.toByteArray());
+
+      do {
+        try {
+          tsStatus = client.alterTable(req);
+        } catch (final TTransportException e) {
+          if (e.getType() == TTransportException.TIMED_OUT
+              || e.getCause() instanceof SocketTimeoutException) {
+            // time out mainly caused by slow execution, wait until
+            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+          } else {
+            throw e;
+          }
+        }
+        // keep waiting until task ends
+      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
+          || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
+          || (TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode() == tsStatus.getCode()
+              && columnIfExists)) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        LOGGER.warn(
+            "Failed to rename column from {} to {} for table {}.{}, status is {}.",
+            oldName,
+            newName,
+            database,
+            tableName,
+            tsStatus);
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (final ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,

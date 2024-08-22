@@ -293,6 +293,15 @@ public interface IConfigTaskExecutor {
       final boolean tableIfExists,
       final boolean columnIfExists);
 
+  SettableFuture<ConfigTaskResult> alterTableRenameColumn(
+      final String database,
+      final String tableName,
+      final String oldName,
+      final String newName,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
   SettableFuture<ConfigTaskResult> alterTableSetProperties(
       final String database,
       final String tableName,

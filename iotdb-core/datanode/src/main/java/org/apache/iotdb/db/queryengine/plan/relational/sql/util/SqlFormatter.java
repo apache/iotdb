@@ -638,7 +638,15 @@ public final class SqlFormatter {
     @Override
     protected Void visitRenameColumn(RenameColumn node, Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder.append(formatName(node.getTable())).append(" RENAME COLUMN ");
+      if (node.columnIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder
           .append(formatName(node.getSource()))
           .append(" TO ")
