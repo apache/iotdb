@@ -41,7 +41,7 @@
         ]]></cypher>
         <report primaryColumn="Invocation"/>
     </constraint>
-
+    <!-- Addresses all types that provide singleton functionality, no matter which type of access path they use -->
     <concept id="singleton:Singleton">
         <description>Identifies singletons as a general concept.</description>
         <cypher><![CDATA[
@@ -53,9 +53,10 @@
               singleton.fqn
         ]]></cypher>
     </concept>
-    <!-- Detects singleton patterns where a public static "getInstance()" method is called -->
+    <!-- Detects singleton patterns where a type has a "public static getInstance()" method which returns the same type as the class itself -->
     <concept id="singleton:PublicStaticMethodSingleton">
         <providesConcept refId="singleton:Singleton"/>
+        <!-- TODO: It would be nicer, if I could select any no-args method, because omitting the "getInstance" name filter will result in loads of "valueOf" methods being reported -->
         <description>Identifies singletons that are accessed by a public static getInstance() method that returns the type of the main class.</description>
         <cypher><![CDATA[
             MATCH
@@ -68,6 +69,7 @@
               singleton.fqn
         ]]></cypher>
     </concept>
+    <!-- Detects singleton patterns where a type has a "public static" instance variable of the same type as the class itself -->
     <concept id="singleton:PublicStaticPropertySingleton">
         <providesConcept refId="singleton:Singleton"/>
         <description>Identifies singletons that are accessed by a public static property of the type of the main class.</description>
@@ -82,6 +84,7 @@
               singleton.fqn
         ]]></cypher>
     </concept>
+    <!-- Addresses all types that use a singleton, no matter which type of access path they use -->
     <concept id="singleton:SingletonClient">
         <description>Identifies singleton client as a general concept.</description>
         <cypher><![CDATA[
@@ -93,28 +96,38 @@
               client.fqn
         ]]></cypher>
     </concept>
+    <!-- Marks types as SingletonClients, that call "getInstance()" methods of types marked as "Singleton" -->
     <concept id="singleton:PublicStaticMethodSingletonClient">
         <providesConcept refId="singleton:SingletonClient"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
         <description>Identifies classes that accesses a singleton via public static getInstance() method.</description>
         <cypher><![CDATA[
             MATCH
-              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:INVOKES]-> (s:Singleton)
+              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:INVOKES]-> (singleton:Singleton)
             SET
               client:SingletonClient:PublicStaticMethod
+            CREATE
+              (client) -[:USES_SINGLETON]-> (singleton)
             RETURN
               client
             ORDER BY
               client.fqn
         ]]></cypher>
     </concept>
+    <!-- Marks types as SingletonClients, that read the public static singleton variable of types marked as "Singleton" -->
     <concept id="singleton:PublicStaticPropertySingletonClient">
         <providesConcept refId="singleton:SingletonClient"/>
+        <requiresConcept refId="singleton:PublicStaticMethodSingleton"/>
+        <requiresConcept refId="singleton:PublicStaticPropertySingleton"/>
         <description>Identifies classes that accesses a singleton via public static property.</description>
         <cypher><![CDATA[
             MATCH
-              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:READS]-> (s:Singleton)
+              (client:Type:Class) -[:DECLARES*]-> (whatever) -[:READS]-> (singleton:Singleton)
             SET
               client:SingletonClient:PublicStaticField
+            CREATE
+              (client) -[:USES_SINGLETON]-> (singleton)
             RETURN
               client
             ORDER BY
