@@ -145,7 +145,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   }
 
   // Metrics
-  public long countActiveListeningDirsFile() {
+  public long countAndReportActiveListeningDirsFileNumber() {
     final long[] fileCount = {0};
     try {
       for (String dir : listeningDirs) {
@@ -161,7 +161,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       }
       ActiveLoadingFilesMetricsSet.getInstance().recordPendingFileCounter(fileCount[0]);
     } catch (final IOException e) {
-      LOGGER.warn("failed to calculate all unprocess file num", e);
+      LOGGER.warn("Failed to count active listening dirs file number.", e);
     }
     return fileCount[0];
   }

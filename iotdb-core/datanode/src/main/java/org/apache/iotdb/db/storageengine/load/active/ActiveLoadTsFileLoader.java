@@ -314,7 +314,7 @@ public class ActiveLoadTsFileLoader {
   }
 
   // Metrics
-  public long countFailedFile() {
+  public long countAndReportFailedFileNumber() {
     final long[] fileCount = {0};
     try {
       Files.walkFileTree(
@@ -329,7 +329,7 @@ public class ActiveLoadTsFileLoader {
           });
       ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
     } catch (final IOException e) {
-      LOGGER.warn("failed to calculate fail file num", e);
+      LOGGER.warn("Failed to count failed files in fail directory.", e);
     }
     return fileCount[0];
   }

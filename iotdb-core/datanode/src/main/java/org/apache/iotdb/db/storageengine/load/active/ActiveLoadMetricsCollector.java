@@ -49,7 +49,8 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
   private void countPendingFile() {
     if (skipCountPendingFile == 0) {
-      final long currentPendingFileNum = activeLoadDirScanner.countActiveListeningDirsFile();
+      final long currentPendingFileNum =
+          activeLoadDirScanner.countAndReportActiveListeningDirsFileNumber();
       // skip skipCountPendingFile * 5 second
       // for example 10000 file will skip 150 second, 100000 will skip 1500 second
       skipCountPendingFile = currentPendingFileNum / 1000 * 3;
@@ -60,7 +61,7 @@ public class ActiveLoadMetricsCollector extends ActiveLoadScheduledExecutorServi
 
   private void countFailedFile() {
     if (skipCountFailedFile == 0) {
-      final long currentFailedFileNum = activeLoadTsFileLoader.countFailedFile();
+      final long currentFailedFileNum = activeLoadTsFileLoader.countAndReportFailedFileNumber();
       // skip skipCountFailedFile * 5 second
       // for example 10000 file will skip 150 second, 100000 will skip 1500 second
       skipCountFailedFile = currentFailedFileNum / 1000 * 3;
