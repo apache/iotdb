@@ -3130,28 +3130,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
-      final TAlterTableReq req = new TAlterTableReq();
-      req.setDatabase(database);
-      req.setTableName(tableName);
-      req.setQueryId(queryId);
-      req.setOperationType(AlterTableOperationType.ADD_COLUMN.getTypeValue());
-      req.setUpdateInfo(TsTableColumnSchemaUtil.serialize(columnSchemaList));
 
-      do {
-        try {
-          tsStatus = client.alterTable(req);
-        } catch (final TTransportException e) {
-          if (e.getType() == TTransportException.TIMED_OUT
-              || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-          } else {
-            throw e;
-          }
-        }
-        // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterTableOperationType.ADD_COLUMN,
+              TsTableColumnSchemaUtil.serialize(columnSchemaList),
+              client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
@@ -3181,36 +3168,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
-      final TAlterTableReq req = new TAlterTableReq();
-      req.setDatabase(database);
-      req.setTableName(tableName);
-      req.setQueryId(queryId);
-      req.setOperationType(AlterTableOperationType.RENAME_COLUMN.getTypeValue());
 
       final ByteArrayOutputStream stream = new ByteArrayOutputStream();
       try {
         ReadWriteIOUtils.write(oldName, stream);
         ReadWriteIOUtils.write(newName, stream);
-      } catch (IOException ignored) {
+      } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }
-      req.setUpdateInfo(stream.toByteArray());
 
-      do {
-        try {
-          tsStatus = client.alterTable(req);
-        } catch (final TTransportException e) {
-          if (e.getType() == TTransportException.TIMED_OUT
-              || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-          } else {
-            throw e;
-          }
-        }
-        // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterTableOperationType.RENAME_COLUMN,
+              stream.toByteArray(),
+              client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && tableIfExists)
@@ -3243,35 +3217,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus tsStatus;
-      final TAlterTableReq req = new TAlterTableReq();
-      req.setDatabase(database);
-      req.setTableName(tableName);
-      req.setQueryId(queryId);
-      req.setOperationType(AlterTableOperationType.SET_PROPERTIES.getTypeValue());
 
       final ByteArrayOutputStream stream = new ByteArrayOutputStream();
       try {
         ReadWriteIOUtils.write(properties, stream);
-      } catch (IOException ignored) {
+      } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }
-      req.setUpdateInfo(stream.toByteArray());
 
-      do {
-        try {
-          tsStatus = client.alterTable(req);
-        } catch (final TTransportException e) {
-          if (e.getType() == TTransportException.TIMED_OUT
-              || e.getCause() instanceof SocketTimeoutException) {
-            // time out mainly caused by slow execution, wait until
-            tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
-          } else {
-            throw e;
-          }
-        }
-        // keep waiting until task ends
-      } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+      final TSStatus tsStatus =
+          sendAlterReq2ConfigNode(
+              database,
+              tableName,
+              queryId,
+              AlterTableOperationType.SET_PROPERTIES,
+              stream.toByteArray(),
+              client);
 
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()
           || (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == tsStatus.getCode() && ifExists)) {
@@ -3291,14 +3252,47 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
-  public void handlePipeConfigClientExit(String clientId) {
+  private TSStatus sendAlterReq2ConfigNode(
+      final String database,
+      final String tableName,
+      final String queryId,
+      final AlterTableOperationType type,
+      final byte[] updateInfo,
+      final ConfigNodeClient client)
+      throws ClientManagerException, TException {
+    TSStatus tsStatus;
+    final TAlterTableReq req = new TAlterTableReq();
+    req.setDatabase(database);
+    req.setTableName(tableName);
+    req.setQueryId(queryId);
+    req.setOperationType(type.getTypeValue());
+    req.setUpdateInfo(updateInfo);
+
+    do {
+      try {
+        tsStatus = client.alterTable(req);
+      } catch (final TTransportException e) {
+        if (e.getType() == TTransportException.TIMED_OUT
+            || e.getCause() instanceof SocketTimeoutException) {
+          // time out mainly caused by slow execution, wait until
+          tsStatus = RpcUtils.getStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK);
+        } else {
+          throw e;
+        }
+      }
+      // keep waiting until task ends
+    } while (TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode() == tsStatus.getCode());
+    return tsStatus;
+  }
+
+  public void handlePipeConfigClientExit(final String clientId) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus status = configNodeClient.handlePipeConfigClientExit(clientId);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to handlePipeConfigClientExit, status is {}.", status);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
     }
   }
