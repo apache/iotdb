@@ -78,14 +78,16 @@ public abstract class WrappedInsertStatement extends WrappedStatement
         new ArrayList<>(insertBaseStatement.getMeasurements().length);
     for (int i = 0; i < insertBaseStatement.getMeasurements().length; i++) {
       if (insertBaseStatement.getMeasurements()[i] != null) {
+        TSDataType dataType = insertBaseStatement.getDataType(i);
+        if (dataType == null) {
+          dataType =
+              TypeInferenceUtils.getPredictedDataType(
+                  insertBaseStatement.getFirstValueOfIndex(i), true);
+        }
         columnSchemas.add(
             new ColumnSchema(
                 insertBaseStatement.getMeasurements()[i],
-                insertBaseStatement.getDataType(i) != null
-                    ? TypeFactory.getType(insertBaseStatement.getDataType(i))
-                    : TypeFactory.getType(
-                        TypeInferenceUtils.getPredictedDataType(
-                            insertBaseStatement.getFirstValueOfIndex(i), true)),
+                dataType != null ? TypeFactory.getType(dataType) : null,
                 false,
                 insertBaseStatement.getColumnCategory(i)));
       } else {
