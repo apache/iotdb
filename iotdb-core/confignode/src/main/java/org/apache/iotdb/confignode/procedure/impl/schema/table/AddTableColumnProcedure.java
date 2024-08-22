@@ -56,9 +56,7 @@ public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTabl
       final String tableName,
       final String queryId,
       final List<TsTableColumnSchema> addedColumnList) {
-    this.database = database;
-    this.tableName = tableName;
-    this.queryId = queryId;
+    super(database, tableName, queryId);
     this.addedColumnList = addedColumnList;
   }
 

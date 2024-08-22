@@ -83,7 +83,7 @@ public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddT
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
     ReadWriteIOUtils.write(oldName, stream);

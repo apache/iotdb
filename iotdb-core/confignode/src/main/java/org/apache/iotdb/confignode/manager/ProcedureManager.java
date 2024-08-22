@@ -79,6 +79,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteTimeSeriesProcedu
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTTLProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
@@ -1396,24 +1397,15 @@ public class ProcedureManager {
           }
           break;
         case ADD_TABLE_COLUMN_PROCEDURE:
-          final AddTableColumnProcedure addTableColumnProcedure =
-              (AddTableColumnProcedure) procedure;
-          if (type == thisType && queryId.equals(addTableColumnProcedure.getQueryId())) {
-            return new Pair<>(procedure.getProcId(), false);
-          }
-          if (database.equals(addTableColumnProcedure.getDatabase())
-              && Objects.equals(tableName, addTableColumnProcedure.getTableName())) {
-            return new Pair<>(-1L, true);
-          }
-          break;
         case SET_TABLE_PROPERTIES_PROCEDURE:
-          final SetTablePropertiesProcedure setTablePropertiesProcedure =
-              (SetTablePropertiesProcedure) procedure;
-          if (type == thisType && queryId.equals(setTablePropertiesProcedure.getQueryId())) {
+        case RENAME_TABLE_COLUMN_PROCEDURE:
+          final AbstractAlterTableProcedure<?> alterTableProcedure =
+              (AbstractAlterTableProcedure<?>) procedure;
+          if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {
             return new Pair<>(procedure.getProcId(), false);
           }
-          if (database.equals(setTablePropertiesProcedure.getDatabase())
-              && Objects.equals(tableName, setTablePropertiesProcedure.getTableName())) {
+          if (database.equals(alterTableProcedure.getDatabase())
+              && Objects.equals(tableName, alterTableProcedure.getTableName())) {
             return new Pair<>(-1L, true);
           }
           break;
