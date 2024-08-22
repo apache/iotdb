@@ -594,7 +594,7 @@ public class SortTest {
   }
 
   @Test
-  public void selectOrderTest() {
+  public void projectSortTest() {
     // columns in order and select is different
     sql = "SELECT time, attr1, s1 FROM table1 order by attr2 limit 5";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);

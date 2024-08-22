@@ -348,7 +348,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   @Test
-  public void selectSortTest() {
+  public void projectSortTest() {
     String[] expectedHeader = new String[] {"time", "level", "attr1", "device", "num", "date"};
     String[] retArray =
         new String[] {
