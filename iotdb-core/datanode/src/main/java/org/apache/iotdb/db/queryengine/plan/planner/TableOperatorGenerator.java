@@ -677,7 +677,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               Integer i = columnIndex.get(sortItem);
               if (i == null) {
                 throw new IllegalStateException(
-                    "Sort Item %s is not included in children's output columns");
+                    String.format(
+                        "Sort Item %s is not included in children's output columns", sortItem));
               }
               sortItemIndexList.add(i);
               sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));

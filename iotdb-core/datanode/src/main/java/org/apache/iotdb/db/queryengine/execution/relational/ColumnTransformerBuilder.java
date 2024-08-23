@@ -304,7 +304,8 @@ public class ColumnTransformerBuilder
         } catch (TypeNotFoundException e) {
           throw new SemanticException(String.format("Unknown type: %s", node.getType()));
         }
-        context.cache.put(node, new CastFunctionColumnTransformer(type, child));
+        context.cache.put(
+            node, new CastFunctionColumnTransformer(type, child, context.sessionInfo.getZoneId()));
       }
     }
     ColumnTransformer res = context.cache.get(node);

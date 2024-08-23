@@ -367,65 +367,120 @@ public class IoTDBScalarFunctionTableIT {
   }
 
   @Test
+  public void testBlobCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s10", "res1", "res2", "res3"};
+    String[] expectedAns =
+        new String[] {
+          "0xabcd,true,true,true,",
+        };
+    tableResultSetEqualTest(
+        "select s10, s10 > x'2d' as res1, s10 <> x'2d' as res2, s10 = X'abcd' as res3 from absTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDateCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s7", "res1", "res2", "res3"};
+    String[] expectedAns =
+        new String[] {
+          "2021-10-01,true,true,true,",
+        };
+    // add it back while supporting Implicit conversion
+    //    tableResultSetEqualTest(
+    //        "select s7, s7 < '2022-12-12' as res1, s7 <> '2022-12-12' as res2, s7 = '2021-10-01'
+    // as res3 from absTable",
+    //        expectedHeader,
+    //        expectedAns,
+    //        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s7, s7 < CAST('2022-12-12' AS DATE) as res1, s7 <> CAST('2022-12-12' AS DATE) AS res2, s7 = CAST('2021-10-01' AS DATE) as res3 from absTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void absTestFail() {
     // case 1: more than one argument
     tableAssertTestFail(
         "select s2,abs(s2,1) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function abs only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,abs(s1) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function abs only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,abs(s6) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function abs only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,abs(s7) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function abs only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,abs(s9) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function abs only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,abs(s10) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function abs only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
+        DATABASE_NAME);
+
+    // case 7: wrong data type
+    tableAssertTestFail(
+        "select s7, s7 < '2022-12-12', s7 <> '2022-12-12', s7 = '2021-10-01' from absTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Cannot apply operator: DATE < STRING",
+        DATABASE_NAME);
+
+    // case 7: wrong data type
+    tableAssertTestFail(
+        "select CAST(s1 AS INT32) from absTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Cannot cast abcd to INT32 type",
         DATABASE_NAME);
   }
 
   @Test
   public void acosTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP And range of input value is [-1, 1]
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.acos(1), Math.acos(2)};
+    Double[] expectedResultLong = new Double[] {Math.acos(1), Math.acos(2)};
+    Double[] expectedResultFloat = new Double[] {Math.acos(1.0f), Math.acos(0.5f)};
+    Double[] expectedResultDouble = new Double[] {Math.acos(1.0), Math.acos(0.5)};
+    testDoubleResult(
+        "select time,acos(s2),acos(s3),acos(s4),acos(s5) from acosTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
     String[] expectedAns =
         new String[] {
           "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
           "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,1.0471975511965979,0.5,1.0471975511965979,",
         };
-    tableResultSetEqualTest(
-        "select time,s2,acos(s2),s3,acos(s3),s4,acos(s4),s5,acos(s5) from acosTable",
-        expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
   }
 
   @Test
@@ -434,60 +489,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,acos(s2,1) from acosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function acos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function acos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,acos(s1) from acosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function acos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function acos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,acos(s6) from acosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function acos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function acos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,acos(s7) from acosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function acos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function acos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,acos(s9) from acosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function acos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function acos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,acos(s10) from acosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function acos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function acos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void asinTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP And range of input value is [-1, 1]
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.5707963267948966,1,1.5707963267948966,1.0,1.5707963267948966,1.0,1.5707963267948966,",
-          "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,0.5235987755982989,0.5,0.5235987755982989,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,asin(s2),s3,asin(s3),s4,asin(s4),s5,asin(s5) from asinTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.asin(1), Math.asin(2)};
+    Double[] expectedResultLong = new Double[] {Math.asin(1), Math.asin(2)};
+    Double[] expectedResultFloat = new Double[] {Math.asin(1.0f), Math.asin(0.5f)};
+    Double[] expectedResultDouble = new Double[] {Math.asin(1.0), Math.asin(0.5)};
+    testDoubleResult(
+        "select time,asin(s2),asin(s3),asin(s4),asin(s5) from asinTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -496,61 +552,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,asin(s2,1) from asinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function asin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function asin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,asin(s1) from asinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function asin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function asin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,asin(s6) from asinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function asin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function asin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,asin(s7) from asinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function asin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function asin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,asin(s9) from asinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function asin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function asin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,asin(s10) from asinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function asin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function asin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void atanTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.7853981633974483,1,0.7853981633974483,1.0,0.7853981633974483,1.0,0.7853981633974483,",
-          "1970-01-01T00:00:00.002Z,2,1.1071487177940904,2,1.1071487177940904,2.5,1.1902899496825317,2.5,1.1902899496825317,",
-          "1970-01-01T00:00:00.003Z,3,1.2490457723982544,3,1.2490457723982544,3.5,1.2924966677897853,3.5,1.2924966677897853,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,atan(s2),s3,atan(s3),s4,atan(s4),s5,atan(s5) from atanTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.atan(1), Math.atan(2), Math.atan(3)};
+    Double[] expectedResultLong = new Double[] {Math.atan(1), Math.atan(2), Math.atan(3)};
+    Double[] expectedResultFloat = new Double[] {Math.atan(1.0f), Math.atan(2.5f), Math.atan(3.5f)};
+    Double[] expectedResultDouble = new Double[] {Math.atan(1.0), Math.atan(2.5), Math.atan(3.5)};
+    testDoubleResult(
+        "select time,atan(s2),atan(s3),atan(s4),atan(s5) from atanTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -559,61 +615,62 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,atan(s2,1) from atanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function atan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function atan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,atan(s1) from atanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function atan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function atan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,atan(s6) from atanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function atan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function atan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,atan(s7) from atanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function atan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function atan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,atan(s9) from atanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function atan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function atan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,atan(s10) from atanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function atan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function atan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void ceilTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,",
-          "1970-01-01T00:00:00.002Z,2,2.0,2,2.0,2.5,3.0,2.5,3.0,",
-          "1970-01-01T00:00:00.003Z,-2,-2.0,-2,-2.0,-2.5,-2.0,-2.5,-2.0,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,ceil(s2),s3,ceil(s3),s4,ceil(s4),s5,ceil(s5) from ceilTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.ceil(1), Math.ceil(2), Math.ceil(-2)};
+    Double[] expectedResultLong = new Double[] {Math.ceil(1), Math.ceil(2), Math.ceil(-2)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.ceil(1.0f), Math.ceil(2.5f), Math.ceil(-2.5f)};
+    Double[] expectedResultDouble = new Double[] {Math.ceil(1.0), Math.ceil(2.5), Math.ceil(-2.5)};
+    testDoubleResult(
+        "select time,ceil(s2),ceil(s3),ceil(s4),ceil(s5) from ceilTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -622,42 +679,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,ceil(s2,1) from ceilTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ceil only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ceil only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,ceil(s1) from ceilTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ceil only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ceil only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,ceil(s6) from ceilTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ceil only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ceil only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,ceil(s7) from ceilTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ceil only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ceil only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,ceil(s9) from ceilTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ceil only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ceil only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,ceil(s10) from ceilTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ceil only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ceil only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
@@ -793,19 +850,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void cosTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.5403023058681398,1,0.5403023058681398,1.0,0.5403023058681398,1.0,0.5403023058681398,",
-          "1970-01-01T00:00:00.002Z,2,-0.4161468365471424,2,-0.4161468365471424,2.5,-0.8011436155469337,2.5,-0.8011436155469337,",
-          "1970-01-01T00:00:00.003Z,3,-0.9899924966004454,3,-0.9899924966004454,3.5,-0.9364566872907963,3.5,-0.9364566872907963,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,cos(s2),s3,cos(s3),s4,cos(s4),s5,cos(s5) from cosTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.cos(1), Math.cos(2), Math.cos(3)};
+    Double[] expectedResultLong = new Double[] {Math.cos(1), Math.cos(2), Math.cos(3)};
+    Double[] expectedResultFloat = new Double[] {Math.cos(1), Math.cos(2.5), Math.cos(3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.cos(1), Math.cos(2.5), Math.cos(3.5)};
+    testDoubleResult(
+        "select time,cos(s2),cos(s3),cos(s4),cos(s5) from cosTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -814,61 +871,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,cos(s2,1) from cosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,cos(s1) from cosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,cos(s6) from cosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,cos(s7) from cosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,cos(s9) from cosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,cos(s10) from cosTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cos only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cos only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void coshTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.543080634815244,1,1.543080634815244,1.0,1.543080634815244,1.0,1.543080634815244,",
-          "1970-01-01T00:00:00.002Z,2,3.7621956910836314,2,3.7621956910836314,2.5,6.132289479663686,2.5,6.132289479663686,",
-          "1970-01-01T00:00:00.003Z,3,10.067661995777765,3,10.067661995777765,3.5,16.572824671057315,3.5,16.572824671057315,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,cosh(s2),s3,cosh(s3),s4,cosh(s4),s5,cosh(s5) from coshTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.cosh(1), Math.cosh(2), Math.cosh(3)};
+    Double[] expectedResultLong = new Double[] {Math.cosh(1), Math.cosh(2), Math.cosh(3)};
+    Double[] expectedResultFloat = new Double[] {Math.cosh(1), Math.cosh(2.5), Math.cosh(3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.cosh(1), Math.cosh(2.5), Math.cosh(3.5)};
+    testDoubleResult(
+        "select time,cosh(s2),cosh(s3),cosh(s4),cosh(s5) from coshTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -877,61 +934,65 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,cosh(s2,1) from coshTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cosh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cosh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,cosh(s1) from coshTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cosh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cosh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,cosh(s6) from coshTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cosh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cosh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,cosh(s7) from coshTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cosh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cosh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,cosh(s9) from coshTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cosh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cosh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,cosh(s10) from coshTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function cosh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function cosh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void degreesTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,57.29577951308232,1,57.29577951308232,1.0,57.29577951308232,1.0,57.29577951308232,",
-          "1970-01-01T00:00:00.002Z,2,114.59155902616465,2,114.59155902616465,2.5,143.2394487827058,2.5,143.2394487827058,",
-          "1970-01-01T00:00:00.003Z,3,171.88733853924697,3,171.88733853924697,3.5,200.53522829578813,3.5,200.53522829578813,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,degrees(s2),s3,degrees(s3),s4,degrees(s4),s5,degrees(s5) from degreesTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2), Math.toDegrees(3)};
+    Double[] expectedResultLong =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2), Math.toDegrees(3)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2.5), Math.toDegrees(3.5)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.toDegrees(1), Math.toDegrees(2.5), Math.toDegrees(3.5)};
+    testDoubleResult(
+        "select time,degrees(s2),degrees(s3),degrees(s4),degrees(s5) from degreesTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -940,42 +1001,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,degrees(s2,1) from degreesTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function degrees only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function degrees only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,degrees(s1) from degreesTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function degrees only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function degrees only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,degrees(s6) from degreesTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function degrees only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function degrees only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,degrees(s7) from degreesTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function degrees only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function degrees only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,degrees(s9) from degreesTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function degrees only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function degrees only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,degrees(s10) from degreesTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function degrees only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function degrees only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
@@ -1086,19 +1147,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void expTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,2.718281828459045,1,2.718281828459045,1.0,2.718281828459045,1.0,2.718281828459045,",
-          "1970-01-01T00:00:00.002Z,2,7.38905609893065,2,7.38905609893065,2.5,12.182493960703473,2.5,12.182493960703473,",
-          "1970-01-01T00:00:00.003Z,3,20.085536923187668,3,20.085536923187668,3.5,33.11545195869231,3.5,33.11545195869231,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,exp(s2),s3,exp(s3),s4,exp(s4),s5,exp(s5) from expTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.exp(1), Math.exp(2), Math.exp(3)};
+    Double[] expectedResultLong = new Double[] {Math.exp(1), Math.exp(2), Math.exp(3)};
+    Double[] expectedResultFloat = new Double[] {Math.exp(1), Math.exp(2.5), Math.exp(3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.exp(1), Math.exp(2.5), Math.exp(3.5)};
+    testDoubleResult(
+        "select time,exp(s2),exp(s3),exp(s4),exp(s5) from expTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1107,61 +1168,63 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,exp(s2,1) from expTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function exp only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function exp only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,exp(s1) from expTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function exp only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function exp only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,exp(s6) from expTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function exp only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function exp only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,exp(s7) from expTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function exp only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function exp only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,exp(s9) from expTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function exp only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function exp only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,exp(s10) from expTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function exp only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function exp only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void floorTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,",
-          "1970-01-01T00:00:00.002Z,2,2.0,2,2.0,2.5,2.0,2.5,2.0,",
-          "1970-01-01T00:00:00.003Z,-2,-2.0,-2,-2.0,-2.5,-3.0,-2.5,-3.0,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,floor(s2),s3,floor(s3),s4,floor(s4),s5,floor(s5) from floorTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.floor(1), Math.floor(2), Math.floor(-2)};
+    Double[] expectedResultLong = new Double[] {Math.floor(1), Math.floor(2), Math.floor(-2)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.floor(1.0f), Math.floor(2.5f), Math.floor(-2.5f)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.floor(1.0), Math.floor(2.5), Math.floor(-2.5)};
+    testDoubleResult(
+        "select time,floor(s2),floor(s3),floor(s4),floor(s5) from floorTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1170,42 +1233,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,floor(s2,1) from floorTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function floor only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function floor only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,floor(s1) from floorTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function floor only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function floor only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,floor(s6) from floorTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function floor only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function floor only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,floor(s7) from floorTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function floor only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function floor only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,floor(s9) from floorTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function floor only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function floor only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,floor(s10) from floorTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function floor only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function floor only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
@@ -1303,19 +1366,19 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void lnTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
-          "1970-01-01T00:00:00.002Z,0,-Infinity,0,-Infinity,0.0,-Infinity,0.0,-Infinity,",
-          "1970-01-01T00:00:00.003Z,-3,NaN,-3,NaN,-3.5,NaN,-3.5,NaN,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,ln(s2),s3,ln(s3),s4,ln(s4),s5,ln(s5) from lnTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.log(1), Math.log(0), Math.log(-3)};
+    Double[] expectedResultLong = new Double[] {Math.log(1), Math.log(0), Math.log(-3)};
+    Double[] expectedResultFloat = new Double[] {Math.log(1), Math.log(0), Math.log(-3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.log(1), Math.log(0), Math.log(-3.5)};
+    testDoubleResult(
+        "select time,ln(s2),ln(s3),ln(s4),ln(s5) from lnTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1324,61 +1387,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,ln(s2,1) from lnTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ln only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ln only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,ln(s1) from lnTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ln only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ln only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,ln(s6) from lnTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ln only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ln only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,ln(s7) from lnTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ln only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ln only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,ln(s9) from lnTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ln only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ln only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,ln(s10) from lnTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function ln only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function ln only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void log10TestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
-          "1970-01-01T00:00:00.002Z,0,-Infinity,0,-Infinity,0.0,-Infinity,0.0,-Infinity,",
-          "1970-01-01T00:00:00.003Z,-3,NaN,-3,NaN,-3.5,NaN,-3.5,NaN,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,log10(s2),s3,log10(s3),s4,log10(s4),s5,log10(s5) from log10Table",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3)};
+    Double[] expectedResultLong = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3)};
+    Double[] expectedResultFloat = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.log10(1), Math.log10(0), Math.log10(-3.5)};
+    testDoubleResult(
+        "select time,log10(s2),log10(s3),log10(s4),log10(s5) from log10Table",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1387,42 +1450,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,log10(s2,1) from log10Table",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function log10 only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function log10 only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,log10(s1) from log10Table",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function log10 only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function log10 only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,log10(s6) from log10Table",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function log10 only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function log10 only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,log10(s7) from log10Table",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function log10 only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function log10 only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,log10(s9) from log10Table",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function log10 only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function log10 only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,log10(s10) from log10Table",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function log10 only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function log10 only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
@@ -1513,28 +1576,32 @@ public class IoTDBScalarFunctionTableIT {
   public void radiansTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
     String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
-    int[] expectedBodyInt = new int[] {1, 2, 3};
-    long[] expectedBodyLong = new long[] {1, 2, 3};
-    float[] expectedBodyFloat = new float[] {1, 2.5f, 3.5f};
-    double[] expectedBodyDouble = new double[] {1, 2.5, 3.5};
-    testRadiansDoubleResult(
+    Double[] expectedResultInt =
+        new Double[] {Math.toRadians(1), Math.toRadians(2), Math.toRadians(3)};
+    Double[] expectedResultLong =
+        new Double[] {Math.toRadians(1), Math.toRadians(2), Math.toRadians(3)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.toRadians(1), Math.toRadians(2.5), Math.toRadians(3.5)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.toRadians(1), Math.toRadians(2.5), Math.toRadians(3.5)};
+    testDoubleResult(
         "select time,radians(s2),radians(s3),radians(s4),radians(s5) from radiansTable",
         expectedHeader,
         DATABASE_NAME,
-        expectedBodyInt,
-        expectedBodyLong,
-        expectedBodyFloat,
-        expectedBodyDouble);
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
-  private void testRadiansDoubleResult(
+  private void testDoubleResult(
       String sql,
       String[] expectedHeader,
       String database,
-      int[] expectedBodyInt,
-      long[] expectedBodyLong,
-      float[] expectedBodyFloat,
-      double[] expectedBodyDouble) {
+      Double[] expectedResultInt,
+      Double[] expectedResultLong,
+      Double[] expectedResultFloat,
+      Double[] expectedResultDouble) {
     try (Connection connection =
         EnvFactory.getEnv()
             .getConnection(
@@ -1554,28 +1621,16 @@ public class IoTDBScalarFunctionTableIT {
           int cnt = 0;
           while (resultSet.next()) {
             assertEquals(
-                Math.toRadians(expectedBodyInt[cnt]),
-                Double.parseDouble(resultSet.getString(2)),
-                0.00001);
+                expectedResultInt[cnt], Double.parseDouble(resultSet.getString(2)), 0.00001);
             assertEquals(
-                Math.toRadians(expectedBodyLong[cnt]),
-                Double.parseDouble(resultSet.getString(3)),
-                0.00001);
+                expectedResultLong[cnt], Double.parseDouble(resultSet.getString(3)), 0.00001);
             assertEquals(
-                Math.toRadians(expectedBodyFloat[cnt]),
-                Double.parseDouble(resultSet.getString(4)),
-                0.00001);
+                expectedResultFloat[cnt], Double.parseDouble(resultSet.getString(4)), 0.00001);
             assertEquals(
-                Math.toRadians(expectedBodyDouble[cnt]),
-                Double.parseDouble(resultSet.getString(5)),
-                0.00001);
-
-            for (int i = 1; i < expectedHeader.length; i++) {
-              System.out.println(resultSet.getString(i));
-            }
+                expectedResultDouble[cnt], Double.parseDouble(resultSet.getString(5)), 0.00001);
             cnt++;
           }
-          assertEquals(expectedBodyInt.length, cnt);
+          assertEquals(expectedResultInt.length, cnt);
         }
       }
     } catch (SQLException e) {
@@ -1590,42 +1645,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,radians(s2,1) from radiansTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function radians only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function radians only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,radians(s1) from radiansTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function radians only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function radians only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,radians(s6) from radiansTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function radians only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function radians only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,radians(s7) from radiansTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function radians only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function radians only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,radians(s9) from radiansTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function radians only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function radians only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,radians(s10) from radiansTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function radians only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function radians only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
@@ -1757,61 +1812,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,sign(s2,1) from signTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sign only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sign only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,sign(s1) from signTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sign only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sign only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,sign(s6) from signTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sign only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sign only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,sign(s7) from signTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sign only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sign only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,sign(s9) from signTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sign only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sign only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,sign(s10) from signTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sign only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sign only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void sinTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.8414709848078965,1,0.8414709848078965,1.0,0.8414709848078965,1.0,0.8414709848078965,",
-          "1970-01-01T00:00:00.002Z,2,0.9092974268256817,2,0.9092974268256817,2.5,0.5984721441039564,2.5,0.5984721441039564,",
-          "1970-01-01T00:00:00.003Z,3,0.1411200080598672,3,0.1411200080598672,3.5,-0.35078322768961984,3.5,-0.35078322768961984,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,sin(s2),s3,sin(s3),s4,sin(s4),s5,sin(s5) from sinTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.sin(1), Math.sin(2), Math.sin(3)};
+    Double[] expectedResultLong = new Double[] {Math.sin(1), Math.sin(2), Math.sin(3)};
+    Double[] expectedResultFloat = new Double[] {Math.sin(1), Math.sin(2.5), Math.sin(3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.sin(1), Math.sin(2.5), Math.sin(3.5)};
+    testDoubleResult(
+        "select time,sin(s2),sin(s3),sin(s4),sin(s5) from sinTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1820,61 +1875,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,sin(s2,1) from sinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,sin(s1) from sinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,sin(s6) from sinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,sin(s7) from sinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,sin(s9) from sinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,sin(s10) from sinTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sin only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sin only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void sinhTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.1752011936438014,1,1.1752011936438014,1.0,1.1752011936438014,1.0,1.1752011936438014,",
-          "1970-01-01T00:00:00.002Z,2,3.626860407847019,2,3.626860407847019,2.5,6.0502044810397875,2.5,6.0502044810397875,",
-          "1970-01-01T00:00:00.003Z,3,10.017874927409903,3,10.017874927409903,3.5,16.542627287634996,3.5,16.542627287634996,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,sinh(s2),s3,sinh(s3),s4,sinh(s4),s5,sinh(s5) from sinhTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.sinh(1), Math.sinh(2), Math.sinh(3)};
+    Double[] expectedResultLong = new Double[] {Math.sinh(1), Math.sinh(2), Math.sinh(3)};
+    Double[] expectedResultFloat = new Double[] {Math.sinh(1), Math.sinh(2.5), Math.sinh(3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.sinh(1), Math.sinh(2.5), Math.sinh(3.5)};
+    testDoubleResult(
+        "select time,sinh(s2),sinh(s3),sinh(s4),sinh(s5) from sinhTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1883,61 +1938,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,sinh(s2,1) from sinhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sinh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sinh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,sinh(s1) from sinhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sinh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sinh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,sinh(s6) from sinhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sinh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sinh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,sinh(s7) from sinhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sinh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sinh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,sinh(s9) from sinhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sinh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sinh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,sinh(s10) from sinhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sinh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sinh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void sqrtTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.0,1,1.0,1.0,1.0,1.0,1.0,",
-          "1970-01-01T00:00:00.002Z,0,0.0,0,0.0,0.0,0.0,0.0,0.0,",
-          "1970-01-01T00:00:00.003Z,-1,NaN,-1,NaN,-1.5,NaN,-1.5,NaN,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,sqrt(s2),s3,sqrt(s3),s4,sqrt(s4),s5,sqrt(s5) from sqrtTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1)};
+    Double[] expectedResultLong = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1)};
+    Double[] expectedResultFloat = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1.5)};
+    Double[] expectedResultDouble = new Double[] {Math.sqrt(1), Math.sqrt(0), Math.sqrt(-1.5)};
+    testDoubleResult(
+        "select time,sqrt(s2),sqrt(s3),sqrt(s4),sqrt(s5) from sqrtTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -1946,42 +2001,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,sqrt(s2,1) from sqrtTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sqrt only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sqrt only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,sqrt(s1) from sqrtTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sqrt only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sqrt only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,sqrt(s6) from sqrtTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sqrt only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sqrt only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,sqrt(s7) from sqrtTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sqrt only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sqrt only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,sqrt(s9) from sqrtTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sqrt only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sqrt only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,sqrt(s10) from sqrtTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function sqrt only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function sqrt only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
@@ -2300,19 +2355,21 @@ public class IoTDBScalarFunctionTableIT {
   @Test
   public void tanTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,1.5574077246549023,1,1.5574077246549023,1.0,1.5574077246549023,1.0,1.5574077246549023,",
-          "1970-01-01T00:00:00.002Z,2,-2.185039863261519,2,-2.185039863261519,1.5707964,-2.287733242885646E7,1.57079632675,2.227340543395435E10,",
-          "1970-01-01T00:00:00.003Z,3,-0.1425465430742778,3,-0.1425465430742778,3.5,0.3745856401585947,3.5,0.3745856401585947,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,tan(s2),s3,tan(s3),s4,tan(s4),s5,tan(s5) from tanTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.tan(1), Math.tan(2), Math.tan(3)};
+    Double[] expectedResultLong = new Double[] {Math.tan(1), Math.tan(2), Math.tan(3)};
+    Double[] expectedResultFloat =
+        new Double[] {Math.tan(1), Math.tan((float) 1.57079632675), Math.tan(3.5)};
+    Double[] expectedResultDouble =
+        new Double[] {Math.tan(1), Math.tan(1.57079632675), Math.tan(3.5)};
+    testDoubleResult(
+        "select time,tan(s2),tan(s3),tan(s4),tan(s5) from tanTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -2321,61 +2378,61 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,tan(s2,1) from tanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,tan(s1) from tanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,tan(s6) from tanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,tan(s7) from tanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,tan(s9) from tanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,tan(s10) from tanTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tan only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tan only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 
   @Test
   public void tanhTestNormal() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
-    String[] expectedHeader =
-        new String[] {"time", "s2", "_col2", "s3", "_col4", "s4", "_col6", "s5", "_col8"};
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.7615941559557649,1,0.7615941559557649,1.0,0.7615941559557649,1.0,0.7615941559557649,",
-          "1970-01-01T00:00:00.002Z,2,0.9640275800758169,2,0.9640275800758169,2.5,0.9866142981514303,2.5,0.9866142981514303,",
-          "1970-01-01T00:00:00.003Z,3,0.9950547536867305,3,0.9950547536867305,3.5,0.9981778976111987,3.5,0.9981778976111987,",
-        };
-    tableResultSetEqualTest(
-        "select time,s2,tanh(s2),s3,tanh(s3),s4,tanh(s4),s5,tanh(s5) from tanhTable",
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.tanh(1), Math.tanh(2), Math.tanh(3)};
+    Double[] expectedResultLong = new Double[] {Math.tanh(1), Math.tanh(2), Math.tanh(3)};
+    Double[] expectedResultFloat = new Double[] {Math.tanh(1), Math.tanh(2.5), Math.tanh(3.5)};
+    Double[] expectedResultDouble = new Double[] {Math.tanh(1), Math.tanh(2.5), Math.tanh(3.5)};
+    testDoubleResult(
+        "select time,tanh(s2),tanh(s3),tanh(s4),tanh(s5) from tanhTable",
         expectedHeader,
-        expectedAns,
-        DATABASE_NAME);
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
 
   @Test
@@ -2384,42 +2441,42 @@ public class IoTDBScalarFunctionTableIT {
     tableAssertTestFail(
         "select s2,tanh(s2,1) from tanhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tanh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tanh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 2: wrong data type
     tableAssertTestFail(
         "select s1,tanh(s1) from tanhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tanh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tanh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 3: wrong data type
     tableAssertTestFail(
         "select s6,tanh(s6) from tanhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tanh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tanh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 4: wrong data type
     tableAssertTestFail(
         "select s7,tanh(s7) from tanhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tanh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tanh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 5: wrong data type
     tableAssertTestFail(
         "select s9,tanh(s9) from tanhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tanh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tanh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
 
     // case 6: wrong data type
     tableAssertTestFail(
         "select s10,tanh(s10) from tanhTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-            + ": Scalar function tanh only accepts one argument and it must be TimeStamp, Double, Float, Int32 or Int64 data type.",
+            + ": Scalar function tanh only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
         DATABASE_NAME);
   }
 

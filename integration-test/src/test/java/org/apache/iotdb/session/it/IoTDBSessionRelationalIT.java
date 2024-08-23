@@ -346,6 +346,90 @@ public class IoTDBSessionRelationalIT {
 
   @Test
   @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void partialInsertSQLTest() throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TREE_SQL_DIALECT)) {
+      // disable auto-creation only for this test
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_auto_create_schema\"=\"false\"");
+    }
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // the table is missing column "m2"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table2_2 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+      try {
+        session.executeNonQueryStatement(
+            "INSERT INTO table2_2 (time, id1, attr1, m1, m2) values (1, '1', '1', 1.0, 2.0)");
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "616: Unknown column category for m2. Cannot auto create column.", e.getMessage());
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection(TREE_SQL_DIALECT)) {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"enable_auto_create_schema\"=\"true\"");
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void partialInsertRelationalRowFailTest()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TREE_SQL_DIALECT)) {
+      // disable auto-creation only for this test
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_auto_create_schema\"=\"false\"");
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"false\"");
+    }
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"db1\"");
+      // the table is missing column "m2"
+      session.executeNonQueryStatement(
+          "CREATE TABLE table2_3 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      // the insertion contains "m2"
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      schemaList.add(new MeasurementSchema("m2", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(
+              ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT, ColumnType.MEASUREMENT);
+      List<String> measurementIds =
+          schemaList.stream()
+              .map(IMeasurementSchema::getMeasurementId)
+              .collect(Collectors.toList());
+      List<TSDataType> dataTypes =
+          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+
+      Object[] values = new Object[] {"id:" + 1, "attr:" + 1, 1 * 1.0, 1 * 1.0};
+      try {
+        session.insertRelationalRecord(
+            "table2_3", 1, measurementIds, dataTypes, columnTypes, values);
+        fail("Exception expected");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Fail to insert measurements [m2] caused by [Column m2 does not exists or fails to be created]",
+            e.getMessage());
+      }
+
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection(TREE_SQL_DIALECT)) {
+        session.executeNonQueryStatement(
+            "SET CONFIGURATION \"enable_auto_create_schema\"=\"true\"");
+        session.executeNonQueryStatement("SET CONFIGURATION \"enable_partial_insert\"=\"true\"");
+      }
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void insertRelationalRowTest()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(TABLE_SQL_DIALECT)) {
