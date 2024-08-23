@@ -26,8 +26,11 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -83,7 +86,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  public void updateCache(
+  public void updateLastCache(
       final String database,
       final String tableName,
       final String[] deviceId,
@@ -99,6 +102,38 @@ public class TableDeviceSchemaCache {
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  public void tryUpdateLastCacheWithoutLock(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final Map<String, TimeValuePair> measurementUpdateMap) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+    if (Objects.nonNull(entry)) {
+      entry.tryUpdate(database, tableName, measurementUpdateMap);
+    }
+  }
+
+  public TimeValuePair getLastEntry(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final String measurement) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+    return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
+  }
+
+  public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final String measurement) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+    return Objects.nonNull(entry) ? entry.getLastRow(measurement) : null;
   }
 
   public void invalidate(final String database) {
