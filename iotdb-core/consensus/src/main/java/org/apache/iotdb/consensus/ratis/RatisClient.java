@@ -222,6 +222,7 @@ class RatisClient implements AutoCloseable {
   private static class RatisEndlessRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
+    // for reconfiguration request, we use different retry policy
     private final RetryPolicy defaultPolicy;
     private final RetryPolicy otherPolicy;
 
@@ -237,7 +238,6 @@ class RatisClient implements AutoCloseable {
     public Action handleAttemptFailure(Event event) {
       Throwable cause = event.getCause();
       if (cause == null
-          || cause instanceof StatusRuntimeException
           || cause instanceof ReconfigurationInProgressException
           || cause instanceof TimeoutIOException
           || cause instanceof LeaderSteppingDownException
