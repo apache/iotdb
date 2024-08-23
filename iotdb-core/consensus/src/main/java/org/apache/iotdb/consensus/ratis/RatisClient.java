@@ -223,26 +223,32 @@ class RatisClient implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
     private final RetryPolicy defaultPolicy;
+    private final RetryPolicy otherPolicy;
 
     RatisEndlessRetryPolicy() {
       defaultPolicy =
           RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
+      otherPolicy =
+          RetryPolicies.retryUpToMaximumCountWithFixedSleep(
+              3, TimeDuration.valueOf(1, TimeUnit.SECONDS));
     }
 
     @Override
     public Action handleAttemptFailure(Event event) {
-      if (event.getCause() == null
-          || event.getCause() instanceof ReconfigurationInProgressException
-          || event.getCause() instanceof TimeoutIOException
-          || event.getCause() instanceof LeaderSteppingDownException
-          || event.getCause() instanceof ReconfigurationTimeoutException
-          || event.getCause() instanceof ServerNotReadyException
-          || event.getCause() instanceof NotLeaderException
-          || event.getCause() instanceof LeaderNotReadyException) {
+      Throwable cause = event.getCause();
+      if (cause == null
+          || cause instanceof StatusRuntimeException
+          || cause instanceof ReconfigurationInProgressException
+          || cause instanceof TimeoutIOException
+          || cause instanceof LeaderSteppingDownException
+          || cause instanceof ReconfigurationTimeoutException
+          || cause instanceof ServerNotReadyException
+          || cause instanceof NotLeaderException
+          || cause instanceof LeaderNotReadyException) {
         return defaultPolicy.handleAttemptFailure(event);
       }
 
-      return defaultPolicy.handleAttemptFailure(event);
+      return otherPolicy.handleAttemptFailure(event);
     }
   }
 }
