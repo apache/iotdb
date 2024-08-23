@@ -19,40 +19,25 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class AlterTableDropColumnTask implements IConfigTask {
-
-  private final String database;
-
-  private final String tableName;
+public class AlterTableDropColumnTask extends AbstractAlterTableTask {
 
   private final String columnName;
-
-  private final String queryId;
-
-  private final boolean tableIfExists;
-
   private final boolean columnIfExists;
 
   public AlterTableDropColumnTask(
-      String database,
+      final String database,
       final String tableName,
       final String columnName,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists) {
-    database = PathUtils.qualifyDatabaseName(database);
-    this.database = database;
-    this.tableName = tableName;
+    super(database, tableName, queryId, tableIfExists);
     this.columnName = columnName;
-    this.queryId = queryId;
-    this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
   }
 

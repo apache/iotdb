@@ -19,44 +19,30 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational;
 
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class AlterTableRenameColumnTask implements IConfigTask {
-
-  private final String database;
-
-  private final String tableName;
+public class AlterTableRenameColumnTask extends AbstractAlterTableTask {
 
   private final String oldName;
 
   private final String newName;
 
-  private final String queryId;
-
-  private final boolean tableIfExists;
-
   private final boolean columnIfExists;
 
   public AlterTableRenameColumnTask(
-      String database,
+      final String database,
       final String tableName,
       final String oldName,
       final String newName,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists) {
-    database = PathUtils.qualifyDatabaseName(database);
-    this.database = database;
-    this.tableName = tableName;
+    super(database, tableName, queryId, tableIfExists);
     this.oldName = oldName;
     this.newName = newName;
-    this.queryId = queryId;
-    this.tableIfExists = tableIfExists;
     this.columnIfExists = columnIfExists;
   }
 
