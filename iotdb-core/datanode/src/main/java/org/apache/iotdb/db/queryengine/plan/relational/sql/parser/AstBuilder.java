@@ -1643,8 +1643,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
     if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
-      throw new IllegalArgumentException(
-          "Simultaneous setting of monthly and non-monthly intervals is not supported");
+      throw new SemanticException(
+          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
     }
 
     LongLiteral monthDuration =
