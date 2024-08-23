@@ -74,6 +74,8 @@ public class TableDeviceSchemaCache {
             .build();
   }
 
+  /////////////////////////////// Attribute ///////////////////////////////
+
   // The input deviceId shall have its tailing nulls trimmed
   public Map<String, String> getDeviceAttribute(
       final String database, final String tableName, final String[] deviceId) {
@@ -88,7 +90,7 @@ public class TableDeviceSchemaCache {
   }
 
   // The input deviceId shall have its tailing nulls trimmed
-  public void put(
+  public void putAttributes(
       final String database,
       final String tableName,
       final String[] deviceId,
@@ -106,23 +108,30 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  public void update(
+  public void updateAttributes(
       final String database,
       final String tableName,
       final String[] deviceId,
       final Map<String, String> attributeMap) {
-    readWriteLock.readLock().lock();
-    try {
-      dualKeyCache.update(
-          new TableId(database, tableName),
-          new TableDeviceId(deviceId),
-          new TableDeviceCacheEntry(),
-          entry -> entry.updateAttribute(database, tableName, attributeMap),
-          false);
-    } finally {
-      readWriteLock.readLock().unlock();
-    }
+    dualKeyCache.update(
+        new TableId(database, tableName),
+        new TableDeviceId(deviceId),
+        new TableDeviceCacheEntry(),
+        entry -> entry.updateAttribute(database, tableName, attributeMap),
+        false);
   }
+
+  public void invalidateAttributes(
+      final String database, final String tableName, final String[] deviceId) {
+    dualKeyCache.update(
+        new TableId(database, tableName),
+        new TableDeviceId(deviceId),
+        new TableDeviceCacheEntry(),
+        entry -> -entry.invalidateAttribute(),
+        false);
+  }
+
+  /////////////////////////////// Last Cache ///////////////////////////////
 
   public void updateLastCache(
       final String database,

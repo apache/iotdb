@@ -83,6 +83,13 @@ public class TableDeviceCacheEntry {
     return diff.get();
   }
 
+  public int invalidateAttribute() {
+    final TableDeviceLastCache cache = lastCache.get();
+    final int size = cache.estimateSize();
+    lastCache = new AtomicReference<>();
+    return size;
+  }
+
   public String getAttribute(final String key) {
     return attributeMap.get(key);
   }

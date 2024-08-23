@@ -132,7 +132,7 @@ public class TableDeviceSchemaValidator {
         (key, value) ->
             fetcher
                 .getTableDeviceCache()
-                .put(
+                .putAttributes(
                     schemaValidation.getDatabase(),
                     schemaValidation.getTableName(),
                     key.getIdValues(),

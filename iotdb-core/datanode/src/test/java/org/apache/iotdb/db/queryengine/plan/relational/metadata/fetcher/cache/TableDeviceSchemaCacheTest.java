@@ -72,7 +72,7 @@ public class TableDeviceSchemaCacheTest {
     final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
-    cache.put(
+    cache.putAttributes(
         database,
         table1,
         new String[] {"hebei", "p_1", "d_0"},
@@ -84,7 +84,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
 
     attributeMap.put("type", "old");
-    cache.put(
+    cache.putAttributes(
         database,
         table1,
         new String[] {"hebei", "p_1", "d_1"},
@@ -94,7 +94,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
 
     attributeMap.put("cycle", "daily");
-    cache.put(
+    cache.putAttributes(
         database,
         table1,
         new String[] {"shandong", "p_1", "d_1"},
@@ -108,7 +108,7 @@ public class TableDeviceSchemaCacheTest {
     final String table2 = "t1";
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
-    cache.put(
+    cache.putAttributes(
         database,
         table2,
         new String[] {"hebei", "p_1", "d_0"},
@@ -120,7 +120,7 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
 
     attributeMap.put("type", "old");
-    cache.put(
+    cache.putAttributes(
         database,
         table2,
         new String[] {"hebei", "p_1", "d_1"},

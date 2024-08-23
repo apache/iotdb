@@ -1369,7 +1369,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (!isRecovering && IoTDBDescriptor.getInstance().getConfig().getDataNodeId() != -1) {
       TableDeviceSchemaFetcher.getInstance()
           .getTableDeviceCache()
-          .update(databaseName, tableName, deviceId, resultMap);
+          .updateAttributes(databaseName, tableName, deviceId, resultMap);
     }
   }
 
