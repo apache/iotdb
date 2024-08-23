@@ -160,7 +160,6 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TEXT);
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.STRING);
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.TIMESTAMP);
-    //  x
   }
 
   // Test for converting BLOB to OtherType

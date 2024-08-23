@@ -59,7 +59,7 @@ import java.util.Random;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2ManualCreateSchema.class})
-public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
+public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT {
   private static final int generateDataSize = 100;
 
   @Test
@@ -321,9 +321,9 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
       Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test." + uuid);
       if (isTsFile) {
         consumer.accept(senderSession, receiverSession, tablet);
-        senderSession.executeNonQueryStatement("flush");
         Thread.sleep(2000);
         createDataPipe(uuid, true);
+        senderSession.executeNonQueryStatement("flush");
       } else {
         createDataPipe(uuid, false);
         Thread.sleep(2000);
