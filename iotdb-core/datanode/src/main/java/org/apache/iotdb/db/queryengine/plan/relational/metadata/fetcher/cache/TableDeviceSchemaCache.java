@@ -32,7 +32,6 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -96,10 +95,12 @@ public class TableDeviceSchemaCache {
       final ConcurrentMap<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
-      dualKeyCache.put(
+      dualKeyCache.update(
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
-          new TableDeviceCacheEntry(attributeMap));
+          new TableDeviceCacheEntry(),
+          entry -> entry.setAttribute(attributeMap),
+          true);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -132,7 +133,7 @@ public class TableDeviceSchemaCache {
       dualKeyCache.update(
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
-          new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
+          new TableDeviceCacheEntry(),
           entry -> entry.update(database, tableName, measurementUpdateMap),
           true);
     } finally {
@@ -148,7 +149,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, tableName),
         new TableDeviceId(deviceId),
-        new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
+        new TableDeviceCacheEntry(),
         entry -> entry.tryUpdate(database, tableName, measurementUpdateMap),
         false);
   }
@@ -179,7 +180,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, tableName),
         Objects.nonNull(deviceId) ? new TableDeviceId(deviceId) : null,
-        new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
+        new TableDeviceCacheEntry(),
         entry -> -entry.invalidateLastCache(),
         false);
   }

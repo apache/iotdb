@@ -40,11 +40,14 @@ public class TableDeviceCacheEntry {
   // create from remote
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
-  private final Map<String, String> attributeMap;
+  private Map<String, String> attributeMap = null;
   private AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
-  public TableDeviceCacheEntry(final @Nonnull Map<String, String> attributeMap) {
+  /////////////////////////////// Attribute ///////////////////////////////
+
+  public int setAttribute(final @Nonnull Map<String, String> attributeMap) {
     this.attributeMap = attributeMap;
+    return (int) RamUsageEstimator.sizeOfMap(attributeMap);
   }
 
   public void update(final @Nonnull Map<String, String> updateMap) {
@@ -57,8 +60,6 @@ public class TableDeviceCacheEntry {
           }
         });
   }
-
-  /////////////////////////////// Attribute ///////////////////////////////
 
   public String getAttribute(final String key) {
     return attributeMap.get(key);
