@@ -196,14 +196,21 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void putOrUpdate(
-      final FK firstKey, final SK secondKey, final V value, final ToIntFunction<V> updater) {
+  public void update(
+      final FK firstKey,
+      final SK secondKey,
+      final V value,
+      final ToIntFunction<V> updater,
+      final boolean createIfNotExists) {
     final AtomicInteger usedMemorySize = new AtomicInteger(0);
 
     firstKeyMap.compute(
         firstKey,
         (k, cacheEntryGroup) -> {
           if (cacheEntryGroup == null) {
+            if (!createIfNotExists) {
+              return null;
+            }
             cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
             usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }

@@ -60,8 +60,12 @@ public interface IDualKeyCache<FK, SK, V> {
    *
    * @return the value in cache after the operation
    */
-  void putOrUpdate(
-      final FK firstKey, final SK secondKey, final V value, final ToIntFunction<V> updater);
+  void update(
+      final FK firstKey,
+      final SK secondKey,
+      final V value,
+      final ToIntFunction<V> updater,
+      final boolean createIfNotExists);
 
   /**
    * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.

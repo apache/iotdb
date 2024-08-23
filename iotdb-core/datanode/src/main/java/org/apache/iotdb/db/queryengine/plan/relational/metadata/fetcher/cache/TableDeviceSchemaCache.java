@@ -93,11 +93,12 @@ public class TableDeviceSchemaCache {
       final Map<String, TimeValuePair> measurementUpdateMap) {
     readWriteLock.readLock().lock();
     try {
-      dualKeyCache.putOrUpdate(
+      dualKeyCache.update(
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
-          entry -> entry.update(database, tableName, measurementUpdateMap));
+          entry -> entry.update(database, tableName, measurementUpdateMap),
+          true);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -108,11 +109,12 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    if (Objects.nonNull(entry)) {
-      entry.tryUpdate(database, tableName, measurementUpdateMap);
-    }
+    dualKeyCache.update(
+        new TableId(database, tableName),
+        new TableDeviceId(deviceId),
+        new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
+        entry -> entry.tryUpdate(database, tableName, measurementUpdateMap),
+        false);
   }
 
   public TimeValuePair getLastEntry(
@@ -137,11 +139,12 @@ public class TableDeviceSchemaCache {
 
   public void invalidateLastCache(
       final String database, final String tableName, final String[] deviceId) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    if (Objects.nonNull(entry)) {
-      entry.invalidateLastCache();
-    }
+    dualKeyCache.update(
+        new TableId(database, tableName),
+        new TableDeviceId(deviceId),
+        new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
+        entry -> -entry.invalidateLastCache(),
+        false);
   }
 
   public void invalidate(final String database) {
