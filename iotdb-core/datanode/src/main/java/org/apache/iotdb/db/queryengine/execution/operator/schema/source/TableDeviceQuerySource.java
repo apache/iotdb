@@ -27,22 +27,21 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
-import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -52,25 +51,20 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   private final List<List<SchemaFilter>> idDeterminedPredicateList;
 
-  private final Expression idFuzzyPredicate;
-
   private final List<ColumnHeader> columnHeaderList;
-
-  private final TsTable table;
+  private final DevicePredicateFilter filter;
 
   public TableDeviceQuerySource(
       final String database,
       final String tableName,
       final List<List<SchemaFilter>> idDeterminedPredicateList,
-      final Expression idFuzzyPredicate,
-      final List<ColumnHeader> columnHeaderList) {
+      final List<ColumnHeader> columnHeaderList,
+      final DevicePredicateFilter filter) {
     this.database = database;
     this.tableName = tableName;
     this.idDeterminedPredicateList = idDeterminedPredicateList;
-    this.idFuzzyPredicate = idFuzzyPredicate;
     this.columnHeaderList = columnHeaderList;
-
-    this.table = DataNodeTableCache.getInstance().getTable(database, tableName);
+    this.filter = filter;
   }
 
   @Override
@@ -81,6 +75,9 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
       private Throwable throwable;
       private int index = 0;
+      private final List<TSDataType> dataTypes =
+          columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
+      private IDeviceSchemaInfo next;
 
       @Override
       public boolean isSuccess() {
@@ -104,6 +101,16 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
       @Override
       public boolean hasNext() {
+        while (next == null && innerHasNext()) {
+          final IDeviceSchemaInfo temp = deviceReader.next();
+          if (match(temp)) {
+            next = temp;
+          }
+        }
+        return next != null;
+      }
+
+      private boolean innerHasNext() {
         try {
           if (throwable != null) {
             return false;
@@ -121,11 +128,7 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
           }
 
           while (index < devicePatternList.size()) {
-            deviceReader =
-                schemaRegion.getTableDeviceReader(
-                    new ShowTableDevicesPlan(
-                        devicePatternList.get(index),
-                        getExecutableIdFuzzyFilter(idFuzzyPredicate)));
+            deviceReader = schemaRegion.getTableDeviceReader(devicePatternList.get(index));
             index++;
             if (deviceReader.hasNext()) {
               return true;
@@ -144,7 +147,18 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         if (!hasNext()) {
           throw new NoSuchElementException();
         }
-        return deviceReader.next();
+        final IDeviceSchemaInfo result = next;
+        next = null;
+        return result;
+      }
+
+      private boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
+        if (Objects.isNull(filter)) {
+          return true;
+        }
+        final TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
+        transformToTsBlockColumns(deviceSchemaInfo, builder, database);
+        return filter.match(builder.build());
       }
 
       @Override
@@ -168,16 +182,6 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         idDeterminedPredicateList);
   }
 
-  private SchemaFilter getExecutableIdFuzzyFilter(final Expression idFuzzyExpression) {
-    if (idFuzzyExpression == null) {
-      return null;
-    }
-    final ConvertSchemaPredicateToFilterVisitor visitor =
-        new ConvertSchemaPredicateToFilterVisitor();
-    return visitor.process(
-        idFuzzyExpression, new ConvertSchemaPredicateToFilterVisitor.Context(table));
-  }
-
   @Override
   public List<ColumnHeader> getInfoQueryColumnHeaders() {
     return columnHeaderList;
@@ -186,21 +190,30 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
   @Override
   public void transformToTsBlockColumns(
       final IDeviceSchemaInfo schemaInfo, final TsBlockBuilder builder, final String database) {
+    transformToTsBlockColumns(schemaInfo, builder, database, tableName, columnHeaderList, 3);
+  }
+
+  public static void transformToTsBlockColumns(
+      final IDeviceSchemaInfo schemaInfo,
+      final TsBlockBuilder builder,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList,
+      int idIndex) {
     builder.getTimeColumnBuilder().writeLong(0L);
     int resultIndex = 0;
-    int idIndex = 0;
     final String[] pathNodes = schemaInfo.getRawNodes();
-    final TsTable table = DataNodeTableCache.getInstance().getTable(this.database, tableName);
+    final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
     TsTableColumnSchema columnSchema;
     for (final ColumnHeader columnHeader : columnHeaderList) {
       columnSchema = table.getColumnSchema(columnHeader.getColumnName());
       if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ID)) {
-        if (pathNodes.length <= idIndex + 3 || pathNodes[idIndex + 3] == null) {
+        if (pathNodes.length <= idIndex || pathNodes[idIndex] == null) {
           builder.getColumnBuilder(resultIndex).appendNull();
         } else {
           builder
               .getColumnBuilder(resultIndex)
-              .writeBinary(new Binary(pathNodes[idIndex + 3], TSFileConfig.STRING_CHARSET));
+              .writeBinary(new Binary(pathNodes[idIndex], TSFileConfig.STRING_CHARSET));
         }
         idIndex++;
       } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE)) {

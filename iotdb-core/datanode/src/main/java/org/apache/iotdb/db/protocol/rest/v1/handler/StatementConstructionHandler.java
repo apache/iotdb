@@ -45,6 +45,7 @@ public class StatementConstructionHandler {
     InsertTabletStatement insertStatement = new InsertTabletStatement();
     insertStatement.setDevicePath(
         DataNodeDevicePathCache.getInstance().getPartialPath(insertTabletRequest.getDeviceId()));
+    // TODO: remove the check for table model
     insertStatement.setMeasurements(
         PathUtils.checkIsLegalSingleMeasurementsAndUpdate(insertTabletRequest.getMeasurements())
             .toArray(new String[0]));

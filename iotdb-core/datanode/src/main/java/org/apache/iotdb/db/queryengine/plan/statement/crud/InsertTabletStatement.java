@@ -450,7 +450,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     if (deviceIDs[rowIdx] == null) {
       String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
-      deviceIdSegments[0] = this.devicePath.getFullPath();
+      deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
         Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];

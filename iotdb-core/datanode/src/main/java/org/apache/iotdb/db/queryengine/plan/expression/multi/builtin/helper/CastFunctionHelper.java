@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.scal
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.time.ZoneId;
 import java.util.Map;
 
 import static org.apache.iotdb.db.utils.constant.SqlConstant.CAST_TYPE;
@@ -56,7 +57,8 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
       FunctionExpression expression, ColumnTransformer columnTransformer) {
     return new CastFunctionColumnTransformer(
         TypeFactory.getType(this.getBuiltInScalarFunctionReturnType(expression)),
-        columnTransformer);
+        columnTransformer,
+        ZoneId.systemDefault());
   }
 
   @Override
@@ -131,7 +133,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
     return f;
   }
 
-  public static Double castTextToDouble(String value) {
+  public static double castTextToDouble(String value) {
     double d = Double.parseDouble(value);
     if (d == Double.POSITIVE_INFINITY || d == Double.NEGATIVE_INFINITY) {
       throw new SemanticException(

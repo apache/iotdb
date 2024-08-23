@@ -71,4 +71,8 @@ public abstract class TsTableColumnSchema {
   public int hashCode() {
     return Objects.hash(columnName);
   }
+
+  public void setDataType(TSDataType dataType) {
+    this.dataType = dataType;
+  }
 }

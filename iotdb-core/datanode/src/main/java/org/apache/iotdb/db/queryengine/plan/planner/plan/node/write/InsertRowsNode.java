@@ -371,5 +371,9 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     insertRowsNode.setSearchIndex(searchIndex);
     return insertRowsNode;
   }
+
+  public InsertRowsNode emptyClone() {
+    return new InsertRowsNode(this.getPlanNodeId());
+  }
   // endregion
 }

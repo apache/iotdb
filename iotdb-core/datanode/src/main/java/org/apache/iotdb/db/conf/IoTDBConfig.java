@@ -440,13 +440,13 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-      InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
       InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
       InnerUnseqCompactionPerformer.FAST;
@@ -468,6 +468,12 @@ public class IoTDBConfig {
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
+
+  private long innerCompactionTotalFileSizeThresholdInByte = 10737418240L;
+
+  private int innerCompactionTotalFileNumThreshold = 100;
+
+  private int maxLevelGapInInnerCompaction = 2;
 
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
@@ -496,8 +502,11 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in one inner space compaction task */
-  private volatile int fileLimitPerInnerTask = 30;
+  /**
+   * When the number of selected files reaches this value, the conditions for constructing a merge
+   * task are met.
+   */
+  private volatile int innerCompactionCandidateFileNum = 30;
 
   /** The max candidate file num in one cross space compaction task */
   private volatile int fileLimitPerCrossTask = 500;
@@ -717,6 +726,12 @@ public class IoTDBConfig {
    * equal to 0.
    */
   private int compactionThreadCount = 10;
+
+  /**
+   * How many chunk will be compact in aligned series compaction, 10 by default. Set to
+   * Integer.MAX_VALUE when less than or equal to 0.
+   */
+  private int compactionMaxAlignedSeriesNumInOneBatch = 10;
 
   /*
    * How many thread will be set up to perform continuous queries. When <= 0, use max(1, CPU core number / 2).
@@ -2113,6 +2128,15 @@ public class IoTDBConfig {
     this.compactionThreadCount = compactionThreadCount;
   }
 
+  public int getCompactionMaxAlignedSeriesNumInOneBatch() {
+    return compactionMaxAlignedSeriesNumInOneBatch;
+  }
+
+  public void setCompactionMaxAlignedSeriesNumInOneBatch(
+      int compactionMaxAlignedSeriesNumInOneBatch) {
+    this.compactionMaxAlignedSeriesNumInOneBatch = compactionMaxAlignedSeriesNumInOneBatch;
+  }
+
   public int getContinuousQueryThreadNum() {
     return continuousQueryThreadNum;
   }
@@ -2892,6 +2916,31 @@ public class IoTDBConfig {
     this.targetCompactionFileSize = targetCompactionFileSize;
   }
 
+  public int getMaxLevelGapInInnerCompaction() {
+    return maxLevelGapInInnerCompaction;
+  }
+
+  public void setMaxLevelGapInInnerCompaction(int maxLevelGapInInnerCompaction) {
+    this.maxLevelGapInInnerCompaction = maxLevelGapInInnerCompaction;
+  }
+
+  public long getInnerCompactionTotalFileSizeThresholdInByte() {
+    return innerCompactionTotalFileSizeThresholdInByte;
+  }
+
+  public void setInnerCompactionTotalFileSizeThresholdInByte(
+      long innerCompactionTotalFileSizeThresholdInByte) {
+    this.innerCompactionTotalFileSizeThresholdInByte = innerCompactionTotalFileSizeThresholdInByte;
+  }
+
+  public int getInnerCompactionTotalFileNumThreshold() {
+    return innerCompactionTotalFileNumThreshold;
+  }
+
+  public void setInnerCompactionTotalFileNumThreshold(int innerCompactionTotalFileNumThreshold) {
+    this.innerCompactionTotalFileNumThreshold = innerCompactionTotalFileNumThreshold;
+  }
+
   public long getTargetChunkSize() {
     return targetChunkSize;
   }
@@ -2968,12 +3017,12 @@ public class IoTDBConfig {
     this.expiredDataRatio = expiredDataRatio;
   }
 
-  public int getFileLimitPerInnerTask() {
-    return fileLimitPerInnerTask;
+  public int getInnerCompactionCandidateFileNum() {
+    return innerCompactionCandidateFileNum;
   }
 
-  public void setFileLimitPerInnerTask(int fileLimitPerInnerTask) {
-    this.fileLimitPerInnerTask = fileLimitPerInnerTask;
+  public void setInnerCompactionCandidateFileNum(int innerCompactionCandidateFileNum) {
+    this.innerCompactionCandidateFileNum = innerCompactionCandidateFileNum;
   }
 
   public int getFileLimitPerCrossTask() {

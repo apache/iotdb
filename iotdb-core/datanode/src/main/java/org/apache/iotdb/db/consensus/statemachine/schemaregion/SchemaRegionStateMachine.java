@@ -69,24 +69,33 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
-    if (schemaRegion.getSchemaRegionId().equals(groupId)
-        && newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
+    if (newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       logger.info(
           "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
               + "the new leader is [nodeId:{}]",
           IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
           schemaRegion.getSchemaRegionId(),
           newLeaderId);
-
-      // Shutdown leader related service for schema pipe
-      PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
-
-      logger.info(
-          "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
-              + "all services on old leader are unavailable now.",
-          IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
-          schemaRegion.getSchemaRegionId());
     }
+  }
+
+  @Override
+  public void notifyNotLeader() {
+    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    logger.info(
+        "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
+            + "start cleaning up related services.",
+        dataNodeId,
+        schemaRegion.getSchemaRegionId());
+
+    // Shutdown leader related service for schema pipe
+    PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+
+    logger.info(
+        "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
+            + "all services on old leader are unavailable now.",
+        dataNodeId,
+        schemaRegion.getSchemaRegionId());
   }
 
   @Override

@@ -39,8 +39,9 @@ import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileMemMetricSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileMemMetricSet;
 import org.apache.iotdb.db.subscription.metric.SubscriptionMetrics;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
@@ -97,6 +98,7 @@ public class DataNodeMetricsHelper {
 
     // bind load related metrics
     MetricService.getInstance().addMetricSet(LoadTsFileCostMetricsSet.getInstance());
+    MetricService.getInstance().addMetricSet(ActiveLoadingFilesMetricsSet.getInstance());
   }
 
   private static void initSystemMetrics() {

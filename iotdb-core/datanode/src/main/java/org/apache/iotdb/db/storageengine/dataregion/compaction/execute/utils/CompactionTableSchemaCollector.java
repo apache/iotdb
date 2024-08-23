@@ -49,13 +49,18 @@ public class CompactionTableSchemaCollector {
 
     targetSchemas.add(schema);
     for (int i = 1; i < seqFiles.size(); i++) {
-      Schema copySchema = new Schema();
-      for (TableSchema tableSchema : schema.getTableSchemaMap().values()) {
-        copySchema.registerTableSchema(((CompactionTableSchema) tableSchema).copy());
-      }
+      Schema copySchema = copySchema(schema);
       targetSchemas.add(copySchema);
     }
     return targetSchemas;
+  }
+
+  public static Schema copySchema(Schema source) {
+    Schema copySchema = new Schema();
+    for (TableSchema tableSchema : source.getTableSchemaMap().values()) {
+      copySchema.registerTableSchema(((CompactionTableSchema) tableSchema).copy());
+    }
+    return copySchema;
   }
 
   public static Schema collectSchema(

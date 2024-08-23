@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,22 +45,20 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
 
   private static void cleanTsFileDir() {
     for (final String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-      for (final File file :
-          FileUtils.listFilesAndDirs(
-              new File(dataDir), DirectoryFileFilter.INSTANCE, DirectoryFileFilter.INSTANCE)) {
-        if (file.isDirectory()
-            && file.getName().equals(PipeConfig.getInstance().getPipeHardlinkBaseDirName())) {
-          LOGGER.info(
-              "Pipe hardlink dir found, deleting it: {}, result: {}",
-              file,
-              FileUtils.deleteQuietly(file));
-        }
+      final File pipeHardLinkDir =
+          new File(
+              dataDir + File.separator + PipeConfig.getInstance().getPipeHardlinkBaseDirName());
+      if (pipeHardLinkDir.isDirectory()) {
+        LOGGER.info(
+            "Pipe hardlink dir found, deleting it: {}, result: {}",
+            pipeHardLinkDir,
+            FileUtils.deleteQuietly(pipeHardLinkDir));
       }
     }
   }
 
   private static void cleanSnapshotDir() {
-    File pipeConsensusDir =
+    final File pipeConsensusDir =
         new File(
             IoTDBDescriptor.getInstance().getConfig().getConsensusDir()
                 + File.separator

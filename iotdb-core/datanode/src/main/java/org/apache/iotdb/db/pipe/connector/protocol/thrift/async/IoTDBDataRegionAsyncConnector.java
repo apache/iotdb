@@ -125,7 +125,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
             loadBalanceStrategy,
-            shouldReceiverConvertOnTypeMismatch);
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
@@ -515,11 +516,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   //////////////////////////// Operations for close ////////////////////////////
 
-  /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
-   * its queued events in the output pipe connector.
-   */
+  @Override
   public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
+    tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop);
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent

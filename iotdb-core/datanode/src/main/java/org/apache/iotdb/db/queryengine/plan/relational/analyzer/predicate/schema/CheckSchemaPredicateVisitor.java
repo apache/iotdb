@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -41,6 +42,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionTy
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 // Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
@@ -79,6 +82,10 @@ public class CheckSchemaPredicateVisitor
             context.queryContext.getSql());
         lastLogTime = System.currentTimeMillis();
       }
+      return true;
+    }
+    // TODO: improve the distinct result set detection logic
+    if (context.isDirectDeviceQuery) {
       return true;
     }
     return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
@@ -133,11 +140,11 @@ public class CheckSchemaPredicateVisitor
   }
 
   private boolean processColumn(final Expression node, final Context context) {
-    return context
-        .table
-        .getColumnSchema(node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null))
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ATTRIBUTE);
+    final TsTableColumnSchema schema =
+        context.table.getColumnSchema(
+            node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
+    return Objects.isNull(schema)
+        || schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
   }
 
   public static class Context {
@@ -145,10 +152,15 @@ public class CheckSchemaPredicateVisitor
 
     // For query performance analyze
     private final MPPQueryContext queryContext;
+    private final boolean isDirectDeviceQuery;
 
-    public Context(final TsTable table, final MPPQueryContext queryContext) {
+    public Context(
+        final TsTable table,
+        final MPPQueryContext queryContext,
+        final boolean isDirectDeviceQuery) {
       this.table = table;
       this.queryContext = queryContext;
+      this.isDirectDeviceQuery = isDirectDeviceQuery;
     }
   }
 }

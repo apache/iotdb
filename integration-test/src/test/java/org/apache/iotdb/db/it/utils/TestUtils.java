@@ -278,7 +278,7 @@ public class TestUtils {
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains(errMsg));
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
   }
 
@@ -914,6 +914,29 @@ public class TestUtils {
     } catch (Exception e) {
       e.printStackTrace();
       fail();
+    }
+  }
+
+  public static void restartDataNodes() {
+    EnvFactory.getEnv().shutdownAllDataNodes();
+    EnvFactory.getEnv().startAllDataNodes();
+    long waitStartMS = System.currentTimeMillis();
+    long maxWaitMS = 60_000L;
+    long retryIntervalMS = 1000;
+    while (true) {
+      try (Connection connection = EnvFactory.getEnv().getConnection()) {
+        break;
+      } catch (Exception e) {
+        try {
+          Thread.sleep(retryIntervalMS);
+        } catch (InterruptedException ex) {
+          break;
+        }
+      }
+      long waited = System.currentTimeMillis() - waitStartMS;
+      if (waited > maxWaitMS) {
+        fail("Timeout while waiting for datanodes restart");
+      }
     }
   }
 }

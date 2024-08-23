@@ -47,6 +47,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -130,10 +131,9 @@ public class ReadPointCompactionPerformer
           compactNonAlignedSeries(
               device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
         }
-        summary.setTemporalFileSize(compactionWriter.getWriterSize());
+        summary.setTemporaryFileSize(compactionWriter.getWriterSize());
       }
 
-      compactionWriter.removeUnusedTableSchema();
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
 
@@ -183,7 +183,10 @@ public class ReadPointCompactionPerformer
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
       measurementSchemas.add(0, timeSchema);
-      compactionWriter.startMeasurement(measurementSchemas, 0);
+      compactionWriter.startMeasurement(
+          TsFileConstant.TIME_COLUMN_ID,
+          new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+          0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
@@ -294,7 +297,7 @@ public class ReadPointCompactionPerformer
       return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      return new ReadPointInnerCompactionWriter(targetFileResources.get(0));
+      return new ReadPointInnerCompactionWriter(targetFileResources);
     }
   }
 
