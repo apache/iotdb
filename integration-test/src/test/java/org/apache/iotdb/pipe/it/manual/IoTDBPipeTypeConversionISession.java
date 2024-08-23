@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.pipe.it.manual;
 
+import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -29,6 +31,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
@@ -53,142 +56,162 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
-import java.util.function.BiConsumer;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2ManualCreateSchema.class})
 public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
   private static final int generateDataSize = 100;
 
-  // Test for converting BOOLEAN to OtherType
   @Test
   public void insertTablet() {
     prepareTypeConversionTest(
-        (ISession session, Tablet tablet) -> {
-          try {
-            session.insertTablet(tablet);
-
-            validateResultSet(
-                query(session, tablet.getSchemas()),
-                generateTabletInsertRecordForTable(tablet),
-                tablet.timestamps);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          senderSession.insertTablet(tablet);
         },
         false);
+  }
+
+  @Test
+  public void insertTabletReceiveByTsFile() {
+    prepareTypeConversionTest(
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          senderSession.insertTablet(tablet);
+        },
+        true);
   }
 
   @Test
   public void insertAlignedTablet() {
     prepareTypeConversionTest(
-        (ISession session, Tablet tablet) -> {
-          try {
-            session.insertAlignedTablet(tablet);
-
-            validateResultSet(
-                query(session, tablet.getSchemas()),
-                generateTabletInsertRecordForTable(tablet),
-                tablet.timestamps);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          senderSession.insertAlignedTablet(tablet);
         },
         false);
+  }
+
+  @Test
+  public void insertAlignedTabletReceiveByTsFile() {
+    prepareTypeConversionTest(
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          senderSession.insertAlignedTablet(tablet);
+        },
+        true);
+  }
+
+  @Test
+  public void insertRecordsReceiveByTsFile() {
+    prepareTypeConversionTest(
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
+          senderSession.insertRecords(
+              getDeviceID(tablet), timestamps, pair.left, pair.right, values);
+        },
+        true);
   }
 
   @Test
   public void insertRecords() {
     prepareTypeConversionTest(
-        (ISession session, Tablet tablet) -> {
-          try {
-            List<Long> timestamps = getTimestampList(tablet);
-            Pair<List<List<String>>, List<List<TSDataType>>> pair =
-                getMeasurementSchemasAndType(tablet);
-            List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
-            session.insertRecords(getDeviceID(tablet), timestamps, pair.left, pair.right, values);
-
-            validateResultSet(
-                query(session, tablet.getSchemas()),
-                generateTabletInsertRecordForTable(tablet),
-                tablet.timestamps);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
+          senderSession.insertRecords(
+              getDeviceID(tablet), timestamps, pair.left, pair.right, values);
         },
         false);
+  }
+
+  @Test
+  public void insertAlignedRecordsReceiveByTsFile() {
+    prepareTypeConversionTest(
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
+          senderSession.insertAlignedRecords(
+              getDeviceID(tablet), timestamps, pair.left, pair.right, values);
+        },
+        true);
   }
 
   @Test
   public void insertAlignedRecords() {
     prepareTypeConversionTest(
-        (ISession session, Tablet tablet) -> {
-          try {
-            List<Long> timestamps = getTimestampList(tablet);
-            Pair<List<List<String>>, List<List<TSDataType>>> pair =
-                getMeasurementSchemasAndType(tablet);
-            List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
-            session.insertAlignedRecords(
-                getDeviceID(tablet), timestamps, pair.left, pair.right, values);
-
-            validateResultSet(
-                query(session, tablet.getSchemas()),
-                generateTabletInsertRecordForTable(tablet),
-                tablet.timestamps);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
+          senderSession.insertAlignedRecords(
+              getDeviceID(tablet), timestamps, pair.left, pair.right, values);
         },
         false);
+  }
+
+  @Test
+  public void insertStringRecordsOfOneDeviceReceiveByTsFile() {
+    prepareTypeConversionTest(
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
+          senderSession.insertStringRecordsOfOneDevice(
+              tablet.getDeviceId(), timestamps, pair.left, values);
+        },
+        true);
   }
 
   @Test
   public void insertStringRecordsOfOneDevice() {
     prepareTypeConversionTest(
-        (ISession session, Tablet tablet) -> {
-          try {
-            List<Long> timestamps = getTimestampList(tablet);
-            Pair<List<List<String>>, List<List<TSDataType>>> pair =
-                getMeasurementSchemasAndType(tablet);
-            List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
-            session.insertStringRecordsOfOneDevice(
-                tablet.getDeviceId(), timestamps, pair.left, values);
-
-            validateResultSet(
-                query(session, tablet.getSchemas()),
-                generateTabletInsertRecordForTable(tablet),
-                tablet.timestamps);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
+          senderSession.insertStringRecordsOfOneDevice(
+              tablet.getDeviceId(), timestamps, pair.left, values);
         },
         false);
   }
 
   @Test
+  public void insertAlignedStringRecordsOfOneDeviceReceiveByTsFile() {
+    prepareTypeConversionTest(
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
+          senderSession.insertAlignedStringRecordsOfOneDevice(
+              tablet.getDeviceId(), timestamps, pair.left, values);
+        },
+        true);
+  }
+
+  @Test
   public void insertAlignedStringRecordsOfOneDevice() {
     prepareTypeConversionTest(
-        (ISession session, Tablet tablet) -> {
-          try {
-            List<Long> timestamps = getTimestampList(tablet);
-            Pair<List<List<String>>, List<List<TSDataType>>> pair =
-                getMeasurementSchemasAndType(tablet);
-            List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
-            session.insertAlignedStringRecordsOfOneDevice(
-                tablet.getDeviceId(), timestamps, pair.left, values);
-
-            validateResultSet(
-                query(session, tablet.getSchemas()),
-                generateTabletInsertRecordForTable(tablet),
-                tablet.timestamps);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
+        (ISession senderSession, ISession receiverSession, Tablet tablet) -> {
+          List<Long> timestamps = getTimestampList(tablet);
+          Pair<List<List<String>>, List<List<TSDataType>>> pair =
+              getMeasurementSchemasAndType(tablet);
+          List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
+          senderSession.insertAlignedStringRecordsOfOneDevice(
+              tablet.getDeviceId(), timestamps, pair.left, values);
         },
         false);
   }
 
-  private SessionDataSet query(ISession session, List<IMeasurementSchema> measurementSchemas)
+  private SessionDataSet query(
+      ISession session, List<IMeasurementSchema> measurementSchemas, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
     String sql = "select ";
     StringBuffer param = new StringBuffer();
@@ -197,57 +220,70 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
       param.append(',');
     }
     sql = sql + param.substring(0, param.length() - 1);
-    sql = sql + " from root.test.** ORDER BY time ASC";
+    sql = sql + " from " + deviceId + " ORDER BY time ASC";
     return session.executeQueryStatement(sql);
   }
 
   private void prepareTypeConversionTest(
-      BiConsumer<ISession, Tablet> biConsumer, boolean isTsFile) {
+      CheckedTriConsumer<ISession, ISession, Tablet, Exception> consumer, boolean isTsFile) {
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
+    String uuid = RandomStringUtils.random(8, true, false);
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
-      createTimeSeries(pair.left.getMeasurementId(), pair.left.getType().name(), senderEnv);
-      createTimeSeries(pair.right.getMeasurementId(), pair.right.getType().name(), receiverEnv);
+      createTimeSeries(
+          uuid.toString(), pair.left.getMeasurementId(), pair.left.getType().name(), senderEnv);
+      createTimeSeries(
+          uuid.toString(), pair.right.getMeasurementId(), pair.right.getType().name(), receiverEnv);
     }
 
-    if (isTsFile) {
-      Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test");
-      try {
-        biConsumer.accept(senderEnv.getSessionConnection(), tablet);
+    try (ISession senderSession = senderEnv.getSessionConnection();
+        ISession receiverSession = receiverEnv.getSessionConnection()) {
+      Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test." + uuid);
+      if (isTsFile) {
+        consumer.accept(senderSession, receiverSession, tablet);
+        senderSession.executeNonQueryStatement("flush");
         Thread.sleep(2000);
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-      createDataPipe(true);
-    } else {
-      createDataPipe(false);
-      try {
+        createDataPipe(uuid, true);
+      } else {
+        createDataPipe(uuid, false);
         Thread.sleep(2000);
-        Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test");
-        biConsumer.accept(senderEnv.getSessionConnection(), tablet);
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+        consumer.accept(senderSession, receiverSession, tablet);
       }
+      Thread.sleep(20000);
+      validateResultSet(
+          query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
+          generateTabletResultSetForTable(tablet, measurementSchemas),
+          tablet.timestamps);
+      senderSession.close();
+      receiverSession.close();
+      tablet.reset();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 
-  private void createTimeSeries(String measurementID, String dataType, BaseEnv env) {
-    String timeSeriesCreationQuery =
+  private void createTimeSeries(String diff, String measurementID, String dataType, BaseEnv env) {
+    String timeSeriesCreation =
         String.format(
-            "create timeseries root.test.%s with datatype=%s,encoding=PLAIN",
-            measurementID, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        env, Collections.singletonList(timeSeriesCreationQuery));
+            "create timeseries root.test.%s.%s with datatype=%s,encoding=PLAIN",
+            diff, measurementID, dataType);
+    TestUtils.tryExecuteNonQueriesWithRetry(env, Collections.singletonList(timeSeriesCreation));
   }
 
-  private void createDataPipe(boolean isTSFile) {
+  private void createDataPipe(String diff, boolean isTSFile) {
     String sql =
         String.format(
-            "create pipe test"
-                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log','realtime.enable'='true','history.enable'='false')"
+            "create pipe test%s"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='%s','realtime.enable'='%s','history.enable'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
-            receiverEnv.getIP(), receiverEnv.getPort(), isTSFile ? "tsfile" : "tablet");
+            diff,
+            isTSFile ? "file" : "forced-log",
+            !isTSFile,
+            isTSFile,
+            receiverEnv.getIP(),
+            receiverEnv.getPort(),
+            isTSFile ? "tsfile" : "tablet");
     TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
   }
 
@@ -261,8 +297,8 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
 
       Assert.assertEquals(record.getTimestamp(), timestamps[index]);
       List<Object> rowValues = values.get(index++);
-
       for (int i = 0; i < fields.size(); i++) {
+
         Field field = fields.get(i);
         switch (field.getDataType()) {
           case INT64:
@@ -291,6 +327,7 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
         }
       }
     }
+    Assert.assertEquals(values.size(), index);
   }
 
   private boolean[] createTestDataForBoolean() {
@@ -420,6 +457,75 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
     return data;
   }
 
+  private List<List<Object>> generateTabletResultSetForTable(
+      final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
+    List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
+    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    final Object[] values = tablet.values;
+    for (int i = 0; i < tablet.rowSize; i++) {
+      List<Object> insertRecord = new ArrayList<>();
+      for (int j = 0; j < schemas.size(); j++) {
+        TSDataType sourceType = pairs.get(j).left.getType();
+        TSDataType targetType = pairs.get(j).right.getType();
+        Object value = null;
+        switch (sourceType) {
+          case INT64:
+          case TIMESTAMP:
+            value = ValueConverter.convert(sourceType, targetType, ((long[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+          case INT32:
+            value = ValueConverter.convert(sourceType, targetType, ((int[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+          case DOUBLE:
+            value = ValueConverter.convert(sourceType, targetType, ((double[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+          case FLOAT:
+            value = ValueConverter.convert(sourceType, targetType, ((float[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+          case DATE:
+            value =
+                ValueConverter.convert(
+                    sourceType,
+                    targetType,
+                    DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
+            insertRecord.add(convert(value, targetType));
+            break;
+          case TEXT:
+          case STRING:
+            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+          case BLOB:
+            value = ValueConverter.convert(sourceType, targetType, ((Binary[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+          case BOOLEAN:
+            value = ValueConverter.convert(sourceType, targetType, ((boolean[]) values[j])[i]);
+            insertRecord.add(convert(value, targetType));
+            break;
+        }
+      }
+      insertRecords.add(insertRecord);
+    }
+
+    return insertRecords;
+  }
+
+  private Object convert(Object value, TSDataType targetType) {
+    switch (targetType) {
+      case DATE:
+        return DateUtils.parseIntToLocalDate((Integer) value);
+      case TEXT:
+      case STRING:
+        return new String(((Binary) value).getValues(), TSFileConfig.STRING_CHARSET);
+    }
+    return value;
+  }
+
   private List<List<Object>> generateTabletInsertRecordForTable(final Tablet tablet) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
     final List<IMeasurementSchema> schemas = tablet.getSchemas();
@@ -497,9 +603,10 @@ public class IoTDBPipeTypeConversionISession extends AbstractPipeDualManualIT {
                 new String(((Binary[]) values[j])[i].getValues(), TSFileConfig.STRING_CHARSET));
             break;
           case BLOB:
-            String value = BytesUtils.parseBlobByteArrayToString(((Binary[]) values[j])[i].getValues())
+            String value =
+                BytesUtils.parseBlobByteArrayToString(((Binary[]) values[j])[i].getValues())
                     .substring(2);
-            insertRecord.add(String.format("X'%s'",value));
+            insertRecord.add(String.format("X'%s'", value));
             break;
           case BOOLEAN:
             insertRecord.add(String.valueOf(((boolean[]) values[j])[i]));
