@@ -97,7 +97,7 @@ public class CrossSpaceCompactionCandidate {
       // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
       return false;
     }
-    for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+    for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
       IDeviceID deviceId = unseqDeviceInfo.deviceId;
       boolean atLeastOneSeqFileSelected = false;
       // The `previousSeqFile` means the seqFile which contains the device and its endTime is just

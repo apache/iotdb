@@ -387,7 +387,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
 
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(tsFileManager, 0, unseqResources, false, getPerformer(), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, unseqResources, false, getPerformer(), 0);
     Assert.assertTrue(task2.start());
 
     for (TsFileResource tsFileResource : seqResources) {
@@ -431,7 +431,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
 
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(tsFileManager, 0, unseqResources, false, getPerformer(), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, unseqResources, false, getPerformer(), 0);
     Assert.assertTrue(task2.start());
 
     for (TsFileResource tsFileResource : seqResources) {

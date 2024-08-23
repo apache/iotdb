@@ -35,10 +35,16 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWriter {
   public ReadPointInnerCompactionWriter(TsFileResource targetFileResource) throws IOException {
     super(targetFileResource);
+  }
+
+  public ReadPointInnerCompactionWriter(List<TsFileResource> targetFileResources)
+      throws IOException {
+    super(targetFileResources);
   }
 
   @Override
@@ -50,7 +56,6 @@ public class ReadPointInnerCompactionWriter extends AbstractInnerCompactionWrite
     chunkWriter.write(timestamps, columns, batchSize);
     chunkPointNumArray[subTaskId] += timestamps.getTimes().length;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, subTaskId);
-    isEmptyFile = false;
   }
 
   @Override

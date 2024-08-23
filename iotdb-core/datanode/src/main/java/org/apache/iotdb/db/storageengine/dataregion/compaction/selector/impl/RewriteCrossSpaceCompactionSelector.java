@@ -471,7 +471,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
         IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -606,19 +606,20 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return false;
       }
 
-      // TimeIndex may be degraded after this check, but it will not affect the correctness of task
-      // selection
-      boolean candidate1NeedDeserialize =
-          !candidate1.hasDetailedDeviceInfo()
-              && candidate1.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
-      boolean candidate2NeedDeserialize =
-          !candidate2.hasDetailedDeviceInfo()
-              && candidate2.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
-      if (!loadDeviceTimeIndex && (candidate1NeedDeserialize || candidate2NeedDeserialize)) {
-        return true;
-      }
+      for (DeviceInfo device : candidate2.getDeviceInfoList()) {
+        // TimeIndex may be degraded after this check, but it will not affect the correctness of
+        // task
+        // selection
+        boolean candidate1NeedDeserialize =
+            !candidate1.hasDetailedDeviceInfo()
+                && candidate1.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+        boolean candidate2NeedDeserialize =
+            !candidate2.hasDetailedDeviceInfo()
+                && candidate2.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+        if (!loadDeviceTimeIndex && (candidate1NeedDeserialize || candidate2NeedDeserialize)) {
+          return true;
+        }
 
-      for (DeviceInfo device : candidate2.getDevices()) {
         IDeviceID deviceId = device.deviceId;
         if (!candidate1.containsDevice(deviceId)) {
           continue;

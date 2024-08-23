@@ -66,7 +66,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileWithLightSelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -124,7 +124,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUnContinuousFileWithLightSelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -174,7 +174,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnModsSizeWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -198,7 +198,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnDirtyRateByModsWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -322,7 +322,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileBaseOnDirtyDataOutdatedTooLongWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -381,7 +381,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUncontinuousFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -465,7 +465,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -534,7 +534,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect2()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -600,7 +600,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileWithLightSelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -658,7 +658,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUnContinuousFileWithLightSelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -709,7 +709,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnModsSizeWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -733,7 +733,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnDirtyRateByModsWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -858,7 +858,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileBaseOnDirtyDataOutdatedTooLongWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -917,7 +917,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUncontinuousFileBaseOnDirtyDataRateWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -1002,7 +1002,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -1072,7 +1072,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect2Aligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
 

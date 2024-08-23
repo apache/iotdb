@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -34,6 +35,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 
@@ -131,15 +133,25 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   protected void prepare() throws IOException {
-    targetTsFileResource =
-        new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING);
+    calculateSourceFilesAndTargetFiles();
+    isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
+    Arrays.fill(isHoldingWriteLock, false);
     String dataDirectory = sourceFile.getTsFile().getParent();
     logFile =
         new File(
             dataDirectory
                 + File.separator
-                + targetTsFileResource.getTsFile().getName()
+                + filesView.targetFilesInPerformer.get(0).getTsFile().getName()
                 + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+  }
+
+  @Override
+  protected void calculateSourceFilesAndTargetFiles() throws IOException {
+    filesView.sourceFilesInLog = filesView.sourceFilesInCompactionPerformer;
+    filesView.targetFilesInLog =
+        Collections.singletonList(
+            new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING));
+    filesView.targetFilesInPerformer = filesView.targetFilesInLog;
   }
 
   private File generateTargetFile() throws IOException {
@@ -152,24 +164,41 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
     TsFileNameGenerator.TsFileName tsFileName =
         TsFileNameGenerator.getTsFileName(sourceFile.getTsFile().getName());
-    tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
-    String fileNameStr =
-        String.format(
-            "%d-%d-%d-%d.tsfile",
-            tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
-    File targetTsFile = new File(path + File.separator + fileNameStr);
-    if (!targetTsFile.getParentFile().exists()) {
-      targetTsFile.getParentFile().mkdirs();
-    }
+
+    File targetTsFile = null;
+    // set version = 0 to keep unsequence data cover sequence data
+    do {
+      String fileNameStr =
+          String.format(
+              "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+              tsFileName.getTime(),
+              0,
+              tsFileName.getInnerCompactionCnt() + 1,
+              0);
+      targetTsFile = new File(path + File.separator + fileNameStr);
+      if (!targetTsFile.getParentFile().exists()) {
+        targetTsFile.getParentFile().mkdirs();
+      }
+      // avoid same file name
+      tsFileName.setTime(tsFileName.getTime() + 1);
+      // Use the log file method to determine whether there are other concurrent
+      // repair tasks using the file with the same name.
+      logFile =
+          new File(targetTsFile.getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+    } while (!logFile.createNewFile());
     return targetTsFile;
   }
 
   @Override
   protected void prepareTargetFiles() throws IOException {
     CompactionUtils.updateProgressIndex(
-        targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
+        filesView.targetFilesInPerformer,
+        filesView.sourceFilesInCompactionPerformer,
+        Collections.emptyList());
     CompactionUtils.moveTargetFile(
-        targetTsFileList, CompactionTaskType.REPAIR, storageGroupName + "-" + dataRegionId);
+        filesView.targetFilesInPerformer,
+        CompactionTaskType.REPAIR,
+        storageGroupName + "-" + dataRegionId);
 
     LOGGER.info(
         "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
@@ -178,11 +207,11 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
     if (rewriteFile) {
       CompactionUtils.combineModsInInnerCompaction(
-          selectedTsFileResourceList, targetTsFileResource);
+          filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
       if (sourceFile.modFileExists()) {
         Files.createLink(
-            new File(targetTsFileResource.getModFile().getFilePath()).toPath(),
+            new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
             new File(sourceFile.getModFile().getFilePath()).toPath());
       }
     }
@@ -202,7 +231,9 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   public long getEstimatedMemoryCost() {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {
-        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+        memoryCost =
+            innerSpaceEstimator.estimateInnerCompactionMemory(
+                filesView.sourceFilesInCompactionPerformer);
       } catch (IOException e) {
         innerSpaceEstimator.cleanup();
       }

@@ -38,14 +38,6 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
   @SuppressWarnings({"squid:S3776", "javabugs:S6320"})
   @Override
   public int compare(AbstractCompactionTask o1, AbstractCompactionTask o2) {
-    if (o1 instanceof SettleCompactionTask && o2 instanceof SettleCompactionTask) {
-      return compareSettleCompactionTask((SettleCompactionTask) o1, (SettleCompactionTask) o2);
-    } else if (o1 instanceof SettleCompactionTask) {
-      return -1;
-    } else if (o2 instanceof SettleCompactionTask) {
-      return 1;
-    }
-
     if (o1 instanceof InsertionCrossSpaceCompactionTask
         && o2 instanceof InsertionCrossSpaceCompactionTask) {
       return o1.getSerialId() < o2.getSerialId() ? -1 : 1;
@@ -54,6 +46,14 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     } else if (o2 instanceof InsertionCrossSpaceCompactionTask) {
       return 1;
     }
+    if (o1 instanceof SettleCompactionTask && o2 instanceof SettleCompactionTask) {
+      return compareSettleCompactionTask((SettleCompactionTask) o1, (SettleCompactionTask) o2);
+    } else if (o1 instanceof SettleCompactionTask) {
+      return -1;
+    } else if (o2 instanceof SettleCompactionTask) {
+      return 1;
+    }
+
     if ((((o1 instanceof InnerSpaceCompactionTask) && (o2 instanceof CrossSpaceCompactionTask))
         || ((o2 instanceof InnerSpaceCompactionTask)
             && (o1 instanceof CrossSpaceCompactionTask)))) {
