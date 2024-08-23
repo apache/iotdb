@@ -38,7 +38,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
- * Transforms:
+ * <b>Optimization phase:</b> Logical plan planning.
+ *
+ * <p>Transforms:
  *
  * <pre>
  * - Limit (limit = x)
@@ -78,9 +80,9 @@ public class MergeLimitOverProjectWithSort implements Rule<LimitNode> {
   @Override
   public Result apply(LimitNode parent, Captures captures, Context context) {
     ProjectNode project = captures.get(PROJECT);
-    SortNode sort = captures.get(SORT);
+    SortNode sortNode = captures.get(SORT);
 
-    if (sort instanceof StreamSortNode) {
+    if (sortNode instanceof StreamSortNode) {
       return Result.empty();
     }
 
@@ -89,10 +91,10 @@ public class MergeLimitOverProjectWithSort implements Rule<LimitNode> {
             ImmutableList.of(
                 new TopKNode(
                     parent.getPlanNodeId(),
-                    sort.getChildren(),
-                    sort.getOrderingScheme(),
+                    sortNode.getChildren(),
+                    sortNode.getOrderingScheme(),
                     parent.getCount(),
-                    parent.getOutputSymbols(),
-                    sort.isOrderByAllIdsAndTime()))));
+                    sortNode.getOutputSymbols(),
+                    sortNode.isOrderByAllIdsAndTime()))));
   }
 }
