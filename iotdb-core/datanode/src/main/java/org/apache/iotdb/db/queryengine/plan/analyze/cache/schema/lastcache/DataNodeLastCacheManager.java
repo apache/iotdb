@@ -26,7 +26,7 @@ import org.apache.tsfile.read.TimeValuePair;
 
 public class DataNodeLastCacheManager {
 
-  public static final boolean CACHE_ENABLED =
+  private static final boolean CACHE_ENABLED =
       CommonDescriptor.getInstance().getConfig().isLastCacheEnable();
 
   /**
