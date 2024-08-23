@@ -120,13 +120,6 @@ public class IoTDBSyncClient extends IClientRPCService.Client
         }
 
         if (sliceResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.warn(
-              "Failed to transfer slice. Origin req: {}-{}, slice index: {}, slice count: {}. Reason: {}. Retry the whole transfer.",
-              req.getVersion(),
-              req.getType(),
-              i,
-              sliceCount,
-              sliceResp.getStatus());
           throw new PipeConnectionException(
               String.format(
                   "Failed to transfer slice. Origin req: %s-%s, slice index: %d, slice count: %d. Reason: %s",
