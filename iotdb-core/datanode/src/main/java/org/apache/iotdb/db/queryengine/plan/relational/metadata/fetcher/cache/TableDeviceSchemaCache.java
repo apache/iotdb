@@ -137,11 +137,12 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getLastRow(measurement) : null;
   }
 
+  // "deviceId" shall equal to null when invalidate the cache of the whole table
   public void invalidateLastCache(
       final String database, final String tableName, final String[] deviceId) {
     dualKeyCache.update(
         new TableId(database, tableName),
-        new TableDeviceId(deviceId),
+        Objects.nonNull(deviceId) ? new TableDeviceId(deviceId) : null,
         new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
         entry -> -entry.invalidateLastCache(),
         false);
