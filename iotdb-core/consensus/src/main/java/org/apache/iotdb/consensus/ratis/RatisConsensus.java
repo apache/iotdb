@@ -563,7 +563,9 @@ class RatisConsensus implements IConsensus {
   }
 
   @Override
-  public void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException {
+  public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
+      throws ConsensusException {
+    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     final RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
     final RaftGroup group = getGroupInfo(raftGroupId);
 
@@ -571,11 +573,35 @@ class RatisConsensus implements IConsensus {
       throw new ConsensusGroupNotExistException(groupId);
     }
 
+    boolean myselfInCorrectPeers =
+        correctPeers.stream()
+            .map(
+                peer ->
+                    Utils.fromNodeInfoAndPriorityToRaftPeer(
+                        peer.getNodeId(), peer.getEndpoint(), DEFAULT_PRIORITY))
+            .anyMatch(
+                raftPeer ->
+                    myself.getId() == raftPeer.getId()
+                        && myself.getAddress().equals(raftPeer.getAddress()));
+    if (!myselfInCorrectPeers) {
+      logger.info(
+          "[RESET PEER LIST] Local peer is not in the correct peer list, delete local peer {}",
+          groupId);
+      deleteLocalPeer(groupId);
+      return;
+    }
+
     final List<RaftPeer> newGroupPeers =
-        Utils.fromPeersAndPriorityToRaftPeers(peers, DEFAULT_PRIORITY);
+        Utils.fromPeersAndPriorityToRaftPeers(correctPeers, DEFAULT_PRIORITY);
     final RaftGroup newGroup = RaftGroup.valueOf(raftGroupId, newGroupPeers);
 
-    sendReconfiguration(newGroup);
+    RaftClientReply reply = sendReconfiguration(newGroup);
+    if (reply.isSuccess()) {
+      logger.info("[RESET PEER LIST] Peer list has been reset to {}", newGroupPeers);
+    } else {
+      logger.warn(
+          "[RESET PEER LIST] Peer list failed to reset to {}, reply is {}", newGroup, reply);
+    }
   }
 
   /** NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader. */
