@@ -19,9 +19,19 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.MeasurementColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.After;
@@ -29,7 +39,9 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -179,5 +191,39 @@ public class TableDeviceSchemaCacheTest {
 
     Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
     Assert.assertNull(cache.getLastEntry(database, table2, device1, "s2"));
+  }
+
+  @Test
+  public void testIntern() {
+    final String database = "sg";
+    final String tableName = "t";
+    final List<ColumnHeader> columnHeaderList =
+        Arrays.asList(
+            new ColumnHeader("hebei", TSDataType.STRING),
+            new ColumnHeader("p_1", TSDataType.STRING),
+            new ColumnHeader("d_1", TSDataType.STRING));
+    final String attributeName = "attr";
+
+    // Prepare table
+    final TsTable testTable = new TsTable(tableName);
+    columnHeaderList.forEach(
+        columnHeader ->
+            testTable.addColumnSchema(
+                new IdColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
+    testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
+    testTable.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
+    testTable.addColumnSchema(
+        new MeasurementColumnSchema(
+            "s1", TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.GZIP));
+    DataNodeTableCache.getInstance().preUpdateTable(database, testTable);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName);
+
+    final String a = "s1";
+    // Different from "a"
+    final String b = "s" + "1";
+
+    Assert.assertSame(
+        DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, a),
+        DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, b));
   }
 }
