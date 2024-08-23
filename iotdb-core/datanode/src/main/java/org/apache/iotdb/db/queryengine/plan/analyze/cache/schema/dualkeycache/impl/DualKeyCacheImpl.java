@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
@@ -215,20 +216,22 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }
           final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
-          usedMemorySize.getAndAdd(
-              updater.applyAsInt(
-                  cacheEntryGroup
-                      .computeCacheEntryIfAbsent(
-                          secondKey,
-                          sk -> {
-                            final T cacheEntry =
-                                cacheEntryManager.createCacheEntry(
-                                    secondKey, value, finalCacheEntryGroup);
-                            cacheEntryManager.put(cacheEntry);
-                            usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
-                            return cacheEntry;
-                          })
-                      .getValue()));
+          final T cacheEntry =
+              createIfNotExists
+                  ? cacheEntryGroup.computeCacheEntryIfAbsent(
+                      secondKey,
+                      sk -> {
+                        final T entry =
+                            cacheEntryManager.createCacheEntry(
+                                secondKey, value, finalCacheEntryGroup);
+                        cacheEntryManager.put(entry);
+                        usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
+                        return entry;
+                      })
+                  : cacheEntryGroup.getCacheEntry(secondKey);
+          if (Objects.nonNull(cacheEntry)) {
+            usedMemorySize.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
+          }
           return cacheEntryGroup;
         });
     cacheStats.increaseMemoryUsage(usedMemorySize.get());
