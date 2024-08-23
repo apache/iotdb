@@ -27,6 +27,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class TableDeviceCacheEntry {
 
@@ -39,7 +40,7 @@ public class TableDeviceCacheEntry {
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
   private final Map<String, String> attributeMap;
-  private TableDeviceLastCache lastCache = null;
+  private AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
   public TableDeviceCacheEntry(final Map<String, String> attributeMap) {
     this.attributeMap = Collections.unmodifiableMap(attributeMap);
@@ -61,34 +62,45 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    if (Objects.isNull(lastCache)) {
-      lastCache = new TableDeviceLastCache();
-    }
-    lastCache.update(database, tableName, measurementUpdateMap);
+    lastCache.compareAndSet(null, new TableDeviceLastCache());
+    tryUpdate(database, tableName, measurementUpdateMap);
   }
 
   public void tryUpdate(
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    if (Objects.nonNull(lastCache)) {
-      lastCache.update(database, tableName, measurementUpdateMap);
+    final TableDeviceLastCache cache = lastCache.get();
+    if (Objects.nonNull(cache)) {
+      cache.update(database, tableName, measurementUpdateMap);
     }
   }
 
   public TimeValuePair getTimeValuePair(final String measurement) {
-    return Objects.nonNull(lastCache) ? lastCache.getTimeValuePair(measurement) : null;
+    final TableDeviceLastCache cache = lastCache.get();
+    return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
   }
 
   // Shall pass in "null" if last by time
   public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final String measurement) {
-    return Objects.nonNull(lastCache) ? lastCache.getLastRow(measurement) : null;
+    final TableDeviceLastCache cache = lastCache.get();
+    return Objects.nonNull(cache) ? cache.getLastRow(measurement) : null;
   }
 
+  public int invalidateLastCache() {
+    final TableDeviceLastCache cache = lastCache.get();
+    final int size = cache.estimateSize();
+    lastCache = null;
+    return size;
+  }
+
+  /////////////////////////////// Management ///////////////////////////////
+
   public int estimateSize() {
+    final TableDeviceLastCache cache = lastCache.get();
     return (int)
         (INSTANCE_SIZE
             + RamUsageEstimator.sizeOfMap(attributeMap)
-            + (Objects.nonNull(lastCache) ? lastCache.estimateSize() : 0));
+            + (Objects.nonNull(cache) ? cache.estimateSize() : 0));
   }
 }
