@@ -65,11 +65,11 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install winflexbison3
-          if [[ "$MATRIX.OS == windows-2019" ]]; then
+          if ("${{ matrix.os }}" -eq "windows-2019") {
             choco install boost-msvc-14.2
-          else
+          } else {
             choco install boost-msvc-14.3
-          fi
+          }
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
       - name: Cache Maven packages
