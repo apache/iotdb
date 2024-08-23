@@ -26,6 +26,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -44,7 +47,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.convertRawDeviceIDs2PartitionKeys;
 
-public class CreateTableDeviceNode extends WritePlanNode {
+public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISchemaRegionPlan {
 
   private final String database;
 
@@ -60,7 +63,10 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   private transient List<IDeviceID> partitionKeyList;
 
-  public CreateTableDeviceNode(
+  public static final CreateOrUpdateTableDeviceNode MOCK_INSTANCE =
+      new CreateOrUpdateTableDeviceNode(new PlanNodeId(""), null, null, null, null, null);
+
+  public CreateOrUpdateTableDeviceNode(
       final PlanNodeId id,
       final String database,
       final String tableName,
@@ -77,7 +83,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   // In this constructor, we don't need to truncate tailing nulls for deviceIdList, because this
   // constructor can only be generated from another CreateTableDeviceNode
-  public CreateTableDeviceNode(
+  public CreateOrUpdateTableDeviceNode(
       final PlanNodeId id,
       final TRegionReplicaSet regionReplicaSet,
       final String database,
@@ -96,7 +102,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.CREATE_TABLE_DEVICE;
+    return PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE;
   }
 
   public String getDatabase() {
@@ -143,7 +149,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    return new CreateTableDeviceNode(
+    return new CreateOrUpdateTableDeviceNode(
         getPlanNodeId(),
         regionReplicaSet,
         database,
@@ -165,7 +171,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
-    PlanNodeType.CREATE_TABLE_DEVICE.serialize(byteBuffer);
+    PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE.serialize(byteBuffer);
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
     ReadWriteIOUtils.write(deviceIdList.size(), byteBuffer);
@@ -189,7 +195,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
-    PlanNodeType.CREATE_TABLE_DEVICE.serialize(stream);
+    PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(deviceIdList.size(), stream);
@@ -210,7 +216,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
     }
   }
 
-  public static CreateTableDeviceNode deserialize(final ByteBuffer buffer) {
+  public static CreateOrUpdateTableDeviceNode deserialize(final ByteBuffer buffer) {
     final String database = ReadWriteIOUtils.readString(buffer);
     final String tableName = ReadWriteIOUtils.readString(buffer);
     final int deviceNum = ReadWriteIOUtils.readInt(buffer);
@@ -240,7 +246,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
       attributeValueList.add(deviceAttributeValues);
     }
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new CreateTableDeviceNode(
+    return new CreateOrUpdateTableDeviceNode(
         planNodeId, database, tableName, deviceIdList, attributeNameList, attributeValueList);
   }
 
@@ -266,7 +272,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
         subAttributeValueList.add(attributeValueList.get(index));
       }
       result.add(
-          new CreateTableDeviceNode(
+          new CreateOrUpdateTableDeviceNode(
               getPlanNodeId(),
               entry.getKey(),
               database,
@@ -294,7 +300,7 @@ public class CreateTableDeviceNode extends WritePlanNode {
     if (!super.equals(o)) {
       return false;
     }
-    final CreateTableDeviceNode node = (CreateTableDeviceNode) o;
+    final CreateOrUpdateTableDeviceNode node = (CreateOrUpdateTableDeviceNode) o;
     return Objects.equals(database, node.database)
         && Objects.equals(tableName, node.tableName)
         && Objects.equals(deviceIdList, node.deviceIdList)
@@ -315,5 +321,15 @@ public class CreateTableDeviceNode extends WritePlanNode {
         attributeValueList,
         regionReplicaSet,
         partitionKeyList);
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.CREATE_TABLE_DEVICE;
+  }
+
+  @Override
+  public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitCreateOrUpdateTableDevice(this, context);
   }
 }

@@ -646,7 +646,7 @@ public class IoTDBConfig {
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
    * join cluster
    */
-  private int dataNodeId = -1;
+  private volatile int dataNodeId = -1;
 
   /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;

@@ -25,7 +25,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
-public class CreateDevice extends Statement {
+public class CreateOrUpdateDevice extends Statement {
 
   private final String database;
 
@@ -37,7 +37,7 @@ public class CreateDevice extends Statement {
 
   private final List<Object[]> attributeValueList;
 
-  public CreateDevice(
+  public CreateOrUpdateDevice(
       final String database,
       final String table,
       final List<Object[]> deviceIdList,
@@ -90,7 +90,7 @@ public class CreateDevice extends Statement {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final CreateDevice that = (CreateDevice) o;
+    final CreateOrUpdateDevice that = (CreateOrUpdateDevice) o;
     return Objects.equals(database, that.database)
         && Objects.equals(table, that.table)
         && Objects.equals(deviceIdList, that.deviceIdList)

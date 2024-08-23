@@ -94,12 +94,14 @@ public class TableModelStatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitShowDevice(
       final ShowDevice node, final TableModelStatementMemorySourceContext context) {
-    return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
+    return new StatementMemorySource(
+        node.getTsBlock(context.getAnalysis()), node.getDataSetHeader());
   }
 
   @Override
   public StatementMemorySource visitCountDevice(
       final CountDevice node, final TableModelStatementMemorySourceContext context) {
-    return new StatementMemorySource(node.getTsBlock(), node.getDataSetHeader());
+    return new StatementMemorySource(
+        node.getTsBlock(context.getAnalysis()), node.getDataSetHeader());
   }
 }
