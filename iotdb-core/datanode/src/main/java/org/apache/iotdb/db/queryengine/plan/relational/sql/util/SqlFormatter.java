@@ -663,7 +663,7 @@ public final class SqlFormatter {
       }
 
       builder.append(formatName(node.getTable())).append(" DROP COLUMN ");
-      if (node.columnIfNotExists()) {
+      if (node.columnIfExists()) {
         builder.append("IF NOT EXISTS ");
       }
 

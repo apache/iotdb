@@ -33,7 +33,7 @@ public class DropColumn extends Statement {
   private final Identifier field;
 
   private final boolean tableIfExists;
-  private final boolean columnIfNotExists;
+  private final boolean columnIfExists;
 
   public DropColumn(
       final QualifiedName table,
@@ -44,7 +44,7 @@ public class DropColumn extends Statement {
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
     this.tableIfExists = tableIfExists;
-    this.columnIfNotExists = columnIfExists;
+    this.columnIfExists = columnIfExists;
   }
 
   public DropColumn(
@@ -57,7 +57,7 @@ public class DropColumn extends Statement {
     this.table = requireNonNull(table, "table is null");
     this.field = requireNonNull(field, "field is null");
     this.tableIfExists = tableIfExists;
-    this.columnIfNotExists = columnIfExists;
+    this.columnIfExists = columnIfExists;
   }
 
   public QualifiedName getTable() {
@@ -72,8 +72,8 @@ public class DropColumn extends Statement {
     return tableIfExists;
   }
 
-  public boolean columnIfNotExists() {
-    return columnIfNotExists;
+  public boolean columnIfExists() {
+    return columnIfExists;
   }
 
   @Override
@@ -95,16 +95,24 @@ public class DropColumn extends Statement {
       return false;
     }
     final DropColumn that = (DropColumn) o;
-    return Objects.equals(table, that.table) && Objects.equals(field, that.field);
+    return tableIfExists == that.tableIfExists
+        && columnIfExists == that.columnIfExists
+        && Objects.equals(table, that.table)
+        && Objects.equals(field, that.field);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, field);
+    return Objects.hash(table, field, tableIfExists, columnIfExists);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("table", table).add("field", field).toString();
+    return toStringHelper(this)
+        .add("table", table)
+        .add("field", field)
+        .add("tableIfExists", tableIfExists)
+        .add("columnIfExists", columnIfExists)
+        .toString();
   }
 }
