@@ -61,6 +61,7 @@ public class TableDeviceCacheEntry {
     return result + updateAttribute(database, tableName, attributeSetMap);
   }
 
+  // The caller shall ensure that the update and invalidate of a device's attribute is sequential
   public int updateAttribute(
       final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
     final AtomicInteger diff = new AtomicInteger(0);
@@ -83,10 +84,15 @@ public class TableDeviceCacheEntry {
     return diff.get();
   }
 
+  // The caller shall ensure that the update and invalidate of a device's attribute is sequential
   public int invalidateAttribute() {
-    final TableDeviceLastCache cache = lastCache.get();
-    final int size = cache.estimateSize();
-    lastCache = new AtomicReference<>();
+    final int size =
+        (int)
+            (RamUsageEstimator.NUM_BYTES_OBJECT_REF * attributeMap.size()
+                + attributeMap.values().stream()
+                    .mapToLong(RamUsageEstimator::sizeOf)
+                    .reduce(0, Long::sum));
+    attributeMap = null;
     return size;
   }
 

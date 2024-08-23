@@ -27,12 +27,15 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@ThreadSafe
 public class TableDeviceLastCache {
   static final int EMPTY_INSTANCE_SIZE =
       RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
