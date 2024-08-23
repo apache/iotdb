@@ -141,11 +141,9 @@ public class RestApiServiceImpl extends RestApiService {
                 CommonUtils.addStatementExecutionLatency(
                     OperationType.EXECUTE_NON_QUERY_PLAN, s.getType().name(), costTime);
               });
-      if (queryId != null) {
-        if (finish) {
-          long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
-          CommonUtils.addQueryLatency(statement.getType(), executeTime);
-        }
+      if (finish) {
+        long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
+        CommonUtils.addQueryLatency(statement.getType(), executeTime);
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -222,11 +220,9 @@ public class RestApiServiceImpl extends RestApiService {
                 CommonUtils.addStatementExecutionLatency(
                     OperationType.EXECUTE_QUERY_STATEMENT, s.getType().name(), costTime);
               });
-      if (queryId != null) {
-        if (finish) {
-          long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
-          CommonUtils.addQueryLatency(statement.getType(), executeTime);
-        }
+      if (finish) {
+        long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
+        CommonUtils.addQueryLatency(statement.getType(), executeTime);
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
