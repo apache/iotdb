@@ -107,7 +107,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   protected ConfigManager configManager;
 
-  protected ConfigNode() {
+  public ConfigNode() {
     super("ConfigNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
     ConfigNodeHolder.instance = this;

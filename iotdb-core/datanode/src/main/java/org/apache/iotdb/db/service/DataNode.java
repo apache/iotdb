@@ -167,7 +167,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private boolean schemaRegionConsensusStarted = false;
   private boolean dataRegionConsensusStarted = false;
 
-  private DataNode() {
+  public DataNode() {
     super("DataNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
     DataNodeHolder.INSTANCE = this;
