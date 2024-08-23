@@ -134,9 +134,11 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
-      if (queryId != null) {
+        if (statement != null) {
+            CommonUtils.addStatementExecutionLatency(
+                OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
+        }
+        if (queryId != null) {
         if (finish) {
           long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
           CommonUtils.addQueryLatency(statement.getType(), executeTime);
@@ -210,8 +212,10 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
+      if (statement != null) {
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
+      }
       if (queryId != null) {
         if (finish) {
           long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -274,8 +278,10 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      CommonUtils.addStatementExecutionLatency(
-          OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
+      if (insertTabletStatement != null) {
+        CommonUtils.addStatementExecutionLatency(
+            OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
+      }
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
