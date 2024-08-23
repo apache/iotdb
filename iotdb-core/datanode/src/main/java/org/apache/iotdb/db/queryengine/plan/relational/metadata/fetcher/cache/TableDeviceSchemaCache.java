@@ -136,6 +136,15 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getLastRow(measurement) : null;
   }
 
+  public void invalidateLastCache(
+      final String database, final String tableName, final String[] deviceId) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+    if (Objects.nonNull(entry)) {
+      entry.invalidateLastCache();
+    }
+  }
+
   public void invalidate(final String database) {
     readWriteLock.writeLock().lock();
     try {
