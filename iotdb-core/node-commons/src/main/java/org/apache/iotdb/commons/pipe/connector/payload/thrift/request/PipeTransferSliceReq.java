@@ -87,7 +87,7 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
     sliceReq.sliceCount = sliceCount;
 
     sliceReq.version = IoTDBConnectorRequestVersion.VERSION_1.getVersion();
-    sliceReq.type = PipeRequestType.FALLBACK_SLICE.getType();
+    sliceReq.type = PipeRequestType.TRANSFER_SLICE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(sliceReq.originBodySize, outputStream);
