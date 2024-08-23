@@ -216,25 +216,38 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }
           final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
-          final T cacheEntry =
-              createIfNotExists
-                  ? cacheEntryGroup.computeCacheEntryIfAbsent(
-                      secondKey,
-                      sk -> {
-                        final T entry =
-                            cacheEntryManager.createCacheEntry(
-                                secondKey, value, finalCacheEntryGroup);
-                        cacheEntryManager.put(entry);
-                        usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
-                        return entry;
-                      })
-                  : cacheEntryGroup.getCacheEntry(secondKey);
 
-          if (Objects.nonNull(cacheEntry)) {
-            final int result = updater.applyAsInt(cacheEntry.getValue());
-            if (Objects.nonNull(cacheEntryGroup.getCacheEntry(secondKey))) {
-              usedMemorySize.getAndAdd(result);
+          if (Objects.nonNull(secondKey)) {
+            final T cacheEntry =
+                createIfNotExists
+                    ? cacheEntryGroup.computeCacheEntryIfAbsent(
+                        secondKey,
+                        sk -> {
+                          final T entry =
+                              cacheEntryManager.createCacheEntry(
+                                  secondKey, value, finalCacheEntryGroup);
+                          cacheEntryManager.put(entry);
+                          usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
+                          return entry;
+                        })
+                    : cacheEntryGroup.getCacheEntry(secondKey);
+
+            if (Objects.nonNull(cacheEntry)) {
+              final int result = updater.applyAsInt(cacheEntry.getValue());
+              if (Objects.nonNull(cacheEntryGroup.getCacheEntry(secondKey))) {
+                usedMemorySize.getAndAdd(result);
+              }
             }
+          } else {
+            cacheEntryGroup
+                .getAllCacheEntries()
+                .forEachRemaining(
+                    entry -> {
+                      final int result = updater.applyAsInt(entry.getValue().getValue());
+                      if (Objects.nonNull(finalCacheEntryGroup.getCacheEntry(entry.getKey()))) {
+                        usedMemorySize.getAndAdd(result);
+                      }
+                    });
           }
           return cacheEntryGroup;
         });
