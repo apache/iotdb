@@ -431,9 +431,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void innerInvalidate(FK firstKey, SK secondKey, ToIntFunction<V> valueSizeComputer) {}
-
-  @Override
   public void invalidate(FK firstKey) {
     int estimateSize = 0;
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);

@@ -55,11 +55,7 @@ public interface IDualKeyCache<FK, SK, V> {
   /** put the cache value into cache */
   void put(FK firstKey, SK secondKey, V value);
 
-  /**
-   * Put the value to cache iff it does not exist, and update the existing value.
-   *
-   * @return the value in cache after the operation
-   */
+  /** Put the value to cache iff it does not exist, and update the existing value. */
   void update(
       final FK firstKey,
       final SK secondKey,
@@ -108,10 +104,6 @@ public interface IDualKeyCache<FK, SK, V> {
 
   @TestOnly
   void evictOneEntry();
-
-  /** Invalidate a value's inner members. */
-  void innerInvalidate(
-      final FK firstKey, final SK secondKey, final ToIntFunction<V> valueSizeComputer);
 
   /** remove all entries for firstKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")
