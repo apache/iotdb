@@ -24,8 +24,6 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -35,22 +33,20 @@ import java.util.Objects;
 
 public class PipeTransferSliceReq extends TPipeTransferReq {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferSliceReq.class);
-
+  private transient short originReqType;
   private transient int originBodySize;
 
-  private transient int sliceSize;
   private transient byte[] sliceBody;
 
   private transient int sliceIndex;
   private transient int sliceCount;
 
-  public int getOriginBodySize() {
-    return originBodySize;
+  public short getOriginReqType() {
+    return originReqType;
   }
 
-  public int getSliceSize() {
-    return sliceSize;
+  public int getOriginBodySize() {
+    return originBodySize;
   }
 
   public byte[] getSliceBody() {
@@ -68,6 +64,7 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSliceReq toTPipeTransferReq(
+      final short originReqType,
       final int sliceIndex,
       final int sliceCount,
       final ByteBuffer duplicatedOriginBody,
@@ -76,10 +73,10 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
       throws IOException {
     final PipeTransferSliceReq sliceReq = new PipeTransferSliceReq();
 
+    sliceReq.originReqType = originReqType;
     sliceReq.originBodySize = duplicatedOriginBody.limit();
 
-    sliceReq.sliceSize = endIndexInBody - startIndexInBody;
-    sliceReq.sliceBody = new byte[sliceReq.sliceSize];
+    sliceReq.sliceBody = new byte[endIndexInBody - startIndexInBody];
     duplicatedOriginBody.position(startIndexInBody);
     duplicatedOriginBody.get(sliceReq.sliceBody);
 
@@ -90,9 +87,9 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
     sliceReq.type = PipeRequestType.TRANSFER_SLICE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(sliceReq.originReqType, outputStream);
       ReadWriteIOUtils.write(sliceReq.originBodySize, outputStream);
 
-      ReadWriteIOUtils.write(sliceReq.sliceSize, outputStream);
       ReadWriteIOUtils.write(new Binary(sliceReq.sliceBody), outputStream);
 
       ReadWriteIOUtils.write(sliceReq.sliceIndex, outputStream);
@@ -108,9 +105,9 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
   public static PipeTransferSliceReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferSliceReq sliceReq = new PipeTransferSliceReq();
 
+    sliceReq.originReqType = ReadWriteIOUtils.readShort(transferReq.body);
     sliceReq.originBodySize = ReadWriteIOUtils.readInt(transferReq.body);
 
-    sliceReq.sliceSize = ReadWriteIOUtils.readInt(transferReq.body);
     sliceReq.sliceBody = ReadWriteIOUtils.readBinary(transferReq.body).getValues();
 
     sliceReq.sliceIndex = ReadWriteIOUtils.readInt(transferReq.body);
@@ -134,8 +131,8 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
       return false;
     }
     final PipeTransferSliceReq that = (PipeTransferSliceReq) obj;
-    return Objects.equals(originBodySize, that.originBodySize)
-        && Objects.equals(sliceSize, that.sliceSize)
+    return Objects.equals(originReqType, that.originReqType)
+        && Objects.equals(originBodySize, that.originBodySize)
         && Arrays.equals(sliceBody, that.sliceBody)
         && Objects.equals(sliceIndex, that.sliceIndex)
         && Objects.equals(sliceCount, that.sliceCount)
@@ -147,8 +144,8 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
   @Override
   public int hashCode() {
     return Objects.hash(
+        originReqType,
         originBodySize,
-        sliceSize,
         Arrays.hashCode(sliceBody),
         sliceIndex,
         sliceCount,

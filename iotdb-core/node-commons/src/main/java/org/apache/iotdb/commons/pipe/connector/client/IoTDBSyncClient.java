@@ -113,7 +113,12 @@ public class IoTDBSyncClient extends IClientRPCService.Client
         final TPipeTransferResp sliceResp =
             super.pipeTransfer(
                 PipeTransferSliceReq.toTPipeTransferReq(
-                    i, sliceCount, req.body.duplicate(), startIndexInBody, endIndexInBody));
+                    req.getType(),
+                    i,
+                    sliceCount,
+                    req.body.duplicate(),
+                    startIndexInBody,
+                    endIndexInBody));
 
         if (i == sliceCount - 1) {
           return sliceResp;

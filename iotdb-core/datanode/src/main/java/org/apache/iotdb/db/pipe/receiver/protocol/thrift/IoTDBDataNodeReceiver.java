@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
+import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
@@ -134,6 +135,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final AtomicLong CONFIG_RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicReference<String> configReceiverId = new AtomicReference<>();
 
+  private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
+
   static {
     try {
       folderManager =
@@ -152,7 +155,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       final long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
-        switch (PipeRequestType.valueOf(rawRequestType)) {
+        final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
+        if (requestType != PipeRequestType.TRANSFER_SLICE) {
+          sliceReqHandler.clear();
+        }
+        switch (requestType) {
           case HANDSHAKE_DATANODE_V1:
             {
               try {
@@ -513,8 +520,23 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     return configReceiverId.get();
   }
 
-  private TPipeTransferResp handleTransferSlice(PipeTransferSliceReq pipeTransferSliceReq) {
-    return null;
+  private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
+    final boolean isOutOfOrder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
+    if (isOutOfOrder) {
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
+              "Slice request is out of order, please check the request sequence."));
+    }
+    final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
+    if (!req.isPresent()) {
+      return new TPipeTransferResp(
+          RpcUtils.getStatus(
+              TSStatusCode.SUCCESS_STATUS,
+              "Slice received, waiting for more slices to complete the request."));
+    }
+    // sliceReqHandler will be cleared in the receive(req) method
+    return receive(req.get());
   }
 
   /**
