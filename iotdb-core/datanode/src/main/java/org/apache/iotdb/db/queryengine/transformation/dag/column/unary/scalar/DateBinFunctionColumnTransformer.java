@@ -110,7 +110,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
-  public long dateBin(long source, long origin) {
+  public long dateBin(long source) {
     // return source if interval is 0
     if (monthDuration == 0 && nonMonthDuration == 0) {
       return source;
@@ -147,7 +147,7 @@ public class DateBinFunctionColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        long result = dateBin(column.getLong(i), origin);
+        long result = dateBin(column.getLong(i));
         columnBuilder.writeLong(result);
       } else {
         // If source is null, return null

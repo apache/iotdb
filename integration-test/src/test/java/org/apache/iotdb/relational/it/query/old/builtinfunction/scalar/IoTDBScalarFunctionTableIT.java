@@ -2699,4 +2699,25 @@ public class IoTDBScalarFunctionTableIT {
         expectedAns,
         DATABASE_NAME);
   }
+
+  @Test
+  public void dateBinTestFail() {
+    tableAssertTestFail(
+        "select time,s1,s8,date_bin(1H,s8,0,0) from dateBinTable",
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": line 1:35: mismatched input ','. Expecting: ')'",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select time,s1,s8,date_bin(1H,s1) from dateBinTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Scalar function date_bin only accepts two or three arguments and the second and third must be TimeStamp data type.",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select time,s1,s8,date_bin(1MONTH 1DAY,s8) from dateBinTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Simultaneous setting of monthly and non-monthly intervals is not supported.",
+        DATABASE_NAME);
+  }
 }

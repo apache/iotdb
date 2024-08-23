@@ -902,15 +902,13 @@ public class ColumnTransformerBuilder
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
       ColumnTransformer source = this.process(children.get(2), context);
-      if (children.size() == 4) {
-        return new DateBinFunctionColumnTransformer(
-            source.getType(),
-            ((LongLiteral) children.get(0)).getParsedValue(),
-            ((LongLiteral) children.get(1)).getParsedValue(),
-            source,
-            ((LongLiteral) children.get(3)).getParsedValue(),
-            context.sessionInfo.getZoneId());
-      }
+      return new DateBinFunctionColumnTransformer(
+          source.getType(),
+          ((LongLiteral) children.get(0)).getParsedValue(),
+          ((LongLiteral) children.get(1)).getParsedValue(),
+          source,
+          ((LongLiteral) children.get(3)).getParsedValue(),
+          context.sessionInfo.getZoneId());
     }
     throw new IllegalArgumentException(String.format("Unknown function: %s", functionName));
   }
