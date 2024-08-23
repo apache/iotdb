@@ -104,7 +104,7 @@ public class TableDeviceCacheEntry {
   public int invalidateLastCache() {
     final TableDeviceLastCache cache = lastCache.get();
     final int size = cache.estimateSize();
-    lastCache = null;
+    lastCache = new AtomicReference<>();
     return size;
   }
 

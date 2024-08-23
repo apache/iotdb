@@ -128,16 +128,56 @@ public class TableDeviceSchemaCacheTest {
     final String table1 = "t1";
 
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
-    final Map<String, TimeValuePair> measurementUpdateMap = new HashMap<>();
+
+    // Query update
+    final Map<String, TimeValuePair> measurementQueryUpdateMap = new HashMap<>();
+
     final TimeValuePair tv1 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(1));
     final TimeValuePair tv2 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(2));
+    measurementQueryUpdateMap.put("s1", tv1);
+    measurementQueryUpdateMap.put("s2", tv2);
 
-    measurementUpdateMap.put("s1", tv1);
-    measurementUpdateMap.put("s2", tv2);
-
-    cache.updateLastCache(database, table1, device0, measurementUpdateMap);
+    cache.updateLastCache(database, table1, device0, measurementQueryUpdateMap);
 
     Assert.assertEquals(tv1, cache.getLastEntry(database, table1, device0, "s1"));
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
+
+    // Write update existing
+    final Map<String, TimeValuePair> measurementWriteUpdateMap = new HashMap<>();
+
+    final TimeValuePair tv3 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(1));
+    final TimeValuePair tv4 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(2));
+    measurementWriteUpdateMap.put("s2", tv3);
+    measurementWriteUpdateMap.put("s3", tv4);
+
+    cache.tryUpdateLastCacheWithoutLock(database, table1, device0, measurementWriteUpdateMap);
+
+    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s2"));
+    Assert.assertEquals(tv4, cache.getLastEntry(database, table1, device0, "s3"));
+
+    // Write update non-exist
+    final String database2 = "db2";
+    final String table2 = "t2";
+
+    cache.tryUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
+    cache.tryUpdateLastCacheWithoutLock(database2, table1, device0, measurementWriteUpdateMap);
+
+    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
+    Assert.assertNull(cache.getLastEntry(database2, table1, device0, "s2"));
+
+    // Invalidate device
+    cache.invalidateLastCache(database, table1, device0);
+    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
+
+    // Invalidate table
+    final String[] device1 = new String[] {"hebei", "p_1", "d_1"};
+
+    cache.updateLastCache(database, table2, device0, measurementQueryUpdateMap);
+    cache.updateLastCache(database, table2, device1, measurementQueryUpdateMap);
+
+    cache.invalidateLastCache(database, table2, null);
+
+    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
+    Assert.assertNull(cache.getLastEntry(database, table2, device1, "s2"));
   }
 }
