@@ -97,17 +97,14 @@ public class PipeTransferSliceReqHandler {
       clear();
       return false;
     }
-
-    sliceBodies.add(req.getSliceBody());
-    if (sliceBodies.size() != req.getSliceIndex() + 1) {
+    if (sliceBodies.size() != req.getSliceIndex()) {
       LOGGER.warn(
-          "Invalid slice index: expected {}, actual {}",
-          sliceBodies.size() - 1,
-          req.getSliceIndex());
+          "Invalid slice index: expected {}, actual {}", sliceBodies.size(), req.getSliceIndex());
       clear();
       return false;
     }
 
+    sliceBodies.add(req.getSliceBody());
     return true;
   }
 
