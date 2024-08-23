@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
@@ -57,7 +58,7 @@ public class SizeTieredCompactionSelector
     implements IInnerSeqSpaceSelector, IInnerUnseqSpaceSelector {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected String storageGroupName;
   protected String dataRegionId;
   protected long timePartition;
@@ -97,7 +98,7 @@ public class SizeTieredCompactionSelector
     List<TsFileResource> selectedFileList = new ArrayList<>();
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
-    int fileLimit = config.getFileLimitPerInnerTask();
+    int fileLimit = config.getInnerCompactionCandidateFileNum();
 
     List<List<TsFileResource>> taskList = new ArrayList<>();
     for (TsFileResource currentFile : tsFileResources) {
@@ -195,7 +196,8 @@ public class SizeTieredCompactionSelector
     return Collections.emptyList();
   }
 
-  private List<InnerSpaceCompactionTask> selectTaskBaseOnLevel() throws IOException {
+  protected List<InnerSpaceCompactionTask> selectTaskBaseOnLevel()
+      throws IOException, DiskSpaceInsufficientException {
     int maxLevel = searchMaxFileLevel();
     for (int currentLevel = 0; currentLevel <= maxLevel; currentLevel++) {
       List<List<TsFileResource>> selectedResourceList = selectTsFileResourcesByLevel(currentLevel);
@@ -223,7 +225,7 @@ public class SizeTieredCompactionSelector
     return taskList;
   }
 
-  private ICompactionPerformer createCompactionPerformer() {
+  protected ICompactionPerformer createCompactionPerformer() {
     return sequence
         ? IoTDBDescriptor.getInstance()
             .getConfig()
@@ -235,7 +237,7 @@ public class SizeTieredCompactionSelector
             .createInstance();
   }
 
-  private int searchMaxFileLevel() throws IOException {
+  protected int searchMaxFileLevel() throws IOException {
     int maxLevel = -1;
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =

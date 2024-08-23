@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IAutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IChangeAliasPlan;
@@ -39,81 +41,98 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPre
 
 public abstract class SchemaRegionPlanVisitor<R, C> {
 
-  public abstract R visitSchemaRegionPlan(ISchemaRegionPlan plan, C context);
+  public abstract R visitSchemaRegionPlan(final ISchemaRegionPlan plan, final C context);
 
   public R visitActivateTemplateInCluster(
-      IActivateTemplateInClusterPlan activateTemplateInClusterPlan, C context) {
+      final IActivateTemplateInClusterPlan activateTemplateInClusterPlan, final C context) {
     return visitSchemaRegionPlan(activateTemplateInClusterPlan, context);
   }
 
   public R visitAutoCreateDeviceMNode(
-      IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, C context) {
+      final IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, final C context) {
     return visitSchemaRegionPlan(autoCreateDeviceMNodePlan, context);
   }
 
-  public R visitChangeAlias(IChangeAliasPlan changeAliasPlan, C context) {
+  public R visitChangeAlias(final IChangeAliasPlan changeAliasPlan, final C context) {
     return visitSchemaRegionPlan(changeAliasPlan, context);
   }
 
-  public R visitChangeTagOffset(IChangeTagOffsetPlan changeTagOffsetPlan, C context) {
+  public R visitChangeTagOffset(final IChangeTagOffsetPlan changeTagOffsetPlan, final C context) {
     return visitSchemaRegionPlan(changeTagOffsetPlan, context);
   }
 
   public R visitCreateAlignedTimeSeries(
-      ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan, C context) {
+      final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan, final C context) {
     return visitSchemaRegionPlan(createAlignedTimeSeriesPlan, context);
   }
 
-  public R visitCreateTimeSeries(ICreateTimeSeriesPlan createTimeSeriesPlan, C context) {
+  public R visitCreateTimeSeries(
+      final ICreateTimeSeriesPlan createTimeSeriesPlan, final C context) {
     return visitSchemaRegionPlan(createTimeSeriesPlan, context);
   }
 
-  public R visitDeleteTimeSeries(IDeleteTimeSeriesPlan deleteTimeSeriesPlan, C context) {
+  public R visitDeleteTimeSeries(
+      final IDeleteTimeSeriesPlan deleteTimeSeriesPlan, final C context) {
     return visitSchemaRegionPlan(deleteTimeSeriesPlan, context);
   }
 
-  public R visitPreDeleteTimeSeries(IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, C context) {
+  public R visitPreDeleteTimeSeries(
+      final IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, final C context) {
     return visitSchemaRegionPlan(preDeleteTimeSeriesPlan, context);
   }
 
   public R visitRollbackPreDeleteTimeSeries(
-      IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan, C context) {
+      final IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan, final C context) {
     return visitSchemaRegionPlan(rollbackPreDeleteTimeSeriesPlan, context);
   }
 
   public R visitPreDeactivateTemplate(
-      IPreDeactivateTemplatePlan preDeactivateTemplatePlan, C context) {
+      final IPreDeactivateTemplatePlan preDeactivateTemplatePlan, final C context) {
     return visitSchemaRegionPlan(preDeactivateTemplatePlan, context);
   }
 
   public R visitRollbackPreDeactivateTemplate(
-      IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan, C context) {
+      final IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan, final C context) {
     return visitSchemaRegionPlan(rollbackPreDeactivateTemplatePlan, context);
   }
 
-  public R visitDeactivateTemplate(IDeactivateTemplatePlan deactivateTemplatePlan, C context) {
+  public R visitDeactivateTemplate(
+      final IDeactivateTemplatePlan deactivateTemplatePlan, final C context) {
     return visitSchemaRegionPlan(deactivateTemplatePlan, context);
   }
 
-  public R visitCreateLogicalView(ICreateLogicalViewPlan createLogicalViewPlan, C context) {
+  public R visitCreateLogicalView(
+      final ICreateLogicalViewPlan createLogicalViewPlan, final C context) {
     return visitSchemaRegionPlan(createLogicalViewPlan, context);
   }
 
-  public R visitAlterLogicalView(IAlterLogicalViewPlan alterLogicalViewPlan, C context) {
+  public R visitAlterLogicalView(
+      final IAlterLogicalViewPlan alterLogicalViewPlan, final C context) {
     return visitSchemaRegionPlan(alterLogicalViewPlan, context);
   }
 
   public R visitPreDeleteLogicalView(
-      IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, C context) {
+      final IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, final C context) {
     return visitSchemaRegionPlan(preDeleteLogicalViewPlan, context);
   }
 
   public R visitRollbackPreDeleteLogicalView(
-      IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan, C context) {
+      final IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan, final C context) {
     return visitSchemaRegionPlan(rollbackPreDeleteLogicalViewPlan, context);
   }
 
-  public R visitDeleteLogicalView(IDeleteLogicalViewPlan deleteLogicalViewPlan, C context) {
+  public R visitDeleteLogicalView(
+      final IDeleteLogicalViewPlan deleteLogicalViewPlan, final C context) {
     return visitSchemaRegionPlan(deleteLogicalViewPlan, context);
+  }
+
+  public R visitCreateOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode, final C context) {
+    return visitSchemaRegionPlan(createOrUpdateTableDeviceNode, context);
+  }
+
+  public R visitUpdateTableDeviceAttribute(
+      final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan, final C context) {
+    return visitSchemaRegionPlan(updateTableDeviceAttributePlan, context);
   }
 }

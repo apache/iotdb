@@ -31,7 +31,9 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
- * Transforms:
+ * <b>Optimization phase:</b> Distributed plan planning.
+ *
+ * <p>Transforms:
  *
  * <pre>
  * - Limit (limit = x)
@@ -90,7 +92,7 @@ public class MergeLimitWithMergeSort implements Rule<LimitNode> {
               parent.getPlanNodeId(),
               mergeSortNode.getOrderingScheme(),
               parent.getCount(),
-              parent.getOutputSymbols(),
+              childOfMergeSort.getOutputSymbols(),
               true);
       for (PlanNode child : mergeSortNode.getChildren()) {
         LimitNode limitNode =
@@ -109,7 +111,7 @@ public class MergeLimitWithMergeSort implements Rule<LimitNode> {
               mergeSortNode.getChildren(),
               mergeSortNode.getOrderingScheme(),
               parent.getCount(),
-              parent.getOutputSymbols(),
+              childOfMergeSort.getOutputSymbols(),
               true);
     }
 

@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.db.utils.DateTimeUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -30,13 +32,21 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.DateUtils;
+
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 
 public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
   private static final String ERROR_MSG = "Unsupported target dataType: %s";
 
-  public CastFunctionColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
+  private final ZoneId zoneId;
+
+  public CastFunctionColumnTransformer(
+      Type returnType, ColumnTransformer childColumnTransformer, ZoneId zoneId) {
     super(returnType, childColumnTransformer);
+    this.zoneId = zoneId;
   }
 
   @Override
@@ -47,12 +57,16 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       if (!column.isNull(i)) {
         switch (sourceType) {
           case INT32:
-          case DATE:
             cast(columnBuilder, childType.getInt(column, i));
             break;
+          case DATE:
+            castDate(columnBuilder, childType.getInt(column, i));
+            break;
           case INT64:
-          case TIMESTAMP:
             cast(columnBuilder, childType.getLong(column, i));
+            break;
+          case TIMESTAMP:
+            castTimestamp(columnBuilder, childType.getLong(column, i));
             break;
           case FLOAT:
             cast(columnBuilder, childType.getFloat(column, i));
@@ -105,6 +119,77 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
         break;
       case BLOB:
         returnType.writeBinary(columnBuilder, new Binary(BytesUtils.intToBytes(value)));
+        break;
+      default:
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
+    }
+  }
+
+  private void castDate(ColumnBuilder columnBuilder, int value) {
+    switch (returnType.getTypeEnum()) {
+      case INT32:
+      case DATE:
+        returnType.writeInt(columnBuilder, value);
+        break;
+      case INT64:
+        returnType.writeLong(columnBuilder, value);
+        break;
+      case TIMESTAMP:
+        returnType.writeLong(
+            columnBuilder,
+            DateTimeUtils.correctPrecision(DateUtils.parseIntToDate(value).getTime()));
+        break;
+      case FLOAT:
+        returnType.writeFloat(columnBuilder, value);
+        break;
+      case DOUBLE:
+        returnType.writeDouble(columnBuilder, value);
+        break;
+      case BOOLEAN:
+        returnType.writeBoolean(columnBuilder, value != 0);
+        break;
+      case TEXT:
+      case STRING:
+        returnType.writeBinary(columnBuilder, BytesUtils.valueOf(DateUtils.formatDate(value)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.intToBytes(value)));
+        break;
+      default:
+        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
+    }
+  }
+
+  private void castTimestamp(ColumnBuilder columnBuilder, long value) {
+    switch (returnType.getTypeEnum()) {
+      case INT32:
+        returnType.writeInt(columnBuilder, (CastFunctionHelper.castLongToInt(value)));
+        break;
+      case DATE:
+        returnType.writeInt(
+            columnBuilder,
+            DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(value, zoneId)));
+        break;
+      case INT64:
+      case TIMESTAMP:
+        returnType.writeLong(columnBuilder, value);
+        break;
+      case FLOAT:
+        returnType.writeFloat(columnBuilder, value);
+        break;
+      case DOUBLE:
+        returnType.writeDouble(columnBuilder, value);
+        break;
+      case BOOLEAN:
+        returnType.writeBoolean(columnBuilder, value != 0L);
+        break;
+      case TEXT:
+      case STRING:
+        returnType.writeBinary(
+            columnBuilder, BytesUtils.valueOf(DateTimeUtils.convertLongToDate(value, zoneId)));
+        break;
+      case BLOB:
+        returnType.writeBinary(columnBuilder, new Binary(BytesUtils.longToBytes(value)));
         break;
       default:
         throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
@@ -237,31 +322,39 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
   private void cast(ColumnBuilder columnBuilder, Binary value) {
     String stringValue = value.getStringValue(TSFileConfig.STRING_CHARSET);
-    switch (returnType.getTypeEnum()) {
-      case INT32:
-      case DATE:
-        returnType.writeInt(columnBuilder, Integer.parseInt(stringValue));
-        break;
-      case INT64:
-      case TIMESTAMP:
-        returnType.writeLong(columnBuilder, Long.parseLong(stringValue));
-        break;
-      case FLOAT:
-        returnType.writeFloat(columnBuilder, CastFunctionHelper.castTextToFloat(stringValue));
-        break;
-      case DOUBLE:
-        returnType.writeDouble(columnBuilder, CastFunctionHelper.castTextToDouble(stringValue));
-        break;
-      case BOOLEAN:
-        returnType.writeBoolean(columnBuilder, CastFunctionHelper.castTextToBoolean(stringValue));
-        break;
-      case TEXT:
-      case STRING:
-      case BLOB:
-        returnType.writeBinary(columnBuilder, value);
-        break;
-      default:
-        throw new UnsupportedOperationException(String.format(ERROR_MSG, returnType.getTypeEnum()));
+    try {
+      switch (returnType.getTypeEnum()) {
+        case INT32:
+          returnType.writeInt(columnBuilder, Integer.parseInt(stringValue));
+          break;
+        case DATE:
+          returnType.writeInt(columnBuilder, DateUtils.parseDateExpressionToInt(stringValue));
+          break;
+        case INT64:
+        case TIMESTAMP:
+          returnType.writeLong(columnBuilder, Long.parseLong(stringValue));
+          break;
+        case FLOAT:
+          returnType.writeFloat(columnBuilder, CastFunctionHelper.castTextToFloat(stringValue));
+          break;
+        case DOUBLE:
+          returnType.writeDouble(columnBuilder, CastFunctionHelper.castTextToDouble(stringValue));
+          break;
+        case BOOLEAN:
+          returnType.writeBoolean(columnBuilder, CastFunctionHelper.castTextToBoolean(stringValue));
+          break;
+        case TEXT:
+        case STRING:
+        case BLOB:
+          returnType.writeBinary(columnBuilder, value);
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              String.format(ERROR_MSG, returnType.getTypeEnum()));
+      }
+    } catch (DateTimeParseException | NumberFormatException e) {
+      throw new SemanticException(
+          String.format("Cannot cast %s to %s type", stringValue, returnType.getDisplayName()));
     }
   }
 }

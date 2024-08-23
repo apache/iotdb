@@ -119,7 +119,7 @@ public class FastCompactionPerformer
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
-                : new FastInnerCompactionWriter(targetFiles.get(0))) {
+                : new FastInnerCompactionWriter(targetFiles)) {
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(seqFiles, unseqFiles, readerCacheMap);
       compactionWriter.setSchemaForAllTargetFile(schemas);
@@ -163,10 +163,9 @@ public class FastCompactionPerformer
         // check whether to flush chunk metadata or not
         compactionWriter.checkAndMayFlushChunkMetadata();
         // Add temp file metrics
-        subTaskSummary.setTemporalFileSize(compactionWriter.getWriterSize());
+        subTaskSummary.setTemporaryFileSize(compactionWriter.getWriterSize());
         sortedSourceFiles.clear();
       }
-      compactionWriter.removeUnusedTableSchema();
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {

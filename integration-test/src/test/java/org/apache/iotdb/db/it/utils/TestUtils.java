@@ -278,7 +278,7 @@ public class TestUtils {
       statement.executeQuery(sql);
       fail("No exception!");
     } catch (SQLException e) {
-      Assert.assertTrue(e.getMessage().contains(errMsg));
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
   }
 
