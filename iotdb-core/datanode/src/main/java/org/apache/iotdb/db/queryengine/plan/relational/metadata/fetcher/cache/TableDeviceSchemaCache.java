@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
@@ -91,6 +92,9 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final Map<String, TimeValuePair> measurementUpdateMap) {
+    if (!DataNodeLastCacheManager.CACHE_ENABLED) {
+      return;
+    }
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
@@ -109,6 +113,9 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final Map<String, TimeValuePair> measurementUpdateMap) {
+    if (!DataNodeLastCacheManager.CACHE_ENABLED) {
+      return;
+    }
     dualKeyCache.update(
         new TableId(database, tableName),
         new TableDeviceId(deviceId),
@@ -122,6 +129,9 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final String measurement) {
+    if (!DataNodeLastCacheManager.CACHE_ENABLED) {
+      return null;
+    }
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
@@ -132,6 +142,9 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final String measurement) {
+    if (!DataNodeLastCacheManager.CACHE_ENABLED) {
+      return null;
+    }
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
     return Objects.nonNull(entry) ? entry.getLastRow(measurement) : null;
@@ -140,6 +153,9 @@ public class TableDeviceSchemaCache {
   // "deviceId" shall equal to null when invalidate the cache of the whole table
   public void invalidateLastCache(
       final String database, final String tableName, final String[] deviceId) {
+    if (!DataNodeLastCacheManager.CACHE_ENABLED) {
+      return;
+    }
     dualKeyCache.update(
         new TableId(database, tableName),
         Objects.nonNull(deviceId) ? new TableDeviceId(deviceId) : null,
