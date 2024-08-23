@@ -102,7 +102,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.CREATE_TABLE_DEVICE;
+    return PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE;
   }
 
   public String getDatabase() {
@@ -171,7 +171,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   @Override
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
-    PlanNodeType.CREATE_TABLE_DEVICE.serialize(byteBuffer);
+    PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE.serialize(byteBuffer);
     ReadWriteIOUtils.write(database, byteBuffer);
     ReadWriteIOUtils.write(tableName, byteBuffer);
     ReadWriteIOUtils.write(deviceIdList.size(), byteBuffer);
@@ -195,7 +195,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   @Override
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
-    PlanNodeType.CREATE_TABLE_DEVICE.serialize(stream);
+    PlanNodeType.CREATE_OR_UPDATE_TABLE_DEVICE.serialize(stream);
     ReadWriteIOUtils.write(database, stream);
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(deviceIdList.size(), stream);
