@@ -90,13 +90,13 @@ public class DataNodeTableCache implements ITableCache {
       for (final TsTable table : entry.getValue()) {
         map.put(table.getTableName(), table);
       }
-      localTableMap.put(entry.getKey(), map);
+      localTableMap.put(PathUtils.unQualifyDatabaseName(entry.getKey()), map);
     }
   }
 
   @Override
   public void preUpdateTable(String database, final TsTable table) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preUpdateTableMap
@@ -110,7 +110,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void rollbackUpdateTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
@@ -138,7 +138,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void commitUpdateTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       final TsTable table = preUpdateTableMap.get(database).get(tableName);
@@ -154,7 +154,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void invalid(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
@@ -165,7 +165,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public TsTable getTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       if (databaseTableMap.containsKey(database)) {
@@ -178,7 +178,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public Optional<List<TsTable>> getTables(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       final Map<String, TsTable> tableMap = databaseTableMap.get(database);
@@ -188,6 +188,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  // Database shall not start with "root"
   public String tryGetInternColumnName(
       final String database, final String tableName, final String columnName) {
     try {
