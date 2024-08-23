@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -121,7 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 @SuppressWarnings("java:S6539") // suppress "Monster class" warning
@@ -495,19 +496,24 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitCreateTableDevice(CreateTableDeviceNode node, C context) {
+  public R visitCreateTableDevice(final CreateOrUpdateTableDeviceNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceFetch(TableDeviceFetchNode node, C context) {
+  public R visitTableDeviceAttributeUpdate(
+      final TableDeviceAttributeUpdateNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceQueryScan(TableDeviceQueryScanNode node, C context) {
+  public R visitTableDeviceFetch(final TableDeviceFetchNode node, final C context) {
     return visitPlan(node, context);
   }
 
-  public R visitTableDeviceQueryCount(TableDeviceQueryCountNode node, C context) {
+  public R visitTableDeviceQueryScan(final TableDeviceQueryScanNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableDeviceQueryCount(final TableDeviceQueryCountNode node, final C context) {
     return visitPlan(node, context);
   }
 

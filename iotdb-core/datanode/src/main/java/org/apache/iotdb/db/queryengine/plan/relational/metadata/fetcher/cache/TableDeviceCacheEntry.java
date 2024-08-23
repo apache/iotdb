@@ -21,8 +21,10 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.Collections;
+import javax.annotation.Nonnull;
+
 import java.util.Map;
+import java.util.Objects;
 
 public class TableDeviceCacheEntry {
 
@@ -36,8 +38,19 @@ public class TableDeviceCacheEntry {
   // corresponding value is null, doesn't mean that the key doesn't exist
   private final Map<String, String> attributeMap;
 
-  public TableDeviceCacheEntry(final Map<String, String> attributeMap) {
-    this.attributeMap = Collections.unmodifiableMap(attributeMap);
+  public TableDeviceCacheEntry(final @Nonnull Map<String, String> attributeMap) {
+    this.attributeMap = attributeMap;
+  }
+
+  public void update(final @Nonnull Map<String, String> updateMap) {
+    updateMap.forEach(
+        (k, v) -> {
+          if (Objects.nonNull(v)) {
+            attributeMap.put(k, v);
+          } else {
+            attributeMap.remove(k);
+          }
+        });
   }
 
   public String getAttribute(final String key) {

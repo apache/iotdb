@@ -34,14 +34,12 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> {
 
@@ -69,14 +67,13 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getSchemaReader(final ISchemaRegion schemaRegion) {
-    final List<PartialPath> devicePatternList = getDevicePatternList();
+    final List<PartialPath> devicePatternList =
+        getDevicePatternList(database, tableName, idDeterminedPredicateList);
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
       private ISchemaReader<IDeviceSchemaInfo> deviceReader;
       private Throwable throwable;
       private int index = 0;
-      private final List<TSDataType> dataTypes =
-          columnHeaderList.stream().map(ColumnHeader::getColumnType).collect(Collectors.toList());
       private IDeviceSchemaInfo next;
 
       @Override
@@ -101,13 +98,36 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
 
       @Override
       public boolean hasNext() {
-        while (next == null && innerHasNext()) {
-          final IDeviceSchemaInfo temp = deviceReader.next();
-          if (match(temp)) {
-            next = temp;
-          }
+        if (Objects.nonNull(next)) {
+          return true;
         }
-        return next != null;
+
+        if (Objects.isNull(filter)) {
+          if (innerHasNext()) {
+            next = deviceReader.next();
+            return true;
+          }
+          return false;
+        }
+
+        if (filter.hasNext()) {
+          next = filter.next();
+          return true;
+        }
+
+        while (innerHasNext() && !filter.hasNext()) {
+          filter.addBatch(deviceReader.next());
+        }
+
+        if (!filter.hasNext()) {
+          filter.prepareBatchResult();
+        }
+
+        if (filter.hasNext()) {
+          next = filter.next();
+          return true;
+        }
+        return false;
       }
 
       private boolean innerHasNext() {
@@ -152,25 +172,22 @@ public class TableDeviceQuerySource implements ISchemaSource<IDeviceSchemaInfo> 
         return result;
       }
 
-      private boolean match(final IDeviceSchemaInfo deviceSchemaInfo) {
-        if (Objects.isNull(filter)) {
-          return true;
-        }
-        final TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
-        transformToTsBlockColumns(deviceSchemaInfo, builder, database);
-        return filter.match(builder.build());
-      }
-
       @Override
       public void close() throws Exception {
-        if (deviceReader != null) {
+        if (Objects.nonNull(deviceReader)) {
           deviceReader.close();
+        }
+        if (Objects.nonNull(filter)) {
+          filter.close();
         }
       }
     };
   }
 
-  private List<PartialPath> getDevicePatternList() {
+  public static List<PartialPath> getDevicePatternList(
+      final String database,
+      final String tableName,
+      final List<List<SchemaFilter>> idDeterminedPredicateList) {
     if (Objects.isNull(DataNodeTableCache.getInstance().getTable(database, tableName))) {
       throw new SchemaExecutionException(
           String.format("Table '%s.%s' does not exist.", database, tableName));

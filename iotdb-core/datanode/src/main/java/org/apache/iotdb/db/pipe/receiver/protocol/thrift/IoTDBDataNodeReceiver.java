@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransf
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -85,12 +86,14 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -327,8 +330,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus loadFileV1(final PipeTransferFileSealReqV1 req, final String fileAbsolutePath)
-      throws FileNotFoundException {
-    return loadTsFile(fileAbsolutePath);
+      throws IOException {
+    return isUsingAsyncLoadTsFileStrategy.get()
+        ? loadTsFileAsync(Collections.singletonList(fileAbsolutePath))
+        : loadTsFileSync(fileAbsolutePath);
   }
 
   @Override
@@ -337,11 +342,30 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       throws IOException, IllegalPathException {
     return req instanceof PipeTransferTsFileSealWithModReq
         // TsFile's absolute path will be the second element
-        ? loadTsFile(fileAbsolutePaths.get(1))
+        ? (isUsingAsyncLoadTsFileStrategy.get()
+            ? loadTsFileAsync(fileAbsolutePaths)
+            : loadTsFileSync(fileAbsolutePaths.get(1)))
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
 
-  private TSStatus loadTsFile(final String fileAbsolutePath) throws FileNotFoundException {
+  private TSStatus loadTsFileAsync(final List<String> absolutePaths) throws IOException {
+    final String loadActiveListeningPipeDir = IOTDB_CONFIG.getLoadActiveListeningPipeDir();
+
+    for (final String absolutePath : absolutePaths) {
+      if (absolutePath == null) {
+        continue;
+      }
+      final File sourceFile = new File(absolutePath);
+      if (!Objects.equals(
+          loadActiveListeningPipeDir, sourceFile.getParentFile().getAbsolutePath())) {
+        FileUtils.moveFileWithMD5Check(sourceFile, new File(loadActiveListeningPipeDir));
+      }
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  private TSStatus loadTsFileSync(final String fileAbsolutePath) throws FileNotFoundException {
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
 
     statement.setDeleteAfterLoad(true);

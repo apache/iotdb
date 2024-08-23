@@ -43,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -1206,7 +1207,7 @@ public class MTreeBelowSGMemoryImpl {
             final IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    deviceNode.getFullPath(),
+                    null,
                     deviceNode.isAlignedNullable(),
                     deviceNode.getSchemaTemplateId(),
                     deviceNode.getPartialPath().getNodes());
@@ -1512,7 +1513,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public void createTableDevice(
       final String tableName,
-      final Object[] devicePath,
+      final String[] devicePath,
       final IntSupplier attributePointerGetter,
       final IntConsumer attributeUpdater)
       throws MetadataException {
@@ -1525,8 +1526,7 @@ public class MTreeBelowSGMemoryImpl {
               storageGroupMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
     }
 
-    for (final Object o : devicePath) {
-      final String childName = o == null ? null : o.toString();
+    for (final String childName : devicePath) {
       IMemMNode child = cur.getChild(childName);
       if (child == null) {
         child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
@@ -1552,6 +1552,22 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addDevice();
       }
+    }
+  }
+
+  public void updateTableDevice(
+      final PartialPath pattern, final DeviceAttributeUpdater batchUpdater)
+      throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            batchUpdater.handleDeviceNode(node);
+          }
+        }) {
+      updater.update();
     }
   }
 

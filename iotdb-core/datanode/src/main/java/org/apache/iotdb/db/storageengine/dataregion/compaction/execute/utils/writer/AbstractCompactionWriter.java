@@ -127,8 +127,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
    */
   public abstract void checkAndMayFlushChunkMetadata() throws IOException;
 
-  protected abstract List<CompactionTsFileWriter> getAllTargetFileWriter();
-
   protected void writeDataPoint(long timestamp, TsPrimitiveType value, IChunkWriter chunkWriter) {
     if (chunkWriter instanceof ChunkWriterImpl) {
       ChunkWriterImpl chunkWriterImpl = (ChunkWriterImpl) chunkWriter;
@@ -323,19 +321,5 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  public void setSchemaForAllTargetFile(List<Schema> schemas) {
-    List<CompactionTsFileWriter> allTargetFileWriter = getAllTargetFileWriter();
-    for (int i = 0; i < allTargetFileWriter.size(); i++) {
-      Schema schema = schemas.get(i);
-      CompactionTsFileWriter writer = allTargetFileWriter.get(i);
-      writer.setSchema(schema);
-    }
-  }
-
-  public void removeUnusedTableSchema() {
-    List<CompactionTsFileWriter> allTargetFileWriter = getAllTargetFileWriter();
-    for (CompactionTsFileWriter writer : allTargetFileWriter) {
-      writer.removeUnusedTableSchema();
-    }
-  }
+  public abstract void setSchemaForAllTargetFile(List<Schema> schemas);
 }

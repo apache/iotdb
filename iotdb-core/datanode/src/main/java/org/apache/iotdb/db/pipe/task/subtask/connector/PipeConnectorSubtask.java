@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
@@ -268,8 +269,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       }
     }
 
-    if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
-      ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+    if (outputPipeConnector instanceof IoTDBConnector) {
+      ((IoTDBConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }
   }
 

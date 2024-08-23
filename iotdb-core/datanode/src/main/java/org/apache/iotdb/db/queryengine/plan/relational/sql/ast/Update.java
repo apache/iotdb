@@ -21,51 +21,35 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 
-import javax.annotation.Nullable;
-
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class Update extends Statement {
-
-  private final Table table;
-  private final List<UpdateAssignment> assignments;
-  @Nullable private final Expression where;
-
-  public Update(NodeLocation location, Table table, List<UpdateAssignment> assignments) {
-    super(requireNonNull(location, "location is null"));
-    this.table = requireNonNull(table, "table is null");
-    this.assignments = requireNonNull(assignments, "assignments is null");
-    this.where = null;
-  }
+public class Update extends AbstractTraverseDevice {
+  private List<UpdateAssignment> assignments;
 
   public Update(
-      NodeLocation location, Table table, List<UpdateAssignment> assignments, Expression where) {
-    super(requireNonNull(location, "location is null"));
-    this.table = requireNonNull(table, "table is null");
+      final NodeLocation location,
+      final Table table,
+      final List<UpdateAssignment> assignments,
+      final Expression where) {
+    super(requireNonNull(location, "location is null"), table, where);
     this.assignments = requireNonNull(assignments, "assignments is null");
-    this.where = requireNonNull(where, "where is null");
-  }
-
-  public Table getTable() {
-    return table;
   }
 
   public List<UpdateAssignment> getAssignments() {
     return assignments;
   }
 
-  public Optional<Expression> getWhere() {
-    return Optional.ofNullable(where);
+  public void setAssignments(final List<UpdateAssignment> assignments) {
+    this.assignments = assignments;
   }
 
   @Override
   public List<? extends Node> getChildren() {
-    ImmutableList.Builder<Node> nodes = ImmutableList.builder();
+    final ImmutableList.Builder<Node> nodes = ImmutableList.builder();
     nodes.addAll(assignments);
     if (where != null) {
       nodes.add(where);
@@ -74,36 +58,24 @@ public class Update extends Statement {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+  public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitUpdate(this, context);
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Update update = (Update) o;
-    return table.equals(update.table)
-        && assignments.equals(update.assignments)
-        && where.equals(update.where);
+  public boolean equals(final Object o) {
+    return super.equals(o) && assignments.equals(((Update) o).assignments);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, assignments, where);
+    return Objects.hash(super.hashCode(), assignments);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("table", table)
-        .add("assignments", assignments)
-        .add("where", where)
-        .omitNullValues()
-        .toString();
+    return toStringHelper(this).add("assignments", assignments).omitNullValues()
+        + " - "
+        + super.toStringContent();
   }
 }

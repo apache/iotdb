@@ -477,12 +477,13 @@ public class IoTConsensus implements IConsensus {
   @Override
   public void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers)
       throws ConsensusException {
+    logger.info("[RESET PEER LIST] Start to reset peer list to {}", correctPeers);
     IoTConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
     Peer localPeer = new Peer(groupId, thisNodeId, thisNode);
     if (!correctPeers.contains(localPeer)) {
-      logger.warn(
+      logger.info(
           "[RESET PEER LIST] Local peer is not in the correct configuration, delete local peer {}",
           groupId);
       deleteLocalPeer(groupId);

@@ -131,10 +131,9 @@ public class ReadPointCompactionPerformer
           compactNonAlignedSeries(
               device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
         }
-        summary.setTemporalFileSize(compactionWriter.getWriterSize());
+        summary.setTemporaryFileSize(compactionWriter.getWriterSize());
       }
 
-      compactionWriter.removeUnusedTableSchema();
       compactionWriter.endFile();
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
 
@@ -298,7 +297,7 @@ public class ReadPointCompactionPerformer
       return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      return new ReadPointInnerCompactionWriter(targetFileResources.get(0));
+      return new ReadPointInnerCompactionWriter(targetFileResources);
     }
   }
 

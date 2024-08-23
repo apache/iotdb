@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -115,7 +116,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -231,11 +232,12 @@ public enum PlanNodeType {
 
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
-  CREATE_TABLE_DEVICE((short) 902),
+  CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
   TABLE_DEVICE_FETCH((short) 904),
   DELETE_TABLE_DEVICE((short) 905),
   TABLE_DEVICE_QUERY_COUNT((short) 906),
+  TABLE_DEVICE_ATTRIBUTE_UPDATE((short) 907),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -510,13 +512,15 @@ public enum PlanNodeType {
       case 96:
         return DeviceSchemaFetchScanNode.deserialize(buffer);
       case 902:
-        return CreateTableDeviceNode.deserialize(buffer);
+        return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
         return TableDeviceQueryScanNode.deserialize(buffer);
       case 904:
         return TableDeviceFetchNode.deserialize(buffer);
       case 906:
         return TableDeviceQueryCountNode.deserialize(buffer);
+      case 907:
+        return TableDeviceAttributeUpdateNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);

@@ -105,6 +105,5 @@ public class RepairUnsortedFileCompactionWriter extends ReadPointInnerCompaction
   @Override
   public void write(TimeValuePair timeValuePair, int subTaskId) throws IOException {
     dataOfCurrentSeriesArr[subTaskId].add(timeValuePair);
-    isEmptyFile = false;
   }
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.connector.payload.evolvable.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -115,7 +116,23 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     events.clear();
   }
 
-  public void decreaseEventsReferenceCount(final String holderMessage, final boolean shouldReport) {
+  /**
+   * Discard all events of the given pipe. This method only clears the reference count of the events
+   * and discard them, but do not modify other objects (such as buffers) for simplicity.
+   */
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
+    events.removeIf(
+        event -> {
+          if (pipeNameToDrop.equals(event.getPipeName())) {
+            event.clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
+            return true;
+          }
+          return false;
+        });
+  }
+
+  public synchronized void decreaseEventsReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     events.forEach(event -> event.decreaseReferenceCount(holderMessage, shouldReport));
   }
 

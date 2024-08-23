@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TsFileResourceCandidate {
   @SuppressWarnings("squid:S1104")
@@ -49,8 +50,7 @@ public class TsFileResourceCandidate {
   private boolean hasDetailedDeviceInfo;
   private CompactionScheduleContext compactionScheduleContext;
 
-  protected TsFileResourceCandidate(
-      TsFileResource tsFileResource, CompactionScheduleContext context) {
+  public TsFileResourceCandidate(TsFileResource tsFileResource, CompactionScheduleContext context) {
     this.resource = tsFileResource;
     this.selected = false;
     // although we do the judgement here, the task should be validated before executing because
@@ -115,9 +115,14 @@ public class TsFileResourceCandidate {
     this.selected = true;
   }
 
-  public List<DeviceInfo> getDevices() throws IOException {
+  public List<DeviceInfo> getDeviceInfoList() throws IOException {
     prepareDeviceInfos();
     return new ArrayList<>(deviceInfoMap.values());
+  }
+
+  public Set<IDeviceID> getDevices() throws IOException {
+    prepareDeviceInfos();
+    return deviceInfoMap.keySet();
   }
 
   public DeviceInfo getDeviceInfoById(IDeviceID deviceId) throws IOException {
