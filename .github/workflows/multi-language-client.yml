@@ -90,7 +90,7 @@ jobs:
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
           elif [[ "${{ matrix.os }}" == windows-2019" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
           else  
             ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
           fi
