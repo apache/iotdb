@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.List;
+import java.util.function.ToIntFunction;
 
 /**
  * This interfaces defines the behaviour of a dual key cache. A dual key cache supports manage cache
@@ -54,6 +55,11 @@ public interface IDualKeyCache<FK, SK, V> {
   /** put the cache value into cache */
   void put(FK firstKey, SK secondKey, V value);
 
+  /**
+   * Put the value to cache iff it does not exist.
+   *
+   * @return the value in cache after the operation
+   */
   V putIfAbsent(final FK firstKey, final SK secondKey, final V value);
 
   /**
@@ -97,6 +103,10 @@ public interface IDualKeyCache<FK, SK, V> {
 
   @TestOnly
   void evictOneEntry();
+
+  /** Invalidate a value's inner members. */
+  void innerInvalidate(
+      final FK firstKey, final SK secondKey, final ToIntFunction<V> valueSizeComputer);
 
   /** remove all entries for firstKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")

@@ -58,22 +58,20 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  public void update(
+  public int update(
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
     lastCache.compareAndSet(null, new TableDeviceLastCache());
-    tryUpdate(database, tableName, measurementUpdateMap);
+    return tryUpdate(database, tableName, measurementUpdateMap);
   }
 
-  public void tryUpdate(
+  public int tryUpdate(
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
     final TableDeviceLastCache cache = lastCache.get();
-    if (Objects.nonNull(cache)) {
-      cache.update(database, tableName, measurementUpdateMap);
-    }
+    return Objects.nonNull(cache) ? cache.update(database, tableName, measurementUpdateMap) : 0;
   }
 
   public TimeValuePair getTimeValuePair(final String measurement) {

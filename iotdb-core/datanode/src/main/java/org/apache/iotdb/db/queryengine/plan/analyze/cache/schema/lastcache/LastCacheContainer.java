@@ -78,7 +78,7 @@ public class LastCacheContainer implements ILastCacheContainer {
     return size;
   }
 
-  private int getDiffSize(TsPrimitiveType oldValue, TsPrimitiveType newValue) {
+  public static int getDiffSize(final TsPrimitiveType oldValue, final TsPrimitiveType newValue) {
     if (oldValue == null) {
       return newValue == null ? 0 : newValue.getSize();
     } else if (oldValue instanceof TsPrimitiveType.TsBinary) {

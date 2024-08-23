@@ -36,7 +36,7 @@ public class TableDeviceLastCache {
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private long lastTime = Long.MIN_VALUE;
 
-  public void update(
+  public int update(
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {

@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     implements IDualKeyCache<FK, SK, V> {
@@ -422,6 +423,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   public void evictOneEntry() {
     cacheStats.decreaseMemoryUsage(evictOneCacheEntry());
   }
+
+  @Override
+  public void innerInvalidate(FK firstKey, SK secondKey, ToIntFunction<V> valueSizeComputer) {}
 
   @Override
   public void invalidate(FK firstKey) {
