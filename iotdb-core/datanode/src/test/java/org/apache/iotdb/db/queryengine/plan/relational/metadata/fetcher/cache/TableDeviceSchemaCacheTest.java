@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -49,12 +51,12 @@ public class TableDeviceSchemaCacheTest {
 
   @Test
   public void testDeviceCache() {
-    TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+    final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
 
-    String database = "db";
-    String table1 = "t1";
+    final String database = "db";
+    final String table1 = "t1";
 
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     cache.put(database, table1, new String[] {"hebei", "p_1", "d_0"}, new HashMap<>(attributeMap));
@@ -79,7 +81,7 @@ public class TableDeviceSchemaCacheTest {
         attributeMap,
         cache.getDeviceAttribute(database, table1, new String[] {"shandong", "p_1", "d_1"}));
 
-    String table2 = "t1";
+    final String table2 = "t1";
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     cache.put(database, table2, new String[] {"hebei", "p_1", "d_0"}, new HashMap<>(attributeMap));
@@ -96,5 +98,26 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_1"}));
     Assert.assertNull(
         cache.getDeviceAttribute(database, table1, new String[] {"shandong", "p_1", "d_1"}));
+  }
+
+  @Test
+  public void testLastCache() {
+    final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+
+    final String database = "db";
+    final String table1 = "t1";
+
+    final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
+    final Map<String, TimeValuePair> measurementUpdateMap = new HashMap<>();
+    final TimeValuePair tv1 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(1));
+    final TimeValuePair tv2 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(2));
+
+    measurementUpdateMap.put("s1", tv1);
+    measurementUpdateMap.put("s2", tv2);
+
+    cache.updateLastCache(database, table1, device0, measurementUpdateMap);
+
+    Assert.assertEquals(tv1, cache.getLastEntry(database, table1, device0, "s1"));
+    Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
   }
 }
