@@ -56,10 +56,17 @@ public class TableDeviceLastCache {
           if (lastTime < v.getTimestamp()) {
             lastTime = v.getTimestamp();
           }
-          final TimeValuePair oldTV = measurement2CachedLastMap.put(k, v);
-          diff.addAndGet(
-              LastCacheContainer.getDiffSize(
-                  Objects.nonNull(oldTV) ? oldTV.getValue() : null, v.getValue()));
+          measurement2CachedLastMap.compute(
+              k,
+              (measurement, tvPair) -> {
+                if (Objects.isNull(tvPair) || tvPair.getTimestamp() <= v.getTimestamp()) {
+                  diff.addAndGet(
+                      LastCacheContainer.getDiffSize(
+                          Objects.nonNull(tvPair) ? tvPair.getValue() : null, v.getValue()));
+                  return v;
+                }
+                return tvPair;
+              });
         });
     return diff.get();
   }

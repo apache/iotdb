@@ -133,6 +133,7 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
+  // The input "TimeValuePair" shall never contain null value
   public void updateLastCache(
       final String database,
       final String tableName,
@@ -151,6 +152,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  // The input "TimeValuePair" shall never contain null value
   public void tryUpdateLastCacheWithoutLock(
       final String database,
       final String tableName,
