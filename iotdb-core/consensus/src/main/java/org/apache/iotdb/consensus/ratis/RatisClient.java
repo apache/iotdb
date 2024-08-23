@@ -158,7 +158,7 @@ class RatisClient implements AutoCloseable {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(new RatisEndlessRetryPolicy())
+                  .setRetryPolicy(new RatisEndlessRetryPolicy(config))
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
@@ -223,15 +223,13 @@ class RatisClient implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
     // for reconfiguration request, we use different retry policy
+    private final RetryPolicy endlessPolicy;
     private final RetryPolicy defaultPolicy;
-    private final RetryPolicy otherPolicy;
 
-    RatisEndlessRetryPolicy() {
-      defaultPolicy =
+    RatisEndlessRetryPolicy(RatisConfig.Client config) {
+      endlessPolicy =
           RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
-      otherPolicy =
-          RetryPolicies.retryUpToMaximumCountWithFixedSleep(
-              3, TimeDuration.valueOf(1, TimeUnit.SECONDS));
+      defaultPolicy = new RatisRetryPolicy(config);
     }
 
     @Override
@@ -245,10 +243,10 @@ class RatisClient implements AutoCloseable {
           || cause instanceof ServerNotReadyException
           || cause instanceof NotLeaderException
           || cause instanceof LeaderNotReadyException) {
-        return defaultPolicy.handleAttemptFailure(event);
+        return endlessPolicy.handleAttemptFailure(event);
       }
 
-      return otherPolicy.handleAttemptFailure(event);
+      return defaultPolicy.handleAttemptFailure(event);
     }
   }
 }
