@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.annotations.TableModel;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -247,7 +248,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {
-          markFailedMeasurement(i, e);
+          markFailedMeasurement(
+              i, new SemanticException(e, TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()));
         }
       }
     }
@@ -477,7 +479,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public IDeviceID getTableDeviceID() {
     if (deviceID == null) {
       String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
-      deviceIdSegments[0] = this.devicePath.getFullPath();
+      deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
         deviceIdSegments[i + 1] =

@@ -72,7 +72,7 @@ public interface IStateMachine {
    *
    * @return true if all resources are released successfully
    */
-  default boolean hasReleaseAllRegionRelatedResource() {
+  default boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
     return true;
   }
 
@@ -156,6 +156,11 @@ public interface IStateMachine {
 
     /** Notify the {@link IStateMachine} that this server becomes ready after changed to leader. */
     default void notifyLeaderReady() {
+      // do nothing default
+    }
+
+    /** Notify the {@link IStateMachine} that this server is no longer the leader. */
+    default void notifyNotLeader() {
       // do nothing default
     }
   }

@@ -118,10 +118,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
-    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
-    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
     return this;
   }
 

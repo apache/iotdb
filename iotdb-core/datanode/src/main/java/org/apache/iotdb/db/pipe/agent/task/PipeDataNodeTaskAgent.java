@@ -648,6 +648,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
   }
 
+  public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
+    if (!tryReadLockWithTimeOut(10)) {
+      LOGGER.warn(
+          "Failed to check if pipe has release region related resource with consensus group id: {}.",
+          consensusGroupId);
+      return false;
+    }
+
+    try {
+      return !pipeTaskManager.hasPipeTaskInConsensusGroup(consensusGroupId);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   ///////////////////////// Pipe Consensus /////////////////////////
 
   public ProgressIndex getPipeTaskProgressIndex(final String pipeName, final int consensusGroupId) {

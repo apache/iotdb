@@ -142,6 +142,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public void endFile() throws IOException {
+    removeUnusedTableSchema();
     long beforeSize = this.getPos();
     super.endFile();
     long writtenDataSize = this.getPos() - beforeSize;
@@ -153,7 +154,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     return isEmptyTargetFile;
   }
 
-  public void removeUnusedTableSchema() {
+  private void removeUnusedTableSchema() {
     Map<String, TableSchema> tableSchemaMap = getSchema().getTableSchemaMap();
     Iterator<Map.Entry<String, TableSchema>> iterator = tableSchemaMap.entrySet().iterator();
     while (iterator.hasNext()) {

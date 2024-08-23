@@ -74,11 +74,9 @@ public class SortTest {
   Analysis actualAnalysis;
   MPPQueryContext context;
   WarningCollector warningCollector = WarningCollector.NOOP;
-  LogicalPlanner logicalPlanner;
   LogicalQueryPlan logicalQueryPlan;
-  PlanNode rootNode;
+  PlanNode logicalPlanNode;
   OutputNode outputNode;
-  PlanNode mergeSortNode;
   ProjectNode projectNode;
   StreamSortNode streamSortNode;
   TableDistributedPlanner distributionPlanner;
@@ -103,15 +101,15 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
-    assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
-    streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof StreamSortNode);
+    streamSortNode = (StreamSortNode) getChildrenNode(logicalPlanNode, 4);
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);
@@ -179,9 +177,9 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output-Offset-Limit-StreamSort-TableScan`
-    assertTrue(getChildrenNode(rootNode, 3) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof StreamSortNode);
     distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
@@ -205,15 +203,15 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
-    assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
-    StreamSortNode streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof StreamSortNode);
+    StreamSortNode streamSortNode = (StreamSortNode) getChildrenNode(logicalPlanNode, 4);
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);
@@ -283,13 +281,13 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Project-StreamSort-Project-Filter-TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof StreamSortNode);
-    StreamSortNode streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 2);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof StreamSortNode);
+    StreamSortNode streamSortNode = (StreamSortNode) getChildrenNode(logicalPlanNode, 2);
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
     assertTrue(getChildrenNode(streamSortNode, 3) instanceof TableScanNode);
@@ -351,15 +349,15 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
-    assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
-    streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof StreamSortNode);
+    streamSortNode = (StreamSortNode) getChildrenNode(logicalPlanNode, 4);
     assertEquals(1, streamSortNode.getStreamCompareKeyEndIndex());
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
@@ -431,15 +429,15 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
-    assertTrue(getChildrenNode(rootNode, 3) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 4) instanceof StreamSortNode);
-    streamSortNode = (StreamSortNode) getChildrenNode(rootNode, 4);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof StreamSortNode);
+    streamSortNode = (StreamSortNode) getChildrenNode(logicalPlanNode, 4);
     assertEquals(2, streamSortNode.getStreamCompareKeyEndIndex());
     assertTrue(getChildrenNode(streamSortNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(streamSortNode, 2) instanceof FilterNode);
@@ -509,7 +507,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     assertTopKNoFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 15, 0, true);
 
@@ -521,7 +519,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
 
     // order by time, others, all_ids; has filter
@@ -532,7 +530,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
 
     // order by time, all_ids, others; has filter
@@ -543,7 +541,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
 
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
   }
@@ -558,7 +556,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKNoFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
 
     // order by others, all_ids, time
@@ -569,7 +567,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
 
     // order by others, time, some_ids
@@ -580,7 +578,7 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
 
     // order by others, time, all_ids
@@ -591,8 +589,29 @@ public class SortTest {
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
-    rootNode = logicalQueryPlan.getRootNode();
+    logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
+  }
+
+  @Test
+  public void projectSortTest() {
+    // columns in order and select is different
+    sql = "SELECT time, attr1, s1 FROM table1 order by attr2 limit 5";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(actualAnalysis);
+    logicalPlanNode = logicalQueryPlan.getRootNode();
+    distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    IdentitySinkNode sinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
+    assertTrue(getChildrenNode(sinkNode, 1) instanceof OutputNode);
+    assertTrue(getChildrenNode(sinkNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(sinkNode, 3) instanceof TopKNode);
+    TopKNode topKNode = (TopKNode) getChildrenNode(sinkNode, 3);
+    assertEquals(4, topKNode.getOutputSymbols().size());
   }
 
   public void assertTopKWithFilter(
@@ -603,14 +622,14 @@ public class SortTest {
       long expectedPushDownOffset,
       boolean isPushLimitToEachDevice) {
     // LogicalPlan: `Output - Offset - Project - TopK - Project - FilterNode - TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 3) instanceof TopKNode);
-    assertTrue(getChildrenNode(rootNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 5) instanceof FilterNode);
-    assertTrue(getChildrenNode(rootNode, 6) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(rootNode, 6);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof TopKNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof FilterNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 6);
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
@@ -672,13 +691,13 @@ public class SortTest {
       long expectedPushDownOffset,
       boolean isPushLimitToEachDevice) {
     // LogicalPlan: `Output - Offset - Project - TopK - Project -  TableScan`
-    assertTrue(rootNode instanceof OutputNode);
-    assertTrue(getChildrenNode(rootNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(rootNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 3) instanceof TopKNode);
-    assertTrue(getChildrenNode(rootNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(rootNode, 5) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(rootNode, 5);
+    assertTrue(logicalPlanNode instanceof OutputNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof TopKNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 5);
     assertEquals("testdb.table1", tableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, tableScanNode.getAssignments().size());
     assertEquals(6, tableScanNode.getDeviceEntries().size());
