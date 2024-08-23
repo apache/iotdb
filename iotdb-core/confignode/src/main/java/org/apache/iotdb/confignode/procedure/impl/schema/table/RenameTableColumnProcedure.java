@@ -23,7 +23,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -33,7 +33,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddTableColumnState> {
+public class RenameTableColumnProcedure
+    extends AbstractAlterTableProcedure<RenameTableColumnState> {
   private String oldName;
   private String newName;
 
@@ -55,35 +56,35 @@ public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddT
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final AddTableColumnState addTableColumnState)
+      final RenameTableColumnState renameTableColumnState)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+    return null;
+  }
+
+  @Override
+  protected void rollbackState(
+      final ConfigNodeProcedureEnv configNodeProcedureEnv,
+      final RenameTableColumnState renameTableColumnState)
+      throws IOException, InterruptedException, ProcedureException {}
+
+  @Override
+  protected RenameTableColumnState getState(final int stateId) {
+    return null;
+  }
+
+  @Override
+  protected int getStateId(final RenameTableColumnState renameTableColumnState) {
+    return 0;
+  }
+
+  @Override
+  protected RenameTableColumnState getInitialState() {
     return null;
   }
 
   @Override
   protected String getActionMessage() {
     return "rename table column";
-  }
-
-  @Override
-  protected void rollbackState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final AddTableColumnState addTableColumnState)
-      throws IOException, InterruptedException, ProcedureException {}
-
-  @Override
-  protected AddTableColumnState getState(final int stateId) {
-    return null;
-  }
-
-  @Override
-  protected int getStateId(final AddTableColumnState addTableColumnState) {
-    return 0;
-  }
-
-  @Override
-  protected AddTableColumnState getInitialState() {
-    return null;
   }
 
   @Override
