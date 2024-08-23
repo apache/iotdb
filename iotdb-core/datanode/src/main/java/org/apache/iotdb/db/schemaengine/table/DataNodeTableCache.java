@@ -188,16 +188,16 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public String tryGetInternMeasurement(
-      final String database, final String tableName, final String measurement) {
+  public String tryGetInternColumnName(
+      final String database, final String tableName, final String columnName) {
     try {
       return databaseTableMap
           .get(database)
           .get(tableName)
-          .getColumnSchema(measurement)
+          .getColumnSchema(columnName)
           .getColumnName();
     } catch (final Exception e) {
-      return measurement;
+      return columnName;
     }
   }
 

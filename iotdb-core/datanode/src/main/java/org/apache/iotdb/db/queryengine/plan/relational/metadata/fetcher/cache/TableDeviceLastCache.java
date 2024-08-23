@@ -50,7 +50,7 @@ public class TableDeviceLastCache {
     measurementUpdateMap.forEach(
         (k, v) -> {
           if (!measurement2CachedLastMap.containsKey(k)) {
-            k = DataNodeTableCache.getInstance().tryGetInternMeasurement(database, tableName, k);
+            k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
             diff.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
           }
           if (lastTime < v.getTimestamp()) {

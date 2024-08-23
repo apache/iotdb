@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -28,6 +30,8 @@ import javax.annotation.Nonnull;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TableDeviceCacheEntry {
@@ -40,25 +44,43 @@ public class TableDeviceCacheEntry {
   // create from remote
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
-  private Map<String, String> attributeMap = null;
+  private ConcurrentHashMap<String, String> attributeMap = null;
   private AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
   /////////////////////////////// Attribute ///////////////////////////////
 
-  public int setAttribute(final @Nonnull Map<String, String> attributeMap) {
-    this.attributeMap = attributeMap;
-    return (int) RamUsageEstimator.sizeOfMap(attributeMap);
+  public int setAttribute(
+      final String database,
+      final String tableName,
+      final @Nonnull Map<String, String> attributeSetMap) {
+    int result = 0;
+    if (Objects.isNull(attributeMap)) {
+      attributeMap = new ConcurrentHashMap<>();
+      result += (int) RamUsageEstimator.shallowSizeOf(attributeMap);
+    }
+    return result + updateAttribute(database, tableName, attributeSetMap);
   }
 
-  public void update(final @Nonnull Map<String, String> updateMap) {
+  public int updateAttribute(
+      final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
+    final AtomicInteger diff = new AtomicInteger(0);
     updateMap.forEach(
         (k, v) -> {
           if (Objects.nonNull(v)) {
-            attributeMap.put(k, v);
+            if (!attributeMap.containsKey(k)) {
+              k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
+              diff.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
+            }
+            diff.addAndGet(
+                (int)
+                    (RamUsageEstimator.sizeOf(v)
+                        - RamUsageEstimator.sizeOf(attributeMap.put(k, v))));
           } else {
             attributeMap.remove(k);
+            diff.addAndGet((int) (-RamUsageEstimator.sizeOf(k) - RamUsageEstimator.sizeOf(v)));
           }
         });
+    return diff.get();
   }
 
   public String getAttribute(final String key) {
@@ -71,7 +93,7 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  public int update(
+  public int updateLastCache(
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {

@@ -99,7 +99,7 @@ public class TableDeviceSchemaCache {
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(),
-          entry -> entry.setAttribute(attributeMap),
+          entry -> entry.setAttribute(database, tableName, attributeMap),
           true);
     } finally {
       readWriteLock.readLock().unlock();
@@ -113,11 +113,12 @@ public class TableDeviceSchemaCache {
       final Map<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
-      final TableDeviceCacheEntry entry =
-          dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-      if (Objects.nonNull(entry)) {
-        entry.update(attributeMap);
-      }
+      dualKeyCache.update(
+          new TableId(database, tableName),
+          new TableDeviceId(deviceId),
+          new TableDeviceCacheEntry(),
+          entry -> entry.updateAttribute(database, tableName, attributeMap),
+          false);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -134,7 +135,7 @@ public class TableDeviceSchemaCache {
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(),
-          entry -> entry.update(database, tableName, measurementUpdateMap),
+          entry -> entry.updateLastCache(database, tableName, measurementUpdateMap),
           true);
     } finally {
       readWriteLock.readLock().unlock();
