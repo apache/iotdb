@@ -82,11 +82,10 @@ public class TableDeviceLastCache {
   }
 
   public int estimateSize() {
-    return (int)
-        (EMPTY_INSTANCE_SIZE
-            + RamUsageEstimator.NUM_BYTES_OBJECT_REF * measurement2CachedLastMap.size()
-            + measurement2CachedLastMap.values().stream()
-                .mapToInt(TimeValuePair::getSize)
-                .reduce(0, Integer::sum));
+    return EMPTY_INSTANCE_SIZE
+        + RamUsageEstimator.NUM_BYTES_OBJECT_REF * measurement2CachedLastMap.size()
+        + measurement2CachedLastMap.values().stream()
+            .mapToInt(TimeValuePair::getSize)
+            .reduce(0, Integer::sum);
   }
 }
