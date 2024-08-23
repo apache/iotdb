@@ -82,7 +82,7 @@ public class TableDeviceLastCache {
             ? measurement2CachedLastMap.get(measurement).getTimestamp()
             : lastTime;
     return new Pair<>(
-        lastTime,
+        alignTime,
         measurement2CachedLastMap.entrySet().stream()
             .filter(entry -> entry.getValue().getTimestamp() == alignTime)
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getValue())));

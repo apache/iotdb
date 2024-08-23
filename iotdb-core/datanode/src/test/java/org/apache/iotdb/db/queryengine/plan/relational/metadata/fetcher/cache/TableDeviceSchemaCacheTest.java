@@ -33,6 +33,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.junit.After;
 import org.junit.Assert;
@@ -40,6 +41,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -172,6 +174,22 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s1"));
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s3"));
+
+    // Test lastRow
+    Assert.assertEquals(
+        new Pair<>(2L, Collections.singletonMap("s2", new TsPrimitiveType.TsInt(2))),
+        cache.getLastRow(database, table1, device0, null));
+    Assert.assertEquals(
+        new Pair<>(
+            1L,
+            new HashMap<String, TsPrimitiveType>() {
+              {
+                put("s0", new TsPrimitiveType.TsInt(3));
+                put("s1", new TsPrimitiveType.TsInt(3));
+                put("s3", new TsPrimitiveType.TsInt(3));
+              }
+            }),
+        cache.getLastRow(database, table1, device0, "s0"));
 
     // Write update non-exist
     final String database2 = "db2";
