@@ -367,6 +367,43 @@ public class IoTDBScalarFunctionTableIT {
   }
 
   @Test
+  public void testBlobCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s10", "res1", "res2", "res3"};
+    String[] expectedAns =
+        new String[] {
+          "0xabcd,true,true,true,",
+        };
+    tableResultSetEqualTest(
+        "select s10, s10 > x'2d' as res1, s10 <> x'2d' as res2, s10 = X'abcd' as res3 from absTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testDateCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s7", "res1", "res2", "res3"};
+    String[] expectedAns =
+        new String[] {
+          "2021-10-01,true,true,true,",
+        };
+    // add it back while supporting Implicit conversion
+    //    tableResultSetEqualTest(
+    //        "select s7, s7 < '2022-12-12' as res1, s7 <> '2022-12-12' as res2, s7 = '2021-10-01'
+    // as res3 from absTable",
+    //        expectedHeader,
+    //        expectedAns,
+    //        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select s7, s7 < CAST('2022-12-12' AS DATE) as res1, s7 <> CAST('2022-12-12' AS DATE) AS res2, s7 = CAST('2021-10-01' AS DATE) as res3 from absTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void absTestFail() {
     // case 1: more than one argument
     tableAssertTestFail(
@@ -408,6 +445,18 @@ public class IoTDBScalarFunctionTableIT {
         "select s10,abs(s10) from absTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Scalar function abs only accepts one argument and it must be Double, Float, Int32 or Int64 data type.",
+        DATABASE_NAME);
+
+    // case 7: wrong data type
+    tableAssertTestFail(
+        "select s7, s7 < '2022-12-12', s7 <> '2022-12-12', s7 = '2021-10-01' from absTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Cannot apply operator: DATE < STRING",
+        DATABASE_NAME);
+
+    // case 7: wrong data type
+    tableAssertTestFail(
+        "select CAST(s1 AS INT32) from absTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Cannot cast abcd to INT32 type",
         DATABASE_NAME);
   }
 

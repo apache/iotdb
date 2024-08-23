@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -431,6 +432,12 @@ public class QueryExecution implements IQueryExecution {
             throw new IoTDBException(
                 stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
           } else {
+            Throwable rootCause = stateMachine.getFailureException();
+            if (rootCause instanceof IoTDBRuntimeException) {
+              throw (IoTDBRuntimeException) rootCause;
+            } else if (rootCause instanceof IoTDBException) {
+              throw (IoTDBException) rootCause;
+            }
             throw new IoTDBException(
                 stateMachine.getFailureMessage(),
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
@@ -478,6 +485,11 @@ public class QueryExecution implements IQueryExecution {
           stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
     } else if (stateMachine.getFailureException() != null) {
       Throwable rootCause = stateMachine.getFailureException();
+      if (rootCause instanceof IoTDBRuntimeException) {
+        throw (IoTDBRuntimeException) rootCause;
+      } else if (rootCause instanceof IoTDBException) {
+        throw (IoTDBException) rootCause;
+      }
       throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     } else {
       throwIfUnchecked(t);

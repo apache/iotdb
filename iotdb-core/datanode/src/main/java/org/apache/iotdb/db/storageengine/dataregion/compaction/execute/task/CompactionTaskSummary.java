@@ -173,7 +173,7 @@ public class CompactionTaskSummary {
     CANCELED
   }
 
-  public void setTemporalFileSize(long temporalFileSize) {
+  public void setTemporaryFileSize(long temporalFileSize) {
     this.temporalFileSize = temporalFileSize;
   }
 

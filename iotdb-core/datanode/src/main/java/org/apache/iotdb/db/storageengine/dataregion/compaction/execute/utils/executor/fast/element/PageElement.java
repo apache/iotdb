@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
@@ -29,17 +31,13 @@ public abstract class PageElement {
 
   private final boolean isLastPage;
 
-  private final long priority;
-
   // pointReader is used to replace batchData to get rid of huge memory cost by loading data point
   // in a lazy way
   protected IPointReader pointReader;
 
-  protected PageElement(
-      ChunkMetadataElement chunkMetadataElement, boolean isLastPage, long priority) {
+  protected PageElement(ChunkMetadataElement chunkMetadataElement, boolean isLastPage) {
     this.chunkMetadataElement = chunkMetadataElement;
     this.isLastPage = isLastPage;
-    this.priority = priority;
   }
 
   public abstract void deserializePage() throws IOException;
@@ -60,11 +58,11 @@ public abstract class PageElement {
     return isLastPage;
   }
 
-  public long getPriority() {
-    return priority;
-  }
-
   public IPointReader getPointReader() {
     return pointReader;
+  }
+
+  public MergeReaderPriority getPriority() {
+    return chunkMetadataElement.getPriority();
   }
 }

@@ -17,13 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load.active;
+package org.apache.iotdb.db.storageengine.load.active;
 
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -33,60 +30,34 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ActiveLoadDirScanner {
+public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadDirScanner.class);
 
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";
 
-  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final ScheduledExecutorService DIR_SCAN_JOB_EXECUTOR =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.ACTIVE_LOAD_DIR_SCANNER.getName());
-  private static final long MIN_SCAN_INTERVAL_SECONDS =
-      IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningCheckIntervalSeconds();
-
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
-  private final Set<String> listeningDirs = new HashSet<>();
+  private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
-  private Future<?> dirScanJobFuture;
-
   public ActiveLoadDirScanner(final ActiveLoadTsFileLoader activeLoadTsFileLoader) {
+    super(ThreadName.ACTIVE_LOAD_DIR_SCANNER);
     this.activeLoadTsFileLoader = activeLoadTsFileLoader;
-  }
 
-  public synchronized void start() {
-    if (dirScanJobFuture == null) {
-      dirScanJobFuture =
-          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              DIR_SCAN_JOB_EXECUTOR,
-              this::scanSafely,
-              MIN_SCAN_INTERVAL_SECONDS,
-              MIN_SCAN_INTERVAL_SECONDS,
-              TimeUnit.SECONDS);
-      LOGGER.info(
-          "Active load dir scanner started. Scan interval: {}s.", MIN_SCAN_INTERVAL_SECONDS);
-    }
-  }
-
-  public synchronized void stop() {
-    if (dirScanJobFuture != null) {
-      dirScanJobFuture.cancel(false);
-      dirScanJobFuture = null;
-      LOGGER.info("Active load dir scanner stopped.");
-    }
+    register(this::scanSafely);
+    LOGGER.info("Active load dir scanner periodical job registered");
   }
 
   private void scanSafely() {
@@ -171,5 +142,27 @@ public class ActiveLoadDirScanner {
             0, filePathWithResourceOrModsTail.length() - RESOURCE.length())
         : filePathWithResourceOrModsTail.substring(
             0, filePathWithResourceOrModsTail.length() - MODS.length());
+  }
+
+  // Metrics
+  public long countAndReportActiveListeningDirsFileNumber() {
+    final long[] fileCount = {0};
+    try {
+      for (String dir : listeningDirs) {
+        Files.walkFileTree(
+            new File(dir).toPath(),
+            new SimpleFileVisitor<Path>() {
+              @Override
+              public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                fileCount[0]++;
+                return FileVisitResult.CONTINUE;
+              }
+            });
+      }
+      ActiveLoadingFilesMetricsSet.getInstance().recordPendingFileCounter(fileCount[0]);
+    } catch (final IOException e) {
+      LOGGER.warn("Failed to count active listening dirs file number.", e);
+    }
+    return fileCount[0];
   }
 }
