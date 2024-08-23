@@ -51,7 +51,6 @@ public class TableDeviceLastCache {
         (k, v) -> {
           if (!measurement2CachedLastMap.containsKey(k)) {
             k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
-            diff.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
           }
           if (lastTime < v.getTimestamp()) {
             lastTime = v.getTimestamp();
@@ -61,8 +60,9 @@ public class TableDeviceLastCache {
               (measurement, tvPair) -> {
                 if (Objects.isNull(tvPair) || tvPair.getTimestamp() <= v.getTimestamp()) {
                   diff.addAndGet(
-                      LastCacheContainer.getDiffSize(
-                          Objects.nonNull(tvPair) ? tvPair.getValue() : null, v.getValue()));
+                      Objects.nonNull(tvPair)
+                          ? LastCacheContainer.getDiffSize(tvPair.getValue(), v.getValue())
+                          : RamUsageEstimator.NUM_BYTES_OBJECT_REF + v.getSize());
                   return v;
                 }
                 return tvPair;
