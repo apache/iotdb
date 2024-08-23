@@ -285,7 +285,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
       TDataNodeLocation dataNodeLocation = dataNodeLocationOpt.get();
 
-      //
       logger.info("Start to remove datanode, removed datanode endpoint: {}", dataNodeLocation);
       TDataNodeRemoveReq removeReq =
           new TDataNodeRemoveReq(Collections.singletonList(dataNodeLocation));
