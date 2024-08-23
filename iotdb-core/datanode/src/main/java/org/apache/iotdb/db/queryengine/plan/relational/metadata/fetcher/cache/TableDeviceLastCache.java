@@ -46,22 +46,22 @@ public class TableDeviceLastCache {
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    final AtomicInteger a = new AtomicInteger(0);
+    final AtomicInteger diff = new AtomicInteger(0);
     measurementUpdateMap.forEach(
         (k, v) -> {
           if (!measurement2CachedLastMap.containsKey(k)) {
             k = DataNodeTableCache.getInstance().tryGetInternMeasurement(database, tableName, k);
-            a.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
+            diff.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
           }
           if (lastTime < v.getTimestamp()) {
             lastTime = v.getTimestamp();
           }
           final TimeValuePair oldTV = measurement2CachedLastMap.put(k, v);
-          a.addAndGet(
+          diff.addAndGet(
               LastCacheContainer.getDiffSize(
                   Objects.nonNull(oldTV) ? oldTV.getValue() : null, v.getValue()));
         });
-    return a.get();
+    return diff.get();
   }
 
   public TimeValuePair getTimeValuePair(final String measurement) {
