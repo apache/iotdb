@@ -51,6 +51,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
+import java.util.Optional;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -134,11 +135,13 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-        if (statement != null) {
-            CommonUtils.addStatementExecutionLatency(
-                OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
-        }
-        if (queryId != null) {
+      Optional.ofNullable(statement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.EXECUTE_NON_QUERY_PLAN, s.getType().name(), costTime);
+              });
+      if (queryId != null) {
         if (finish) {
           long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
           CommonUtils.addQueryLatency(statement.getType(), executeTime);
@@ -212,10 +215,13 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (statement != null) {
-        CommonUtils.addStatementExecutionLatency(
-            OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
-      }
+
+      Optional.ofNullable(statement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.EXECUTE_QUERY_STATEMENT, s.getType().name(), costTime);
+              });
       if (queryId != null) {
         if (finish) {
           long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
@@ -278,10 +284,12 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (insertTabletStatement != null) {
-        CommonUtils.addStatementExecutionLatency(
-            OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
-      }
+      Optional.ofNullable(insertTabletStatement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.INSERT_TABLET, s.getType().name(), costTime);
+              });
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }

@@ -55,6 +55,7 @@ import javax.ws.rs.core.SecurityContext;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -83,11 +84,11 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeNonQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
     Statement statement = null;
-    long costTime = 0;
+    long startTime = 0;
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      long startTime = System.nanoTime();
+      startTime = System.nanoTime();
       statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
@@ -120,17 +121,18 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
-      long endTime = System.nanoTime();
-      costTime = endTime - startTime;
       finish = true;
       return responseGenerateHelper(result);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
-      if (statement != null) {
-        CommonUtils.addStatementExecutionLatency(
-            OperationType.EXECUTE_NON_QUERY_PLAN, statement.getType().name(), costTime);
-      }
+      long costTime = System.nanoTime() - startTime;
+      Optional.ofNullable(statement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.EXECUTE_NON_QUERY_PLAN, s.getType().name(), costTime);
+              });
       if (queryId != null) {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         if (finish)
@@ -207,10 +209,12 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (statement != null) {
-        CommonUtils.addStatementExecutionLatency(
-            OperationType.EXECUTE_QUERY_STATEMENT, statement.getType().name(), costTime);
-      }
+      Optional.ofNullable(statement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.EXECUTE_QUERY_STATEMENT, s.getType().name(), costTime);
+              });
       if (queryId != null) {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         if (finish)
@@ -254,10 +258,12 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (insertRowsStatement != null) {
-        CommonUtils.addStatementExecutionLatency(
-            OperationType.INSERT_RECORDS, insertRowsStatement.getType().name(), costTime);
-      }
+      Optional.ofNullable(insertRowsStatement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.INSERT_RECORDS, s.getType().name(), costTime);
+              });
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
@@ -306,10 +312,12 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-      if (insertTabletStatement != null) {
-        CommonUtils.addStatementExecutionLatency(
-            OperationType.INSERT_TABLET, insertTabletStatement.getType().name(), costTime);
-      }
+      Optional.ofNullable(insertTabletStatement)
+          .ifPresent(
+              s -> {
+                CommonUtils.addStatementExecutionLatency(
+                    OperationType.INSERT_TABLET, s.getType().name(), costTime);
+              });
       if (queryId != null) {
         COORDINATOR.cleanupQueryExecution(queryId);
       }
