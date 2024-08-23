@@ -183,13 +183,13 @@ public class SortTest {
     distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
-    // DistributedPlan: `Output-Offset-TopK-Limit-StreamSort-TableScan`
+    // DistributedPlan: `Output-Offset-TopK-Limit-TableScan`
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TopKNode);
     topKNode = (TopKNode) getChildrenNode(identitySinkNode, 3);
     assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
-    assertTrue(getChildrenNode(topKNode.getChildren().get(1), 1) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(topKNode.getChildren().get(1), 1) instanceof TableScanNode);
   }
 
   // order by all_ids, time, others
