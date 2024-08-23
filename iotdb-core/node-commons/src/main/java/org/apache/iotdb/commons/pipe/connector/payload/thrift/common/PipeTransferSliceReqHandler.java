@@ -35,6 +35,8 @@ public class PipeTransferSliceReqHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferSliceReqHandler.class);
 
+  private int orderId = -1;
+
   private short originReqType = -1;
   private int originBodySize = -1;
 
@@ -42,17 +44,24 @@ public class PipeTransferSliceReqHandler {
   private final List<byte[]> sliceBodies = new ArrayList<>();
 
   public boolean receiveSlice(final PipeTransferSliceReq req) {
-    if (originReqType == -1 || originBodySize == -1 || sliceCount == -1 || sliceBodies.isEmpty()) {
-      if (originReqType == -1
+    if (orderId == -1
+        || originReqType == -1
+        || originBodySize == -1
+        || sliceCount == -1
+        || sliceBodies.isEmpty()) {
+      if (orderId == -1
+          && originReqType == -1
           && originBodySize == -1
           && sliceCount == -1
           && sliceBodies.isEmpty()) {
+        orderId = req.getOrderId();
         originReqType = req.getOriginReqType();
         originBodySize = req.getOriginBodySize();
         sliceCount = req.getSliceCount();
       } else {
         LOGGER.warn(
-            "Invalid state: originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}",
+            "Invalid state: orderId={}, originReqType={}, originBodySize={}, sliceCount={}, sliceBodies.size={}",
+            orderId,
             originReqType,
             originBodySize,
             sliceCount,
@@ -62,6 +71,11 @@ public class PipeTransferSliceReqHandler {
       }
     }
 
+    if (orderId != req.getOrderId()) {
+      LOGGER.warn("Order ID mismatch: expected {}, actual {}", orderId, req.getOrderId());
+      clear();
+      return false;
+    }
     if (originReqType != req.getOriginReqType()) {
       LOGGER.warn(
           "Origin request type mismatch: expected {}, actual {}",
@@ -115,6 +129,7 @@ public class PipeTransferSliceReqHandler {
   }
 
   public void clear() {
+    orderId = -1;
     originReqType = -1;
     originBodySize = -1;
     sliceCount = -1;

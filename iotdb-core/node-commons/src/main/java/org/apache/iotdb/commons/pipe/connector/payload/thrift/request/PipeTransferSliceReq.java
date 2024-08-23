@@ -33,6 +33,8 @@ import java.util.Objects;
 
 public class PipeTransferSliceReq extends TPipeTransferReq {
 
+  private transient int orderId;
+
   private transient short originReqType;
   private transient int originBodySize;
 
@@ -40,6 +42,10 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
 
   private transient int sliceIndex;
   private transient int sliceCount;
+
+  public int getOrderId() {
+    return orderId;
+  }
 
   public short getOriginReqType() {
     return originReqType;
@@ -64,6 +70,7 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferSliceReq toTPipeTransferReq(
+      final int orderId,
       final short originReqType,
       final int sliceIndex,
       final int sliceCount,
@@ -72,6 +79,8 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
       final int endIndexInBody)
       throws IOException {
     final PipeTransferSliceReq sliceReq = new PipeTransferSliceReq();
+
+    sliceReq.orderId = orderId;
 
     sliceReq.originReqType = originReqType;
     sliceReq.originBodySize = duplicatedOriginBody.limit();
@@ -87,6 +96,8 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
     sliceReq.type = PipeRequestType.TRANSFER_SLICE.getType();
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(sliceReq.orderId, outputStream);
+
       ReadWriteIOUtils.write(sliceReq.originReqType, outputStream);
       ReadWriteIOUtils.write(sliceReq.originBodySize, outputStream);
 
@@ -104,6 +115,8 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
 
   public static PipeTransferSliceReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferSliceReq sliceReq = new PipeTransferSliceReq();
+
+    sliceReq.orderId = ReadWriteIOUtils.readInt(transferReq.body);
 
     sliceReq.originReqType = ReadWriteIOUtils.readShort(transferReq.body);
     sliceReq.originBodySize = ReadWriteIOUtils.readInt(transferReq.body);
@@ -131,7 +144,8 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
       return false;
     }
     final PipeTransferSliceReq that = (PipeTransferSliceReq) obj;
-    return Objects.equals(originReqType, that.originReqType)
+    return Objects.equals(orderId, that.orderId)
+        && Objects.equals(originReqType, that.originReqType)
         && Objects.equals(originBodySize, that.originBodySize)
         && Arrays.equals(sliceBody, that.sliceBody)
         && Objects.equals(sliceIndex, that.sliceIndex)
@@ -144,6 +158,7 @@ public class PipeTransferSliceReq extends TPipeTransferReq {
   @Override
   public int hashCode() {
     return Objects.hash(
+        orderId,
         originReqType,
         originBodySize,
         Arrays.hashCode(sliceBody),

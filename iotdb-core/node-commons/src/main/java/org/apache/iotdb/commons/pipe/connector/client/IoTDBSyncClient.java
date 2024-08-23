@@ -39,10 +39,14 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class IoTDBSyncClient extends IClientRPCService.Client
     implements ThriftClient, AutoCloseable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSyncClient.class);
+
+  private static final AtomicInteger SLICE_ORDER_ID_GENERATOR = new AtomicInteger(0);
 
   private final String ipAddress;
   private final int port;
@@ -104,6 +108,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     }
 
     try {
+      final int sliceOrderId = SLICE_ORDER_ID_GENERATOR.getAndIncrement();
       // Slice the buffer to avoid the buffer being too large
       final int sliceCount =
           req.body.limit() / bodySizeLimit + (req.body.limit() % bodySizeLimit == 0 ? 0 : 1);
@@ -113,6 +118,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
         final TPipeTransferResp sliceResp =
             super.pipeTransfer(
                 PipeTransferSliceReq.toTPipeTransferReq(
+                    sliceOrderId,
                     req.getType(),
                     i,
                     sliceCount,
