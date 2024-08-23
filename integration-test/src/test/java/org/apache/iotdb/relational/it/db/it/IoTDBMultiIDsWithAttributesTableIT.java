@@ -368,7 +368,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "l1,c,d1,11,null,",
         };
     tableResultSetEqualTest(
-        "select level,attr1,device,num,date from table0 order by attr2 desc,de limit 6",
+        "select level,attr1,device,num,date from table0 order by attr2 desc,time limit 6",
         expectedHeader,
         retArray,
         DATABASE_NAME);
