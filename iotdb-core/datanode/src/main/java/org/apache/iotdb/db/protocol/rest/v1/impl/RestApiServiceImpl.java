@@ -84,7 +84,6 @@ public class RestApiServiceImpl extends RestApiService {
     Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-
       statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
@@ -103,7 +102,6 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
-
       Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
         return response;
@@ -213,7 +211,6 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
-
       Optional.ofNullable(statement)
           .ifPresent(
               s -> {

@@ -124,6 +124,7 @@ public class RestApiServiceImpl extends RestApiService {
       finish = true;
       return responseGenerateHelper(result);
     } catch (Exception e) {
+      finish = true;
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
@@ -205,6 +206,7 @@ public class RestApiServiceImpl extends RestApiService {
             sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit());
       }
     } catch (Exception e) {
+      finish = true;
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     } finally {
       long costTime = System.nanoTime() - startTime;
