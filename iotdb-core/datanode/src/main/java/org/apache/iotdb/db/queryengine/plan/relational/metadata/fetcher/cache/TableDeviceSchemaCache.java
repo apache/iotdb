@@ -93,12 +93,11 @@ public class TableDeviceSchemaCache {
       final Map<String, TimeValuePair> measurementUpdateMap) {
     readWriteLock.readLock().lock();
     try {
-      dualKeyCache
-          .putIfAbsent(
-              new TableId(database, tableName),
-              new TableDeviceId(deviceId),
-              new TableDeviceCacheEntry(new ConcurrentHashMap<>()))
-          .update(database, tableName, measurementUpdateMap);
+      dualKeyCache.putOrUpdate(
+          new TableId(database, tableName),
+          new TableDeviceId(deviceId),
+          new TableDeviceCacheEntry(new ConcurrentHashMap<>()),
+          entry -> entry.update(database, tableName, measurementUpdateMap));
     } finally {
       readWriteLock.readLock().unlock();
     }

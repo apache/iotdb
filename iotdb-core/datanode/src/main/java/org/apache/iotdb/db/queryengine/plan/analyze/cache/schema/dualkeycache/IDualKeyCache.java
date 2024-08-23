@@ -56,11 +56,12 @@ public interface IDualKeyCache<FK, SK, V> {
   void put(FK firstKey, SK secondKey, V value);
 
   /**
-   * Put the value to cache iff it does not exist.
+   * Put the value to cache iff it does not exist, and update the existing value.
    *
    * @return the value in cache after the operation
    */
-  V putIfAbsent(final FK firstKey, final SK secondKey, final V value);
+  void putOrUpdate(
+      final FK firstKey, final SK secondKey, final V value, final ToIntFunction<V> updater);
 
   /**
    * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.

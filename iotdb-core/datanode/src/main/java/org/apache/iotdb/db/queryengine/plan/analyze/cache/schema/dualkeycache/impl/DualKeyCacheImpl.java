@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
@@ -197,9 +196,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public V putIfAbsent(final FK firstKey, final SK secondKey, final V value) {
+  public void putOrUpdate(
+      final FK firstKey, final SK secondKey, final V value, final ToIntFunction<V> updater) {
     final AtomicInteger usedMemorySize = new AtomicInteger(0);
-    final AtomicReference<V> result = new AtomicReference<>();
 
     firstKeyMap.compute(
         firstKey,
@@ -209,26 +208,26 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }
           final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
-          result.set(
-              cacheEntryGroup
-                  .computeCacheEntryIfAbsent(
-                      secondKey,
-                      sk -> {
-                        final T cacheEntry =
-                            cacheEntryManager.createCacheEntry(
-                                secondKey, value, finalCacheEntryGroup);
-                        cacheEntryManager.put(cacheEntry);
-                        usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
-                        return cacheEntry;
-                      })
-                  .getValue());
+          usedMemorySize.getAndAdd(
+              updater.applyAsInt(
+                  cacheEntryGroup
+                      .computeCacheEntryIfAbsent(
+                          secondKey,
+                          sk -> {
+                            final T cacheEntry =
+                                cacheEntryManager.createCacheEntry(
+                                    secondKey, value, finalCacheEntryGroup);
+                            cacheEntryManager.put(cacheEntry);
+                            usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
+                            return cacheEntry;
+                          })
+                      .getValue()));
           return cacheEntryGroup;
         });
     cacheStats.increaseMemoryUsage(usedMemorySize.get());
     if (cacheStats.isExceedMemoryCapacity()) {
       executeCacheEviction(usedMemorySize.get());
     }
-    return result.get();
   }
 
   /**
