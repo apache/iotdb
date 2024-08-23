@@ -308,7 +308,10 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitRenameTable(RelationalSqlParser.RenameTableContext ctx) {
     return new RenameTable(
-        getLocation(ctx), getQualifiedName(ctx.from), lowerIdentifier((Identifier) visit(ctx.to)));
+        getLocation(ctx),
+        getQualifiedName(ctx.from),
+        lowerIdentifier((Identifier) visit(ctx.to)),
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override

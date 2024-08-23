@@ -285,6 +285,13 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTables(final String database);
 
+  SettableFuture<ConfigTaskResult> alterTableRenameTable(
+      final String database,
+      final String sourceName,
+      final String targetName,
+      final String queryId,
+      final boolean tableIfExists);
+
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
       final String tableName,

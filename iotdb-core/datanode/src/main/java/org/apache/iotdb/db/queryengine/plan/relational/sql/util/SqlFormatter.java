@@ -591,8 +591,12 @@ public final class SqlFormatter {
     }
 
     @Override
-    protected Void visitRenameTable(RenameTable node, Integer indent) {
+    protected Void visitRenameTable(final RenameTable node, final Integer indent) {
       builder.append("ALTER TABLE ");
+      if (node.tableIfExists()) {
+        builder.append("IF EXISTS ");
+      }
+
       builder
           .append(formatName(node.getSource()))
           .append(" RENAME TO ")

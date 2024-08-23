@@ -23,7 +23,8 @@ public enum AlterTableOperationType {
   ADD_COLUMN((byte) 0),
   SET_PROPERTIES((byte) 1),
   RENAME_COLUMN((byte) 2),
-  DROP_COLUMN((byte) 3);
+  DROP_COLUMN((byte) 3),
+  RENAME_TABLE((byte) 4);
 
   private final byte type;
 
@@ -41,6 +42,12 @@ public enum AlterTableOperationType {
         return ADD_COLUMN;
       case 1:
         return SET_PROPERTIES;
+      case 2:
+        return RENAME_COLUMN;
+      case 3:
+        return DROP_COLUMN;
+      case 4:
+        return RENAME_TABLE;
       default:
         throw new IllegalArgumentException();
     }
