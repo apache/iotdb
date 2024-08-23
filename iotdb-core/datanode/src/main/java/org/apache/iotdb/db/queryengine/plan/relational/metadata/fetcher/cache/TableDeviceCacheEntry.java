@@ -62,8 +62,10 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    lastCache.compareAndSet(null, new TableDeviceLastCache());
-    return tryUpdate(database, tableName, measurementUpdateMap);
+    return (lastCache.compareAndSet(null, new TableDeviceLastCache())
+            ? TableDeviceLastCache.EMPTY_INSTANCE_SIZE
+            : 0)
+        + tryUpdate(database, tableName, measurementUpdateMap);
   }
 
   public int tryUpdate(

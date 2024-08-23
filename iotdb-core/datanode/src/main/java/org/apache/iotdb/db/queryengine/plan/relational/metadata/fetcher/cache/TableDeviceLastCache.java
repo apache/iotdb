@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.read.TimeValuePair;
@@ -29,9 +30,14 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class TableDeviceLastCache {
+  static final int EMPTY_INSTANCE_SIZE =
+      RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+          + Long.BYTES
+          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private long lastTime = Long.MIN_VALUE;
@@ -40,16 +46,22 @@ public class TableDeviceLastCache {
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
+    final AtomicInteger a = new AtomicInteger(0);
     measurementUpdateMap.forEach(
         (k, v) -> {
           if (!measurement2CachedLastMap.containsKey(k)) {
             k = DataNodeTableCache.getInstance().tryGetInternMeasurement(database, tableName, k);
+            a.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
           }
           if (lastTime < v.getTimestamp()) {
             lastTime = v.getTimestamp();
           }
-          measurement2CachedLastMap.put(k, v);
+          final TimeValuePair oldTV = measurement2CachedLastMap.put(k, v);
+          a.addAndGet(
+              LastCacheContainer.getDiffSize(
+                  Objects.nonNull(oldTV) ? oldTV.getValue() : null, v.getValue()));
         });
+    return a.get();
   }
 
   public TimeValuePair getTimeValuePair(final String measurement) {
@@ -71,9 +83,7 @@ public class TableDeviceLastCache {
 
   public int estimateSize() {
     return (int)
-        (RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-            + Long.BYTES
-            + RamUsageEstimator.shallowSizeOf(measurement2CachedLastMap)
+        (EMPTY_INSTANCE_SIZE
             + RamUsageEstimator.NUM_BYTES_OBJECT_REF * measurement2CachedLastMap.size()
             + measurement2CachedLastMap.values().stream()
                 .mapToInt(TimeValuePair::getSize)
