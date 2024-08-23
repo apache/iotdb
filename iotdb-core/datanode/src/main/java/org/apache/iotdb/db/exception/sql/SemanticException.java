@@ -24,6 +24,14 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 public class SemanticException extends IoTDBRuntimeException {
 
+  public SemanticException(String message, int statusCode) {
+    super(message, statusCode);
+  }
+
+  public SemanticException(Throwable cause, int statusCode) {
+    super(cause, statusCode);
+  }
+
   public SemanticException(String message) {
     super(message, TSStatusCode.SEMANTIC_ERROR.getStatusCode());
   }

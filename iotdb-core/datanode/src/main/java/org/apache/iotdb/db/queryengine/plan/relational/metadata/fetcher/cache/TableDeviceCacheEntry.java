@@ -24,7 +24,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
-import java.util.Collections;
+import javax.annotation.Nonnull;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -42,8 +43,19 @@ public class TableDeviceCacheEntry {
   private final Map<String, String> attributeMap;
   private AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
-  public TableDeviceCacheEntry(final Map<String, String> attributeMap) {
-    this.attributeMap = Collections.unmodifiableMap(attributeMap);
+  public TableDeviceCacheEntry(final @Nonnull Map<String, String> attributeMap) {
+    this.attributeMap = attributeMap;
+  }
+
+  public void update(final @Nonnull Map<String, String> updateMap) {
+    updateMap.forEach(
+        (k, v) -> {
+          if (Objects.nonNull(v)) {
+            attributeMap.put(k, v);
+          } else {
+            attributeMap.remove(k);
+          }
+        });
   }
 
   /////////////////////////////// Attribute ///////////////////////////////

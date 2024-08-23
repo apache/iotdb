@@ -2138,7 +2138,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles1() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
     createFiles(3, 10, 5, 1000, 7500, 7500, 100, 100, false, true);
@@ -2212,7 +2212,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles2() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
 
@@ -2285,7 +2285,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles3() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(4, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
     createFiles(1, 10, 5, 1000, 7500, 7500, 100, 100, false, true);
@@ -2359,7 +2359,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles4() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 9, 10, 500, 100, 100, 0, 100, false, false);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
@@ -2434,7 +2434,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles1() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
     createFiles(3, 10, 5, 1000, 7500, 7500, 100, 100, true, true);
@@ -2515,7 +2515,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles2() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
 
@@ -2595,7 +2595,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles3() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(4, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
     createFiles(1, 10, 5, 1000, 7500, 7500, 100, 100, true, true);
@@ -2676,7 +2676,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles4() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 9, 10, 500, 100, 100, 0, 100, true, false);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);

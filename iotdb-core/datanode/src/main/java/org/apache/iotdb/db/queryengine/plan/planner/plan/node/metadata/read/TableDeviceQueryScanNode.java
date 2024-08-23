@@ -28,10 +28,18 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
 public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
+  private final long offset;
+
+  // -1 when unlimited
+  private final long limit;
 
   public TableDeviceQueryScanNode(
       final PlanNodeId planNodeId,
@@ -40,7 +48,9 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
       final List<List<SchemaFilter>> idDeterminedPredicateList,
       final Expression idFuzzyPredicate,
       final List<ColumnHeader> columnHeaderList,
-      final TRegionReplicaSet schemaRegionReplicaSet) {
+      final TRegionReplicaSet schemaRegionReplicaSet,
+      final long offset,
+      final long limit) {
     super(
         planNodeId,
         database,
@@ -49,6 +59,16 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
+    this.offset = offset;
+    this.limit = limit;
+  }
+
+  public long getOffset() {
+    return offset;
+  }
+
+  public long getLimit() {
+    return limit;
   }
 
   @Override
@@ -70,7 +90,23 @@ public class TableDeviceQueryScanNode extends AbstractTableDeviceQueryNode {
         idDeterminedPredicateList,
         idFuzzyPredicate,
         columnHeaderList,
-        schemaRegionReplicaSet);
+        schemaRegionReplicaSet,
+        offset,
+        limit);
+  }
+
+  @Override
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
+    super.serializeAttributes(byteBuffer);
+    ReadWriteIOUtils.write(offset, byteBuffer);
+    ReadWriteIOUtils.write(limit, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+    super.serializeAttributes(stream);
+    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(limit, stream);
   }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {

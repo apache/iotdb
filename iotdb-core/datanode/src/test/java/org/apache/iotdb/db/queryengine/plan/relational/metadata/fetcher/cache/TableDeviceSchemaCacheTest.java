@@ -31,6 +31,7 @@ import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TableDeviceSchemaCacheTest {
 
@@ -59,7 +60,11 @@ public class TableDeviceSchemaCacheTest {
     final Map<String, String> attributeMap = new HashMap<>();
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
-    cache.put(database, table1, new String[] {"hebei", "p_1", "d_0"}, new HashMap<>(attributeMap));
+    cache.put(
+        database,
+        table1,
+        new String[] {"hebei", "p_1", "d_0"},
+        new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_0"}));
@@ -67,14 +72,21 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
 
     attributeMap.put("type", "old");
-    cache.put(database, table1, new String[] {"hebei", "p_1", "d_1"}, new HashMap<>(attributeMap));
+    cache.put(
+        database,
+        table1,
+        new String[] {"hebei", "p_1", "d_1"},
+        new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
 
     attributeMap.put("cycle", "daily");
     cache.put(
-        database, table1, new String[] {"shandong", "p_1", "d_1"}, new HashMap<>(attributeMap));
+        database,
+        table1,
+        new String[] {"shandong", "p_1", "d_1"},
+        new ConcurrentHashMap<>(attributeMap));
     Assert.assertNull(
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_0"}));
     Assert.assertEquals(
@@ -84,7 +96,11 @@ public class TableDeviceSchemaCacheTest {
     final String table2 = "t1";
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
-    cache.put(database, table2, new String[] {"hebei", "p_1", "d_0"}, new HashMap<>(attributeMap));
+    cache.put(
+        database,
+        table2,
+        new String[] {"hebei", "p_1", "d_0"},
+        new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
         cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_0"}));
@@ -92,7 +108,11 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
 
     attributeMap.put("type", "old");
-    cache.put(database, table2, new String[] {"hebei", "p_1", "d_1"}, new HashMap<>(attributeMap));
+    cache.put(
+        database,
+        table2,
+        new String[] {"hebei", "p_1", "d_1"},
+        new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
         cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_1"}));

@@ -105,20 +105,20 @@ public class SessionInfo {
     return sqlDialect;
   }
 
-  public static SessionInfo deserializeFrom(ByteBuffer buffer) {
-    long sessionId = ReadWriteIOUtils.readLong(buffer);
-    String userName = ReadWriteIOUtils.readString(buffer);
-    ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
-    boolean hasDatabaseName = ReadWriteIOUtils.readBool(buffer);
+  public static SessionInfo deserializeFrom(final ByteBuffer buffer) {
+    final long sessionId = ReadWriteIOUtils.readLong(buffer);
+    final String userName = ReadWriteIOUtils.readString(buffer);
+    final ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
+    final boolean hasDatabaseName = ReadWriteIOUtils.readBool(buffer);
     String databaseName = null;
     if (hasDatabaseName) {
       databaseName = ReadWriteIOUtils.readString(buffer);
     }
-    IClientSession.SqlDialect sqlDialect1 = IClientSession.SqlDialect.deserializeFrom(buffer);
+    final IClientSession.SqlDialect sqlDialect1 = IClientSession.SqlDialect.deserializeFrom(buffer);
     return new SessionInfo(sessionId, userName, zoneId, databaseName, sqlDialect1);
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sessionId, stream);
     ReadWriteIOUtils.write(userName, stream);
     ReadWriteIOUtils.write(zoneId.getId(), stream);
@@ -129,5 +129,18 @@ public class SessionInfo {
       ReadWriteIOUtils.write(databaseName, stream);
     }
     sqlDialect.serialize(stream);
+  }
+
+  public void serialize(final ByteBuffer buffer) {
+    ReadWriteIOUtils.write(sessionId, buffer);
+    ReadWriteIOUtils.write(userName, buffer);
+    ReadWriteIOUtils.write(zoneId.getId(), buffer);
+    if (databaseName == null) {
+      ReadWriteIOUtils.write((byte) 0, buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      ReadWriteIOUtils.write(databaseName, buffer);
+    }
+    sqlDialect.serialize(buffer);
   }
 }

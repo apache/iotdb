@@ -120,16 +120,14 @@ public abstract class SeriesCompactionExecutor {
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
 
     pageQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.getStartTime(), o2.getStartTime());
-              return timeCompare != 0
-                  ? timeCompare
-                  : Long.compare(o2.getPriority(), o1.getPriority());
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
   }
 

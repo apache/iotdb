@@ -183,7 +183,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  private int constructFilteredTsBlock(
+  private static int constructFilteredTsBlock(
       List<Column> resultColumns,
       TimeColumnBuilder timeBuilder,
       Column filterColumn,
@@ -211,7 +211,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return rowCount;
   }
 
-  private int constructFilteredTsBlock(
+  public static int constructFilteredTsBlock(
       List<Column> resultColumns,
       Column filterColumn,
       ColumnBuilder[] columnBuilders,
@@ -236,7 +236,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return rowCount;
   }
 
-  private boolean satisfy(Column filterColumn, int rowIndex) {
+  public static boolean satisfy(Column filterColumn, int rowIndex) {
     return !filterColumn.isNull(rowIndex) && filterColumn.getBoolean(rowIndex);
   }
 

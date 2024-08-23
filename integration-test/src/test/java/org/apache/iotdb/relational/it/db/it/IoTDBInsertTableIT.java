@@ -34,6 +34,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
@@ -57,6 +58,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTableNonQueryTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
@@ -167,66 +169,6 @@ public class IoTDBInsertTableIT {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Unknown column category"));
-      }
-    }
-  }
-
-  @Test
-  public void testPartialInsertionRestart() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("USE \"test\"");
-      statement.execute("SET CONFIGURATION enable_auto_create_schema='false'");
-      statement.execute(
-          "create table sg5 (id1 string id, s1 text measurement, s2 double measurement)");
-
-      try {
-        statement.execute("INSERT INTO sg5(id1,time,s1,s2) VALUES('d1', 100,'test','test')");
-      } catch (SQLException e) {
-        // ignore
-      }
-    } finally {
-      try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          Statement statement = connection.createStatement()) {
-        statement.execute("SET CONFIGURATION enable_auto_create_schema='true'");
-      }
-    }
-
-    // TODO: replace restartDaemon() with new methods in Env.
-    /*
-    long time = 0;
-    try {
-      EnvironmentUtils.restartDaemon();
-      StorageEngine.getInstance().recover();
-      // wait for recover
-      while (!StorageEngine.getInstance().isAllSgReady()) {
-        Thread.sleep(500);
-        time += 500;
-        if (time > 10000) {
-          logger.warn("wait too long in restart, wait for: " + time / 1000 + "s");
-        }
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-     */
-
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use \"test\"");
-
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM sg5")) {
-        assertNotNull(resultSet);
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-          assertEquals("test", resultSet.getString("s1"));
-        }
-        assertEquals(1, cnt);
-      }
-      try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM sg5")) {
-        assertNotNull(resultSet);
-        assertFalse(resultSet.next());
       }
     }
   }
@@ -520,8 +462,7 @@ public class IoTDBInsertTableIT {
       st1.execute("insert into wt14(time, s1, s2) values(100, null, 1), (101, null, 2)");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
+      assertEquals("507: Table wt14 does not exist", e.getMessage());
     }
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT)) {
       try (Statement st2 = connection.createStatement()) {
@@ -593,7 +534,9 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
-  public void testInsertCaseSensitivity() throws SQLException {
+  public void testInsertCaseSensitivity()
+      throws SQLException, IoTDBConnectionException, StatementExecutionException {
+    // column case sensitivity
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement st1 = connection.createStatement()) {
       st1.execute("use \"test\"");
@@ -617,6 +560,182 @@ public class IoTDBInsertTableIT {
         assertEquals(i, rs1.getInt("ss2"));
       }
       assertFalse(rs1.next());
+    }
+
+    // table case sensitivity with record and auto creation
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      List<String> measurementIds =
+          schemaList.stream()
+              .map(IMeasurementSchema::getMeasurementId)
+              .collect(Collectors.toList());
+      List<TSDataType> dataTypes =
+          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+
+      long timestamp = 0;
+
+      for (long row = 0; row < 15; row++) {
+        Object[] values = new Object[] {"id:" + row, "attr:" + row, row * 1.0};
+        session.insertRelationalRecord(
+            "TaBle19_2", timestamp + row, measurementIds, dataTypes, columnTypes, values);
+      }
+
+      int cnt = 0;
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table19_2 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(15, cnt);
+    }
+
+    // table case sensitivity with record and no auto creation
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE tAbLE19_3 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+      List<String> measurementIds =
+          schemaList.stream()
+              .map(IMeasurementSchema::getMeasurementId)
+              .collect(Collectors.toList());
+      List<TSDataType> dataTypes =
+          schemaList.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+
+      long timestamp = 0;
+
+      for (long row = 0; row < 15; row++) {
+        Object[] values = new Object[] {"id:" + row, "attr:" + row, row * 1.0};
+        session.insertRelationalRecord(
+            "TaBle19_3", timestamp + row, measurementIds, dataTypes, columnTypes, values);
+      }
+
+      int cnt = 0;
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table19_3 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(15, cnt);
+    }
+
+    // table case sensitivity with tablet and no auto creation
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("TaBle19_4", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      int cnt = 0;
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table19_4 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(15, cnt);
+    }
+
+    // table case sensitivity with tablet and auto creation
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("USE \"test\"");
+      session.executeNonQueryStatement(
+          "CREATE TABLE tAbLE19_5 (id1 string id, attr1 string attribute, "
+              + "m1 double "
+              + "measurement)");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("attr1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("m1", TSDataType.DOUBLE));
+      final List<ColumnType> columnTypes =
+          Arrays.asList(ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("TaBle19_5", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 15; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("attr1", rowIndex, "attr:" + row);
+        tablet.addValue("m1", rowIndex, row * 1.0);
+        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+          session.insertRelationalTablet(tablet, true);
+          tablet.reset();
+        }
+      }
+
+      if (tablet.rowSize != 0) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+
+      int cnt = 0;
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from table19_5 order by time");
+      while (dataSet.hasNext()) {
+        RowRecord rowRecord = dataSet.next();
+        timestamp = rowRecord.getFields().get(0).getLongV();
+        assertEquals("id:" + timestamp, rowRecord.getFields().get(1).getBinaryV().toString());
+        assertEquals("attr:" + timestamp, rowRecord.getFields().get(2).getBinaryV().toString());
+        assertEquals(timestamp * 1.0, rowRecord.getFields().get(3).getDoubleV(), 0.0001);
+        cnt++;
+      }
+      assertEquals(15, cnt);
     }
   }
 

@@ -625,6 +625,22 @@ public class IoTDBDescriptor {
         Long.parseLong(
             properties.getProperty(
                 "target_compaction_file_size", Long.toString(conf.getTargetCompactionFileSize()))));
+    conf.setInnerCompactionTotalFileSizeThresholdInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_total_file_size_threshold",
+                Long.toString(conf.getInnerCompactionTotalFileSizeThresholdInByte()))));
+    conf.setInnerCompactionTotalFileNumThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "inner_compaction_total_file_num_threshold",
+                Integer.toString(conf.getInnerCompactionTotalFileNumThreshold()))));
+    conf.setMaxLevelGapInInnerCompaction(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_level_gap_in_inner_compaction",
+                Integer.toString(conf.getMaxLevelGapInInnerCompaction()))));
+
     conf.setTargetChunkSize(
         Long.parseLong(
             properties.getProperty("target_chunk_size", Long.toString(conf.getTargetChunkSize()))));
@@ -642,11 +658,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "chunk_size_lower_bound_in_compaction",
                 Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
-    conf.setFileLimitPerInnerTask(
+    conf.setInnerCompactionCandidateFileNum(
         Integer.parseInt(
             properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
-                Integer.toString(conf.getFileLimitPerInnerTask()))));
+                "inner_compaction_candidate_file_num",
+                Integer.toString(conf.getInnerCompactionCandidateFileNum()))));
     conf.setFileLimitPerCrossTask(
         Integer.parseInt(
             properties.getProperty(
@@ -1218,15 +1234,16 @@ public class IoTDBDescriptor {
                     "compaction_read_throughput_mb_per_sec"))));
     configModified |= compactionReadThroughput != conf.getCompactionReadThroughputMbPerSec();
 
-    // update max_inner_compaction_candidate_file_num
-    int maxInnerCompactionCandidateFileNum = conf.getFileLimitPerInnerTask();
-    conf.setFileLimitPerInnerTask(
+    // update inner_compaction_candidate_file_num
+    int maxInnerCompactionCandidateFileNum = conf.getInnerCompactionCandidateFileNum();
+    conf.setInnerCompactionCandidateFileNum(
         Integer.parseInt(
             properties.getProperty(
-                "max_inner_compaction_candidate_file_num",
+                "inner_compaction_candidate_file_num",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "max_inner_compaction_candidate_file_num"))));
-    configModified |= maxInnerCompactionCandidateFileNum != conf.getFileLimitPerInnerTask();
+                    "inner_compaction_candidate_file_num"))));
+    configModified |=
+        maxInnerCompactionCandidateFileNum != conf.getInnerCompactionCandidateFileNum();
 
     // update target_compaction_file_size
     long targetCompactionFilesize = conf.getTargetCompactionFileSize();
@@ -1298,6 +1315,62 @@ public class IoTDBDescriptor {
         innerCompactionTaskSelectionModsFileThreshold
             != conf.getInnerCompactionTaskSelectionModsFileThreshold();
 
+    // update inner_seq_selector
+    InnerSequenceCompactionSelector innerSequenceCompactionSelector =
+        conf.getInnerSequenceCompactionSelector();
+    conf.setInnerSequenceCompactionSelector(
+        InnerSequenceCompactionSelector.getInnerSequenceCompactionSelector(
+            properties.getProperty(
+                "inner_seq_selector",
+                ConfigurationFileUtils.getConfigurationDefaultValue("inner_seq_selector"))));
+    configModified |= innerSequenceCompactionSelector != conf.getInnerSequenceCompactionSelector();
+
+    // update inner_unseq_selector
+    InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
+        conf.getInnerUnsequenceCompactionSelector();
+    conf.setInnerUnsequenceCompactionSelector(
+        InnerUnsequenceCompactionSelector.getInnerUnsequenceCompactionSelector(
+            properties.getProperty(
+                "inner_unseq_selector",
+                ConfigurationFileUtils.getConfigurationDefaultValue("inner_unseq_selector"))));
+    configModified |=
+        innerUnsequenceCompactionSelector != conf.getInnerUnsequenceCompactionSelector();
+
+    // update inner_compaction_total_file_size_threshold
+    long innerCompactionFileSizeThresholdInByte =
+        conf.getInnerCompactionTotalFileSizeThresholdInByte();
+    conf.setInnerCompactionTotalFileSizeThresholdInByte(
+        Long.parseLong(
+            properties.getProperty(
+                "inner_compaction_total_file_size_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "inner_compaction_total_file_size_threshold"))));
+    configModified |=
+        innerCompactionFileSizeThresholdInByte
+            != conf.getInnerCompactionTotalFileSizeThresholdInByte();
+
+    // update inner_compaction_total_file_num_threshold
+    int innerCompactionTotalFileNumThreshold = conf.getInnerCompactionTotalFileNumThreshold();
+    conf.setInnerCompactionTotalFileNumThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "inner_compaction_total_file_num_threshold",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "inner_compaction_total_file_num_threshold"))));
+    configModified |=
+        innerCompactionTotalFileNumThreshold != conf.getInnerCompactionTotalFileNumThreshold();
+
+    // update max_level_gap_in_inner_compaction
+    int maxLevelGapInInnerCompaction = conf.getMaxLevelGapInInnerCompaction();
+    conf.setMaxLevelGapInInnerCompaction(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_level_gap_in_inner_compaction",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "max_level_gap_in_inner_compaction"))));
+    configModified |= maxLevelGapInInnerCompaction != conf.getMaxLevelGapInInnerCompaction();
+
+    // update compaction_max_aligned_series_num_in_one_batch
     int compactionMaxAlignedSeriesNumInOneBatch = conf.getCompactionMaxAlignedSeriesNumInOneBatch();
     int newCompactionMaxAlignedSeriesNumInOneBatch =
         Integer.parseInt(

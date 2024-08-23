@@ -50,9 +50,8 @@ public class AlignedPageElement extends PageElement {
       CompactionAlignedChunkReader alignedChunkReader,
       ChunkMetadataElement chunkMetadataElement,
       boolean isLastPage,
-      boolean isBatchedCompaction,
-      long priority) {
-    super(chunkMetadataElement, isLastPage, priority);
+      boolean isBatchedCompaction) {
+    super(chunkMetadataElement, isLastPage);
     this.timePageHeader = timePageHeader;
     this.valuePageHeaders = valuePageHeaders;
     this.timePageData = timePageData;
