@@ -144,28 +144,34 @@ public class TableDeviceSchemaCacheTest {
     // Query update
     final Map<String, TimeValuePair> measurementQueryUpdateMap = new HashMap<>();
 
-    final TimeValuePair tv1 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(1));
-    final TimeValuePair tv2 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(2));
+    final TimeValuePair tv0 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(0));
+    final TimeValuePair tv1 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(1));
+    final TimeValuePair tv2 = new TimeValuePair(2L, new TsPrimitiveType.TsInt(2));
+    measurementQueryUpdateMap.put("s0", tv0);
     measurementQueryUpdateMap.put("s1", tv1);
     measurementQueryUpdateMap.put("s2", tv2);
 
     cache.updateLastCache(database, table1, device0, measurementQueryUpdateMap);
 
+    Assert.assertEquals(tv0, cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertEquals(tv1, cache.getLastEntry(database, table1, device0, "s1"));
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
 
     // Write update existing
     final Map<String, TimeValuePair> measurementWriteUpdateMap = new HashMap<>();
 
-    final TimeValuePair tv3 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(1));
-    final TimeValuePair tv4 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(2));
+    final TimeValuePair tv3 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(3));
+    measurementWriteUpdateMap.put("s0", tv3);
+    measurementWriteUpdateMap.put("s1", tv3);
     measurementWriteUpdateMap.put("s2", tv3);
-    measurementWriteUpdateMap.put("s3", tv4);
+    measurementWriteUpdateMap.put("s3", tv3);
 
     cache.tryUpdateLastCacheWithoutLock(database, table1, device0, measurementWriteUpdateMap);
 
-    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s2"));
-    Assert.assertEquals(tv4, cache.getLastEntry(database, table1, device0, "s3"));
+    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
+    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s1"));
+    Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
+    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s3"));
 
     // Write update non-exist
     final String database2 = "db2";
