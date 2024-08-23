@@ -2604,6 +2604,8 @@ public class StatementAnalyzer {
       }
     }
 
+    // NOTICE: We construct transition map here because currently we set the used fields in
+    // the statement. Other queries shall not do this and shall do it in logical plan phase.
     private TranslationMap analyzeTraverseDevice(
         final AbstractTraverseDevice node,
         final Optional<Scope> context,
@@ -2617,8 +2619,7 @@ public class StatementAnalyzer {
         throw new SemanticException("The database must be set before show devices.");
       }
 
-      if (Objects.isNull(
-          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName()))) {
+      if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
         throw new SemanticException(
             String.format("Table '%s.%s' does not exist.", database, tableName));
       }
