@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
@@ -78,8 +79,13 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           // reset the thread name here
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
-            logger.warn("[ExecuteFailed]", e);
-            next.setAbortCause(getAbortCause(e));
+            Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
+            if (rootCause instanceof SemanticException) {
+              next.setAbortCause(e.getMessage());
+            } else {
+              logger.warn("[ExecuteFailed]", e);
+              next.setAbortCause(getAbortCause(e));
+            }
             scheduler.toAborted(next);
           }
         } finally {

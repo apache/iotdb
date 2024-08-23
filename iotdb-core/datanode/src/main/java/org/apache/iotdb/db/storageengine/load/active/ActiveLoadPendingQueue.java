@@ -17,7 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load.active;
+package org.apache.iotdb.db.storageengine.load.active;
+
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -36,6 +38,8 @@ public class ActiveLoadPendingQueue {
   public synchronized boolean enqueue(final String file, final boolean isGeneratedByPipe) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
       pendingFileQueue.offer(new Pair<>(file, isGeneratedByPipe));
+
+      ActiveLoadingFilesMetricsSet.getInstance().recordQueuingFileCounter(1);
       return true;
     }
     return false;
@@ -46,12 +50,17 @@ public class ActiveLoadPendingQueue {
     if (pair != null) {
       pendingFileSet.remove(pair.left);
       loadingFileSet.add(pair.left);
+
+      ActiveLoadingFilesMetricsSet.getInstance().recordLoadingFileCounter(1);
+      ActiveLoadingFilesMetricsSet.getInstance().recordQueuingFileCounter(-1);
     }
     return pair;
   }
 
   public synchronized void removeFromLoading(final String file) {
     loadingFileSet.remove(file);
+
+    ActiveLoadingFilesMetricsSet.getInstance().recordLoadingFileCounter(-1);
   }
 
   public int size() {

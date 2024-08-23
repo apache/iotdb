@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.itbase.category;
 
-public interface MultiClusterIT2SubscriptionRegression {}
+public interface MultiClusterIT2SubscriptionRegressionMisc {}

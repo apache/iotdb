@@ -180,8 +180,8 @@ public class InsertRowsStatement extends InsertBaseStatement {
 
   @TableModel
   @Override
-  public void measurementsToLowerCase() {
-    insertRowStatementList.forEach(InsertRowStatement::measurementsToLowerCase);
+  public void toLowerCase() {
+    insertRowStatementList.forEach(InsertRowStatement::toLowerCase);
   }
 
   @Override

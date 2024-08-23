@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.execution.load.active;
+package org.apache.iotdb.db.storageengine.load.active;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
@@ -33,11 +33,10 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +44,11 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.Objects;
 import java.util.Optional;
@@ -226,7 +227,6 @@ public class ActiveLoadTsFileLoader {
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
-      pendingQueue.enqueue(filePair.getLeft(), filePair.getRight());
     } else {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
@@ -252,59 +252,30 @@ public class ActiveLoadTsFileLoader {
 
     final File targetDir = new File(failDir.get());
     try {
-      moveFileWithMD5Check(sourceFile, targetDir);
+      org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check(sourceFile, targetDir);
     } catch (final IOException e) {
       LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
     }
   }
 
-  private static void moveFileWithMD5Check(final File sourceFile, final File targetDir)
-      throws IOException {
-    final String sourceFileName = sourceFile.getName();
-    final File targetFile = new File(targetDir, sourceFileName);
-
-    if (targetFile.exists()) {
-      if (haveSameMD5(sourceFile, targetFile)) {
-        FileUtils.forceDelete(sourceFile);
-        LOGGER.info(
-            "Deleted the file {} because it already exists in the fail directory: {}",
-            sourceFile.getName(),
-            targetDir.getAbsolutePath());
-      } else {
-        renameWithMD5(sourceFile, targetDir);
-        LOGGER.info(
-            "Renamed file {} to {} because it already exists in the fail directory: {}",
-            sourceFile.getName(),
-            targetFile.getName(),
-            targetDir.getAbsolutePath());
-      }
-    } else {
-      FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
-      LOGGER.info(
-          "Moved file {} to fail directory {}.", sourceFile.getName(), targetDir.getAbsolutePath());
+  // Metrics
+  public long countAndReportFailedFileNumber() {
+    final long[] fileCount = {0};
+    try {
+      initFailDirIfNecessary();
+      Files.walkFileTree(
+          new File(failDir.get()).toPath(),
+          new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+              fileCount[0]++;
+              return FileVisitResult.CONTINUE;
+            }
+          });
+      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+    } catch (final IOException e) {
+      LOGGER.warn("Failed to count failed files in fail directory.", e);
     }
-  }
-
-  private static boolean haveSameMD5(final File file1, final File file2) {
-    try (final InputStream is1 = Files.newInputStream(file1.toPath());
-        final InputStream is2 = Files.newInputStream(file2.toPath())) {
-      return DigestUtils.md5Hex(is1).equals(DigestUtils.md5Hex(is2));
-    } catch (final Exception e) {
-      return false;
-    }
-  }
-
-  private static void renameWithMD5(File sourceFile, File targetDir) throws IOException {
-    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
-      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
-      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
-      final String sourceFileMD5 = DigestUtils.md5Hex(is);
-
-      final String targetFileName =
-          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
-      final File targetFile = new File(targetDir, targetFileName);
-
-      FileUtils.moveFile(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
-    }
+    return fileCount[0];
   }
 }

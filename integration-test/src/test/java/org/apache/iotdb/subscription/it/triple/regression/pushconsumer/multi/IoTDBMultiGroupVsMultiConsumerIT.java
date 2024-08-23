@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pushconsumer.multi;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
@@ -67,7 +67,7 @@ import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT
  * |c9|t0,t3|g3| dataset(dest2)/tsfile
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegressionIT {
 
   private String topicNamePrefix = "topic_pushMultiGroupVsMultiConsumer_";

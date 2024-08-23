@@ -144,6 +144,34 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         };
   }
 
+  public Iterable<Tablet> toTablets() {
+    return () ->
+        new Iterator<Tablet>() {
+          @Override
+          public boolean hasNext() {
+            return Objects.nonNull(chunkReader);
+          }
+
+          @Override
+          public Tablet next() {
+            if (!hasNext()) {
+              close();
+              throw new NoSuchElementException();
+            }
+
+            final Tablet tablet = getNextTablet();
+            final boolean hasNext = hasNext();
+            try {
+              return tablet;
+            } finally {
+              if (!hasNext) {
+                close();
+              }
+            }
+          }
+        };
+  }
+
   private Tablet getNextTablet() {
     try {
       final Tablet tablet =

@@ -20,7 +20,7 @@
 package org.apache.iotdb.subscription.it.triple.regression.pullconsumer.autocommit;
 
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegression;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionRegressionConsumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -58,7 +58,7 @@ import java.util.List;
  * Tests can be more focused on situations where autoCommit is true. In this case, if not explicitly committed, it is expected that all messages successfully polled by the consumer should be committed before the consumer is closed (reflected in the Pipe as no accumulated resources).
  */
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2SubscriptionRegression.class})
+@Category({MultiClusterIT2SubscriptionRegressionConsumer.class})
 public class IoTDBTestAutoCommitFalseDataSetPullConsumerIT
     extends AbstractSubscriptionRegressionIT {
   private static final String database = "root.TestAutoCommitFalseDataSetPullConsumer";

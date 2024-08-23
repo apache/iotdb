@@ -42,8 +42,7 @@ public class SinhColumnTransformer extends UnaryColumnTransformer {
           columnBuilder.writeDouble(Math.sinh(column.getFloat(i)));
         } else if (TSDataType.INT32.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.sinh(column.getInt(i)));
-        } else if (TSDataType.INT64.equals(column.getDataType())
-            || TSDataType.TIMESTAMP.equals(column.getDataType())) {
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
           columnBuilder.writeDouble(Math.sinh((double) column.getLong(i)));
         }
       } else {

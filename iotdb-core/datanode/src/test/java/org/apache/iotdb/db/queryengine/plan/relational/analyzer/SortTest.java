@@ -593,6 +593,27 @@ public class SortTest {
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
   }
 
+  @Test
+  public void projectSortTest() {
+    // columns in order and select is different
+    sql = "SELECT time, attr1, s1 FROM table1 order by attr2 limit 5";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    analysis = analyzeSQL(sql, metadata, context);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+    logicalPlanNode = logicalQueryPlan.getRootNode();
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributedQueryPlan = distributionPlanner.plan();
+    assertEquals(3, distributedQueryPlan.getFragments().size());
+    IdentitySinkNode sinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
+    assertTrue(getChildrenNode(sinkNode, 1) instanceof OutputNode);
+    assertTrue(getChildrenNode(sinkNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(sinkNode, 3) instanceof TopKNode);
+    TopKNode topKNode = (TopKNode) getChildrenNode(sinkNode, 3);
+    assertEquals(4, topKNode.getOutputSymbols().size());
+  }
+
   public void assertTopKWithFilter(
       List<String> deviceEntries1,
       List<String> deviceEntries2,
