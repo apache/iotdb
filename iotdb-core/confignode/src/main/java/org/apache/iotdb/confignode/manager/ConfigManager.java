@@ -2442,6 +2442,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableSetProperties(req);
         case RENAME_COLUMN:
           return procedureManager.alterTableRenameColumn(req);
+        case DROP_COLUMN:
+          return procedureManager.alterTableDropColumn(req);
         default:
           throw new IllegalArgumentException();
       }

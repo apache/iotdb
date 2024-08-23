@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.RenameTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
@@ -1339,6 +1340,17 @@ public class ProcedureManager {
             ReadWriteIOUtils.readString(req.updateInfo)));
   }
 
+  public TSStatus alterTableDropColumn(final TAlterTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.DROP_TABLE_COLUMN_PROCEDURE,
+        new DropTableColumnProcedure(
+            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readString(req.updateInfo)));
+  }
+
   private TSStatus executeWithoutDuplicate(
       final String database,
       final TsTable table,
@@ -1399,6 +1411,7 @@ public class ProcedureManager {
         case ADD_TABLE_COLUMN_PROCEDURE:
         case SET_TABLE_PROPERTIES_PROCEDURE:
         case RENAME_TABLE_COLUMN_PROCEDURE:
+        case DROP_TABLE_COLUMN_PROCEDURE:
           final AbstractAlterTableProcedure<?> alterTableProcedure =
               (AbstractAlterTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {

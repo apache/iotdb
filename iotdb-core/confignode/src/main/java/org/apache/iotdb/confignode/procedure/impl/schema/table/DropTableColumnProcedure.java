@@ -23,7 +23,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
+import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -33,85 +33,79 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class RenameTableColumnProcedure extends AbstractAlterTableProcedure<AddTableColumnState> {
-  private String oldName;
-  private String newName;
+public class DropTableColumnProcedure extends AbstractAlterTableProcedure<DropTableColumnState> {
 
-  public RenameTableColumnProcedure() {
+  private String columnName;
+
+  public DropTableColumnProcedure() {
     super();
   }
 
-  public RenameTableColumnProcedure(
+  public DropTableColumnProcedure(
       final String database,
       final String tableName,
       final String queryId,
-      final String oldName,
-      final String newName) {
+      final String columnName) {
     super(database, tableName, queryId);
-    this.oldName = oldName;
-    this.newName = newName;
+    this.columnName = columnName;
+  }
+
+  @Override
+  protected String getActionMessage() {
+    return null;
   }
 
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final AddTableColumnState addTableColumnState)
+      final DropTableColumnState dropTableColumnState)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
     return null;
   }
 
   @Override
-  protected String getActionMessage() {
-    return "rename table column";
-  }
-
-  @Override
   protected void rollbackState(
       final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final AddTableColumnState addTableColumnState)
+      final DropTableColumnState dropTableColumnState)
       throws IOException, InterruptedException, ProcedureException {}
 
   @Override
-  protected AddTableColumnState getState(final int stateId) {
+  protected DropTableColumnState getState(final int stateId) {
     return null;
   }
 
   @Override
-  protected int getStateId(final AddTableColumnState addTableColumnState) {
+  protected int getStateId(final DropTableColumnState dropTableColumnState) {
     return 0;
   }
 
   @Override
-  protected AddTableColumnState getInitialState() {
+  protected DropTableColumnState getInitialState() {
     return null;
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    stream.writeShort(ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    stream.writeShort(ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
     super.serialize(stream);
 
-    ReadWriteIOUtils.write(oldName, stream);
-    ReadWriteIOUtils.write(newName, stream);
+    ReadWriteIOUtils.write(columnName, stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    this.oldName = ReadWriteIOUtils.readString(byteBuffer);
-    this.newName = ReadWriteIOUtils.readString(byteBuffer);
+    this.columnName = ReadWriteIOUtils.readString(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
-    return super.equals(o)
-        && Objects.equals(oldName, ((RenameTableColumnProcedure) o).oldName)
-        && Objects.equals(newName, ((RenameTableColumnProcedure) o).newName);
+    return super.equals(o) && Objects.equals(columnName, ((DropTableColumnProcedure) o).columnName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), oldName, newName);
+    return Objects.hash(super.hashCode(), columnName);
   }
 }
