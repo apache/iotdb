@@ -85,8 +85,18 @@ struct TDataNodeLocation {
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
+struct TAINodeLocation{
+  1: required i32 aiNodeId
+  2: required TEndPoint internalEndPoint
+}
+
 struct TDataNodeConfiguration {
   1: required TDataNodeLocation location
+  2: required TNodeResource resource
+}
+
+struct TAINodeConfiguration{
+  1: required TAINodeLocation location
   2: required TNodeResource resource
 }
 
@@ -196,6 +206,18 @@ struct TLicense {
     9: required i16 mlNodeNumLimit
 }
 
+struct TLoadSample {
+  // Percentage of occupied cpu in Node
+  1: required double cpuUsageRate
+  // Percentage of occupied memory space in Node
+  2: required double memoryUsageRate
+  // Percentage of occupied disk space in Node
+  3: required double diskUsageRate
+  // The size of free disk space
+  // Unit: Byte
+  4: required double freeDiskSpace
+}
+
 enum TServiceType {
   ConfigNodeInternalService,
   DataNodeInternalService,
@@ -266,3 +288,11 @@ struct TShowConfigurationResp {
   2: required string content
 }
 
+// for AINode
+enum TrainingState {
+  PENDING,
+  RUNNING,
+  FINISHED,
+  FAILED,
+  DROPPING
+}
