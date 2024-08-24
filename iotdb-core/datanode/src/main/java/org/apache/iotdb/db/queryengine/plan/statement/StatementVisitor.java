@@ -74,6 +74,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -283,6 +287,19 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(alterLogicalViewStatement, context);
   }
 
+  // AI Model
+  public R visitCreateModel(CreateModelStatement createModelStatement, C context) {
+    return visitStatement(createModelStatement, context);
+  }
+
+  public R visitDropModel(DropModelStatement dropModelStatement, C context) {
+    return visitStatement(dropModelStatement, context);
+  }
+
+  public R visitShowModels(ShowModelsStatement showModelsModelStatement, C context) {
+    return visitStatement(showModelsModelStatement, context);
+  }
+
   /** Data Manipulation Language (DML) */
 
   // Select Statement
@@ -443,6 +460,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {
     return visitStatement(showConfigNodesStatement, context);
+  }
+
+  public R visitShowAINodes(ShowAINodesStatement showAINodesStatement, C context) {
+    return visitStatement(showAINodesStatement, context);
   }
 
   public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {

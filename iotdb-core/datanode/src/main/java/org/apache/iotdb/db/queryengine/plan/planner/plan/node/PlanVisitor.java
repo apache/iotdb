@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedI
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -233,6 +234,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitSingleDeviceView(SingleDeviceViewNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitInference(InferenceNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

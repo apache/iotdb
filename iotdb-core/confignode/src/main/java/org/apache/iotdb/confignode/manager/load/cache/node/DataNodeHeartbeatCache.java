@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
+import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 import java.util.concurrent.atomic.AtomicReference;
 
