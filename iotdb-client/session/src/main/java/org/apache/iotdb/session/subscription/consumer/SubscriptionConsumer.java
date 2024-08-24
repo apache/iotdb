@@ -1407,6 +1407,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("fileSaveDir", fileSaveDir);
     result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
     result.put("thriftMaxFrameSize", String.valueOf(thriftMaxFrameSize));
+    result.put("maxPollParallelism", String.valueOf(maxPollParallelism));
     result.put("subscribedTopics", subscribedTopics.toString());
     return result;
   }

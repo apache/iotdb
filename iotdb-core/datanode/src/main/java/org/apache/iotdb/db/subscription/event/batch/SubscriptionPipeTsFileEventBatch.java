@@ -45,10 +45,11 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   private final PipeTabletEventTsFileBatch batch;
 
   public SubscriptionPipeTsFileEventBatch(
+      final int regionId,
       final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
-    super(prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
   }
 

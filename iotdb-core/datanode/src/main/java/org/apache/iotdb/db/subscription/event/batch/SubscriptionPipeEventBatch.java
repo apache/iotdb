@@ -32,16 +32,20 @@ import java.util.Objects;
 
 public abstract class SubscriptionPipeEventBatch {
 
+  private final int regionId;
+
   protected final SubscriptionPrefetchingQueue prefetchingQueue;
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  protected List<SubscriptionEvent> events = null;
+  protected volatile List<SubscriptionEvent> events = null;
 
   protected SubscriptionPipeEventBatch(
+      final int regionId,
       final SubscriptionPrefetchingQueue prefetchingQueue,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
+    this.regionId = regionId;
     this.prefetchingQueue = prefetchingQueue;
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
@@ -53,6 +57,10 @@ public abstract class SubscriptionPipeEventBatch {
       throws Exception;
 
   public abstract void cleanUp();
+
+  public int getRegionId() {
+    return regionId;
+  }
 
   public boolean isSealed() {
     return Objects.nonNull(events);

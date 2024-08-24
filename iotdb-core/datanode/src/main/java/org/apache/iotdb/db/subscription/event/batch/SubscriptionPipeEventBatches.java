@@ -20,37 +20,36 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.utils.Pair;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SubscriptionPipeEventBatches {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionPipeEventBatches.class);
 
-  // TODO: config
-  private static final int SEGMENT_LOCK_COUNT = 4;
-
   protected final SubscriptionPrefetchingQueue prefetchingQueue;
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  private final SubscriptionPipeEventBatch[] batches;
-  private final ReentrantLock[] segmentLocks;
-
-  private final AtomicLong pseudoCommitIdGenerator = new AtomicLong(0);
+  private final LoadingCache<Integer, Pair<SubscriptionPipeEventBatch, ReentrantLock>>
+      batchWithLocks;
 
   public SubscriptionPipeEventBatches(
       final SubscriptionPrefetchingQueue prefetchingQueue,
@@ -60,76 +59,111 @@ public class SubscriptionPipeEventBatches {
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
 
-    this.batches = new SubscriptionPipeEventBatch[SEGMENT_LOCK_COUNT];
-    for (int i = 0; i < SEGMENT_LOCK_COUNT; i++) {
-      reconstructBatch(i);
-    }
-
-    this.segmentLocks = new ReentrantLock[SEGMENT_LOCK_COUNT];
-    for (int i = 0; i < SEGMENT_LOCK_COUNT; i++) {
-      this.segmentLocks[i] = new ReentrantLock(true);
-    }
+    this.batchWithLocks =
+        Caffeine.newBuilder()
+            // TODO: config
+            .expireAfterAccess(60L, TimeUnit.SECONDS)
+            .build(
+                regionId ->
+                    new Pair<>(
+                        prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+                            ? new SubscriptionPipeTabletEventBatch(
+                                regionId,
+                                (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+                                maxDelayInMs,
+                                maxBatchSizeInBytes)
+                            : new SubscriptionPipeTsFileEventBatch(
+                                regionId,
+                                (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
+                                maxDelayInMs,
+                                maxBatchSizeInBytes),
+                        new ReentrantLock(true)));
   }
 
-  private void reconstructBatch(final int index) {
-    if (Objects.nonNull(batches[index]) && !batches[index].isSealed()) {
-      LOGGER.warn("Reconstruct batch for non-sealed batch {}", batches[index]);
-    }
-
-    if (prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue) {
-      batches[index] =
-          new SubscriptionPipeTabletEventBatch(
-              (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
-              maxDelayInMs,
-              maxBatchSizeInBytes);
-    } else {
-      batches[index] =
-          new SubscriptionPipeTsFileEventBatch(
-              (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
-              maxDelayInMs,
-              maxBatchSizeInBytes);
-    }
-  }
-
-  public List<SubscriptionEvent> onEvent(@Nullable final EnrichedEvent event) {
-    final long commitId =
-        Objects.isNull(event) ? pseudoCommitIdGenerator.getAndIncrement() : event.getCommitId();
-    final int index = (int) (commitId % SEGMENT_LOCK_COUNT);
-
+  public List<SubscriptionEvent> onEvent() {
     final List<SubscriptionEvent> events = new ArrayList<>();
-    while (true) {
-      segmentLocks[index].lock();
+
+    for (final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock :
+        ImmutableSet.copyOf(batchWithLocks.asMap().values())) {
+      final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
+      final int regionId = batch.getRegionId();
+      final ReentrantLock lock = batchWithLock.getRight();
+
       try {
+        lock.lock();
+        if (batch.isSealed()) {
+          continue;
+        }
+
         try {
-          final List<SubscriptionEvent> evs = batches[index].onEvent();
+          final List<SubscriptionEvent> evs = batch.onEvent();
           if (!evs.isEmpty()) {
             events.addAll(evs);
-            reconstructBatch(index);
+            batchWithLocks.invalidate(regionId);
           }
         } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
+          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
           continue; // try to seal again
         }
 
-        if (Objects.isNull(event)) {
+        if (!events.isEmpty()) {
+          break;
+        }
+      } finally {
+        lock.unlock();
+      }
+    }
+
+    return events;
+  }
+
+  public List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event) {
+    final int regionId =
+        PipeEventCommitManager.parseRegionIdFromCommitterKey(event.getCommitterKey());
+    final List<SubscriptionEvent> events = new ArrayList<>();
+
+    while (true) {
+      final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock =
+          Objects.requireNonNull(batchWithLocks.get(regionId));
+      final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
+      final ReentrantLock lock = batchWithLock.getRight();
+
+      try {
+        lock.lock();
+        if (batch.isSealed()) {
+          continue;
+        }
+
+        try {
+          final List<SubscriptionEvent> evs = batch.onEvent();
+          if (!evs.isEmpty()) {
+            events.addAll(evs);
+            batchWithLocks.invalidate(regionId);
+          }
+        } catch (final Exception e) {
+          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
+          continue; // try to seal again
+        }
+
+        if (!events.isEmpty()) {
           break;
         }
 
         // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
         // this time.
         try {
-          final List<SubscriptionEvent> evs = batches[index].onEvent(event);
+          final List<SubscriptionEvent> evs = batch.onEvent(event);
           if (!evs.isEmpty()) {
             events.addAll(evs);
-            reconstructBatch(index);
+            batchWithLocks.invalidate(regionId);
           }
           break;
         } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when sealing events from batch {}", batches[index], e);
+          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
           break; // can be guaranteed that the event is calculated into the batch, seal it next time
         }
       } finally {
-        segmentLocks[index].unlock();
+        lock.unlock();
       }
     }
 
@@ -137,6 +171,7 @@ public class SubscriptionPipeEventBatches {
   }
 
   public void cleanUp() {
-    Arrays.stream(batches).forEach(SubscriptionPipeEventBatch::cleanUp);
+    batchWithLocks.asMap().values().forEach((pair) -> pair.getLeft().cleanUp());
+    batchWithLocks.invalidateAll();
   }
 }

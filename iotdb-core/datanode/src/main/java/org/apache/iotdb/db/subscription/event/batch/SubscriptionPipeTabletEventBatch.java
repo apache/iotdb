@@ -60,10 +60,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   private long totalBufferSize = 0;
 
   public SubscriptionPipeTabletEventBatch(
+      final int regionId,
       final SubscriptionPrefetchingTabletQueue prefetchingQueue,
       final int maxDelayInMs,
       final long maxBatchSizeInBytes) {
-    super(prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
   }
 
   @Override

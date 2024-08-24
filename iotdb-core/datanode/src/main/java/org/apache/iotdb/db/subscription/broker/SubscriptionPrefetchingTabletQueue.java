@@ -168,7 +168,8 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   }
 
   private boolean onEventInternal(@Nullable final EnrichedEvent event) {
-    final List<SubscriptionEvent> events = batches.onEvent(event);
+    final List<SubscriptionEvent> events =
+        Objects.nonNull(event) ? batches.onEvent(event) : batches.onEvent();
     if (!events.isEmpty()) {
       events.forEach(super::enqueueEventToPrefetchingQueue);
       return true;
