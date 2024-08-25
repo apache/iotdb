@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SubscriptionPipeEventBatches {
@@ -65,12 +66,12 @@ public class SubscriptionPipeEventBatches {
     for (final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock :
         ImmutableSet.copyOf(batchWithLocks.values())) {
       final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
-      final int regionId = batch.getRegionId();
       final ReentrantLock lock = batchWithLock.getRight();
 
       try {
         lock.lock();
         if (batch.isSealed()) {
+          batchWithLocks.remove(batch.getRegionId());
           continue;
         }
 
@@ -78,14 +79,13 @@ public class SubscriptionPipeEventBatches {
           final List<SubscriptionEvent> evs = batch.onEvent();
           if (!evs.isEmpty()) {
             events.addAll(evs);
-            batchWithLocks.remove(regionId);
-          }
-          if (!evs.isEmpty()) {
+            batchWithLocks.remove(batch.getRegionId());
+            // Seal this batch successfully, break here.
             break;
           }
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          // seal it next time
+          // Seal this batch next time, continue here.
         }
       } finally {
         lock.unlock();
@@ -124,6 +124,7 @@ public class SubscriptionPipeEventBatches {
       try {
         lock.lock();
         if (batch.isSealed()) {
+          batchWithLocks.remove(batch.getRegionId());
           continue;
         }
 
@@ -132,25 +133,33 @@ public class SubscriptionPipeEventBatches {
           if (!evs.isEmpty()) {
             events.addAll(evs);
             batchWithLocks.remove(regionId);
-            continue; // it is necessary to calculate the event into a batch, try next batch
+            // Seal this batch successfully, but it is necessary to calculate the event into a
+            // batch, try next batch.
+            continue;
           }
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          continue; // try to seal again
+          // Try to seal this batch again
+          LockSupport.parkNanos(100_000_000L); // 100ms
+          continue;
         }
 
-        // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
-        // this time.
+        // It can be guaranteed that batch.isSealed() = false at this time.
         try {
           final List<SubscriptionEvent> evs = batch.onEvent(event);
           if (!evs.isEmpty()) {
             events.addAll(evs);
             batchWithLocks.remove(regionId);
+            // Seal this batch successfully, break here
+            break;
+          } else {
+            // It can be guaranteed that the event is calculated into the batch, seal it next time.
+            break;
           }
-          break;
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          break; // can be guaranteed that the event is calculated into the batch, seal it next time
+          // It can be guaranteed that the event is calculated into the batch, seal it next time.
+          break;
         }
       } finally {
         lock.unlock();

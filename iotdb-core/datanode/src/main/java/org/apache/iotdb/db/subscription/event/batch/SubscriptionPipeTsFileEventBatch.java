@@ -59,7 +59,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
-      return events;
+      return Objects.nonNull(events) ? events : Collections.emptyList();
     }
     return Collections.emptyList();
   }
@@ -89,6 +89,10 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   /////////////////////////////// utility ///////////////////////////////
 
   private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
+    if (batch.isEmpty()) {
+      return null;
+    }
+
     final List<SubscriptionEvent> events = new ArrayList<>();
     final List<File> tsFiles = batch.sealTsFiles();
     final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());

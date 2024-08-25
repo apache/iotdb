@@ -73,7 +73,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
-      return events;
+      return Objects.nonNull(events) ? events : Collections.emptyList();
     }
     return Collections.emptyList();
   }
@@ -103,6 +103,10 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   /////////////////////////////// utility ///////////////////////////////
 
   private List<SubscriptionEvent> generateSubscriptionEvents() {
+    if (tablets.isEmpty()) {
+      return null;
+    }
+
     final SubscriptionCommitContext commitContext =
         prefetchingQueue.generateSubscriptionCommitContext();
     final List<SubscriptionPollResponse> responses = new ArrayList<>();
