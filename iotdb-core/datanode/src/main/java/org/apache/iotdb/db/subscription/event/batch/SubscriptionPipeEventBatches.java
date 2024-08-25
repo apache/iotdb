@@ -26,8 +26,6 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueu
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -36,8 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SubscriptionPipeEventBatches {
@@ -48,8 +46,7 @@ public class SubscriptionPipeEventBatches {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  private final LoadingCache<Integer, Pair<SubscriptionPipeEventBatch, ReentrantLock>>
-      batchWithLocks;
+  private final Map<Integer, Pair<SubscriptionPipeEventBatch, ReentrantLock>> batchWithLocks;
 
   public SubscriptionPipeEventBatches(
       final SubscriptionPrefetchingQueue prefetchingQueue,
@@ -59,32 +56,14 @@ public class SubscriptionPipeEventBatches {
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
 
-    this.batchWithLocks =
-        Caffeine.newBuilder()
-            // TODO: config
-            .expireAfterAccess(60L, TimeUnit.SECONDS)
-            .build(
-                regionId ->
-                    new Pair<>(
-                        prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
-                            ? new SubscriptionPipeTabletEventBatch(
-                                regionId,
-                                (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
-                                maxDelayInMs,
-                                maxBatchSizeInBytes)
-                            : new SubscriptionPipeTsFileEventBatch(
-                                regionId,
-                                (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
-                                maxDelayInMs,
-                                maxBatchSizeInBytes),
-                        new ReentrantLock(true)));
+    this.batchWithLocks = new ConcurrentHashMap<>();
   }
 
   public List<SubscriptionEvent> onEvent() {
     final List<SubscriptionEvent> events = new ArrayList<>();
 
     for (final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock :
-        ImmutableSet.copyOf(batchWithLocks.asMap().values())) {
+        ImmutableSet.copyOf(batchWithLocks.values())) {
       final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
       final int regionId = batch.getRegionId();
       final ReentrantLock lock = batchWithLock.getRight();
@@ -99,15 +78,14 @@ public class SubscriptionPipeEventBatches {
           final List<SubscriptionEvent> evs = batch.onEvent();
           if (!evs.isEmpty()) {
             events.addAll(evs);
-            batchWithLocks.invalidate(regionId);
+            batchWithLocks.remove(regionId);
+          }
+          if (!evs.isEmpty()) {
+            break;
           }
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          continue; // try to seal again
-        }
-
-        if (!events.isEmpty()) {
-          break;
+          // seal it next time
         }
       } finally {
         lock.unlock();
@@ -124,7 +102,22 @@ public class SubscriptionPipeEventBatches {
 
     while (true) {
       final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock =
-          Objects.requireNonNull(batchWithLocks.get(regionId));
+          batchWithLocks.computeIfAbsent(
+              regionId,
+              (id) ->
+                  new Pair<>(
+                      prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+                          ? new SubscriptionPipeTabletEventBatch(
+                              id,
+                              (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+                              maxDelayInMs,
+                              maxBatchSizeInBytes)
+                          : new SubscriptionPipeTsFileEventBatch(
+                              id,
+                              (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
+                              maxDelayInMs,
+                              maxBatchSizeInBytes),
+                      new ReentrantLock(true)));
       final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
       final ReentrantLock lock = batchWithLock.getRight();
 
@@ -138,15 +131,12 @@ public class SubscriptionPipeEventBatches {
           final List<SubscriptionEvent> evs = batch.onEvent();
           if (!evs.isEmpty()) {
             events.addAll(evs);
-            batchWithLocks.invalidate(regionId);
+            batchWithLocks.remove(regionId);
+            continue; // it is necessary to calculate the event into a batch, try next batch
           }
         } catch (final Exception e) {
           LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
           continue; // try to seal again
-        }
-
-        if (!events.isEmpty()) {
-          break;
         }
 
         // It can be guaranteed that the batch has not been called to generateSubscriptionEvents at
@@ -155,7 +145,7 @@ public class SubscriptionPipeEventBatches {
           final List<SubscriptionEvent> evs = batch.onEvent(event);
           if (!evs.isEmpty()) {
             events.addAll(evs);
-            batchWithLocks.invalidate(regionId);
+            batchWithLocks.remove(regionId);
           }
           break;
         } catch (final Exception e) {
@@ -171,7 +161,21 @@ public class SubscriptionPipeEventBatches {
   }
 
   public void cleanUp() {
-    batchWithLocks.asMap().values().forEach((pair) -> pair.getLeft().cleanUp());
-    batchWithLocks.invalidateAll();
+    ImmutableSet.copyOf(batchWithLocks.entrySet())
+        .forEach(
+            entry -> {
+              final int regionId = entry.getKey();
+              final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock =
+                  entry.getValue();
+              final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
+              final ReentrantLock lock = batchWithLock.getRight();
+              lock.lock();
+              try {
+                batch.cleanUp();
+              } finally {
+                lock.unlock();
+                batchWithLocks.remove(regionId);
+              }
+            });
   }
 }
