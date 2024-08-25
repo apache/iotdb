@@ -43,6 +43,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch {
@@ -68,22 +69,27 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized List<SubscriptionEvent> onEvent() {
+  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
     if (shouldEmit()) {
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
-      return Objects.nonNull(events) ? events : Collections.emptyList();
+      if (Objects.nonNull(events)) {
+        events.forEach(consumer);
+        return true;
+      }
+      return false;
     }
-    return Collections.emptyList();
+    return false;
   }
 
   @Override
-  public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event) {
+  public synchronized boolean onEvent(
+      @NonNull final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
     if (event instanceof TabletInsertionEvent) {
       onEventInternal((TabletInsertionEvent) event); // no exceptions will be thrown
     }
-    return onEvent();
+    return onEvent(consumer);
   }
 
   @Override

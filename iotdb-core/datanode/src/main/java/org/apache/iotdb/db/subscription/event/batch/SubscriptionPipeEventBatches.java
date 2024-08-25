@@ -26,18 +26,16 @@ import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueu
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
-import com.google.common.collect.ImmutableSet;
-import org.apache.tsfile.utils.Pair;
+import com.google.common.collect.ImmutableList;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 
 public class SubscriptionPipeEventBatches {
 
@@ -47,7 +45,7 @@ public class SubscriptionPipeEventBatches {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
-  private final Map<Integer, Pair<SubscriptionPipeEventBatch, ReentrantLock>> batchWithLocks;
+  private final Map<Integer, SubscriptionPipeEventBatch> regionIdToBatch;
 
   public SubscriptionPipeEventBatches(
       final SubscriptionPrefetchingQueue prefetchingQueue,
@@ -57,132 +55,83 @@ public class SubscriptionPipeEventBatches {
     this.maxDelayInMs = maxDelayInMs;
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
 
-    this.batchWithLocks = new ConcurrentHashMap<>();
+    this.regionIdToBatch = new ConcurrentHashMap<>();
   }
 
-  public List<SubscriptionEvent> onEvent() {
-    final List<SubscriptionEvent> events = new ArrayList<>();
+  public boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
+    final AtomicBoolean hasNew = new AtomicBoolean(false);
+    for (final SubscriptionPipeEventBatch batch : ImmutableList.copyOf(regionIdToBatch.values())) {
+      regionIdToBatch.compute(
+          batch.getRegionId(),
+          (key, theBatch) -> {
+            if (Objects.isNull(theBatch)) {
+              return null;
+            }
 
-    for (final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock :
-        ImmutableSet.copyOf(batchWithLocks.values())) {
-      final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
-      final ReentrantLock lock = batchWithLock.getRight();
+            try {
+              if (theBatch.onEvent(consumer)) {
+                hasNew.set(true);
+                return null; // remove this entry
+              }
+            } catch (final Exception e) {
+              LOGGER.warn("Exception occurred when sealing events from batch {}", theBatch, e);
+              // Seal this batch next time.
+            }
 
-      lock.lock();
-      try {
-        if (batch.isSealed()) {
-          continue;
-        }
+            return theBatch;
+          });
 
-        try {
-          final List<SubscriptionEvent> evs = batch.onEvent();
-          if (!evs.isEmpty()) {
-            events.addAll(evs);
-            batchWithLocks.remove(batch.getRegionId());
-            // Seal this batch successfully, break here.
-            break;
-          }
-        } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          // Seal this batch next time, continue here.
-        }
-      } finally {
-        lock.unlock();
+      if (hasNew.get()) {
+        break;
       }
     }
 
-    return events;
+    return hasNew.get();
   }
 
-  public List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event) {
+  public boolean onEvent(
+      @NonNull final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
     final int regionId =
         PipeEventCommitManager.parseRegionIdFromCommitterKey(event.getCommitterKey());
-    final List<SubscriptionEvent> events = new ArrayList<>();
-
+    final AtomicBoolean hasNew = new AtomicBoolean(false);
     while (true) {
-      final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock =
-          batchWithLocks.computeIfAbsent(
-              regionId,
-              (id) ->
-                  new Pair<>(
-                      prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
-                          ? new SubscriptionPipeTabletEventBatch(
-                              id,
-                              (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
-                              maxDelayInMs,
-                              maxBatchSizeInBytes)
-                          : new SubscriptionPipeTsFileEventBatch(
-                              id,
-                              (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
-                              maxDelayInMs,
-                              maxBatchSizeInBytes),
-                      new ReentrantLock(true)));
-      final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
-      final ReentrantLock lock = batchWithLock.getRight();
+      regionIdToBatch.compute(
+          regionId,
+          (key, theBatch) -> {
+            if (Objects.isNull(theBatch)) {
+              theBatch =
+                  prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+                      ? new SubscriptionPipeTabletEventBatch(
+                          key,
+                          (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+                          maxDelayInMs,
+                          maxBatchSizeInBytes)
+                      : new SubscriptionPipeTsFileEventBatch(
+                          key,
+                          (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
+                          maxDelayInMs,
+                          maxBatchSizeInBytes);
+            }
 
-      lock.lock();
-      try {
-        if (batch.isSealed()) {
-          continue;
-        }
+            try {
+              if (theBatch.onEvent(event, consumer)) {
+                hasNew.set(true);
+                return null; // remove this entry
+              }
+            } catch (final Exception e) {
+              LOGGER.warn("Exception occurred when sealing events from batch {}", theBatch, e);
+              // Seal this batch next time.
+            }
 
-        try {
-          final List<SubscriptionEvent> evs = batch.onEvent();
-          if (!evs.isEmpty()) {
-            events.addAll(evs);
-            batchWithLocks.remove(regionId);
-            // Seal this batch successfully, but it is necessary to calculate the event into a
-            // batch, try next batch.
-            continue;
-          }
-        } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          // Try to seal this batch again
-          LockSupport.parkNanos(100_000_000L); // 100ms
-          continue;
-        }
+            return theBatch;
+          });
 
-        // It can be guaranteed that batch.isSealed() = false at this time.
-        try {
-          final List<SubscriptionEvent> evs = batch.onEvent(event);
-          if (!evs.isEmpty()) {
-            events.addAll(evs);
-            batchWithLocks.remove(regionId);
-            // Seal this batch successfully, break here
-            break;
-          } else {
-            // It can be guaranteed that the event is calculated into the batch, seal it next time.
-            break;
-          }
-        } catch (final Exception e) {
-          LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
-          // It can be guaranteed that the event is calculated into the batch, seal it next time.
-          break;
-        }
-      } finally {
-        lock.unlock();
-      }
+      return hasNew.get();
     }
-
-    return events;
   }
 
   public void cleanUp() {
-    ImmutableSet.copyOf(batchWithLocks.entrySet())
-        .forEach(
-            entry -> {
-              final int regionId = entry.getKey();
-              final Pair<SubscriptionPipeEventBatch, ReentrantLock> batchWithLock =
-                  entry.getValue();
-              final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
-              final ReentrantLock lock = batchWithLock.getRight();
-              lock.lock();
-              try {
-                batch.cleanUp();
-              } finally {
-                lock.unlock();
-                batchWithLocks.remove(regionId);
-              }
-            });
+    regionIdToBatch.values().forEach(SubscriptionPipeEventBatch::cleanUp);
+    regionIdToBatch.clear();
   }
 }

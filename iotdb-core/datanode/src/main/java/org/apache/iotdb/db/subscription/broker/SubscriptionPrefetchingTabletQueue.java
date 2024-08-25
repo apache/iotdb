@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
@@ -32,11 +30,9 @@ import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.utils.Pair;
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -149,31 +145,11 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   /////////////////////////////// prefetch ///////////////////////////////
 
   @Override
-  protected boolean onEvent(final TabletInsertionEvent event) {
-    return onEventInternal((EnrichedEvent) event);
-  }
-
-  @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
     LOGGER.warn(
         "Subscription: SubscriptionPrefetchingTabletQueue {} ignore TsFileInsertionEvent {} when prefetching.",
         this,
         event);
-    return false;
-  }
-
-  @Override
-  protected boolean onEvent() {
-    return onEventInternal(null);
-  }
-
-  private boolean onEventInternal(@Nullable final EnrichedEvent event) {
-    final List<SubscriptionEvent> events =
-        Objects.nonNull(event) ? batches.onEvent(event) : batches.onEvent();
-    if (!events.isEmpty()) {
-      events.forEach(super::enqueueEventToPrefetchingQueue);
-      return true;
-    }
     return false;
   }
 

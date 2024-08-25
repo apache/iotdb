@@ -34,11 +34,11 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
@@ -54,26 +54,30 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   @Override
-  public synchronized List<SubscriptionEvent> onEvent() throws Exception {
+  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
     if (batch.shouldEmit()) {
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
-      return Objects.nonNull(events) ? events : Collections.emptyList();
+      if (Objects.nonNull(events)) {
+        events.forEach(consumer);
+        return true;
+      }
+      return false;
     }
-    return Collections.emptyList();
+    return false;
   }
 
   @Override
-  public synchronized List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event)
-      throws Exception {
+  public synchronized boolean onEvent(
+      @NonNull final EnrichedEvent event, Consumer<SubscriptionEvent> consumer) throws Exception {
     if (event instanceof TabletInsertionEvent) {
       batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
       event.decreaseReferenceCount(
           SubscriptionPipeTsFileEventBatch.class.getName(),
           false); // missing releaseLastEvent decreases reference count
     }
-    return onEvent();
+    return onEvent(consumer);
   }
 
   @Override

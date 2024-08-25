@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public abstract class SubscriptionPipeEventBatch {
 
@@ -51,10 +52,10 @@ public abstract class SubscriptionPipeEventBatch {
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  public abstract List<SubscriptionEvent> onEvent() throws Exception;
+  public abstract boolean onEvent(Consumer<SubscriptionEvent> consumer) throws Exception;
 
-  public abstract List<SubscriptionEvent> onEvent(@NonNull final EnrichedEvent event)
-      throws Exception;
+  public abstract boolean onEvent(
+      @NonNull final EnrichedEvent event, Consumer<SubscriptionEvent> consumer) throws Exception;
 
   public abstract void cleanUp();
 
