@@ -124,13 +124,16 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     public PlanNode visitSort(SortNode node, Context context) {
       Context subContext = new Context();
       node.setChild(node.getChild().accept(this, subContext));
-      if (!subContext.enablePushDown || subContext.existSortNode) {
+      context.existSortNode = true;
+      // Children of SortNode have SortNode or LimitNode, set enablePushDown==false.
+      // In later, there will have more Nodes to perfect this judgement.
+      if (!subContext.enablePushDown || subContext.existSortNode || subContext.existLimitNode) {
+        context.enablePushDown = false;
         return node;
       }
 
       TableScanNode tableScanNode = subContext.tableScanNode;
       context.tableScanNode = tableScanNode;
-      context.existSortNode = true;
       OrderingScheme orderingScheme = node.getOrderingScheme();
       Map<Symbol, ColumnSchema> tableColumnSchema =
           analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
