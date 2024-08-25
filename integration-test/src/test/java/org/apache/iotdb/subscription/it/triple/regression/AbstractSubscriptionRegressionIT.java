@@ -457,7 +457,7 @@ public abstract class AbstractSubscriptionRegressionIT extends AbstractSubscript
   }
 
   public static void assertGte(long actual, long expected, String message) {
-    assertTrue(actual >= expected);
+    assertTrue(actual >= expected, message);
     if (!(actual == expected)) {
       String skipMessage = actual + " should be equals to " + expected;
       if (Objects.nonNull(message)) {

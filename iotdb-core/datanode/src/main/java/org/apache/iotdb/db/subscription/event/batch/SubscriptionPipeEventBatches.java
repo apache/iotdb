@@ -68,10 +68,9 @@ public class SubscriptionPipeEventBatches {
       final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
       final ReentrantLock lock = batchWithLock.getRight();
 
+      lock.lock();
       try {
-        lock.lock();
         if (batch.isSealed()) {
-          batchWithLocks.remove(batch.getRegionId());
           continue;
         }
 
@@ -121,10 +120,9 @@ public class SubscriptionPipeEventBatches {
       final SubscriptionPipeEventBatch batch = batchWithLock.getLeft();
       final ReentrantLock lock = batchWithLock.getRight();
 
+      lock.lock();
       try {
-        lock.lock();
         if (batch.isSealed()) {
-          batchWithLocks.remove(batch.getRegionId());
           continue;
         }
 
