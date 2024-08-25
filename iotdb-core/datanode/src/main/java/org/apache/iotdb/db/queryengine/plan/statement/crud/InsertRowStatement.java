@@ -278,6 +278,9 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
           measurements[index] = info.getMeasurement();

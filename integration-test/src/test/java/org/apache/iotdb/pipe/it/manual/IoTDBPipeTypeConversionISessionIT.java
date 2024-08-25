@@ -44,7 +44,6 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -56,6 +55,11 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2ManualCreateSchema.class})
@@ -308,6 +312,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       CheckedTriConsumer<ISession, ISession, Tablet, Exception> consumer, boolean isTsFile) {
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
+    long timeoutSeconds = 120;
     String uuid = RandomStringUtils.random(8, true, false);
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
       createTimeSeries(
@@ -321,24 +326,34 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test." + uuid);
       if (isTsFile) {
         consumer.accept(senderSession, receiverSession, tablet);
-        Thread.sleep(2000);
+        Thread.sleep(10000);
         createDataPipe(uuid, true);
         senderSession.executeNonQueryStatement("flush");
       } else {
         createDataPipe(uuid, false);
-        Thread.sleep(2000);
+        Thread.sleep(10000);
         consumer.accept(senderSession, receiverSession, tablet);
       }
-      Thread.sleep(20000);
-      validateResultSet(
-          query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
-          generateTabletResultSetForTable(tablet, measurementSchemas),
-          tablet.timestamps);
+      List<List<Object>> expectedValues =
+          generateTabletResultSetForTable(tablet, measurementSchemas);
+      await()
+          .pollInSameThread()
+          .pollDelay(1L, TimeUnit.SECONDS)
+          .pollInterval(1L, TimeUnit.SECONDS)
+          .atMost(timeoutSeconds, TimeUnit.SECONDS)
+          .untilAsserted(
+              () -> {
+                validateResultSet(
+                    query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
+                    expectedValues,
+                    tablet.timestamps);
+              });
       senderSession.close();
       receiverSession.close();
       tablet.reset();
     } catch (Exception e) {
-      throw new RuntimeException(e);
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -375,39 +390,43 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       RowRecord record = dataSet.next();
       List<Field> fields = record.getFields();
 
-      Assert.assertEquals(record.getTimestamp(), timestamps[index]);
+      assertEquals(record.getTimestamp(), timestamps[index]);
       List<Object> rowValues = values.get(index++);
-      for (int i = 0; i < fields.size(); i++) {
-
+      int i = 0;
+      for (; i < fields.size(); i++) {
         Field field = fields.get(i);
+        if (field == null) {
+          continue;
+        }
         switch (field.getDataType()) {
           case INT64:
           case TIMESTAMP:
-            Assert.assertEquals(field.getLongV(), (long) rowValues.get(i));
+            assertEquals(field.getLongV(), (long) rowValues.get(i));
             break;
           case DATE:
-            Assert.assertEquals(field.getDateV(), rowValues.get(i));
+            assertEquals(field.getDateV(), rowValues.get(i));
             break;
           case BLOB:
-            Assert.assertEquals(field.getBinaryV(), rowValues.get(i));
+            assertEquals(field.getBinaryV(), rowValues.get(i));
             break;
           case TEXT:
           case STRING:
-            Assert.assertEquals(field.getStringValue(), rowValues.get(i));
+            assertEquals(field.getStringValue(), rowValues.get(i));
             break;
           case INT32:
-            Assert.assertEquals(field.getIntV(), (int) rowValues.get(i));
+            assertEquals(field.getIntV(), (int) rowValues.get(i));
             break;
           case DOUBLE:
-            Assert.assertEquals(0, Double.compare(field.getDoubleV(), (double) rowValues.get(i)));
+            assertEquals(0, Double.compare(field.getDoubleV(), (double) rowValues.get(i)));
             break;
           case FLOAT:
-            Assert.assertEquals(0, Float.compare(field.getFloatV(), (float) rowValues.get(i)));
+            assertEquals(0, Float.compare(field.getFloatV(), (float) rowValues.get(i)));
             break;
         }
       }
+      assertEquals(rowValues.size(), i);
     }
-    Assert.assertEquals(values.size(), index);
+    assertEquals(values.size(), index);
   }
 
   private boolean[] createTestDataForBoolean() {

@@ -230,6 +230,9 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   @Override
   public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
     failedMeasurementIndex2Info.forEach(
         (index, info) -> {
           measurements[index] = info.getMeasurement();

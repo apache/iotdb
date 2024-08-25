@@ -335,7 +335,6 @@ public class ValueConverter {
   }
 
   public static int convertBooleanToDate(final boolean value) {
-    System.out.println(value ? TRUE_DATE : FALSE_DATE);
     return value ? TRUE_DATE : FALSE_DATE;
   }
 
