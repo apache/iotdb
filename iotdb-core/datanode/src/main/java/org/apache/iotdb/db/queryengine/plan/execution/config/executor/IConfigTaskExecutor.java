@@ -57,6 +57,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -255,6 +257,15 @@ public interface IConfigTaskExecutor {
       ShowThrottleQuotaStatement showThrottleQuotaStatement);
 
   TThrottleQuotaResp getThrottleQuota();
+
+  SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelName);
+
+  SettableFuture<ConfigTaskResult> showModels(String modelName);
+
+  SettableFuture<ConfigTaskResult> showAINodes(ShowAINodesStatement showAINodesStatement);
 
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 

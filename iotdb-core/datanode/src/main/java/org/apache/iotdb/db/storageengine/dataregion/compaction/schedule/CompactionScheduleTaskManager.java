@@ -148,6 +148,7 @@ public class CompactionScheduleTaskManager implements IService {
       if (!init) {
         return;
       }
+      init = false;
       compactionScheduleTaskThreadPool.shutdownNow();
       logger.info("Waiting for compaction schedule task thread pool to shut down");
       waitForThreadPoolTerminated();

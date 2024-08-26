@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowDevicesResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -35,19 +36,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
-
 public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevice {
 
   // For query devices fully in cache
   protected List<ShowDevicesResult> results = new ArrayList<>();
 
-  // The "CountDevice"'s column header list is the same as the device's header
-  // to help reuse filter operator
-  protected List<ColumnHeader> columnHeaderList;
-
-  protected AbstractQueryDeviceWithCache(final QualifiedName name, final Expression rawExpression) {
-    super(name, rawExpression);
+  protected AbstractQueryDeviceWithCache(
+      final NodeLocation location, final Table table, final Expression rawExpression) {
+    super(location, table, rawExpression);
   }
 
   protected AbstractQueryDeviceWithCache(final String database, final String tableName) {
@@ -58,7 +54,7 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
-    if (Objects.isNull(rawExpression)) {
+    if (Objects.isNull(where)) {
       return true;
     }
     final List<DeviceEntry> entries = new ArrayList<>();
@@ -76,14 +72,6 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     return needFetch;
   }
 
-  public List<ColumnHeader> getColumnHeaderList() {
-    return columnHeaderList;
-  }
-
-  public void setColumnHeaderList() {
-    this.columnHeaderList = getDeviceColumnHeaderList(database, tableName);
-  }
-
   public static List<ColumnHeader> getDeviceColumnHeaderList(
       final String database, final String tableName) {
     return DataNodeTableCache.getInstance().getTable(database, tableName).getColumnList().stream()
@@ -99,5 +87,5 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
 
   public abstract DatasetHeader getDataSetHeader();
 
-  public abstract TsBlock getTsBlock();
+  public abstract TsBlock getTsBlock(final Analysis analysis);
 }

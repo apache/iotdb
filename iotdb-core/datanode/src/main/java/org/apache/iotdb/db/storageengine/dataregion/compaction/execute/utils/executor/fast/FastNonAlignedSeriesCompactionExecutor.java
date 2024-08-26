@@ -163,7 +163,6 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
                 chunkMetadata,
-                resource.getVersion(),
                 i == iChunkMetadataList.size() - 1,
                 fileElement,
                 isBatchedCompaction));
@@ -186,8 +185,7 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
               pages.get(i).right,
               chunkReader,
               chunkMetadataElement,
-              isLastPage,
-              chunkMetadataElement.priority));
+              isLastPage));
     }
     chunkMetadataElement.clearChunks();
   }

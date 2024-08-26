@@ -19,33 +19,51 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.schema.source;
 
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.TsBlock;
-
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 
-public class DevicePredicateFilter {
-  private final List<LeafColumnTransformer> filterLeafColumnTransformerList;
-  private final ColumnTransformer filterOutputTransformer;
+import static java.util.Objects.requireNonNull;
+
+public class DevicePredicateFilter extends DevicePredicateHandler
+    implements Iterator<IDeviceSchemaInfo> {
+  private int curIndex = 0;
 
   public DevicePredicateFilter(
       final List<LeafColumnTransformer> filterLeafColumnTransformerList,
-      final ColumnTransformer filterOutputTransformer) {
-    this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
-    this.filterOutputTransformer = filterOutputTransformer;
+      final ColumnTransformer filterOutputTransformer,
+      final String database,
+      final String tableName,
+      final List<ColumnHeader> columnHeaderList) {
+    super(
+        filterLeafColumnTransformerList,
+        filterOutputTransformer,
+        database,
+        tableName,
+        columnHeaderList);
+    requireNonNull(filterOutputTransformer);
   }
 
-  // Single row tsBlock
-  public boolean match(final TsBlock input) {
-    // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
-    filterLeafColumnTransformerList.forEach(
-        leafColumnTransformer -> leafColumnTransformer.initFromTsBlock(input));
-    filterOutputTransformer.tryEvaluate();
+  @Override
+  public boolean hasNext() {
+    final boolean result = curIndex < indexes.size();
+    if (!result && hasComputedResult()) {
+      curIndex = 0;
+      clear();
+    }
+    return result;
+  }
 
-    final Column filterColumn = filterOutputTransformer.getColumn();
-    return !filterColumn.isNull(0) && filterColumn.getBoolean(0);
+  @Override
+  public IDeviceSchemaInfo next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    return deviceSchemaBatch.get(indexes.get(curIndex++));
   }
 }
