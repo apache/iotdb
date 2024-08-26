@@ -56,7 +56,7 @@ public class TableDeviceSchemaCacheTest {
   @Before
   public void setup() {
     originMemConfig = config.getAllocateMemoryForSchemaCache();
-    config.setAllocateMemoryForSchemaCache(1500L);
+    config.setAllocateMemoryForSchemaCache(1000L);
   }
 
   @After
@@ -107,7 +107,7 @@ public class TableDeviceSchemaCacheTest {
         attributeMap,
         cache.getDeviceAttribute(database, table1, new String[] {"shandong", "p_1", "d_1"}));
 
-    final String table2 = "t1";
+    final String table2 = "t2";
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     cache.putAttributes(
@@ -203,18 +203,25 @@ public class TableDeviceSchemaCacheTest {
 
     // Invalidate device
     cache.invalidateLastCache(database, table1, device0);
+    System.out.println("Here");
+    cache.invalidate(database);
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
 
     // Invalidate table
     final String[] device1 = new String[] {"hebei", "p_1", "d_1"};
+    final String[] device2 = new String[] {"hebei", "p_1", "d_2"};
 
     cache.updateLastCache(database, table2, device0, measurementQueryUpdateMap);
     cache.updateLastCache(database, table2, device1, measurementQueryUpdateMap);
+    cache.updateLastCache(database, table2, device2, measurementQueryUpdateMap);
+
+    // Test cache eviction
+    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
 
     cache.invalidateLastCache(database, table2, null);
 
-    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
     Assert.assertNull(cache.getLastEntry(database, table2, device1, "s2"));
+    Assert.assertNull(cache.getLastEntry(database, table2, device2, "s2"));
   }
 
   @Test
