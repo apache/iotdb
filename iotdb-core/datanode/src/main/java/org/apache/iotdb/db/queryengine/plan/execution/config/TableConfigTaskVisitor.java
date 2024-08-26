@@ -203,6 +203,12 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.WRITE);
     final Pair<String, String> databaseTablePair = splitQualifiedName(node.getSource());
 
+    final String oldName = databaseTablePair.getRight();
+    final String newName = node.getTarget().getValue();
+    if (oldName.equals(newName)) {
+      throw new SemanticException("The table's old name shall not be equal to the new one.");
+    }
+
     return new AlterTableRenameTableTask(
         databaseTablePair.getLeft(),
         databaseTablePair.getRight(),
@@ -238,7 +244,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String oldName = node.getSource().getValue();
     final String newName = node.getTarget().getValue();
     if (oldName.equals(newName)) {
-      throw new SemanticException("The old column name shall not be equal to the new columnName.");
+      throw new SemanticException("The column's old name shall not be equal to the new one.");
     }
 
     return new AlterTableRenameColumnTask(
