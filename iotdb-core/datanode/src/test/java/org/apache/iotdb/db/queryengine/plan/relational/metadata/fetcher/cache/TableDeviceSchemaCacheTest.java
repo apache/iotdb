@@ -56,7 +56,7 @@ public class TableDeviceSchemaCacheTest {
   @Before
   public void setup() {
     originMemConfig = config.getAllocateMemoryForSchemaCache();
-    config.setAllocateMemoryForSchemaCache(1000L);
+    config.setAllocateMemoryForSchemaCache(1300L);
   }
 
   @After
@@ -132,6 +132,10 @@ public class TableDeviceSchemaCacheTest {
         cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_1"}));
     Assert.assertNull(
         cache.getDeviceAttribute(database, table1, new String[] {"shandong", "p_1", "d_1"}));
+
+    cache.invalidateAttributes(database, table2, new String[] {"hebei", "p_1", "d_1"});
+    Assert.assertNull(
+        cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_1"}));
   }
 
   @Test
