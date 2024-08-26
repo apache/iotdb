@@ -19,16 +19,18 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeEnrichedTablet;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
@@ -38,7 +40,7 @@ import java.util.List;
 public class PipeRowCollector implements RowCollector {
 
   private final List<TabletInsertionEvent> tabletInsertionEventList = new ArrayList<>();
-  private Tablet tablet = null;
+  private PipeEnrichedTablet tablet = null;
   private boolean isAligned = false;
   private final PipeTaskMeta pipeTaskMeta; // Used to report progress
   private final EnrichedEvent sourceEvent; // Used to report progress
@@ -66,13 +68,16 @@ public class PipeRowCollector implements RowCollector {
       final String deviceId = pipeRow.getDeviceId();
       final List<IMeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
+      // Calculate row count and memory size of the tablet based on the first row
+      Pair<Integer, Integer> rowCountAndMemorySize =
+          PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(pipeRow);
       tablet =
-          new Tablet(
-              deviceId,
-              measurementSchemaList,
-              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-      isAligned = pipeRow.isAligned();
+          new PipeEnrichedTablet(deviceId, measurementSchemaList, rowCountAndMemorySize.getLeft());
       tablet.initBitMaps();
+      tablet.setMemoryBlock(
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(rowCountAndMemorySize.getRight()));
+      isAligned = pipeRow.isAligned();
     }
 
     final int rowIndex = tablet.rowSize;
@@ -100,6 +105,7 @@ public class PipeRowCollector implements RowCollector {
 
   private void collectTabletInsertionEvent() {
     if (tablet != null) {
+      PipeDataNodeResourceManager.memory().reallocateForTablet(tablet);
       tabletInsertionEventList.add(
           new PipeRawTabletInsertionEvent(
               tablet,

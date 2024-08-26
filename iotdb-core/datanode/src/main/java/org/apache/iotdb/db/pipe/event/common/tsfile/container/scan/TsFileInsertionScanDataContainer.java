@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeEnrichedTablet;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -43,6 +45,7 @@ import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -174,15 +177,35 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private Tablet getNextTablet() {
     try {
-      final Tablet tablet =
-          new Tablet(
-              currentDevice.toString(),
-              currentMeasurements,
-              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-      tablet.initBitMaps();
+      PipeEnrichedTablet tablet = null;
 
+      if (!data.hasCurrent()) {
+        tablet = new PipeEnrichedTablet(currentDevice.toString(), currentMeasurements, 1);
+        tablet.initBitMaps();
+        tablet.setMemoryBlock(
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTabletWithRetry(
+                    PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet)));
+        return tablet;
+      }
+
+      boolean isFirstRow = true;
       while (data.hasCurrent()) {
         if (isMultiPage || data.currentTime() >= startTime && data.currentTime() <= endTime) {
+          if (isFirstRow) {
+            // Calculate row count and memory size of the tablet based on the first row
+            Pair<Integer, Integer> rowCountAndMemorySize =
+                PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(data);
+            tablet =
+                new PipeEnrichedTablet(
+                    currentDevice.toString(), currentMeasurements, rowCountAndMemorySize.getLeft());
+            tablet.initBitMaps();
+            tablet.setMemoryBlock(
+                PipeDataNodeResourceManager.memory()
+                    .forceAllocateForTabletWithRetry(rowCountAndMemorySize.getRight()));
+            isFirstRow = false;
+          }
+
           final int rowIndex = tablet.rowSize;
 
           tablet.addTimestamp(rowIndex, data.currentTime());
@@ -196,7 +219,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           data = chunkReader.nextPageData();
         }
 
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet != null && tablet.rowSize == tablet.getMaxRowNumber()) {
           break;
         }
       }
@@ -206,6 +229,10 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         prepareData();
       }
 
+      // Resize the memory block to the actual size
+      if (tablet != null) {
+        PipeDataNodeResourceManager.memory().reallocateForTablet(tablet);
+      }
       return tablet;
     } catch (final Exception e) {
       close();

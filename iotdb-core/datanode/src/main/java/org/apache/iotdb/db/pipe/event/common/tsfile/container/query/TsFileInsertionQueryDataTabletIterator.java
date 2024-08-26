@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeEnrichedTablet;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -32,6 +34,7 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -118,16 +121,38 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
           measurementDataTypeMap.get(deviceId + TsFileConstant.PATH_SEPARATOR + measurement);
       schemas.add(new MeasurementSchema(measurement, dataType));
     }
-    final Tablet tablet =
-        new Tablet(
-            // Used for tree model
-            deviceId.toString(),
-            schemas,
-            PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-    tablet.initBitMaps();
 
+    PipeEnrichedTablet tablet = null;
+    if (!queryDataSet.hasNext()) {
+      tablet =
+          new PipeEnrichedTablet(
+              // Used for tree model
+              deviceId.toString(), schemas, 1);
+      tablet.initBitMaps();
+      tablet.setMemoryBlock(
+          PipeDataNodeResourceManager.memory()
+              .forceAllocateForTabletWithRetry(
+                  PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet)));
+      return tablet;
+    }
+
+    boolean isFirstRow = true;
     while (queryDataSet.hasNext()) {
       final RowRecord rowRecord = queryDataSet.next();
+      if (isFirstRow) {
+        // Calculate row count and memory size of the tablet based on the first row
+        Pair<Integer, Integer> rowCountAndMemorySize =
+            PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(rowRecord);
+        tablet =
+            new PipeEnrichedTablet(
+                // Used for tree model
+                deviceId.toString(), schemas, rowCountAndMemorySize.getLeft());
+        tablet.initBitMaps();
+        tablet.setMemoryBlock(
+            PipeDataNodeResourceManager.memory()
+                .forceAllocateForTabletWithRetry(rowCountAndMemorySize.getRight()));
+        isFirstRow = false;
+      }
 
       final int rowIndex = tablet.rowSize;
 
@@ -150,6 +175,10 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
       }
     }
 
+    // Resize the memory block to the actual size
+    if (tablet != null) {
+      PipeDataNodeResourceManager.memory().reallocateForTablet(tablet);
+    }
     return tablet;
   }
 }

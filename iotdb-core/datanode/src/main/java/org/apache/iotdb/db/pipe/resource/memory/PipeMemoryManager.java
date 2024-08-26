@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalExc
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeEnrichedTablet;
 
-import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +75,7 @@ public class PipeMemoryManager {
     return forceAllocate(sizeInBytes, false);
   }
 
-  public PipeTabletMemoryBlock forceAllocateWithRetry(Tablet tablet)
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(long tabletSizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
@@ -107,8 +107,7 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTabletMemoryBlock block =
-          (PipeTabletMemoryBlock)
-              forceAllocate(PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet), true);
+          (PipeTabletMemoryBlock) forceAllocate(tabletSizeInBytes, true);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
     }
@@ -323,6 +322,30 @@ public class PipeMemoryManager {
     this.notifyAll();
 
     return true;
+  }
+
+  /**
+   * Calculate the actual size of a PipeEnrichedTablet, then release its original memory block and
+   * reallocate a new one.
+   */
+  public synchronized void reallocateForTablet(PipeEnrichedTablet tablet) {
+    tablet.setMemoryBlock(
+        (PipeTabletMemoryBlock)
+            releaseAndForceAllocateNewSize(
+                tablet.getMemoryBlock(), PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet)));
+  }
+
+  private PipeMemoryBlock releaseAndForceAllocateNewSize(PipeMemoryBlock old, long newSize) {
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      return old instanceof PipeTabletMemoryBlock
+          ? new PipeTabletMemoryBlock(newSize)
+          : new PipeMemoryBlock(newSize);
+    }
+
+    if (old != null && !old.isReleased()) {
+      release(old);
+    }
+    return forceAllocate(newSize, old instanceof PipeTabletMemoryBlock);
   }
 
   public long getUsedMemorySizeInBytes() {
