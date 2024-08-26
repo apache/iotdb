@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
@@ -29,6 +30,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 public class PushLimitThroughProject implements Rule<LimitNode> {
@@ -53,6 +55,13 @@ public class PushLimitThroughProject implements Rule<LimitNode> {
   @Override
   public Result apply(LimitNode parent, Captures captures, Context context) {
     ProjectNode projectNode = captures.get(CHILD);
+
+    for (Expression expression : projectNode.getAssignments().getMap().values()) {
+      if (containsDiffFunction(expression)) {
+        return Result.empty();
+      }
+    }
+
     return Result.ofPlanNode(transpose(parent, projectNode));
   }
 }
