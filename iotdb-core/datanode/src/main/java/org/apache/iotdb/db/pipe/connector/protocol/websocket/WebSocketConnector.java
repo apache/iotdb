@@ -118,10 +118,13 @@ public class WebSocketConnector implements PipeConnector {
       return;
     }
 
-    ((EnrichedEvent) tabletInsertionEvent)
-        .increaseReferenceCount(WebSocketConnector.class.getName());
-
-    server.addEvent(tabletInsertionEvent, this);
+    if (((EnrichedEvent) tabletInsertionEvent)
+        .increaseReferenceCount(WebSocketConnector.class.getName())) {
+      server.addEvent(tabletInsertionEvent, this);
+    } else {
+      ((EnrichedEvent) tabletInsertionEvent)
+          .decreaseReferenceCount(WebSocketConnector.class.getName(), false);
+    }
   }
 
   @Override

@@ -90,8 +90,10 @@ public class SchemaRegionListeningQueue extends AbstractPipeListeningQueue {
       final SerializableEvent result = PipeSchemaSerializableEventType.deserialize(byteBuffer);
       // We assume the caller of this method will put the deserialize result into a queue,
       // so we increase the reference count here.
-      ((EnrichedEvent) result).increaseReferenceCount(SchemaRegionListeningQueue.class.getName());
-      return result;
+      return ((EnrichedEvent) result)
+              .increaseReferenceCount(SchemaRegionListeningQueue.class.getName())
+          ? result
+          : null;
     } catch (final IOException e) {
       LOGGER.error("Failed to load snapshot from byteBuffer {}.", byteBuffer);
     }

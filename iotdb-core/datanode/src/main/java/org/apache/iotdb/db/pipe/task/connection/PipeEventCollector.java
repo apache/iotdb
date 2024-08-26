@@ -165,7 +165,11 @@ public class PipeEventCollector implements EventCollector {
     collectInvocationCount.incrementAndGet();
 
     if (event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
+      if (!((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName())) {
+        // Here we return directly without enrich, and the outer scope won't enrich again because
+        // the collect invocation count is not 0, thus the event won't be reported
+        return;
+      }
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()

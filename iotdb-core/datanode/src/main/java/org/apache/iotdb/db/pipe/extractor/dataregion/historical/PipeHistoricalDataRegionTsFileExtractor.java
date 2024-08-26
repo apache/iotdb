@@ -576,6 +576,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       isTerminateSignalSent = true;
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+      // Always success
       terminateEvent.increaseReferenceCount(
           PipeHistoricalDataRegionTsFileExtractor.class.getName());
       return terminateEvent;
@@ -602,7 +603,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       event.skipParsingTime();
     }
 
-    event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
+    final boolean isValidEvent =
+        event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
+
     try {
       PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
     } catch (final IOException e) {
@@ -613,6 +616,11 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
           resource.getTsFilePath());
     }
 
+    if (!isValidEvent) {
+      event.decreaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName(), false);
+      event.close();
+      return null;
+    }
     return event;
   }
 

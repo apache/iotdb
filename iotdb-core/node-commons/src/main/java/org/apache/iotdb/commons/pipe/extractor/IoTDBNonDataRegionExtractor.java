@@ -36,6 +36,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -44,6 +46,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBNonDataRegionExtractor.class);
 
   protected IoTDBPipePattern pipePattern;
 
@@ -166,7 +169,14 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
         historicalEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
       }
 
-      historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+      if (!historicalEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName())) {
+        historicalEvent.decreaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName(), false);
+        LOGGER.warn(
+            "Failed to transfer historical snapshot because failed to increase it, progressIndex: {}",
+            historicalEvent.getProgressIndex());
+        return null;
+      }
+
       // We allow to send the events with empty transferred types to make the last
       // event commit and report its progress
       confineHistoricalEventTransferTypes(historicalEvent);
@@ -187,6 +197,7 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
           new ProgressReportEvent(
               pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
       event.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
+      // Always success
       event.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
       return event;
     }
@@ -196,7 +207,12 @@ public abstract class IoTDBNonDataRegionExtractor extends IoTDBExtractor {
             realtimeEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
                 pipeName, creationTime, pipeTaskMeta, pipePattern, Long.MIN_VALUE, Long.MAX_VALUE);
     realtimeEvent.bindProgressIndex(new MetaProgressIndex(iterator.getNextIndex() - 1));
-    realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName());
+    if (!realtimeEvent.increaseReferenceCount(IoTDBNonDataRegionExtractor.class.getName())) {
+      LOGGER.warn(
+          "Failed to transfer realtime event because failed to increase it, progressIndex: {}",
+          realtimeEvent.getProgressIndex());
+      return null;
+    }
     return realtimeEvent;
   }
 
