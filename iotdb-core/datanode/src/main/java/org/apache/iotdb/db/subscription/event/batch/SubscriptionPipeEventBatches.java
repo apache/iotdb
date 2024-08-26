@@ -59,7 +59,7 @@ public class SubscriptionPipeEventBatches {
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   public boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
     final AtomicBoolean hasNew = new AtomicBoolean(false);
@@ -94,7 +94,7 @@ public class SubscriptionPipeEventBatches {
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   public boolean onEvent(
       @NonNull final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {

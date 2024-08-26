@@ -53,9 +53,6 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
   }
 
-  /**
-   * @return {@code true} if there are subscription events consumed.
-   */
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
     if (batch.shouldEmit()) {
@@ -71,9 +68,6 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     return false;
   }
 
-  /**
-   * @return {@code true} if there are subscription events consumed.
-   */
   @Override
   public synchronized boolean onEvent(
       final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
