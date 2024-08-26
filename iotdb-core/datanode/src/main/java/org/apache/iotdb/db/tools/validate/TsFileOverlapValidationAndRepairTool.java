@@ -86,7 +86,6 @@ public class TsFileOverlapValidationAndRepairTool {
   private static void moveOverlapFilesToUnsequenceSpace(Set<TsFileResource> toMoveResources)
       throws IOException {
     for (TsFileResource resource : toMoveResources) {
-      System.out.println(resource);
       moveSeqResourceToUnsequenceDir(resource);
     }
   }
