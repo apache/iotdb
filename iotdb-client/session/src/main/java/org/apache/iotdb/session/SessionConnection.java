@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
-import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RedirectException;
@@ -171,30 +170,14 @@ public class SessionConnection {
     initClusterConn();
   }
 
-  protected void initTransport(
-      TEndPoint endPoint,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd,
-      final BaseRpcTransportFactory rpcTransportFactory)
-      throws IoTDBConnectionException {
-    this.initTransportInternal(
-        endPoint, useSSL, trustStore, trustStorePwd, DeepCopyRpcTransportFactory.INSTANCE);
-  }
-
-  protected void initTransportInternal(
-      TEndPoint endPoint,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd,
-      final BaseRpcTransportFactory rpcTransportFactory)
-      throws IoTDBConnectionException {
-    BaseRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
-    BaseRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
+  private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
+      throws IoTDBConnectionException, StatementExecutionException {
+    DeepCopyRpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
+    DeepCopyRpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
     try {
       if (useSSL) {
         transport =
-            rpcTransportFactory.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 endPoint.getIp(),
                 endPoint.getPort(),
                 session.connectionTimeoutInMs,
@@ -202,7 +185,7 @@ public class SessionConnection {
                 trustStorePwd);
       } else {
         transport =
-            rpcTransportFactory.getTransport(
+            DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                 // as there is a try-catch already, we do not need to use TSocket.wrap
                 endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       }
@@ -212,12 +195,6 @@ public class SessionConnection {
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
     }
-  }
-
-  private void init(TEndPoint endPoint, boolean useSSL, String trustStore, String trustStorePwd)
-      throws IoTDBConnectionException, StatementExecutionException {
-    initTransport(
-        endPoint, useSSL, trustStore, trustStorePwd, DeepCopyRpcTransportFactory.INSTANCE);
 
     if (session.enableRPCCompression) {
       client = new IClientRPCService.Client(new TCompactProtocol(transport));
