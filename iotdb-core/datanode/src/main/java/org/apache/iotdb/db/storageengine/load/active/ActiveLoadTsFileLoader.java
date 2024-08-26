@@ -231,6 +231,7 @@ public class ActiveLoadTsFileLoader {
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
+      pendingQueue.enqueue(filePair.getLeft(), filePair.getRight());
     } else {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
