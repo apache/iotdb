@@ -44,7 +44,6 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
-import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
@@ -209,7 +208,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   /////////////////////////////// subscription APIs ///////////////////////////////
 
-  Map<String, TopicConfig> heartbeat() throws SubscriptionException {
+  void heartbeat() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
@@ -223,9 +222,6 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
-    final PipeSubscribeHeartbeatResp heartbeatResp =
-        PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
-    return heartbeatResp.getTopics();
   }
 
   Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
