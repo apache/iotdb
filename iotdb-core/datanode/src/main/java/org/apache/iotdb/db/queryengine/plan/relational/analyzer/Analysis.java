@@ -383,8 +383,8 @@ public class Analysis implements IAnalysis {
     where.put(NodeRef.of(node), expression);
   }
 
-  public Expression getWhere(QuerySpecification node) {
-    return where.get(NodeRef.<Node>of(node));
+  public Expression getWhere(Node node) {
+    return where.get(NodeRef.of(node));
   }
 
   public Map<NodeRef<Node>, Expression> getWhereMap() {

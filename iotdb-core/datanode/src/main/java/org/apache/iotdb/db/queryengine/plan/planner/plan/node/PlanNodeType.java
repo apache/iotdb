@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -65,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedI
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -115,7 +117,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -203,9 +205,7 @@ public enum PlanNodeType {
   LOGICAL_VIEW_SCHEMA_SCAN((short) 77),
   ALTER_LOGICAL_VIEW((short) 78),
   PIPE_ENRICHED_INSERT_DATA((short) 79),
-
-  // NodeId 80 is used by IoTDB-ML which shouldn't be used.
-
+  INFERENCE((short) 80),
   LAST_QUERY_TRANSFORM((short) 81),
   TOP_K((short) 82),
   COLUMN_INJECT((short) 83),
@@ -231,11 +231,12 @@ public enum PlanNodeType {
 
   CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR((short) 97),
 
-  CREATE_TABLE_DEVICE((short) 902),
+  CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
   TABLE_DEVICE_FETCH((short) 904),
   DELETE_TABLE_DEVICE((short) 905),
   TABLE_DEVICE_QUERY_COUNT((short) 906),
+  TABLE_DEVICE_ATTRIBUTE_UPDATE((short) 907),
 
   TABLE_SCAN_NODE((short) 1000),
   TABLE_FILTER_NODE((short) 1001),
@@ -477,6 +478,8 @@ public enum PlanNodeType {
         return AlterLogicalViewNode.deserialize(buffer);
       case 79:
         return PipeEnrichedInsertNode.deserialize(buffer);
+      case 80:
+        return InferenceNode.deserialize(buffer);
       case 81:
         return LastQueryTransformNode.deserialize(buffer);
       case 82:
@@ -510,13 +513,15 @@ public enum PlanNodeType {
       case 96:
         return DeviceSchemaFetchScanNode.deserialize(buffer);
       case 902:
-        return CreateTableDeviceNode.deserialize(buffer);
+        return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
         return TableDeviceQueryScanNode.deserialize(buffer);
       case 904:
         return TableDeviceFetchNode.deserialize(buffer);
       case 906:
         return TableDeviceQueryCountNode.deserialize(buffer);
+      case 907:
+        return TableDeviceAttributeUpdateNode.deserialize(buffer);
       case 1000:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode
             .deserialize(buffer);
