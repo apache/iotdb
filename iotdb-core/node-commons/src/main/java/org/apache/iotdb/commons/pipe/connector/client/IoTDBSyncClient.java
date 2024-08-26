@@ -22,11 +22,11 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
@@ -100,12 +100,19 @@ public class IoTDBSyncClient extends IClientRPCService.Client
 
   @Override
   public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) throws TException {
-    final int bodySizeLimit = (int) (RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY * 0.8);
-
+    final int bodySizeLimit = PipeConfig.getInstance().getPipeConnectorRequestSliceThresholdBytes();
     if (req.getVersion() != IoTDBConnectorRequestVersion.VERSION_1.getVersion()
         || req.body.limit() < bodySizeLimit) {
       return super.pipeTransfer(req);
     }
+
+    LOGGER.warn(
+        "The body size of the request is too large. The request will be sliced. Origin req: {}-{}. "
+            + "Request body size: {}, threshold: {}",
+        req.getVersion(),
+        req.getType(),
+        req.body.limit(),
+        bodySizeLimit);
 
     try {
       final int sliceOrderId = SLICE_ORDER_ID_GENERATOR.getAndIncrement();
