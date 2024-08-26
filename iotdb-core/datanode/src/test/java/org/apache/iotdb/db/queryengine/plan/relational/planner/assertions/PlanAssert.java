@@ -70,7 +70,8 @@ public final class PlanAssert {
       if (!containsGroupReferences(actual)) {
         throw new AssertionError(
             format(
-                "Plan does not match, expected [\n\n%s\n] but found [\n\n%s\n]", pattern, actual));
+                "Plan does not match, expected [\n\n%s\n] but found [\n\n%s\n], matches:[%s]",
+                pattern, actual, matches));
       }
       // TODO support print plan tree
       PlanNode resolvedPlan = resolveGroupReferences(actual, lookup);

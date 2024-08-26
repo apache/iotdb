@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -298,6 +299,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern sort(List<Ordering> orderBy, PlanMatchPattern source) {
     return node(SortNode.class, source).with(new SortMatcher(orderBy));
+  }
+
+  public static PlanMatchPattern streamSort(List<Ordering> orderBy, PlanMatchPattern source) {
+    return node(StreamSortNode.class, source).with(new SortMatcher(orderBy));
   }
 
   /*public static PlanMatchPattern topN(long count, List<Ordering> orderBy, PlanMatchPattern source)
