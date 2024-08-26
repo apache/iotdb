@@ -27,6 +27,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import javax.annotation.Nonnull;
+import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Map;
 import java.util.Objects;
@@ -34,6 +35,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+@ThreadSafe
 public class TableDeviceCacheEntry {
 
   private static final long INSTANCE_SIZE =
@@ -119,7 +121,7 @@ public class TableDeviceCacheEntry {
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
     return (lastCache.compareAndSet(null, new TableDeviceLastCache())
-            ? TableDeviceLastCache.EMPTY_INSTANCE_SIZE
+            ? TableDeviceLastCache.INSTANCE_SIZE
             : 0)
         + tryUpdate(database, tableName, measurementUpdateMap);
   }
@@ -160,10 +162,16 @@ public class TableDeviceCacheEntry {
   /////////////////////////////// Management ///////////////////////////////
 
   public int estimateSize() {
+    final Map<String, String> map = attributeMap.get();
     final TableDeviceLastCache cache = lastCache.get();
     return (int)
         (INSTANCE_SIZE
-            + RamUsageEstimator.sizeOfMap(attributeMap.get())
+            + (Objects.nonNull(map)
+                ? RamUsageEstimator.NUM_BYTES_OBJECT_REF * map.size()
+                    + map.values().stream()
+                        .mapToInt(attrValue -> (int) RamUsageEstimator.sizeOf(attrValue))
+                        .reduce(0, Integer::sum)
+                : 0)
             + (Objects.nonNull(cache) ? cache.estimateSize() : 0));
   }
 }

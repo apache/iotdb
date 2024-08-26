@@ -37,10 +37,8 @@ import java.util.stream.Collectors;
 
 @ThreadSafe
 public class TableDeviceLastCache {
-  static final int EMPTY_INSTANCE_SIZE =
-      RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-          + Long.BYTES
-          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+  static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class);
 
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private long lastTime = Long.MIN_VALUE;
@@ -92,7 +90,7 @@ public class TableDeviceLastCache {
   }
 
   public int estimateSize() {
-    return EMPTY_INSTANCE_SIZE
+    return INSTANCE_SIZE
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF * measurement2CachedLastMap.size()
         + measurement2CachedLastMap.values().stream()
             .mapToInt(TimeValuePair::getSize)

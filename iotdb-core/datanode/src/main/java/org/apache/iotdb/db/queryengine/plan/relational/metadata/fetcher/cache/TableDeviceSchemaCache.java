@@ -30,6 +30,8 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentMap;
@@ -52,6 +54,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * Note that we do not tell whether an attributeKey exists here, and it shall be judged from table
  * schema.
  */
+@ThreadSafe
 public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
