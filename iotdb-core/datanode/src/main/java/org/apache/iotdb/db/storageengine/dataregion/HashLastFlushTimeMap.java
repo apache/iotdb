@@ -59,7 +59,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
 
-  // For recover and load
+  // For sync recover resource without fileTimeIndexCache and load
   @Override
   public void updateMultiDeviceFlushedTime(
       long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
@@ -79,14 +79,14 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
   }
 
-  // For recover only
+  // For async recover resource with fileTimeIndexCache
   @Override
   public void upgradeAndUpdateMultiDeviceFlushedTime(
       long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
     ILastFlushTime flushTimeMapForPartition =
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new DeviceLastFlushTime());
-    // upgrade
+    // upgrade DeviceLastFlushTime to PartitionLastFlushTime
     if (flushTimeMapForPartition instanceof PartitionLastFlushTime) {
       long maxFlushTime = flushTimeMapForPartition.getLastFlushTime(null);
       ILastFlushTime newDeviceLastFlushTime = new DeviceLastFlushTime();
@@ -100,7 +100,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       memCostForEachPartition.compute(
           timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
     } else {
-      // should not go here
+      // go here when DeviceLastFlushTime was recovered by wal recovery
       long memIncr = 0;
       for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
         if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
@@ -114,17 +114,25 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     }
   }
 
-  // For recover
+  // For fileTimeIndexCache recovered before the async resource recover start
   @Override
   public void updatePartitionFlushedTime(long timePartitionId, long maxFlushedTime) {
     ILastFlushTime flushTimeMapForPartition =
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new PartitionLastFlushTime(maxFlushedTime));
 
-    // todo
-    long memIncr = Long.BYTES;
-    flushTimeMapForPartition.updateLastFlushTime(null, maxFlushedTime);
-    memCostForEachPartition.putIfAbsent(timePartitionId, memIncr);
+    if (flushTimeMapForPartition instanceof PartitionLastFlushTime) {
+      long memIncr = Long.BYTES;
+      flushTimeMapForPartition.updateLastFlushTime(null, maxFlushedTime);
+      memCostForEachPartition.putIfAbsent(timePartitionId, memIncr);
+    } else {
+      // go here when DeviceLastFlushTime was recovered by wal recovery
+      DeviceLastFlushTime deviceLastFlushTime = (DeviceLastFlushTime) flushTimeMapForPartition;
+      Map<IDeviceID, Long> flushedTimeMap = deviceLastFlushTime.getDeviceLastFlushTimeMap();
+      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+        flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
+      }
+    }
   }
 
   @Override

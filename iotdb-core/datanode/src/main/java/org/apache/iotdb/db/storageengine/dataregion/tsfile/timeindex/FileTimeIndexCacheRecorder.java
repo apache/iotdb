@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +43,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent;
+import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.getFileTimeIndexSerializedSize;
 
 public class FileTimeIndexCacheRecorder {
 
@@ -75,9 +75,9 @@ public class FileTimeIndexCacheRecorder {
     }
   }
 
-  public void logFileTimeIndexes(List<TsFileResource> tsFileResources) {
-    if (!tsFileResources.isEmpty()) {
-      TsFileResource firstResource = tsFileResources.get(0);
+  public void logFileTimeIndex(TsFileResource... tsFileResources) {
+    if (tsFileResources != null && tsFileResources.length > 0) {
+      TsFileResource firstResource = tsFileResources[0];
       TsFileID tsFileID = firstResource.getTsFileID();
       int dataRegionId = tsFileID.regionId;
       long partitionId = tsFileID.timePartitionId;
@@ -89,7 +89,9 @@ public class FileTimeIndexCacheRecorder {
           taskQueue.offer(
               () -> {
                 try {
-                  ByteBuffer buffer = ByteBuffer.allocate(5 * Long.BYTES * tsFileResources.size());
+                  ByteBuffer buffer =
+                      ByteBuffer.allocate(
+                          getFileTimeIndexSerializedSize() * tsFileResources.length);
                   for (TsFileResource tsFileResource : tsFileResources) {
                     tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                   }
@@ -102,32 +104,6 @@ public class FileTimeIndexCacheRecorder {
       if (!result) {
         LOGGER.warn("Meet error when record FileTimeIndexCache");
       }
-    }
-  }
-
-  public void logFileTimeIndex(TsFileResource tsFileResource) {
-    TsFileID tsFileID = tsFileResource.getTsFileID();
-    int dataRegionId = tsFileID.regionId;
-    long partitionId = tsFileID.timePartitionId;
-    File dataRegionSysDir =
-        StorageEngine.getDataRegionSystemDir(
-            tsFileResource.getDatabaseName(), tsFileResource.getDataRegionId());
-
-    FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
-    boolean result =
-        taskQueue.offer(
-            () -> {
-              try {
-                ByteBuffer buffer = ByteBuffer.allocate(5 * Long.BYTES);
-                tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
-                buffer.flip();
-                writer.write(buffer);
-              } catch (IOException e) {
-                LOGGER.warn("Meet error when record FileTimeIndexCache: {}", e.getMessage());
-              }
-            });
-    if (!result) {
-      LOGGER.warn("Meet error when record FileTimeIndexCache");
     }
   }
 
@@ -146,7 +122,8 @@ public class FileTimeIndexCacheRecorder {
     int currentResourceCount =
         (sequenceFiles == null ? 0 : sequenceFiles.size())
             + (unsequenceFiles == null ? 0 : unsequenceFiles.size());
-    if (writer.getLogFile().length() > currentResourceCount * (5 * Long.BYTES) * 100) {
+    if (writer.getLogFile().length()
+        > currentResourceCount * getFileTimeIndexSerializedSize() * 100L) {
 
       boolean result =
           taskQueue.offer(
@@ -154,7 +131,9 @@ public class FileTimeIndexCacheRecorder {
                 try {
                   writer.clearFile();
                   if (sequenceFiles != null && !sequenceFiles.isEmpty()) {
-                    ByteBuffer buffer = ByteBuffer.allocate(5 * Long.BYTES * sequenceFiles.size());
+                    ByteBuffer buffer =
+                        ByteBuffer.allocate(
+                            getFileTimeIndexSerializedSize() * sequenceFiles.size());
                     for (TsFileResource tsFileResource : sequenceFiles) {
                       tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                     }
@@ -163,7 +142,8 @@ public class FileTimeIndexCacheRecorder {
                   }
                   if (unsequenceFiles != null && !unsequenceFiles.isEmpty()) {
                     ByteBuffer buffer =
-                        ByteBuffer.allocate(5 * Long.BYTES * unsequenceFiles.size());
+                        ByteBuffer.allocate(
+                            getFileTimeIndexSerializedSize() * unsequenceFiles.size());
                     for (TsFileResource tsFileResource : unsequenceFiles) {
                       tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                     }

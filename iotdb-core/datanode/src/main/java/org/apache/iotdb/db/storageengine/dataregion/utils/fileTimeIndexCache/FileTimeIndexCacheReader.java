@@ -30,6 +30,8 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.getFileTimeIndexSerializedSize;
+
 public class FileTimeIndexCacheReader {
 
   private final File logFile;
@@ -59,7 +61,7 @@ public class FileTimeIndexCacheReader {
             new TsFileID(dataRegionId, partitionId, timestamp, fileVersion, compactionVersion);
         FileTimeIndex fileTimeIndex = new FileTimeIndex(minStartTime, maxEndTime);
         fileTimeIndexMap.put(tsFileID, fileTimeIndex);
-        readLength += 5 * Long.BYTES;
+        readLength += getFileTimeIndexSerializedSize();
       }
     }
     return fileTimeIndexMap;

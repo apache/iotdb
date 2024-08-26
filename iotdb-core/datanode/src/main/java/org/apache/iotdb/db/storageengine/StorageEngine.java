@@ -184,6 +184,7 @@ public class StorageEngine implements IService {
     return isReadyForReadAndWrite.get();
   }
 
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
   public boolean isReadyForNonReadWriteFunctions() {
     return isReadyForNonReadWriteFunctions.get();
   }
@@ -364,6 +365,7 @@ public class StorageEngine implements IService {
                 for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
                   task.call();
                 }
+                dataRegion.initCompactionSchedule();
                 return null;
               };
           futures.add(cachedThreadPool.submit(taskOfRegion));

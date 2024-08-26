@@ -628,10 +628,9 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void updatePartitionLastFlushTime(TsFileResource resource) {
-    long timePartitionId = resource.getTimePartition();
     if (config.isEnableSeparateData()) {
       lastFlushTimeMap.updatePartitionFlushedTime(
-          timePartitionId, resource.getTimeIndex().getMaxEndTime());
+          resource.getTimePartition(), resource.getTimeIndex().getMaxEndTime());
     }
   }
 
@@ -970,7 +969,8 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : resourceList) {
       recoverSealedTsFiles(tsFileResource, context, isSeq);
     }
-    FileTimeIndexCacheRecorder.getInstance().logFileTimeIndexes(resourceList);
+    FileTimeIndexCacheRecorder.getInstance()
+        .logFileTimeIndex(resourceList.toArray(new TsFileResource[0]));
     if (config.isEnableSeparateData()) {
       if (!lastFlushTimeMap.checkAndCreateFlushedTimePartition(partitionId, true)) {
         TimePartitionManager.getInstance()
