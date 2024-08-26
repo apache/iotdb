@@ -91,7 +91,7 @@ public class TsFileOverlapValidationAndRepairTool {
 
   private static void moveSeqResourceToUnsequenceDir(TsFileResource resource) throws IOException {
     if (!resource.tsFileExists()) {
-      System.out.println(resource.getTsFile().getAbsolutePath() + " is not exist when repairing");
+      System.out.println(resource.getTsFile().getAbsolutePath() + " does not exist when repairing");
       return;
     }
     String dirPath = resource.getTsFile().getParentFile().getAbsolutePath();
