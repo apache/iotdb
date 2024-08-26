@@ -1073,6 +1073,11 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setPutLastCacheWhenWriting(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "put_last_cache_when_writing", String.valueOf(conf.getPutLastCacheWhenWriting()))));
+
     loadIoTConsensusProps(properties);
     loadPipeConsensusProps(properties);
   }

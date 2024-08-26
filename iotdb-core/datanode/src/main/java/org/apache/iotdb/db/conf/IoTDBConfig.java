@@ -1038,6 +1038,16 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  /**
+   * Whether to put last cache when writing, while:
+   *
+   * <p>{@code True} may cause lower memory utilization in scenarios like "written device num" >
+   * "max cached device num" > "queried device num"
+   *
+   * <p>{@code False} may significantly impact the first lastQuery of a device.
+   */
+  private boolean putLastCacheWhenWriting = true;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -3439,6 +3449,14 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public boolean getPutLastCacheWhenWriting() {
+    return putLastCacheWhenWriting;
+  }
+
+  public void setPutLastCacheWhenWriting(boolean putLastCacheWhenWriting) {
+    this.putLastCacheWhenWriting = putLastCacheWhenWriting;
   }
 
   public String getReadConsistencyLevel() {
