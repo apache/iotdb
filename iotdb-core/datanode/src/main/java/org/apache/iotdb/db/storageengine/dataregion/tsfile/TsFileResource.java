@@ -296,6 +296,7 @@ public class TsFileResource {
   }
 
   public void serializeFileTimeIndexToByteBuffer(ByteBuffer buffer) {
+    buffer.putLong(tsFileID.timestamp);
     buffer.putLong(tsFileID.fileVersion);
     buffer.putLong(tsFileID.compactionVersion);
     buffer.putLong(timeIndex.getMinStartTime());

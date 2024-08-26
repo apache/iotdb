@@ -89,7 +89,7 @@ public class FileTimeIndexCacheRecorder {
           taskQueue.offer(
               () -> {
                 try {
-                  ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES * tsFileResources.size());
+                  ByteBuffer buffer = ByteBuffer.allocate(5 * Long.BYTES * tsFileResources.size());
                   for (TsFileResource tsFileResource : tsFileResources) {
                     tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                   }
@@ -118,7 +118,7 @@ public class FileTimeIndexCacheRecorder {
         taskQueue.offer(
             () -> {
               try {
-                ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES);
+                ByteBuffer buffer = ByteBuffer.allocate(5 * Long.BYTES);
                 tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                 buffer.flip();
                 writer.write(buffer);
@@ -146,7 +146,7 @@ public class FileTimeIndexCacheRecorder {
     int currentResourceCount =
         (sequenceFiles == null ? 0 : sequenceFiles.size())
             + (unsequenceFiles == null ? 0 : unsequenceFiles.size());
-    if (writer.getLogFile().length() > currentResourceCount * (4 * Long.BYTES) * 100) {
+    if (writer.getLogFile().length() > currentResourceCount * (5 * Long.BYTES) * 100) {
 
       boolean result =
           taskQueue.offer(
@@ -154,7 +154,7 @@ public class FileTimeIndexCacheRecorder {
                 try {
                   writer.clearFile();
                   if (sequenceFiles != null && !sequenceFiles.isEmpty()) {
-                    ByteBuffer buffer = ByteBuffer.allocate(4 * Long.BYTES * sequenceFiles.size());
+                    ByteBuffer buffer = ByteBuffer.allocate(5 * Long.BYTES * sequenceFiles.size());
                     for (TsFileResource tsFileResource : sequenceFiles) {
                       tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                     }
@@ -163,7 +163,7 @@ public class FileTimeIndexCacheRecorder {
                   }
                   if (unsequenceFiles != null && !unsequenceFiles.isEmpty()) {
                     ByteBuffer buffer =
-                        ByteBuffer.allocate(4 * Long.BYTES * unsequenceFiles.size());
+                        ByteBuffer.allocate(5 * Long.BYTES * unsequenceFiles.size());
                     for (TsFileResource tsFileResource : unsequenceFiles) {
                       tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
                     }

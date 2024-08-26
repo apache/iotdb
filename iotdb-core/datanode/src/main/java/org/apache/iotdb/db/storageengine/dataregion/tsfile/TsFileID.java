@@ -117,13 +117,14 @@ public class TsFileID {
     TsFileID that = (TsFileID) o;
     return regionId == that.regionId
         && timePartitionId == that.timePartitionId
+        && timestamp == that.timestamp
         && fileVersion == that.fileVersion
         && compactionVersion == that.compactionVersion;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(regionId, timePartitionId, fileVersion, compactionVersion);
+    return Objects.hash(regionId, timePartitionId, timestamp, fileVersion, compactionVersion);
   }
 
   public long getTimestamp() {

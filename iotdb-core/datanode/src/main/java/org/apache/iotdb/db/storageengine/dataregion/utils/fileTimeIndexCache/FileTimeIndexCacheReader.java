@@ -50,14 +50,16 @@ public class FileTimeIndexCacheReader {
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())))) {
       long readLength = 0L;
       while (readLength < fileLength) {
+        long timestamp = logStream.readLong();
         long fileVersion = logStream.readLong();
         long compactionVersion = logStream.readLong();
         long minStartTime = logStream.readLong();
         long maxEndTime = logStream.readLong();
-        TsFileID tsFileID = new TsFileID(dataRegionId, partitionId, fileVersion, compactionVersion);
+        TsFileID tsFileID =
+            new TsFileID(dataRegionId, partitionId, timestamp, fileVersion, compactionVersion);
         FileTimeIndex fileTimeIndex = new FileTimeIndex(minStartTime, maxEndTime);
         fileTimeIndexMap.put(tsFileID, fileTimeIndex);
-        readLength += 4 * Long.BYTES;
+        readLength += 5 * Long.BYTES;
       }
     }
     return fileTimeIndexMap;
