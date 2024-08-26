@@ -21,8 +21,10 @@ package org.apache.iotdb.session.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.rpc.BaseRpcTransportFactory;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.ZeroCopyRpcTransportFactory;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 import org.apache.iotdb.session.Session;
@@ -64,6 +66,18 @@ public class SubscriptionSessionConnection extends SessionConnection {
         retryIntervalInMs,
         sqlDialect,
         database);
+  }
+
+  @Override
+  protected void initTransport(
+      TEndPoint endPoint,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd,
+      final BaseRpcTransportFactory rpcTransportFactory)
+      throws IoTDBConnectionException {
+    this.initTransportInternal(
+        endPoint, useSSL, trustStore, trustStorePwd, ZeroCopyRpcTransportFactory.INSTANCE);
   }
 
   // from org.apache.iotdb.session.NodesSupplier.updateDataNodeList
