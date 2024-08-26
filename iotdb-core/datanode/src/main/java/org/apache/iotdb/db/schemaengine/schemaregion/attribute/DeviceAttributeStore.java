@@ -104,19 +104,22 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath) {
+  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath)
+      throws IOException {
+    final File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
+    if (!snapshot.exists()) {
+      logger.info(
+          "Device attribute snapshot {} not found, consider it as upgraded from the older version, use empty attributes",
+          snapshot);
+      return;
+    }
     try (final BufferedInputStream inputStream =
-        new BufferedInputStream(
-            Files.newInputStream(
-                SystemFileFactory.INSTANCE
-                    .getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT)
-                    .toPath()))) {
+        new BufferedInputStream(Files.newInputStream(snapshot.toPath()))) {
       deserialize(inputStream);
     } catch (final IOException e) {
-      logger.warn(
-          "Load device attribute snapshot from {} failed, message: {}, use empty attributes",
-          snapshotDir,
-          e.getMessage());
+      logger.warn("Load device attribute snapshot from {} failed", snapshotDir);
+      throw e;
     }
   }
 
