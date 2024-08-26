@@ -44,8 +44,9 @@ public class TableDeviceCacheEntry {
   // create from remote
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
-  private ConcurrentHashMap<String, String> attributeMap = null;
-  private AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
+  private final AtomicReference<ConcurrentHashMap<String, String>> attributeMap =
+      new AtomicReference<>();
+  private final AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
   /////////////////////////////// Attribute ///////////////////////////////
 
@@ -53,55 +54,62 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final @Nonnull Map<String, String> attributeSetMap) {
-    int result = 0;
-    if (Objects.isNull(attributeMap)) {
-      attributeMap = new ConcurrentHashMap<>();
-      result += (int) RamUsageEstimator.shallowSizeOf(attributeMap);
-    }
-    return result + updateAttribute(database, tableName, attributeSetMap);
+    return (attributeMap.compareAndSet(null, new ConcurrentHashMap<>())
+            ? (int) RamUsageEstimator.shallowSizeOf(attributeMap)
+            : 0)
+        + +updateAttribute(database, tableName, attributeSetMap);
   }
 
-  // The caller shall ensure that the update and invalidate of a device's attribute is sequential
   public int updateAttribute(
       final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
+    final Map<String, String> map = attributeMap.get();
+    if (Objects.isNull(map)) {
+      return 0;
+    }
     final AtomicInteger diff = new AtomicInteger(0);
     updateMap.forEach(
         (k, v) -> {
           if (Objects.nonNull(v)) {
-            if (!attributeMap.containsKey(k)) {
+            if (!map.containsKey(k)) {
               k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
               diff.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
             }
             diff.addAndGet(
-                (int)
-                    (RamUsageEstimator.sizeOf(v)
-                        - RamUsageEstimator.sizeOf(attributeMap.put(k, v))));
+                (int) (RamUsageEstimator.sizeOf(v) - RamUsageEstimator.sizeOf(map.put(k, v))));
           } else {
-            attributeMap.remove(k);
+            map.remove(k);
             diff.addAndGet((int) (-RamUsageEstimator.sizeOf(k) - RamUsageEstimator.sizeOf(v)));
           }
         });
-    return diff.get();
+    // Typically the "update" and "invalidate" won't be concurrently called
+    // Here we reserve the check for consistency and potential safety
+    return Objects.nonNull(attributeMap.get()) ? diff.get() : 0;
   }
 
-  // The caller shall ensure that the update and invalidate of a device's attribute is sequential
   public int invalidateAttribute() {
-    final int size =
-        (int)
-            (RamUsageEstimator.NUM_BYTES_OBJECT_REF * attributeMap.size()
-                + attributeMap.values().stream()
-                    .mapToLong(RamUsageEstimator::sizeOf)
-                    .reduce(0, Long::sum));
-    attributeMap = null;
-    return size;
+    final AtomicInteger size = new AtomicInteger(0);
+    attributeMap.updateAndGet(
+        map -> {
+          if (Objects.nonNull(map)) {
+            size.set(
+                (int)
+                    (RamUsageEstimator.NUM_BYTES_OBJECT_REF * map.size()
+                        + map.values().stream()
+                            .mapToLong(RamUsageEstimator::sizeOf)
+                            .reduce(0, Long::sum)));
+          }
+          return null;
+        });
+    return size.get();
   }
 
   public String getAttribute(final String key) {
-    return attributeMap.get(key);
+    final Map<String, String> map = attributeMap.get();
+    return Objects.nonNull(map) ? map.get(key) : null;
   }
 
   public Map<String, String> getAttributeMap() {
-    return attributeMap;
+    return attributeMap.get();
   }
 
   /////////////////////////////// Last Cache ///////////////////////////////
@@ -155,7 +163,7 @@ public class TableDeviceCacheEntry {
     final TableDeviceLastCache cache = lastCache.get();
     return (int)
         (INSTANCE_SIZE
-            + RamUsageEstimator.sizeOfMap(attributeMap)
+            + RamUsageEstimator.sizeOfMap(attributeMap.get())
             + (Objects.nonNull(cache) ? cache.estimateSize() : 0));
   }
 }
