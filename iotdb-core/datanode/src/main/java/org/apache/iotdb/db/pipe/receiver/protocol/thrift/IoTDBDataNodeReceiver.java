@@ -521,8 +521,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   }
 
   private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
-    final boolean isOutOfOrder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
-    if (isOutOfOrder) {
+    final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
+    if (!isInorder) {
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
