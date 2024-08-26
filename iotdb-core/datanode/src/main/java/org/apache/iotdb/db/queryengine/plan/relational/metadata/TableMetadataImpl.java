@@ -46,7 +46,6 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
@@ -65,6 +64,7 @@ import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class TableMetadataImpl implements Metadata {
 
@@ -455,6 +455,16 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
+    } else if (TableBuiltinScalarFunction.DATE_BIN
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 4 && isTimestampType(argumentTypes.get(2)))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
+      }
+      return TIMESTAMP;
     }
 
     // builtin aggregation function
@@ -680,7 +690,11 @@ public class TableMetadataImpl implements Metadata {
         || FLOAT.equals(type)
         || INT32.equals(type)
         || INT64.equals(type)
-        || TimestampType.TIMESTAMP.equals(type);
+        || TIMESTAMP.equals(type);
+  }
+
+  public static boolean isTimestampType(Type type) {
+    return TIMESTAMP.equals(type);
   }
 
   public static boolean isIntegerNumber(Type type) {

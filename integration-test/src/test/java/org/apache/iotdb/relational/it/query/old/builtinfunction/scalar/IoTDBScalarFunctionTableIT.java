@@ -322,6 +322,20 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO upperTable(Time,device_id,s1) values(3, 'd1', 'Abcdefg')",
         "INSERT INTO upperTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO upperTable(Time,device_id,s9) values(3, 'd1', 'Abcdefg')",
+        // dateBinSQL use s8 to calculate
+        "create table dateBinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        // 2024-01-01T00:00:00.000Z
+        "INSERT INTO dateBinTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'Test', 1, 1, 1, 1, true, '2024-01-01', 1704067200000, 'abcd', X'abcd')",
+        // 2024-01-01T01:00:00.000Z
+        "INSERT INTO dateBinTable(Time,device_id,s1,s8) values(2, 'd1', 'Test', 1704070800000)",
+        // 2024-01-01T01:59:00.000Z
+        "INSERT INTO dateBinTable(Time,device_id,s1,s8) values(3, 'd1', 'Test', 1704074340000)",
+        // 2023-12-31T23:59:00.000Z
+        "INSERT INTO dateBinTable(Time,device_id,s1,s8) values(4, 'd1', 'Test', 1704067140000)",
+        // 1969-12-31T23:59:00.000Z
+        "INSERT INTO dateBinTable(Time,device_id,s1,s8) values(5, 'd1', 'Test', -60000)",
+        // null
+        "INSERT INTO dateBinTable(Time,device_id,s1,s8) values(6, 'd1', 'Test', null)",
         "flush"
       };
 
@@ -2664,6 +2678,46 @@ public class IoTDBScalarFunctionTableIT {
         "select s10,upper(s10) from upperTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Scalar function upper only accepts one argument and it must be text or string data type.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void dateBinTestNormal() {
+    String[] expectedHeader = new String[] {"time", "s1", "s8", "_col3"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,Test,2024-01-01T00:00:00.000Z,2024-01-01T00:00:00.000Z,",
+          "1970-01-01T00:00:00.002Z,Test,2024-01-01T01:00:00.000Z,2024-01-01T01:00:00.000Z,",
+          "1970-01-01T00:00:00.003Z,Test,2024-01-01T01:59:00.000Z,2024-01-01T01:00:00.000Z,",
+          "1970-01-01T00:00:00.004Z,Test,2023-12-31T23:59:00.000Z,2023-12-31T23:00:00.000Z,",
+          "1970-01-01T00:00:00.005Z,Test,1969-12-31T23:59:00.000Z,1969-12-31T23:00:00.000Z,",
+          "1970-01-01T00:00:00.006Z,Test,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time,s1,s8,date_bin(1H, s8) from dateBinTable",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void dateBinTestFail() {
+    tableAssertTestFail(
+        "select time,s1,s8,date_bin(1H,s8,0,0) from dateBinTable",
+        TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            + ": line 1:35: mismatched input ','. Expecting: ')'",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select time,s1,s8,date_bin(1H,s1) from dateBinTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Scalar function date_bin only accepts two or three arguments and the second and third must be TimeStamp data type.",
+        DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select time,s1,s8,date_bin(1MONTH 1DAY,s8) from dateBinTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Simultaneous setting of monthly and non-monthly intervals is not supported.",
         DATABASE_NAME);
   }
 }

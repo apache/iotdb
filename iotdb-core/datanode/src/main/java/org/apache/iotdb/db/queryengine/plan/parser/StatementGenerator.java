@@ -70,6 +70,7 @@ import org.apache.iotdb.db.schemaengine.template.TemplateQueryType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.mpp.rpc.thrift.TFetchTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -895,5 +896,9 @@ public class StatementGenerator {
     }
     MetaFormatUtils.checkDatabase(database);
     return databasePath;
+  }
+
+  public static Statement createStatement(TFetchTimeseriesReq fetchTimeseriesReq, ZoneId zoneId) {
+    return invokeParser(fetchTimeseriesReq.getQueryBody(), zoneId);
   }
 }
