@@ -227,7 +227,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                               cacheEntryManager.createCacheEntry(
                                   secondKey, value, finalCacheEntryGroup);
                           cacheEntryManager.put(entry);
-                          usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
+                          usedMemorySize.getAndAdd(
+                              sizeComputer.computeSecondKeySize(sk)
+                                  + sizeComputer.computeValueSize(entry.getValue()));
                           return entry;
                         })
                     : cacheEntryGroup.getCacheEntry(secondKey);
