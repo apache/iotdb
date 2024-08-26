@@ -102,6 +102,7 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
+
       Response response = authorizationHandler.checkAuthority(securityContext, statement);
       if (response != null) {
         return response;
@@ -139,9 +140,12 @@ public class RestApiServiceImpl extends RestApiService {
                 CommonUtils.addStatementExecutionLatency(
                     OperationType.EXECUTE_NON_QUERY_PLAN, s.getType().name(), costTime);
               });
-      if (finish) {
-        long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
-        CommonUtils.addQueryLatency(statement.getType(), executeTime);
+      if (queryId != null) {
+        if (finish) {
+          long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
+          CommonUtils.addQueryLatency(
+              statement.getType(), executeTime > 0 ? executeTime : costTime);
+        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -217,9 +221,12 @@ public class RestApiServiceImpl extends RestApiService {
                 CommonUtils.addStatementExecutionLatency(
                     OperationType.EXECUTE_QUERY_STATEMENT, s.getType().name(), costTime);
               });
-      if (finish) {
-        long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
-        CommonUtils.addQueryLatency(statement.getType(), executeTime);
+      if (queryId != null) {
+        if (finish) {
+          long executeTime = COORDINATOR.getTotalExecutionTime(queryId);
+          CommonUtils.addQueryLatency(
+              statement.getType(), executeTime > 0 ? executeTime : costTime);
+        }
         COORDINATOR.cleanupQueryExecution(queryId);
       }
     }
@@ -262,6 +269,7 @@ public class RestApiServiceImpl extends RestApiService {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold());
+
       return Response.ok()
           .entity(
               (result.status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
