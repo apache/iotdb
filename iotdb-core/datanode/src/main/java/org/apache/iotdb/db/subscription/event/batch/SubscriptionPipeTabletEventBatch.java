@@ -68,6 +68,9 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
   }
 
+  /**
+   * @return {@code true} if a new event has been consumed.
+   */
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
     if (shouldEmit()) {
@@ -83,9 +86,12 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
     return false;
   }
 
+  /**
+   * @return {@code true} if a new event has been consumed.
+   */
   @Override
   public synchronized boolean onEvent(
-      @NonNull final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
+      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
     if (event instanceof TabletInsertionEvent) {
       onEventInternal((TabletInsertionEvent) event); // no exceptions will be thrown
     }

@@ -58,27 +58,31 @@ public class SubscriptionPipeEventBatches {
     this.regionIdToBatch = new ConcurrentHashMap<>();
   }
 
+  /**
+   * @return {@code true} if a new event has been consumed.
+   */
   public boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
     final AtomicBoolean hasNew = new AtomicBoolean(false);
-    for (final SubscriptionPipeEventBatch batch : ImmutableList.copyOf(regionIdToBatch.values())) {
+    for (final int regionId : ImmutableList.copyOf(regionIdToBatch.keySet())) {
       regionIdToBatch.compute(
-          batch.getRegionId(),
-          (key, theBatch) -> {
-            if (Objects.isNull(theBatch)) {
+          regionId,
+          (key, batch) -> {
+            if (Objects.isNull(batch)) {
               return null;
             }
 
             try {
-              if (theBatch.onEvent(consumer)) {
+              if (batch.onEvent(consumer)) {
                 hasNew.set(true);
                 return null; // remove this entry
               }
+              // Seal this batch next time.
             } catch (final Exception e) {
-              LOGGER.warn("Exception occurred when sealing events from batch {}", theBatch, e);
+              LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
               // Seal this batch next time.
             }
 
-            return theBatch;
+            return batch;
           });
 
       if (hasNew.get()) {
@@ -89,45 +93,48 @@ public class SubscriptionPipeEventBatches {
     return hasNew.get();
   }
 
+  /**
+   * @return {@code true} if a new event has been consumed.
+   */
   public boolean onEvent(
       @NonNull final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
     final int regionId =
         PipeEventCommitManager.parseRegionIdFromCommitterKey(event.getCommitterKey());
+
     final AtomicBoolean hasNew = new AtomicBoolean(false);
-    while (true) {
-      regionIdToBatch.compute(
-          regionId,
-          (key, theBatch) -> {
-            if (Objects.isNull(theBatch)) {
-              theBatch =
-                  prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
-                      ? new SubscriptionPipeTabletEventBatch(
-                          key,
-                          (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
-                          maxDelayInMs,
-                          maxBatchSizeInBytes)
-                      : new SubscriptionPipeTsFileEventBatch(
-                          key,
-                          (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
-                          maxDelayInMs,
-                          maxBatchSizeInBytes);
+    regionIdToBatch.compute(
+        regionId,
+        (key, batch) -> {
+          if (Objects.isNull(batch)) {
+            batch =
+                prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue
+                    ? new SubscriptionPipeTabletEventBatch(
+                        key,
+                        (SubscriptionPrefetchingTabletQueue) prefetchingQueue,
+                        maxDelayInMs,
+                        maxBatchSizeInBytes)
+                    : new SubscriptionPipeTsFileEventBatch(
+                        key,
+                        (SubscriptionPrefetchingTsFileQueue) prefetchingQueue,
+                        maxDelayInMs,
+                        maxBatchSizeInBytes);
+          }
+
+          try {
+            if (batch.onEvent(event, consumer)) {
+              hasNew.set(true);
+              return null; // remove this entry
             }
+            // Seal this batch next time.
+          } catch (final Exception e) {
+            LOGGER.warn("Exception occurred when sealing events from batch {}", batch, e);
+            // Seal this batch next time.
+          }
 
-            try {
-              if (theBatch.onEvent(event, consumer)) {
-                hasNew.set(true);
-                return null; // remove this entry
-              }
-            } catch (final Exception e) {
-              LOGGER.warn("Exception occurred when sealing events from batch {}", theBatch, e);
-              // Seal this batch next time.
-            }
+          return batch;
+        });
 
-            return theBatch;
-          });
-
-      return hasNew.get();
-    }
+    return hasNew.get();
   }
 
   public void cleanUp() {

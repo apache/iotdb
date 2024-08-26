@@ -52,10 +52,17 @@ public abstract class SubscriptionPipeEventBatch {
     this.maxBatchSizeInBytes = maxBatchSizeInBytes;
   }
 
-  public abstract boolean onEvent(Consumer<SubscriptionEvent> consumer) throws Exception;
+  /**
+   * @return {@code true} if a new event has been consumed.
+   */
+  public abstract boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception;
 
+  /**
+   * @return {@code true} if a new event has been consumed.
+   */
   public abstract boolean onEvent(
-      @NonNull final EnrichedEvent event, Consumer<SubscriptionEvent> consumer) throws Exception;
+      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
+      throws Exception;
 
   public abstract void cleanUp();
 
