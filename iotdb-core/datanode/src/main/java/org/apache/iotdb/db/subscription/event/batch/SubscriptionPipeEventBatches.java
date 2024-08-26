@@ -97,7 +97,7 @@ public class SubscriptionPipeEventBatches {
    * @return {@code true} if there are subscription events consumed.
    */
   public boolean onEvent(
-      @NonNull final EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
+      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
     final int regionId =
         PipeEventCommitManager.parseRegionIdFromCommitterKey(event.getCommitterKey());
 
