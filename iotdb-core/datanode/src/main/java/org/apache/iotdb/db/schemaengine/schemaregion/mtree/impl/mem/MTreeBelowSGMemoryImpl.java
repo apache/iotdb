@@ -21,12 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
@@ -45,6 +43,7 @@ import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateExceptio
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.quota.ExceedQuotaException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -1101,9 +1100,7 @@ public class MTreeBelowSGMemoryImpl {
 
   // Used for device query/fetch with filters during show device or table query
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      final PartialPath pattern,
-      final SchemaFilter deviceFilter,
-      final BiFunction<Integer, String, String> attributeProvider)
+      final PartialPath pattern, final BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
 
     final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
@@ -1127,9 +1124,6 @@ public class MTreeBelowSGMemoryImpl {
         };
     return new ISchemaReader<IDeviceSchemaInfo>() {
 
-      private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
-      private IDeviceSchemaInfo next;
-
       public boolean isSuccess() {
         return collector.isSuccess();
       }
@@ -1147,31 +1141,13 @@ public class MTreeBelowSGMemoryImpl {
       }
 
       public boolean hasNext() {
-        while (next == null && collector.hasNext()) {
-          final IDeviceSchemaInfo temp = collector.next();
-          if (deviceFilter == null || filterVisitor.process(deviceFilter, temp)) {
-            next = temp;
-          }
-        }
-        return next != null;
+        return collector.hasNext();
       }
 
       public IDeviceSchemaInfo next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        final IDeviceSchemaInfo result = next;
-        next = null;
-        return result;
+        return collector.next();
       }
     };
-  }
-
-  private int computeSmallestNullableIndex(final PartialPath partialPath) {
-    if (!(partialPath instanceof ExtendedPartialPath)) {
-      return partialPath.getNodeLength() - 1;
-    }
-    return 0;
   }
 
   // used for device fetch with explicit device id/path during table insertion
@@ -1231,7 +1207,7 @@ public class MTreeBelowSGMemoryImpl {
             final IDeviceMNode<IMemMNode> deviceNode = node.getAsDeviceMNode();
             final ShowDevicesResult result =
                 new ShowDevicesResult(
-                    deviceNode.getFullPath(),
+                    null,
                     deviceNode.isAlignedNullable(),
                     deviceNode.getSchemaTemplateId(),
                     deviceNode.getPartialPath().getNodes());
@@ -1537,7 +1513,7 @@ public class MTreeBelowSGMemoryImpl {
 
   public void createTableDevice(
       final String tableName,
-      final Object[] devicePath,
+      final String[] devicePath,
       final IntSupplier attributePointerGetter,
       final IntConsumer attributeUpdater)
       throws MetadataException {
@@ -1550,8 +1526,7 @@ public class MTreeBelowSGMemoryImpl {
               storageGroupMNode, tableName, nodeFactory.createInternalMNode(cur, tableName));
     }
 
-    for (final Object o : devicePath) {
-      final String childName = o == null ? null : o.toString();
+    for (final String childName : devicePath) {
       IMemMNode child = cur.getChild(childName);
       if (child == null) {
         child = store.addChild(cur, childName, nodeFactory.createInternalMNode(cur, childName));
@@ -1577,6 +1552,22 @@ public class MTreeBelowSGMemoryImpl {
         entityMNode.getAsInternalMNode().setDeviceInfo(deviceInfo);
         regionStatistics.addDevice();
       }
+    }
+  }
+
+  public void updateTableDevice(
+      final PartialPath pattern, final DeviceAttributeUpdater batchUpdater)
+      throws MetadataException {
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            batchUpdater.handleDeviceNode(node);
+          }
+        }) {
+      updater.update();
     }
   }
 

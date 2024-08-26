@@ -19,11 +19,41 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-public class CountDevice extends AbstractQueryDevice {
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+
+import java.util.Collections;
+
+public class CountDevice extends AbstractQueryDeviceWithCache {
+
+  public static final String COUNT_DEVICE_HEADER_STRING = "count(devices)";
 
   // For sql-input show device usage
-  public CountDevice(final QualifiedName name, final Expression rawExpression) {
-    super(name, rawExpression);
+  public CountDevice(
+      final NodeLocation location, final Table table, final Expression rawExpression) {
+    super(location, table, rawExpression);
+  }
+
+  @Override
+  public DatasetHeader getDataSetHeader() {
+    return new DatasetHeader(
+        Collections.singletonList(new ColumnHeader(COUNT_DEVICE_HEADER_STRING, TSDataType.INT64)),
+        true);
+  }
+
+  @Override
+  public TsBlock getTsBlock(final Analysis analysis) {
+    final TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeLong(results.size());
+    tsBlockBuilder.declarePosition();
+    return tsBlockBuilder.build();
   }
 
   @Override

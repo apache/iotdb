@@ -29,7 +29,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice.COUNT_DEVICE_HEADER_STRING;
 
 public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
 
@@ -49,6 +52,11 @@ public class TableDeviceQueryCountNode extends AbstractTableDeviceQueryNode {
         idFuzzyPredicate,
         columnHeaderList,
         schemaRegionReplicaSet);
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    return Collections.singletonList(COUNT_DEVICE_HEADER_STRING);
   }
 
   @Override

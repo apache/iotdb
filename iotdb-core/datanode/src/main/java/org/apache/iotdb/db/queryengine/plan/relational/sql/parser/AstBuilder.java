@@ -82,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NaturalJoin;
@@ -125,6 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
@@ -143,6 +145,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.SetConfigurationStatement;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
@@ -161,12 +164,14 @@ import javax.annotation.Nullable;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -179,11 +184,11 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseDateTimeFormat;
-import static org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor.parseStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.CUBE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.EXPLICIT;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets.Type.ROLLUP;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName.mapIdentifier;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction.DATE_BIN;
 
 public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
@@ -254,7 +259,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitCreateTableStatement(RelationalSqlParser.CreateTableStatementContext ctx) {
+  public Node visitCreateTableStatement(final RelationalSqlParser.CreateTableStatementContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.properties() != null) {
       properties = visit(ctx.properties().propertyAssignments().property(), Property.class);
@@ -271,11 +276,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitColumnDefinition(RelationalSqlParser.ColumnDefinitionContext ctx) {
+  public Node visitColumnDefinition(final RelationalSqlParser.ColumnDefinitionContext ctx) {
     return new ColumnDefinition(
         getLocation(ctx),
         lowerIdentifier((Identifier) visit(ctx.identifier())),
-        (DataType) visit(ctx.type()),
+        Objects.nonNull(ctx.type()) ? (DataType) visit(ctx.type()) : null,
         getColumnCategory(ctx.columnCategory),
         ctx.charsetName() == null
             ? null
@@ -309,8 +314,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitAddColumn(RelationalSqlParser.AddColumnContext ctx) {
-    return new AddColumn(getQualifiedName(ctx.tableName), (ColumnDefinition) visit(ctx.column));
+  public Node visitAddColumn(final RelationalSqlParser.AddColumnContext ctx) {
+    return new AddColumn(
+        getLocation(ctx),
+        getQualifiedName(ctx.tableName),
+        (ColumnDefinition) visit(ctx.column),
+        ctx.EXISTS().size() == (Objects.nonNull(ctx.NOT()) ? 2 : 1),
+        Objects.nonNull(ctx.NOT()));
   }
 
   @Override
@@ -331,7 +341,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitSetTableProperties(RelationalSqlParser.SetTablePropertiesContext ctx) {
+  public Node visitSetTableProperties(final RelationalSqlParser.SetTablePropertiesContext ctx) {
     List<Property> properties = ImmutableList.of();
     if (ctx.propertyAssignments() != null) {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
@@ -340,7 +350,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         SetProperties.Type.TABLE,
         getQualifiedName(ctx.qualifiedName()),
-        properties);
+        properties,
+        Objects.nonNull(ctx.EXISTS()));
   }
 
   @Override
@@ -409,9 +420,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     List<InsertRowStatement> rowStatements =
         rows.stream()
             .map(
-                r ->
-                    toInsertRowStatement(
-                        ((Row) r), finalTimeColumnIndex, columnNameArray, tableName, databaseName))
+                r -> {
+                  List<Expression> expressions;
+                  if (r instanceof Row) {
+                    expressions = ((Row) r).getItems();
+                  } else if (r instanceof Literal) {
+                    expressions = Collections.singletonList(r);
+                  } else {
+                    throw new SemanticException("unexpected expression: " + r);
+                  }
+                  return toInsertRowStatement(
+                      expressions, finalTimeColumnIndex, columnNameArray, tableName, databaseName);
+                })
             .collect(toList());
 
     InsertRowsStatement insertRowsStatement = new InsertRowsStatement();
@@ -421,7 +441,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   private InsertRowStatement toInsertRowStatement(
-      Row row,
+      List<Expression> expressions,
       int timeColumnIndex,
       String[] nonTimeColumnNames,
       String tableName,
@@ -433,9 +453,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     int nonTimeColCnt;
     if (timeColumnIndex == -1) {
       timestamp = CommonDateTimeUtils.currentTime();
-      nonTimeColCnt = row.getItems().size();
+      nonTimeColCnt = expressions.size();
     } else {
-      Expression timeExpression = row.getItems().get(timeColumnIndex);
+      Expression timeExpression = expressions.get(timeColumnIndex);
       if (timeExpression instanceof LongLiteral) {
         timestamp = ((LongLiteral) timeExpression).getParsedValue();
       } else {
@@ -445,7 +465,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
                 CommonDateTimeUtils.currentTime(),
                 zoneId);
       }
-      nonTimeColCnt = row.getItems().size() - 1;
+      nonTimeColCnt = expressions.size() - 1;
     }
 
     if (nonTimeColCnt != nonTimeColumnNames.length) {
@@ -461,15 +481,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     Object[] values = new Object[nonTimeColumnNames.length];
     int valuePos = 0;
-    for (int i = 0; i < row.getItems().size(); i++) {
+    for (int i = 0; i < expressions.size(); i++) {
       if (i != timeColumnIndex) {
-        values[valuePos++] = AstUtil.expressionToTsValue(row.getItems().get(i));
+        values[valuePos++] = AstUtil.expressionToTsValue(expressions.get(i));
       }
     }
 
     insertRowStatement.setValues(values);
     insertRowStatement.setNeedInferType(true);
-    databaseName.ifPresent(insertRowStatement::setDatabaseName);
+    databaseName.ifPresent(
+        databaseName1 -> insertRowStatement.setDatabaseName(databaseName1.toLowerCase()));
     return insertRowStatement;
   }
 
@@ -487,19 +508,14 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitUpdateStatement(RelationalSqlParser.UpdateStatementContext ctx) {
-    if (ctx.booleanExpression() != null) {
-      return new Update(
-          getLocation(ctx),
-          new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-          visit(ctx.updateAssignment(), UpdateAssignment.class),
-          (Expression) visit(ctx.booleanExpression()));
-    } else {
-      return new Update(
-          getLocation(ctx),
-          new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
-          visit(ctx.updateAssignment(), UpdateAssignment.class));
-    }
+  public Node visitUpdateStatement(final RelationalSqlParser.UpdateStatementContext ctx) {
+    return new Update(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        visit(ctx.updateAssignment(), UpdateAssignment.class),
+        Objects.nonNull(ctx.booleanExpression())
+            ? (Expression) visit(ctx.booleanExpression())
+            : null);
   }
 
   @Override
@@ -535,20 +551,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitShowDevicesStatement(final RelationalSqlParser.ShowDevicesStatementContext ctx) {
-    if (ctx.WHERE() != null || ctx.LIMIT() != null || ctx.OFFSET() != null) {
-      throw new UnsupportedOperationException(
-          "Show devices with WHERE/LIMIT/OFFSET is unsupported yet.");
-    }
-    return new ShowDevice(getQualifiedName(ctx.tableName), null);
+    return new ShowDevice(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        visitIfPresent(ctx.where, Expression.class).orElse(null),
+        visitIfPresent(ctx.offset, Offset.class).orElse(null),
+        visitIfPresent(ctx.limit, Node.class).orElse(null));
   }
 
   @Override
   public Node visitCountDevicesStatement(
       final RelationalSqlParser.CountDevicesStatementContext ctx) {
-    if (ctx.WHERE() != null) {
-      throw new UnsupportedOperationException("Count devices with WHERE is unsupported yet.");
-    }
-    return new CountDevice(getQualifiedName(ctx.tableName), null);
+    return new CountDevice(
+        getLocation(ctx),
+        new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
+        visitIfPresent(ctx.where, Expression.class).orElse(null));
   }
 
   @Override
@@ -705,8 +722,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       properties = visit(ctx.propertyAssignments().property(), Property.class);
     }
     for (Property property : properties) {
-      String key = parseStringLiteral(property.getName().getValue());
-      String value = parseStringLiteral(property.getNonDefaultValue().toString());
+      String key = property.getName().getValue();
+      Expression propertyValue = property.getNonDefaultValue();
+      if (!propertyValue.getExpressionType().equals(TableExpressionType.STRING_LITERAL)) {
+        throw new IllegalArgumentException(
+            propertyValue.getExpressionType() + " is not supported for 'set configuration'");
+      }
+      String value = ((StringLiteral) propertyValue).getValue();
       configItems.put(key, value);
     }
     setConfigurationStatement.setNodeId(nodeId);
@@ -778,14 +800,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     Optional<Offset> offset = Optional.empty();
     if (ctx.OFFSET() != null) {
-      Expression rowCount;
-      if (ctx.offset.INTEGER_VALUE() != null) {
-        rowCount = new LongLiteral(getLocation(ctx.offset.INTEGER_VALUE()), ctx.offset.getText());
-      } else {
-        rowCount = new Parameter(getLocation(ctx.offset.QUESTION_MARK()), parameterPosition);
-        parameterPosition++;
-      }
-      offset = Optional.of(new Offset(getLocation(ctx.OFFSET()), rowCount));
+      offset = visitIfPresent(ctx.offset, Offset.class);
     }
 
     Optional<Node> limit = Optional.empty();
@@ -793,19 +808,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       if (ctx.limit == null) {
         throw new IllegalStateException("Missing LIMIT value");
       }
-      Expression rowCount;
-      if (ctx.limit.ALL() != null) {
-        rowCount = new AllRows(getLocation(ctx.limit.ALL()));
-      } else if (ctx.limit.rowCount().INTEGER_VALUE() != null) {
-        rowCount =
-            new LongLiteral(getLocation(ctx.limit.rowCount().INTEGER_VALUE()), ctx.limit.getText());
-      } else {
-        rowCount =
-            new Parameter(getLocation(ctx.limit.rowCount().QUESTION_MARK()), parameterPosition);
-        parameterPosition++;
-      }
-
-      limit = Optional.of(new Limit(getLocation(ctx.LIMIT()), rowCount));
+      limit = visitIfPresent(ctx.limit, Node.class);
     }
 
     if (term instanceof QuerySpecification) {
@@ -815,7 +818,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       // into the query specification (analyzer/planner
       // expects this structure to resolve references with respect
       // to columns defined in the query specification)
-      QuerySpecification query = (QuerySpecification) term;
+      final QuerySpecification query = (QuerySpecification) term;
 
       return new Query(
           getLocation(ctx),
@@ -836,6 +839,33 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new Query(getLocation(ctx), Optional.empty(), term, orderBy, offset, limit);
+  }
+
+  @Override
+  public Node visitLimitRowCount(final RelationalSqlParser.LimitRowCountContext ctx) {
+    final Expression rowCount;
+    if (ctx.ALL() != null) {
+      rowCount = new AllRows(getLocation(ctx.ALL()));
+    } else if (ctx.rowCount().INTEGER_VALUE() != null) {
+      rowCount = new LongLiteral(getLocation(ctx.rowCount().INTEGER_VALUE()), ctx.getText());
+    } else {
+      rowCount = new Parameter(getLocation(ctx.rowCount().QUESTION_MARK()), parameterPosition);
+      parameterPosition++;
+    }
+
+    return new Limit(getLocation(ctx), rowCount);
+  }
+
+  @Override
+  public Node visitRowCount(final RelationalSqlParser.RowCountContext ctx) {
+    final Expression rowCount;
+    if (ctx.INTEGER_VALUE() != null) {
+      rowCount = new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.getText());
+    } else {
+      rowCount = new Parameter(getLocation(ctx.QUESTION_MARK()), parameterPosition);
+      parameterPosition++;
+    }
+    return new Offset(getLocation(ctx), rowCount);
   }
 
   @Override
@@ -1419,7 +1449,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitConcatenation(RelationalSqlParser.ConcatenationContext ctx) {
     return new FunctionCall(
         getLocation(ctx.CONCAT()),
-        QualifiedName.of("concat"),
+        QualifiedName.of(TableBuiltinScalarFunction.CONCAT.getFunctionName()),
         ImmutableList.of((Expression) visit(ctx.left), (Expression) visit(ctx.right)));
   }
 
@@ -1613,6 +1643,34 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
+  }
+
+  public Node visitDateBin(RelationalSqlParser.DateBinContext ctx) {
+    TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+    if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+      throw new SemanticException(
+          "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+    }
+
+    LongLiteral monthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.monthDuration));
+    LongLiteral nonMonthDuration =
+        new LongLiteral(
+            getLocation(ctx.timeDuration()), String.valueOf(timeDuration.nonMonthDuration));
+    LongLiteral origin =
+        ctx.timeValue() == null
+            ? new LongLiteral("0")
+            : new LongLiteral(
+                getLocation(ctx.timeValue()),
+                String.valueOf(parseTimeValue(ctx.timeValue(), CommonDateTimeUtils.currentTime())));
+
+    List<Expression> arguments =
+        Arrays.asList(
+            monthDuration, nonMonthDuration, (Expression) visit(ctx.valueExpression()), origin);
+    return new FunctionCall(
+        getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
   }
 
   // ************** literals **************

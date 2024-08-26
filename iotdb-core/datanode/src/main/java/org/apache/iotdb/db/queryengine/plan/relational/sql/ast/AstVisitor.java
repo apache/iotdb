@@ -487,7 +487,7 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitCreateDevice(CreateDevice node, C context) {
+  protected R visitCreateDevice(CreateOrUpdateDevice node, C context) {
     return visitStatement(node, context);
   }
 

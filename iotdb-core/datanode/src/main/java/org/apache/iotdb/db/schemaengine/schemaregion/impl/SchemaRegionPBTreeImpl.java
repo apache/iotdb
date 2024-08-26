@@ -38,6 +38,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
@@ -63,7 +65,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICa
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowNodesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTableDevicesPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -1429,18 +1430,19 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public void createTableDevice(
-      String tableName,
-      List<Object[]> devicePathList,
-      List<String> attributeNameList,
-      List<Object[]> attributeValueList)
-      throws MetadataException {
-    throw new UnsupportedOperationException();
+  public void createOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override
-  public void deleteTableDevice(String table) throws MetadataException {
-    throw new UnsupportedOperationException();
+  public void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
+  }
+
+  @Override
+  public void deleteTableDevice(String table) {
+    throw new UnsupportedOperationException("TableModel does not support PBTree yet.");
   }
 
   @Override
@@ -1477,8 +1479,8 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      ShowTableDevicesPlan showTableDevicesPlan) throws MetadataException {
+  public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

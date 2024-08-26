@@ -85,8 +85,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
     return this;
   }
 

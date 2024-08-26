@@ -38,15 +38,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -417,6 +420,26 @@ public final class ExpressionTreeRewriter<C> {
 
       if (!sameElements(node.getArguments(), arguments)) {
         return new FunctionCall(node.getName(), arguments);
+      }
+      return node;
+    }
+
+    @Override
+    public Expression visitTrim(Trim node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result = rewriter.rewriteTrim(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      List<Expression> expectedArguments = new ArrayList<>();
+      expectedArguments.add(node.getTrimSource());
+      node.getTrimCharacter().ifPresent(expectedArguments::add);
+      List<Expression> actualArguments = rewrite(expectedArguments, context);
+      if (!sameElements(actualArguments, expectedArguments)) {
+        return new FunctionCall(
+            QualifiedName.of(node.getSpecification().getFunctionName()), actualArguments);
       }
       return node;
     }

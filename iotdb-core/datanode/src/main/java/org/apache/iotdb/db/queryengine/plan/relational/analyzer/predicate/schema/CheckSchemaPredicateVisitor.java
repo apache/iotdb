@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -31,16 +32,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
 
 // Return whether input expression can not be bounded to a single ID
 public class CheckSchemaPredicateVisitor
@@ -81,6 +84,10 @@ public class CheckSchemaPredicateVisitor
       }
       return true;
     }
+    // TODO: improve the distinct result set detection logic
+    if (context.isDirectDeviceQuery) {
+      return true;
+    }
     return node.getTerms().stream().anyMatch(predicate -> predicate.accept(this, context));
   }
 
@@ -101,7 +108,7 @@ public class CheckSchemaPredicateVisitor
   @Override
   protected Boolean visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
-    return (node.getLeft() instanceof SymbolReference && node.getRight() instanceof SymbolReference)
+    return !(node.getLeft() instanceof Literal) && !(node.getRight() instanceof Literal)
         || processColumn(node, context);
   }
 
@@ -133,11 +140,11 @@ public class CheckSchemaPredicateVisitor
   }
 
   private boolean processColumn(final Expression node, final Context context) {
-    return context
-        .table
-        .getColumnSchema(node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null))
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ATTRIBUTE);
+    final TsTableColumnSchema schema =
+        context.table.getColumnSchema(
+            node.accept(ExtractPredicateColumnNameVisitor.getInstance(), null));
+    return Objects.isNull(schema)
+        || schema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE);
   }
 
   public static class Context {
@@ -145,10 +152,15 @@ public class CheckSchemaPredicateVisitor
 
     // For query performance analyze
     private final MPPQueryContext queryContext;
+    private final boolean isDirectDeviceQuery;
 
-    public Context(final TsTable table, final MPPQueryContext queryContext) {
+    public Context(
+        final TsTable table,
+        final MPPQueryContext queryContext,
+        final boolean isDirectDeviceQuery) {
       this.table = table;
       this.queryContext = queryContext;
+      this.isDirectDeviceQuery = isDirectDeviceQuery;
     }
   }
 }

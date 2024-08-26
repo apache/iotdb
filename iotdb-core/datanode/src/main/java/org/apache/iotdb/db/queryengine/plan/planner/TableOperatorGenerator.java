@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
+import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOpera
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePredicateFilter;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
@@ -80,6 +82,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -93,11 +96,13 @@ import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -315,13 +320,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return tableScanOperator;
   }
 
-  private Map<Symbol, List<InputLocation>> makeLayout(List<PlanNode> children) {
-    Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
+  public static Map<Symbol, List<InputLocation>> makeLayout(final List<PlanNode> children) {
+    final Map<Symbol, List<InputLocation>> outputMappings = new LinkedHashMap<>();
     int tsBlockIndex = 0;
-    for (PlanNode childNode : children) {
+    for (final PlanNode childNode : children) {
 
       int valueColumnIndex = 0;
-      for (Symbol columnName : childNode.getOutputSymbols()) {
+      for (final Symbol columnName : childNode.getOutputSymbols()) {
         outputMappings
             .computeIfAbsent(columnName, key -> new ArrayList<>())
             .add(new InputLocation(tsBlockIndex, valueColumnIndex));
@@ -674,7 +679,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               Integer i = columnIndex.get(sortItem);
               if (i == null) {
                 throw new IllegalStateException(
-                    "Sort Item %s is not included in children's output columns");
+                    String.format(
+                        "Sort Item %s is not included in children's output columns", sortItem));
               }
               sortItemIndexList.add(i);
               sortItemDataTypeList.add(getTSDataType(typeProvider.getTableModelType(sortItem)));
@@ -771,42 +777,72 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitTableDeviceQueryScan(
       final TableDeviceQueryScanNode node, final LocalExecutionPlanContext context) {
-    final OperatorContext operatorContext =
-        context
-            .getDriverContext()
-            .addOperatorContext(
-                context.getNextOperatorId(),
-                node.getPlanNodeId(),
-                SchemaQueryScanOperator.class.getSimpleName());
-    return new SchemaQueryScanOperator<>(
-        node.getPlanNodeId(),
-        operatorContext,
-        SchemaSourceFactory.getTableDeviceQuerySource(
-            node.getDatabase(),
-            node.getTableName(),
-            node.getIdDeterminedFilterList(),
-            node.getIdFuzzyPredicate(),
-            node.getColumnHeaderList()));
+    // Query scan use filterNode directly
+    final SchemaQueryScanOperator<IDeviceSchemaInfo> operator =
+        new SchemaQueryScanOperator<>(
+            node.getPlanNodeId(),
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    SchemaQueryScanOperator.class.getSimpleName()),
+            SchemaSourceFactory.getTableDeviceQuerySource(
+                node.getDatabase(),
+                node.getTableName(),
+                node.getIdDeterminedFilterList(),
+                node.getColumnHeaderList(),
+                null));
+    operator.setOffset(node.getOffset());
+    operator.setLimit(node.getLimit());
+    return operator;
   }
 
   @Override
   public Operator visitTableDeviceQueryCount(
       final TableDeviceQueryCountNode node, final LocalExecutionPlanContext context) {
-    final OperatorContext operatorContext =
+    final String database = node.getDatabase();
+    final String tableName = node.getTableName();
+    final List<ColumnHeader> columnHeaderList = node.getColumnHeaderList();
+
+    // In "count" we have to reuse filter operator per "next"
+    final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    return new SchemaCountOperator<>(
+        node.getPlanNodeId(),
         context
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                SchemaCountOperator.class.getSimpleName());
-    return new SchemaCountOperator<>(
-        node.getPlanNodeId(),
-        operatorContext,
+                SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
-            node.getDatabase(),
+            database,
             node.getTableName(),
             node.getIdDeterminedFilterList(),
-            node.getIdFuzzyPredicate(),
-            node.getColumnHeaderList()));
+            columnHeaderList,
+            Objects.nonNull(node.getIdFuzzyPredicate())
+                ? new DevicePredicateFilter(
+                    filterLeafColumnTransformerList,
+                    new ColumnTransformerBuilder()
+                        .process(
+                            node.getIdFuzzyPredicate(),
+                            new ColumnTransformerBuilder.Context(
+                                context
+                                    .getDriverContext()
+                                    .getFragmentInstanceContext()
+                                    .getSessionInfo(),
+                                filterLeafColumnTransformerList,
+                                makeLayout(Collections.singletonList(node)),
+                                new HashMap<>(),
+                                ImmutableMap.of(),
+                                ImmutableList.of(),
+                                ImmutableList.of(),
+                                0,
+                                context.getTypeProvider(),
+                                metadata)),
+                    database,
+                    tableName,
+                    columnHeaderList)
+                : null));
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -316,11 +317,16 @@ public class FragmentInstanceContext extends QueryContext {
 
   public Optional<TSStatus> getErrorCode() {
     return stateMachine.getFailureCauses().stream()
-        .filter(IoTDBException.class::isInstance)
+        .filter(e -> e instanceof IoTDBException || e instanceof IoTDBRuntimeException)
         .findFirst()
         .flatMap(
             t -> {
-              TSStatus status = new TSStatus(((IoTDBException) t).getErrorCode());
+              TSStatus status;
+              if (t instanceof IoTDBException) {
+                status = new TSStatus(((IoTDBException) t).getErrorCode());
+              } else {
+                status = new TSStatus(((IoTDBRuntimeException) t).getErrorCode());
+              }
               status.setMessage(t.getMessage());
               return Optional.of(status);
             });

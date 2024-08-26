@@ -52,6 +52,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTas
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.CreateModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.DropModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowAINodesTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.DeactivateSchemaTemplateTask;
@@ -120,6 +124,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -491,7 +499,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
-  public IConfigTask visitDeleteTimeseries(
+  public IConfigTask visitDeleteTimeSeries(
       DeleteTimeSeriesStatement deleteTimeSeriesStatement, MPPQueryContext context) {
     return new DeleteTimeSeriesTask(context.getQueryId().getId(), deleteTimeSeriesStatement);
   }
@@ -584,5 +592,30 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowThrottleQuota(
       ShowThrottleQuotaStatement showThrottleQuotaStatement, MPPQueryContext context) {
     return new ShowThrottleQuotaTask(showThrottleQuotaStatement);
+  }
+
+  /** AI Model Management */
+  @Override
+  public IConfigTask visitCreateModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context) {
+    return new CreateModelTask(createModelStatement, context);
+  }
+
+  @Override
+  public IConfigTask visitDropModel(
+      DropModelStatement dropModelStatement, MPPQueryContext context) {
+    return new DropModelTask(dropModelStatement.getModelName());
+  }
+
+  @Override
+  public IConfigTask visitShowModels(
+      ShowModelsStatement showModelsStatement, MPPQueryContext context) {
+    return new ShowModelsTask(showModelsStatement.getModelName());
+  }
+
+  @Override
+  public IConfigTask visitShowAINodes(
+      ShowAINodesStatement showAINodesStatement, MPPQueryContext context) {
+    return new ShowAINodesTask(showAINodesStatement);
   }
 }

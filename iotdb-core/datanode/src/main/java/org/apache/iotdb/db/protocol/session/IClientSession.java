@@ -177,11 +177,15 @@ public abstract class IClientSession {
       return dialect;
     }
 
-    public void serialize(DataOutputStream stream) throws IOException {
+    public void serialize(final DataOutputStream stream) throws IOException {
       ReadWriteIOUtils.write(dialect, stream);
     }
 
-    public static SqlDialect deserializeFrom(ByteBuffer buffer) {
+    public void serialize(final ByteBuffer buffer) {
+      ReadWriteIOUtils.write(dialect, buffer);
+    }
+
+    public static SqlDialect deserializeFrom(final ByteBuffer buffer) {
       byte b = ReadWriteIOUtils.readByte(buffer);
       switch (b) {
         case 0:

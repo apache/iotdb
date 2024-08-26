@@ -53,6 +53,7 @@ keyWords
     | BOUNDARY
     | BY
     | CACHE
+    | CALL
     | CASE
     | CAST
     | CHILD
@@ -112,9 +113,11 @@ keyWords
     | GRANT
     | GROUP
     | HAVING
+    | HEAD
     | HYPERPARAMETERS
     | IN
     | INDEX
+    | INFERENCE
     | INFO
     | INSERT
     | INTO
@@ -135,6 +138,9 @@ keyWords
     | MERGE
     | METADATA
     | MIGRATE
+    | AINODES
+    | MODEL
+    | MODELS
     | MODIFY
     | NAN
     | NODEID
@@ -217,6 +223,7 @@ keyWords
     | SUBSTRING
     | SYSTEM
     | TAGS
+    | TAIL
     | TASK
     | TEMPLATE
     | TEMPLATES

@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -40,6 +42,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ainode.GetModelInfoException;
 import org.apache.iotdb.db.exception.metadata.table.TableAlreadyExistsException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
@@ -59,8 +62,15 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.BottomInferenceWindowParameter;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindow;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindowParameter;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInferenceWindow;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowParameter;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowType;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
-import org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -147,6 +157,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -189,7 +200,6 @@ import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant
 import static org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant.ENDTIME;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
-import static org.apache.iotdb.db.queryengine.metric.load.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.removeLogicalView;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
 import static org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer.bindSchemaForExpression;
@@ -206,6 +216,7 @@ import static org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils.const
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.canPushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.queryengine.plan.optimization.LimitOffsetPushDown.pushDownLimitOffsetInGroupByTimeForDevice;
 import static org.apache.iotdb.db.schemaengine.schemaregion.view.visitor.GetSourcePathsVisitor.getSourcePaths;
+import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.COUNT_TIME_HEADER;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT_DOT;
 
@@ -222,11 +233,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public static final Expression END_TIME_EXPRESSION =
       TimeSeriesOperand.constructColumnHeaderExpression(ENDTIME, TSDataType.INT64);
 
+  private static final String INFERENCE_COLUMN_NAME = "output";
+
   private final List<String> lastQueryColumnNames =
       new ArrayList<>(Arrays.asList("TIME", "TIMESERIES", "VALUE", "DATATYPE"));
 
   private final IPartitionFetcher partitionFetcher;
   private final ISchemaFetcher schemaFetcher;
+  private final IModelFetcher modelFetcher;
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -234,6 +248,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public AnalyzeVisitor(IPartitionFetcher partitionFetcher, ISchemaFetcher schemaFetcher) {
     this.partitionFetcher = partitionFetcher;
     this.schemaFetcher = schemaFetcher;
+    this.modelFetcher = ModelFetcher.getInstance();
   }
 
   @Override
@@ -274,6 +289,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     try {
       // check for semantic errors
       queryStatement.semanticCheck();
+
+      // fetch model inference information and check
+      analyzeModelInference(analysis, queryStatement);
 
       ISchemaTree schemaTree = analyzeSchema(queryStatement, analysis, context);
 
@@ -402,6 +420,77 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           "Meet error when analyzing the query statement: " + e.getMessage());
     }
     return analysis;
+  }
+
+  // check if there is proper model to inference for MODEL_NAME, there is no need to do the
+  // following analyze if there isn't.
+  private void analyzeModelInference(Analysis analysis, QueryStatement queryStatement) {
+    if (!queryStatement.hasModelInference()) {
+      return;
+    }
+
+    // Get model metadata from configNode and do some check
+    String modelId = queryStatement.getModelName();
+    TSStatus status = modelFetcher.fetchModel(modelId, analysis);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new GetModelInfoException(status.getMessage());
+    }
+    ModelInformation modelInformation = analysis.getModelInformation();
+    if (modelInformation == null || !modelInformation.available()) {
+      throw new SemanticException("Model " + modelId + " is not active");
+    }
+
+    // set inference window if there is
+    if (queryStatement.isSetInferenceWindow()) {
+      InferenceWindow window = queryStatement.getInferenceWindow();
+      if (InferenceWindowType.HEAD == window.getType()) {
+        long windowSize = ((HeadInferenceWindow) window).getWindowSize();
+        checkWindowSize(windowSize, modelInformation);
+        if (queryStatement.hasLimit() && queryStatement.getRowLimit() < windowSize) {
+          throw new SemanticException(
+              "Limit in Sql should be larger than window size in inference");
+        }
+        // optimize head window by limitNode
+        queryStatement.setRowLimit(windowSize);
+      } else if (InferenceWindowType.TAIL == window.getType()) {
+        long windowSize = ((TailInferenceWindow) window).getWindowSize();
+        checkWindowSize(windowSize, modelInformation);
+        InferenceWindowParameter inferenceWindowParameter =
+            new BottomInferenceWindowParameter(windowSize);
+        analysis
+            .getModelInferenceDescriptor()
+            .setInferenceWindowParameter(inferenceWindowParameter);
+      } else if (InferenceWindowType.COUNT == window.getType()) {
+        CountInferenceWindow countInferenceWindow = (CountInferenceWindow) window;
+        checkWindowSize(countInferenceWindow.getInterval(), modelInformation);
+        InferenceWindowParameter inferenceWindowParameter =
+            new CountInferenceWindowParameter(
+                countInferenceWindow.getInterval(), countInferenceWindow.getStep());
+        analysis
+            .getModelInferenceDescriptor()
+            .setInferenceWindowParameter(inferenceWindowParameter);
+      }
+    }
+
+    // set inference attributes if there is
+    if (queryStatement.hasInferenceAttributes()) {
+      analysis
+          .getModelInferenceDescriptor()
+          .setInferenceAttributes(queryStatement.getInferenceAttributes());
+    }
+  }
+
+  private void checkWindowSize(long windowSize, ModelInformation modelInformation) {
+    if (modelInformation.isBuiltIn()) {
+      return;
+    }
+
+    if (modelInformation.getInputShape()[0] != windowSize) {
+      throw new SemanticException(
+          String.format(
+              "Window output %d is not equal to input size of model %d",
+              windowSize, modelInformation.getInputShape()[0]));
+    }
   }
 
   private ISchemaTree analyzeSchema(
@@ -1587,6 +1676,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
+    if (queryStatement.hasModelInference()) {
+      ModelInformation modelInformation = analysis.getModelInformation();
+      // check input
+      checkInputShape(modelInformation, outputExpressions);
+      checkInputType(analysis, modelInformation, outputExpressions);
+
+      // set output
+      List<ColumnHeader> columnHeaders = new ArrayList<>();
+      int[] outputShape = modelInformation.getOutputShape();
+      TSDataType[] outputDataType = modelInformation.getOutputDataType();
+      for (int i = 0; i < outputShape[1]; i++) {
+        columnHeaders.add(new ColumnHeader(INFERENCE_COLUMN_NAME + i, outputDataType[i]));
+      }
+      analysis
+          .getModelInferenceDescriptor()
+          .setOutputColumnNames(
+              columnHeaders.stream().map(ColumnHeader::getColumnName).collect(Collectors.toList()));
+      analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, true));
+      return;
+    }
+
     boolean isIgnoreTimestamp = queryStatement.isAggregationQuery() && !queryStatement.isGroupBy();
     List<ColumnHeader> columnHeaders = new ArrayList<>();
     if (queryStatement.isAlignByDevice()) {
@@ -1603,6 +1713,72 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               expressionAliasPair.right));
     }
     analysis.setRespDatasetHeader(new DatasetHeader(columnHeaders, isIgnoreTimestamp));
+  }
+
+  // check if the result of SQL matches the input of model
+  private static void checkInputShape(
+      ModelInformation modelInformation, List<Pair<Expression, String>> outputExpressions) {
+    if (modelInformation.isBuiltIn()) {
+      modelInformation.setInputColumnSize(outputExpressions.size());
+      return;
+    }
+
+    // check inputShape
+    int[] inputShape = modelInformation.getInputShape();
+    if (inputShape.length != 2) {
+      throw new SemanticException(
+          String.format(
+              "The input shape of model is not correct, the dimension of input shape should be 2, actual dimension is %d",
+              inputShape.length));
+    }
+    int columnNumber = inputShape[1];
+    if (columnNumber != outputExpressions.size()) {
+      throw new SemanticException(
+          String.format(
+              "The column number of SQL result does not match the number of model input [%d] for inference",
+              columnNumber));
+    }
+  }
+
+  private static void checkInputType(
+      Analysis analysis,
+      ModelInformation modelInformation,
+      List<Pair<Expression, String>> outputExpressions) {
+
+    if (modelInformation.isBuiltIn()) {
+      TSDataType[] inputType = new TSDataType[outputExpressions.size()];
+      for (int i = 0; i < outputExpressions.size(); i++) {
+        Expression inputExpression = outputExpressions.get(i).left;
+        TSDataType inputDataType = analysis.getType(inputExpression);
+        if (!inputDataType.isNumeric()) {
+          throw new SemanticException(
+              String.format(
+                  "The type of SQL result column [%s in %d] should be numeric when inference",
+                  inputDataType, i));
+        }
+        inputType[i] = inputDataType;
+      }
+      modelInformation.setInputDataType(inputType);
+      return;
+    }
+
+    TSDataType[] inputType = modelInformation.getInputDataType();
+    if (inputType.length != modelInformation.getInputShape()[1]) {
+      throw new SemanticException(
+          String.format(
+              "The inputType does not match the input shape [%d] for inference",
+              modelInformation.getInputShape()[1]));
+    }
+    for (int i = 0; i < inputType.length; i++) {
+      Expression inputExpression = outputExpressions.get(i).left;
+      TSDataType inputDataType = analysis.getType(inputExpression);
+      if (inputDataType != inputType[i]) {
+        throw new SemanticException(
+            String.format(
+                "The type of SQL result column [%s in %d] does not match the type of model input [%s] when inference",
+                inputDataType, i, inputType[i]));
+      }
+    }
   }
 
   // For last query
@@ -2610,7 +2786,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitCreateMultiTimeseries(
+  public Analysis visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement,
       final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
@@ -2644,7 +2820,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitAlterTimeseries(
+  public Analysis visitAlterTimeSeries(
       AlterTimeSeriesStatement alterTimeSeriesStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();

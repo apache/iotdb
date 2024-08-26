@@ -55,8 +55,8 @@ public class CreateTimeSeriesNode extends WritePlanNode implements ICreateTimeSe
   private CompressionType compressor;
   private String alias;
   private Map<String, String> props = null;
-  private Map<String, String> tags = null;
-  private Map<String, String> attributes = null;
+  private Map<String, String> tags;
+  private Map<String, String> attributes;
 
   // only used inside schemaRegion to be serialized to mlog, no need to be serialized for
   // queryengine

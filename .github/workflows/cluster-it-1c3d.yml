@@ -5,7 +5,6 @@ on:
     branches:
       - master
       - 'rel/1.*'
-      - pipe-meta-sync
       - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
@@ -14,7 +13,6 @@ on:
     branches:
       - master
       - 'rel/1.*'
-      - pipe-meta-sync
       - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
@@ -37,7 +35,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 17 ]
+        java: [ 17 ]
     runs-on: [self-hosted, iotdb]
 #      group: self-hosted
 #      labels: iotdb
