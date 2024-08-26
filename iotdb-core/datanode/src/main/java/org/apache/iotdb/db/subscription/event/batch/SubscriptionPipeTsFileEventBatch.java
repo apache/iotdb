@@ -54,7 +54,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
@@ -72,7 +72,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   @Override
   public synchronized boolean onEvent(

@@ -69,7 +69,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) {
@@ -87,7 +87,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   @Override
   public synchronized boolean onEvent(

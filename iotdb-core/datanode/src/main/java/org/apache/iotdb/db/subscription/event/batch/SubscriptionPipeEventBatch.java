@@ -53,12 +53,12 @@ public abstract class SubscriptionPipeEventBatch {
   }
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   public abstract boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception;
 
   /**
-   * @return {@code true} if a new event has been consumed.
+   * @return {@code true} if there are subscription events consumed.
    */
   public abstract boolean onEvent(
       final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)

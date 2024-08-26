@@ -362,19 +362,19 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   /**
-   * @return {@code true} if a new event has been prefetched.
+   * @return {@code true} if there are subscription events prefetched.
    */
   protected abstract boolean onEvent(final TsFileInsertionEvent event);
 
   /**
-   * @return {@code true} if a new event has been prefetched.
+   * @return {@code true} if there are subscription events prefetched.
    */
   protected boolean onEvent(final TabletInsertionEvent event) {
     return batches.onEvent((EnrichedEvent) event, this::enqueueEventToPrefetchingQueue);
   }
 
   /**
-   * @return {@code true} if a new event has been prefetched.
+   * @return {@code true} if there are subscription events prefetched.
    */
   protected boolean onEvent() {
     return batches.onEvent(this::enqueueEventToPrefetchingQueue);
