@@ -93,8 +93,6 @@ public class CompactionMetrics implements IMetricSet {
     }
   }
 
-  private Counter totalCompactionWriteInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-
   private void bindWriteInfo(AbstractMetricService metricService) {
     for (CompactionType compactionType : CompactionType.values()) {
       writeCounters.put(
@@ -123,14 +121,6 @@ public class CompactionMetrics implements IMetricSet {
                 METADATA)
           });
     }
-    totalCompactionWriteInfoCounter =
-        metricService.getOrCreateCounter(
-            Metric.DATA_WRITTEN.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "compaction",
-            Tag.TYPE.toString(),
-            "total");
   }
 
   private void unbindWriteInfo(AbstractMetricService metricService) {
@@ -157,13 +147,6 @@ public class CompactionMetrics implements IMetricSet {
           Tag.NAME.toString(),
           METADATA);
     }
-    metricService.remove(
-        MetricType.COUNTER,
-        Metric.DATA_WRITTEN.toString(),
-        Tag.NAME.toString(),
-        "compaction",
-        Tag.TYPE.toString(),
-        "total");
   }
 
   public void recordWriteInfo(
@@ -172,13 +155,11 @@ public class CompactionMetrics implements IMetricSet {
     if (counters != null) {
       counters[dataType.getValue()].inc(byteNum);
     }
-    totalCompactionWriteInfoCounter.inc(byteNum);
   }
 
   // endregion
 
   // region compaction read info
-  private Counter totalCompactionReadInfoCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter deserializeResourceCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private void bindReadInfo(AbstractMetricService metricService) {
@@ -209,13 +190,12 @@ public class CompactionMetrics implements IMetricSet {
                 METADATA)
           });
     }
-    totalCompactionReadInfoCounter =
-        metricService.getOrCreateCounter(
-            Metric.DATA_READ.toString(), MetricLevel.IMPORTANT, Tag.NAME.toString(), "compaction");
     deserializeResourceCounter =
         metricService.getOrCreateCounter(
             Metric.DATA_READ.toString(),
             MetricLevel.IMPORTANT,
+            Tag.TYPE.toString(),
+            "total",
             Tag.NAME.toString(),
             "deserialize_resource");
   }
@@ -245,10 +225,10 @@ public class CompactionMetrics implements IMetricSet {
           METADATA);
     }
     metricService.remove(
-        MetricType.COUNTER, Metric.DATA_READ.toString(), Tag.NAME.toString(), "compaction");
-    metricService.remove(
         MetricType.COUNTER,
         Metric.DATA_READ.toString(),
+        Tag.TYPE.toString(),
+        "total",
         Tag.NAME.toString(),
         "deserialize_resource");
   }
@@ -259,7 +239,6 @@ public class CompactionMetrics implements IMetricSet {
     if (counters != null) {
       counters[dataType.getValue()].inc(byteNum);
     }
-    totalCompactionReadInfoCounter.inc(byteNum);
   }
 
   public void recordDeserializeResourceInfo(long byteNum) {
