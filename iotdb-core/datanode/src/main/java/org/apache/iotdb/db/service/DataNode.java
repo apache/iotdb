@@ -237,7 +237,7 @@ public class DataNode implements DataNodeMBean {
 
       if (isUsingPipeConsensus()) {
         long dataRegionStartTime = System.currentTimeMillis();
-        while (!StorageEngine.getInstance().isReady()) {
+        while (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
           try {
             TimeUnit.MILLISECONDS.sleep(1000);
           } catch (InterruptedException e) {

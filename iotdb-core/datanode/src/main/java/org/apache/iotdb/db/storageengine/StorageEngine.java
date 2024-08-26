@@ -136,7 +136,7 @@ public class StorageEngine implements IService {
 
   private final AtomicBoolean isReadyForReadAndWrite = new AtomicBoolean();
 
-  private final AtomicBoolean isReady = new AtomicBoolean();
+  private final AtomicBoolean isReadyForNonReadWriteFunctions = new AtomicBoolean();
 
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
@@ -184,13 +184,13 @@ public class StorageEngine implements IService {
     return isReadyForReadAndWrite.get();
   }
 
-  public boolean isReady() {
-    return isReady.get();
+  public boolean isReadyForNonReadWriteFunctions() {
+    return isReadyForNonReadWriteFunctions.get();
   }
 
   private void asyncRecoverDataRegion() throws StartupException {
     long startRecoverTime = System.currentTimeMillis();
-    isReady.set(false);
+    isReadyForNonReadWriteFunctions.set(false);
     isReadyForReadAndWrite.set(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
@@ -375,7 +375,7 @@ public class StorageEngine implements IService {
             () -> {
               checkResults(futures, "async recover tsfile resource meets error.");
               recoverRepairData();
-              isReady.set(true);
+              isReadyForNonReadWriteFunctions.set(true);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
