@@ -143,6 +143,15 @@ public class TableDeviceSchemaCacheTest {
 
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
 
+    // Test get from empty cache
+    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s0"));
+    Assert.assertNull(cache.getLastTime(database, table1, device0, "s0"));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, "s0", "s1"));
+    Assert.assertNull(cache.getLastRow(database, table1, device0, "s0"));
+    Assert.assertNull(cache.getLastTime(database, table1, device0, null));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, null, "s1"));
+    Assert.assertNull(cache.getLastRow(database, table1, device0, null));
+
     // Query update
     final Map<String, TimeValuePair> measurementQueryUpdateMap = new HashMap<>();
 
