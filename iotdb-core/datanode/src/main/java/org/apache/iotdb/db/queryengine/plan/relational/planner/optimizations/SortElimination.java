@@ -30,6 +30,7 @@ import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
  * <li>When order by time and there is only one device entry in TableScanNode below, the SortNode
  *     can be eliminated.
  * <li>When order by all IDColumns and time, the SortNode can be eliminated.
+ * <li>When StreamSortIndex==OrderBy size()-1, remove this StreamSortNode
  */
 public class SortElimination implements PlanOptimizer {
 
@@ -68,7 +69,11 @@ public class SortElimination implements PlanOptimizer {
     @Override
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
       PlanNode child = node.getChild().accept(this, context);
-      return node.isOrderByAllIdsAndTime() ? child : node;
+      return node.isOrderByAllIdsAndTime()
+              || node.getStreamCompareKeyEndIndex()
+                  == node.getOrderingScheme().getOrderBy().size() - 1
+          ? child
+          : node;
     }
 
     @Override
