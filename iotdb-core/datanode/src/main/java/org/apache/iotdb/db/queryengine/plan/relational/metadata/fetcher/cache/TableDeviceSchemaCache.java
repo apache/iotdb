@@ -179,6 +179,27 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
   }
 
+  public Long getLastTime(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final String measurement) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+    return Objects.nonNull(entry) ? entry.getLastTime(measurement) : null;
+  }
+
+  public TsPrimitiveType getLastBy(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final String measurement,
+      final String targetMeasurement) {
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+    return Objects.nonNull(entry) ? entry.getLastBy(measurement, targetMeasurement) : null;
+  }
+
   public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(
       final String database,
       final String tableName,

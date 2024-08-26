@@ -175,6 +175,14 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s3"));
 
+    Assert.assertNull(cache.getLastTime(database, table1, device0, "s4"));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, "s4", "s3"));
+    Assert.assertEquals((Long) 2L, cache.getLastTime(database, table1, device0, null));
+    Assert.assertEquals((Long) 1L, cache.getLastTime(database, table1, device0, "s0"));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, "s2", "s1"));
+    Assert.assertEquals(
+        new TsPrimitiveType.TsInt(3), cache.getLastBy(database, table1, device0, "s0", "s1"));
+
     // Test lastRow
     Assert.assertEquals(
         new Pair<>(2L, Collections.singletonMap("s2", new TsPrimitiveType.TsInt(2))),
@@ -203,7 +211,6 @@ public class TableDeviceSchemaCacheTest {
 
     // Invalidate device
     cache.invalidateLastCache(database, table1, device0);
-    System.out.println("Here");
     cache.invalidate(database);
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
 

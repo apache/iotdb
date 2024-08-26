@@ -77,16 +77,45 @@ public class TableDeviceLastCache {
   }
 
   // Shall pass in "null" if last by time
+  public Long getLastTime(final String measurement) {
+    if (isAllNull(measurement)) {
+      return null;
+    }
+    return getAlignTime(measurement);
+  }
+
+  // Shall pass in "null" if last by time
+  public TsPrimitiveType getLastBy(final String measurement, final String targetMeasurement) {
+    if (isAllNull(measurement)) {
+      return null;
+    }
+    final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
+    return Objects.nonNull(tvPair) && tvPair.getTimestamp() == getAlignTime(measurement)
+        ? tvPair.getValue()
+        : null;
+  }
+
+  // Shall pass in "null" if last by time
   public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final String measurement) {
-    final long alignTime =
-        Objects.nonNull(measurement)
-            ? measurement2CachedLastMap.get(measurement).getTimestamp()
-            : lastTime;
+    if (isAllNull(measurement)) {
+      return null;
+    }
+    final long alignTime = getAlignTime(measurement);
     return new Pair<>(
         alignTime,
         measurement2CachedLastMap.entrySet().stream()
             .filter(entry -> entry.getValue().getTimestamp() == alignTime)
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getValue())));
+  }
+
+  private boolean isAllNull(final String measurement) {
+    return measurement != null && !measurement2CachedLastMap.containsKey(measurement);
+  }
+
+  private long getAlignTime(final String measurement) {
+    return Objects.nonNull(measurement)
+        ? measurement2CachedLastMap.get(measurement).getTimestamp()
+        : lastTime;
   }
 
   public int estimateSize() {

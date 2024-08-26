@@ -59,7 +59,7 @@ public class TableDeviceCacheEntry {
     return (attributeMap.compareAndSet(null, new ConcurrentHashMap<>())
             ? (int) RamUsageEstimator.shallowSizeOf(attributeMap)
             : 0)
-        + +updateAttribute(database, tableName, attributeSetMap);
+        + updateAttribute(database, tableName, attributeSetMap);
   }
 
   public int updateAttribute(
@@ -139,6 +139,18 @@ public class TableDeviceCacheEntry {
   public TimeValuePair getTimeValuePair(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
+  }
+
+  // Shall pass in "null" if last by time
+  public Long getLastTime(final String measurement) {
+    final TableDeviceLastCache cache = lastCache.get();
+    return Objects.nonNull(cache) ? cache.getLastTime(measurement) : null;
+  }
+
+  // Shall pass in "null" if last by time
+  public TsPrimitiveType getLastBy(final String measurement, final String targetMeasurement) {
+    final TableDeviceLastCache cache = lastCache.get();
+    return Objects.nonNull(cache) ? cache.getLastBy(measurement, targetMeasurement) : null;
   }
 
   // Shall pass in "null" if last by time
