@@ -153,7 +153,7 @@ public class TableDeviceSchemaCache {
   }
 
   // The input "TimeValuePair" shall never contain null value
-  public void tryUpdateLastCacheWithoutLock(
+  public void mayUpdateLastCacheWithoutLock(
       final String database,
       final String tableName,
       final String[] deviceId,
