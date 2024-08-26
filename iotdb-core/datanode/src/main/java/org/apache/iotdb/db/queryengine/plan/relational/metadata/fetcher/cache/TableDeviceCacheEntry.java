@@ -138,10 +138,15 @@ public class TableDeviceCacheEntry {
   }
 
   public int invalidateLastCache() {
-    final TableDeviceLastCache cache = lastCache.get();
-    final int size = cache.estimateSize();
-    lastCache = new AtomicReference<>();
-    return size;
+    final AtomicInteger size = new AtomicInteger(0);
+    lastCache.updateAndGet(
+        cacheEntry -> {
+          if (Objects.nonNull(cacheEntry)) {
+            size.set(cacheEntry.estimateSize());
+          }
+          return null;
+        });
+    return size.get();
   }
 
   /////////////////////////////// Management ///////////////////////////////
