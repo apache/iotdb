@@ -55,7 +55,11 @@ public interface IDualKeyCache<FK, SK, V> {
   /** put the cache value into cache */
   void put(FK firstKey, SK secondKey, V value);
 
-  /** Put the value to cache iff it does not exist, and update the existing value. */
+  /**
+   * Put the value to cache iff it does not exist, and update the existing value.
+   * Warning: This method is without any locks for performance concerns. The caller
+   * shall ensure the concurrency safety for the value update.
+   */
   void update(
       final FK firstKey,
       final SK secondKey,
