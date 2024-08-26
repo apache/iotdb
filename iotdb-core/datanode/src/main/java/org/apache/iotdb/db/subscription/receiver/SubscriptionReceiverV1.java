@@ -111,7 +111,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.nonNull(consumerConfig)) {
       LOGGER.info(
-          "Subscription: close and remove consumer config {} when handling exit",
+          "Subscription: remove consumer config {} when handling exit",
           consumerConfigThreadLocal.get());
       // closeConsumer(consumerConfig);
       consumerConfigThreadLocal.remove();
@@ -235,7 +235,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHeartbeatInternal(
-      final PipeSubscribeHeartbeatReq req) {
+      final PipeSubscribeHeartbeatReq req) throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -247,7 +247,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // TODO: do something
 
     LOGGER.info("Subscription: consumer {} heartbeat successfully", consumerConfig);
-    return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS,
+        SubscriptionAgent.topic()
+            .getTopicConfigs(
+                SubscriptionAgent.consumer()
+                    .getTopicNamesSubscribedByConsumer(
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
