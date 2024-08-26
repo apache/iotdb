@@ -126,11 +126,12 @@ public class TableDeviceSchemaCache {
         false);
   }
 
+  // Shall pass in "null" for deviceId when invalidating attribute for a table
   public void invalidateAttributes(
       final String database, final String tableName, final String[] deviceId) {
     dualKeyCache.update(
         new TableId(database, tableName),
-        new TableDeviceId(deviceId),
+        Objects.nonNull(deviceId) ? new TableDeviceId(deviceId) : null,
         new TableDeviceCacheEntry(),
         entry -> -entry.invalidateAttribute(),
         false);
