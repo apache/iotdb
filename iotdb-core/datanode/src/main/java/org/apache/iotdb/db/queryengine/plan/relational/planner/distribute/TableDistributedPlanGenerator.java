@@ -321,17 +321,23 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitJoin(JoinNode node, PlanContext context) {
+    // child of JoinNode must be SortNode, so after rewritten, the child must be MergeSortNode or
+    // SortNode
     List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
+    checkArgument(
+        leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
+    node.setLeftChild(leftChildrenNodes.get(0));
+
     OrderingScheme leftChildOrdering =
         nodeOrderingMap.get(leftChildrenNodes.get(0).getPlanNodeId());
-    PlanNode leftNode = mergeChildrenViaCollectOrMergeSort(leftChildOrdering, leftChildrenNodes);
-    node.setLeftChild(leftNode);
+    if (leftChildOrdering != null) {
+      nodeOrderingMap.put(node.getPlanNodeId(), leftChildOrdering);
+    }
 
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
-    OrderingScheme rightChildOrdering =
-        nodeOrderingMap.get(rightChildrenNodes.get(0).getPlanNodeId());
-    PlanNode rightNode = mergeChildrenViaCollectOrMergeSort(rightChildOrdering, leftChildrenNodes);
-    node.setLeftChild(rightNode);
+    checkArgument(
+        rightChildrenNodes.size() == 1, "The size of right children node of JoinNode should be 1");
+    node.setRightChild(rightChildrenNodes.get(0));
 
     return Collections.singletonList(node);
   }

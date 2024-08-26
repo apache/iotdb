@@ -104,6 +104,9 @@ public class JoinNode extends TwoChildProcessNode {
     checkArgument(
         leftSymbols.containsAll(leftOutputSymbols),
         "Left source inputs do not contain all left output symbols");
+    if (!rightSymbols.containsAll(rightOutputSymbols)) {
+      System.out.println("====");
+    }
     checkArgument(
         rightSymbols.containsAll(rightOutputSymbols),
         "Right source inputs do not contain all right output symbols");

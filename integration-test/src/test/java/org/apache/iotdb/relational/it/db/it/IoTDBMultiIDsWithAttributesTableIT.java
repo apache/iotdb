@@ -91,9 +91,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(1)
         .setMaxNumberOfPointsInPage(1);
     insertData();

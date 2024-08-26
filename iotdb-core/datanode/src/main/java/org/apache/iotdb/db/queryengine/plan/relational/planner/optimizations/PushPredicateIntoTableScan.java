@@ -54,7 +54,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
@@ -64,6 +63,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -306,7 +306,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitJoin(JoinNode node, Void context) {
       hasJoinNode = true;
-      Expression inheritedPredicate = predicate;
+      Expression inheritedPredicate = predicate != null ? predicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
       node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
@@ -801,9 +801,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     /** Get deviceEntries and DataPartition used in TableScan. */
     private PlanNode tableMetadataIndexScan(
         TableScanNode tableScanNode, List<Expression> metadataExpressions) {
-      // for join operator, columnSymbols in TableScanNode is renamed, which adds suffix for origin
+      // for join operator, columnSymbols in TableScanNode may be renamed, which adds suffix for
+      // origin
       // column name,
-      // add a new ProjectNode above TableScanNode.
+      // thus we add a new ProjectNode above TableScanNode.
       boolean tableScanNodeColumnsRenamed = false;
       for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
@@ -820,17 +821,32 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 MetadataExpressionTransformForJoin.transform(
                     expression1, tableScanNode.getAssignments()));
 
-        Assignments.Builder projectAssignments = Assignments.builder();
-        ImmutableMap.Builder<Symbol, ColumnSchema> tableScanAssignments = ImmutableMap.builder();
+        List<Symbol> newTableScanSymbols = new ArrayList<>(tableScanNode.getOutputSymbols().size());
+        Map<Symbol, ColumnSchema> newTableScanAssignments =
+            new LinkedHashMap<>(tableScanNode.getOutputSymbols().size());
+        Map<Symbol, Expression> projectAssignments =
+            new LinkedHashMap<>(tableScanNode.getOutputSymbols().size());
         for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-          Symbol columnSymbol = entry.getKey();
+          Symbol originalSymbol = entry.getKey();
           ColumnSchema columnSchema = entry.getValue();
-          projectAssignments.put(columnSymbol, new SymbolReference(columnSchema.getName()));
-          tableScanAssignments.put(Symbol.of(columnSchema.getName()), columnSchema);
+
+          Symbol realSymbol = Symbol.of(columnSchema.getName());
+          newTableScanSymbols.add(realSymbol);
+          newTableScanAssignments.put(realSymbol, columnSchema);
+          projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
+          queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
+          if (tableScanNode.getIdAndAttributeIndexMap().containsKey(originalSymbol)) {
+            Integer idx = tableScanNode.getIdAndAttributeIndexMap().get(originalSymbol);
+            tableScanNode.getIdAndAttributeIndexMap().remove(originalSymbol);
+            tableScanNode.getIdAndAttributeIndexMap().put(realSymbol, idx);
+          }
         }
+
+        tableScanNode.setOutputSymbols(newTableScanSymbols);
+        tableScanNode.setAssignments(newTableScanAssignments);
         newProjectNode =
-            new ProjectNode(queryId.genPlanNodeId(), tableScanNode, projectAssignments.build());
-        tableScanNode.setAssignments(tableScanAssignments.build());
+            new ProjectNode(
+                queryId.genPlanNodeId(), tableScanNode, new Assignments(projectAssignments));
       }
 
       List<String> attributeColumns = new ArrayList<>();
