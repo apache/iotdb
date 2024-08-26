@@ -78,6 +78,7 @@ public abstract class SubscriptionPipeEventBatch {
 
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> result = new HashMap<>();
+    result.put("regionId", String.valueOf(regionId));
     result.put("prefetchingQueue", prefetchingQueue.coreReportMessage().toString());
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));

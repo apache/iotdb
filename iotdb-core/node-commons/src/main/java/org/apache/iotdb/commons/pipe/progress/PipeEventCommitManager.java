@@ -148,14 +148,14 @@ public class PipeEventCommitManager {
       final int secondLastUnderscoreIndex = committerKey.lastIndexOf('_', lastUnderscoreIndex - 1);
 
       if (lastUnderscoreIndex == -1 || secondLastUnderscoreIndex == -1) {
-        return -1; // Invalid format
+        return -1; // invalid format
       }
 
       final String regionIdStr =
           committerKey.substring(secondLastUnderscoreIndex + 1, lastUnderscoreIndex);
-      return Integer.parseInt(regionIdStr); // Convert regionId to an int
+      return Integer.parseInt(regionIdStr); // convert region id to integer
     } catch (final NumberFormatException e) {
-      return -1; // Return -1 if the regionId is not a valid integer
+      return -1; // return -1 if the region id is not a valid integer
     }
   }
 
