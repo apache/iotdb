@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.TernaryColumnTransformer;
 
@@ -59,14 +60,29 @@ public class SubString3ColumnTransformer extends TernaryColumnTransformer {
         String currentValue =
             firstType.getBinary(firstColumn, i).getStringValue(TSFileConfig.STRING_CHARSET);
         int beginPosition = secondType.getInt(secondColumn, i);
-        int endPosition = thirdType.getInt(thirdColumn, i);
-        if (beginPosition >= currentValue.length() || endPosition < 0) {
-          currentValue = EMPTY_STRING;
+        int length = thirdType.getInt(thirdColumn, i);
+        int endPosition;
+        if (length < 0) {
+          throw new SemanticException(
+                  "Argument exception,the scalar function substring length must not be less than 0");
+        }
+        if(beginPosition > Integer.MAX_VALUE - length){
+          endPosition = Integer.MAX_VALUE;
+        }
+        else{
+          endPosition = beginPosition + length - 1;
+        }
+        if (beginPosition > currentValue.length()) {
+          throw new SemanticException(
+                  "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
         } else {
-          if (endPosition >= currentValue.length()) {
-            currentValue = currentValue.substring(beginPosition);
-          } else {
-            currentValue = currentValue.substring(beginPosition, endPosition);
+          int maxMin = Math.max(1, beginPosition);
+          int minMax = Math.min(currentValue.length(), endPosition);
+          if(maxMin > minMax){
+            currentValue = EMPTY_STRING;
+          }
+          else {
+            currentValue = currentValue.substring(maxMin - 1 , minMax);
           }
         }
         builder.writeBinary(BytesUtils.valueOf(currentValue));

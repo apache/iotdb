@@ -603,22 +603,22 @@ public class ColumnTransformerBuilder
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
           return new ReplaceFunctionColumnTransformer(
-              first.getType(), first, ((StringLiteral) children.get(1)).getValue(), "");
+              STRING, first, ((StringLiteral) children.get(1)).getValue(), "");
         } else {
           return new Replace2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+              STRING, first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isStringLiteral(children.get(1)) && isStringLiteral(children.get(2))) {
           return new ReplaceFunctionColumnTransformer(
-              first.getType(),
+              STRING,
               first,
               ((StringLiteral) children.get(1)).getValue(),
               ((StringLiteral) children.get(2)).getValue());
         } else {
           return new Replace3ColumnTransformer(
-              first.getType(),
+              STRING,
               first,
               this.process(children.get(1), context),
               this.process(children.get(2), context));
@@ -631,29 +631,21 @@ public class ColumnTransformerBuilder
       if (children.size() == 2) {
         if (isLongLiteral(children.get(1))) {
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
-          if (startIndex <= 0) {
-            throw new SemanticException(
-                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
-          }
           return new SubStringFunctionColumnTransformer(
-              first.getType(), first, startIndex, Integer.MAX_VALUE);
+              STRING, first, startIndex, Integer.MAX_VALUE);
         } else {
           return new SubString2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+              STRING, first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
           int length = (int) ((LongLiteral) children.get(2)).getParsedValue();
-          if (startIndex <= 0 || length <= 0) {
-            throw new SemanticException(
-                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
-          }
-          return new SubStringFunctionColumnTransformer(first.getType(), first, startIndex, length);
+          return new SubStringFunctionColumnTransformer(STRING, first, startIndex, length);
         } else {
           return new SubString3ColumnTransformer(
-              first.getType(),
+              STRING,
               first,
               this.process(children.get(1), context),
               this.process(children.get(2), context));
@@ -898,6 +890,10 @@ public class ColumnTransformerBuilder
       if (children.size() == 1) {
         return new SqrtColumnTransformer(DOUBLE, first);
       }
+    } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
+      return new ConstantColumnTransformer(DOUBLE, new DoubleColumn(1,Optional.empty(),new double[]{Math.PI}));
+    } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
+      return new ConstantColumnTransformer(DOUBLE, new DoubleColumn(1,Optional.empty(),new double[]{Math.E}));
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
