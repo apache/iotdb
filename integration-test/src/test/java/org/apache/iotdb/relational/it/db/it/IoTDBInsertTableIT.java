@@ -174,66 +174,6 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
-  public void testPartialInsertionRestart() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("USE \"test\"");
-      statement.execute("SET CONFIGURATION enable_auto_create_schema='false'");
-      statement.execute(
-          "create table sg5 (id1 string id, s1 text measurement, s2 double measurement)");
-
-      try {
-        statement.execute("INSERT INTO sg5(id1,time,s1,s2) VALUES('d1', 100,'test','test')");
-      } catch (SQLException e) {
-        // ignore
-      }
-    } finally {
-      try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          Statement statement = connection.createStatement()) {
-        statement.execute("SET CONFIGURATION enable_auto_create_schema='true'");
-      }
-    }
-
-    // TODO: replace restartDaemon() with new methods in Env.
-    /*
-    long time = 0;
-    try {
-      EnvironmentUtils.restartDaemon();
-      StorageEngine.getInstance().recover();
-      // wait for recover
-      while (!StorageEngine.getInstance().isAllSgReady()) {
-        Thread.sleep(500);
-        time += 500;
-        if (time > 10000) {
-          logger.warn("wait too long in restart, wait for: " + time / 1000 + "s");
-        }
-      }
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-     */
-
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use \"test\"");
-
-      try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM sg5")) {
-        assertNotNull(resultSet);
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-          assertEquals("test", resultSet.getString("s1"));
-        }
-        assertEquals(1, cnt);
-      }
-      try (ResultSet resultSet = statement.executeQuery("SELECT s2 FROM sg5")) {
-        assertNotNull(resultSet);
-        assertFalse(resultSet.next());
-      }
-    }
-  }
-
-  @Test
   public void testPartialInsertTablet() {
     try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
       session.executeNonQueryStatement("use \"test\"");
@@ -522,8 +462,7 @@ public class IoTDBInsertTableIT {
       st1.execute("insert into wt14(time, s1, s2) values(100, null, 1), (101, null, 2)");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage().contains(Integer.toString(TSStatusCode.METADATA_ERROR.getStatusCode())));
+      assertEquals("507: Table wt14 does not exist", e.getMessage());
     }
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT)) {
       try (Statement st2 = connection.createStatement()) {

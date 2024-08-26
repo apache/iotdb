@@ -24,9 +24,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.queryengine.execution.load.splitter.AlignedChunkData;
-import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileData;
-import org.apache.iotdb.db.queryengine.execution.load.splitter.TsFileSplitter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -35,6 +32,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.storageengine.load.splitter.AlignedChunkData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
+import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.exception.write.WriteProcessException;

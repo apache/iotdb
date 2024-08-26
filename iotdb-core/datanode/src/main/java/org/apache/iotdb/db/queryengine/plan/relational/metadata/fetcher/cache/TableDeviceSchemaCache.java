@@ -24,10 +24,30 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * The {@link TableDeviceSchemaCache} caches some of the devices and their attributes of tables.
+ * Here are its semantics:
+ *
+ * <p>1. If a deviceId misses cache, it does not necessarily mean that the device does not exist,
+ * Since the cache records only part of the devices.
+ *
+ * <p>2. If a device is in cache, the attributes will be finally identical to the {@link
+ * SchemaRegion}'s version. In reading this may temporarily return false result, and in writing when
+ * the new attribute differs from the original ones, we send the new attributes to the {@link
+ * SchemaRegion} anyway. This may not update the attributes in {@link SchemaRegion} since the
+ * attributes in cache may be stale, but it's okay and {@link SchemaRegion} will just do nothing.
+ *
+ * <p>3. When the attributeMap does not contain an attributeKey, then the value is {@link null}.
+ * Note that we do not tell whether an attributeKey exists here, and it shall be judged from table
+ * schema.
+ */
 public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -68,13 +88,30 @@ public class TableDeviceSchemaCache {
       final String database,
       final String tableName,
       final String[] deviceId,
-      final Map<String, String> attributeMap) {
+      final ConcurrentMap<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.put(
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(attributeMap));
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
+  }
+
+  public void update(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final Map<String, String> attributeMap) {
+    readWriteLock.readLock().lock();
+    try {
+      final TableDeviceCacheEntry entry =
+          dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+      if (Objects.nonNull(entry)) {
+        entry.update(attributeMap);
+      }
     } finally {
       readWriteLock.readLock().unlock();
     }

@@ -570,6 +570,7 @@ primaryExpression
         trimSource=valueExpression ')'                                                    #trim
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+    | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | '(' expression ')'                                                                  #parenthesizedExpression
     ;
 
@@ -809,6 +810,7 @@ DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATANODES: 'DATANODES';
 DATE: 'DATE';
+DATE_BIN: 'DATE_BIN';
 DAY: 'DAY' | 'D';
 DEALLOCATE: 'DEALLOCATE';
 DECLARE: 'DECLARE';

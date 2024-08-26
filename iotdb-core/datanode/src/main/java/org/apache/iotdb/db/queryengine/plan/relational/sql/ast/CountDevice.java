@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -33,8 +34,9 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   public static final String COUNT_DEVICE_HEADER_STRING = "count(devices)";
 
   // For sql-input show device usage
-  public CountDevice(final QualifiedName name, final Expression rawExpression) {
-    super(name, rawExpression);
+  public CountDevice(
+      final NodeLocation location, final Table table, final Expression rawExpression) {
+    super(location, table, rawExpression);
   }
 
   @Override
@@ -45,7 +47,7 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   }
 
   @Override
-  public TsBlock getTsBlock() {
+  public TsBlock getTsBlock(final Analysis analysis) {
     final TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(Collections.singletonList(TSDataType.INT64));
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);

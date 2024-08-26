@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class DeviceAttributeStore implements IDeviceAttributeStore {
 
@@ -140,12 +141,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void alterAttribute(
+  public Map<String, String> alterAttribute(
       final int pointer, final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
     long updatedMemUsage;
+    final Map<String, String> updateMap = new HashMap<>();
     final Map<String, String> attributeMap = deviceAttributeList.get(pointer);
     String value;
     for (int i = 0; i < nameList.size(); i++) {
@@ -157,11 +159,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
               ? MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key))
               : 0;
       if (value != null) {
-        attributeMap.put(key, value);
+        if (!Objects.equals(value, attributeMap.put(key, value))) {
+          updateMap.put(key, value);
+        }
         updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
         memUsageDelta += (updatedMemUsage - originMemUsage);
       } else {
-        attributeMap.remove(key);
+        if (Objects.nonNull(attributeMap.remove(key))) {
+          updateMap.put(key, value);
+        }
         memUsageDelta -= originMemUsage;
       }
     }
@@ -170,6 +176,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     } else if (memUsageDelta < 0) {
       releaseMemory(-memUsageDelta);
     }
+    return updateMap;
   }
 
   @Override

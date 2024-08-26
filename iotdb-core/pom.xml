@@ -38,4 +38,12 @@
         <module>node-commons</module>
         <module>relational-grammar</module>
     </modules>
+    <profiles>
+        <profile>
+            <id>with-ainode</id>
+            <modules>
+                <module>ainode</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

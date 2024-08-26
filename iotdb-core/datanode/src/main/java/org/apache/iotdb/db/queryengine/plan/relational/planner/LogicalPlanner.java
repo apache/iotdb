@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.CountSchemaMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceQueryScanNode;
@@ -33,20 +34,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
@@ -126,8 +129,8 @@ public class LogicalPlanner {
   }
 
   private PlanNode planStatement(final Analysis analysis, final Statement statement) {
-    if (statement instanceof CreateDevice) {
-      return planCreateDevice((CreateDevice) statement, analysis);
+    if (statement instanceof CreateOrUpdateDevice) {
+      return planCreateDevice((CreateOrUpdateDevice) statement, analysis);
     }
     if (statement instanceof FetchDevice) {
       return planFetchDevice((FetchDevice) statement, analysis);
@@ -137,6 +140,9 @@ public class LogicalPlanner {
     }
     if (statement instanceof CountDevice) {
       return planCountDevice((CountDevice) statement, analysis);
+    }
+    if (statement instanceof Update) {
+      return planUpdate((Update) statement, analysis);
     }
     return createOutputPlan(planStatementWithoutOutput(analysis, statement), analysis);
   }
@@ -209,9 +215,9 @@ public class LogicalPlanner {
         analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
   }
 
-  private PlanNode planCreateDevice(final CreateDevice statement, final Analysis analysis) {
-    final CreateTableDeviceNode node =
-        new CreateTableDeviceNode(
+  private PlanNode planCreateDevice(final CreateOrUpdateDevice statement, final Analysis analysis) {
+    final CreateOrUpdateTableDeviceNode node =
+        new CreateOrUpdateTableDeviceNode(
             queryContext.getQueryId().genPlanNodeId(),
             statement.getDatabase(),
             statement.getTable(),
@@ -267,7 +273,11 @@ public class LogicalPlanner {
             statement.getIdDeterminedFilterList(),
             null,
             statement.getColumnHeaderList(),
-            null);
+            null,
+            Objects.nonNull(statement.getOffset()) ? analysis.getOffset(statement.getOffset()) : 0,
+            Objects.nonNull(statement.getLimit())
+                ? analysis.getLimit(statement.getLimit()).orElse(-1)
+                : -1);
     return Objects.nonNull(statement.getIdFuzzyPredicate())
         ? new FilterNode(
             queryContext.getQueryId().genPlanNodeId(), node, statement.getIdFuzzyPredicate())
@@ -295,6 +305,29 @@ public class LogicalPlanner {
 
   private void planQueryDevice(
       final AbstractQueryDeviceWithCache statement, final Analysis analysis) {
+    planTraverseDevice(statement, analysis);
+
+    if (!analysis.isFailed()) {
+      analysis.setRespDatasetHeader(statement.getDataSetHeader());
+    }
+  }
+
+  private PlanNode planUpdate(final Update statement, final Analysis analysis) {
+    planTraverseDevice(statement, analysis);
+
+    return new TableDeviceAttributeUpdateNode(
+        queryContext.getQueryId().genPlanNodeId(),
+        statement.getDatabase(),
+        statement.getTableName(),
+        statement.getIdDeterminedFilterList(),
+        statement.getIdFuzzyPredicate(),
+        statement.getColumnHeaderList(),
+        null,
+        statement.getAssignments(),
+        queryContext.getSession());
+  }
+
+  private void planTraverseDevice(final AbstractTraverseDevice statement, final Analysis analysis) {
     final String database = statement.getDatabase();
 
     final SchemaPartition schemaPartition =
@@ -305,10 +338,6 @@ public class LogicalPlanner {
 
     if (schemaPartition.isEmpty()) {
       analysis.setFinishQueryAfterAnalyze();
-    }
-
-    if (!analysis.isFailed()) {
-      analysis.setRespDatasetHeader(statement.getDataSetHeader());
     }
   }
 

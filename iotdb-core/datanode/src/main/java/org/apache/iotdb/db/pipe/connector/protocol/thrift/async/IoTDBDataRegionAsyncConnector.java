@@ -125,7 +125,8 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
             loadBalanceStrategy,
-            shouldReceiverConvertOnTypeMismatch);
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
