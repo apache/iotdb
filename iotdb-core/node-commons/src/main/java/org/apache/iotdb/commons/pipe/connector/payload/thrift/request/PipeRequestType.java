@@ -53,6 +53,9 @@ public enum PipeRequestType {
 
   // RPC Compression
   TRANSFER_COMPRESSED((short) 300),
+
+  // Fallback Handling
+  TRANSFER_SLICE((short) 400),
   ;
 
   private final short type;
