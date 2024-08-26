@@ -27,14 +27,20 @@ import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState.COMMIT_RELEASE;
+
 public class RenameTableColumnProcedure
     extends AbstractAlterTableProcedure<RenameTableColumnState> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableColumnProcedure.class);
+
   private String oldName;
   private String newName;
 
@@ -55,10 +61,44 @@ public class RenameTableColumnProcedure
 
   @Override
   protected Flow executeFromState(
-      final ConfigNodeProcedureEnv configNodeProcedureEnv,
-      final RenameTableColumnState renameTableColumnState)
+      final ConfigNodeProcedureEnv env, final RenameTableColumnState state)
       throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
-    return null;
+    final long startTime = System.currentTimeMillis();
+    try {
+      switch (state) {
+        case COLUMN_CHECK:
+          LOGGER.info("Column check for table {}.{} when renaming column", database, tableName);
+          columnCheck(env);
+          break;
+        case PRE_RELEASE:
+          LOGGER.info("Pre release info of table {}.{} when renaming column", database, tableName);
+          preRelease(env);
+          break;
+        case RENAME_COLUMN_ON_SCHEMA_REGION:
+          LOGGER.info("Rename column to table {}.{} on schema region", database, tableName);
+          addColumn(env);
+          break;
+        case RENAME_COLUMN_ON_CONFIG_NODE:
+          LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
+          addColumn(env);
+          break;
+        case COMMIT_RELEASE:
+          LOGGER.info("Commit release info of table {}.{} when adding column", database, tableName);
+          commitRelease(env);
+          return Flow.NO_MORE_STATE;
+        default:
+          setFailure(new ProcedureException("Unrecognized AddTableColumnState " + state));
+          return Flow.NO_MORE_STATE;
+      }
+      return Flow.HAS_MORE_STATE;
+    } finally {
+      LOGGER.info(
+          "AddTableColumn-{}.{}-{} costs {}ms",
+          database,
+          tableName,
+          state,
+          (System.currentTimeMillis() - startTime));
+    }
   }
 
   @Override
