@@ -75,7 +75,16 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
     @Override
     public PlanNode visitSort(SortNode node, Context context) {
+
       PlanNode child = node.getChild().accept(this, context);
+
+      // sort in outer query cannot use StreamSort
+      if (context.isExistSortNodeInSubQuery()) {
+        node.setChild(child);
+        return node;
+      }
+      context.setExistSortNodeInSubQuery(true);
+
       TableScanNode tableScanNode = context.getTableScanNode();
       Map<Symbol, ColumnSchema> tableColumnSchema =
           analysis.getTableColumnSchema(tableScanNode.getQualifiedObjectName());
@@ -133,6 +142,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
   private static class Context {
     private TableScanNode tableScanNode;
+    private boolean existSortNodeInSubQuery = false;
 
     public TableScanNode getTableScanNode() {
       return tableScanNode;
@@ -140,6 +150,14 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
     public void setTableScanNode(TableScanNode tableScanNode) {
       this.tableScanNode = tableScanNode;
+    }
+
+    public boolean isExistSortNodeInSubQuery() {
+      return existSortNodeInSubQuery;
+    }
+
+    public void setExistSortNodeInSubQuery(boolean existSortNodeInSubQuery) {
+      this.existSortNodeInSubQuery = existSortNodeInSubQuery;
     }
   }
 }
