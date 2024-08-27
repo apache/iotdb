@@ -141,19 +141,19 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
   }
 
-  // Shall pass in "null" if last by time
+  // Shall pass in "" if last by time
   public Long getLastTime(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getLastTime(measurement) : null;
   }
 
-  // Shall pass in "null" if last by time
+  // Shall pass in "" if last by time
   public TsPrimitiveType getLastBy(final String measurement, final String targetMeasurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getLastBy(measurement, targetMeasurement) : null;
   }
 
-  // Shall pass in "null" if last by time
+  // Shall pass in "" if last by time
   public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getLastRow(measurement) : null;

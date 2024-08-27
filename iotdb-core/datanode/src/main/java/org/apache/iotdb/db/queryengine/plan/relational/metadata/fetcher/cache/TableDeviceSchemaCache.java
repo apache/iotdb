@@ -50,7 +50,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * SchemaRegion} anyway. This may not update the attributes in {@link SchemaRegion} since the
  * attributes in cache may be stale, but it's okay and {@link SchemaRegion} will just do nothing.
  *
- * <p>3. When the attributeMap does not contain an attributeKey, then the value is {@link null}.
+ * <p>3. When the attributeMap does not contain an attributeKey, then the value is {@code null}.
  * Note that we do not tell whether an attributeKey exists here, and it shall be judged from table
  * schema.
  */
@@ -126,7 +126,14 @@ public class TableDeviceSchemaCache {
         false);
   }
 
-  // Shall pass in "null" for deviceId when invalidating attribute for a table
+  /**
+   * Invalidate the attribute cache of one device. The "deviceId" shall equal to {@code null} when
+   * invalidate the cache of the whole table.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   */
   public void invalidateAttributes(
       final String database, final String tableName, final String[] deviceId) {
     dualKeyCache.update(
@@ -139,7 +146,15 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  // The input "TimeValuePair" shall never contain null value
+  /**
+   * Update the last cache in query. The input "TimeValuePair" shall never contain {@code null}
+   * value.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   * @param measurementUpdateMap the fetched measurement -> timeValuePair
+   */
   public void updateLastCache(
       final String database,
       final String tableName,
@@ -153,7 +168,19 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  // The input "TimeValuePair" shall never contain null value
+  /**
+   * Update the last cache in writing. The input "TimeValuePair" shall never contain {@code null}
+   * value.
+   *
+   * <p>If the {@link #putLastCacheWhenWriting} is {@code true} this will force put the cache of the
+   * device like in query. Otherwise, this will put the cache lazily and only update the existing
+   * last caches of devices.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   * @param measurementUpdateMap the written measurement -> timeValuePair
+   */
   public void mayUpdateLastCacheWithoutLock(
       final String database,
       final String tableName,
@@ -184,6 +211,14 @@ public class TableDeviceSchemaCache {
         true);
   }
 
+  /**
+   * Get the last entry of a measurement, the measurement shall never be "time".
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   * @param measurement the measurement to get
+   */
   public TimeValuePair getLastEntry(
       final String database,
       final String tableName,
@@ -194,6 +229,15 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
   }
 
+  /**
+   * Get the last time of a measurement. If the caller wants to get the last entry of a device, the
+   * measurement shall be "" to indicate the time column.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   * @param measurement the measurement to get
+   */
   public Long getLastTime(
       final String database,
       final String tableName,
@@ -204,6 +248,15 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getLastTime(measurement) : null;
   }
 
+  /**
+   * Get the last value of a measurement last by a target measurement. If the caller wants to last
+   * by time, the measurement shall be "" to indicate the time column.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   * @param measurement the measurement to get
+   */
   public TsPrimitiveType getLastBy(
       final String database,
       final String tableName,
@@ -215,6 +268,15 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getLastBy(measurement, targetMeasurement) : null;
   }
 
+  /**
+   * Get the last value of measurements last by a target measurement. If the caller wants to last by
+   * time, the measurement shall be "" to indicate the time column.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   * @param measurement the measurement to get
+   */
   public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(
       final String database,
       final String tableName,
@@ -225,7 +287,14 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getLastRow(measurement) : null;
   }
 
-  // "deviceId" shall equal to null when invalidate the cache of the whole table
+  /**
+   * Invalidate the last cache of one device. Unlike time column, the "deviceId" shall equal to
+   * {@code null} when invalidate the cache of the whole table.
+   *
+   * @param database the device's database, without "root"
+   * @param tableName tableName
+   * @param deviceId the deviceId without tableName
+   */
   public void invalidateLastCache(
       final String database, final String tableName, final String[] deviceId) {
     dualKeyCache.update(
