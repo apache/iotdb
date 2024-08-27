@@ -29,8 +29,12 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionConnectionExcepti
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalException;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeNonCriticalException;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
@@ -40,6 +44,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeatResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
@@ -76,8 +81,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       final String username,
       final String password,
       final String consumerId,
-      final String consumerGroupId) {
-    super(endPoint.ip, endPoint.port, username, password);
+      final String consumerGroupId,
+      final int thriftMaxFrameSize) {
+    super(endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize);
 
     this.endPoint = endPoint;
     this.consumerId = consumerId;
@@ -203,7 +209,7 @@ final class SubscriptionProvider extends SubscriptionSession {
 
   /////////////////////////////// subscription APIs ///////////////////////////////
 
-  void heartbeat() throws SubscriptionException {
+  Map<String, TopicConfig> heartbeat() throws SubscriptionException {
     final TPipeSubscribeResp resp;
     try {
       resp = getSessionConnection().pipeSubscribe(PipeSubscribeHeartbeatReq.toTPipeSubscribeReq());
@@ -217,6 +223,9 @@ final class SubscriptionProvider extends SubscriptionSession {
       throw new SubscriptionConnectionException(e.getMessage(), e);
     }
     verifyPipeSubscribeSuccess(resp.status);
+    final PipeSubscribeHeartbeatResp heartbeatResp =
+        PipeSubscribeHeartbeatResp.fromTPipeSubscribeResp(resp);
+    return heartbeatResp.getTopics();
   }
 
   Map<String, TopicConfig> subscribe(final Set<String> topicNames) throws SubscriptionException {
@@ -279,6 +288,37 @@ final class SubscriptionProvider extends SubscriptionSession {
     final PipeSubscribeUnsubscribeResp unsubscribeResp =
         PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
     return unsubscribeResp.getTopics();
+  }
+
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames) throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL.getType(),
+            new PollPayload(topicNames),
+            0L,
+            thriftMaxFrameSize));
+  }
+
+  List<SubscriptionPollResponse> pollFile(
+      final SubscriptionCommitContext commitContext, final long writingOffset)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_FILE.getType(),
+            new PollFilePayload(commitContext, writingOffset),
+            0L,
+            thriftMaxFrameSize));
+  }
+
+  List<SubscriptionPollResponse> pollTablets(
+      final SubscriptionCommitContext commitContext, final int offset)
+      throws SubscriptionException {
+    return poll(
+        new SubscriptionPollRequest(
+            SubscriptionPollRequestType.POLL_TABLETS.getType(),
+            new PollTabletsPayload(commitContext, offset),
+            0L,
+            thriftMaxFrameSize));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)

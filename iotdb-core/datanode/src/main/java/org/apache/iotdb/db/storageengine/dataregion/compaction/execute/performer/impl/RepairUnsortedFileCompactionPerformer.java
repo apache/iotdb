@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -66,7 +67,7 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
       targetFile.setTimeIndex(timeIndex);
     } else {
-      targetFile.setTimeIndex(seqSourceFile.buildDeviceTimeIndex());
+      targetFile.setTimeIndex(CompactionUtils.buildDeviceTimeIndex(seqSourceFile));
     }
     if (seqSourceFile.modFileExists()) {
       Files.createLink(

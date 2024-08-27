@@ -23,10 +23,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
@@ -69,7 +71,21 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
 
   @Override
   protected Boolean visitInPredicate(InPredicate node, Void context) {
-    return isMeasurementColumn(node.getValue());
+    return isMeasurementColumn(node.getValue()) && isInListAllLiteral(node);
+  }
+
+  public static Boolean isInListAllLiteral(InPredicate node) {
+    if (node.getValueList() instanceof InListExpression) {
+      List<Expression> values = ((InListExpression) node.getValueList()).getValues();
+      for (Expression value : values) {
+        if (!(value instanceof Literal)) {
+          return Boolean.FALSE;
+        }
+      }
+      return Boolean.TRUE;
+    } else {
+      return Boolean.FALSE;
+    }
   }
 
   @Override
