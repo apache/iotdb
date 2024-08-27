@@ -116,7 +116,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
   @SuppressWarnings("java:S135")
   private List<InnerSpaceCompactionTask> selectTasksByLevel(int level) throws IOException {
-    InnerSpaceCompactionTaskSelection levelTaskSelection = new InnerSpaceCompactionTaskSelection();
+    InnerSpaceCompactionTaskSelection levelTaskSelection =
+        new InnerSpaceCompactionTaskSelection(level);
     int startSelectIndex = 0;
     while (startSelectIndex < tsFileResourceCandidateList.size()) {
       for (int i = startSelectIndex; i < tsFileResourceCandidateList.size(); i++) {
@@ -127,7 +128,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           continue;
         }
 
-        if (!currentFile.isValidCandidate || Math.abs(innerCompactionCount - level) > maxLevelGap) {
+        if (!currentFile.isValidCandidate
+            || !levelTaskSelection.isFileLevelSatisfied(innerCompactionCount)) {
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
@@ -158,6 +160,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private class InnerSpaceCompactionTaskSelection {
     List<InnerSpaceCompactionTask> selectedTaskList = new ArrayList<>();
 
+    long level;
     List<TsFileResource> currentSelectedResources = new ArrayList<>();
     List<TsFileResource> currentSkippedResources = new ArrayList<>();
     List<TsFileResource> lastContinuousSkippedResources = new ArrayList<>();
@@ -167,6 +170,14 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
     int lastSelectedFileIndex = -1;
     int nextTaskStartIndex = -1;
+
+    private InnerSpaceCompactionTaskSelection(long level) {
+      this.level = level;
+    }
+
+    private boolean isFileLevelSatisfied(long innerCompactionCount) {
+      return Math.abs(innerCompactionCount - level) <= maxLevelGap;
+    }
 
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
         throws IOException {
@@ -218,6 +229,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
 
     private void endCurrentTaskSelection() {
+      if (isCurrentTaskEmpty()) {
+        return;
+      }
       try {
         // When the total files size does not exceed the limit of the
         // size of a single file, merge all files together and try to include

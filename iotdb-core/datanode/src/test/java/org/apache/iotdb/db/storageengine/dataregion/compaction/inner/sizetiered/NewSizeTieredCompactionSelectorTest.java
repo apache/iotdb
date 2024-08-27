@@ -625,6 +625,48 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     Assert.assertEquals(6, task2.getAllSourceTsFiles().size());
   }
 
+  @Test
+  public void testSkipToPreviousIndexAndSelectSkippedFiles4() throws IOException {
+    for (int i = 0; i < 10; i++) {
+      String device;
+      if (i >= 4) {
+        device = "d3";
+      } else {
+        device = "d" + i;
+      }
+      int level = 0;
+      if (i == 3) {
+        level = 100;
+      }
+      TsFileResource resource =
+          generateSingleNonAlignedSeriesFile(
+              String.format("%d-%d-%d-0.tsfile", i, i, level),
+              new TimeRange[] {new TimeRange(100 * i + 1, 100 * (i + 1))},
+              true,
+              device);
+      seqResources.add(resource);
+    }
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setTargetCompactionFileSize(
+            seqResources.get(0).getTsFileSize()
+                + seqResources.get(1).getTsFileSize()
+                + seqResources.get(2).getTsFileSize()
+                + seqResources.get(3).getTsFileSize());
+    NewSizeTieredCompactionSelector selector =
+        new NewSizeTieredCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext());
+    List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
+        selector.selectInnerSpaceTask(seqResources);
+    Assert.assertEquals(2, innerSpaceCompactionTasks.size());
+    InnerSpaceCompactionTask task1 = innerSpaceCompactionTasks.get(0);
+    Assert.assertEquals(3, task1.getSelectedTsFileResourceList().size());
+    Assert.assertEquals(3, task1.getAllSourceTsFiles().size());
+    InnerSpaceCompactionTask task2 = innerSpaceCompactionTasks.get(1);
+    Assert.assertEquals(6, task2.getSelectedTsFileResourceList().size());
+    Assert.assertEquals(6, task2.getAllSourceTsFiles().size());
+  }
+
   private TsFileResource generateSingleNonAlignedSeriesFile(
       String fileName, TimeRange[] chunkTimeRanges, boolean isSeq, String... devices)
       throws IOException {
