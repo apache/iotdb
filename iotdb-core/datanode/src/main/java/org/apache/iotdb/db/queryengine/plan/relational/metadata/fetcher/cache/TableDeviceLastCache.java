@@ -29,6 +29,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.List;
@@ -43,7 +44,6 @@ public class TableDeviceLastCache {
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class);
 
   public static final Long EMPTY_LONG = Long.MIN_VALUE;
-  public static final TimeValuePair EMPTY_TIME_VALUE_PAIR = new TimeValuePair(Long.MIN_VALUE, null);
   public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
       new TsPrimitiveType() {
         @Override
@@ -77,6 +77,8 @@ public class TableDeviceLastCache {
         }
       };
 
+  public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
+      new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private long lastTime = EMPTY_LONG;
 
@@ -109,36 +111,38 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
-  public @Nonnull TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
-    final TimeValuePair result = measurement2CachedLastMap.get(measurement);
-    return Objects.nonNull(result) ? result : EMPTY_TIME_VALUE_PAIR;
+  public @Nullable TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
+    return measurement2CachedLastMap.get(measurement);
   }
 
   // Shall pass in "" if last by time
-  public @Nonnull Long getLastTime(final @Nonnull String measurement) {
-    if (isAllNull(measurement)) {
-      return EMPTY_LONG;
+  public @Nullable Long getLastTime(final @Nonnull String measurement) {
+    if (cacheMiss(measurement)) {
+      return null;
     }
     return getAlignTime(measurement);
   }
 
   // Shall pass in "" if last by time
-  public @Nonnull TsPrimitiveType getLastBy(
+  public @Nullable TsPrimitiveType getLastBy(
       final @Nonnull String measurement, final @Nonnull String targetMeasurement) {
-    if (isAllNull(measurement)) {
-      return EMPTY_PRIMITIVE_TYPE;
+    if (cacheMiss(measurement)) {
+      return null;
     }
     final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
-    return Objects.nonNull(tvPair) && tvPair.getTimestamp() == getAlignTime(measurement)
+    if (Objects.isNull(tvPair)) {
+      return null;
+    }
+    return tvPair.getTimestamp() == getAlignTime(measurement)
         ? tvPair.getValue()
         : EMPTY_PRIMITIVE_TYPE;
   }
 
   // Shall pass in "" if last by time
-  public @Nonnull Pair<Long, TsPrimitiveType[]> getLastRow(
+  public @Nullable Pair<Long, TsPrimitiveType[]> getLastRow(
       final @Nonnull String measurement, final List<String> targetMeasurements) {
-    if (isAllNull(measurement)) {
-      return new Pair<>(EMPTY_LONG, new TsPrimitiveType[targetMeasurements.size()]);
+    if (cacheMiss(measurement)) {
+      return null;
     }
     final long alignTime = getAlignTime(measurement);
     return new Pair<>(
@@ -146,15 +150,22 @@ public class TableDeviceLastCache {
         targetMeasurements.stream()
             .map(
                 targetMeasurement -> {
-                  final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
-                  return Objects.nonNull(tvPair) && tvPair.getTimestamp() == alignTime
-                      ? tvPair.getValue()
-                      : null;
+                  if (!targetMeasurement.isEmpty()) {
+                    final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
+                    if (Objects.isNull(tvPair)) {
+                      return null;
+                    }
+                    return tvPair.getTimestamp() == alignTime
+                        ? tvPair.getValue()
+                        : EMPTY_PRIMITIVE_TYPE;
+                  } else {
+                    return new TsPrimitiveType.TsLong(alignTime);
+                  }
                 })
             .toArray(TsPrimitiveType[]::new));
   }
 
-  private boolean isAllNull(final @Nonnull String measurement) {
+  private boolean cacheMiss(final @Nonnull String measurement) {
     return !Objects.equals(measurement, "") && !measurement2CachedLastMap.containsKey(measurement);
   }
 

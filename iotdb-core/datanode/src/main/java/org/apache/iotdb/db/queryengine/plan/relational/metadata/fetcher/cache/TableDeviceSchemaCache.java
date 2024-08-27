@@ -149,7 +149,8 @@ public class TableDeviceSchemaCache {
 
   /**
    * Update the last cache in query. The input "TimeValuePair" shall never contain {@code null}
-   * value.
+   * value. If the measurements are all {@code null}s, the timeValuePair shall be {@link
+   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
    *
    * @param database the device's database, without "root"
    * @param tableName tableName
