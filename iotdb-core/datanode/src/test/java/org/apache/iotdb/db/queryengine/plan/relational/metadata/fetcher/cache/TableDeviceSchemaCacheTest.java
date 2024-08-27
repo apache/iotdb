@@ -45,6 +45,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class TableDeviceSchemaCacheTest {
@@ -223,16 +225,20 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s5"));
 
     // Test lastRow
-    Pair<Long, TsPrimitiveType[]> result =
+    Optional<Pair<OptionalLong, TsPrimitiveType[]>> result =
         cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
-    Assert.assertEquals((Long) 2L, result.getLeft());
+    Assert.assertTrue(result.isPresent());
+    Assert.assertTrue(result.get().getLeft().isPresent());
+    Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
     Assert.assertArrayEquals(
-        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(2)}, result.getRight());
+        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(2)}, result.get().getRight());
 
     result =
         cache.getLastRow(
             database, table1, device0, "s0", Arrays.asList("s0", "", "s1", "s4", "s5"));
-    Assert.assertEquals((Long) 1L, result.getLeft());
+    Assert.assertTrue(result.isPresent());
+    Assert.assertTrue(result.get().getLeft().isPresent());
+    Assert.assertEquals(OptionalLong.of(1L), result.get().getLeft());
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
           new TsPrimitiveType.TsInt(3),
@@ -241,21 +247,16 @@ public class TableDeviceSchemaCacheTest {
           TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
           null
         },
-        result.getRight());
+        result.get().getRight());
 
     result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1", "s5"));
-    Assert.assertEquals((Long) Long.MIN_VALUE, result.getLeft());
-    // Actually the outer scope shall judge the Long.MIN_VALUE and return directly
-    Assert.assertArrayEquals(
-        new TsPrimitiveType[] {
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE
-        },
-        result.getRight());
+    Assert.assertTrue(result.isPresent());
+    Assert.assertFalse(result.get().getLeft().isPresent());
 
-    Assert.assertNull(
-        cache.getLastRow(database, table1, device0, "s5", Arrays.asList("s0", "s1", "s5")));
+    Assert.assertFalse(
+        cache
+            .getLastRow(database, table1, device0, "s5", Arrays.asList("s0", "s1", "s5"))
+            .isPresent());
 
     final String table2 = "t2";
     cache.invalidateLastCache(database, table1, device0);

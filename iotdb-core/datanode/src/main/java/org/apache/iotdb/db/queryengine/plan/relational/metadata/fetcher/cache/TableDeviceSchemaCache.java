@@ -35,6 +35,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -285,13 +287,14 @@ public class TableDeviceSchemaCache {
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param sourceMeasurement the measurement to get
-   * @return {@code null} iff the last cache is miss at all; Or, the {@link Pair#left} will be the
-   *     source measurement's last time, (Long.MIN_VALUE iff the source measurement is all {@code
-   *     null}), {@link Pair#right} will be an {@link TsPrimitiveType} array, whose element will be
-   *     {@code null} if cache miss, {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit
-   *     and the measurement is {@code null} when last by time, and the result value otherwise.
+   * @return {@code Optional.empty()} iff the last cache is miss at all; Or the optional of a pair,
+   *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
+   *     the source measurement is all {@code null}); {@link Pair#right} will be an {@link
+   *     TsPrimitiveType} array, whose element will be {@code null} if cache miss, {@link
+   *     TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the measurement is {@code
+   *     null} when last by the source measurement's time, and the result value otherwise.
    */
-  public Pair<Long, TsPrimitiveType[]> getLastRow(
+  public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String database,
       final String tableName,
       final String[] deviceId,
@@ -299,7 +302,9 @@ public class TableDeviceSchemaCache {
       final List<String> targetMeasurements) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    return Objects.nonNull(entry) ? entry.getLastRow(sourceMeasurement, targetMeasurements) : null;
+    return Objects.nonNull(entry)
+        ? entry.getLastRow(sourceMeasurement, targetMeasurements)
+        : Optional.empty();
   }
 
   /**

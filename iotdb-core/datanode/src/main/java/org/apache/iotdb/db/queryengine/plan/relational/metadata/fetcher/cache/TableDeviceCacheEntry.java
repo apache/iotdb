@@ -32,6 +32,8 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -159,10 +161,12 @@ public class TableDeviceCacheEntry {
   }
 
   // Shall pass in "" if last by time
-  public Pair<Long, TsPrimitiveType[]> getLastRow(
+  public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String sourceMeasurement, final List<String> targetMeasurements) {
     final TableDeviceLastCache cache = lastCache.get();
-    return Objects.nonNull(cache) ? cache.getLastRow(sourceMeasurement, targetMeasurements) : null;
+    return Objects.nonNull(cache)
+        ? cache.getLastRow(sourceMeasurement, targetMeasurements)
+        : Optional.empty();
   }
 
   public int invalidateLastCache() {

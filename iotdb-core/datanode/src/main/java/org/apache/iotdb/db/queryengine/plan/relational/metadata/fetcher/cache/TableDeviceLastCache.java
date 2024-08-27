@@ -32,10 +32,11 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -77,6 +78,8 @@ public class TableDeviceLastCache {
         }
       };
 
+  private static final Optional<Pair<OptionalLong, TsPrimitiveType[]>> HIT_AND_ALL_NULL =
+      Optional.of(new Pair<>(OptionalLong.empty(), null));
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
@@ -139,35 +142,35 @@ public class TableDeviceLastCache {
   }
 
   // Shall pass in "" if last by time
-  public @Nullable Pair<Long, TsPrimitiveType[]> getLastRow(
+  public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
     if (cacheMiss(sourceMeasurement)) {
-      return null;
+      return Optional.empty();
     }
     final long alignTime = getAlignTime(sourceMeasurement);
     if (alignTime == Long.MIN_VALUE) {
-      final TsPrimitiveType[] resultType = new TsPrimitiveType[targetMeasurements.size()];
-      Arrays.fill(resultType, EMPTY_PRIMITIVE_TYPE);
-      return new Pair<>(alignTime, resultType);
+      return HIT_AND_ALL_NULL;
     }
-    return new Pair<>(
-        alignTime,
-        targetMeasurements.stream()
-            .map(
-                targetMeasurement -> {
-                  if (!targetMeasurement.isEmpty()) {
-                    final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
-                    if (Objects.isNull(tvPair)) {
-                      return null;
-                    }
-                    return tvPair.getTimestamp() == alignTime
-                        ? tvPair.getValue()
-                        : EMPTY_PRIMITIVE_TYPE;
-                  } else {
-                    return new TsPrimitiveType.TsLong(alignTime);
-                  }
-                })
-            .toArray(TsPrimitiveType[]::new));
+    return Optional.of(
+        new Pair<>(
+            OptionalLong.of(alignTime),
+            targetMeasurements.stream()
+                .map(
+                    targetMeasurement -> {
+                      if (!targetMeasurement.isEmpty()) {
+                        final TimeValuePair tvPair =
+                            measurement2CachedLastMap.get(targetMeasurement);
+                        if (Objects.isNull(tvPair)) {
+                          return null;
+                        }
+                        return tvPair.getTimestamp() == alignTime
+                            ? tvPair.getValue()
+                            : EMPTY_PRIMITIVE_TYPE;
+                      } else {
+                        return new TsPrimitiveType.TsLong(alignTime);
+                      }
+                    })
+                .toArray(TsPrimitiveType[]::new)));
   }
 
   private boolean cacheMiss(final @Nonnull String measurement) {
