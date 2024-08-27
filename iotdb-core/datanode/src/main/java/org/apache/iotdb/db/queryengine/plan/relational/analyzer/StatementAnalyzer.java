@@ -1865,14 +1865,23 @@ public class StatementAnalyzer {
       Scope right = process(node.getRight(), scope);
 
       if (criteria instanceof JoinUsing) {
-        return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
+        throw new SemanticException("Join Using clause is not supported in current version");
+        // return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
       }
 
       Scope output =
           createAndAssignScope(
               node, scope, left.getRelationType().joinWith(right.getRelationType()));
 
-      if (node.getType() == Join.Type.CROSS || node.getType() == Join.Type.IMPLICIT) {
+      if (node.getType() == Join.Type.CROSS
+          || node.getType() == LEFT
+          || node.getType() == RIGHT
+          || node.getType() == FULL) {
+        throw new SemanticException(
+            String.format(
+                "Only support INNER JOIN in current version, %s JOIN is not supported",
+                node.getType()));
+      } else if (node.getType() == Join.Type.IMPLICIT) {
         return output;
       }
       if (criteria instanceof JoinOn) {

@@ -649,7 +649,8 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node,
       GraphContext context) {
     List<String> boxValue = new ArrayList<>();
-    boxValue.add(String.format("Output-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     return render(node, boxValue, context);
   }
@@ -736,6 +737,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("JoinType: %s", node.getJoinType()));
     boxValue.add(String.format("JoinCriteria: %s", node.getCriteria()));
+    boxValue.add(String.format("LeftOutputSymbols: %s", node.getLeftOutputSymbols()));
+    boxValue.add(String.format("RightOutputSymbols: %s", node.getRightOutputSymbols()));
+    if (node.getFilter().isPresent()) {
+      boxValue.add(
+          String.format("Filter: %s", node.getFilter().map(v -> v.toString()).orElse(null)));
+    }
     return render(node, boxValue, context);
   }
 

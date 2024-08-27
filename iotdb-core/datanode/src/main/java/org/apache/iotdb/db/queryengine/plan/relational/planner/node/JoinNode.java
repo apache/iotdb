@@ -37,30 +37,24 @@ public class JoinNode extends TwoChildProcessNode {
   private final Optional<Expression> filter;
   private final Optional<Symbol> leftHashSymbol;
   private final Optional<Symbol> rightHashSymbol;
-  // private final Optional<DistributionType> distributionType;
   private final Optional<Boolean> spillable;
 
+  // private final Optional<DistributionType> distributionType;
   // private final Map<DynamicFilterId, Symbol> dynamicFilters;
 
-  @JsonCreator
   public JoinNode(
-      @JsonProperty("id") PlanNodeId id,
-      @JsonProperty("type") JoinType joinType,
-      @JsonProperty("left") PlanNode leftChild,
-      @JsonProperty("right") PlanNode rightChild,
-      @JsonProperty("criteria") List<EquiJoinClause> criteria,
-      @JsonProperty("leftOutputSymbols") List<Symbol> leftOutputSymbols,
-      @JsonProperty("rightOutputSymbols") List<Symbol> rightOutputSymbols,
-      @JsonProperty("maySkipOutputDuplicates") boolean maySkipOutputDuplicates,
-      @JsonProperty("filter") Optional<Expression> filter,
-      @JsonProperty("leftHashSymbol") Optional<Symbol> leftHashSymbol,
-      @JsonProperty("rightHashSymbol") Optional<Symbol> rightHashSymbol,
-      // @JsonProperty("distributionType") Optional<DistributionType> distributionType,
-      @JsonProperty("spillable") Optional<Boolean> spillable)
-        // @JsonProperty("dynamicFilters") Map<DynamicFilterId, Symbol> dynamicFilters,
-        // @JsonProperty("reorderJoinStatsAndCost") Optional<PlanNodeStatsAndCostSummary>
-        // reorderJoinStatsAndCost)
-      {
+      PlanNodeId id,
+      JoinType joinType,
+      PlanNode leftChild,
+      PlanNode rightChild,
+      List<EquiJoinClause> criteria,
+      List<Symbol> leftOutputSymbols,
+      List<Symbol> rightOutputSymbols,
+      boolean maySkipOutputDuplicates,
+      Optional<Expression> filter,
+      Optional<Symbol> leftHashSymbol,
+      Optional<Symbol> rightHashSymbol,
+      Optional<Boolean> spillable) {
     super(id);
     requireNonNull(joinType, "type is null");
     requireNonNull(leftChild, "left is null");
@@ -78,7 +72,6 @@ public class JoinNode extends TwoChildProcessNode {
         filter);
     requireNonNull(leftHashSymbol, "leftHashSymbol is null");
     requireNonNull(rightHashSymbol, "rightHashSymbol is null");
-    // requireNonNull(distributionType, "distributionType is null");
     requireNonNull(spillable, "spillable is null");
 
     this.joinType = joinType;
@@ -91,12 +84,7 @@ public class JoinNode extends TwoChildProcessNode {
     this.filter = filter;
     this.leftHashSymbol = leftHashSymbol;
     this.rightHashSymbol = rightHashSymbol;
-    // this.distributionType = distributionType;
     this.spillable = spillable;
-    // this.dynamicFilters = ImmutableMap.copyOf(requireNonNull(dynamicFilters, "dynamicFilters is
-    // null"));
-    // this.reorderJoinStatsAndCost = requireNonNull(reorderJoinStatsAndCost,
-    // "reorderJoinStatsAndCost is null");
 
     Set<Symbol> leftSymbols = ImmutableSet.copyOf(leftChild.getOutputSymbols());
     Set<Symbol> rightSymbols = ImmutableSet.copyOf(rightChild.getOutputSymbols());
@@ -104,9 +92,6 @@ public class JoinNode extends TwoChildProcessNode {
     checkArgument(
         leftSymbols.containsAll(leftOutputSymbols),
         "Left source inputs do not contain all left output symbols");
-    if (!rightSymbols.containsAll(rightOutputSymbols)) {
-      System.out.println("====");
-    }
     checkArgument(
         rightSymbols.containsAll(rightOutputSymbols),
         "Right source inputs do not contain all right output symbols");
@@ -125,22 +110,6 @@ public class JoinNode extends TwoChildProcessNode {
                     && rightSymbols.contains(equiJoinClause.getRight()),
                 "Equality join criteria should be normalized according to join sides: %s",
                 equiJoinClause));
-
-    //        if (distributionType.isPresent()) {
-    //            // The implementation of full outer join only works if the data is hash
-    // partitioned.
-    //            checkArgument(
-    //                    !(distributionType.get() == REPLICATED && (type == RIGHT || type ==
-    // FULL)),
-    //                    "%s join do not work with %s distribution type",
-    //                    type,
-    //                    distributionType.get());
-    //        }
-
-    //        for (Symbol symbol : dynamicFilters.values()) {
-    //            checkArgument(rightSymbols.contains(symbol), "Right join input doesn't contain
-    // symbol for dynamic filter: %s", symbol);
-    //        }
   }
 
   @Override

@@ -49,12 +49,6 @@ public class LogicalOptimizeFactory {
     PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();
     PlanOptimizer transformSortToStreamSortOptimizer = new TransformSortToStreamSort();
 
-    IterativeOptimizer usingSortMegeJoinOptimizer =
-        new IterativeOptimizer(
-            plannerContext,
-            new RuleStatsRecorder(),
-            ImmutableSet.of(new InlineProjections(plannerContext)));
-
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
             new PruneFilterColumns(),
