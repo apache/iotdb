@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.enums.HandleSystemErrorStrategy;
 import org.apache.iotdb.commons.enums.PipeRemainingTimeRateAverageTime;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.KillPoint;
+import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
@@ -213,6 +214,9 @@ public class CommonConfig {
 
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
   private int rateLimiterHotReloadCheckIntervalMs = 1000;
+
+  private int pipeConnectorRequestSliceThresholdBytes =
+      (int) (RpcUtils.THRIFT_FRAME_MAX_SIZE * 0.8);
 
   private boolean isSeperatedPipeHeartbeatEnabled = true;
   private int pipeHeartbeatIntervalSecondsForCollectingPipeMeta = 100;
@@ -1102,6 +1106,15 @@ public class CommonConfig {
 
   public void setRateLimiterHotReloadCheckIntervalMs(int rateLimiterHotReloadCheckIntervalMs) {
     this.rateLimiterHotReloadCheckIntervalMs = rateLimiterHotReloadCheckIntervalMs;
+  }
+
+  public int getPipeConnectorRequestSliceThresholdBytes() {
+    return pipeConnectorRequestSliceThresholdBytes;
+  }
+
+  public void setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    this.pipeConnectorRequestSliceThresholdBytes = pipeConnectorRequestSliceThresholdBytes;
   }
 
   public long getTwoStageAggregateMaxCombinerLiveTimeInMs() {
