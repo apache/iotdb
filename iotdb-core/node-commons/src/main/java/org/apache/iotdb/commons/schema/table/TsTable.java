@@ -108,7 +108,10 @@ public class TsTable {
   public void renameColumnSchema(final String oldName, final String newName) {
     readWriteLock.writeLock().lock();
     try {
-      columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+      // Ensures idempotency
+      if (columnSchemaMap.containsKey(oldName)) {
+        columnSchemaMap.put(newName, columnSchemaMap.remove(oldName));
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }

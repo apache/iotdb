@@ -1571,6 +1571,8 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
+  public void renameTableAttribute() {}
+
   public void deleteTableDevice(String tableName) {
     storageGroupMNode.deleteChild(tableName);
   }
