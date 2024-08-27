@@ -64,7 +64,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupByTime;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingElement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupingSets;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -128,7 +127,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpressio
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableExpressionType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TimeRange;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
@@ -932,60 +930,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visit(ctx.groupingElement(), GroupingElement.class));
   }
 
-  @Override
-  public Node visitTimenGrouping(RelationalSqlParser.TimenGroupingContext ctx) {
-    long startTime = 0;
-    long endTime = 0;
-    boolean leftCRightO = true;
-    if (ctx.timeRange() != null) {
-      TimeRange timeRange = (TimeRange) visit(ctx.timeRange());
-      startTime = timeRange.getStartTime();
-      endTime = timeRange.getEndTime();
-      leftCRightO = timeRange.isLeftCRightO();
-    }
-    // Parse time interval
-    TimeDuration interval = DateTimeUtils.constructTimeDuration(ctx.windowInterval.getText());
-    TimeDuration slidingStep = interval;
-    if (ctx.windowStep != null) {
-      slidingStep = DateTimeUtils.constructTimeDuration(ctx.windowStep.getText());
-    }
-
-    if (interval.monthDuration <= 0 && interval.nonMonthDuration <= 0) {
-      throw new SemanticException(
-          "The second parameter time interval should be a positive integer.");
-    }
-
-    if (slidingStep.monthDuration <= 0 && slidingStep.nonMonthDuration <= 0) {
-      throw new SemanticException(
-          "The third parameter time slidingStep should be a positive integer.");
-    }
-    return new GroupByTime(
-        getLocation(ctx), startTime, endTime, interval, slidingStep, leftCRightO);
-  }
-
-  @Override
-  public Node visitLeftClosedRightOpen(RelationalSqlParser.LeftClosedRightOpenContext ctx) {
-    return getTimeRange(ctx.timeValue(0), ctx.timeValue(1), true);
-  }
-
-  @Override
-  public Node visitLeftOpenRightClosed(RelationalSqlParser.LeftOpenRightClosedContext ctx) {
-    return getTimeRange(ctx.timeValue(0), ctx.timeValue(1), false);
-  }
-
-  private TimeRange getTimeRange(
-      RelationalSqlParser.TimeValueContext left,
-      RelationalSqlParser.TimeValueContext right,
-      boolean leftCRightO) {
-    long currentTime = CommonDateTimeUtils.currentTime();
-    long startTime = parseTimeValue(left, currentTime);
-    long endTime = parseTimeValue(right, currentTime);
-    if (startTime >= endTime) {
-      throw new SemanticException("Start time should be smaller than endTime in GroupBy");
-    }
-    return new TimeRange(startTime, endTime, leftCRightO);
-  }
-
   private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_VALUE() != null) {
       try {
@@ -1645,6 +1589,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);
   }
 
+  @Override
   public Node visitDateBin(RelationalSqlParser.DateBinContext ctx) {
     TimeDuration timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
 
