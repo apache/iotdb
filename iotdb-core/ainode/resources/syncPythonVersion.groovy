@@ -24,8 +24,10 @@ def currentPythonVersion = currentMavenVersion
 if(currentMavenVersion.contains("-SNAPSHOT")) {
     currentPythonVersion = currentMavenVersion.split("-SNAPSHOT")[0] + ".dev"
 }
+println "Current Maven Version:  " + currentMavenVersion
+println "Current Python Version: " + currentPythonVersion
 
-def pyprojectFile = new File("pyproject.toml")
+def pyprojectFile = new File(project.basedir, "pyproject.toml")
 def ts = new TomlSlurper()
 def toml = ts.parse(pyprojectFile)
 def pyprojectFileVersion = toml.tool.poetry.version
