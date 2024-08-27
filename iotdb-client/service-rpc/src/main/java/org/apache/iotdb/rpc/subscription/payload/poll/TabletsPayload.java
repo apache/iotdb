@@ -28,20 +28,32 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class TabletsPayload implements SubscriptionPollPayload {
 
-  protected transient List<Tablet> tablets = new ArrayList<>();
+  /** A batch of tablets. */
+  private transient List<Tablet> tablets = new ArrayList<>();
+
+  /**
+   * The field to be filled in the next {@link PollTabletsPayload} request. If negative, it
+   * indicates all tablets have been fetched, and -nextOffset represents the total number of
+   * tablets.
+   */
+  private transient int nextOffset;
 
   public TabletsPayload() {}
 
-  public TabletsPayload(final List<Tablet> tablets) {
-    this.tablets = new CopyOnWriteArrayList<>(tablets);
+  public TabletsPayload(final List<Tablet> tablets, final int nextOffset) {
+    this.tablets = tablets;
+    this.nextOffset = nextOffset;
   }
 
   public List<Tablet> getTablets() {
     return tablets;
+  }
+
+  public int getNextOffset() {
+    return nextOffset;
   }
 
   @Override
@@ -50,6 +62,7 @@ public class TabletsPayload implements SubscriptionPollPayload {
     for (final Tablet tablet : tablets) {
       tablet.serialize(stream);
     }
+    ReadWriteIOUtils.write(nextOffset, stream);
   }
 
   @Override
@@ -59,7 +72,8 @@ public class TabletsPayload implements SubscriptionPollPayload {
     for (int i = 0; i < size; ++i) {
       tablets.add(Tablet.deserialize(buffer));
     }
-    this.tablets = new CopyOnWriteArrayList<>(tablets);
+    this.tablets = tablets;
+    this.nextOffset = ReadWriteIOUtils.readInt(buffer);
     return this;
   }
 
@@ -72,16 +86,17 @@ public class TabletsPayload implements SubscriptionPollPayload {
       return false;
     }
     final TabletsPayload that = (TabletsPayload) obj;
-    return Objects.equals(this.tablets, that.tablets);
+    return Objects.equals(this.tablets, that.tablets)
+        && Objects.equals(this.nextOffset, that.nextOffset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tablets);
+    return Objects.hash(tablets, nextOffset);
   }
 
   @Override
   public String toString() {
-    return "TabletsPayload{size of tablets=" + tablets.size() + "}";
+    return "TabletsPayload{size of tablets=" + tablets.size() + ", nextOffset=" + nextOffset + "}";
   }
 }

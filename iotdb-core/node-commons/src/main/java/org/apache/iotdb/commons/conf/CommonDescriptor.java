@@ -409,6 +409,12 @@ public class CommonDescriptor {
                 "rate_limiter_hot_reload_check_interval_ms",
                 String.valueOf(config.getRateLimiterHotReloadCheckIntervalMs()))));
 
+    config.setPipeConnectorRequestSliceThresholdBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_request_slice_threshold_bytes",
+                String.valueOf(config.getPipeConnectorRequestSliceThresholdBytes()))));
+
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -652,16 +658,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionReadTabletBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_read_tablet_buffer_size",
+                String.valueOf(config.getSubscriptionReadTabletBufferSize()))));
     config.setSubscriptionTsFileDeduplicationWindowSeconds(
         Long.parseLong(
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
-    config.setSubscriptionPollPayloadMaxSize(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_poll_payload_max_size",
-                String.valueOf(config.getSubscriptionPollPayloadMaxSize()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

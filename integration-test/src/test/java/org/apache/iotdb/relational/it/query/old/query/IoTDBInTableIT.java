@@ -57,19 +57,19 @@ public class IoTDBInTableIT {
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
-        "CREATE TABLE sg(device1 STRING ID, device2 STRING ID, qrcode TEXT MEASUREMENT)",
-        "insert into sg(time,device1,device2,qrcode) values(1509465600000,'d1','s1','qrcode001')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465660000,'d1','s1','qrcode002')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465720000,'d1','s1','qrcode003')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465780000,'d1','s1','qrcode004')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465720000,'d1','s2','qrcode002')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465780000,'d1','s2','qrcode003')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465840000,'d1','s2','qrcode004')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465900000,'d1','s2','qrcode005')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465780000,'d2','s1','qrcode002')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465840000,'d2','s1','qrcode003')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465900000,'d2','s1','qrcode004')",
-        "insert into sg(time,device1,device2,qrcode) values(1509465960000,'d2','s1','qrcode005')",
+        "CREATE TABLE sg(device1 STRING ID, device2 STRING ID, qrcode TEXT MEASUREMENT, date_v DATE MEASUREMENT, blob_v BLOB MEASUREMENT)",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465600000,'d1','s1','qrcode001', '2024-08-01', X'abc0')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465660000,'d1','s1','qrcode002', '2024-08-02', X'abc1')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465720000,'d1','s1','qrcode003', '2024-08-03', X'abc2')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465780000,'d1','s1','qrcode004', '2024-08-04', X'abc3')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465720000,'d1','s2','qrcode002', '2024-08-05', X'abc4')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465780000,'d1','s2','qrcode003', '2024-08-06', X'abc5')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465840000,'d1','s2','qrcode004', '2024-08-07', X'abc6')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465900000,'d1','s2','qrcode005', '2024-08-08', X'abc7')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465780000,'d2','s1','qrcode002', '2024-08-09', X'abc8')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465840000,'d2','s1','qrcode003', '2024-08-10', X'abc9')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465900000,'d2','s1','qrcode004', '2024-08-11', X'abca')",
+        "insert into sg(time,device1,device2,qrcode,date_v,blob_v) values(1509465960000,'d2','s1','qrcode005', '2024-08-12', X'abcb')",
         "CREATE TABLE table1(device STRING ID, s1 INT32 MEASUREMENT, s2 INT64 MEASUREMENT, s3 FLOAT MEASUREMENT, s4 DOUBLE MEASUREMENT, s5 BOOLEAN MEASUREMENT)",
       };
 
@@ -132,7 +132,7 @@ public class IoTDBInTableIT {
       statement.execute("USE " + DATABASE_NAME);
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from sg where qrcode in ('d1','s1','qrcode002','qrcode004') order by device1,device2")) {
+              "select time,device1,device2,qrcode from sg where qrcode in ('d1','s1','qrcode002','qrcode004') order by device1,device2")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
@@ -158,6 +158,57 @@ public class IoTDBInTableIT {
         }
         Assert.assertEquals(6, cnt);
       }
+
+      // DATE IN
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select date_v from sg where date_v in (CAST('2024-08-05' AS DATE), CAST('2024-08-12' AS DATE), CAST('2024-08-22' AS DATE)) order by date_v")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(
+            resultSetMetaData,
+            "date_v,",
+            new int[] {
+              Types.DATE,
+            });
+
+        int cnt = 0;
+        String expectedString = "2024-08-05,2024-08-12,";
+        StringBuilder actualBuilder = new StringBuilder();
+        while (resultSet.next()) {
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+          }
+          cnt++;
+        }
+        Assert.assertEquals(expectedString, actualBuilder.toString());
+        Assert.assertEquals(2, cnt);
+      }
+
+      // BLOB IN
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select blob_v from sg where blob_v in (X'abc3', X'abca', X'bbbb') order by blob_v")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(
+            resultSetMetaData,
+            "blob_v,",
+            new int[] {
+              Types.BLOB,
+            });
+
+        String expectedString = "0xabc3,0xabca,";
+        StringBuilder actualBuilder = new StringBuilder();
+        int cnt = 0;
+        while (resultSet.next()) {
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            actualBuilder.append(resultSet.getString(i)).append(",");
+          }
+          cnt++;
+        }
+        Assert.assertEquals(expectedString, actualBuilder.toString());
+        Assert.assertEquals(2, cnt);
+      }
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

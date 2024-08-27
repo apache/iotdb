@@ -227,16 +227,16 @@ final class SubscriptionProviders {
 
     acquireWriteLock();
     try {
-      heartbeatInternal();
+      heartbeatInternal(consumer);
     } finally {
       releaseWriteLock();
     }
   }
 
-  private void heartbeatInternal() {
+  private void heartbeatInternal(final SubscriptionConsumer consumer) {
     for (final SubscriptionProvider provider : getAllProviders()) {
       try {
-        provider.heartbeat();
+        consumer.subscribedTopics = provider.heartbeat();
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
@@ -299,7 +299,7 @@ final class SubscriptionProviders {
       } else {
         // existing provider
         try {
-          provider.heartbeat();
+          consumer.subscribedTopics = provider.heartbeat();
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
