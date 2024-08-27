@@ -79,6 +79,7 @@ public enum ServiceType {
   PIPE_CONSENSUS_SERVICE("PipeConsensus Service", "PipeConsensusRPCService"),
   PIPE_PLUGIN_CLASSLOADER_MANAGER_SERVICE(
       "Pipe Plugin Classloader Manager Service", "PipePluginClassLoader"),
+  AINode_RPC_SERVICE("Rpc Service for AINode", "AINodeRPCService"),
   PIPE_RUNTIME_DATA_NODE_AGENT("Pipe Runtime Data Node Agent", "PipeRuntimeDataNodeAgent"),
   PIPE_RUNTIME_CONFIG_NODE_AGENT("Pipe Runtime Config Node Agent", "PipeRuntimeConfigNodeAgent"),
   SUBSCRIPTION_RUNTIME_AGENT("Subscription Runtime Agent", "SubscriptionRuntimeAgent"),

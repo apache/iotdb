@@ -52,8 +52,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,6 +63,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -73,9 +73,6 @@ import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFact
 public class TableDeviceSchemaFetcher {
 
   private final SqlParser relationSqlParser = new SqlParser();
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaFetcher.class);
-
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
@@ -98,7 +95,7 @@ public class TableDeviceSchemaFetcher {
     return cache;
   }
 
-  Map<TableDeviceId, Map<String, String>> fetchMissingDeviceSchemaForDataInsertion(
+  Map<TableDeviceId, ConcurrentMap<String, String>> fetchMissingDeviceSchemaForDataInsertion(
       final FetchDevice statement, final MPPQueryContext context) {
     final long queryId = SessionManager.getInstance().requestQueryId();
     Throwable t = null;
@@ -127,7 +124,7 @@ public class TableDeviceSchemaFetcher {
     final List<ColumnHeader> columnHeaderList =
         coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
     final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getIdNums();
-    final Map<TableDeviceId, Map<String, String>> fetchedDeviceSchema = new HashMap<>();
+    final Map<TableDeviceId, ConcurrentMap<String, String>> fetchedDeviceSchema = new HashMap<>();
 
     try {
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -144,7 +141,7 @@ public class TableDeviceSchemaFetcher {
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           final String[] nodes = new String[idLength];
-          final Map<String, String> attributeMap = new HashMap<>();
+          final ConcurrentMap<String, String> attributeMap = new ConcurrentHashMap<>();
 
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 0, columnHeaderList, columns, tableInstance, i);
@@ -296,6 +293,7 @@ public class TableDeviceSchemaFetcher {
   }
 
   // Return whether all of required info of current device is in cache
+  @SuppressWarnings("squid:S107")
   private boolean tryGetDeviceInCache(
       final List<DeviceEntry> deviceEntryList,
       final String database,
@@ -317,25 +315,20 @@ public class TableDeviceSchemaFetcher {
         cache.getDeviceAttribute(database, tableInstance.getTableName(), idValues);
 
     final IDeviceID deviceID = convertIdValuesToDeviceID(idValues, tableInstance);
-    if (attributeMap == null) {
+
+    // DeviceEntryList == null means that this is update statement
+    // Shall not get from cache and shall reach the SchemaRegion to update
+    if (Objects.isNull(attributeMap) || Objects.isNull(deviceEntryList)) {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }
       return false;
     }
-    final List<String> attributeValues = new ArrayList<>(attributeColumns.size());
-    for (final String attributeKey : attributeColumns) {
-      if (!attributeMap.containsKey(attributeKey)) {
-        // The attributes may be updated and the cache entry is stale
-        if (Objects.nonNull(fetchPaths)) {
-          fetchPaths.add(deviceID);
-        }
-        return false;
-      }
-      attributeValues.add(attributeMap.get(attributeKey));
-    }
 
-    final DeviceEntry deviceEntry = new DeviceEntry(deviceID, attributeValues);
+    final DeviceEntry deviceEntry =
+        new DeviceEntry(
+            deviceID,
+            attributeColumns.stream().map(attributeMap::get).collect(Collectors.toList()));
     // TODO table metadata: process cases that selected attr columns different from those used for
     // predicate
     if (check.test(deviceEntry)) {
@@ -408,7 +401,7 @@ public class TableDeviceSchemaFetcher {
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
           String[] nodes = new String[idLength + 1];
           nodes[0] = table;
-          final Map<String, String> attributeMap = new HashMap<>();
+          final ConcurrentMap<String, String> attributeMap = new ConcurrentHashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, 1, columnHeaderList, columns, tableInstance, i);
           nodes = (String[]) truncateTailingNull(nodes);
@@ -458,14 +451,10 @@ public class TableDeviceSchemaFetcher {
               columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET);
         }
         startIndex++;
-      } else {
-        if (columns[j].isNull(rowIndex)) {
-          attributeMap.put(columnSchema.getColumnName(), null);
-        } else {
-          attributeMap.put(
-              columnSchema.getColumnName(),
-              columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
-        }
+      } else if (!columns[j].isNull(rowIndex)) {
+        attributeMap.put(
+            columnSchema.getColumnName(),
+            columns[j].getBinary(rowIndex).getStringValue(TSFileConfig.STRING_CHARSET));
       }
     }
   }

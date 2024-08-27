@@ -55,7 +55,7 @@ public class DateTimeUtils {
     // forbidding instantiation
   }
 
-  private static final String TIMESTAMP_PRECISION =
+  public static final String TIMESTAMP_PRECISION =
       CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
 
   public static long correctPrecision(long millis) {

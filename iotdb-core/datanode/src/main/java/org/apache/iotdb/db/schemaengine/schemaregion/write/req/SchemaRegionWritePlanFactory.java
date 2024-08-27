@@ -22,6 +22,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.write.req;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.ActivateTemplateInClusterPlanImpl;
@@ -94,6 +96,10 @@ public class SchemaRegionWritePlanFactory {
         return new DeleteLogicalViewPlanImpl();
       case ALTER_LOGICAL_VIEW:
         return new AlterLogicalViewPlanImpl();
+      case CREATE_TABLE_DEVICE:
+        return CreateOrUpdateTableDeviceNode.MOCK_INSTANCE;
+      case UPDATE_TABLE_DEVICE_ATTRIBUTE:
+        return TableDeviceAttributeUpdateNode.MOCK_INSTANCE;
       default:
         throw new UnsupportedOperationException(
             String.format(

@@ -432,6 +432,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private volatile boolean enableCrossSpaceCompaction = true;
 
+  /** Enable the service for AINode */
+  private boolean enableAINodeService = false;
+
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
@@ -646,7 +649,7 @@ public class IoTDBConfig {
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
    * join cluster
    */
-  private int dataNodeId = -1;
+  private volatile int dataNodeId = -1;
 
   /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -909,6 +912,9 @@ public class IoTDBConfig {
 
   /** Internal port for coordinator */
   private int internalPort = 10730;
+
+  /** Port for AINode */
+  private int aiNodePort = 10780;
 
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
@@ -2848,6 +2854,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableAINodeService() {
+    return enableAINodeService;
+  }
+
+  public void setEnableAINodeService(boolean enableAINodeService) {
+    this.enableAINodeService = enableAINodeService;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -3124,6 +3138,14 @@ public class IoTDBConfig {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
+  }
+
+  public int getAINodePort() {
+    return aiNodePort;
+  }
+
+  public void setAINodePort(int aiNodePort) {
+    this.aiNodePort = aiNodePort;
   }
 
   public int getDataRegionConsensusPort() {

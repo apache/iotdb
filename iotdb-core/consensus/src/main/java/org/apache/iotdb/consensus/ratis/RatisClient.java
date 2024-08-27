@@ -158,7 +158,7 @@ class RatisClient implements AutoCloseable {
               RaftClient.newBuilder()
                   .setProperties(raftProperties)
                   .setRaftGroup(group)
-                  .setRetryPolicy(new RatisEndlessRetryPolicy())
+                  .setRetryPolicy(new RatisEndlessRetryPolicy(config))
                   .setClientRpc(clientRpc)
                   .build(),
               clientManager));
@@ -222,24 +222,28 @@ class RatisClient implements AutoCloseable {
   private static class RatisEndlessRetryPolicy implements RetryPolicy {
 
     private static final Logger logger = LoggerFactory.getLogger(RatisEndlessRetryPolicy.class);
+    // for reconfiguration request, we use different retry policy
+    private final RetryPolicy endlessPolicy;
     private final RetryPolicy defaultPolicy;
 
-    RatisEndlessRetryPolicy() {
-      defaultPolicy =
+    RatisEndlessRetryPolicy(RatisConfig.Client config) {
+      endlessPolicy =
           RetryPolicies.retryForeverWithSleep(TimeDuration.valueOf(2, TimeUnit.SECONDS));
+      defaultPolicy = new RatisRetryPolicy(config);
     }
 
     @Override
     public Action handleAttemptFailure(Event event) {
-      if (event.getCause() == null
-          || event.getCause() instanceof ReconfigurationInProgressException
-          || event.getCause() instanceof TimeoutIOException
-          || event.getCause() instanceof LeaderSteppingDownException
-          || event.getCause() instanceof ReconfigurationTimeoutException
-          || event.getCause() instanceof ServerNotReadyException
-          || event.getCause() instanceof NotLeaderException
-          || event.getCause() instanceof LeaderNotReadyException) {
-        return defaultPolicy.handleAttemptFailure(event);
+      Throwable cause = event.getCause();
+      if (cause == null
+          || cause instanceof ReconfigurationInProgressException
+          || cause instanceof TimeoutIOException
+          || cause instanceof LeaderSteppingDownException
+          || cause instanceof ReconfigurationTimeoutException
+          || cause instanceof ServerNotReadyException
+          || cause instanceof NotLeaderException
+          || cause instanceof LeaderNotReadyException) {
+        return endlessPolicy.handleAttemptFailure(event);
       }
 
       return defaultPolicy.handleAttemptFailure(event);

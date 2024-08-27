@@ -42,12 +42,21 @@ Studio. It is highly recommended to use Visual Studio 2022 or later.
 If you are using Visual Studio 2022, you can compile the cpp client with the following command:
 
 ```
-mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
 ```
 
-#### Visual Studio 2019 or older
-If you are using Visual Studio 2019 or older, the pre-built Thrift library is incompatible. You 
+##### Visual Studio 2019
+If you are using Visual Studio 2019, you can compile the cpp client with the following command:
+
+```
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+-D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+-Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
+```
+
+#### Visual Studio 2017 or older
+If you are using Visual Studio 2017 or older, the pre-built Thrift library is incompatible. You 
 will have to compile the thrift library manually:
 
 1. Install the dependencies of Thrift:
@@ -70,7 +79,7 @@ will have to compile the thrift library manually:
 5. Return to the cpp client repository and compile it with:
 
 ```
-mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
 ```
 
