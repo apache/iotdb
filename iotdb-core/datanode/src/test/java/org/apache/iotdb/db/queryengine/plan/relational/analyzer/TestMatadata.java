@@ -264,6 +264,11 @@ public class TestMatadata implements Metadata {
     return DATA_PARTITION;
   }
 
+  @Override
+  public boolean canUseStatistics(String name) {
+    return BuiltinAggregationFunction.canUseStatistics(name);
+  }
+
   private static final DataPartition DATA_PARTITION =
       MockTableModelDataPartition.constructDataPartition();
 

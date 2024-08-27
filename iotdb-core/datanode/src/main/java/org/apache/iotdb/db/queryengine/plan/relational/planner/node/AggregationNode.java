@@ -26,8 +26,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -49,7 +47,6 @@ import static java.util.Objects.requireNonNull;
 
 @Immutable
 public class AggregationNode extends SingleChildProcessNode {
-  private final PlanNode source;
   private final Map<Symbol, Aggregation> aggregations;
   private final GroupingSetDescriptor groupingSets;
   private final List<Symbol> preGroupedSymbols;
@@ -74,19 +71,17 @@ public class AggregationNode extends SingleChildProcessNode {
         Optional.empty());
   }
 
-  @JsonCreator
   public AggregationNode(
-      @JsonProperty("id") PlanNodeId id,
-      @JsonProperty("source") PlanNode source,
-      @JsonProperty("aggregations") Map<Symbol, Aggregation> aggregations,
-      @JsonProperty("groupingSets") GroupingSetDescriptor groupingSets,
-      @JsonProperty("preGroupedSymbols") List<Symbol> preGroupedSymbols,
-      @JsonProperty("step") Step step,
-      @JsonProperty("hashSymbol") Optional<Symbol> hashSymbol,
-      @JsonProperty("groupIdSymbol") Optional<Symbol> groupIdSymbol) {
+      PlanNodeId id,
+      PlanNode source,
+      Map<Symbol, Aggregation> aggregations,
+      GroupingSetDescriptor groupingSets,
+      List<Symbol> preGroupedSymbols,
+      Step step,
+      Optional<Symbol> hashSymbol,
+      Optional<Symbol> groupIdSymbol) {
     super(id);
-
-    this.source = source;
+    this.child = source;
     this.aggregations = ImmutableMap.copyOf(requireNonNull(aggregations, "aggregations is null"));
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
@@ -129,7 +124,6 @@ public class AggregationNode extends SingleChildProcessNode {
     return groupingSets.getGroupingKeys();
   }
 
-  @JsonProperty("groupingSets")
   public GroupingSetDescriptor getGroupingSets() {
     return groupingSets;
   }
@@ -161,11 +155,6 @@ public class AggregationNode extends SingleChildProcessNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return ImmutableList.of(source);
-  }
-
-  @Override
   public PlanNode clone() {
     return new AggregationNode(
         id, null, aggregations, groupingSets, preGroupedSymbols, step, hashSymbol, groupIdSymbol);
@@ -181,12 +170,10 @@ public class AggregationNode extends SingleChildProcessNode {
     return outputs;
   }
 
-  @JsonProperty
   public Map<Symbol, Aggregation> getAggregations() {
     return aggregations;
   }
 
-  @JsonProperty("preGroupedSymbols")
   public List<Symbol> getPreGroupedSymbols() {
     return preGroupedSymbols;
   }
@@ -199,24 +186,16 @@ public class AggregationNode extends SingleChildProcessNode {
     return groupingSets.getGlobalGroupingSets();
   }
 
-  @JsonProperty("source")
-  public PlanNode getSource() {
-    return source;
-  }
-
-  @JsonProperty("step")
-  public Step getStep() {
-    return step;
-  }
-
-  @JsonProperty("hashSymbol")
   public Optional<Symbol> getHashSymbol() {
     return hashSymbol;
   }
 
-  @JsonProperty("groupIdSymbol")
   public Optional<Symbol> getGroupIdSymbol() {
     return groupIdSymbol;
+  }
+
+  public Step getStep() {
+    return this.step;
   }
 
   public boolean hasOrderings() {
@@ -312,11 +291,8 @@ public class AggregationNode extends SingleChildProcessNode {
     private final int groupingSetCount;
     private final Set<Integer> globalGroupingSets;
 
-    @JsonCreator
     public GroupingSetDescriptor(
-        @JsonProperty("groupingKeys") List<Symbol> groupingKeys,
-        @JsonProperty("groupingSetCount") int groupingSetCount,
-        @JsonProperty("globalGroupingSets") Set<Integer> globalGroupingSets) {
+        List<Symbol> groupingKeys, int groupingSetCount, Set<Integer> globalGroupingSets) {
       requireNonNull(globalGroupingSets, "globalGroupingSets is null");
       checkArgument(groupingSetCount > 0, "grouping set count must be larger than 0");
       checkArgument(
@@ -334,17 +310,14 @@ public class AggregationNode extends SingleChildProcessNode {
       this.globalGroupingSets = ImmutableSet.copyOf(globalGroupingSets);
     }
 
-    @JsonProperty
     public List<Symbol> getGroupingKeys() {
       return groupingKeys;
     }
 
-    @JsonProperty
     public int getGroupingSetCount() {
       return groupingSetCount;
     }
 
-    @JsonProperty
     public Set<Integer> getGlobalGroupingSets() {
       return globalGroupingSets;
     }
@@ -395,14 +368,13 @@ public class AggregationNode extends SingleChildProcessNode {
     private final Optional<OrderingScheme> orderingScheme;
     private final Optional<Symbol> mask;
 
-    @JsonCreator
     public Aggregation(
-        @JsonProperty("resolvedFunction") ResolvedFunction resolvedFunction,
-        @JsonProperty("arguments") List<Expression> arguments,
-        @JsonProperty("distinct") boolean distinct,
-        @JsonProperty("filter") Optional<Symbol> filter,
-        @JsonProperty("orderingScheme") Optional<OrderingScheme> orderingScheme,
-        @JsonProperty("mask") Optional<Symbol> mask) {
+        ResolvedFunction resolvedFunction,
+        List<Expression> arguments,
+        boolean distinct,
+        Optional<Symbol> filter,
+        Optional<OrderingScheme> orderingScheme,
+        Optional<Symbol> mask) {
       this.resolvedFunction = requireNonNull(resolvedFunction, "resolvedFunction is null");
       this.arguments = ImmutableList.copyOf(requireNonNull(arguments, "arguments is null"));
       for (Expression argument : arguments) {
@@ -417,32 +389,26 @@ public class AggregationNode extends SingleChildProcessNode {
       this.mask = requireNonNull(mask, "mask is null");
     }
 
-    @JsonProperty
     public ResolvedFunction getResolvedFunction() {
       return resolvedFunction;
     }
 
-    @JsonProperty
     public List<Expression> getArguments() {
       return arguments;
     }
 
-    @JsonProperty
     public boolean isDistinct() {
       return distinct;
     }
 
-    @JsonProperty
     public Optional<Symbol> getFilter() {
       return filter;
     }
 
-    @JsonProperty
     public Optional<OrderingScheme> getOrderingScheme() {
       return orderingScheme;
     }
 
-    @JsonProperty
     public Optional<Symbol> getMask() {
       return mask;
     }
@@ -469,7 +435,7 @@ public class AggregationNode extends SingleChildProcessNode {
       return Objects.hash(resolvedFunction, arguments, distinct, filter, orderingScheme, mask);
     }
 
-    private void verifyArguments(Step step) {
+    void verifyArguments(Step step) {
       int expectedArgumentCount;
       if (step == Step.SINGLE || step == Step.PARTIAL) {
         expectedArgumentCount = resolvedFunction.getSignature().getArgumentTypes().size();
@@ -510,7 +476,7 @@ public class AggregationNode extends SingleChildProcessNode {
     public Builder(AggregationNode node) {
       requireNonNull(node, "node is null");
       this.id = node.getPlanNodeId();
-      this.source = node.getSource();
+      this.source = node.getChild();
       this.aggregations = node.getAggregations();
       this.groupingSets = node.getGroupingSets();
       this.preGroupedSymbols = node.getPreGroupedSymbols();

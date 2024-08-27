@@ -30,9 +30,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateCombineIntoTableScanChecker;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -121,6 +123,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         rewrittenChildren.add(child.accept(this, context));
       }
       node.setChildren(rewrittenChildren);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitAggregation(AggregationNode node, Void context) {
+      // TODO same as Trino after EqualityInference introduced
+      PlanNode rewrittenChild = node.getChild().accept(this, context);
+      node.setChild(rewrittenChild);
       return node;
     }
 
@@ -267,7 +277,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       List<String> attributeColumns =
           node.getOutputSymbols().stream()
               .filter(
-                  symbol -> ATTRIBUTE.equals(node.getAssignments().get(symbol).getColumnCategory()))
+                  symbol -> {
+                    ColumnSchema schema = node.getAssignments().get(symbol);
+                    if (schema == null) {
+                      return false;
+                    } else {
+                      return ATTRIBUTE.equals(schema.getColumnCategory());
+                    }
+                  })
               .map(Symbol::getName)
               .collect(Collectors.toList());
       List<DeviceEntry> deviceEntries =

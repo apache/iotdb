@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -295,7 +296,9 @@ public class QueryPlanner {
 
     List<Expression> inputs = inputBuilder.build();
     // subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
-    // subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
+    subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
+
+    Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;
 
     GroupingSetsPlan groupingSets = planGroupingSets(subPlan, node, groupingSetAnalysis);
 
@@ -303,7 +306,8 @@ public class QueryPlanner {
         groupingSets.getSubPlan(),
         groupingSets.getGroupingSets(),
         groupingSets.getGroupIdSymbol(),
-        analysis.getAggregates(node));
+        analysis.getAggregates(node),
+        rewrite);
   }
 
   private GroupingSetsPlan planGroupingSets(
@@ -399,7 +403,8 @@ public class QueryPlanner {
       PlanBuilder subPlan,
       List<List<Symbol>> groupingSets,
       Optional<Symbol> groupIdSymbol,
-      List<FunctionCall> aggregates) {
+      List<FunctionCall> aggregates,
+      Function<Expression, Expression> rewrite) {
     ImmutableList.Builder<AggregationAssignment> aggregateMappingBuilder = ImmutableList.builder();
 
     // deduplicate based on scope-aware equality
@@ -414,13 +419,7 @@ public class QueryPlanner {
       Aggregation aggregation =
           new Aggregation(
               analysis.getResolvedFunction(function),
-              function.getArguments().stream()
-                  .map(
-                      argument ->
-                          symbolAllocator
-                              .newSymbol(argument, analysis.getType(argument))
-                              .toSymbolReference())
-                  .collect(Collectors.toList()),
+              function.getArguments().stream().map(rewrite).collect(Collectors.toList()),
               function.isDistinct(),
               Optional.empty(),
               Optional.empty(),

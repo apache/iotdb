@@ -178,4 +178,9 @@ public interface Metadata {
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+
+  /**
+   * @return if the Aggregation can use statistics to optimize
+   */
+  boolean canUseStatistics(String name);
 }

@@ -20,6 +20,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleSta
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
@@ -50,6 +52,10 @@ public class LogicalOptimizeFactory {
 
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
+            new PruneAggregationColumns(),
+            // TODO After ValuesNode introduced
+            // new RemoveEmptyGlobalAggregation(),
+            new PruneAggregationSourceColumns(),
             new PruneFilterColumns(),
             new PruneLimitColumns(),
             new PruneOffsetColumns(),
@@ -74,6 +80,11 @@ public class LogicalOptimizeFactory {
             new RuleStatsRecorder(),
             ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject()));
 
+    PlanOptimizer unAliasSymbolReferences =
+        new UnaliasSymbolReferences(plannerContext.getMetadata());
+
+    PlanOptimizer pushAggregationIntoTableScanOptimizer = new PushAggregationIntoTableScan();
+
     PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
 
     IterativeOptimizer topKOptimizer =
@@ -86,6 +97,7 @@ public class LogicalOptimizeFactory {
         ImmutableList.of(
             simplifyExpressionOptimizer,
             columnPruningOptimizer,
+            unAliasSymbolReferences,
             inlineProjectionsOptimizer,
             pushPredicateIntoTableScanOptimizer,
             // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
@@ -93,6 +105,7 @@ public class LogicalOptimizeFactory {
             inlineProjectionsOptimizer,
             limitPushdownOptimizer,
             pushLimitOffsetIntoTableScanOptimizer,
+            pushAggregationIntoTableScanOptimizer,
             transformSortToStreamSortOptimizer,
             topKOptimizer);
   }

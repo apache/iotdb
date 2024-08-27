@@ -30,14 +30,13 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pro
 public final class Patterns {
   private Patterns() {}
 
+  public static Pattern<AggregationNode> aggregation() {
+    return typeOf(AggregationNode.class);
+  }
+
   /*public static Pattern<AssignUniqueId> assignUniqueId()
   {
       return typeOf(AssignUniqueId.class);
-  }
-
-  public static Pattern<AggregationNode> aggregation()
-  {
-      return typeOf(AggregationNode.class);
   }
 
   public static Pattern<GroupIdNode> groupId()

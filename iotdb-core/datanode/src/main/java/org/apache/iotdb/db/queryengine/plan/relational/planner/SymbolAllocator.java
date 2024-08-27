@@ -36,6 +36,10 @@ public class SymbolAllocator {
     symbolMap = new HashMap<>();
   }
 
+  public Symbol newSymbol(Symbol symbolHint) {
+    return newSymbol(symbolHint, null);
+  }
+
   public Symbol newSymbol(Symbol symbolHint, String suffix) {
     checkArgument(symbolMap.containsKey(symbolHint), "symbolHint not in symbols map");
     return newSymbol(symbolHint.getName(), symbolMap.get(symbolHint), suffix);

@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Tabl
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -75,6 +76,17 @@ public class TableModelTypeProviderExtractor {
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
       node.getChildren().forEach(child -> child.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitAggregation(AggregationNode node, Void context) {
+      Map<Symbol, AggregationNode.Aggregation> aggregations = node.getAggregations();
+      node.getOutputSymbols()
+          .forEach(
+              k ->
+                  beTypeProvider.putTableModelType(
+                      k, aggregations.get(k).getResolvedFunction().getSignature().getReturnType()));
       return null;
     }
 
