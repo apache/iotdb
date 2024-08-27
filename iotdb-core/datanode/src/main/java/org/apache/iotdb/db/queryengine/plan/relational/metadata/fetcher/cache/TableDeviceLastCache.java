@@ -119,8 +119,9 @@ public class TableDeviceLastCache {
   }
 
   // Shall pass in "" if last by time
+  // TODO: Detect null value
   public @Nullable Long getLastTime(final @Nonnull String measurement) {
-    if (cacheMiss(measurement)) {
+    if (!Objects.equals(measurement, "") && !measurement2CachedLastMap.containsKey(measurement)) {
       return null;
     }
     return getAlignTime(measurement);
@@ -129,9 +130,16 @@ public class TableDeviceLastCache {
   // Shall pass in "" if last by time
   public @Nullable TsPrimitiveType getLastBy(
       final @Nonnull String sourceMeasurement, final @Nonnull String targetMeasurement) {
-    if (cacheMiss(sourceMeasurement)) {
-      return null;
+    if (!Objects.equals(sourceMeasurement, "")) {
+      if (!measurement2CachedLastMap.containsKey(sourceMeasurement)) {
+        return null;
+      }
+      final TimeValuePair pair = measurement2CachedLastMap.get(sourceMeasurement);
+      if (pair == EMPTY_TIME_VALUE_PAIR) {
+        return EMPTY_PRIMITIVE_TYPE;
+      }
     }
+
     final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
     if (Objects.isNull(tvPair)) {
       return null;
@@ -144,13 +152,20 @@ public class TableDeviceLastCache {
   // Shall pass in "" if last by time
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
-    if (cacheMiss(sourceMeasurement)) {
-      return Optional.empty();
+    final long alignTime;
+    if (Objects.equals(sourceMeasurement, "")) {
+      alignTime = lastTime;
+    } else {
+      if (!measurement2CachedLastMap.containsKey(sourceMeasurement)) {
+        return Optional.empty();
+      }
+      final TimeValuePair pair = measurement2CachedLastMap.get(sourceMeasurement);
+      if (pair == EMPTY_TIME_VALUE_PAIR) {
+        return HIT_AND_ALL_NULL;
+      }
+      alignTime = measurement2CachedLastMap.get(sourceMeasurement).getTimestamp();
     }
-    final long alignTime = getAlignTime(sourceMeasurement);
-    if (alignTime == Long.MIN_VALUE) {
-      return HIT_AND_ALL_NULL;
-    }
+
     return Optional.of(
         new Pair<>(
             OptionalLong.of(alignTime),
@@ -171,10 +186,6 @@ public class TableDeviceLastCache {
                       }
                     })
                 .toArray(TsPrimitiveType[]::new)));
-  }
-
-  private boolean cacheMiss(final @Nonnull String measurement) {
-    return !Objects.equals(measurement, "") && !measurement2CachedLastMap.containsKey(measurement);
   }
 
   private long getAlignTime(final @Nonnull String measurement) {
