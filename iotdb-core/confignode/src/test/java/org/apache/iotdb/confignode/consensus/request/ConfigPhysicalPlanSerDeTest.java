@@ -149,6 +149,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
@@ -1522,6 +1523,23 @@ public class ConfigPhysicalPlanSerDeTest {
         rollbackCreateTablePlan0.getDatabase(), rollbackCreateTablePlan1.getDatabase());
     Assert.assertEquals(
         rollbackCreateTablePlan0.getTableName(), rollbackCreateTablePlan1.getTableName());
+  }
+
+  @Test
+  public void RenameTableColumnPlan() throws IOException {
+    final RenameTableColumnPlan renameTablePropertiesPlan0 =
+        new RenameTableColumnPlan("root.database1", "table1", "attr1", "att2");
+    final RenameTableColumnPlan renameTablePropertiesPlan1 =
+        (RenameTableColumnPlan)
+            ConfigPhysicalPlan.Factory.create(renameTablePropertiesPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getDatabase(), renameTablePropertiesPlan1.getDatabase());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getTableName(), renameTablePropertiesPlan1.getTableName());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getOldName(), renameTablePropertiesPlan1.getOldName());
+    Assert.assertEquals(
+        renameTablePropertiesPlan0.getNewName(), renameTablePropertiesPlan1.getNewName());
   }
 
   @Test
