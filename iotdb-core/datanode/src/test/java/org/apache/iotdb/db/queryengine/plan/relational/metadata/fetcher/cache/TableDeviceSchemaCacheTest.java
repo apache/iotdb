@@ -153,12 +153,16 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastTime(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastBy(database, table1, device0, "s0", "s1"));
-    Assert.assertNull(
-        cache.getLastRow(database, table1, device0, "s0", Collections.singletonList("s1")));
+    Assert.assertFalse(
+        cache
+            .getLastRow(database, table1, device0, "s0", Collections.singletonList("s1"))
+            .isPresent());
     Assert.assertNull(cache.getLastTime(database, table1, device0, ""));
     Assert.assertNull(cache.getLastBy(database, table1, device0, "", "s1"));
-    Assert.assertNull(
-        cache.getLastRow(database, table1, device0, "", Collections.singletonList("s1")));
+    Assert.assertFalse(
+        cache
+            .getLastRow(database, table1, device0, "", Collections.singletonList("s1"))
+            .isPresent());
 
     // Query update
     final Map<String, TimeValuePair> measurementQueryUpdateMap = new HashMap<>();
