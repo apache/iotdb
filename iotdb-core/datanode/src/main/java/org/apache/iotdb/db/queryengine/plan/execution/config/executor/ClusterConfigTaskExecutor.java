@@ -401,21 +401,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showDatabase(
-      ShowDatabaseStatement showDatabaseStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final ShowDatabaseStatement showDatabaseStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    List<String> databasePathPattern =
+    final List<String> databasePathPattern =
         Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TGetDatabaseReq req =
+      final TGetDatabaseReq req =
           new TGetDatabaseReq(
               databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize());
-      TShowDatabaseResp resp = client.showDatabase(req);
+      final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (IOException | ClientManagerException | TException | IllegalPathException e) {
+    } catch (final IOException | ClientManagerException | TException | IllegalPathException e) {
       future.setException(e);
     }
     return future;

@@ -712,8 +712,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus setDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
     } else {
