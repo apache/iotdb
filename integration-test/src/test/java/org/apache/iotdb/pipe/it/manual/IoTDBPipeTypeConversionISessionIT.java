@@ -723,9 +723,9 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
     long[] timestamp = createTestDataForTimestamp();
     Object[] objects = new Object[pairs.size()];
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(pairs.size());
-    BitMap[] bitMaps = new BitMap[generateDataSize];
+    BitMap[] bitMaps = new BitMap[pairs.size()];
     for (int i = 0; i < bitMaps.length; i++) {
-      bitMaps[i] = new BitMap(pairs.size());
+      bitMaps[i] = new BitMap(generateDataSize);
     }
     List<Tablet.ColumnType> columnTypes = new ArrayList<>(pairs.size());
     for (int i = 0; i < objects.length; i++) {
