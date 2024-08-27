@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader.CompactionChunkReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -290,6 +291,6 @@ public class RepairDataFileScanUtil {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
       return (ArrayDeviceTimeIndex) timeIndex;
     }
-    return resource.buildDeviceTimeIndex();
+    return CompactionUtils.buildDeviceTimeIndex(resource);
   }
 }

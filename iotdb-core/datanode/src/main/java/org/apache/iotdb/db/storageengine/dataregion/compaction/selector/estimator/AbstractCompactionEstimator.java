@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimat
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
@@ -161,7 +162,7 @@ public abstract class AbstractCompactionEstimator {
     }
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
-      timeIndex = resource.buildDeviceTimeIndex();
+      timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
     }
     deviceTimeIndexCache.put(resource, (ArrayDeviceTimeIndex) timeIndex);
     return (ArrayDeviceTimeIndex) timeIndex;

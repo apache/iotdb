@@ -681,6 +681,10 @@ public class TableMetadataImpl implements Metadata {
     return BlobType.BLOB.equals(type);
   }
 
+  public static boolean isBool(Type type) {
+    return BOOLEAN.equals(type);
+  }
+
   public static boolean isSupportedMathNumericType(Type type) {
     return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
   }
