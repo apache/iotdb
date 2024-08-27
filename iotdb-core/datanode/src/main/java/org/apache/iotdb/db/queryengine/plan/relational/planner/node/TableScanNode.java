@@ -15,6 +15,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -22,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -174,6 +178,21 @@ public class TableScanNode extends SourceNode {
   @Override
   public List<String> getOutputColumnNames() {
     return outputSymbols.stream().map(Symbol::getName).collect(Collectors.toList());
+  }
+
+  public List<Symbol> getIdColumnsInTableStore(Metadata metadata, SessionInfo session) {
+    return Objects.requireNonNull(
+            metadata.getTableSchema(session, qualifiedObjectName).orElse(null))
+        .getColumns()
+        .stream()
+        .filter(columnSchema -> columnSchema.getColumnCategory() == TsTableColumnCategory.ID)
+        .map(columnSchema -> Symbol.of(columnSchema.getName()))
+        .collect(Collectors.toList());
+  }
+
+  public boolean isIdColumn(Symbol symbol) {
+    return !TimestampOperand.TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName())
+        && !getIdAndAttributeIndexMap().containsKey(symbol);
   }
 
   @Override

@@ -320,6 +320,10 @@ public class Analysis implements IAnalysis {
     return aggregates.get(NodeRef.of(query));
   }
 
+  public boolean hasAggregates() {
+    return !aggregates.isEmpty();
+  }
+
   public void setOrderByAggregates(OrderBy node, List<Expression> aggregates) {
     this.orderByAggregates.put(NodeRef.of(node), ImmutableList.copyOf(aggregates));
   }
