@@ -28,8 +28,10 @@ import java.util.Objects;
 
 public class FileSealPayload implements SubscriptionPollPayload {
 
+  /** The name of the file to be sealed. */
   private transient String fileName;
 
+  /** The length of the file. */
   private transient long fileLength;
 
   public String getFileName() {
