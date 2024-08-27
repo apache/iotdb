@@ -84,7 +84,7 @@ public class TableDeviceLastCache {
   public int update(
       final @Nonnull String database,
       final @Nonnull String tableName,
-      final Map<String, TimeValuePair> measurementUpdateMap) {
+      final @Nonnull Map<String, TimeValuePair> measurementUpdateMap) {
     final AtomicInteger diff = new AtomicInteger(0);
     measurementUpdateMap.forEach(
         (k, v) -> {
