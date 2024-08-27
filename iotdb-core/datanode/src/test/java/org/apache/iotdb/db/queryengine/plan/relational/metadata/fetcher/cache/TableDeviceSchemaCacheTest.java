@@ -253,6 +253,7 @@ public class TableDeviceSchemaCacheTest {
         },
         result.get().getRight());
 
+    // Test null source measurements
     result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1", "s5"));
     Assert.assertTrue(result.isPresent());
     Assert.assertFalse(result.get().getLeft().isPresent());
@@ -282,6 +283,33 @@ public class TableDeviceSchemaCacheTest {
 
     Assert.assertNull(cache.getLastEntry(database, table2, device1, "s2"));
     Assert.assertNull(cache.getLastEntry(database, table2, device2, "s2"));
+
+    // Test Long.MIN_VALUE
+    measurementQueryUpdateMap.clear();
+    measurementQueryUpdateMap.put("s2", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR);
+    measurementQueryUpdateMap.put(
+        "s3", new TimeValuePair(Long.MIN_VALUE, new TsPrimitiveType.TsInt(3)));
+    cache.updateLastCache(database, table2, device0, measurementQueryUpdateMap);
+
+    result = cache.getLastRow(database, table2, device0, "s3", Arrays.asList("s2", "s3"));
+    Assert.assertTrue(result.isPresent());
+    Assert.assertTrue(result.get().getLeft().isPresent());
+    Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, new TsPrimitiveType.TsInt(3),
+        },
+        result.get().getRight());
+
+    result = cache.getLastRow(database, table2, device0, "", Arrays.asList("s2", "s3"));
+    Assert.assertTrue(result.isPresent());
+    Assert.assertTrue(result.get().getLeft().isPresent());
+    Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, new TsPrimitiveType.TsInt(3),
+        },
+        result.get().getRight());
   }
 
   @Test
