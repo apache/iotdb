@@ -483,7 +483,7 @@ public final class ExpressionTreeRewriter<C> {
       return new LikePredicate(
           process(node.getValue(), context),
           process(node.getPattern(), context),
-          process(escape, context));
+          escape == null ? null : process(escape, context));
     }
 
     @Override
