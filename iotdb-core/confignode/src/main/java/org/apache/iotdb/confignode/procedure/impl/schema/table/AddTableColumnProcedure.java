@@ -140,13 +140,14 @@ public class AddTableColumnProcedure extends AbstractAlterTableProcedure<AddTabl
       switch (state) {
         case ADD_COLUMN:
           LOGGER.info(
-              "Start rollback pre release info of table {}.{} when adding column",
+              "Start rollback Add column to table {}.{} when adding column",
               database,
               table.getTableName());
           rollbackAddColumn(env);
           break;
         case PRE_RELEASE:
-          LOGGER.info("Start rollback Add column to table {}.{}", database, table.getTableName());
+          LOGGER.info(
+              "Start rollback pre release info of table {}.{}", database, table.getTableName());
           rollbackPreRelease(env);
           break;
       }

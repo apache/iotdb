@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -1211,13 +1212,11 @@ public class ClusterSchemaManager {
   }
 
   public synchronized TSStatus renameTableColumn(
-      final String database,
-      final String tableName,
-      final List<TsTableColumnSchema> columnSchemaList) {
-    final AddTableColumnPlan addTableColumnPlan =
-        new AddTableColumnPlan(database, tableName, columnSchemaList, false);
+      final String database, final String tableName, final String oldName, final String newName) {
+    final RenameTableColumnPlan renameTableColumnPlan =
+        new RenameTableColumnPlan(database, tableName, oldName, newName);
     try {
-      return getConsensusManager().write(addTableColumnPlan);
+      return getConsensusManager().write(renameTableColumnPlan);
     } catch (final ConsensusException e) {
       LOGGER.warn(e.getMessage(), e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

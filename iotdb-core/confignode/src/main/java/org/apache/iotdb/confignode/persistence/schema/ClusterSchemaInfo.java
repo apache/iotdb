@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -1143,6 +1144,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         mTree.addTableColumn(
             new PartialPath(databaseName), plan.getTableName(), plan.getColumnSchemaList());
       }
+      return RpcUtils.SUCCESS_STATUS;
+    } catch (final MetadataException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } finally {
+      databaseReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  public TSStatus renameTableColumn(final RenameTableColumnPlan plan) {
+    final String databaseName = PathUtils.qualifyDatabaseName(plan.getDatabase());
+    databaseReadWriteLock.writeLock().lock();
+    try {
+      mTree.renameTableColumn(
+          new PartialPath(databaseName), plan.getTableName(), plan.getOldName(), plan.getNewName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       LOGGER.warn(e.getMessage(), e);

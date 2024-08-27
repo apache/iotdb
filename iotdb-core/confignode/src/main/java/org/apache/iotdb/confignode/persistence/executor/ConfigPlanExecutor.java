@@ -112,6 +112,7 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.ru
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
@@ -501,6 +502,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
       case AddTableColumn:
         return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
+      case RenameTableColumn:
+        return clusterSchemaInfo.renameTableColumn((RenameTableColumnPlan) physicalPlan);
       case SetTableProperties:
         return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case CreatePipeV2:

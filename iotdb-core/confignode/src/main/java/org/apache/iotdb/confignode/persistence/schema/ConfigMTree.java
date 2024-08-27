@@ -738,6 +738,15 @@ public class ConfigMTree {
     columnSchemaList.forEach(o -> table.removeColumnSchema(o.getColumnName()));
   }
 
+  public void renameTableColumn(
+      final PartialPath database,
+      final String tableName,
+      final String oldName,
+      final String newName)
+      throws MetadataException {
+    getTable(database, tableName).renameColumnSchema(oldName, newName);
+  }
+
   public void setTableProperties(
       final PartialPath database, final String tableName, final Map<String, String> tableProperties)
       throws MetadataException {
