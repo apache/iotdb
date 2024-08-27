@@ -24,12 +24,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.connector.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferSliceReqHandler;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferCompressedReq;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -135,8 +133,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private static final AtomicLong CONFIG_RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicReference<String> configReceiverId = new AtomicReference<>();
 
-  private final PipeTransferSliceReqHandler sliceReqHandler = new PipeTransferSliceReqHandler();
-
   static {
     try {
       folderManager =
@@ -152,185 +148,111 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   @Override
   public synchronized TPipeTransferResp receive(final TPipeTransferReq req) {
     try {
-      final long startTime = System.nanoTime();
+      long startTime = System.nanoTime();
       final short rawRequestType = req.getType();
       if (PipeRequestType.isValidatedRequestType(rawRequestType)) {
-        final PipeRequestType requestType = PipeRequestType.valueOf(rawRequestType);
-        if (requestType != PipeRequestType.TRANSFER_SLICE) {
-          sliceReqHandler.clear();
-        }
-        switch (requestType) {
+        TPipeTransferResp resp;
+        switch (PipeRequestType.valueOf(rawRequestType)) {
           case HANDSHAKE_DATANODE_V1:
-            {
-              try {
-                return handleTransferHandshakeV1(
+            resp =
+                handleTransferHandshakeV1(
                     PipeTransferDataNodeHandshakeV1Req.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordHandshakeDatanodeV1Timer(System.nanoTime() - startTime);
+            return resp;
           case HANDSHAKE_DATANODE_V2:
-            {
-              try {
-                return handleTransferHandshakeV2(
+            resp =
+                handleTransferHandshakeV2(
                     PipeTransferDataNodeHandshakeV2Req.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordHandshakeDatanodeV2Timer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordHandshakeDatanodeV2Timer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TABLET_INSERT_NODE:
-            {
-              try {
-                return handleTransferTabletInsertNode(
+            resp =
+                handleTransferTabletInsertNode(
                     PipeTransferTabletInsertNodeReq.fromTPipeTransferReq(req));
-
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletInsertNodeTimer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTabletInsertNodeTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TABLET_RAW:
-            {
-              try {
-                return handleTransferTabletRaw(PipeTransferTabletRawReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletRawTimer(System.nanoTime() - startTime);
-              }
-            }
+            resp = handleTransferTabletRaw(PipeTransferTabletRawReq.fromTPipeTransferReq(req));
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTabletRawTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TABLET_BINARY:
-            {
-              try {
-                return handleTransferTabletBinary(
-                    PipeTransferTabletBinaryReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletBinaryTimer(System.nanoTime() - startTime);
-              }
-            }
+            resp =
+                handleTransferTabletBinary(PipeTransferTabletBinaryReq.fromTPipeTransferReq(req));
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTabletBinaryTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TABLET_BATCH:
-            {
-              try {
-                return handleTransferTabletBatch(
-                    PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTabletBatchTimer(System.nanoTime() - startTime);
-              }
-            }
+            resp = handleTransferTabletBatch(PipeTransferTabletBatchReq.fromTPipeTransferReq(req));
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTabletBatchTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TS_FILE_PIECE:
-            {
-              try {
-                return handleTransferFilePiece(
+            resp =
+                handleTransferFilePiece(
                     PipeTransferTsFilePieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     true);
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFilePieceTimer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTsFilePieceTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TS_FILE_SEAL:
-            {
-              try {
-                return handleTransferFileSealV1(
-                    PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFileSealTimer(System.nanoTime() - startTime);
-              }
-            }
+            resp = handleTransferFileSealV1(PipeTransferTsFileSealReq.fromTPipeTransferReq(req));
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTsFileSealTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TS_FILE_PIECE_WITH_MOD:
-            {
-              try {
-                return handleTransferFilePiece(
+            resp =
+                handleTransferFilePiece(
                     PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFilePieceWithModTimer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTsFilePieceWithModTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_TS_FILE_SEAL_WITH_MOD:
-            {
-              try {
-                return handleTransferFileSealV2(
+            resp =
+                handleTransferFileSealV2(
                     PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_SCHEMA_PLAN:
-            {
-              try {
-                return handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSchemaPlanTimer(System.nanoTime() - startTime);
-              }
-            }
+            resp = handleTransferSchemaPlan(PipeTransferPlanNodeReq.fromTPipeTransferReq(req));
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferSchemaPlanTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_SCHEMA_SNAPSHOT_PIECE:
-            {
-              try {
-                return handleTransferFilePiece(
+            resp =
+                handleTransferFilePiece(
                     PipeTransferSchemaSnapshotPieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
-
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSchemaSnapshotPieceTimer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferSchemaSnapshotPieceTimer(System.nanoTime() - startTime);
+            return resp;
           case TRANSFER_SCHEMA_SNAPSHOT_SEAL:
-            {
-              try {
-                return handleTransferFileSealV2(
+            resp =
+                handleTransferFileSealV2(
                     PipeTransferSchemaSnapshotSealReq.fromTPipeTransferReq(req));
-
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSchemaSnapshotSealTimer(System.nanoTime() - startTime);
-              }
-            }
+            PipeDataNodeReceiverMetrics.getInstance()
+                .recordTransferSchemaSnapshotSealTimer(System.nanoTime() - startTime);
+            return resp;
           case HANDSHAKE_CONFIGNODE_V1:
           case HANDSHAKE_CONFIGNODE_V2:
           case TRANSFER_CONFIG_PLAN:
           case TRANSFER_CONFIG_SNAPSHOT_PIECE:
           case TRANSFER_CONFIG_SNAPSHOT_SEAL:
-            {
-              try {
-                // Config requests will first be received by the DataNode receiver,
-                // then transferred to ConfigNode receiver to execute.
-                return handleTransferConfigPlan(req);
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferConfigPlanTimer(System.nanoTime() - startTime);
-              }
-            }
-          case TRANSFER_SLICE:
-            {
-              try {
-                return handleTransferSlice(PipeTransferSliceReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferSliceTimer(System.nanoTime() - startTime);
-              }
-            }
+            // Config requests will first be received by the DataNode receiver,
+            // then transferred to ConfigNode receiver to execute.
+            resp = handleTransferConfigPlan(req);
+            return resp;
           case TRANSFER_COMPRESSED:
-            {
-              try {
-                return receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
-              } finally {
-                PipeDataNodeReceiverMetrics.getInstance()
-                    .recordTransferCompressedTimer(System.nanoTime() - startTime);
-              }
-            }
+            resp = receive(PipeTransferCompressedReq.fromTPipeTransferReq(req));
+            return resp;
           default:
             break;
         }
@@ -518,25 +440,6 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
               + CONFIG_RECEIVER_ID_GENERATOR.incrementAndGet());
     }
     return configReceiverId.get();
-  }
-
-  private TPipeTransferResp handleTransferSlice(final PipeTransferSliceReq pipeTransferSliceReq) {
-    final boolean isInorder = sliceReqHandler.receiveSlice(pipeTransferSliceReq);
-    if (!isInorder) {
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_TRANSFER_SLICE_OUT_OF_ORDER,
-              "Slice request is out of order, please check the request sequence."));
-    }
-    final Optional<TPipeTransferReq> req = sliceReqHandler.makeReqIfComplete();
-    if (!req.isPresent()) {
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.SUCCESS_STATUS,
-              "Slice received, waiting for more slices to complete the request."));
-    }
-    // sliceReqHandler will be cleared in the receive(req) method
-    return receive(req.get());
   }
 
   /**
