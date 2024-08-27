@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -41,8 +42,43 @@ public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class);
 
+  public static final Long EMPTY_LONG = Long.MIN_VALUE;
+  public static final TimeValuePair EMPTY_TIME_VALUE_PAIR = new TimeValuePair(Long.MIN_VALUE, null);
+  public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
+      new TsPrimitiveType() {
+        @Override
+        public void setObject(Object o) {
+          // Do nothing
+        }
+
+        @Override
+        public void reset() {
+          // Do nothing
+        }
+
+        @Override
+        public int getSize() {
+          return 0;
+        }
+
+        @Override
+        public Object getValue() {
+          return null;
+        }
+
+        @Override
+        public String getStringValue() {
+          return null;
+        }
+
+        @Override
+        public TSDataType getDataType() {
+          return null;
+        }
+      };
+
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
-  private long lastTime = Long.MIN_VALUE;
+  private long lastTime = EMPTY_LONG;
 
   // The
   public int update(
@@ -75,13 +111,14 @@ public class TableDeviceLastCache {
   }
 
   public TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
-    return measurement2CachedLastMap.get(measurement);
+    final TimeValuePair result = measurement2CachedLastMap.get(measurement);
+    return Objects.nonNull(result) ? result : EMPTY_TIME_VALUE_PAIR;
   }
 
   // Shall pass in "" if last by time
   public Long getLastTime(final @Nonnull String measurement) {
     if (isAllNull(measurement)) {
-      return null;
+      return EMPTY_LONG;
     }
     return getAlignTime(measurement);
   }
@@ -90,19 +127,19 @@ public class TableDeviceLastCache {
   public TsPrimitiveType getLastBy(
       final @Nonnull String measurement, final @Nonnull String targetMeasurement) {
     if (isAllNull(measurement)) {
-      return null;
+      return EMPTY_PRIMITIVE_TYPE;
     }
     final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
     return Objects.nonNull(tvPair) && tvPair.getTimestamp() == getAlignTime(measurement)
         ? tvPair.getValue()
-        : null;
+        : EMPTY_PRIMITIVE_TYPE;
   }
 
   // Shall pass in "" if last by time
   public Pair<Long, TsPrimitiveType[]> getLastRow(
       final @Nonnull String measurement, final List<String> targetMeasurements) {
     if (isAllNull(measurement)) {
-      return null;
+      return new Pair<>(EMPTY_LONG, new TsPrimitiveType[targetMeasurements.size()]);
     }
     final long alignTime = getAlignTime(measurement);
     return new Pair<>(
