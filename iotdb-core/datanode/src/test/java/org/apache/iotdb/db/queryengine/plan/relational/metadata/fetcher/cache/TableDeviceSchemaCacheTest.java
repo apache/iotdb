@@ -205,8 +205,7 @@ public class TableDeviceSchemaCacheTest {
         table1,
         device0,
         Collections.singletonMap("s4", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR));
-    Assert.assertEquals(
-        TableDeviceLastCache.EMPTY_LONG, cache.getLastTime(database, table1, device0, "s4"));
+    Assert.assertEquals((Long) Long.MIN_VALUE, cache.getLastTime(database, table1, device0, "s4"));
     Assert.assertSame(
         TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
         cache.getLastBy(database, table1, device0, "s4", "s3"));
@@ -239,7 +238,7 @@ public class TableDeviceSchemaCacheTest {
         result.getRight());
 
     result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1", "s5"));
-    Assert.assertEquals(TableDeviceLastCache.EMPTY_LONG, result.getLeft());
+    Assert.assertEquals((Long) Long.MIN_VALUE, result.getLeft());
     // Actually the outer scope shall judge the Long.MIN_VALUE and return directly
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {

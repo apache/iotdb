@@ -43,7 +43,6 @@ public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class);
 
-  public static final Long EMPTY_LONG = Long.MIN_VALUE;
   public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
       new TsPrimitiveType() {
         @Override
@@ -80,7 +79,7 @@ public class TableDeviceLastCache {
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
-  private long lastTime = EMPTY_LONG;
+  private long lastTime = Long.MIN_VALUE;
 
   public int update(
       final @Nonnull String database,

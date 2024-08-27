@@ -241,8 +241,8 @@ public class TableDeviceSchemaCache {
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_LONG} iff cache hit but
-   *     result is {@code null}, and the result value otherwise.
+   * @return {@code null} iff cache miss, Long.MIN_VALUE iff cache hit but result is {@code null},
+   *     and the result value otherwise.
    */
   public Long getLastTime(
       final String database,
@@ -278,15 +278,18 @@ public class TableDeviceSchemaCache {
 
   /**
    * Get the last value of measurements last by a target measurement. If the caller wants to last by
-   * time, the measurement shall be "" to indicate the time column.
+   * time or get the time last by another source measurement, the measurement shall be "" to
+   * indicate the time column.
    *
    * @param database the device's database, without "root"
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
-   * @return {@code null} iff cache miss, {@link Pair}{@literal <}Long.MINVALUE,
-   *     TsPrimitiveType[targetMeasurements.size()]{@literal >} iff cache hit but result is all
-   *     {@code null}, and the result value otherwise.
+   * @return {@code null} iff cache miss; Or, the {@link Pair#left} will be Long.MIN_VALUE iff the
+   *     sourceMeasurement is all {@code null}, and the source measurement's last time otherwise;
+   *     {@link Pair#right} will be an {@link TsPrimitiveType} array, whose element will be {@code
+   *     null} if cache miss, {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and
+   *     the measurement is {@code null} when last by time, and the result value otherwise.
    */
   public Pair<Long, TsPrimitiveType[]> getLastRow(
       final String database,
