@@ -930,61 +930,6 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visit(ctx.groupingElement(), GroupingElement.class));
   }
 
-  private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
-    if (ctx.INTEGER_VALUE() != null) {
-      try {
-        if (ctx.MINUS() != null) {
-          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
-        }
-        return Long.parseLong(ctx.INTEGER_VALUE().getText());
-      } catch (NumberFormatException e) {
-        throw new SemanticException(
-            String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
-      }
-    } else {
-      return parseDateExpression(ctx.dateExpression(), currentTime);
-    }
-  }
-
-  private Long parseDateExpression(
-      RelationalSqlParser.DateExpressionContext ctx, long currentTime) {
-    long time;
-    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
-    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if ("+".equals(ctx.getChild(i).getText())) {
-        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
-      } else {
-        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
-      }
-    }
-    return time;
-  }
-
-  @Override
-  public Node visitVariationGrouping(RelationalSqlParser.VariationGroupingContext ctx) {
-    return super.visitVariationGrouping(ctx);
-  }
-
-  @Override
-  public Node visitConditionGrouping(RelationalSqlParser.ConditionGroupingContext ctx) {
-    return super.visitConditionGrouping(ctx);
-  }
-
-  @Override
-  public Node visitSessionGrouping(RelationalSqlParser.SessionGroupingContext ctx) {
-    return super.visitSessionGrouping(ctx);
-  }
-
-  @Override
-  public Node visitCountGrouping(RelationalSqlParser.CountGroupingContext ctx) {
-    return super.visitCountGrouping(ctx);
-  }
-
-  @Override
-  public Node visitKeepExpression(RelationalSqlParser.KeepExpressionContext ctx) {
-    return super.visitKeepExpression(ctx);
-  }
-
   @Override
   public Node visitSingleGroupingSet(RelationalSqlParser.SingleGroupingSetContext ctx) {
     return new SimpleGroupBy(
@@ -1428,6 +1373,20 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             parseDateExpression(ctx.dateExpression(), CommonDateTimeUtils.currentTime())));
   }
 
+  private Long parseDateExpression(
+      RelationalSqlParser.DateExpressionContext ctx, long currentTime) {
+    long time;
+    time = parseDateTimeFormat(ctx.getChild(0).getText(), currentTime, zoneId);
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if ("+".equals(ctx.getChild(i).getText())) {
+        time += DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+      } else {
+        time -= DateTimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText(), false);
+      }
+    }
+    return time;
+  }
+
   @Override
   public Node visitTrim(RelationalSqlParser.TrimContext ctx) {
     if (ctx.FROM() != null && ctx.trimsSpecification() == null && ctx.trimChar == null) {
@@ -1616,6 +1575,22 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             monthDuration, nonMonthDuration, (Expression) visit(ctx.valueExpression()), origin);
     return new FunctionCall(
         getLocation(ctx), QualifiedName.of(DATE_BIN.getFunctionName()), arguments);
+  }
+
+  private long parseTimeValue(RelationalSqlParser.TimeValueContext ctx, long currentTime) {
+    if (ctx.INTEGER_VALUE() != null) {
+      try {
+        if (ctx.MINUS() != null) {
+          return -Long.parseLong(ctx.INTEGER_VALUE().getText());
+        }
+        return Long.parseLong(ctx.INTEGER_VALUE().getText());
+      } catch (NumberFormatException e) {
+        throw new SemanticException(
+            String.format("Can not parse %s to long value", ctx.INTEGER_VALUE().getText()));
+      }
+    } else {
+      return parseDateExpression(ctx.dateExpression(), currentTime);
+    }
   }
 
   // ************** literals **************
