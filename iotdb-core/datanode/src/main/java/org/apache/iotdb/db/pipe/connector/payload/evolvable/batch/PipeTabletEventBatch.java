@@ -144,7 +144,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
     return new ArrayList<>(events);
   }
 
-  boolean isEmpty() {
+  public boolean isEmpty() {
     return events.isEmpty();
   }
 }

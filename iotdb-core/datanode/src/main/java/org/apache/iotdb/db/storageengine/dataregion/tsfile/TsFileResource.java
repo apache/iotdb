@@ -910,7 +910,11 @@ public class TsFileResource {
   public void setVersion(long version) {
     this.tsFileID =
         new TsFileID(
-            tsFileID.regionId, tsFileID.timePartitionId, version, tsFileID.compactionVersion);
+            tsFileID.regionId,
+            tsFileID.timePartitionId,
+            tsFileID.timestamp,
+            version,
+            tsFileID.compactionVersion);
   }
 
   public long getVersion() {

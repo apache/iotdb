@@ -46,7 +46,6 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.StringType;
-import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
@@ -65,6 +64,7 @@ import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class TableMetadataImpl implements Metadata {
 
@@ -159,7 +159,8 @@ public class TableMetadataImpl implements Metadata {
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
+      if (!isOneSupportedMathNumericType(argumentTypes)
+          && !isTwoSupportedMathNumericType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -455,6 +456,16 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
+    } else if (TableBuiltinScalarFunction.DATE_BIN
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 4 && isTimestampType(argumentTypes.get(2)))) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " only accepts two or three arguments and the second and third must be TimeStamp data type.");
+      }
+      return TIMESTAMP;
     }
 
     // builtin aggregation function
@@ -471,7 +482,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-        if (!isOneNumericType(argumentTypes)) {
+        if (!isOneSupportedMathNumericType(argumentTypes)) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
@@ -642,6 +653,16 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
   }
 
+  public static boolean isTwoSupportedMathNumericType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 2
+        && isSupportedMathNumericType(argumentTypes.get(0))
+        && isSupportedMathNumericType(argumentTypes.get(1));
+  }
+
+  public static boolean isOneSupportedMathNumericType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 1 && isSupportedMathNumericType(argumentTypes.get(0));
+  }
+
   public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
   }
@@ -671,6 +692,10 @@ public class TableMetadataImpl implements Metadata {
     return BlobType.BLOB.equals(type);
   }
 
+  public static boolean isBool(Type type) {
+    return BOOLEAN.equals(type);
+  }
+
   public static boolean isSupportedMathNumericType(Type type) {
     return DOUBLE.equals(type) || FLOAT.equals(type) || INT32.equals(type) || INT64.equals(type);
   }
@@ -680,7 +705,11 @@ public class TableMetadataImpl implements Metadata {
         || FLOAT.equals(type)
         || INT32.equals(type)
         || INT64.equals(type)
-        || TimestampType.TIMESTAMP.equals(type);
+        || TIMESTAMP.equals(type);
+  }
+
+  public static boolean isTimestampType(Type type) {
+    return TIMESTAMP.equals(type);
   }
 
   public static boolean isIntegerNumber(Type type) {

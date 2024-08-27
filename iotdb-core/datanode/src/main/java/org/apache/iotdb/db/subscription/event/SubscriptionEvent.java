@@ -20,13 +20,18 @@
 package org.apache.iotdb.db.subscription.event;
 
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEvents;
+import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FilePiecePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.FileSealPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -37,8 +42,11 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
@@ -52,17 +60,25 @@ public class SubscriptionEvent {
   private final SubscriptionPipeEvents pipeEvents;
 
   private final SubscriptionPollResponse[] responses;
-  private int currentResponseIndex;
+  private int currentResponseIndex = 0;
 
   private final ByteBuffer[] byteBuffers; // serialized responses
   private final SubscriptionCommitContext
       commitContext; // all responses have the same commit context
 
   // lastPolledConsumerId is not used as a criterion for determining pollability
-  private String lastPolledConsumerId;
-  private long lastPolledTimestamp;
-  private long committedTimestamp;
+  private volatile String lastPolledConsumerId = null;
+  private final AtomicLong lastPolledTimestamp = new AtomicLong(INVALID_TIMESTAMP);
+  private final AtomicLong committedTimestamp = new AtomicLong(INVALID_TIMESTAMP);
 
+  /**
+   * Constructs a {@link SubscriptionEvent} with an initial response.
+   *
+   * @param pipeEvents The underlying pipe events corresponding to this {@link SubscriptionEvent}.
+   * @param initialResponse The initial response which must be of type {@link FileInitPayload}. This
+   *     indicates that subsequent responses need to be fetched using {@link
+   *     SubscriptionEvent#prefetchRemainingResponses()}.
+   */
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents, final SubscriptionPollResponse initialResponse) {
     this.pipeEvents = pipeEvents;
@@ -70,37 +86,45 @@ public class SubscriptionEvent {
     final int responseLength = getResponseLength(initialResponse.getResponseType());
     this.responses = new SubscriptionPollResponse[responseLength];
     this.responses[0] = initialResponse;
-    this.currentResponseIndex = 0;
 
     this.byteBuffers = new ByteBuffer[responseLength];
     this.commitContext = initialResponse.getCommitContext();
+  }
 
-    this.lastPolledConsumerId = null;
-    this.lastPolledTimestamp = INVALID_TIMESTAMP;
-    this.committedTimestamp = INVALID_TIMESTAMP;
+  /**
+   * Constructs a {@link SubscriptionEvent} with a list of responses.
+   *
+   * @param pipeEvents The underlying pipe events corresponding to this {@link SubscriptionEvent}.
+   * @param responses A list of responses that can be of types {@link TabletsPayload}, {@link
+   *     TerminationPayload}, or {@link ErrorPayload}. All responses are already generated at the
+   *     time of construction, so {@link SubscriptionEvent#prefetchRemainingResponses()} is not
+   *     required.
+   */
+  public SubscriptionEvent(
+      final SubscriptionPipeEvents pipeEvents, final List<SubscriptionPollResponse> responses) {
+    this.pipeEvents = pipeEvents;
+
+    final int responseLength = responses.size();
+    this.responses = new SubscriptionPollResponse[responseLength];
+    for (int i = 0; i < responseLength; i++) {
+      this.responses[i] = responses.get(i);
+    }
+
+    this.byteBuffers = new ByteBuffer[responseLength];
+    this.commitContext = this.responses[0].getCommitContext();
   }
 
   private int getResponseLength(final short responseType) {
-    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+    if (!Objects.equals(SubscriptionPollResponseType.FILE_INIT.getType(), responseType)) {
       LOGGER.warn("unexpected response type: {}", responseType);
       return 1;
     }
-    switch (SubscriptionPollResponseType.valueOf(responseType)) {
-      case FILE_INIT:
-        final long tsFileLength = pipeEvents.getTsFile().length();
-        final long readFileBufferSize =
-            SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
-        final int length = (int) (tsFileLength / readFileBufferSize);
-        // add for init, last piece and seal
-        return (tsFileLength % readFileBufferSize != 0) ? length + 3 : length + 2;
-      case TABLETS:
-      case ERROR:
-      case TERMINATION:
-        return 1;
-      default:
-        LOGGER.warn("unexpected response type: {}", responseType);
-        return 1;
-    }
+    final long fileLength = pipeEvents.getTsFile().length();
+    final long readFileBufferSize =
+        SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
+    final int length = (int) (fileLength / readFileBufferSize);
+    // add for init, last piece and seal
+    return (fileLength % readFileBufferSize != 0) ? length + 3 : length + 2;
   }
 
   public SubscriptionPollResponse getCurrentResponse() {
@@ -118,16 +142,15 @@ public class SubscriptionEvent {
   //////////////////////////// commit ////////////////////////////
 
   public void recordCommittedTimestamp() {
-    committedTimestamp = System.currentTimeMillis();
+    committedTimestamp.set(System.currentTimeMillis());
   }
 
-  /** NOTE: {@link SubscriptionEvent#cleanup} should be called immediately if event is committed */
   public boolean isCommitted() {
     if (commitContext.getCommitId() == INVALID_COMMIT_ID) {
       // event with invalid commit id is committed
       return true;
     }
-    return committedTimestamp != INVALID_TIMESTAMP;
+    return committedTimestamp.get() != INVALID_TIMESTAMP;
   }
 
   public boolean isCommittable() {
@@ -142,31 +165,45 @@ public class SubscriptionEvent {
     pipeEvents.ack();
   }
 
-  public void cleanup() {
+  /**
+   * NOTE: To ensure idempotency, currently, it is only allowed to call this method within the
+   * {@link ConcurrentHashMap#compute} method of inFlightEvents in {@link
+   * SubscriptionPrefetchingQueue} or {@link SubscriptionPrefetchingQueue#cleanUp}.
+   */
+  public void cleanUp() {
     // reset serialized responses
     resetResponseByteBuffer(true);
 
     // clean up pipe events
-    pipeEvents.cleanup();
+    pipeEvents.cleanUp();
   }
 
   //////////////////////////// pollable ////////////////////////////
 
   public void recordLastPolledTimestamp() {
-    lastPolledTimestamp = Math.max(lastPolledTimestamp, System.currentTimeMillis());
+    long currentTimestamp;
+    long newTimestamp;
+
+    do {
+      currentTimestamp = lastPolledTimestamp.get();
+      newTimestamp = Math.max(currentTimestamp, System.currentTimeMillis());
+    } while (!lastPolledTimestamp.compareAndSet(currentTimestamp, newTimestamp));
   }
 
   public boolean pollable() {
     if (isCommitted()) {
-      cleanup();
       return false;
     }
-    if (lastPolledTimestamp == INVALID_TIMESTAMP) {
+    if (lastPolledTimestamp.get() == INVALID_TIMESTAMP) {
       return true;
     }
+    return canRecycle();
+  }
+
+  private boolean canRecycle() {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
     // not committed within a certain period of time.
-    return System.currentTimeMillis() - lastPolledTimestamp
+    return System.currentTimeMillis() - lastPolledTimestamp.get()
         > SubscriptionConfig.getInstance().getSubscriptionRecycleUncommittedEventIntervalMs();
   }
 
@@ -175,7 +212,7 @@ public class SubscriptionEvent {
     currentResponseIndex = 0;
 
     // reset lastPolledTimestamp makes this event pollable
-    lastPolledTimestamp = INVALID_TIMESTAMP;
+    lastPolledTimestamp.set(INVALID_TIMESTAMP);
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {
@@ -315,6 +352,12 @@ public class SubscriptionEvent {
     }
   }
 
+  public int getCurrentResponseSize() throws IOException {
+    final ByteBuffer byteBuffer = getCurrentResponseByteBuffer();
+    // refer to org.apache.thrift.protocol.TBinaryProtocol.writeBinary
+    return byteBuffer.limit() - byteBuffer.position();
+  }
+
   /////////////////////////////// tsfile ///////////////////////////////
 
   private @NonNull SubscriptionPollResponse generateSubscriptionPollResponseWithPieceOrSealPayload(
@@ -352,8 +395,8 @@ public class SubscriptionEvent {
     }
   }
 
-  public File getTsFile() {
-    return pipeEvents.getTsFile();
+  public String getFileName() {
+    return pipeEvents.getTsFile().getName();
   }
 
   /////////////////////////////// object ///////////////////////////////
@@ -366,7 +409,11 @@ public class SubscriptionEvent {
         + Arrays.toString(responses)
         + ", responses' byte buffer size="
         + Arrays.stream(byteBuffers)
-            .map(byteBuffer -> Objects.isNull(byteBuffer) ? "<unknown>" : byteBuffer.limit())
+            .map(
+                byteBuffer ->
+                    Objects.isNull(byteBuffer)
+                        ? "<unknown>"
+                        : byteBuffer.limit() - byteBuffer.position())
             .collect(Collectors.toList())
         + ", currentResponseIndex="
         + currentResponseIndex

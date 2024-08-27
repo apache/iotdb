@@ -696,7 +696,7 @@ public final class SqlFormatter {
         builder
             .append("\n")
             .append(indentString(indent + 1))
-            .append(assignment.getName().getValue())
+            .append(((Identifier) assignment.getName()).getValue())
             .append(" = ")
             .append(formatExpression(assignment.getValue()));
         if (setCounter > 0) {

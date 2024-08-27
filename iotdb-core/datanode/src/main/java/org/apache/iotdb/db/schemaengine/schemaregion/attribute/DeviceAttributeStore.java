@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class DeviceAttributeStore implements IDeviceAttributeStore {
 
@@ -52,7 +53,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
   private final MemSchemaRegionStatistics regionStatistics;
 
-  public DeviceAttributeStore(MemSchemaRegionStatistics regionStatistics) {
+  public DeviceAttributeStore(final MemSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
   }
 
@@ -62,15 +63,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public synchronized boolean createSnapshot(File targetDir) {
-    File snapshotTmp =
+  public synchronized boolean createSnapshot(final File targetDir) {
+    final File snapshotTmp =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT_TMP);
-    File snapshot =
+    final File snapshot =
         SystemFileFactory.INSTANCE.getFile(targetDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
 
     try {
-      FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
-      BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
+      final FileOutputStream fileOutputStream = new FileOutputStream(snapshotTmp);
+      final BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         serialize(outputStream);
       } finally {
@@ -94,7 +95,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
       }
 
       return true;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
@@ -104,25 +105,30 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void loadFromSnapshot(File snapshotDir, String sgSchemaDirPath) throws IOException {
-    try (BufferedInputStream inputStream =
-        new BufferedInputStream(
-            Files.newInputStream(
-                SystemFileFactory.INSTANCE
-                    .getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT)
-                    .toPath()))) {
+  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath)
+      throws IOException {
+    final File snapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_SNAPSHOT);
+    if (!snapshot.exists()) {
+      logger.info(
+          "Device attribute snapshot {} not found, consider it as upgraded from the older version, use empty attributes",
+          snapshot);
+      return;
+    }
+    try (final BufferedInputStream inputStream =
+        new BufferedInputStream(Files.newInputStream(snapshot.toPath()))) {
       deserialize(inputStream);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       logger.warn("Load device attribute snapshot from {} failed", snapshotDir);
       throw e;
     }
   }
 
   @Override
-  public synchronized int createAttribute(List<String> nameList, Object[] valueList) {
+  public synchronized int createAttribute(final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsage = 0L;
-    Map<String, String> attributeMap = new HashMap<>();
+    final Map<String, String> attributeMap = new HashMap<>();
     String value;
     for (int i = 0; i < nameList.size(); i++) {
       value =
@@ -140,12 +146,13 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void alterAttribute(
+  public Map<String, String> alterAttribute(
       final int pointer, final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
     long updatedMemUsage;
+    final Map<String, String> updateMap = new HashMap<>();
     final Map<String, String> attributeMap = deviceAttributeList.get(pointer);
     String value;
     for (int i = 0; i < nameList.size(); i++) {
@@ -157,11 +164,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
               ? MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key))
               : 0;
       if (value != null) {
-        attributeMap.put(key, value);
+        if (!Objects.equals(value, attributeMap.put(key, value))) {
+          updateMap.put(key, value);
+        }
         updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
         memUsageDelta += (updatedMemUsage - originMemUsage);
       } else {
-        attributeMap.remove(key);
+        if (Objects.nonNull(attributeMap.remove(key))) {
+          updateMap.put(key, value);
+        }
         memUsageDelta -= originMemUsage;
       }
     }
@@ -170,6 +181,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     } else if (memUsageDelta < 0) {
       releaseMemory(-memUsageDelta);
     }
+    return updateMap;
   }
 
   @Override

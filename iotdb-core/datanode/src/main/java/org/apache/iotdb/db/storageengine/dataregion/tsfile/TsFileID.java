@@ -26,6 +26,7 @@ public class TsFileID {
 
   public final int regionId;
   public final long timePartitionId;
+  public final long timestamp;
   public final long fileVersion;
   // high 32 bit is compaction level, low 32 bit is merge count
   public final long compactionVersion;
@@ -33,13 +34,20 @@ public class TsFileID {
   public TsFileID() {
     this.regionId = -1;
     this.timePartitionId = -1;
+    this.timestamp = -1;
     this.fileVersion = -1;
     this.compactionVersion = -1;
   }
 
-  public TsFileID(int regionId, long timePartitionId, long fileVersion, long compactionVersion) {
+  public TsFileID(
+      int regionId,
+      long timePartitionId,
+      long timestamp,
+      long fileVersion,
+      long compactionVersion) {
     this.regionId = regionId;
     this.timePartitionId = timePartitionId;
+    this.timestamp = timestamp;
     this.fileVersion = fileVersion;
     this.compactionVersion = compactionVersion;
   }
@@ -70,8 +78,9 @@ public class TsFileID {
     } catch (Exception e) {
       // ignore, load will get in here
     }
-    this.fileVersion = arr == null || arr.length != 2 ? -1 : arr[0];
-    this.compactionVersion = arr == null || arr.length != 2 ? -1 : arr[1];
+    this.timestamp = arr == null || arr.length != 3 ? -1 : arr[0];
+    this.fileVersion = arr == null || arr.length != 3 ? -1 : arr[1];
+    this.compactionVersion = arr == null || arr.length != 3 ? -1 : arr[2];
   }
 
   /**
@@ -81,16 +90,29 @@ public class TsFileID {
    */
   private static long[] splitAndGetVersionArray(String tsFileName) {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
-    long[] versionArray = new long[2];
+    long[] versionArray = new long[3];
     if (names.length != 4) {
       // ignore,  load will get in here
       return versionArray;
     }
-    versionArray[0] = Long.parseLong(names[1]);
+    versionArray[0] = Long.parseLong(names[0]);
+    versionArray[1] = Long.parseLong(names[1]);
 
     int dotIndex = names[3].indexOf(".");
-    versionArray[1] =
+    versionArray[2] =
         (Long.parseLong(names[2]) << 32) | Long.parseLong(names[3].substring(0, dotIndex));
     return versionArray;
+  }
+
+  public long getTimestamp() {
+    return timestamp;
+  }
+
+  public long getInnerCompactionCount() {
+    return compactionVersion >>> 32;
+  }
+
+  public long getCrossCompactionCount() {
+    return compactionVersion & 0xFFFFFFFFL;
   }
 }

@@ -432,6 +432,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private volatile boolean enableCrossSpaceCompaction = true;
 
+  /** Enable the service for AINode */
+  private boolean enableAINodeService = false;
+
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
@@ -440,13 +443,13 @@ public class IoTDBConfig {
    * SIZE_TIRED_COMPACTION:
    */
   private InnerSequenceCompactionSelector innerSequenceCompactionSelector =
-      InnerSequenceCompactionSelector.SIZE_TIERED;
+      InnerSequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerSeqCompactionPerformer innerSeqCompactionPerformer =
       InnerSeqCompactionPerformer.READ_CHUNK;
 
   private InnerUnsequenceCompactionSelector innerUnsequenceCompactionSelector =
-      InnerUnsequenceCompactionSelector.SIZE_TIERED;
+      InnerUnsequenceCompactionSelector.SIZE_TIERED_MULTI_TARGET;
 
   private InnerUnseqCompactionPerformer innerUnseqCompactionPerformer =
       InnerUnseqCompactionPerformer.FAST;
@@ -468,6 +471,12 @@ public class IoTDBConfig {
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   private double chunkMetadataSizeProportion = 0.1;
+
+  private long innerCompactionTotalFileSizeThresholdInByte = 10737418240L;
+
+  private int innerCompactionTotalFileNumThreshold = 100;
+
+  private int maxLevelGapInInnerCompaction = 2;
 
   /** The target tsfile size in compaction, 2 GB by default */
   private long targetCompactionFileSize = 2147483648L;
@@ -496,8 +505,11 @@ public class IoTDBConfig {
    */
   private long compactionAcquireWriteLockTimeout = 60_000L;
 
-  /** The max candidate file num in one inner space compaction task */
-  private volatile int fileLimitPerInnerTask = 30;
+  /**
+   * When the number of selected files reaches this value, the conditions for constructing a merge
+   * task are met.
+   */
+  private volatile int innerCompactionCandidateFileNum = 30;
 
   /** The max candidate file num in one cross space compaction task */
   private volatile int fileLimitPerCrossTask = 500;
@@ -637,7 +649,7 @@ public class IoTDBConfig {
    * The DataNodeId of this DataNode for cluster mode. The default value -1 will be changed after
    * join cluster
    */
-  private int dataNodeId = -1;
+  private volatile int dataNodeId = -1;
 
   /** Whether to use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -900,6 +912,9 @@ public class IoTDBConfig {
 
   /** Internal port for coordinator */
   private int internalPort = 10730;
+
+  /** Port for AINode */
+  private int aiNodePort = 10780;
 
   /** Internal port for dataRegion consensus protocol */
   private int dataRegionConsensusPort = 10760;
@@ -2839,6 +2854,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableAINodeService() {
+    return enableAINodeService;
+  }
+
+  public void setEnableAINodeService(boolean enableAINodeService) {
+    this.enableAINodeService = enableAINodeService;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -2905,6 +2928,31 @@ public class IoTDBConfig {
 
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public int getMaxLevelGapInInnerCompaction() {
+    return maxLevelGapInInnerCompaction;
+  }
+
+  public void setMaxLevelGapInInnerCompaction(int maxLevelGapInInnerCompaction) {
+    this.maxLevelGapInInnerCompaction = maxLevelGapInInnerCompaction;
+  }
+
+  public long getInnerCompactionTotalFileSizeThresholdInByte() {
+    return innerCompactionTotalFileSizeThresholdInByte;
+  }
+
+  public void setInnerCompactionTotalFileSizeThresholdInByte(
+      long innerCompactionTotalFileSizeThresholdInByte) {
+    this.innerCompactionTotalFileSizeThresholdInByte = innerCompactionTotalFileSizeThresholdInByte;
+  }
+
+  public int getInnerCompactionTotalFileNumThreshold() {
+    return innerCompactionTotalFileNumThreshold;
+  }
+
+  public void setInnerCompactionTotalFileNumThreshold(int innerCompactionTotalFileNumThreshold) {
+    this.innerCompactionTotalFileNumThreshold = innerCompactionTotalFileNumThreshold;
   }
 
   public long getTargetChunkSize() {
@@ -2983,12 +3031,12 @@ public class IoTDBConfig {
     this.expiredDataRatio = expiredDataRatio;
   }
 
-  public int getFileLimitPerInnerTask() {
-    return fileLimitPerInnerTask;
+  public int getInnerCompactionCandidateFileNum() {
+    return innerCompactionCandidateFileNum;
   }
 
-  public void setFileLimitPerInnerTask(int fileLimitPerInnerTask) {
-    this.fileLimitPerInnerTask = fileLimitPerInnerTask;
+  public void setInnerCompactionCandidateFileNum(int innerCompactionCandidateFileNum) {
+    this.innerCompactionCandidateFileNum = innerCompactionCandidateFileNum;
   }
 
   public int getFileLimitPerCrossTask() {
@@ -3090,6 +3138,14 @@ public class IoTDBConfig {
 
   public void setInternalPort(int internalPort) {
     this.internalPort = internalPort;
+  }
+
+  public int getAINodePort() {
+    return aiNodePort;
+  }
+
+  public void setAINodePort(int aiNodePort) {
+    this.aiNodePort = aiNodePort;
   }
 
   public int getDataRegionConsensusPort() {

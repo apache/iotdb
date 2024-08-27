@@ -297,6 +297,22 @@ public class LimitOffsetPushDownTest {
     assertTrue(tableScanNode.getPushDownLimit() == 0 && tableScanNode.getPushDownOffset() == 0);
   }
 
+  /** Actually with diff function, LimitNode should be above of ProjectNode. */
+  @Test
+  public void limitDiffProjectTest() {
+    sql = "SELECT time, diff(s1) FROM table1 limit 10";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    actualAnalysis = analyzeSQL(sql, metadata, context);
+    logicalQueryPlan =
+        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(actualAnalysis);
+    // LogicalPlan: `Output - Project - Limit - TableScan`
+    rootNode = logicalQueryPlan.getRootNode();
+    assertTrue(getChildrenNode(rootNode, 1) instanceof ProjectNode);
+    assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
+    assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
+  }
+
   static PlanNode getChildrenNode(PlanNode root, int idx) {
     PlanNode result = root;
     for (int i = 1; i <= idx; i++) {
