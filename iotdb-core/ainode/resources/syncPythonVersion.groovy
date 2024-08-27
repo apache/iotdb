@@ -99,16 +99,16 @@ def checkPython() {
         Matcher matcher = extractVersion(stdOut + stdErr)
         if (matcher.size() > 0) {
             String curVersion = matcher[0][1]
-            def result = checkVersionAtLeast(curVersion, "3.7.0")
+            def result = checkVersionAtLeast(curVersion, "3.8.0")
             if (!result) {
                 allConditionsMet = false
             }
-            result = checkVersionAtMost(curVersion, "3.10")
+            result = checkVersionAtMost(curVersion, "3.13")
             if (!result) {
                 allConditionsMet = false
             }
         } else {
-            println "missing (Please install at least version 3.7.0)"
+            println "missing (Please install at least version 3.8.0 and at most one of the 3.13.x versions)"
             allConditionsMet = false
         }
     } catch (Exception ignored) {
