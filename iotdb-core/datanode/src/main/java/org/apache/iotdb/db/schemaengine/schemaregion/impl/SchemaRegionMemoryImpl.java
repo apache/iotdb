@@ -504,18 +504,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     clear();
 
     logger.info("Start loading snapshot of schemaRegion {}", schemaRegionId);
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
 
     try {
       usingMLog = false;
 
       isRecovering = true;
 
-      long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
+      final long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
       logger.info(
@@ -523,7 +523,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
 
-      long tagSnapshotStartTime = System.currentTimeMillis();
+      final long tagSnapshotStartTime = System.currentTimeMillis();
       tagManager =
           TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
@@ -531,7 +531,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - tagSnapshotStartTime);
 
-      long mtreeSnapshotStartTime = System.currentTimeMillis();
+      final long mTreeSnapshotStartTime = System.currentTimeMillis();
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
@@ -567,7 +567,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - mtreeSnapshotStartTime);
+          System.currentTimeMillis() - mTreeSnapshotStartTime);
 
       isRecovering = false;
       initialized = true;
@@ -577,7 +577,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           schemaRegionId,
           System.currentTimeMillis() - startTime);
       logger.info("Successfully load snapshot of schemaRegion {}", schemaRegionId);
-    } catch (IOException | IllegalPathException e) {
+    } catch (final IOException | IllegalPathException e) {
       logger.error(
           "Failed to load snapshot for schemaRegion {}  due to {}. Use empty schemaRegion",
           schemaRegionId,
@@ -587,7 +587,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         initialized = false;
         isRecovering = true;
         init();
-      } catch (MetadataException metadataException) {
+      } catch (final MetadataException metadataException) {
         logger.error(
             "Error occurred during initializing schemaRegion {}",
             schemaRegionId,

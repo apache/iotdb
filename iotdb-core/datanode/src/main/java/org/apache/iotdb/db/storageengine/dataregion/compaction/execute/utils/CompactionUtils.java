@@ -23,11 +23,14 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
@@ -362,5 +365,19 @@ public class CompactionUtils {
           > CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold() + redundancy;
     }
     return true;
+  }
+
+  public static ArrayDeviceTimeIndex buildDeviceTimeIndex(TsFileResource resource)
+      throws IOException {
+    long resourceFileSize =
+        new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).length();
+    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
+    while (resourceFileSize > 0) {
+      int readSize = (int) Math.min(resourceFileSize, Integer.MAX_VALUE);
+      CompactionTaskManager.getInstance().getCompactionReadRateLimiter().acquire(readSize);
+      resourceFileSize -= readSize;
+    }
+    CompactionMetrics.getInstance().recordDeserializeResourceInfo(resourceFileSize);
+    return resource.buildDeviceTimeIndex();
   }
 }
