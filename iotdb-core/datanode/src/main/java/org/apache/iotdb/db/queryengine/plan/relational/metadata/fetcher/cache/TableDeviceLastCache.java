@@ -63,7 +63,7 @@ public class TableDeviceLastCache {
                   diff.addAndGet(
                       Objects.nonNull(tvPair)
                           ? LastCacheContainer.getDiffSize(tvPair.getValue(), v.getValue())
-                          : RamUsageEstimator.NUM_BYTES_OBJECT_REF + v.getSize());
+                          : (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + v.getSize());
                   return v;
                 }
                 return tvPair;
@@ -120,7 +120,7 @@ public class TableDeviceLastCache {
 
   public int estimateSize() {
     return INSTANCE_SIZE
-        + RamUsageEstimator.NUM_BYTES_OBJECT_REF * measurement2CachedLastMap.size()
+        + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
         + measurement2CachedLastMap.values().stream()
             .mapToInt(TimeValuePair::getSize)
             .reduce(0, Integer::sum);

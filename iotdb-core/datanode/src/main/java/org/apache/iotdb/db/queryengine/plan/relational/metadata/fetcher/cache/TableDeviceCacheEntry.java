@@ -74,7 +74,7 @@ public class TableDeviceCacheEntry {
           if (Objects.nonNull(v)) {
             if (!map.containsKey(k)) {
               k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
-              diff.addAndGet(RamUsageEstimator.NUM_BYTES_OBJECT_REF);
+              diff.addAndGet((int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
             }
             diff.addAndGet(
                 (int) (RamUsageEstimator.sizeOf(v) - RamUsageEstimator.sizeOf(map.put(k, v))));
@@ -95,7 +95,7 @@ public class TableDeviceCacheEntry {
           if (Objects.nonNull(map)) {
             size.set(
                 (int)
-                    (RamUsageEstimator.NUM_BYTES_OBJECT_REF * map.size()
+                    (RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * map.size()
                         + map.values().stream()
                             .mapToLong(RamUsageEstimator::sizeOf)
                             .reduce(0, Long::sum)));
@@ -179,7 +179,7 @@ public class TableDeviceCacheEntry {
     return (int)
         (INSTANCE_SIZE
             + (Objects.nonNull(map)
-                ? RamUsageEstimator.NUM_BYTES_OBJECT_REF * map.size()
+                ? RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * map.size()
                     + map.values().stream()
                         .mapToInt(attrValue -> (int) RamUsageEstimator.sizeOf(attrValue))
                         .reduce(0, Integer::sum)
