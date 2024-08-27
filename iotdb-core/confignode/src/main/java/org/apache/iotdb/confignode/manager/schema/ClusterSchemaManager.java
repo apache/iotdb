@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
@@ -1140,6 +1141,44 @@ public class ClusterSchemaManager {
     if (columnSchemaList.isEmpty()) {
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+  }
+
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
+      final String database, final String tableName, final String oldName, final String newName) {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
+    }
+
+    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+
+    final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
+    if (Objects.isNull(schema)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
+          null);
+    }
+
+    if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH,
+              "Currently we only support renaming for attribute columns, current category is "
+                  + schema.getColumnCategory()),
+          null);
+    }
+
+    expandedTable.renameColumnSchema(oldName, newName);
+
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
 

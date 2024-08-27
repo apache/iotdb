@@ -19,13 +19,19 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +105,20 @@ public class RenameTableColumnProcedure
           state,
           (System.currentTimeMillis() - startTime));
     }
+  }
+
+  private void columnCheck(final ConfigNodeProcedureEnv env) {
+    final Pair<TSStatus, TsTable> result =
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .tableColumnCheckForColumnRenaming(database, tableName, oldName, newName);
+    final TSStatus status = result.getLeft();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      return;
+    }
+    table = result.getRight();
+    setNextState(AddTableColumnState.PRE_RELEASE);
   }
 
   @Override
