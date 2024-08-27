@@ -344,10 +344,14 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           .atMost(timeoutSeconds, TimeUnit.SECONDS)
           .untilAsserted(
               () -> {
-                validateResultSet(
-                    query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
-                    expectedValues,
-                    tablet.timestamps);
+                try {
+                  validateResultSet(
+                      query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
+                      expectedValues,
+                      tablet.timestamps);
+                } catch (Exception e) {
+                  fail();
+                }
               });
       senderSession.close();
       receiverSession.close();
@@ -395,9 +399,6 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       List<Object> rowValues = values.get(index++);
       for (int i = 0; i < fields.size(); i++) {
         Field field = fields.get(i);
-        if (field.getDataType() == null) {
-          fail();
-        }
         switch (field.getDataType()) {
           case INT64:
           case TIMESTAMP:
