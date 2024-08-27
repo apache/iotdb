@@ -156,6 +156,32 @@ public class IoTDBNullIdQueryIT {
 
       assertEquals(result, ans);
       assertFalse(resultSet.next());
+
+      // Test boolean between
+      resultSet =
+          statement.executeQuery("select * from testNullId where s2 between false and true");
+      result = defaultFormatDataTime(1) + ",null,null,0,false,11.1";
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("id1")
+              + ","
+              + resultSet.getString("id2")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3");
+
+      assertEquals(result, ans);
+      assertFalse(resultSet.next());
+
+      // Test boolean not between
+      resultSet =
+          statement.executeQuery("select * from testNullId where s2 not between false and true");
+      assertFalse(resultSet.next());
     }
   }
 }
