@@ -75,8 +75,8 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   }
 
   public static Boolean isInListAllLiteral(InPredicate node) {
-    if (node.getValue() instanceof InListExpression) {
-      List<Expression> values = ((InListExpression) node.getValue()).getValues();
+    if (node.getValueList() instanceof InListExpression) {
+      List<Expression> values = ((InListExpression) node.getValueList()).getValues();
       for (Expression value : values) {
         if (!(value instanceof Literal)) {
           return Boolean.FALSE;
