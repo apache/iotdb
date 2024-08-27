@@ -1038,7 +1038,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   // region table management
 
   public TSStatus preCreateTable(PreCreateTablePlan preCreateTablePlan) {
-    String databaseName = PathUtils.qualifyDatabaseName(preCreateTablePlan.getDatabase());
+    final String databaseName = PathUtils.qualifyDatabaseName(preCreateTablePlan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.preCreateTable(new PartialPath(databaseName), preCreateTablePlan.getTable());
@@ -1050,8 +1050,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus rollbackCreateTable(RollbackCreateTablePlan rollbackCreateTablePlan) {
-    String databaseName = PathUtils.qualifyDatabaseName(rollbackCreateTablePlan.getDatabase());
+  public TSStatus rollbackCreateTable(final RollbackCreateTablePlan rollbackCreateTablePlan) {
+    final String databaseName =
+        PathUtils.qualifyDatabaseName(rollbackCreateTablePlan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.rollbackCreateTable(
@@ -1064,8 +1065,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public TSStatus commitCreateTable(CommitCreateTablePlan commitCreateTablePlan) {
-    String databaseName = PathUtils.qualifyDatabaseName(commitCreateTablePlan.getDatabase());
+  public TSStatus commitCreateTable(final CommitCreateTablePlan commitCreateTablePlan) {
+    final String databaseName = PathUtils.qualifyDatabaseName(commitCreateTablePlan.getDatabase());
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.commitCreateTable(new PartialPath(databaseName), commitCreateTablePlan.getTableName());
