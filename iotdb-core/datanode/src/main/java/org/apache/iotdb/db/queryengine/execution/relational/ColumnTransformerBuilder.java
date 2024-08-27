@@ -76,11 +76,17 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBinaryMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBooleanMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InDoubleMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InFloatMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InInt32MultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InInt64MultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
@@ -147,15 +153,18 @@ import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
@@ -928,20 +937,108 @@ public class ColumnTransformerBuilder
         context.cache.put(node, identity);
       } else {
         ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        TypeEnum childTypeEnum = childColumnTransformer.getType().getTypeEnum();
         InListExpression inListExpression = (InListExpression) node.getValueList();
         List<Expression> expressionList = inListExpression.getValues();
         List<Literal> values = new ArrayList<>();
+        List<ColumnTransformer> valueColumnTransformerList = new ArrayList<>();
+        valueColumnTransformerList.add(childColumnTransformer);
         for (Expression expression : expressionList) {
-          checkArgument(expression instanceof Literal);
-          values.add((Literal) expression);
+          if (expression instanceof Literal) {
+            values.add((Literal) expression);
+          } else {
+            valueColumnTransformerList.add(process(expression, context));
+          }
         }
-        context.cache.put(node, new InColumnTransformer(BOOLEAN, childColumnTransformer, values));
+        context.cache.put(
+            node, constructInColumnTransformer(childTypeEnum, valueColumnTransformerList, values));
       }
     }
 
     ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
+  }
+
+  private InMultiColumnTransformer constructInColumnTransformer(
+      TypeEnum childType,
+      List<ColumnTransformer> valueColumnTransformerList,
+      List<Literal> values) {
+    String errorMsg = "\"%s\" cannot be cast to [%s]";
+    switch (childType) {
+      case INT32:
+        Set<Integer> intSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            long v = ((LongLiteral) value).getParsedValue();
+            if (v <= Integer.MAX_VALUE && v >= Integer.MIN_VALUE) {
+              intSet.add((int) v);
+            }
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InInt32MultiColumnTransformer(intSet, valueColumnTransformerList);
+      case DATE:
+        Set<Integer> dateSet = new HashSet<>();
+        for (Literal value : values) {
+          dateSet.add(DateUtils.parseDateExpressionToInt(((StringLiteral) value).getValue()));
+        }
+        return new InInt32MultiColumnTransformer(dateSet, valueColumnTransformerList);
+      case INT64:
+      case TIMESTAMP:
+        Set<Long> longSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            longSet.add((((LongLiteral) value).getParsedValue()));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InInt64MultiColumnTransformer(longSet, valueColumnTransformerList);
+      case FLOAT:
+        Set<Float> floatSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            floatSet.add((float) ((DoubleLiteral) value).getValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InFloatMultiColumnTransformer(floatSet, valueColumnTransformerList);
+      case DOUBLE:
+        Set<Double> doubleSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            doubleSet.add(((DoubleLiteral) value).getValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InDoubleMultiColumnTransformer(doubleSet, valueColumnTransformerList);
+      case BOOLEAN:
+        Set<Boolean> booleanSet = new HashSet<>();
+        for (Literal value : values) {
+          booleanSet.add(((BooleanLiteral) value).getValue());
+        }
+        return new InBooleanMultiColumnTransformer(booleanSet, valueColumnTransformerList);
+      case TEXT:
+      case STRING:
+        Set<Binary> stringSet = new HashSet<>();
+        for (Literal value : values) {
+          stringSet.add(
+              new Binary(((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET));
+        }
+        return new InBinaryMultiColumnTransformer(stringSet, valueColumnTransformerList);
+      case BLOB:
+        Set<Binary> binarySet = new HashSet<>();
+        for (Literal value : values) {
+          binarySet.add(new Binary(((BinaryLiteral) value).getValue()));
+        }
+        return new InBinaryMultiColumnTransformer(binarySet, valueColumnTransformerList);
+      default:
+        throw new UnsupportedOperationException("unsupported data type: " + childType);
+    }
   }
 
   @Override
