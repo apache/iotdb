@@ -103,7 +103,7 @@ def checkPython() {
             if (!result) {
                 allConditionsMet = false
             }
-            result = checkVersionAtMost(curVersion, "3.10.99")
+            result = checkVersionAtMost(curVersion, "3.10")
             if (!result) {
                 allConditionsMet = false
             }
