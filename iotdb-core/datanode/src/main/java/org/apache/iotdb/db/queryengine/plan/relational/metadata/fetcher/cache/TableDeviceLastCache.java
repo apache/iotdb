@@ -109,13 +109,13 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
-  public TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
+  public @Nonnull TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
     final TimeValuePair result = measurement2CachedLastMap.get(measurement);
     return Objects.nonNull(result) ? result : EMPTY_TIME_VALUE_PAIR;
   }
 
   // Shall pass in "" if last by time
-  public Long getLastTime(final @Nonnull String measurement) {
+  public @Nonnull Long getLastTime(final @Nonnull String measurement) {
     if (isAllNull(measurement)) {
       return EMPTY_LONG;
     }
@@ -123,7 +123,7 @@ public class TableDeviceLastCache {
   }
 
   // Shall pass in "" if last by time
-  public TsPrimitiveType getLastBy(
+  public @Nonnull TsPrimitiveType getLastBy(
       final @Nonnull String measurement, final @Nonnull String targetMeasurement) {
     if (isAllNull(measurement)) {
       return EMPTY_PRIMITIVE_TYPE;
@@ -135,7 +135,7 @@ public class TableDeviceLastCache {
   }
 
   // Shall pass in "" if last by time
-  public Pair<Long, TsPrimitiveType[]> getLastRow(
+  public @Nonnull Pair<Long, TsPrimitiveType[]> getLastRow(
       final @Nonnull String measurement, final List<String> targetMeasurements) {
     if (isAllNull(measurement)) {
       return new Pair<>(EMPTY_LONG, new TsPrimitiveType[targetMeasurements.size()]);
