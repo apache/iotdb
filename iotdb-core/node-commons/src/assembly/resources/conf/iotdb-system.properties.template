@@ -451,7 +451,7 @@ cn_max_client_count_for_each_node_in_client_manager=300
 # Datatype: int
 dn_session_timeout_threshold=0
 
-# weather enable thrift compression
+# whether enable thrift compression
 # effectiveMode: restart
 # Datatype: boolean
 dn_rpc_thrift_compression_enable=false
@@ -1181,9 +1181,9 @@ cross_selector=rewrite
 cross_performer=fast
 
 # the selector of inner sequence space compaction task
-# effectiveMode: restart
-# Options: size_tiered
-inner_seq_selector=size_tiered
+# effectiveMode: hod_reload
+# Options: size_tiered_single_target,size_tiered_multi_target
+inner_seq_selector=size_tiered_multi_target
 
 # the performer of inner sequence space compaction task
 # effectiveMode: restart
@@ -1191,9 +1191,9 @@ inner_seq_selector=size_tiered
 inner_seq_performer=read_chunk
 
 # the selector of inner unsequence space compaction task
-# effectiveMode: restart
-# Options: size_tiered
-inner_unseq_selector=size_tiered
+# effectiveMode: hot_reload
+# Options: size_tiered_single_target,size_tiered_multi_target
+inner_unseq_selector=size_tiered_multi_target
 
 # the performer of inner unsequence space compaction task
 # effectiveMode: restart
@@ -1221,6 +1221,23 @@ candidate_compaction_task_queue_size=50
 # Datatype: long, Unit: byte
 target_compaction_file_size=2147483648
 
+# The total file size limit in inner space compaction.
+# default is 10GB
+# effectiveMode: hot_reload
+# Datatype: long, Unit: byte
+inner_compaction_total_file_size_threshold=10737418240
+
+# The total file num limit in inner space compaction.
+# default is 100
+# effectiveMode: hot_reload
+# Datatype: int
+inner_compaction_total_file_num_threshold=100
+
+# The max level gap in inner compaction selection, default is 2.
+# effectiveMode: hot_reload
+# Datatype: int
+max_level_gap_in_inner_compaction=2
+
 # The target chunk size in compaction and when memtable reaches this threshold, flush the memtable to disk.
 # default is 1MB
 # effectiveMode: restart
@@ -1242,10 +1259,10 @@ chunk_size_lower_bound_in_compaction=128
 # Datatype: long
 chunk_point_num_lower_bound_in_compaction=100
 
-# The max file when selecting inner space compaction candidate files
+# The file num requirement when selecting inner space compaction candidate files
 # effectiveMode: hot_reload
 # Datatype: int
-max_inner_compaction_candidate_file_num=30
+inner_compaction_candidate_file_num=30
 
 # The max file when selecting cross space compaction candidate files
 # At least one unseq file with it's overlapped seq files will be selected even exceeded this number
@@ -1269,6 +1286,12 @@ min_cross_compaction_unseq_file_level=1
 # effectiveMode: hot_reload
 # Datatype: int
 compaction_thread_count=10
+
+# How many chunk will be compacted in aligned series compaction, 10 by default.
+# Set to Integer.MAX_VALUE when less than or equal to 0.
+# effectiveMode: hot_reload
+# Datatype: int
+compaction_max_aligned_series_num_in_one_batch=10
 
 # The interval of compaction task schedule
 # effectiveMode: restart
@@ -1866,6 +1889,48 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # effectiveMode: hot_reload
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
+
+# Whether to enable the active listening mode for tsfile loading.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+load_active_listening_enable=true
+
+# The directory to be actively listened for tsfile loading.
+# Multiple directories should be separated by a ','.
+# The default directory is 'ext/load/pending'.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_dirs=ext\\load\\pending
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_dirs=ext/load/pending
+
+# The directory where tsfile are moved if the active listening mode fails to load them.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_fail_dir=ext\\load\\failed
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_fail_dir=ext/load/failed
+
+# The maximum number of threads that can be used to load tsfile actively.
+# The default value, when this parameter is commented out, is the minimum of 8 or the number of CPU cores.
+# effectiveMode: restart
+# Datatype: int
+load_active_listening_max_thread_num=8
+
+# The interval specified in seconds for the active listening mode to check the directory specified in load_active_listening_dirs.
+# The active listening mode will check the directory every load_active_listening_check_interval_seconds seconds.
+# effectiveMode: restart
+# Datatype: int
+load_active_listening_check_interval_seconds=5
 
 ####################
 ### Dispatch Retry Configuration

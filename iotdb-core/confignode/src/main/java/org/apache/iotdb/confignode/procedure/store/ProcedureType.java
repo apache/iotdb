@@ -65,6 +65,12 @@ public enum ProcedureType {
   CREATE_TABLE_PROCEDURE((short) 750),
   DROP_TABLE_PROCEDURE((short) 751),
   ADD_TABLE_COLUMN_PROCEDURE((short) 752),
+  SET_TABLE_PROPERTIES_PROCEDURE((short) 753),
+
+  /** AI Model */
+  CREATE_MODEL_PROCEDURE((short) 800),
+  DROP_MODEL_PROCEDURE((short) 801),
+  REMOVE_AI_NODE_PROCEDURE((short) 802),
 
   // ProcedureId 800-899 is used by IoTDB-Ml
 

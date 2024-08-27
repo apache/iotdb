@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -48,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -58,7 +62,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceExecution.createFragmentInstanceExecution;
+import static org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue.TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.LOCAL_EXECUTION_PLANNER;
+import static org.apache.iotdb.rpc.TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR;
 
 @SuppressWarnings("squid:S6548")
 public class FragmentInstanceManager {
@@ -77,6 +83,7 @@ public class FragmentInstanceManager {
   private final Duration infoCacheTime;
 
   private final ExecutorService intoOperationExecutor;
+  private final ExecutorService modelInferenceExecutor;
 
   private final MPPDataExchangeManager exchangeManager =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
@@ -114,6 +121,11 @@ public class FragmentInstanceManager {
         IoTDBThreadPoolFactory.newFixedThreadPool(
             IoTDBDescriptor.getInstance().getConfig().getIntoOperationExecutionThreadCount(),
             "into-operation-executor");
+
+    this.modelInferenceExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            CommonDescriptor.getInstance().getConfig().getModelInferenceExecutionThreadCount(),
+            "model-inference-executor");
   }
 
   @SuppressWarnings("squid:S1181")
@@ -178,8 +190,18 @@ public class FragmentInstanceManager {
                       exchangeManager);
                 } catch (Throwable t) {
                   clearFIRelatedResources(instanceId);
-                  logger.warn("error when create FragmentInstanceExecution.", t);
-                  stateMachine.failed(t);
+                  // deal with
+                  if (t instanceof IllegalStateException
+                      && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
+                    logger.warn(TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
+                    stateMachine.failed(
+                        new IoTDBException(
+                            TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG,
+                            TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                  } else {
+                    logger.warn("error when create FragmentInstanceExecution.", t);
+                    stateMachine.failed(t);
+                  }
                   return null;
                 }
               });
@@ -263,8 +285,18 @@ public class FragmentInstanceManager {
                     exchangeManager);
               } catch (Throwable t) {
                 clearFIRelatedResources(instanceId);
-                logger.warn("Execute error caused by ", t);
-                stateMachine.failed(t);
+                // deal with
+                if (t instanceof IllegalStateException
+                    && TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG.equals(t.getMessage())) {
+                  logger.warn(TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG);
+                  stateMachine.failed(
+                      new IoTDBException(
+                          TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG,
+                          TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                } else {
+                  logger.warn("Execute error caused by ", t);
+                  stateMachine.failed(t);
+                }
                 return null;
               }
             });
@@ -354,11 +386,23 @@ public class FragmentInstanceManager {
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
     FragmentInstanceContext context = instanceContext.get(instanceId);
-    return new FragmentInstanceInfo(
-        FragmentInstanceState.FAILED,
-        context.getEndTime(),
-        context.getFailedCause(),
-        context.getFailureInfoList());
+    Optional<TSStatus> errorCode = context.getErrorCode();
+    return errorCode
+        .map(
+            tsStatus ->
+                new FragmentInstanceInfo(
+                    FragmentInstanceState.FAILED,
+                    context.getEndTime(),
+                    context.getFailedCause(),
+                    context.getFailureInfoList(),
+                    tsStatus))
+        .orElseGet(
+            () ->
+                new FragmentInstanceInfo(
+                    FragmentInstanceState.FAILED,
+                    context.getEndTime(),
+                    context.getFailedCause(),
+                    context.getFailureInfoList()));
   }
 
   private void removeOldInstances() {
@@ -389,6 +433,10 @@ public class FragmentInstanceManager {
 
   public ExecutorService getIntoOperationExecutor() {
     return intoOperationExecutor;
+  }
+
+  public ExecutorService getModelInferenceExecutor() {
+    return modelInferenceExecutor;
   }
 
   private static class InstanceHolder {

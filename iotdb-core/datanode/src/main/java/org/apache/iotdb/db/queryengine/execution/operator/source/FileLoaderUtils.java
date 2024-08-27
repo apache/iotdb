@@ -26,6 +26,8 @@ import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
@@ -367,5 +369,21 @@ public class FileLoaderUtils {
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
     return chunkReader.loadPageReaderList();
+  }
+
+  /**
+   * get the timestamp in file name of the chunk metadata.
+   *
+   * @param chunkMetaData the corresponding ChunkMetadata in that file.
+   */
+  public static long getTimestampInFileName(IChunkMetadata chunkMetaData) {
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    if (chunkLoader instanceof DiskChunkLoader) {
+      return ((DiskChunkLoader) chunkLoader).getTsFileID().getTimestamp();
+    } else if (chunkLoader instanceof DiskAlignedChunkLoader) {
+      return ((DiskAlignedChunkLoader) chunkLoader).getTsFileID().getTimestamp();
+    } else {
+      return Long.MAX_VALUE;
+    }
   }
 }

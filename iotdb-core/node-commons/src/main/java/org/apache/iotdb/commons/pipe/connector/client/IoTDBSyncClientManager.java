@@ -62,6 +62,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
 
   private final boolean shouldReceiverConvertOnTypeMismatch;
 
+  private final String loadTsFileStrategy;
+
   protected IoTDBSyncClientManager(
       List<TEndPoint> endPoints,
       boolean useSSL,
@@ -69,7 +71,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       String trustStorePwd,
       boolean useLeaderCache,
       String loadBalanceStrategy,
-      boolean shouldReceiverConvertOnTypeMismatch) {
+      boolean shouldReceiverConvertOnTypeMismatch,
+      String loadTsFileStrategy) {
     super(endPoints, useLeaderCache);
 
     this.useSSL = useSSL;
@@ -98,6 +101,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
     }
 
     this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
+    this.loadTsFileStrategy = loadTsFileStrategy;
   }
 
   public void checkClientStatusAndTryReconstructIfNecessary() {
@@ -177,6 +181,8 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
           Boolean.toString(shouldReceiverConvertOnTypeMismatch));
+      params.put(
+          PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
 
       // Try to handshake by PipeTransferHandshakeV2Req.
       TPipeTransferResp resp = client.pipeTransfer(buildHandshakeV2Req(params));

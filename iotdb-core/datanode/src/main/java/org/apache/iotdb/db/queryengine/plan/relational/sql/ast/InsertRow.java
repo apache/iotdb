@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -65,13 +63,7 @@ public class InsertRow extends WrappedInsertStatement {
   @Override
   public List<String> getAttributeColumnNameList() {
     final InsertRowStatement insertRowStatement = getInnerTreeStatement();
-    List<String> result = new ArrayList<>();
-    for (int i = 0; i < insertRowStatement.getColumnCategories().length; i++) {
-      if (insertRowStatement.getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
-        result.add(insertRowStatement.getMeasurements()[i]);
-      }
-    }
-    return result;
+    return insertRowStatement.getAttributeColumnNameList();
   }
 
   @Override

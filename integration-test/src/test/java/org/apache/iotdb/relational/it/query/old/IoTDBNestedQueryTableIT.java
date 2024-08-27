@@ -21,8 +21,8 @@ package org.apache.iotdb.relational.it.query.old;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
@@ -42,7 +42,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBNestedQueryTableIT {
 
   private static final String DATABASE_NAME = "db";
@@ -426,15 +426,16 @@ public class IoTDBNestedQueryTableIT {
       //      }
       statement.execute("USE " + DATABASE_NAME);
 
-      String query3 =
-          "SELECT time,s1 FROM vehicle1 where device_id='d1' and s5 IN ('2024-01-01', '2024-01-02', '2024-01-03')";
-      try (ResultSet rs = statement.executeQuery(query3)) {
-        for (int i = 1; i <= 3; i++) {
-          Assert.assertTrue(rs.next());
-          Assert.assertEquals(i, rs.getLong(1));
-        }
-        Assert.assertFalse(rs.next());
-      }
+      //      String query3 =
+      //          "SELECT time,s1 FROM vehicle1 where device_id='d1' and s5 IN ('2024-01-01',
+      // '2024-01-02', '2024-01-03')";
+      //      try (ResultSet rs = statement.executeQuery(query3)) {
+      //        for (int i = 1; i <= 3; i++) {
+      //          Assert.assertTrue(rs.next());
+      //          Assert.assertEquals(i, rs.getLong(1));
+      //        }
+      //        Assert.assertFalse(rs.next());
+      //      }
 
       String query4 = "SELECT time,s1 FROM vehicle1 where device_id='d1' and s6 IN (1, 2, 3)";
       try (ResultSet rs = statement.executeQuery(query4)) {

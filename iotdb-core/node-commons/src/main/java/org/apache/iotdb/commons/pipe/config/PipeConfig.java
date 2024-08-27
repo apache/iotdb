@@ -144,6 +144,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getRateLimiterHotReloadCheckIntervalMs();
   }
 
+  public int getPipeConnectorRequestSliceThresholdBytes() {
+    return COMMON_CONFIG.getPipeConnectorRequestSliceThresholdBytes();
+  }
+
   public float getPipeLeaderCacheMemoryUsagePercentage() {
     return COMMON_CONFIG.getPipeLeaderCacheMemoryUsagePercentage();
   }
@@ -374,6 +378,10 @@ public class PipeConfig {
         getPipeAllConnectorsRateLimitBytesPerSecond());
     LOGGER.info(
         "RateLimiterHotReloadCheckIntervalMs: {}", getRateLimiterHotReloadCheckIntervalMs());
+
+    LOGGER.info(
+        "PipeConnectorRequestSliceThresholdBytes: {}",
+        getPipeConnectorRequestSliceThresholdBytes());
 
     LOGGER.info("SeperatedPipeHeartbeatEnabled: {}", isSeperatedPipeHeartbeatEnabled());
     LOGGER.info(

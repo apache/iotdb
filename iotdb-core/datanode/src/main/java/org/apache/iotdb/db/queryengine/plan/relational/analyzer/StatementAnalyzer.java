@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -32,8 +34,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TranslationMap;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -41,8 +48,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -100,16 +107,19 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Union;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Update;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UpdateAssignment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Values;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
@@ -127,7 +137,9 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
@@ -146,6 +158,7 @@ import static java.lang.Math.toIntExact;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
@@ -246,12 +259,13 @@ public class StatementAnalyzer {
     }
 
     @Override
-    public Scope process(Node node, Optional<Scope> scope) {
-      Scope returnScope = super.process(node, scope);
-      if (node instanceof CreateDevice
+    public Scope process(final Node node, final Optional<Scope> scope) {
+      final Scope returnScope = super.process(node, scope);
+      if (node instanceof CreateOrUpdateDevice
           || node instanceof FetchDevice
           || node instanceof ShowDevice
-          || node instanceof CountDevice) {
+          || node instanceof CountDevice
+          || node instanceof Update) {
         return returnScope;
       }
       checkState(
@@ -290,13 +304,13 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateTable(CreateTable node, Optional<Scope> context) {
+    protected Scope visitCreateTable(final CreateTable node, final Optional<Scope> context) {
       validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
     @Override
-    protected Scope visitDropTable(DropTable node, Optional<Scope> context) {
+    protected Scope visitDropTable(final DropTable node, final Optional<Scope> context) {
       return createAndAssignScope(node, context);
     }
 
@@ -316,7 +330,8 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitSetProperties(SetProperties node, Optional<Scope> context) {
+    protected Scope visitSetProperties(final SetProperties node, final Optional<Scope> context) {
+      validateProperties(node.getProperties(), context);
       return createAndAssignScope(node, context);
     }
 
@@ -351,8 +366,50 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitUpdate(Update node, Optional<Scope> context) {
-      throw new SemanticException("Update statement is not supported yet.");
+    protected Scope visitUpdate(final Update node, final Optional<Scope> context) {
+      queryContext.setQueryType(QueryType.WRITE);
+      final TranslationMap translationMap = analyzeTraverseDevice(node, context, true);
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      node.parseRawExpression(
+          null,
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext);
+
+      final Set<SymbolReference> attributeNames = new HashSet<>();
+      node.setAssignments(
+          node.getAssignments().stream()
+              .map(
+                  assignment -> {
+                    final Expression parsedColumn =
+                        analyzeAndRewriteExpression(
+                            translationMap, translationMap.getScope(), assignment.getName());
+                    if (!(parsedColumn instanceof SymbolReference)
+                        || table
+                                .getColumnSchema(((SymbolReference) parsedColumn).getName())
+                                .getColumnCategory()
+                            != TsTableColumnCategory.ATTRIBUTE) {
+                      throw new SemanticException("Update can only specify attribute columns.");
+                    }
+                    if (attributeNames.contains(parsedColumn)) {
+                      throw new SemanticException(
+                          "Update attribute shall specify a attribute only once.");
+                    }
+                    attributeNames.add((SymbolReference) parsedColumn);
+
+                    return new UpdateAssignment(
+                        parsedColumn,
+                        analyzeAndRewriteExpression(
+                            translationMap, translationMap.getScope(), assignment.getValue()));
+                  })
+              .collect(Collectors.toList()));
+      return null;
     }
 
     @Override
@@ -1496,7 +1553,7 @@ public class StatementAnalyzer {
         }
       }
 
-      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table, table.getName());
+      QualifiedObjectName name = createQualifiedObjectName(sessionContext, table.getName());
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
@@ -1605,7 +1662,7 @@ public class StatementAnalyzer {
     }
 
     private List<Field> analyzeTableOutputFields(
-        Table table, QualifiedObjectName tableName, TableSchema tableSchema) {
+        final Table table, final QualifiedObjectName tableName, final TableSchema tableSchema) {
       // TODO: discover columns lazily based on where they are needed (to support connectors that
       // can't enumerate all tables)
       ImmutableList.Builder<Field> fields = ImmutableList.builder();
@@ -2389,15 +2446,26 @@ public class StatementAnalyzer {
       return aliases.build();
     }
 
-    private void validateProperties(List<Property> properties, Optional<Scope> scope) {
-      Set<String> propertyNames = new HashSet<>();
-      for (Property property : properties) {
-        if (!propertyNames.add(property.getName().getValue())) {
+    private void validateProperties(final List<Property> properties, final Optional<Scope> scope) {
+      final Set<String> propertyNames = new HashSet<>();
+      for (final Property property : properties) {
+        final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+        if (!TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP.containsKey(key)) {
+          throw new SemanticException("Table property " + key + " is currently not allowed.");
+        }
+        if (!propertyNames.add(key)) {
           throw new SemanticException(
               String.format("Duplicate property: %s", property.getName().getValue()));
         }
+        if (!property.isSetToDefault()) {
+          final Expression value = property.getNonDefaultValue();
+          if (!(value instanceof LongLiteral)) {
+            throw new SemanticException(
+                "TTL' value must be a LongLiteral, but now is: " + value.toString());
+          }
+        }
       }
-      for (Property property : properties) {
+      for (final Property property : properties) {
         process(property, scope);
       }
     }
@@ -2484,7 +2552,8 @@ public class StatementAnalyzer {
     }
 
     @Override
-    protected Scope visitCreateDevice(final CreateDevice node, final Optional<Scope> context) {
+    protected Scope visitCreateDevice(
+        final CreateOrUpdateDevice node, final Optional<Scope> context) {
       queryContext.setQueryType(QueryType.WRITE);
       return null;
     }
@@ -2496,12 +2565,116 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitShowDevice(final ShowDevice node, final Optional<Scope> context) {
+      analyzeQueryDevice(node, context);
+      // TODO: use real scope when parameter in offset and limit is supported
+      if (Objects.nonNull(node.getOffset())) {
+        analyzeOffset(node.getOffset(), null);
+      }
+      if (Objects.nonNull(node.getLimit())) {
+        analyzeLimit(node.getLimit(), null);
+      }
       return null;
     }
 
     @Override
     protected Scope visitCountDevice(final CountDevice node, final Optional<Scope> context) {
+      analyzeQueryDevice(node, context);
       return null;
+    }
+
+    private void analyzeQueryDevice(
+        final AbstractQueryDeviceWithCache node, final Optional<Scope> context) {
+      analyzeTraverseDevice(node, context, node.getWhere().isPresent());
+      final TsTable table =
+          DataNodeTableCache.getInstance().getTable(node.getDatabase(), node.getTableName());
+      if (!node.parseRawExpression(
+          table,
+          table.getColumnList().stream()
+              .filter(
+                  columnSchema ->
+                      columnSchema.getColumnCategory().equals(TsTableColumnCategory.ATTRIBUTE))
+              .map(TsTableColumnSchema::getColumnName)
+              .collect(Collectors.toList()),
+          queryContext)) {
+        // Cache hit
+        // Currently we disallow "Or" filter for precise get, thus if it hit cache
+        // it'll be only one device
+        // TODO: Ensure the disjointness of expressions and allow Or filter
+        analysis.setFinishQueryAfterAnalyze();
+      }
+    }
+
+    // NOTICE: We construct transition map here because currently we set the used fields in
+    // the statement. Other queries shall not do this and shall do it in logical plan phase.
+    private TranslationMap analyzeTraverseDevice(
+        final AbstractTraverseDevice node,
+        final Optional<Scope> context,
+        final boolean shallCreateTranslationMap) {
+      node.parseTable(sessionContext);
+
+      final String database = node.getDatabase();
+      final String tableName = node.getTableName();
+
+      if (Objects.isNull(database)) {
+        throw new SemanticException("The database must be set before show devices.");
+      }
+
+      if (!metadata.tableExists(new QualifiedObjectName(database, tableName))) {
+        throw new SemanticException(
+            String.format("Table '%s.%s' does not exist.", database, tableName));
+      }
+      node.setColumnHeaderList();
+
+      TranslationMap translationMap = null;
+      if (shallCreateTranslationMap) {
+        final QualifiedObjectName name = new QualifiedObjectName(database, tableName);
+        final Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+        // This can only be a table
+        if (!tableSchema.isPresent()) {
+          throw new SemanticException(String.format("Table '%s' does not exist", name));
+        }
+
+        final TableSchema originalSchema = tableSchema.get();
+        final ImmutableList.Builder<Field> fields = ImmutableList.builder();
+        fields.addAll(
+            analyzeTableOutputFields(
+                node.getTable(),
+                name,
+                new TableSchema(
+                    originalSchema.getTableName(),
+                    originalSchema.getColumns().stream()
+                        .filter(
+                            columnSchema ->
+                                columnSchema.getColumnCategory() == TsTableColumnCategory.ID
+                                    || columnSchema.getColumnCategory()
+                                        == TsTableColumnCategory.ATTRIBUTE)
+                        .collect(Collectors.toList()))));
+        final List<Field> fieldList = fields.build();
+        final Scope scope = createAndAssignScope(node, context, fieldList);
+        translationMap =
+            new TranslationMap(
+                Optional.empty(),
+                scope,
+                analysis,
+                fieldList.stream()
+                    .map(field -> Symbol.of(field.getName().orElse(null)))
+                    .collect(Collectors.toList()),
+                new PlannerContext(metadata, null));
+
+        if (node.getWhere().isPresent()) {
+          analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          node.setWhere(translationMap.rewrite(analysis.getWhere(node)));
+        }
+      }
+
+      return translationMap;
+    }
+
+    private Expression analyzeAndRewriteExpression(
+        final TranslationMap translationMap, final Scope scope, final Expression expression) {
+      analyzeExpression(expression, scope);
+      scope.getRelationType().getAllFields();
+      return translationMap.rewrite(expression);
     }
   }
 

@@ -54,6 +54,10 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ShowFunctionsContext;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParserBaseVisitor;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.window.WindowType;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindow;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.HeadInferenceWindow;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindow;
+import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.TailInferenceWindow;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -162,6 +166,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowModelsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -1300,6 +1308,43 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       queryStatement.setFromComponent(parseFromClause(ctx.fromClause()));
       setSourceQueryStatement.accept(queryStatement);
     }
+  }
+
+  // Create Model =====================================================================
+  public static void validateModelName(String modelName) {
+    if (modelName.length() < 2 || modelName.length() > 64) {
+      throw new SemanticException("Model name should be 2-64 characters");
+    } else if (modelName.startsWith("_")) {
+      throw new SemanticException("Model name should not start with '_'");
+    } else if (!modelName.matches("^[-\\w]*$")) {
+      throw new SemanticException("ModelName can only contain letters, numbers, and underscores");
+    }
+  }
+
+  @Override
+  public Statement visitCreateModel(IoTDBSqlParser.CreateModelContext ctx) {
+    CreateModelStatement createModelStatement = new CreateModelStatement();
+    String modelName = ctx.modelName.getText();
+    validateModelName(modelName);
+    createModelStatement.setModelName(parseIdentifier(modelName));
+    createModelStatement.setUri(ctx.modelUri.getText());
+    return createModelStatement;
+  }
+
+  // Drop Model =====================================================================
+  @Override
+  public Statement visitDropModel(IoTDBSqlParser.DropModelContext ctx) {
+    return new DropModelStatement(parseIdentifier(ctx.modelId.getText()));
+  }
+
+  // Show Models =====================================================================
+  @Override
+  public Statement visitShowModels(IoTDBSqlParser.ShowModelsContext ctx) {
+    ShowModelsStatement statement = new ShowModelsStatement();
+    if (ctx.modelId != null) {
+      statement.setModelName(parseIdentifier(ctx.modelId.getText()));
+    }
+    return statement;
   }
 
   /** Data Manipulation Language (DML). */
@@ -3444,6 +3489,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowConfigNodesStatement();
   }
 
+  @Override
+  public Statement visitShowAINodes(IoTDBSqlParser.ShowAINodesContext ctx) {
+    return new ShowAINodesStatement();
+  }
+
   // device template
 
   @Override
@@ -4336,6 +4386,57 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showSpaceQuotaStatement.setDatabases(null);
     }
     return showSpaceQuotaStatement;
+  }
+
+  @Override
+  public Statement visitCallInference(IoTDBSqlParser.CallInferenceContext ctx) {
+    String sql = ctx.inputSql.getText();
+    QueryStatement statement =
+        (QueryStatement)
+            StatementGenerator.createStatement(sql.substring(1, sql.length() - 1), zoneId);
+
+    statement.setModelName(parseIdentifier(ctx.modelId.getText()));
+    statement.setHasModelInference(true);
+
+    if (ctx.hparamPair() != null) {
+      for (IoTDBSqlParser.HparamPairContext context : ctx.hparamPair()) {
+        IoTDBSqlParser.HparamValueContext valueContext = context.hparamValue();
+        String paramKey = context.hparamKey.getText();
+        if (paramKey.equalsIgnoreCase("WINDOW")) {
+          if (statement.isSetInferenceWindow()) {
+            throw new SemanticException("There should be only one window in CALL INFERENCE.");
+          }
+          if (valueContext.windowFunction().isEmpty()) {
+            throw new SemanticException(
+                "Window Function(e.g. HEAD, TAIL, COUNT) should be set in value when key is 'WINDOW' in CALL INFERENCE");
+          }
+          parseWindowFunctionInInference(valueContext.windowFunction(), statement);
+        } else {
+          statement.addInferenceAttribute(
+              paramKey, parseAttributeValue(valueContext.attributeValue()));
+        }
+      }
+    }
+
+    return statement;
+  }
+
+  private void parseWindowFunctionInInference(
+      IoTDBSqlParser.WindowFunctionContext windowContext, QueryStatement statement) {
+    InferenceWindow inferenceWindow = null;
+    if (windowContext.TAIL() != null) {
+      inferenceWindow =
+          new TailInferenceWindow(Integer.parseInt(windowContext.windowSize.getText()));
+    } else if (windowContext.HEAD() != null) {
+      inferenceWindow =
+          new HeadInferenceWindow(Integer.parseInt(windowContext.windowSize.getText()));
+    } else if (windowContext.COUNT() != null) {
+      inferenceWindow =
+          new CountInferenceWindow(
+              Integer.parseInt(windowContext.interval.getText()),
+              Integer.parseInt(windowContext.step.getText()));
+    }
+    statement.setInferenceWindow(inferenceWindow);
   }
 
   @Override

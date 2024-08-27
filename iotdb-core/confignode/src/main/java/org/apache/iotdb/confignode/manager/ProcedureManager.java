@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -44,6 +43,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
@@ -57,7 +57,10 @@ import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
+import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
+import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
@@ -82,6 +85,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.SetTablePropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.CreateConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.DropConsumerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.subscription.consumer.runtime.ConsumerGroupMetaSyncProcedure;
@@ -124,6 +128,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +143,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
@@ -162,6 +168,8 @@ public class ProcedureManager {
 
   private final long planSizeLimit;
   private ProcedureMetrics procedureMetrics;
+
+  private final ReentrantLock tableLock = new ReentrantLock();
 
   public ProcedureManager(ConfigManager configManager, ProcedureInfo procedureInfo) {
     this.configManager = configManager;
@@ -222,39 +230,15 @@ public class ProcedureManager {
       synchronized (this) {
         while (executor.isRunning()
             && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
-          ProcedureType type;
-          for (final Procedure<?> procedure : executor.getProcedures().values()) {
-            type = ProcedureFactory.getProcedureType(procedure);
-            if (type == null) {
-              continue;
-            }
-            // A table shall not be concurrently operated or else the dataNode cache
-            // may record fake values
-            switch (type) {
-              case CREATE_TABLE_PROCEDURE:
-                final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
-                if (databaseSchema.getName().equals(createTableProcedure.getDatabase())) {
-                  hasOverlappedTask = true;
-                  break;
-                }
-                break;
-              case ADD_TABLE_COLUMN_PROCEDURE:
-                final AddTableColumnProcedure addTableColumnProcedure =
-                    (AddTableColumnProcedure) procedure;
-                if (database.equals(addTableColumnProcedure.getDatabase())) {
-                  hasOverlappedTask = true;
-                  break;
-                }
-                break;
-              default:
-                break;
-            }
-          }
-          if (!hasOverlappedTask) {
+          final Pair<Long, Boolean> procedureIdDuplicatePair =
+              awaitDuplicateTableTask(
+                  database, null, null, null, ProcedureType.CREATE_TABLE_PROCEDURE);
+          hasOverlappedTask = procedureIdDuplicatePair.getRight();
+
+          if (Boolean.FALSE.equals(procedureIdDuplicatePair.getRight())) {
             final DeleteDatabaseProcedure deleteDatabaseProcedure =
                 new DeleteDatabaseProcedure(databaseSchema, isGeneratedByPipe);
-            final long procedureId = this.executor.submitProcedure(deleteDatabaseProcedure);
-            procedureIds.add(procedureId);
+            procedureIds.add(this.executor.submitProcedure(deleteDatabaseProcedure));
             break;
           }
           try {
@@ -263,13 +247,13 @@ public class ProcedureManager {
             Thread.currentThread().interrupt();
           }
         }
-      }
-      if (hasOverlappedTask) {
-        return RpcUtils.getStatus(
-            TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-            String.format(
-                "Some other task is operating table under the database %s, please retry after the procedure finishes.",
-                database));
+        if (hasOverlappedTask) {
+          return RpcUtils.getStatus(
+              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
+              String.format(
+                  "Some other task is operating table under the database %s, please retry after the procedure finishes.",
+                  database));
+        }
       }
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
@@ -607,6 +591,13 @@ public class ProcedureManager {
     return true;
   }
 
+  public boolean removeAINode(RemoveAINodePlan removeAINodePlan) {
+    this.executor.submitProcedure(new RemoveAINodeProcedure(removeAINodePlan.getAINodeLocation()));
+    LOGGER.info(
+        "Submit RemoveAINodeProcedure successfully, {}", removeAINodePlan.getAINodeLocation());
+    return true;
+  }
+
   // region region migration
   private TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
@@ -855,6 +846,25 @@ public class ProcedureManager {
     final List<TSStatus> statusList = new ArrayList<>();
     waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
     return statusList.get(0);
+  }
+
+  public TSStatus createModel(String modelName, String uri) {
+    long procedureId = executor.submitProcedure(new CreateModelProcedure(modelName, uri));
+    LOGGER.info("CreateModelProcedure was submitted, procedureId: {}.", procedureId);
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public TSStatus dropModel(String modelId) {
+    long procedureId = executor.submitProcedure(new DropModelProcedure(modelId));
+    List<TSStatus> statusList = new ArrayList<>();
+    boolean isSucceed =
+        waitingProcedureFinished(Collections.singletonList(procedureId), statusList);
+    if (isSucceed) {
+      return RpcUtils.SUCCESS_STATUS;
+    } else {
+      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
+          .setMessage(statusList.get(0).getMessage());
+    }
   }
 
   public TSStatus createPipePlugin(
@@ -1297,7 +1307,7 @@ public class ProcedureManager {
     while (currentTime < endTime) {
       try {
         Thread.sleep(endTime - currentTime);
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         interrupted = true;
       }
       currentTime = System.currentTimeMillis();
@@ -1308,64 +1318,64 @@ public class ProcedureManager {
   }
 
   public TSStatus createTable(final String database, final TsTable table) {
-    long procedureId = -1;
+    return executeWithoutDuplicate(
+        database,
+        table,
+        table.getTableName(),
+        null,
+        ProcedureType.CREATE_TABLE_PROCEDURE,
+        new CreateTableProcedure(database, table));
+  }
+
+  public TSStatus alterTableAddColumn(final TAlterTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.ADD_TABLE_COLUMN_PROCEDURE,
+        new AddTableColumnProcedure(
+            req.database,
+            req.tableName,
+            req.queryId,
+            TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo)));
+  }
+
+  public TSStatus alterTableSetProperties(final TAlterTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE,
+        new SetTablePropertiesProcedure(
+            req.database, req.tableName, req.queryId, ReadWriteIOUtils.readMap(req.updateInfo)));
+  }
+
+  private TSStatus executeWithoutDuplicate(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final String queryId,
+      final ProcedureType thisType,
+      final Procedure<ConfigNodeProcedureEnv> procedure) {
+    long procedureId;
     synchronized (this) {
-      boolean hasOverlappedTask = false;
-      ProcedureType type;
-      for (final Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
-        if (type == null) {
-          continue;
-        }
-        // A table shall not be concurrently operated or else the dataNode cache
-        // may record fake values
-        switch (type) {
-          case CREATE_TABLE_PROCEDURE:
-            final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
-            if (database.equals(createTableProcedure.getDatabase())
-                && table.equals(createTableProcedure.getTable())) {
-              procedureId = createTableProcedure.getProcId();
-              break;
-            }
-            if (database.equals(createTableProcedure.getDatabase())
-                && table.getTableName().equals(createTableProcedure.getTable().getTableName())) {
-              hasOverlappedTask = true;
-              break;
-            }
-            break;
-          case ADD_TABLE_COLUMN_PROCEDURE:
-            final AddTableColumnProcedure addTableColumnProcedure =
-                (AddTableColumnProcedure) procedure;
-            if (database.equals(addTableColumnProcedure.getDatabase())
-                && table.getTableName().equals(addTableColumnProcedure.getTableName())) {
-              hasOverlappedTask = true;
-              break;
-            }
-            break;
-          case DELETE_DATABASE_PROCEDURE:
-            final DeleteDatabaseProcedure deleteDatabaseProcedure =
-                (DeleteDatabaseProcedure) procedure;
-            if (database.equals(deleteDatabaseProcedure.getDatabase())) {
-              hasOverlappedTask = true;
-              break;
-            }
-            break;
-          default:
-            break;
-        }
-      }
+      final Pair<Long, Boolean> procedureIdDuplicatePair =
+          awaitDuplicateTableTask(database, table, tableName, queryId, thisType);
+      procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
-        if (hasOverlappedTask) {
+        if (Boolean.TRUE.equals(procedureIdDuplicatePair.getRight())) {
           return RpcUtils.getStatus(
               TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
               "Some other task is operating table with same name.");
         }
-        procedureId = this.executor.submitProcedure(new CreateTableProcedure(database, table));
+        procedureId = this.executor.submitProcedure(procedure);
       }
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
+    final boolean isSucceed =
         waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
     if (isSucceed) {
       return StatusUtils.OK;
@@ -1374,78 +1384,65 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus alterTableAddColumn(final TAlterTableReq req) {
-    final String database = req.database;
-    final String tableName = req.tableName;
-    final String queryId = req.queryId;
-    final List<TsTableColumnSchema> columnSchemaList =
-        TsTableColumnSchemaUtil.deserializeColumnSchemaList(req.updateInfo);
-
-    long procedureId = -1;
-    synchronized (this) {
-      boolean hasOverlappedTask = false;
-      ProcedureType type;
-      for (final Procedure<?> procedure : executor.getProcedures().values()) {
-        type = ProcedureFactory.getProcedureType(procedure);
-        if (type == null) {
-          continue;
-        }
-        // A table shall not be concurrently operated or else the dataNode cache
-        // may record fake values
-        switch (type) {
-          case CREATE_TABLE_PROCEDURE:
-            final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
-            if (database.equals(createTableProcedure.getDatabase())
-                && tableName.equals(createTableProcedure.getTable().getTableName())) {
-              hasOverlappedTask = true;
-              break;
-            }
-            break;
-          case ADD_TABLE_COLUMN_PROCEDURE:
-            final AddTableColumnProcedure addTableColumnProcedure =
-                (AddTableColumnProcedure) procedure;
-            if (queryId.equals(addTableColumnProcedure.getQueryId())) {
-              procedureId = addTableColumnProcedure.getProcId();
-              break;
-            }
-            if (database.equals(addTableColumnProcedure.getDatabase())
-                && tableName.equals(addTableColumnProcedure.getTableName())) {
-              hasOverlappedTask = true;
-              break;
-            }
-            break;
-          case DELETE_DATABASE_PROCEDURE:
-            final DeleteDatabaseProcedure deleteDatabaseProcedure =
-                (DeleteDatabaseProcedure) procedure;
-            if (database.equals(deleteDatabaseProcedure.getDatabase())) {
-              hasOverlappedTask = true;
-              break;
-            }
-            break;
-          default:
-            break;
-        }
+  private Pair<Long, Boolean> awaitDuplicateTableTask(
+      final String database,
+      final TsTable table,
+      final String tableName,
+      final String queryId,
+      final ProcedureType thisType) {
+    ProcedureType type;
+    for (final Procedure<?> procedure : executor.getProcedures().values()) {
+      type = ProcedureFactory.getProcedureType(procedure);
+      if (type == null) {
+        continue;
       }
-
-      if (procedureId == -1) {
-        if (hasOverlappedTask) {
-          return RpcUtils.getStatus(
-              TSStatusCode.OVERLAP_WITH_EXISTING_TASK,
-              "Some other task dropping table with same name.");
-        }
-        procedureId =
-            this.executor.submitProcedure(
-                new AddTableColumnProcedure(database, tableName, queryId, columnSchemaList));
+      // A table shall not be concurrently operated or else the dataNode cache
+      // may record fake values
+      switch (type) {
+        case CREATE_TABLE_PROCEDURE:
+          final CreateTableProcedure createTableProcedure = (CreateTableProcedure) procedure;
+          if (type == thisType && Objects.equals(table, createTableProcedure.getTable())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          if (database.equals(createTableProcedure.getDatabase())
+              && Objects.equals(tableName, createTableProcedure.getTable().getTableName())) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case ADD_TABLE_COLUMN_PROCEDURE:
+          final AddTableColumnProcedure addTableColumnProcedure =
+              (AddTableColumnProcedure) procedure;
+          if (type == thisType && queryId.equals(addTableColumnProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          if (database.equals(addTableColumnProcedure.getDatabase())
+              && Objects.equals(tableName, addTableColumnProcedure.getTableName())) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case SET_TABLE_PROPERTIES_PROCEDURE:
+          final SetTablePropertiesProcedure setTablePropertiesProcedure =
+              (SetTablePropertiesProcedure) procedure;
+          if (type == thisType && queryId.equals(setTablePropertiesProcedure.getQueryId())) {
+            return new Pair<>(procedure.getProcId(), false);
+          }
+          if (database.equals(setTablePropertiesProcedure.getDatabase())
+              && Objects.equals(tableName, setTablePropertiesProcedure.getTableName())) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        case DELETE_DATABASE_PROCEDURE:
+          final DeleteDatabaseProcedure deleteDatabaseProcedure =
+              (DeleteDatabaseProcedure) procedure;
+          if (database.equals(deleteDatabaseProcedure.getDatabase())) {
+            return new Pair<>(-1L, true);
+          }
+          break;
+        default:
+          break;
       }
     }
-    List<TSStatus> procedureStatus = new ArrayList<>();
-    boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return new Pair<>(-1L, false);
   }
 
   // ======================================================

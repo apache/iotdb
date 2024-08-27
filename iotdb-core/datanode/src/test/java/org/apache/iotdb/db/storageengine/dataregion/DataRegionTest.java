@@ -53,6 +53,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerSequenceCompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
@@ -113,6 +115,8 @@ public class DataRegionTest {
 
   private double preWriteMemoryVariationReportProportion =
       config.getWriteMemoryVariationReportProportion();
+  private InnerSequenceCompactionSelector seqSelector;
+  private InnerUnsequenceCompactionSelector unseqSelector;
 
   @Before
   public void setUp() throws Exception {
@@ -121,6 +125,12 @@ public class DataRegionTest {
     dataRegion = new DummyDataRegion(systemDir, storageGroup);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     CompactionTaskManager.getInstance().start();
+    seqSelector = config.getInnerSequenceCompactionSelector();
+    unseqSelector = config.getInnerUnsequenceCompactionSelector();
+    config.setInnerSequenceCompactionSelector(
+        InnerSequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
+    config.setInnerUnsequenceCompactionSelector(
+        InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
     DataNodeTableCache.getInstance()
         .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable());
     DataNodeTableCache.getInstance()
@@ -137,6 +147,8 @@ public class DataRegionTest {
     CompactionTaskManager.getInstance().stop();
     EnvironmentUtils.cleanEnv();
     config.setWriteMemoryVariationReportProportion(preWriteMemoryVariationReportProportion);
+    config.setInnerSequenceCompactionSelector(seqSelector);
+    config.setInnerUnsequenceCompactionSelector(unseqSelector);
   }
 
   public static InsertRowNode buildInsertRowNodeByTSRecord(TSRecord record)
@@ -1122,8 +1134,8 @@ public class DataRegionTest {
   public void testMerge()
       throws WriteProcessException, QueryProcessException, IllegalPathException {
     int originCandidateFileNum =
-        IoTDBDescriptor.getInstance().getConfig().getFileLimitPerInnerTask();
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(9);
+        IoTDBDescriptor.getInstance().getConfig().getInnerCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(9);
     boolean originEnableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     boolean originEnableUnseqSpaceCompaction =
@@ -1181,7 +1193,9 @@ public class DataRegionTest {
     for (TsFileResource resource : queryDataSource.getUnseqResources()) {
       Assert.assertTrue(resource.isClosed());
     }
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(originCandidateFileNum);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setInnerCompactionCandidateFileNum(originCandidateFileNum);
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableSeqSpaceCompaction(originEnableSeqSpaceCompaction);
@@ -1196,7 +1210,7 @@ public class DataRegionTest {
   @Ignore
   @Test
   public void testDeleteStorageGroupWhenCompacting() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(10);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(10);
     try {
       for (int j = 0; j < 10; j++) {
         TSRecord record = new TSRecord(j, deviceId);

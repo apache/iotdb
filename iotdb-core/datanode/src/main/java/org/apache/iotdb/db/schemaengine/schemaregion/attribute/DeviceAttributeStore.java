@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class DeviceAttributeStore implements IDeviceAttributeStore {
 
@@ -140,28 +141,42 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
   }
 
   @Override
-  public void alterAttribute(int pointer, List<String> nameList, Object[] valueList) {
+  public Map<String, String> alterAttribute(
+      final int pointer, final List<String> nameList, final Object[] valueList) {
     // todo implement storage for device of diverse data types
     long memUsageDelta = 0L;
     long originMemUsage;
     long updatedMemUsage;
-    Map<String, String> attributeMap = deviceAttributeList.get(pointer);
+    final Map<String, String> updateMap = new HashMap<>();
+    final Map<String, String> attributeMap = deviceAttributeList.get(pointer);
     String value;
     for (int i = 0; i < nameList.size(); i++) {
-      String key = nameList.get(i);
+      final String key = nameList.get(i);
       value = valueList[i] == null ? null : valueList[i].toString();
-      if (value != null) {
-        originMemUsage =
-            attributeMap.containsKey(key)
-                ? 0
-                : MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key));
 
-        attributeMap.put(key, value);
+      originMemUsage =
+          attributeMap.containsKey(key)
+              ? MemUsageUtil.computeKVMemUsageInMap(key, attributeMap.get(key))
+              : 0;
+      if (value != null) {
+        if (!Objects.equals(value, attributeMap.put(key, value))) {
+          updateMap.put(key, value);
+        }
         updatedMemUsage = MemUsageUtil.computeKVMemUsageInMap(key, value);
         memUsageDelta += (updatedMemUsage - originMemUsage);
+      } else {
+        if (Objects.nonNull(attributeMap.remove(key))) {
+          updateMap.put(key, value);
+        }
+        memUsageDelta -= originMemUsage;
       }
     }
-    requestMemory(memUsageDelta);
+    if (memUsageDelta > 0) {
+      requestMemory(memUsageDelta);
+    } else if (memUsageDelta < 0) {
+      releaseMemory(-memUsageDelta);
+    }
+    return updateMap;
   }
 
   @Override
@@ -183,9 +198,15 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
     }
   }
 
-  private void requestMemory(long size) {
+  private void requestMemory(final long size) {
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
+    }
+  }
+
+  private void releaseMemory(final long size) {
+    if (regionStatistics != null) {
+      regionStatistics.releaseMemory(size);
     }
   }
 }

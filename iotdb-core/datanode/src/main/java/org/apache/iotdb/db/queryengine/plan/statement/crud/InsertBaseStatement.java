@@ -60,6 +60,7 @@ public abstract class InsertBaseStatement extends Statement {
   /**
    * if use id table, this filed is id form of device path <br>
    * if not, this filed is device path<br>
+   * When using table model, this is the table name.
    */
   protected PartialPath devicePath;
 
@@ -551,5 +552,40 @@ public abstract class InsertBaseStatement extends Statement {
   public Optional<String> getDatabaseName() {
     return Optional.ofNullable(databaseName);
   }
+
   // endregion
+
+  @TableModel
+  public void toLowerCase() {
+    devicePath.toLowerCase();
+    if (measurements == null) {
+      return;
+    }
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        measurements[i] = measurements[i].toLowerCase();
+      }
+    }
+    if (measurementSchemas != null) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        measurementSchema.setMeasurementId(measurementSchema.getMeasurementId().toLowerCase());
+      }
+    }
+  }
+
+  @TableModel
+  public List<String> getAttributeColumnNameList() {
+    List<String> attributeColumnNameList = new ArrayList<>();
+    for (int i = 0; i < getColumnCategories().length; i++) {
+      if (getColumnCategories()[i] == TsTableColumnCategory.ATTRIBUTE) {
+        attributeColumnNameList.add(getMeasurements()[i]);
+      }
+    }
+    return attributeColumnNameList;
+  }
+
+  @TableModel
+  public String getTableName() {
+    return devicePath.getFullPath();
+  }
 }

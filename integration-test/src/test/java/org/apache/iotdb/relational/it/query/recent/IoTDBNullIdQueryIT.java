@@ -21,8 +21,8 @@ package org.apache.iotdb.relational.it.query.recent;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.TableClusterIT;
+import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
@@ -42,7 +42,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBNullIdQueryIT {
   private static final String DATABASE_NAME = "test";
   private static final String[] createSqls =
@@ -66,7 +66,7 @@ public class IoTDBNullIdQueryIT {
 
   @Test
   public void nullFilterTest() throws Exception {
-    final String result = defaultFormatDataTime(1) + ",0,false,11.1";
+    String result = defaultFormatDataTime(1) + ",0,false,11.1";
     try (final Connection connectionIsNull =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connectionIsNull.createStatement()) {
@@ -133,6 +133,54 @@ public class IoTDBNullIdQueryIT {
               + ","
               + resultSet.getString("s3");
       assertEquals(result, ans);
+      assertFalse(resultSet.next());
+
+      // Test constant select item
+      resultSet = statement.executeQuery("select *, 1 from testNullId");
+      result = defaultFormatDataTime(1) + ",null,null,0,false,11.1,1";
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("id1")
+              + ","
+              + resultSet.getString("id2")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3")
+              + ","
+              + resultSet.getString("_col6");
+
+      assertEquals(result, ans);
+      assertFalse(resultSet.next());
+
+      // Test boolean between
+      resultSet =
+          statement.executeQuery("select * from testNullId where s2 between false and true");
+      result = defaultFormatDataTime(1) + ",null,null,0,false,11.1";
+      assertTrue(resultSet.next());
+      ans =
+          resultSet.getString("time")
+              + ","
+              + resultSet.getString("id1")
+              + ","
+              + resultSet.getString("id2")
+              + ","
+              + resultSet.getString("s1")
+              + ","
+              + resultSet.getString("s2")
+              + ","
+              + resultSet.getString("s3");
+
+      assertEquals(result, ans);
+      assertFalse(resultSet.next());
+
+      // Test boolean not between
+      resultSet =
+          statement.executeQuery("select * from testNullId where s2 not between false and true");
       assertFalse(resultSet.next());
     }
   }
