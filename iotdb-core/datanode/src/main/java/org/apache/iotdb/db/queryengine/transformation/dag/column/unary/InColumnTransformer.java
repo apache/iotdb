@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -32,11 +33,13 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class InColumnTransformer extends UnaryColumnTransformer {
   private final Satisfy satisfy;
@@ -48,7 +51,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
   private Set<Float> floatSet;
   private Set<Double> doubleSet;
   private Set<Boolean> booleanSet;
-  private Set<String> stringSet;
+  private Set<Binary> stringSet;
 
   public InColumnTransformer(
       Type returnType,
@@ -57,17 +60,6 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       Set<String> values) {
     super(returnType, childColumnTransformer);
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
-    this.childType =
-        childColumnTransformer.getType() == null
-            ? null
-            : childColumnTransformer.getType().getTypeEnum();
-    initTypedSet(values);
-  }
-
-  public InColumnTransformer(
-      Type returnType, ColumnTransformer childColumnTransformer, List<Literal> values) {
-    super(returnType, childColumnTransformer);
-    satisfy = new InSatisfy();
     this.childType =
         childColumnTransformer.getType() == null
             ? null
@@ -99,9 +91,8 @@ public class InColumnTransformer extends UnaryColumnTransformer {
             break;
           case STRING:
           case TEXT:
-            returnType.writeBoolean(
-                columnBuilder,
-                satisfy.of(column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET)));
+          case BLOB:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getBinary(i)));
             break;
           default:
             throw new UnsupportedOperationException("unsupported data type: " + childType);
@@ -167,7 +158,10 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         break;
       case TEXT:
       case STRING:
-        stringSet = values;
+        stringSet =
+            values.stream()
+                .map(v -> new Binary(v, TSFileConfig.STRING_CHARSET))
+                .collect(Collectors.toSet());
         break;
       default:
         throw new UnsupportedOperationException("unsupported data type: " + childType);
@@ -237,7 +231,14 @@ public class InColumnTransformer extends UnaryColumnTransformer {
       case STRING:
         stringSet = new HashSet<>();
         for (Literal value : values) {
-          stringSet.add(((StringLiteral) value).getValue());
+          stringSet.add(
+              new Binary(((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET));
+        }
+        break;
+      case BLOB:
+        stringSet = new HashSet<>();
+        for (Literal value : values) {
+          stringSet.add(new Binary(((BinaryLiteral) value).getValue()));
         }
         break;
       default:
@@ -266,7 +267,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
 
     boolean of(boolean booleanValue);
 
-    boolean of(String stringValue);
+    boolean of(Binary stringValue);
   }
 
   private class InSatisfy implements Satisfy {
@@ -297,7 +298,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     }
 
     @Override
-    public boolean of(String stringValue) {
+    public boolean of(Binary stringValue) {
       return stringSet.contains(stringValue);
     }
   }
@@ -330,7 +331,7 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     }
 
     @Override
-    public boolean of(String stringValue) {
+    public boolean of(Binary stringValue) {
       return !stringSet.contains(stringValue);
     }
   }

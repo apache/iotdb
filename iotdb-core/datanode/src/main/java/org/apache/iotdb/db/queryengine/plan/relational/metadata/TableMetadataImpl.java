@@ -159,7 +159,8 @@ public class TableMetadataImpl implements Metadata {
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
+      if (!isOneSupportedMathNumericType(argumentTypes)
+          && !isTwoSupportedMathNumericType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -481,7 +482,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-        if (!isOneNumericType(argumentTypes)) {
+        if (!isOneSupportedMathNumericType(argumentTypes)) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
@@ -652,6 +653,16 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
   }
 
+  public static boolean isTwoSupportedMathNumericType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 2
+        && isSupportedMathNumericType(argumentTypes.get(0))
+        && isSupportedMathNumericType(argumentTypes.get(1));
+  }
+
+  public static boolean isOneSupportedMathNumericType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 1 && isSupportedMathNumericType(argumentTypes.get(0));
+  }
+
   public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
   }
@@ -679,6 +690,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isBlobType(Type type) {
     return BlobType.BLOB.equals(type);
+  }
+
+  public static boolean isBool(Type type) {
+    return BOOLEAN.equals(type);
   }
 
   public static boolean isSupportedMathNumericType(Type type) {

@@ -309,5 +309,11 @@ public class IoTDBRoundFunctionTableIT {
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Scalar function round only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]",
         DATABASE_NAME);
+
+    tableAssertTestFail(
+        "select round(time) from table1",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Scalar function round only supports two numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+        DATABASE_NAME);
   }
 }
