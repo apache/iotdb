@@ -160,9 +160,9 @@ public class TableDeviceCacheEntry {
 
   // Shall pass in "" if last by time
   public Pair<Long, TsPrimitiveType[]> getLastRow(
-      final String measurement, final List<String> targetMeasurements) {
+      final String sourceMeasurement, final List<String> targetMeasurements) {
     final TableDeviceLastCache cache = lastCache.get();
-    return Objects.nonNull(cache) ? cache.getLastRow(measurement, targetMeasurements) : null;
+    return Objects.nonNull(cache) ? cache.getLastRow(sourceMeasurement, targetMeasurements) : null;
   }
 
   public int invalidateLastCache() {

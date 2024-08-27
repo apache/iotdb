@@ -229,11 +229,17 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {new TsPrimitiveType.TsInt(2)}, result.getRight());
 
-    result = cache.getLastRow(database, table1, device0, "s0", Arrays.asList("s0", "", "s1"));
+    result =
+        cache.getLastRow(
+            database, table1, device0, "s0", Arrays.asList("s0", "", "s1", "s4", "s5"));
     Assert.assertEquals((Long) 1L, result.getLeft());
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
-          new TsPrimitiveType.TsInt(3), new TsPrimitiveType.TsLong(1), new TsPrimitiveType.TsInt(3)
+          new TsPrimitiveType.TsInt(3),
+          new TsPrimitiveType.TsLong(1),
+          new TsPrimitiveType.TsInt(3),
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          null
         },
         result.getRight());
 
@@ -242,7 +248,9 @@ public class TableDeviceSchemaCacheTest {
     // Actually the outer scope shall judge the Long.MIN_VALUE and return directly
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
-          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, null
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE
         },
         result.getRight());
 

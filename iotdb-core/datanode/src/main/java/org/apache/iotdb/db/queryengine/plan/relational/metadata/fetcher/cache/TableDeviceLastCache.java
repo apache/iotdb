@@ -32,6 +32,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -124,26 +125,31 @@ public class TableDeviceLastCache {
 
   // Shall pass in "" if last by time
   public @Nullable TsPrimitiveType getLastBy(
-      final @Nonnull String measurement, final @Nonnull String targetMeasurement) {
-    if (cacheMiss(measurement)) {
+      final @Nonnull String sourceMeasurement, final @Nonnull String targetMeasurement) {
+    if (cacheMiss(sourceMeasurement)) {
       return null;
     }
     final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
     if (Objects.isNull(tvPair)) {
       return null;
     }
-    return tvPair.getTimestamp() == getAlignTime(measurement)
+    return tvPair.getTimestamp() == getAlignTime(sourceMeasurement)
         ? tvPair.getValue()
         : EMPTY_PRIMITIVE_TYPE;
   }
 
   // Shall pass in "" if last by time
   public @Nullable Pair<Long, TsPrimitiveType[]> getLastRow(
-      final @Nonnull String measurement, final List<String> targetMeasurements) {
-    if (cacheMiss(measurement)) {
+      final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
+    if (cacheMiss(sourceMeasurement)) {
       return null;
     }
-    final long alignTime = getAlignTime(measurement);
+    final long alignTime = getAlignTime(sourceMeasurement);
+    if (alignTime == Long.MIN_VALUE) {
+      final TsPrimitiveType[] resultType = new TsPrimitiveType[targetMeasurements.size()];
+      Arrays.fill(resultType, EMPTY_PRIMITIVE_TYPE);
+      return new Pair<>(alignTime, resultType);
+    }
     return new Pair<>(
         alignTime,
         targetMeasurements.stream()

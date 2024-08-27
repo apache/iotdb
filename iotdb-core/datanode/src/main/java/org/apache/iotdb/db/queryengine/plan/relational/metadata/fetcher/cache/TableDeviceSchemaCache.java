@@ -284,22 +284,22 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root"
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
-   * @param measurement the measurement to get
-   * @return {@code null} iff cache miss; Or, the {@link Pair#left} will be Long.MIN_VALUE iff the
-   *     sourceMeasurement is all {@code null}, and the source measurement's last time otherwise;
-   *     {@link Pair#right} will be an {@link TsPrimitiveType} array, whose element will be {@code
-   *     null} if cache miss, {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and
-   *     the measurement is {@code null} when last by time, and the result value otherwise.
+   * @param sourceMeasurement the measurement to get
+   * @return {@code null} iff cache miss; Or, the {@link Pair#left} will be the source measurement's
+   *     last time, (Long.MIN_VALUE iff the source measurement is all {@code null}), {@link
+   *     Pair#right} will be an {@link TsPrimitiveType} array, whose element will be {@code null} if
+   *     cache miss, {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff cache hit and the
+   *     measurement is {@code null} when last by time, and the result value otherwise.
    */
   public Pair<Long, TsPrimitiveType[]> getLastRow(
       final String database,
       final String tableName,
       final String[] deviceId,
-      final String measurement,
+      final String sourceMeasurement,
       final List<String> targetMeasurements) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    return Objects.nonNull(entry) ? entry.getLastRow(measurement, targetMeasurements) : null;
+    return Objects.nonNull(entry) ? entry.getLastRow(sourceMeasurement, targetMeasurements) : null;
   }
 
   /**
