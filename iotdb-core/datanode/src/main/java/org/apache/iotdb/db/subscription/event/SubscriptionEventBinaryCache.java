@@ -132,7 +132,7 @@ class SubscriptionEventBinaryCache {
                 (Weigher<SubscriptionPollResponse, ByteBuffer>)
                     (message, buffer) -> {
                       // TODO: overflow
-                      return (int) (buffer.limit() * memoryUsageCheatFactor.get());
+                      return (int) (buffer.capacity() * memoryUsageCheatFactor.get());
                     })
             .recordStats() // TODO: metrics
             // NOTE: lambda CAN NOT be replaced with method reference
