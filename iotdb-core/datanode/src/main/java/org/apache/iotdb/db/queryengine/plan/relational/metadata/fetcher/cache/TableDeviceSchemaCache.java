@@ -219,6 +219,8 @@ public class TableDeviceSchemaCache {
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
+   *     cache hit but result is {@code null}, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
       final String database,
@@ -238,6 +240,8 @@ public class TableDeviceSchemaCache {
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_LONG} iff cache hit but
+   *     result is {@code null}, and the result value otherwise.
    */
   public Long getLastTime(
       final String database,
@@ -257,6 +261,8 @@ public class TableDeviceSchemaCache {
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
+   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff
+   *     cache hit but result is {@code null}, and the result value otherwise.
    */
   public TsPrimitiveType getLastBy(
       final String database,
@@ -277,6 +283,9 @@ public class TableDeviceSchemaCache {
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
+   * @return {@code null} iff cache miss, {@link Pair}{@literal <}Long.MINVALUE,
+   *     TsPrimitiveType[targetMeasurements.size()]{@literal >} iff cache hit but result is all
+   *     {@code null}, and the result value otherwise.
    */
   public Pair<Long, TsPrimitiveType[]> getLastRow(
       final String database,

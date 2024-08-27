@@ -80,7 +80,6 @@ public class TableDeviceLastCache {
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private long lastTime = EMPTY_LONG;
 
-  // The
   public int update(
       final @Nonnull String database,
       final @Nonnull String tableName,
