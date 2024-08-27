@@ -211,6 +211,7 @@ public class ClusterNodeStartUtils {
   public static TSStatus confirmNodeRestart(
       NodeType nodeType,
       String clusterName,
+      String clusterId,
       int nodeId,
       Object nodeLocation,
       ConfigManager configManager) {
@@ -312,6 +313,25 @@ public class ClusterNodeStartUtils {
           }
         }
         break;
+    }
+
+    // check clusterId if exists
+    if (clusterId != null
+        && !clusterId.isEmpty()
+        && !clusterId.equals(configManager.getClusterManager().getClusterId())) {
+      status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
+      status.setMessage(
+          String.format(
+              "Reject %s restart. Because the clusterId of the current %s and the target cluster are inconsistent. "
+                  + "ClusterId of the current Node: %s, ClusterId of the target cluster: %s."
+                  + POSSIBLE_SOLUTIONS
+                  + "\t1. Change the cluster_id parameter in %s to match the target cluster.",
+              nodeType.getNodeType(),
+              nodeType.getNodeType(),
+              clusterId,
+              configManager.getClusterManager().getClusterId(),
+              CommonConfig.SYSTEM_CONFIG_NAME));
+      return status;
     }
 
     if (!acceptRestart) {
