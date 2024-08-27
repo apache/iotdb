@@ -1879,7 +1879,7 @@ public class StatementAnalyzer {
           || node.getType() == FULL) {
         throw new SemanticException(
             String.format(
-                "Only support INNER JOIN in current version, %s JOIN is not supported",
+                "%s JOIN is not supported, only support INNER JOIN in current version.",
                 node.getType()));
       } else if (node.getType() == Join.Type.IMPLICIT) {
         return output;

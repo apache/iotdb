@@ -40,20 +40,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.SortTest.assertTableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.SortTest.metadata;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.SortTest.queryId;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.SortTest.sessionInfo;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SubQueryTest {
-
   String sql;
   Analysis analysis;
   MPPQueryContext context;
@@ -66,14 +66,6 @@ public class SubQueryTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
-  List<String> originalDeviceEntries1 =
-      Arrays.asList(
-          "table1.shanghai.B3.YY",
-          "table1.shenzhen.B1.XX",
-          "table1.shenzhen.B2.ZZ",
-          "table1.shanghai.A3.YY");
-  static List<String> originalDeviceEntries2 =
-      Arrays.asList("table1.shenzhen.B1.XX", "table1.shenzhen.B2.ZZ");
 
   @Test
   public void subQueryTest1() {
@@ -85,10 +77,10 @@ public class SubQueryTest {
         "SELECT time, tag2, attr2, CAST(add_s2 as double) "
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 WHERE s1>1 ORDER BY tag1 DESC) "
             + "ORDER BY tag2 OFFSET 3 LIMIT 6";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - Limit - StreamSort - Project - TableScan`
@@ -114,7 +106,7 @@ public class SubQueryTest {
      *               │           └──TableScanNode-115
      *               └──ExchangeNode-160: [SourceAddress:192.0.10.1/test_query.3.0/162]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -170,10 +162,10 @@ public class SubQueryTest {
         "SELECT time, tag2, attr2, CAST(add_s2 as double) "
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 WHERE s1>1 ORDER BY tag1 DESC limit 3) "
             + "ORDER BY tag2 ASC OFFSET 5 LIMIT 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - TopK - Project - Limit - Project - StreamSort - Project -
@@ -206,7 +198,7 @@ public class SubQueryTest {
      *                           │       └──TableScanNode-147
      *                           └──ExchangeNode-196: [SourceAddress:192.0.10.1/test_query.3.0/198]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -266,10 +258,10 @@ public class SubQueryTest {
         "SELECT time, tag2, attr2, CAST(add_s2 as double) "
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 WHERE s1>1 ORDER BY tag1 DESC limit 3) "
             + "ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - ProjectNode - TopK - Project - Limit - Project - StreamSort -
@@ -319,7 +311,7 @@ public class SubQueryTest {
      *                               │       └──TableScanNode-151
      *                               └──ExchangeNode-202: [SourceAddress:192.0.10.1/test_query.3.0/204]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -381,10 +373,11 @@ public class SubQueryTest {
             + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 "
             + "WHERE s1>1 ORDER BY tag1 DESC limit 3) "
             + "WHERE s1>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - ProjectNode - TopK - Project - Filter - Limit - Project -
@@ -422,7 +415,7 @@ public class SubQueryTest {
      *                                   │       └──TableScanNode-163
      *                                   └──ExchangeNode-216: [SourceAddress:192.0.10.1/test_query.3.0/218]
      */
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =

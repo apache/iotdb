@@ -211,6 +211,11 @@ public class JoinNode extends TwoChildProcessNode {
     return spillable;
   }
 
+  @Override
+  public String toString() {
+    return "JoinNode-" + this.getPlanNodeId();
+  }
+
   public static class EquiJoinClause {
     private final Symbol left;
     private final Symbol right;
