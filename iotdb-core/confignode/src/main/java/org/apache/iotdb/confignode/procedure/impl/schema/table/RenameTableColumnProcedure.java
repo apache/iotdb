@@ -26,7 +26,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.state.schema.AddTableColumnState;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -118,7 +117,7 @@ public class RenameTableColumnProcedure
       return;
     }
     table = result.getRight();
-    setNextState(AddTableColumnState.PRE_RELEASE);
+    setNextState(RenameTableColumnState.PRE_RELEASE);
   }
 
   @Override
@@ -129,17 +128,17 @@ public class RenameTableColumnProcedure
 
   @Override
   protected RenameTableColumnState getState(final int stateId) {
-    return null;
+    return RenameTableColumnState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(final RenameTableColumnState renameTableColumnState) {
-    return 0;
+  protected int getStateId(final RenameTableColumnState state) {
+    return state.ordinal();
   }
 
   @Override
   protected RenameTableColumnState getInitialState() {
-    return null;
+    return RenameTableColumnState.COLUMN_CHECK;
   }
 
   @Override
