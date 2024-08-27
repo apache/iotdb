@@ -151,10 +151,12 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastTime(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastBy(database, table1, device0, "s0", "s1"));
-    Assert.assertNull(cache.getLastRow(database, table1, device0, "s0"));
-    Assert.assertNull(cache.getLastTime(database, table1, device0, null));
-    Assert.assertNull(cache.getLastBy(database, table1, device0, null, "s1"));
-    Assert.assertNull(cache.getLastRow(database, table1, device0, null));
+    Assert.assertNull(
+        cache.getLastRow(database, table1, device0, "s0", Collections.singletonList("s1")));
+    Assert.assertNull(cache.getLastTime(database, table1, device0, ""));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, "", "s1"));
+    Assert.assertNull(
+        cache.getLastRow(database, table1, device0, "", Collections.singletonList("s1")));
 
     // Query update
     final Map<String, TimeValuePair> measurementQueryUpdateMap = new HashMap<>();
@@ -190,27 +192,24 @@ public class TableDeviceSchemaCacheTest {
 
     Assert.assertNull(cache.getLastTime(database, table1, device0, "s4"));
     Assert.assertNull(cache.getLastBy(database, table1, device0, "s4", "s3"));
-    Assert.assertEquals((Long) 2L, cache.getLastTime(database, table1, device0, null));
+    Assert.assertEquals((Long) 2L, cache.getLastTime(database, table1, device0, ""));
     Assert.assertEquals((Long) 1L, cache.getLastTime(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastBy(database, table1, device0, "s2", "s1"));
     Assert.assertEquals(
         new TsPrimitiveType.TsInt(3), cache.getLastBy(database, table1, device0, "s0", "s1"));
 
     // Test lastRow
-    Assert.assertEquals(
-        new Pair<>(2L, Collections.singletonMap("s2", new TsPrimitiveType.TsInt(2))),
-        cache.getLastRow(database, table1, device0, null));
-    Assert.assertEquals(
-        new Pair<>(
-            1L,
-            new HashMap<String, TsPrimitiveType>() {
-              {
-                put("s0", new TsPrimitiveType.TsInt(3));
-                put("s1", new TsPrimitiveType.TsInt(3));
-                put("s3", new TsPrimitiveType.TsInt(3));
-              }
-            }),
-        cache.getLastRow(database, table1, device0, "s0"));
+    Pair<Long, TsPrimitiveType[]> result =
+        cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
+    Assert.assertEquals((Long) 2L, result.getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(2)}, result.getRight());
+
+    result = cache.getLastRow(database, table1, device0, "s0", Arrays.asList("s0", "s1"));
+    Assert.assertEquals((Long) 1L, result.getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(3), new TsPrimitiveType.TsInt(3)},
+        result.getRight());
 
     final String table2 = "t2";
     cache.invalidateLastCache(database, table1, device0);

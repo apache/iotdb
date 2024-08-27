@@ -30,11 +30,11 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 @ThreadSafe
 public class TableDeviceLastCache {
@@ -44,6 +44,7 @@ public class TableDeviceLastCache {
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private long lastTime = Long.MIN_VALUE;
 
+  // The
   public int update(
       final @Nonnull String database,
       final @Nonnull String tableName,
@@ -98,16 +99,23 @@ public class TableDeviceLastCache {
   }
 
   // Shall pass in "" if last by time
-  public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final @Nonnull String measurement) {
+  public Pair<Long, TsPrimitiveType[]> getLastRow(
+      final @Nonnull String measurement, final List<String> targetMeasurements) {
     if (isAllNull(measurement)) {
       return null;
     }
     final long alignTime = getAlignTime(measurement);
     return new Pair<>(
         alignTime,
-        measurement2CachedLastMap.entrySet().stream()
-            .filter(entry -> entry.getValue().getTimestamp() == alignTime)
-            .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getValue())));
+        targetMeasurements.stream()
+            .map(
+                targetMeasurement -> {
+                  final TimeValuePair tvPair = measurement2CachedLastMap.get(targetMeasurement);
+                  return Objects.nonNull(tvPair) && tvPair.getTimestamp() == alignTime
+                      ? tvPair.getValue()
+                      : null;
+                })
+            .toArray(TsPrimitiveType[]::new));
   }
 
   private boolean isAllNull(final @Nonnull String measurement) {

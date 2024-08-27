@@ -32,6 +32,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentMap;
@@ -277,14 +278,15 @@ public class TableDeviceSchemaCache {
    * @param deviceId the deviceId without tableName
    * @param measurement the measurement to get
    */
-  public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(
+  public Pair<Long, TsPrimitiveType[]> getLastRow(
       final String database,
       final String tableName,
       final String[] deviceId,
-      final String measurement) {
+      final String measurement,
+      final List<String> targetMeasurements) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    return Objects.nonNull(entry) ? entry.getLastRow(measurement) : null;
+    return Objects.nonNull(entry) ? entry.getLastRow(measurement, targetMeasurements) : null;
   }
 
   /**

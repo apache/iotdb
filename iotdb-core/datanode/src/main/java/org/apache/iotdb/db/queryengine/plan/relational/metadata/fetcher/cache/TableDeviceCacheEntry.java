@@ -29,6 +29,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -154,9 +155,10 @@ public class TableDeviceCacheEntry {
   }
 
   // Shall pass in "" if last by time
-  public Pair<Long, Map<String, TsPrimitiveType>> getLastRow(final String measurement) {
+  public Pair<Long, TsPrimitiveType[]> getLastRow(
+      final String measurement, final List<String> targetMeasurements) {
     final TableDeviceLastCache cache = lastCache.get();
-    return Objects.nonNull(cache) ? cache.getLastRow(measurement) : null;
+    return Objects.nonNull(cache) ? cache.getLastRow(measurement, targetMeasurements) : null;
   }
 
   public int invalidateLastCache() {
