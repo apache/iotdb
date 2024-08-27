@@ -333,6 +333,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
         createDataPipe(uuid, false);
         Thread.sleep(10000);
         consumer.accept(senderSession, receiverSession, tablet);
+        senderSession.executeNonQueryStatement("flush");
       }
       List<List<Object>> expectedValues =
           generateTabletResultSetForTable(tablet, measurementSchemas);
