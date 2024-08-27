@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -40,6 +41,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class AggregationTableScanNode extends TableScanNode {
+  // if there is date_bin function of time, we should use this field to transform time input
+  private final Assignments projection;
+
   private final Map<Symbol, AggregationNode.Aggregation> aggregations;
   private final AggregationNode.GroupingSetDescriptor groupingSets;
   private final List<Symbol> preGroupedSymbols;
@@ -59,6 +63,7 @@ public class AggregationTableScanNode extends TableScanNode {
       long pushDownLimit,
       long pushDownOffset,
       boolean pushLimitToEachDevice,
+      Assignments projection,
       Map<Symbol, AggregationNode.Aggregation> aggregations,
       AggregationNode.GroupingSetDescriptor groupingSets,
       List<Symbol> preGroupedSymbols,
@@ -77,6 +82,8 @@ public class AggregationTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         pushLimitToEachDevice);
+    this.projection = projection;
+
     this.aggregations = ImmutableMap.copyOf(requireNonNull(aggregations, "aggregations is null"));
     aggregations.values().forEach(aggregation -> aggregation.verifyArguments(step));
 
@@ -114,6 +121,10 @@ public class AggregationTableScanNode extends TableScanNode {
     this.setOutputSymbols(outputs.build());
   }
 
+  public Assignments getProjection() {
+    return projection;
+  }
+
   public List<Symbol> getGroupingKeys() {
     return groupingSets.getGroupingKeys();
   }
@@ -147,7 +158,10 @@ public class AggregationTableScanNode extends TableScanNode {
   }
 
   public static AggregationTableScanNode combineAggregationAndTableScan(
-      PlanNodeId id, AggregationNode aggregationNode, TableScanNode tableScanNode) {
+      PlanNodeId id,
+      AggregationNode aggregationNode,
+      ProjectNode projectNode,
+      TableScanNode tableScanNode) {
     return new AggregationTableScanNode(
         id,
         tableScanNode.getQualifiedObjectName(),
@@ -161,6 +175,7 @@ public class AggregationTableScanNode extends TableScanNode {
         tableScanNode.getPushDownLimit(),
         tableScanNode.getPushDownOffset(),
         tableScanNode.isPushLimitToEachDevice(),
+        projectNode == null ? null : projectNode.getAssignments(),
         aggregationNode.getAggregations(),
         aggregationNode.getGroupingSets(),
         aggregationNode.getPreGroupedSymbols(),
@@ -171,6 +186,7 @@ public class AggregationTableScanNode extends TableScanNode {
   public static AggregationTableScanNode combineAggregationAndTableScan(
       PlanNodeId id,
       AggregationNode aggregationNode,
+      ProjectNode projectNode,
       TableScanNode tableScanNode,
       AggregationNode.Step step) {
     return new AggregationTableScanNode(
@@ -186,6 +202,7 @@ public class AggregationTableScanNode extends TableScanNode {
         tableScanNode.getPushDownLimit(),
         tableScanNode.getPushDownOffset(),
         tableScanNode.isPushLimitToEachDevice(),
+        projectNode == null ? null : projectNode.getAssignments(),
         aggregationNode.getAggregations(),
         aggregationNode.getGroupingSets(),
         aggregationNode.getPreGroupedSymbols(),
@@ -195,7 +212,8 @@ public class AggregationTableScanNode extends TableScanNode {
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), aggregations, groupingSets, step, groupIdSymbol);
+    return Objects.hash(
+        super.hashCode(), projection, aggregations, groupingSets, step, groupIdSymbol);
   }
 
   @Override

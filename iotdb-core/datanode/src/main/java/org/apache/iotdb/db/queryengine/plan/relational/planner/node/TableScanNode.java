@@ -17,7 +17,6 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -49,6 +48,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 
 public class TableScanNode extends SourceNode {
 
@@ -190,9 +190,9 @@ public class TableScanNode extends SourceNode {
         .collect(Collectors.toList());
   }
 
-  public boolean isIdColumn(Symbol symbol) {
-    return !TimestampOperand.TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(symbol.getName())
-        && !getIdAndAttributeIndexMap().containsKey(symbol);
+  public boolean isMeasurementColumn(Symbol symbol) {
+    ColumnSchema columnSchema = assignments.get(symbol);
+    return columnSchema != null && columnSchema.getColumnCategory() == MEASUREMENT;
   }
 
   @Override

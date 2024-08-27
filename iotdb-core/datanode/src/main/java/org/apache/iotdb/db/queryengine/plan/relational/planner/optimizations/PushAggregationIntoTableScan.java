@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -28,14 +29,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 
 import com.google.common.collect.ImmutableSet;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode.combineAggregationAndTableScan;
 
 /**
@@ -44,7 +46,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
  * <p>The Aggregation may be pushed down to the TableScanNode, so that we can make use of
  * statistics.
  *
- * <p>Attention: This optimizer depends on {@link UnaliasSymbolReferences}
+ * <p>Attention: This optimizer depends on {@link UnaliasSymbolReferences}.
  */
 public class PushAggregationIntoTableScan implements PlanOptimizer {
 
@@ -89,7 +91,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return node;
       }
 
-      int pushDownLevel =
+      PushDownLevel pushDownLevel =
           calculatePushDownLevel(
               node.getAggregations().values(),
               node.getGroupingKeys(),
@@ -97,13 +99,16 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
               tableScanNode,
               context.session,
               context.metadata);
-      if (pushDownLevel == 0) { // no push-down
+      if (pushDownLevel == PushDownLevel.NOOP) { // no push-down
         return node;
-      } else if (pushDownLevel == 1) { // partial push-down
-        checkArgument(projectNode == null, "Unexpected ProjectNode in push-down");
+      } else if (pushDownLevel == PushDownLevel.PARTIAL) { // partial push-down
         AggregationTableScanNode aggregationTableScanNode =
             combineAggregationAndTableScan(
-                context.queryId.genPlanNodeId(), node, tableScanNode, AggregationNode.Step.PARTIAL);
+                context.queryId.genPlanNodeId(),
+                node,
+                projectNode,
+                tableScanNode,
+                AggregationNode.Step.PARTIAL);
         return new AggregationNode(
             node.getPlanNodeId(),
             aggregationTableScanNode,
@@ -114,19 +119,19 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
             node.getHashSymbol(),
             node.getHashSymbol());
       } else { // complete push-down
-        checkArgument(projectNode == null, "Unexpected ProjectNode in push-down");
-        return combineAggregationAndTableScan(context.queryId.genPlanNodeId(), node, tableScanNode);
+        return combineAggregationAndTableScan(
+            context.queryId.genPlanNodeId(), node, projectNode, tableScanNode);
       }
     }
 
-    private int calculatePushDownLevel(
+    /** Calculate the level of push-down, and extract the projection of date_bin(time). */
+    private PushDownLevel calculatePushDownLevel(
         Collection<AggregationNode.Aggregation> values,
         List<Symbol> groupingKeys,
         ProjectNode projectNode,
         TableScanNode tableScanNode,
         SessionInfo session,
         Metadata metadata) {
-      final int[] currPushDownLevel = {2};
       boolean hasProject = projectNode != null;
       Map<Symbol, Expression> assignments =
           hasProject ? projectNode.getAssignments().getMap() : null;
@@ -135,8 +140,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         // if the function cannot make use of Statistics, we don't push down
         if (!metadata.canUseStatistics(
             aggregation.getResolvedFunction().getSignature().getName())) {
-          currPushDownLevel[0] = 0;
-          break;
+          return PushDownLevel.NOOP;
         }
 
         // if expr appears in arguments of Aggregation, we don't push down
@@ -145,42 +149,59 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
                 .anyMatch(
                     argument ->
                         !(assignments.get(Symbol.from(argument)) instanceof SymbolReference))) {
-          currPushDownLevel[0] = 0;
-          break;
+          return PushDownLevel.NOOP;
         }
       }
 
       // calculate DataSet part
+      List<FunctionCall> dateBinFunctionsOfTime = new ArrayList<>();
       if (groupingKeys.stream()
-          .anyMatch(
-              groupingKey ->
-                  hasProject
-                          && !(assignments.get(groupingKey) instanceof SymbolReference
-                              || isDataBinFunctionOfTime(assignments.get(groupingKey)))
-                      || tableScanNode.isIdColumn( // TODO
-                          groupingKey))) { // if expr except data_bin(time) or Measurement column
-        // appears in groupingKeys, we don't push down
+              .anyMatch(
+                  groupingKey ->
+                      hasProject
+                              && !(assignments.get(groupingKey) instanceof SymbolReference
+                                  || isDateBinFunctionOfTime(
+                                      assignments.get(groupingKey), dateBinFunctionsOfTime))
+                          || tableScanNode.isMeasurementColumn(groupingKey))
+          || dateBinFunctionsOfTime.size() > 1) {
+        // If expr except date_bin(time) or Measurement column appears in groupingKeys, we don't
+        // push down;
+        // Attention: Now we also don't push down if there are more than one date_bin function
+        // appear in groupingKeys.
 
-        currPushDownLevel[0] = 0;
+        return PushDownLevel.NOOP;
       } else if (ImmutableSet.copyOf(groupingKeys)
-          .containsAll(
-              tableScanNode.getIdColumnsInTableStore(
-                  metadata, session))) { // if all ID columns appear in groupingKeys and no
-        // Measurement column appears, we can push down completely
-        currPushDownLevel[0] = Math.min(currPushDownLevel[0], 2);
+          .containsAll(tableScanNode.getIdColumnsInTableStore(metadata, session))) {
+        // If all ID columns appear in groupingKeys and no Measurement column appears, we can push
+        // down completely.
+        return PushDownLevel.COMPLETE;
       } else {
-        currPushDownLevel[0] = Math.min(currPushDownLevel[0], 1);
+        return PushDownLevel.PARTIAL;
       }
-      return currPushDownLevel[0];
     }
 
-    private boolean isDataBinFunctionOfTime(Expression expression) {
+    private boolean isDateBinFunctionOfTime(
+        Expression expression, List<FunctionCall> dateBinFunctionsOfTime) {
       if (expression instanceof FunctionCall) {
         FunctionCall function = (FunctionCall) expression;
-        return function.getName().toString().equals("data_bin");
+        if (TableBuiltinScalarFunction.DATE_BIN
+                .getFunctionName()
+                .equals(function.getName().toString())
+            && function.getArguments().get(2) instanceof SymbolReference
+            && TimestampOperand.TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
+                ((SymbolReference) function.getArguments().get(2)).getName())) {
+          dateBinFunctionsOfTime.add(function);
+          return true;
+        }
       }
       return false;
     }
+  }
+
+  private enum PushDownLevel {
+    NOOP,
+    PARTIAL,
+    COMPLETE
   }
 
   private static class Context {

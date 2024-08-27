@@ -283,20 +283,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getIdAndAttributeIndexMap().put(columnName, attributeIndex++);
         }
       }
-      // TODO
-      /*List<String> attributeColumns =
-      node.getOutputSymbols().stream()
-              .filter(
-                      symbol -> {
-                          ColumnSchema schema = node.getAssignments().get(symbol);
-                          if (schema == null) {
-                              return false;
-                          } else {
-                              return ATTRIBUTE.equals(schema.getColumnCategory());
-                          }
-                      })
-              .map(Symbol::getName)
-              .collect(Collectors.toList());*/
       List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               node.getQualifiedObjectName(), metadataExpressions, attributeColumns, queryContext);
