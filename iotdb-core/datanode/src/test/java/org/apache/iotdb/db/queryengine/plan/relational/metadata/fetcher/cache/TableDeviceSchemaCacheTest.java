@@ -240,6 +240,7 @@ public class TableDeviceSchemaCacheTest {
 
     result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1", "s5"));
     Assert.assertEquals(TableDeviceLastCache.EMPTY_LONG, result.getLeft());
+    // Actually the outer scope shall judge the Long.MIN_VALUE and return directly
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {
           TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, null
