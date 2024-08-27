@@ -17,27 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.type;
-
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
 
-public class TypeNotFoundException extends IoTDBRuntimeException {
+public class FunctionManager {
 
-  private final TypeSignature type;
+  private final FunctionManager functionManager;
 
-  public TypeNotFoundException(TypeSignature type) {
-    this(type, null);
+  public InterpretedFunctionInvoker(FunctionManager functionManager) {
+    this.functionManager = requireNonNull(functionManager, "functionManager is null");
   }
 
-  public TypeNotFoundException(TypeSignature type, Throwable cause) {
-    super("Unknown type: " + type, cause, TYPE_NOT_FOUND.getStatusCode());
-    this.type = requireNonNull(type, "type is null");
-  }
-
-  public TypeSignature getType() {
-    return type;
-  }
 }
