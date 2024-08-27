@@ -393,11 +393,10 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
 
       assertEquals(record.getTimestamp(), timestamps[index]);
       List<Object> rowValues = values.get(index++);
-      int i = 0;
-      for (; i < fields.size(); i++) {
+      for (int i = 0; i < fields.size(); i++) {
         Field field = fields.get(i);
-        if (field == null) {
-          continue;
+        if (field.getDataType() == null) {
+          fail();
         }
         switch (field.getDataType()) {
           case INT64:
@@ -425,7 +424,6 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
             break;
         }
       }
-      assertEquals(rowValues.size(), i);
     }
     assertEquals(values.size(), index);
   }
