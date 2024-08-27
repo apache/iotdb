@@ -40,13 +40,12 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
     super(returnType, childColumnTransformer);
     if (length < 0) {
       throw new SemanticException(
-              "Argument exception,the scalar function substring length must not be less than 0");
+          "Argument exception,the scalar function substring length must not be less than 0");
     }
     // case which is two args or the result of the beginPosition add length is over
-    if(length ==  Integer.MAX_VALUE || beginPosition > Integer.MAX_VALUE - length){
+    if (length == Integer.MAX_VALUE || beginPosition > Integer.MAX_VALUE - length) {
       this.endPosition = Integer.MAX_VALUE;
-    }
-    else{
+    } else {
       this.endPosition = beginPosition + length - 1;
     }
     this.beginPosition = beginPosition;
@@ -59,15 +58,14 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
         String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         if (beginPosition > currentValue.length()) {
           throw new SemanticException(
-                  "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
         } else {
           int maxMin = Math.max(1, beginPosition);
           int minMax = Math.min(currentValue.length(), endPosition);
-          if(maxMin > minMax){
+          if (maxMin > minMax) {
             currentValue = EMPTY_STRING;
-          }
-          else {
-            currentValue = currentValue.substring(maxMin - 1 , minMax);
+          } else {
+            currentValue = currentValue.substring(maxMin - 1, minMax);
           }
         }
         columnBuilder.writeBinary(BytesUtils.valueOf(currentValue));

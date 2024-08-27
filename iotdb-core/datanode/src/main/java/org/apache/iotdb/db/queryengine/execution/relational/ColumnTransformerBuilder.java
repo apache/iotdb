@@ -891,9 +891,17 @@ public class ColumnTransformerBuilder
         return new SqrtColumnTransformer(DOUBLE, first);
       }
     } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
-      return new ConstantColumnTransformer(DOUBLE, new DoubleColumn(1,Optional.empty(),new double[]{Math.PI}));
+      ConstantColumnTransformer piColumnTransformer =
+          new ConstantColumnTransformer(
+              DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {Math.PI}));
+      context.leafList.add(piColumnTransformer);
+      return piColumnTransformer;
     } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
-      return new ConstantColumnTransformer(DOUBLE, new DoubleColumn(1,Optional.empty(),new double[]{Math.E}));
+      ConstantColumnTransformer eColumnTransformer =
+          new ConstantColumnTransformer(
+              DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {Math.E}));
+      context.leafList.add(eColumnTransformer);
+      return eColumnTransformer;
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {

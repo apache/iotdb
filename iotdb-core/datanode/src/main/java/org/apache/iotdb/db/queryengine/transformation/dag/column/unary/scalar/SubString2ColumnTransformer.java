@@ -29,8 +29,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer.EMPTY_STRING;
-
 public class SubString2ColumnTransformer extends BinaryColumnTransformer {
   public SubString2ColumnTransformer(
       Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
@@ -52,10 +50,10 @@ public class SubString2ColumnTransformer extends BinaryColumnTransformer {
         int beginPosition = rightType.getInt(rightColumn, i);
         if (beginPosition > currentValue.length()) {
           throw new SemanticException(
-                  "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
         } else {
           int maxMin = Math.max(1, beginPosition);
-          currentValue = currentValue.substring(maxMin-1);
+          currentValue = currentValue.substring(maxMin - 1);
         }
         builder.writeBinary(BytesUtils.valueOf(currentValue));
       } else {

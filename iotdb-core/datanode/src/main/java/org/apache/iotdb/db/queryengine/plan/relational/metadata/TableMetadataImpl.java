@@ -458,17 +458,17 @@ public class TableMetadataImpl implements Metadata {
     } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.isEmpty())) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " accepts no argument.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " accepts no argument.");
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.isEmpty())) {
         throw new SemanticException(
-                "Scalar function "
-                        + functionName.toLowerCase(Locale.ENGLISH)
-                        + " accepts no argument.");
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " accepts no argument.");
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.DATE_BIN

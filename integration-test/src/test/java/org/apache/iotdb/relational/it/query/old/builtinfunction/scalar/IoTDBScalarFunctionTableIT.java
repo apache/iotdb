@@ -324,7 +324,7 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO upperTable(Time,device_id,s9) values(3, 'd1', 'Abcdefg')",
         // no args SQL
         "create table NoArgTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
-        "INSERT INTO NoArgTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 0, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
+        "INSERT INTO NoArgTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 0, 0, 0, 0, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         // dateBinSQL use s8 to calculate
         "create table dateBinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         // 2024-01-01T00:00:00.000Z
@@ -2680,16 +2680,13 @@ public class IoTDBScalarFunctionTableIT {
   }
 
   private void testOneRowDoubleResult(
-          String sql,
-          String[] expectedHeader,
-          String database,
-          Double[] expectedResult) {
+      String sql, String[] expectedHeader, String database, Double[] expectedResult) {
     try (Connection connection =
-                 EnvFactory.getEnv()
-                         .getConnection(
-                                 SessionConfig.DEFAULT_USER,
-                                 SessionConfig.DEFAULT_PASSWORD,
-                                 BaseEnv.TABLE_SQL_DIALECT)) {
+        EnvFactory.getEnv()
+            .getConnection(
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT)) {
       connection.setClientInfo("time_zone", "+00:00");
       try (Statement statement = connection.createStatement()) {
         statement.execute("use " + database);
@@ -2700,10 +2697,8 @@ public class IoTDBScalarFunctionTableIT {
           }
           assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
           resultSet.next();
-          assertEquals(
-                  expectedResult[0], Double.parseDouble(resultSet.getString(1)), 0.00001);
-          assertEquals(
-                  expectedResult[1], Double.parseDouble(resultSet.getString(2)), 0.00001);
+          assertEquals(expectedResult[0], Double.parseDouble(resultSet.getString(1)), 0.00001);
+          assertEquals(expectedResult[1], Double.parseDouble(resultSet.getString(2)), 0.00001);
         }
       }
     } catch (SQLException e) {
@@ -2714,25 +2709,55 @@ public class IoTDBScalarFunctionTableIT {
 
   @Test
   public void piTestNormal() {
-    String[] expectedHeader = new String[] {"_col0", "_col1"};
-    Double[] expectedResult = new Double[] {Math.PI, Math.sin(Math.PI)};
-    testOneRowDoubleResult(
-            "select pi(), sin(pi()) from NoArgTable",
-            expectedHeader,
-            DATABASE_NAME,
-            expectedResult);
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.PI};
+    Double[] expectedResultLong = new Double[] {Math.PI};
+    Double[] expectedResultFloat = new Double[] {Math.PI};
+    Double[] expectedResultDouble = new Double[] {Math.PI};
+    testDoubleResult(
+        "select time, s2 + pi(), s3 + pi(), s4 + pi(), s5 + pi() from NoArgTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
   }
+
   @Test
   public void piTestFail() {
     // case 1: more than one argument
     tableAssertTestFail(
-            "select s1,pi(s1) from NoArgTable",
-            TSStatusCode.SEMANTIC_ERROR.getStatusCode()
-                    + ": Scalar function pi accepts no argument.",
-            DATABASE_NAME);
+        "select s2,pi(s2) from NoArgTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Scalar function pi accepts no argument.",
+        DATABASE_NAME);
   }
 
+  @Test
+  public void eTestNormal() {
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.E};
+    Double[] expectedResultLong = new Double[] {Math.E};
+    Double[] expectedResultFloat = new Double[] {Math.E};
+    Double[] expectedResultDouble = new Double[] {Math.E};
+    testDoubleResult(
+        "select time, s2 + e(), s3 + e(), s4 + e(), s5 + e() from NoArgTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
+  }
 
+  @Test
+  public void eTestFail() {
+    // case 1: more than one argument
+    tableAssertTestFail(
+        "select s1,e(s1) from NoArgTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Scalar function e accepts no argument.",
+        DATABASE_NAME);
+  }
 
   @Test
   public void dateBinTestNormal() {

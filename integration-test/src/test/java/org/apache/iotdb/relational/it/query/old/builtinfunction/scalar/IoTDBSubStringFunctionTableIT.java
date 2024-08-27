@@ -85,7 +85,7 @@ public class IoTDBSubStringFunctionTableIT {
   @Test
   public void testNewTransformer() {
     // Normal
-    String[] expectedHeader = new String[] {"time", "s1", "_col2", "_col3","s9", "_col5", "_col6"};
+    String[] expectedHeader = new String[] {"time", "s1", "_col2", "_col3", "s9", "_col5", "_col6"};
     String[] retArray =
         new String[] {
           "1970-01-01T00:00:00.001Z,abcd,abcd,abc,abcd,abcd,abc,",
@@ -99,7 +99,7 @@ public class IoTDBSubStringFunctionTableIT {
         DATABASE_NAME);
 
     // 2 column
-    expectedHeader = new String[] {"time", "s1", "s9", "s2","_col4", "_col5"};
+    expectedHeader = new String[] {"time", "s1", "s9", "s2", "_col4", "_col5"};
     retArray =
         new String[] {
           "1970-01-01T00:00:00.001Z,abcd,abcd,-1,abcd,abcd,",
@@ -113,18 +113,18 @@ public class IoTDBSubStringFunctionTableIT {
         DATABASE_NAME);
 
     // 3 column
-    expectedHeader = new String[] {"time", "s1", "s9", "s2", "s3", "_col5","_col6"};
+    expectedHeader = new String[] {"time", "s1", "s9", "s2", "s3", "_col5", "_col6"};
     retArray =
-            new String[] {
-                    "1970-01-01T00:00:00.001Z,abcd,abcd,-1,3,a,a,",
-                    "1970-01-01T00:00:00.002Z,test,test,-1,10,test,test,",
-                    "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,2,3,bcd,bcd,",
-            };
+        new String[] {
+          "1970-01-01T00:00:00.001Z,abcd,abcd,-1,3,a,a,",
+          "1970-01-01T00:00:00.002Z,test,test,-1,10,test,test,",
+          "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,2,3,bcd,bcd,",
+        };
     tableResultSetEqualTest(
-            "select time,s1,s9,s2,s3,SUBSTRING(s1 from s2 for s3),SUBSTRING(s1 from s2 for s3) from table1",
-            expectedHeader,
-            retArray,
-            DATABASE_NAME);
+        "select time,s1,s9,s2,s3,SUBSTRING(s1 from s2 for s3),SUBSTRING(s1 from s2 for s3) from table1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test

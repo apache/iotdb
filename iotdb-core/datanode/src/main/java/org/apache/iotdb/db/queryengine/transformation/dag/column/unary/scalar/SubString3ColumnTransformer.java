@@ -64,25 +64,23 @@ public class SubString3ColumnTransformer extends TernaryColumnTransformer {
         int endPosition;
         if (length < 0) {
           throw new SemanticException(
-                  "Argument exception,the scalar function substring length must not be less than 0");
+              "Argument exception,the scalar function substring length must not be less than 0");
         }
-        if(beginPosition > Integer.MAX_VALUE - length){
+        if (beginPosition > Integer.MAX_VALUE - length) {
           endPosition = Integer.MAX_VALUE;
-        }
-        else{
+        } else {
           endPosition = beginPosition + length - 1;
         }
         if (beginPosition > currentValue.length()) {
           throw new SemanticException(
-                  "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
+              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
         } else {
           int maxMin = Math.max(1, beginPosition);
           int minMax = Math.min(currentValue.length(), endPosition);
-          if(maxMin > minMax){
+          if (maxMin > minMax) {
             currentValue = EMPTY_STRING;
-          }
-          else {
-            currentValue = currentValue.substring(maxMin - 1 , minMax);
+          } else {
+            currentValue = currentValue.substring(maxMin - 1, minMax);
           }
         }
         builder.writeBinary(BytesUtils.valueOf(currentValue));
