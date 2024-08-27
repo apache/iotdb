@@ -199,15 +199,29 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(
         new TsPrimitiveType.TsInt(3), cache.getLastBy(database, table1, device0, "s0", "s1"));
 
-    // Test all null measurements
-    Assert.assertSame(
+    // Test null hit measurements
+    cache.updateLastCache(
+        database,
+        table1,
+        device0,
+        Collections.singletonMap("s4", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR));
+    Assert.assertEquals(
         TableDeviceLastCache.EMPTY_LONG, cache.getLastTime(database, table1, device0, "s4"));
     Assert.assertSame(
         TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
         cache.getLastBy(database, table1, device0, "s4", "s3"));
     Assert.assertSame(
+        TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
+        cache.getLastBy(database, table1, device0, "s3", "s4"));
+    Assert.assertSame(
         TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR,
         cache.getLastEntry(database, table1, device0, "s4"));
+
+    // Test null miss measurements
+    Assert.assertNull(cache.getLastTime(database, table1, device0, "s5"));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, "s5", "s3"));
+    Assert.assertNull(cache.getLastBy(database, table1, device0, "s3", "s5"));
+    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s5"));
 
     // Test lastRow
     Pair<Long, TsPrimitiveType[]> result =
@@ -216,15 +230,24 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertArrayEquals(
         new TsPrimitiveType[] {new TsPrimitiveType.TsInt(2)}, result.getRight());
 
-    result = cache.getLastRow(database, table1, device0, "s0", Arrays.asList("s0", "s1"));
+    result = cache.getLastRow(database, table1, device0, "s0", Arrays.asList("s0", "", "s1"));
     Assert.assertEquals((Long) 1L, result.getLeft());
     Assert.assertArrayEquals(
-        new TsPrimitiveType[] {new TsPrimitiveType.TsInt(3), new TsPrimitiveType.TsInt(3)},
+        new TsPrimitiveType[] {
+          new TsPrimitiveType.TsInt(3), new TsPrimitiveType.TsLong(1), new TsPrimitiveType.TsInt(3)
+        },
         result.getRight());
 
-    result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1"));
-    Assert.assertSame(TableDeviceLastCache.EMPTY_LONG, result.getLeft());
-    Assert.assertArrayEquals(new TsPrimitiveType[2], result.getRight());
+    result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1", "s5"));
+    Assert.assertEquals(TableDeviceLastCache.EMPTY_LONG, result.getLeft());
+    Assert.assertArrayEquals(
+        new TsPrimitiveType[] {
+          TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, null
+        },
+        result.getRight());
+
+    Assert.assertNull(
+        cache.getLastRow(database, table1, device0, "s5", Arrays.asList("s0", "s1", "s5")));
 
     final String table2 = "t2";
     cache.invalidateLastCache(database, table1, device0);
