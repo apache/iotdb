@@ -372,12 +372,12 @@ public class CompactionUtils {
     long resourceFileSize =
         new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).length();
     CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
+    CompactionMetrics.getInstance().recordDeserializeResourceInfo(resourceFileSize);
     while (resourceFileSize > 0) {
       int readSize = (int) Math.min(resourceFileSize, Integer.MAX_VALUE);
       CompactionTaskManager.getInstance().getCompactionReadRateLimiter().acquire(readSize);
       resourceFileSize -= readSize;
     }
-    CompactionMetrics.getInstance().recordDeserializeResourceInfo(resourceFileSize);
     return resource.buildDeviceTimeIndex();
   }
 }
