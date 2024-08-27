@@ -172,15 +172,15 @@ public class IoTDBInTableIT {
             });
 
         int cnt = 0;
+        String expectedString = "2024-08-05,2024-08-12,";
+        StringBuilder actualBuilder = new StringBuilder();
         while (resultSet.next()) {
-          String expectedString = "2024-08-05,2024-08-12,";
-          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(expectedString, actualBuilder.toString());
           cnt++;
         }
+        Assert.assertEquals(expectedString, actualBuilder.toString());
         Assert.assertEquals(2, cnt);
       }
 
@@ -196,16 +196,16 @@ public class IoTDBInTableIT {
               Types.BLOB,
             });
 
+        String expectedString = "0xabc3,0xabca,";
+        StringBuilder actualBuilder = new StringBuilder();
         int cnt = 0;
         while (resultSet.next()) {
-          String expectedString = "0xabc3,0xabca,";
-          StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(expectedString, actualBuilder.toString());
           cnt++;
         }
+        Assert.assertEquals(expectedString, actualBuilder.toString());
         Assert.assertEquals(2, cnt);
       }
 
