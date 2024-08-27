@@ -1210,6 +1210,20 @@ public class ClusterSchemaManager {
     }
   }
 
+  public synchronized TSStatus renameTableColumn(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
+        new AddTableColumnPlan(database, tableName, columnSchemaList, false);
+    try {
+      return getConsensusManager().write(addTableColumnPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
   public synchronized TSStatus setTableProperties(
       final String database, final String tableName, final Map<String, String> properties) {
     final SetTablePropertiesPlan setTablePropertiesPlan =
