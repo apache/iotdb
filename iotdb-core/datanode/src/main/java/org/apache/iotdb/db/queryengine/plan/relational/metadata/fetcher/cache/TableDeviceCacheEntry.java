@@ -75,10 +75,14 @@ public class TableDeviceCacheEntry {
           if (Objects.nonNull(v)) {
             if (!map.containsKey(k)) {
               k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
-              diff.addAndGet((int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
             }
+            final String previousValue = map.put(k, v);
+            final long newValueSize = RamUsageEstimator.sizeOf(v);
             diff.addAndGet(
-                (int) (RamUsageEstimator.sizeOf(v) - RamUsageEstimator.sizeOf(map.put(k, v))));
+                (int)
+                    (Objects.nonNull(previousValue)
+                        ? newValueSize - RamUsageEstimator.sizeOf(previousValue)
+                        : RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + newValueSize));
           } else {
             map.remove(k);
             diff.addAndGet((int) (-RamUsageEstimator.sizeOf(k) - RamUsageEstimator.sizeOf(v)));
