@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.session.subscription.util;
 
-public class SubscriptionPollTimer {
+public class PollTimer {
 
   private long startMs;
   private long currentTimeMs;
   private long deadlineMs;
   private long timeoutMs;
 
-  public SubscriptionPollTimer(long startMs, long timeoutMs) {
+  public PollTimer(final long startMs, final long timeoutMs) {
     this.update(startMs);
     this.reset(timeoutMs);
   }
@@ -35,11 +35,19 @@ public class SubscriptionPollTimer {
     return this.currentTimeMs >= this.deadlineMs;
   }
 
+  public boolean isExpired(final long deltaMs) {
+    return this.currentTimeMs >= this.deadlineMs - Math.max(deltaMs, 0);
+  }
+
   public boolean notExpired() {
     return !this.isExpired();
   }
 
-  public void reset(long timeoutMs) {
+  public boolean notExpired(final long deltaMs) {
+    return !this.isExpired(deltaMs);
+  }
+
+  public void reset(final long timeoutMs) {
     if (timeoutMs < 0L) {
       throw new IllegalArgumentException("Invalid negative timeout " + timeoutMs);
     } else {
@@ -57,7 +65,7 @@ public class SubscriptionPollTimer {
     update(System.currentTimeMillis());
   }
 
-  public void update(long currentTimeMs) {
+  public void update(final long currentTimeMs) {
     this.currentTimeMs = Math.max(currentTimeMs, this.currentTimeMs);
   }
 

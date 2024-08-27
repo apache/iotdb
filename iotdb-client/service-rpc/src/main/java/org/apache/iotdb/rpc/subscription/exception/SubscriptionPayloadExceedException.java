@@ -17,18 +17,30 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.event.pipe;
+package org.apache.iotdb.rpc.subscription.exception;
 
-import java.io.File;
+import java.util.Objects;
 
-public interface SubscriptionPipeEvents {
+public class SubscriptionPayloadExceedException extends SubscriptionRuntimeCriticalException {
 
-  /**
-   * @return {@code null} if the pipe events do not contain the corresponding tsfile.
-   */
-  File getTsFile();
+  public SubscriptionPayloadExceedException(final String message) {
+    super(message);
+  }
 
-  void ack();
+  public SubscriptionPayloadExceedException(final String message, final Throwable cause) {
+    super(message, cause);
+  }
 
-  void cleanUp();
+  @Override
+  public boolean equals(final Object obj) {
+    return obj instanceof SubscriptionPayloadExceedException
+        && Objects.equals(getMessage(), ((SubscriptionPayloadExceedException) obj).getMessage())
+        && Objects.equals(
+            getTimeStamp(), ((SubscriptionPayloadExceedException) obj).getTimeStamp());
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }
