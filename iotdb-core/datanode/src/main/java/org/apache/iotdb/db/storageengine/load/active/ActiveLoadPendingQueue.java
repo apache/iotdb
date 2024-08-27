@@ -63,6 +63,10 @@ public class ActiveLoadPendingQueue {
     ActiveLoadingFilesMetricsSet.getInstance().recordLoadingFileCounter(-1);
   }
 
+  public synchronized boolean isFilePendingOrLoading(final String file) {
+    return loadingFileSet.contains(file) || pendingFileSet.contains(file);
+  }
+
   public int size() {
     return pendingFileQueue.size() + loadingFileSet.size();
   }
