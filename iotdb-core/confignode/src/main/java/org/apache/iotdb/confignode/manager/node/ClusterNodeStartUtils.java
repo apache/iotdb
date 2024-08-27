@@ -315,7 +315,7 @@ public class ClusterNodeStartUtils {
         break;
     }
 
-    // check clusterId if exists
+    // check clusterId if not empty
     if (clusterId != null
         && !clusterId.isEmpty()
         && !clusterId.equals(configManager.getClusterManager().getClusterId())) {
