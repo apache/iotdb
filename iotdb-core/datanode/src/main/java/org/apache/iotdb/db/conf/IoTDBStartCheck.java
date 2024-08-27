@@ -268,6 +268,9 @@ public class IoTDBStartCheck {
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
+    if (properties.containsKey(CLUSTER_ID)) {
+      config.setClusterId(properties.getProperty(CLUSTER_ID));
+    }
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
       config.setSchemaRegionConsensusProtocolClass(
           properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
