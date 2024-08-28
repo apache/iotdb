@@ -184,8 +184,8 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Update the last cache in writing. The input "TimeValuePair" shall never contain {@code null}
-   * value. For correctness, this will put the cache lazily and only update the existing last caches
+   * Update the last cache in writing. The input "TimeValuePair" shall never be or contain {@code
+   * null}. For correctness, this will put the cache lazily and only update the existing last caches
    * of measurements.
    *
    * @param database the device's database, without "root"
