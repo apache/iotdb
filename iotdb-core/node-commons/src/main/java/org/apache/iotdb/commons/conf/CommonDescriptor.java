@@ -275,11 +275,6 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
-    config.setPipeDataStructureTabletSizeInBytes(
-        Integer.parseInt(
-            properties.getProperty(
-                "pipe_data_structure_tablet_size_in_bytes",
-                String.valueOf(config.getPipeDataStructureTabletSizeInBytes()))));
     config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
         Double.parseDouble(
             properties.getProperty(
