@@ -30,7 +30,6 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
@@ -588,8 +587,7 @@ public class ValueConverter {
   public static int convertTimestampToDate(final long value) {
     try {
       Instant instant = Instant.ofEpochMilli(value);
-      return DateUtils.parseDateExpressionToInt(
-          instant.atZone(ZoneId.systemDefault()).toLocalDate());
+      return DateUtils.parseDateExpressionToInt(instant.atZone(ZoneOffset.UTC).toLocalDate());
     } catch (Exception e) {
       return DEFAULT_DATE;
     }
@@ -606,7 +604,7 @@ public class ValueConverter {
   ///////////// DATE //////////////
 
   public static boolean convertDateToBoolean(final int value) {
-    return value == TRUE_DATE;
+    return value != FALSE_DATE;
   }
 
   public static int convertDateToInt32(final int value) {
@@ -799,8 +797,7 @@ public class ValueConverter {
     try {
       return TypeInferenceUtils.isNumber(value)
           ? Long.parseLong(value)
-          : DateTimeUtils.parseDateTimeExpressionToLong(
-              StringUtils.trim(value), ZoneId.systemDefault());
+          : DateTimeUtils.parseDateTimeExpressionToLong(StringUtils.trim(value), ZoneOffset.UTC);
     } catch (final Exception e) {
       return 0L;
     }

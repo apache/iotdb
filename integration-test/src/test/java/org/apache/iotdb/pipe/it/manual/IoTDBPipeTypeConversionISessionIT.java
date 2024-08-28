@@ -49,7 +49,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -698,8 +698,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
             break;
           case TIMESTAMP:
             insertRecord.add(
-                RpcUtils.formatDatetime(
-                    "default", "ms", ((long[]) values[j])[i], ZoneId.systemDefault()));
+                RpcUtils.formatDatetime("default", "ms", ((long[]) values[j])[i], ZoneOffset.UTC));
             break;
           case INT32:
             insertRecord.add(String.valueOf(((int[]) values[j])[i]));
