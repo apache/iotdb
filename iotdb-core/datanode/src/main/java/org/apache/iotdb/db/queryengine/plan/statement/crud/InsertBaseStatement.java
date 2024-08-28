@@ -229,6 +229,11 @@ public abstract class InsertBaseStatement extends Statement {
     throw new UnsupportedOperationException();
   }
 
+  /** * Resets the state of all measurements marked as failed, clearing the failure records. */
+  public void removeAllFailedMeasurementMarks() {
+    throw new UnsupportedOperationException();
+  }
+
   public boolean hasValidMeasurements() {
     for (Object o : measurements) {
       if (o != null) {
@@ -289,6 +294,18 @@ public abstract class InsertBaseStatement extends Statement {
       this.dataType = dataType;
       this.value = value;
       this.cause = cause;
+    }
+
+    public String getMeasurement() {
+      return measurement;
+    }
+
+    public TSDataType getDataType() {
+      return dataType;
+    }
+
+    public Object getValue() {
+      return value;
     }
   }
 

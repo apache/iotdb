@@ -42,6 +42,7 @@ public class PipeConvertedInsertRowStatement extends InsertRowStatement {
     // Statement
     isDebug = insertRowStatement.isDebug();
     // InsertBaseStatement
+    insertRowStatement.removeAllFailedMeasurementMarks();
     devicePath = insertRowStatement.getDevicePath();
     isAligned = insertRowStatement.isAligned();
     measurementSchemas = insertRowStatement.getMeasurementSchemas();
