@@ -49,8 +49,8 @@ public class TableId {
   }
 
   public int estimateSize() {
-    return (int)
-        (INSTANCE_SIZE + RamUsageEstimator.sizeOf(database) + RamUsageEstimator.sizeOf(tableName));
+    // The size of table name has been computed in deviceID
+    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(database));
   }
 
   @Override

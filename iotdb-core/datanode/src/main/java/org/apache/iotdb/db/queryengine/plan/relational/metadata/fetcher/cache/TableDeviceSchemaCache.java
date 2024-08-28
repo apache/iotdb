@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.im
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -37,7 +38,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -62,12 +62,12 @@ public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private final IDualKeyCache<TableId, TableDeviceId, TableDeviceCacheEntry> dualKeyCache;
+  private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   public TableDeviceSchemaCache() {
-    final DualKeyCacheBuilder<TableId, TableDeviceId, TableDeviceCacheEntry> dualKeyCacheBuilder =
+    final DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCacheBuilder =
         new DualKeyCacheBuilder<>();
     dualKeyCache =
         dualKeyCacheBuilder
@@ -75,7 +75,7 @@ public class TableDeviceSchemaCache {
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(config.getAllocateMemoryForSchemaCache())
             .firstKeySizeComputer(TableId::estimateSize)
-            .secondKeySizeComputer(TableDeviceId::estimateSize)
+            .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
             .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
             .build();
   }
@@ -83,12 +83,11 @@ public class TableDeviceSchemaCache {
   /////////////////////////////// Attribute ///////////////////////////////
 
   // The input deviceId shall have its tailing nulls trimmed
-  public Map<String, String> getDeviceAttribute(
-      final String database, final String tableName, final String[] deviceId) {
+  public Map<String, String> getDeviceAttribute(final String database, final IDeviceID deviceId) {
     readWriteLock.readLock().lock();
     try {
       final TableDeviceCacheEntry entry =
-          dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+          dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
       return entry == null ? null : entry.getAttributeMap();
     } finally {
       readWriteLock.readLock().unlock();
@@ -97,17 +96,14 @@ public class TableDeviceSchemaCache {
 
   // The input deviceId shall have its tailing nulls trimmed
   public void putAttributes(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final ConcurrentMap<String, String> attributeMap) {
+      final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
-          new TableId(database, tableName),
-          new TableDeviceId(deviceId),
+          new TableId(database, deviceId.getTableName()),
+          deviceId,
           new TableDeviceCacheEntry(),
-          entry -> entry.setAttribute(database, tableName, attributeMap),
+          entry -> entry.setAttribute(database, deviceId.getTableName(), attributeMap),
           true);
     } finally {
       readWriteLock.readLock().unlock();
@@ -115,15 +111,21 @@ public class TableDeviceSchemaCache {
   }
 
   public void updateAttributes(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final Map<String, String> attributeMap) {
+      final String database, final IDeviceID deviceId, final Map<String, String> attributeMap) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        new TableDeviceCacheEntry(),
+        entry -> entry.updateAttribute(database, deviceId.getTableName(), attributeMap),
+        false);
+  }
+
+  public void invalidateAttributes(final String database, final String tableName) {
     dualKeyCache.update(
         new TableId(database, tableName),
-        new TableDeviceId(deviceId),
+        null,
         new TableDeviceCacheEntry(),
-        entry -> entry.updateAttribute(database, tableName, attributeMap),
+        entry -> -entry.invalidateAttribute(),
         false);
   }
 
@@ -132,14 +134,12 @@ public class TableDeviceSchemaCache {
    * invalidate the cache of the whole table.
    *
    * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
+   * @param deviceId IDeviceID
    */
-  public void invalidateAttributes(
-      final String database, final String tableName, final String[] deviceId) {
+  public void invalidateAttributes(final String database, final IDeviceID deviceId) {
     dualKeyCache.update(
-        new TableId(database, tableName),
-        Objects.nonNull(deviceId) ? new TableDeviceId(deviceId) : null,
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
         new TableDeviceCacheEntry(),
         entry -> -entry.invalidateAttribute(),
         false);
@@ -161,24 +161,24 @@ public class TableDeviceSchemaCache {
    * the time measurement "".
    *
    * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
+   * @param deviceId IDeviceID
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCache(
       final String database,
-      final String tableName,
-      final String[] deviceId,
+      final IDeviceID deviceId,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
-          new TableId(database, tableName),
-          new TableDeviceId(deviceId),
+          new TableId(database, deviceId.getTableName()),
+          deviceId,
           new TableDeviceCacheEntry(),
-          entry -> entry.updateLastCache(database, tableName, measurements, timeValuePairs),
+          entry ->
+              entry.updateLastCache(
+                  database, deviceId.getTableName(), measurements, timeValuePairs),
           true);
     } finally {
       readWriteLock.readLock().unlock();
@@ -191,21 +191,20 @@ public class TableDeviceSchemaCache {
    * of measurements.
    *
    * @param database the device's database, without "root"
-   * @param tableName tableName
+   * @param deviceId IDeviceID
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void mayUpdateLastCacheWithoutLock(
       final String database,
-      final String tableName,
-      final String[] deviceId,
+      final IDeviceID deviceId,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs) {
     dualKeyCache.update(
-        new TableId(database, tableName),
-        new TableDeviceId(deviceId),
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
         new TableDeviceCacheEntry(),
-        entry -> entry.tryUpdate(database, tableName, measurements, timeValuePairs),
+        entry -> entry.tryUpdate(database, deviceId.getTableName(), measurements, timeValuePairs),
         false);
   }
 
@@ -213,19 +212,15 @@ public class TableDeviceSchemaCache {
    * Get the last entry of a measurement, the measurement shall never be "time".
    *
    * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
+   * @param deviceId IDeviceID
    * @param measurement the measurement to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
    *     cache hit but result is {@code null}, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final String measurement) {
+      final String database, final IDeviceID deviceId, final String measurement) {
     final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
   }
 
@@ -235,8 +230,7 @@ public class TableDeviceSchemaCache {
    * indicate the time column.
    *
    * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
+   * @param deviceId IDeviceID
    * @param sourceMeasurement the measurement to get
    * @return {@code Optional.empty()} iff the last cache is miss at all; Or the optional of a pair,
    *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
@@ -247,30 +241,41 @@ public class TableDeviceSchemaCache {
    */
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String database,
-      final String tableName,
-      final String[] deviceId,
+      final IDeviceID deviceId,
       final String sourceMeasurement,
       final List<String> targetMeasurements) {
     final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
+        dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
     return Objects.nonNull(entry)
         ? entry.getLastRow(sourceMeasurement, targetMeasurements)
         : Optional.empty();
   }
 
   /**
-   * Invalidate the last cache of one device. Unlike time column, the "deviceId" shall equal to
-   * {@code null} when invalidate the cache of the whole table.
+   * Invalidate the last cache of one table.
    *
    * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
+   * @param table tableName
    */
-  public void invalidateLastCache(
-      final String database, final String tableName, final String[] deviceId) {
+  public void invalidateLastCache(final String database, final String table) {
     dualKeyCache.update(
-        new TableId(database, tableName),
-        Objects.nonNull(deviceId) ? new TableDeviceId(deviceId) : null,
+        new TableId(database, table),
+        null,
+        new TableDeviceCacheEntry(),
+        entry -> -entry.invalidateLastCache(),
+        false);
+  }
+
+  /**
+   * Invalidate the last cache of one device.
+   *
+   * @param database the device's database, without "root"
+   * @param deviceId IDeviceID
+   */
+  public void invalidateLastCache(final String database, final IDeviceID deviceId) {
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
         new TableDeviceCacheEntry(),
         entry -> -entry.invalidateLastCache(),
         false);

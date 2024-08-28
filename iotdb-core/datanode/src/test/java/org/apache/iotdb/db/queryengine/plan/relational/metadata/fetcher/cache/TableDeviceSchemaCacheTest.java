@@ -49,6 +49,8 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+
 public class TableDeviceSchemaCacheTest {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -78,66 +80,72 @@ public class TableDeviceSchemaCacheTest {
     attributeMap.put("cycle", "monthly");
     cache.putAttributes(
         database,
-        table1,
-        new String[] {"hebei", "p_1", "d_0"},
+        convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"}),
         new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
-        cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_0"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"})));
     Assert.assertNull(
-        cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
     attributeMap.put("type", "old");
     cache.putAttributes(
         database,
-        table1,
-        new String[] {"hebei", "p_1", "d_1"},
-        new ConcurrentHashMap<>(attributeMap));
+        convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"}),
+        new HashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
-        cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
     attributeMap.put("cycle", "daily");
     cache.putAttributes(
         database,
-        table1,
-        new String[] {"shandong", "p_1", "d_1"},
+        convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"}),
         new ConcurrentHashMap<>(attributeMap));
     Assert.assertNull(
-        cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_0"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_0"})));
     Assert.assertEquals(
         attributeMap,
-        cache.getDeviceAttribute(database, table1, new String[] {"shandong", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"})));
 
     final String table2 = "t2";
     attributeMap.put("type", "new");
     attributeMap.put("cycle", "monthly");
     cache.putAttributes(
         database,
-        table2,
-        new String[] {"hebei", "p_1", "d_0"},
+        convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_0"}),
         new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
-        cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_0"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_0"})));
     Assert.assertNull(
-        cache.getDeviceAttribute(database, table1, new String[] {"hebei", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"hebei", "p_1", "d_1"})));
 
     attributeMap.put("type", "old");
     cache.putAttributes(
         database,
-        table2,
-        new String[] {"hebei", "p_1", "d_1"},
+        convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"}),
         new ConcurrentHashMap<>(attributeMap));
     Assert.assertEquals(
         attributeMap,
-        cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"})));
     Assert.assertNull(
-        cache.getDeviceAttribute(database, table1, new String[] {"shandong", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table1, new String[] {"shandong", "p_1", "d_1"})));
 
-    cache.invalidateAttributes(database, table2, new String[] {"hebei", "p_1", "d_1"});
+    cache.invalidateAttributes(
+        database, convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"}));
     Assert.assertNull(
-        cache.getDeviceAttribute(database, table2, new String[] {"hebei", "p_1", "d_1"}));
+        cache.getDeviceAttribute(
+            database, convertIdValuesToDeviceID(table2, new String[] {"hebei", "p_1", "d_1"})));
   }
 
   @Test
@@ -150,14 +158,23 @@ public class TableDeviceSchemaCacheTest {
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
 
     // Test get from empty cache
-    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s0"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s0"));
     Assert.assertFalse(
         cache
-            .getLastRow(database, table1, device0, "s0", Collections.singletonList("s1"))
+            .getLastRow(
+                database,
+                convertIdValuesToDeviceID(table1, device0),
+                "s0",
+                Collections.singletonList("s1"))
             .isPresent());
     Assert.assertFalse(
         cache
-            .getLastRow(database, table1, device0, "", Collections.singletonList("s1"))
+            .getLastRow(
+                database,
+                convertIdValuesToDeviceID(table1, device0),
+                "",
+                Collections.singletonList("s1"))
             .isPresent());
 
     // Query update
@@ -168,57 +185,70 @@ public class TableDeviceSchemaCacheTest {
 
     cache.updateLastCache(
         database,
-        table1,
-        device0,
+        convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0", "s1", "s2"},
         new TimeValuePair[] {tv0, tv1, tv2});
 
-    Assert.assertEquals(tv0, cache.getLastEntry(database, table1, device0, "s0"));
-    Assert.assertEquals(tv1, cache.getLastEntry(database, table1, device0, "s1"));
-    Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
+    Assert.assertEquals(
+        tv0, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s0"));
+    Assert.assertEquals(
+        tv1, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s1"));
+    Assert.assertEquals(
+        tv2, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s2"));
 
     // Write update existing
     final TimeValuePair tv3 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(3));
 
     cache.mayUpdateLastCacheWithoutLock(
         database,
-        table1,
-        device0,
+        convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0", "s1", "s2", "s3"},
         new TimeValuePair[] {tv3, tv3, tv3, tv3});
 
-    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
-    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s1"));
-    Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
-    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s3"));
+    Assert.assertEquals(
+        tv3, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s0"));
+    Assert.assertEquals(
+        tv3, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s1"));
+    Assert.assertEquals(
+        tv2, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s3"));
 
     // Test null hit measurements
     cache.updateLastCache(
         database,
-        table1,
-        device0,
+        convertIdValuesToDeviceID(table1, device0),
         new String[] {"s4"},
         new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
     Assert.assertSame(
         TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR,
-        cache.getLastEntry(database, table1, device0, "s4"));
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s4"));
 
     // Test null miss measurements
-    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s5"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s5"));
 
     // Test lastRow
     Optional<Pair<OptionalLong, TsPrimitiveType[]>> result =
-        cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
+        cache.getLastRow(
+            database,
+            convertIdValuesToDeviceID(table1, device0),
+            "",
+            Collections.singletonList("s2"));
     Assert.assertFalse(result.isPresent());
 
     cache.updateLastCache(
         database,
-        table1,
-        device0,
+        convertIdValuesToDeviceID(table1, device0),
         new String[] {""},
         new TimeValuePair[] {new TimeValuePair(2L, null)});
 
-    result = cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
+    result =
+        cache.getLastRow(
+            database,
+            convertIdValuesToDeviceID(table1, device0),
+            "",
+            Collections.singletonList("s2"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
@@ -227,7 +257,10 @@ public class TableDeviceSchemaCacheTest {
 
     result =
         cache.getLastRow(
-            database, table1, device0, "s0", Arrays.asList("s0", "", "s1", "s4", "s5"));
+            database,
+            convertIdValuesToDeviceID(table1, device0),
+            "s0",
+            Arrays.asList("s0", "", "s1", "s4", "s5"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(1L), result.get().getLeft());
@@ -242,19 +275,29 @@ public class TableDeviceSchemaCacheTest {
         result.get().getRight());
 
     // Test null source measurements
-    result = cache.getLastRow(database, table1, device0, "s4", Arrays.asList("s0", "s1", "s5"));
+    result =
+        cache.getLastRow(
+            database,
+            convertIdValuesToDeviceID(table1, device0),
+            "s4",
+            Arrays.asList("s0", "s1", "s5"));
     Assert.assertTrue(result.isPresent());
     Assert.assertFalse(result.get().getLeft().isPresent());
 
     Assert.assertFalse(
         cache
-            .getLastRow(database, table1, device0, "s5", Arrays.asList("s0", "s1", "s5"))
+            .getLastRow(
+                database,
+                convertIdValuesToDeviceID(table1, device0),
+                "s5",
+                Arrays.asList("s0", "s1", "s5"))
             .isPresent());
 
     final String table2 = "t2";
-    cache.invalidateLastCache(database, table1, device0);
+    cache.invalidateLastCache(database, convertIdValuesToDeviceID(table1, device0));
     cache.invalidate(database);
-    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s2"));
 
     // Invalidate table
     final String[] device1 = new String[] {"hebei", "p_1", "d_1"};
@@ -262,28 +305,35 @@ public class TableDeviceSchemaCacheTest {
 
     final String[] tempMeasurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
     final TimeValuePair[] tempTimeValuePairs = new TimeValuePair[] {tv0, tv0, tv0, tv0, tv0};
-    cache.updateLastCache(database, table2, device0, tempMeasurements, tempTimeValuePairs);
-    cache.updateLastCache(database, table2, device1, tempMeasurements, tempTimeValuePairs);
-    cache.updateLastCache(database, table2, device2, tempMeasurements, tempTimeValuePairs);
+    cache.updateLastCache(
+        database, convertIdValuesToDeviceID(table2, device0), tempMeasurements, tempTimeValuePairs);
+    cache.updateLastCache(
+        database, convertIdValuesToDeviceID(table2, device1), tempMeasurements, tempTimeValuePairs);
+    cache.updateLastCache(
+        database, convertIdValuesToDeviceID(table2, device2), tempMeasurements, tempTimeValuePairs);
 
     // Test cache eviction
-    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table2, device0), "s2"));
 
-    cache.invalidateLastCache(database, table2, null);
+    cache.invalidateLastCache(database, table2);
 
-    Assert.assertNull(cache.getLastEntry(database, table2, device1, "s2"));
-    Assert.assertNull(cache.getLastEntry(database, table2, device2, "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table2, device1), "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table2, device2), "s2"));
 
     // Test Long.MIN_VALUE
     cache.updateLastCache(
         database,
-        table2,
-        device0,
+        convertIdValuesToDeviceID(table2, device0),
         new String[] {"", "s2"},
         new TimeValuePair[] {
           new TimeValuePair(Long.MIN_VALUE, null), TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
         });
-    result = cache.getLastRow(database, table2, device0, "", Arrays.asList("s2", "s3"));
+    result =
+        cache.getLastRow(
+            database, convertIdValuesToDeviceID(table2, device0), "", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
@@ -293,12 +343,13 @@ public class TableDeviceSchemaCacheTest {
 
     cache.updateLastCache(
         database,
-        table2,
-        device0,
+        convertIdValuesToDeviceID(table2, device0),
         new String[] {"s3"},
         new TimeValuePair[] {new TimeValuePair(Long.MIN_VALUE, new TsPrimitiveType.TsInt(3))});
 
-    result = cache.getLastRow(database, table2, device0, "s3", Arrays.asList("s2", "s3"));
+    result =
+        cache.getLastRow(
+            database, convertIdValuesToDeviceID(table2, device0), "s3", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
@@ -308,7 +359,9 @@ public class TableDeviceSchemaCacheTest {
         },
         result.get().getRight());
 
-    result = cache.getLastRow(database, table2, device0, "", Arrays.asList("s2", "s3"));
+    result =
+        cache.getLastRow(
+            database, convertIdValuesToDeviceID(table2, device0), "", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(Long.MIN_VALUE), result.get().getLeft());
@@ -337,24 +390,30 @@ public class TableDeviceSchemaCacheTest {
     final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
 
     cache.mayUpdateLastCacheWithoutLock(
-        database, table2, device0, testMeasurements, testTimeValuePairs);
+        database, convertIdValuesToDeviceID(table2, device0), testMeasurements, testTimeValuePairs);
     cache.mayUpdateLastCacheWithoutLock(
-        database2, table1, device0, testMeasurements, testTimeValuePairs);
+        database2,
+        convertIdValuesToDeviceID(table1, device0),
+        testMeasurements,
+        testTimeValuePairs);
 
-    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
-    Assert.assertNull(cache.getLastEntry(database2, table1, device0, "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table2, device0), "s2"));
+    Assert.assertNull(
+        cache.getLastEntry(database2, convertIdValuesToDeviceID(table1, device0), "s2"));
 
     cache.updateLastCache(
         database,
-        table1,
-        device0,
+        convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0"},
         new TimeValuePair[] {new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))});
     cache.mayUpdateLastCacheWithoutLock(
-        database, table1, device0, testMeasurements, testTimeValuePairs);
+        database, convertIdValuesToDeviceID(table1, device0), testMeasurements, testTimeValuePairs);
 
-    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
-    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
+    Assert.assertEquals(
+        tv3, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s0"));
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s2"));
   }
 
   @Test
