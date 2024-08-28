@@ -277,6 +277,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   }
 
   @Override
+  public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+    failedMeasurementIndex2Info.forEach(
+        (index, info) -> {
+          measurements[index] = info.getMeasurement();
+          dataTypes[index] = info.getDataType();
+          values[index] = info.getValue();
+        });
+    failedMeasurementIndex2Info.clear();
+  }
+
+  @Override
   public void semanticCheck() {
     super.semanticCheck();
     if (measurements.length != values.length) {

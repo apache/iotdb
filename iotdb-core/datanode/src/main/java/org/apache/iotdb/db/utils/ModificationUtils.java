@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -30,6 +35,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public class ModificationUtils {
@@ -179,6 +185,40 @@ public class ModificationUtils {
   public static boolean isPointDeleted(long timestamp, List<TimeRange> deletionList) {
     int[] deleteCursor = {0};
     return isPointDeleted(timestamp, deletionList, deleteCursor);
+  }
+
+  /**
+   * Check whether the device with start time and end time is completely deleted by mods or not.
+   * There are some slight differences from that in {@link SettleSelectorImpl}.
+   */
+  public static boolean isDeviceDeletedByMods(
+      Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
+      throws IllegalPathException {
+    for (Modification modification : modifications) {
+      PartialPath path = modification.getPath();
+      if (path.include(new MeasurementPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD))
+          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static boolean isTimeseriesDeletedByMods(
+      Collection<Modification> modifications,
+      IDeviceID device,
+      String timeseriesId,
+      long startTime,
+      long endTime)
+      throws IllegalPathException {
+    for (Modification modification : modifications) {
+      PartialPath path = modification.getPath();
+      if (path.include(new MeasurementPath(device, timeseriesId))
+          && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {

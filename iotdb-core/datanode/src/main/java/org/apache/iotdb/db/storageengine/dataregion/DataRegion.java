@@ -1079,6 +1079,7 @@ public class DataRegion implements IDataRegionForQuery {
     // init flush time map
     initFlushTimeMap(beforeTimePartition);
 
+    int insertCnt = 0;
     // if is sequence
     boolean isSequence = false;
     while (loc < insertTabletNode.getRowCount()) {
@@ -1101,6 +1102,15 @@ public class DataRegion implements IDataRegionForQuery {
                     beforeTimePartition,
                     noFailure)
                 && noFailure;
+        if (before < loc) {
+          insertCnt += 1;
+          logger.debug(
+              "insertTabletToTsFileProcessor, insertCnt:{}, noFailure:{}, before:{}, loc:{}",
+              insertCnt,
+              noFailure,
+              before,
+              loc);
+        }
         before = loc;
         beforeTimePartition = timePartitionId;
         isSequence = time > lastFlushTime;
@@ -1120,6 +1130,15 @@ public class DataRegion implements IDataRegionForQuery {
                       noFailure)
                   && noFailure;
           before = loc;
+          if (before < loc) {
+            insertCnt += 1;
+            logger.debug(
+                "insertTabletToTsFileProcessor, insertCnt:{}, noFailure:{}, before:{}, loc:{}",
+                insertCnt,
+                noFailure,
+                before,
+                loc);
+          }
           isSequence = true;
         }
       }
@@ -1139,6 +1158,13 @@ public class DataRegion implements IDataRegionForQuery {
                   beforeTimePartition,
                   noFailure)
               && noFailure;
+      insertCnt += 1;
+      logger.debug(
+          "insertTabletToTsFileProcessor, insertCnt:{}, noFailure:{}, before:{}, loc:{}",
+          insertCnt,
+          noFailure,
+          before,
+          loc);
     }
 
     return noFailure;
