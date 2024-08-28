@@ -61,7 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticBinaryColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
@@ -145,6 +145,11 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ta
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Trim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.AdditionTransformerVisitor;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.DivisionResolver;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.ModulusResolver;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.MultiplicationResolver;
+import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.SubtractionResolver;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -210,19 +215,33 @@ public class ColumnTransformerBuilder
         ColumnTransformer child;
         switch (node.getOperator()) {
           case ADD:
-            child = new ArithmeticAdditionColumnTransformer(DOUBLE, left, right);
+            child =
+                ArithmeticBinaryColumnTransformerApi.accept(
+                    new AdditionTransformerVisitor(), left, right);
             break;
           case SUBTRACT:
-            child = new ArithmeticSubtractionColumnTransformer(DOUBLE, left, right);
+            child =
+                new ArithmeticSubtractionColumnTransformer(
+                    SubtractionResolver.checkConditions(left.getType(), right.getType()),
+                    left,
+                    right);
             break;
           case MULTIPLY:
-            child = new ArithmeticMultiplicationColumnTransformer(DOUBLE, left, right);
+            child =
+                new ArithmeticMultiplicationColumnTransformer(
+                    MultiplicationResolver.checkConditions(left.getType(), right.getType()),
+                    left,
+                    right);
             break;
           case DIVIDE:
-            child = new ArithmeticDivisionColumnTransformer(DOUBLE, left, right);
+            child =
+                new ArithmeticDivisionColumnTransformer(
+                    DivisionResolver.checkConditions(left.getType(), right.getType()), left, right);
             break;
           case MODULUS:
-            child = new ArithmeticModuloColumnTransformer(DOUBLE, left, right);
+            child =
+                new ArithmeticModuloColumnTransformer(
+                    ModulusResolver.checkConditions(left.getType(), right.getType()), left, right);
             break;
           default:
             throw new UnsupportedOperationException(
