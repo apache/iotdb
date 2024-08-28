@@ -495,7 +495,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       lastExecTime.set(System.currentTimeMillis());
     }
     boolean shouldForceRestart = false;
-    if (System.currentTimeMillis() - lastExecTime.get() > 10 * 60 * 1000) { // 10 minutes
+    if (System.currentTimeMillis() - lastExecTime.get() > 30 * 1000) { // 30s
       shouldForceRestart = true;
       lastExecTime.set(System.currentTimeMillis());
     }
