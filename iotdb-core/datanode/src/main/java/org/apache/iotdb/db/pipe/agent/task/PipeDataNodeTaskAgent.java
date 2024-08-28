@@ -93,6 +93,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final AtomicLong LAST_FORCED_RESTART_TIME =
+      new AtomicLong(System.currentTimeMillis());
+
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
   @Override
@@ -488,28 +491,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     stuckPipes.parallelStream().forEach(this::restartStuckPipe);
   }
 
-  private static final AtomicLong lastExecTime = new AtomicLong(0);
-
   private Set<PipeMeta> findAllStuckPipes() {
-    if (lastExecTime.get() == 0) {
-      lastExecTime.set(System.currentTimeMillis());
-    }
-    boolean shouldForceRestart = false;
-    if (System.currentTimeMillis() - lastExecTime.get() > 30 * 1000) { // 30s
-      shouldForceRestart = true;
-      lastExecTime.set(System.currentTimeMillis());
+    final Set<PipeMeta> stuckPipes = new HashSet<>();
+
+    if (System.currentTimeMillis() - LAST_FORCED_RESTART_TIME.get()
+        > PipeConfig.getInstance().getPipeSubtaskExecutorForcedRestartIntervalSeconds()) {
+      LAST_FORCED_RESTART_TIME.set(System.currentTimeMillis());
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        stuckPipes.add(pipeMeta);
+      }
+      return stuckPipes;
     }
 
     final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
-
-    final Set<PipeMeta> stuckPipes = new HashSet<>();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
-      if (shouldForceRestart) {
-        stuckPipes.add(pipeMeta);
-        continue;
-      }
-
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
       final List<IoTDBDataRegionExtractor> extractors =
           taskId2ExtractorMap.values().stream()

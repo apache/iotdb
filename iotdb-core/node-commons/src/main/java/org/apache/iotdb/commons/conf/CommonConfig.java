@@ -208,6 +208,7 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
+  private long pipeSubtaskExecutorForcedRestartIntervalSeconds = Long.MAX_VALUE;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
@@ -881,6 +882,16 @@ public class CommonConfig {
       long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds) {
     this.pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds =
         pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
+  }
+
+  public long getPipeSubtaskExecutorForcedRestartIntervalSeconds() {
+    return pipeSubtaskExecutorForcedRestartIntervalSeconds;
+  }
+
+  public void setPipeSubtaskExecutorForcedRestartIntervalSeconds(
+      long pipeSubtaskExecutorForcedRestartIntervalSeconds) {
+    this.pipeSubtaskExecutorForcedRestartIntervalSeconds =
+        pipeSubtaskExecutorForcedRestartIntervalSeconds;
   }
 
   public int getPipeRealTimeQueuePollHistoryThreshold() {

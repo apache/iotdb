@@ -92,6 +92,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
   }
 
+  public long getPipeSubtaskExecutorForcedRestartIntervalSeconds() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalSeconds();
+  }
+
   /////////////////////////////// Extractor ///////////////////////////////
 
   public int getPipeExtractorAssignerDisruptorRingBufferSize() {
@@ -341,6 +345,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
+    LOGGER.info(
+        "PipeSubtaskExecutorForcedRestartIntervalSeconds: {}",
+        getPipeSubtaskExecutorForcedRestartIntervalSeconds());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",
