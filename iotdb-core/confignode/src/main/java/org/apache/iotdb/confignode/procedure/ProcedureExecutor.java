@@ -400,8 +400,11 @@ public class ProcedureExecutor<Env> {
    * @param proc procedure
    */
   private void executeProcedure(RootProcedureStack rootProcStack, Procedure<Env> proc) {
-    Preconditions.checkArgument(
-        proc.getState() == ProcedureState.RUNNABLE, "NOT RUNNABLE! " + proc);
+    if (proc.getState() != ProcedureState.RUNNABLE) {
+      LOG.error(
+          "The executing procedure should in RUNNABLE state, but it's not. Procedure is {}", proc);
+      return;
+    }
     boolean suspended = false;
     boolean reExecute;
 
@@ -441,6 +444,7 @@ public class ProcedureExecutor<Env> {
           LOG.info("Added into timeoutExecutor {}", proc);
         } else if (!suspended) {
           proc.setState(ProcedureState.SUCCESS);
+          LOG.info("Procedure {} succeed", proc.getProcId());
         }
       }
       // add procedure into rollback stack.
