@@ -162,10 +162,11 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void collectEvent(final Event event) {
-    collectInvocationCount.incrementAndGet();
-
     if (event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
+      if (!((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName())) {
+        LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
+        return;
+      }
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
@@ -180,6 +181,7 @@ public class PipeEventCollector implements EventCollector {
     }
 
     pendingQueue.directOffer(event);
+    collectInvocationCount.incrementAndGet();
   }
 
   public void resetCollectInvocationCountAndGenerateFlag() {
