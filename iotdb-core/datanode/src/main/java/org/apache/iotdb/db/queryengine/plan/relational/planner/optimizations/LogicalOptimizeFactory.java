@@ -18,6 +18,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
@@ -63,12 +64,14 @@ public class LogicalOptimizeFactory {
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), columnPruningRules);
 
-    IterativeOptimizer inlineProjectionsOptimizer =
+    IterativeOptimizer inlineProjectionsFiltersOptimizer =
         new IterativeOptimizer(
             plannerContext,
             new RuleStatsRecorder(),
             ImmutableSet.of(
-                new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections()));
+                new InlineProjections(plannerContext),
+                new RemoveRedundantIdentityProjections(),
+                new MergeFilters()));
 
     IterativeOptimizer limitPushdownOptimizer =
         new IterativeOptimizer(
@@ -88,11 +91,11 @@ public class LogicalOptimizeFactory {
         ImmutableList.of(
             simplifyExpressionOptimizer,
             columnPruningOptimizer,
-            inlineProjectionsOptimizer,
+            inlineProjectionsFiltersOptimizer,
             pushPredicateIntoTableScanOptimizer,
             // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
             columnPruningOptimizer,
-            inlineProjectionsOptimizer,
+            inlineProjectionsFiltersOptimizer,
             limitPushdownOptimizer,
             pushLimitOffsetIntoTableScanOptimizer,
             transformSortToStreamSortOptimizer,

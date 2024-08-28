@@ -9,8 +9,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
@@ -220,18 +218,15 @@ public class JoinNode extends TwoChildProcessNode {
     private final Symbol left;
     private final Symbol right;
 
-    @JsonCreator
-    public EquiJoinClause(@JsonProperty("left") Symbol left, @JsonProperty("right") Symbol right) {
+    public EquiJoinClause(Symbol left, Symbol right) {
       this.left = requireNonNull(left, "left is null");
       this.right = requireNonNull(right, "right is null");
     }
 
-    @JsonProperty("left")
     public Symbol getLeft() {
       return left;
     }
 
-    @JsonProperty("right")
     public Symbol getRight() {
       return right;
     }

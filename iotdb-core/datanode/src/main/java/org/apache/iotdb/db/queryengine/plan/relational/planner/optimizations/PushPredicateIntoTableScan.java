@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
@@ -59,19 +58,15 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
@@ -80,15 +75,14 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.LEFT;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.RIGHT;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.tryNormalizeToOuterToInnerJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 /**
@@ -124,17 +118,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             context.getAnalysis(),
             context.getMetadata(),
             context.getSymbolAllocator()),
-        null);
+        new RewriteContext(TRUE_LITERAL));
   }
 
-  private static class Rewriter extends PlanVisitor<PlanNode, Void> {
+  private static class Rewriter extends PlanVisitor<PlanNode, RewriteContext> {
     private final MPPQueryContext queryContext;
     private final Analysis analysis;
     private final Metadata metadata;
-    private Expression predicate;
     private final SymbolAllocator symbolAllocator;
     private final QueryId queryId;
-    private boolean hasJoinNode;
 
     Rewriter(
         MPPQueryContext queryContext,
@@ -149,41 +141,53 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitPlan(PlanNode node, Void context) {
+    public PlanNode visitPlan(PlanNode node, RewriteContext context) {
       throw new IllegalArgumentException(
           String.format("Unexpected plan node: %s in rule PushPredicateIntoTableScan", node));
     }
 
     @Override
-    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, Void context) {
-      PlanNode rewrittenChild = node.getChild().accept(this, context);
+    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, RewriteContext context) {
+      PlanNode rewrittenChild = node.getChild().accept(this, new RewriteContext());
       node.setChild(rewrittenChild);
       return node;
     }
 
     @Override
-    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, Void context) {
-      node.setLeftChild(node.getLeftChild().accept(this, context));
-      node.setRightChild(node.getRightChild().accept(this, context));
+    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, RewriteContext context) {
+      node.setLeftChild(node.getLeftChild().accept(this, new RewriteContext()));
+      node.setRightChild(node.getRightChild().accept(this, new RewriteContext()));
       return node;
     }
 
     @Override
-    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, Void context) {
+    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriteContext context) {
       List<PlanNode> rewrittenChildren = new ArrayList<>();
       for (PlanNode child : node.getChildren()) {
-        rewrittenChildren.add(child.accept(this, context));
+        rewrittenChildren.add(child.accept(this, new RewriteContext()));
       }
       node.setChildren(rewrittenChildren);
       return node;
     }
 
     @Override
-    public PlanNode visitFilter(FilterNode node, Void context) {
+    public PlanNode visitProject(ProjectNode node, RewriteContext context) {
+      for (Expression expression : node.getAssignments().getMap().values()) {
+        if (containsDiffFunction(expression)) {
+          return node;
+        }
+      }
+      node.setChild(node.getChild().accept(this, context));
+      return node;
+    }
+
+    @Override
+    public PlanNode visitFilter(FilterNode node, RewriteContext context) {
 
       if (node.getPredicate() != null) {
 
-        predicate = node.getPredicate();
+        Expression predicate = combineConjuncts(node.getPredicate(), context.predicate);
+        context.predicate = predicate;
 
         // when exist diff function, predicate can not be pushed down into TableScanNode
         if (containsDiffFunction(predicate)) {
@@ -193,13 +197,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
         if (node.getChild() instanceof TableScanNode) {
           // child of FilterNode is TableScanNode, means FilterNode must get from where clause
-          return combineFilterAndScan((TableScanNode) node.getChild());
+          return combineFilterAndScan((TableScanNode) node.getChild(), predicate);
         } else if (node.getChild() instanceof JoinNode) {
           return visitJoin((JoinNode) node.getChild(), context);
         } else {
-          // FilterNode may get from having or subquery
-          node.setChild(node.getChild().accept(this, context));
-          return node;
+          // FilterNode may get from having, subquery or join
+          // For example, sql `select x from (select * from table0 where ID='A') t1 join (select *
+          // from table0) t2 ON t1.time=t2.time and t1.s1>1` will push FilterNode in Join into
+          // subquery
+          return node.getChild().accept(this, context);
         }
 
       } else {
@@ -208,8 +214,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
     }
 
-    public PlanNode combineFilterAndScan(TableScanNode tableScanNode) {
-      SplitExpression splitExpression = splitPredicate(tableScanNode);
+    public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
+      SplitExpression splitExpression = splitPredicate(tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
       if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
@@ -255,7 +261,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return resultNode;
     }
 
-    private SplitExpression splitPredicate(TableScanNode node) {
+    private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
       Set<String> idOrAttributeColumnNames = new HashSet<>(node.getAssignments().size());
       Set<String> measurementColumnNames = new HashSet<>(node.getAssignments().size());
       for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
@@ -304,9 +310,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitJoin(JoinNode node, Void context) {
-      hasJoinNode = true;
-      Expression inheritedPredicate = predicate != null ? predicate : TRUE_LITERAL;
+    public PlanNode visitJoin(JoinNode node, RewriteContext context) {
+      Expression inheritedPredicate = context.predicate != null ? context.predicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
       node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
@@ -324,8 +329,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       switch (node.getJoinType()) {
         case INNER:
-          InnerJoinPushDownResult innerJoinPushDownResult =
+          JoinUtils.InnerJoinPushDownResult innerJoinPushDownResult =
               processInnerJoin(
+                  metadata,
                   inheritedPredicate,
                   leftEffectivePredicate,
                   rightEffectivePredicate,
@@ -402,37 +408,37 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         ProjectNode projectNode =
             new ProjectNode(queryId.genPlanNodeId(), node.getLeftChild(), leftProjections.build());
         if (TRUE_LITERAL.equals(leftPredicate)) {
-          leftSource = projectNode.accept(this, context);
+          leftSource = projectNode.accept(this, new RewriteContext());
         } else {
           FilterNode filterNode =
               new FilterNode(queryId.genPlanNodeId(), projectNode, leftPredicate);
-          leftSource = filterNode.accept(this, context);
+          leftSource = filterNode.accept(this, new RewriteContext());
         }
 
         projectNode =
             new ProjectNode(
                 queryId.genPlanNodeId(), node.getRightChild(), rightProjections.build());
         if (TRUE_LITERAL.equals(rightPredicate)) {
-          rightSource = projectNode.accept(this, context);
+          rightSource = projectNode.accept(this, new RewriteContext());
         } else {
           FilterNode filterNode =
               new FilterNode(queryId.genPlanNodeId(), projectNode, rightPredicate);
-          rightSource = filterNode.accept(this, context);
+          rightSource = filterNode.accept(this, new RewriteContext());
         }
       } else {
         if (TRUE_LITERAL.equals(leftPredicate)) {
-          leftSource = node.getLeftChild().accept(this, context);
+          leftSource = node.getLeftChild().accept(this, new RewriteContext());
         } else {
           FilterNode filterNode =
               new FilterNode(queryId.genPlanNodeId(), node.getLeftChild(), leftPredicate);
-          leftSource = filterNode.accept(this, context);
+          leftSource = filterNode.accept(this, new RewriteContext());
         }
         if (TRUE_LITERAL.equals(rightPredicate)) {
-          rightSource = node.getRightChild().accept(this, context);
+          rightSource = node.getRightChild().accept(this, new RewriteContext());
         } else {
           FilterNode filterNode =
               new FilterNode(queryId.genPlanNodeId(), node.getRightChild(), rightPredicate);
-          rightSource = filterNode.accept(this, context);
+          rightSource = filterNode.accept(this, new RewriteContext());
         }
       }
 
@@ -520,260 +526,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return output;
     }
 
-    private JoinNode tryNormalizeToOuterToInnerJoin(JoinNode node, Expression inheritedPredicate) {
-      checkArgument(
-          EnumSet.of(INNER, RIGHT, LEFT, FULL).contains(node.getJoinType()),
-          "Unsupported join type: %s",
-          node.getJoinType());
-
-      if (node.getJoinType() == JoinNode.JoinType.INNER) {
-        return node;
-      }
-
-      if (node.getJoinType() == JoinNode.JoinType.FULL) {
-        boolean canConvertToLeftJoin =
-            canConvertOuterToInner(node.getLeftChild().getOutputSymbols(), inheritedPredicate);
-        boolean canConvertToRightJoin =
-            canConvertOuterToInner(node.getRightChild().getOutputSymbols(), inheritedPredicate);
-        if (!canConvertToLeftJoin && !canConvertToRightJoin) {
-          return node;
-        }
-        if (canConvertToLeftJoin && canConvertToRightJoin) {
-          return new JoinNode(
-              node.getPlanNodeId(),
-              INNER,
-              node.getLeftChild(),
-              node.getRightChild(),
-              node.getCriteria(),
-              node.getLeftOutputSymbols(),
-              node.getRightOutputSymbols(),
-              node.isMaySkipOutputDuplicates(),
-              node.getFilter(),
-              node.getLeftHashSymbol(),
-              node.getRightHashSymbol(),
-              node.isSpillable());
-        }
-        return new JoinNode(
-            node.getPlanNodeId(),
-            canConvertToLeftJoin ? LEFT : RIGHT,
-            node.getLeftChild(),
-            node.getRightChild(),
-            node.getCriteria(),
-            node.getLeftOutputSymbols(),
-            node.getRightOutputSymbols(),
-            node.isMaySkipOutputDuplicates(),
-            node.getFilter(),
-            node.getLeftHashSymbol(),
-            node.getRightHashSymbol(),
-            node.isSpillable());
-      }
-
-      if (node.getJoinType() == JoinNode.JoinType.LEFT
-              && !canConvertOuterToInner(
-                  node.getRightChild().getOutputSymbols(), inheritedPredicate)
-          || node.getJoinType() == JoinNode.JoinType.RIGHT
-              && !canConvertOuterToInner(
-                  node.getLeftChild().getOutputSymbols(), inheritedPredicate)) {
-        return node;
-      }
-      return new JoinNode(
-          node.getPlanNodeId(),
-          JoinNode.JoinType.INNER,
-          node.getLeftChild(),
-          node.getRightChild(),
-          node.getCriteria(),
-          node.getLeftOutputSymbols(),
-          node.getRightOutputSymbols(),
-          node.isMaySkipOutputDuplicates(),
-          node.getFilter(),
-          node.getLeftHashSymbol(),
-          node.getRightHashSymbol(),
-          node.isSpillable());
-    }
-
-    private boolean canConvertOuterToInner(
-        List<Symbol> innerSymbolsForOuterJoin, Expression inheritedPredicate) {
-      Set<Symbol> innerSymbols = ImmutableSet.copyOf(innerSymbolsForOuterJoin);
-      for (Expression conjunct : extractConjuncts(inheritedPredicate)) {
-        if (isDeterministic(conjunct)) {
-          // Ignore a conjunct for this test if we cannot deterministically get responses from it
-          // Object response = nullInputEvaluator(innerSymbols, conjunct);
-          // if (response == null || response instanceof NullLiteral ||
-          // Boolean.FALSE.equals(response)) {
-          // If there is a single conjunct that returns FALSE or NULL given all NULL inputs for the
-          // inner side symbols of an outer join
-          // then this conjunct removes all effects of the outer join, and effectively turns this
-          // into an equivalent of an inner join.
-          // So, let's just rewrite this join as an INNER join
-          return true;
-          // }
-        }
-      }
-      return false;
-    }
-
-    private InnerJoinPushDownResult processInnerJoin(
-        Expression inheritedPredicate,
-        Expression leftEffectivePredicate,
-        Expression rightEffectivePredicate,
-        Expression joinPredicate,
-        Collection<Symbol> leftSymbols,
-        Collection<Symbol> rightSymbols) {
-      checkArgument(
-          leftSymbols.containsAll(extractUnique(leftEffectivePredicate)),
-          "leftEffectivePredicate must only contain symbols from leftSymbols");
-      checkArgument(
-          rightSymbols.containsAll(extractUnique(rightEffectivePredicate)),
-          "rightEffectivePredicate must only contain symbols from rightSymbols");
-
-      ImmutableList.Builder<Expression> leftPushDownConjuncts = ImmutableList.builder();
-      ImmutableList.Builder<Expression> rightPushDownConjuncts = ImmutableList.builder();
-      ImmutableList.Builder<Expression> joinConjuncts = ImmutableList.builder();
-
-      // Strip out non-deterministic conjuncts
-      extractConjuncts(inheritedPredicate).stream()
-          .filter(deterministic -> !isDeterministic(deterministic))
-          .forEach(joinConjuncts::add);
-      inheritedPredicate = filterDeterministicConjuncts(inheritedPredicate);
-
-      extractConjuncts(joinPredicate).stream()
-          .filter(expression -> !isDeterministic(expression))
-          .forEach(joinConjuncts::add);
-      joinPredicate = filterDeterministicConjuncts(joinPredicate);
-
-      leftEffectivePredicate = filterDeterministicConjuncts(leftEffectivePredicate);
-      rightEffectivePredicate = filterDeterministicConjuncts(rightEffectivePredicate);
-
-      ImmutableSet<Symbol> leftScope = ImmutableSet.copyOf(leftSymbols);
-      ImmutableSet<Symbol> rightScope = ImmutableSet.copyOf(rightSymbols);
-
-      // Generate equality inferences
-      EqualityInference allInference =
-          new EqualityInference(
-              metadata,
-              inheritedPredicate,
-              leftEffectivePredicate,
-              rightEffectivePredicate,
-              joinPredicate);
-      EqualityInference allInferenceWithoutLeftInferred =
-          new EqualityInference(
-              metadata, inheritedPredicate, rightEffectivePredicate, joinPredicate);
-      EqualityInference allInferenceWithoutRightInferred =
-          new EqualityInference(
-              metadata, inheritedPredicate, leftEffectivePredicate, joinPredicate);
-
-      // Add equalities from the inference back in
-      leftPushDownConjuncts.addAll(
-          allInferenceWithoutLeftInferred
-              .generateEqualitiesPartitionedBy(leftScope)
-              .getScopeEqualities());
-      rightPushDownConjuncts.addAll(
-          allInferenceWithoutRightInferred
-              .generateEqualitiesPartitionedBy(rightScope)
-              .getScopeEqualities());
-      joinConjuncts.addAll(
-          allInference
-              .generateEqualitiesPartitionedBy(leftScope)
-              .getScopeStraddlingEqualities()); // scope straddling equalities get dropped in as
-      // part of the join predicate
-
-      // Sort through conjuncts in inheritedPredicate that were not used for inference
-      EqualityInference.nonInferrableConjuncts(metadata, inheritedPredicate)
-          .forEach(
-              conjunct -> {
-                Expression leftRewrittenConjunct = allInference.rewrite(conjunct, leftScope);
-                if (leftRewrittenConjunct != null) {
-                  leftPushDownConjuncts.add(leftRewrittenConjunct);
-                }
-
-                Expression rightRewrittenConjunct = allInference.rewrite(conjunct, rightScope);
-                if (rightRewrittenConjunct != null) {
-                  rightPushDownConjuncts.add(rightRewrittenConjunct);
-                }
-
-                // Drop predicate after join only if unable to push down to either side
-                if (leftRewrittenConjunct == null && rightRewrittenConjunct == null) {
-                  joinConjuncts.add(conjunct);
-                }
-              });
-
-      // See if we can push the right effective predicate to the left side
-      EqualityInference.nonInferrableConjuncts(metadata, rightEffectivePredicate)
-          .map(conjunct -> allInference.rewrite(conjunct, leftScope))
-          .filter(Objects::nonNull)
-          .forEach(leftPushDownConjuncts::add);
-
-      // See if we can push the left effective predicate to the right side
-      EqualityInference.nonInferrableConjuncts(metadata, leftEffectivePredicate)
-          .map(conjunct -> allInference.rewrite(conjunct, rightScope))
-          .filter(Objects::nonNull)
-          .forEach(rightPushDownConjuncts::add);
-
-      // See if we can push any parts of the join predicates to either side
-      EqualityInference.nonInferrableConjuncts(metadata, joinPredicate)
-          .forEach(
-              conjunct -> {
-                Expression leftRewritten = allInference.rewrite(conjunct, leftScope);
-                if (leftRewritten != null) {
-                  leftPushDownConjuncts.add(leftRewritten);
-                }
-
-                Expression rightRewritten = allInference.rewrite(conjunct, rightScope);
-                if (rightRewritten != null) {
-                  rightPushDownConjuncts.add(rightRewritten);
-                }
-
-                if (leftRewritten == null && rightRewritten == null) {
-                  joinConjuncts.add(conjunct);
-                }
-              });
-
-      return new InnerJoinPushDownResult(
-          combineConjuncts(leftPushDownConjuncts.build()),
-          combineConjuncts(rightPushDownConjuncts.build()),
-          combineConjuncts(joinConjuncts.build()),
-          TRUE_LITERAL);
-    }
-
-    private Expression extractJoinPredicate(JoinNode joinNode) {
-      ImmutableList.Builder<Expression> builder = ImmutableList.builder();
-      for (JoinNode.EquiJoinClause equiJoinClause : joinNode.getCriteria()) {
-        builder.add(equiJoinClause.toExpression());
-      }
-      joinNode.getFilter().ifPresent(builder::add);
-      return combineConjuncts(builder.build());
-    }
-
-    private boolean joinEqualityExpression(
-        Expression expression, Collection<Symbol> leftSymbols, Collection<Symbol> rightSymbols) {
-      return joinComparisonExpression(
-          expression,
-          leftSymbols,
-          rightSymbols,
-          ImmutableSet.of(ComparisonExpression.Operator.EQUAL));
-    }
-
-    private boolean joinComparisonExpression(
-        Expression expression,
-        Collection<Symbol> leftSymbols,
-        Collection<Symbol> rightSymbols,
-        Set<ComparisonExpression.Operator> operators) {
-      // At this point in time, our join predicates need to be deterministic
-      if (expression instanceof ComparisonExpression && isDeterministic(expression)) {
-        ComparisonExpression comparison = (ComparisonExpression) expression;
-        if (operators.contains(comparison.getOperator())) {
-          Set<Symbol> symbols1 = extractUnique(comparison.getLeft());
-          Set<Symbol> symbols2 = extractUnique(comparison.getRight());
-          if (symbols1.isEmpty() || symbols2.isEmpty()) {
-            return false;
-          }
-          return (leftSymbols.containsAll(symbols1) && rightSymbols.containsAll(symbols2))
-              || (rightSymbols.containsAll(symbols1) && leftSymbols.containsAll(symbols2));
-        }
-      }
-      return false;
-    }
-
     private Symbol symbolForExpression(Expression expression) {
       if (expression instanceof SymbolReference) {
         return Symbol.from(expression);
@@ -784,17 +536,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, Void context) {
+    public PlanNode visitTableScan(TableScanNode node, RewriteContext context) {
       return tableMetadataIndexScan(node, Collections.emptyList());
     }
 
     @Override
-    public PlanNode visitInsertTablet(InsertTabletNode node, Void context) {
+    public PlanNode visitInsertTablet(InsertTabletNode node, RewriteContext context) {
       return node;
     }
 
     @Override
-    public PlanNode visitRelationalInsertTablet(RelationalInsertTabletNode node, Void context) {
+    public PlanNode visitRelationalInsertTablet(
+        RelationalInsertTabletNode node, RewriteContext context) {
       return node;
     }
 
@@ -948,6 +701,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     return false;
   }
 
+  private static class RewriteContext {
+    Expression predicate;
+
+    RewriteContext(Expression predicate) {
+      this.predicate = predicate;
+    }
+
+    RewriteContext() {
+      this.predicate = TRUE_LITERAL;
+    }
+  }
+
   private static class SplitExpression {
     // indexed tag expressions, such as `tag1 = 'A'`
     List<Expression> metadataExpressions;
@@ -977,40 +742,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     public List<Expression> getExpressionsCannotPushDown() {
       return this.expressionsCannotPushDown;
-    }
-  }
-
-  private static class InnerJoinPushDownResult {
-    private final Expression leftPredicate;
-    private final Expression rightPredicate;
-    private final Expression joinPredicate;
-    private final Expression postJoinPredicate;
-
-    private InnerJoinPushDownResult(
-        Expression leftPredicate,
-        Expression rightPredicate,
-        Expression joinPredicate,
-        Expression postJoinPredicate) {
-      this.leftPredicate = leftPredicate;
-      this.rightPredicate = rightPredicate;
-      this.joinPredicate = joinPredicate;
-      this.postJoinPredicate = postJoinPredicate;
-    }
-
-    private Expression getLeftPredicate() {
-      return leftPredicate;
-    }
-
-    private Expression getRightPredicate() {
-      return rightPredicate;
-    }
-
-    private Expression getJoinPredicate() {
-      return joinPredicate;
-    }
-
-    private Expression getPostJoinPredicate() {
-      return postJoinPredicate;
     }
   }
 }

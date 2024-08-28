@@ -41,6 +41,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
@@ -304,13 +305,5 @@ public class LimitOffsetPushDownTest {
     assertTrue(getChildrenNode(rootNode, 1) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 2) instanceof LimitNode);
     assertTrue(getChildrenNode(rootNode, 3) instanceof TableScanNode);
-  }
-
-  static PlanNode getChildrenNode(PlanNode root, int idx) {
-    PlanNode result = root;
-    for (int i = 1; i <= idx; i++) {
-      result = result.getChildren().get(0);
-    }
-    return result;
   }
 }

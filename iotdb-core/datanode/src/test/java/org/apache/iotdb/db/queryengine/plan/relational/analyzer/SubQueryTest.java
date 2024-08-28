@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -42,13 +40,13 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertNodeMatches;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -56,13 +54,10 @@ import static org.junit.Assert.assertTrue;
 public class SubQueryTest {
   String sql;
   Analysis analysis;
-  MPPQueryContext context;
-  WarningCollector warningCollector = WarningCollector.NOOP;
   LogicalQueryPlan logicalQueryPlan;
   PlanNode logicalPlanNode;
   OutputNode outputNode;
   ProjectNode projectNode;
-  StreamSortNode streamSortNode;
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
@@ -131,7 +126,8 @@ public class SubQueryTest {
         ASC,
         9,
         0,
-        true);
+        true,
+        "");
     /*
      * IdentitySinkNode-161
      *   └──LimitNode-136
@@ -150,7 +146,8 @@ public class SubQueryTest {
         ASC,
         9,
         0,
-        true);
+        true,
+        "");
   }
 
   @Test
@@ -227,7 +224,8 @@ public class SubQueryTest {
         ASC,
         3,
         0,
-        true);
+        true,
+        "");
     /*
      * IdentitySinkNode-161
      *   └──LimitNode-136
@@ -246,7 +244,8 @@ public class SubQueryTest {
         ASC,
         3,
         0,
-        true);
+        true,
+        "");
   }
 
   @Test
@@ -341,7 +340,8 @@ public class SubQueryTest {
         ASC,
         3,
         0,
-        true);
+        true,
+        "");
     /*
      * IdentitySinkNode-161
      *   └──LimitNode-136
@@ -360,7 +360,8 @@ public class SubQueryTest {
         ASC,
         3,
         0,
-        true);
+        true,
+        "");
   }
 
   @Test
@@ -370,10 +371,9 @@ public class SubQueryTest {
     // only the limit and sort in sub query can be pushed down into TableScan.
     sql =
         "SELECT time, tag2, attr2, CAST(add_s2 as double) "
-            + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 "
+            + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2, s2+1 as add_s2 FROM table1 "
             + "WHERE s1>1 ORDER BY tag1 DESC limit 3) "
-            + "WHERE s1>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
-    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
+            + "WHERE s2>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
         new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
@@ -388,6 +388,7 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof ProjectNode);
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof TopKNode);
     assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
+    // Notice that, the filter in outer query can not be pushed down into subquery
     assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof FilterNode);
     assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof LimitNode);
     assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof ProjectNode);
@@ -421,13 +422,16 @@ public class SubQueryTest {
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
-    assertTrue(getChildrenNode(outputNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(outputNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 3) instanceof TopKNode);
-    assertTrue(getChildrenNode(outputNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 5) instanceof FilterNode);
-    assertTrue(getChildrenNode(outputNode, 6) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 7) instanceof TopKNode);
+    assertNodeMatches(
+        outputNode,
+        OutputNode.class,
+        OffsetNode.class,
+        ProjectNode.class,
+        TopKNode.class,
+        ProjectNode.class,
+        FilterNode.class,
+        ProjectNode.class,
+        TopKNode.class);
     TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 7);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
@@ -446,7 +450,8 @@ public class SubQueryTest {
         ASC,
         3,
         0,
-        true);
+        true,
+        "");
     /*
      * IdentitySinkNode-161
      *   └──LimitNode-136
@@ -465,6 +470,7 @@ public class SubQueryTest {
         ASC,
         3,
         0,
-        true);
+        true,
+        "");
   }
 }

@@ -46,15 +46,15 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.ORIGINAL_DEVICE_ENTRIES_1;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.ORIGINAL_DEVICE_ENTRIES_2;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHANGHAI_SHENZHEN_DEVICE_ENTRIES;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHENZHEN_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
@@ -138,7 +138,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
     LimitNode limitNode =
@@ -155,7 +156,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     sql = "SELECT * FROM table1 order by tag2 desc, tag3 asc offset 5 limit 10";
     context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
@@ -236,7 +238,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink-Limit-Project-Filter-TableScan`
     IdentitySinkNode identitySinkNode =
@@ -252,7 +255,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   // order by all_ids, time, others
@@ -308,7 +312,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink-Project-Filter-TableScan`
     projectNode =
@@ -322,7 +327,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   // order by some_ids, others, time
@@ -387,7 +393,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
     streamSortNode =
@@ -402,7 +409,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   // order by all_ids, others, time
@@ -465,7 +473,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
     IdentitySinkNode sinkNode =
@@ -481,7 +490,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   @Test
@@ -495,7 +505,8 @@ public class SortTest {
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
-    assertTopKNoFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, DESC, 15, 0, true);
+    assertTopKNoFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 15, 0, true);
 
     // order by time, others, some_ids; has filter
     sql =
@@ -506,7 +517,8 @@ public class SortTest {
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, DESC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 0, 0, false);
 
     // order by time, others, all_ids; has filter
     sql =
@@ -517,7 +529,8 @@ public class SortTest {
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, DESC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 0, 0, false);
 
     // order by time, all_ids, others; has filter
     sql =
@@ -529,7 +542,8 @@ public class SortTest {
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
-    assertTopKWithFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, DESC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 0, 0, false);
   }
 
   @Test
@@ -543,7 +557,7 @@ public class SortTest {
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKNoFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, ASC, 0, 0, false);
+    assertTopKNoFilter(SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
 
     // order by others, all_ids, time
     sql =
@@ -554,7 +568,8 @@ public class SortTest {
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, ASC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
 
     // order by others, time, some_ids
     sql =
@@ -565,7 +580,8 @@ public class SortTest {
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, ASC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
 
     // order by others, time, all_ids
     sql =
@@ -576,7 +592,8 @@ public class SortTest {
     logicalQueryPlan =
         new LogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(ORIGINAL_DEVICE_ENTRIES_1, ORIGINAL_DEVICE_ENTRIES_2, ASC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
   }
 
   @Test
@@ -649,7 +666,8 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
 
     // IdentitySink - TopK - Project - Filter - TableScan
     identitySinkNode =
@@ -666,7 +684,8 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
   }
 
   public void assertTopKNoFilter(
@@ -716,7 +735,8 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
 
     // IdentitySink - TopK - Project - TableScan
     identitySinkNode =
@@ -731,6 +751,7 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
   }
 }
