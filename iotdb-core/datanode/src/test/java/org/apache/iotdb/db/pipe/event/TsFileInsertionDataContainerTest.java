@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.pipe.event;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
@@ -538,7 +537,7 @@ public class TsFileInsertionDataContainerTest {
     t.addValue("s2", 1, 2L);
 
     try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-      writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+      writer.registerAlignedTimeseries(new Path("root.sg.d"), schemaList);
       writer.writeAligned(t);
     }
     testTsFilePointNum(
