@@ -29,7 +29,7 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer.EMPTY_STRING;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringColumnTransformer.EMPTY_STRING;
 
 public class SubString3ColumnTransformer extends TernaryColumnTransformer {
   public SubString3ColumnTransformer(

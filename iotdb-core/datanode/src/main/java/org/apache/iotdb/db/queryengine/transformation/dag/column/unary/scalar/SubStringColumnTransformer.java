@@ -29,13 +29,13 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
+public class SubStringColumnTransformer extends UnaryColumnTransformer {
 
   private final int beginPosition;
   private final int endPosition;
   public static final String EMPTY_STRING = "";
 
-  public SubStringFunctionColumnTransformer(
+  public SubStringColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, int beginPosition, int length) {
     super(returnType, childColumnTransformer);
     if (length < 0) {

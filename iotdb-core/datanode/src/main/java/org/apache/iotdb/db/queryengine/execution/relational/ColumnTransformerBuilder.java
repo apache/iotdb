@@ -131,7 +131,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.St
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StrposColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
@@ -631,8 +631,7 @@ public class ColumnTransformerBuilder
       if (children.size() == 2) {
         if (isLongLiteral(children.get(1))) {
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
-          return new SubStringFunctionColumnTransformer(
-              STRING, first, startIndex, Integer.MAX_VALUE);
+          return new SubStringColumnTransformer(STRING, first, startIndex, Integer.MAX_VALUE);
         } else {
           return new SubString2ColumnTransformer(
               STRING, first, this.process(children.get(1), context));
@@ -642,7 +641,7 @@ public class ColumnTransformerBuilder
         if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
           int length = (int) ((LongLiteral) children.get(2)).getParsedValue();
-          return new SubStringFunctionColumnTransformer(STRING, first, startIndex, length);
+          return new SubStringColumnTransformer(STRING, first, startIndex, length);
         } else {
           return new SubString3ColumnTransformer(
               STRING,
