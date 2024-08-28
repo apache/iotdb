@@ -495,7 +495,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     final Set<PipeMeta> stuckPipes = new HashSet<>();
 
     if (System.currentTimeMillis() - LAST_FORCED_RESTART_TIME.get()
-        > PipeConfig.getInstance().getPipeSubtaskExecutorForcedRestartIntervalSeconds()) {
+        > PipeConfig.getInstance().getPipeSubtaskExecutorForcedRestartIntervalMs()) {
       LAST_FORCED_RESTART_TIME.set(System.currentTimeMillis());
       for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
         stuckPipes.add(pipeMeta);

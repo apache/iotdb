@@ -318,11 +318,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
                 String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
-    config.setPipeSubtaskExecutorForcedRestartIntervalSeconds(
+    config.setPipeSubtaskExecutorForcedRestartIntervalMs(
         Long.parseLong(
             properties.getProperty(
-                "pipe_subtask_executor_forced_restart_interval_seconds",
-                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalSeconds()))));
+                "pipe_subtask_executor_forced_restart_interval_ms",
+                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalMs()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
