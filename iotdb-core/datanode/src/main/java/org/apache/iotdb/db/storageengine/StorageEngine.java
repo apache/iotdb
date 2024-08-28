@@ -1000,6 +1000,9 @@ public class StorageEngine implements IService {
 
   public Runnable executeCompactFileTimeIndexCache() {
     return () -> {
+      if (!isReadyForNonReadWriteFunctions()) {
+        return;
+      }
       for (DataRegion dataRegion : dataRegionMap.values()) {
         if (dataRegion != null) {
           dataRegion.compactFileTimeIndexCache();
