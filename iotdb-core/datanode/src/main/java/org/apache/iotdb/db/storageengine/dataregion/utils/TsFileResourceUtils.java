@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -376,7 +377,7 @@ public class TsFileResourceUtils {
       if (resource.getTimeIndexType() != 1) {
         // if time index is not device time index, then deserialize it from resource file
         try {
-          timeIndex = resource.buildDeviceTimeIndex();
+          timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
         } catch (IOException e) {
           // skip such files
           continue;
