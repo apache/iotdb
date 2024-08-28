@@ -444,7 +444,6 @@ public class ProcedureExecutor<Env> {
           LOG.info("Added into timeoutExecutor {}", proc);
         } else if (!suspended) {
           proc.setState(ProcedureState.SUCCESS);
-          LOG.info("Procedure {} succeed", proc.getProcId());
         }
       }
       // add procedure into rollback stack.
