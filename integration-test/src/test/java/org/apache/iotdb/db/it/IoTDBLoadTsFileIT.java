@@ -761,7 +761,6 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.DEVICE_0, 100000, PARTITION_INTERVAL / 10_000, false);
       generator.generateData(SchemaConfig.DEVICE_1, 100000, PARTITION_INTERVAL / 10_000, true);
       generator.generateDeletion(SchemaConfig.DEVICE_0, 10);
-      generator.generateDeletion(SchemaConfig.DEVICE_1, 10);
       writtenPoint1 = generator.getTotalNumber();
     }
 

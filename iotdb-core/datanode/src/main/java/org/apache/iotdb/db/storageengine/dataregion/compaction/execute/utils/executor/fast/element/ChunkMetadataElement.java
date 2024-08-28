@@ -42,18 +42,12 @@ public class ChunkMetadataElement {
 
   public boolean needForceDecodingPage;
 
-  public boolean isBatchedCompaction;
-
   public ChunkMetadataElement(
-      IChunkMetadata chunkMetadata,
-      boolean isLastChunk,
-      FileElement fileElement,
-      boolean isBatchedCompaction) {
+      IChunkMetadata chunkMetadata, boolean isLastChunk, FileElement fileElement) {
     this.chunkMetadata = chunkMetadata;
     this.startTime = chunkMetadata.getStartTime();
     this.isLastChunk = isLastChunk;
     this.fileElement = fileElement;
-    this.isBatchedCompaction = isBatchedCompaction;
   }
 
   public void clearChunks() {

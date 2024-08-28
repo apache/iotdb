@@ -518,7 +518,9 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
   @Override
   public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
-    tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop);
+    if (isTabletBatchModeEnabled) {
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop);
+    }
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
