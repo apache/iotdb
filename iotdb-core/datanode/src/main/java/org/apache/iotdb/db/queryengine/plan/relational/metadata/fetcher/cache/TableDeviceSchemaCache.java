@@ -219,49 +219,6 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Get the last time of a measurement. If the caller wants to get the last entry of a device, the
-   * measurement shall be "" to indicate the time column.
-   *
-   * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
-   * @param measurement the measurement to get
-   * @return {@code null} iff cache miss, Long.MIN_VALUE iff cache hit but result is {@code null},
-   *     and the result value otherwise.
-   */
-  public Long getLastTime(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final String measurement) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    return Objects.nonNull(entry) ? entry.getLastTime(measurement) : null;
-  }
-
-  /**
-   * Get the last value of a measurement last by a target measurement. If the caller wants to last
-   * by time, the measurement shall be "" to indicate the time column.
-   *
-   * @param database the device's database, without "root"
-   * @param tableName tableName
-   * @param deviceId the deviceId without tableName
-   * @param measurement the measurement to get
-   * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE} iff
-   *     cache hit but result is {@code null}, and the result value otherwise.
-   */
-  public TsPrimitiveType getLastBy(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final String measurement,
-      final String targetMeasurement) {
-    final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(database, tableName), new TableDeviceId(deviceId));
-    return Objects.nonNull(entry) ? entry.getLastBy(measurement, targetMeasurement) : null;
-  }
-
-  /**
    * Get the last value of measurements last by a target measurement. If the caller wants to last by
    * time or get the time last by another source measurement, the measurement shall be "" to
    * indicate the time column.

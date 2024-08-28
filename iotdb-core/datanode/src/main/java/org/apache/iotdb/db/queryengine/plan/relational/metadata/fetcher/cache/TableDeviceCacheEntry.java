@@ -152,18 +152,6 @@ public class TableDeviceCacheEntry {
   }
 
   // Shall pass in "" if last by time
-  public Long getLastTime(final String measurement) {
-    final TableDeviceLastCache cache = lastCache.get();
-    return Objects.nonNull(cache) ? cache.getLastTime(measurement) : null;
-  }
-
-  // Shall pass in "" if last by time
-  public TsPrimitiveType getLastBy(final String measurement, final String targetMeasurement) {
-    final TableDeviceLastCache cache = lastCache.get();
-    return Objects.nonNull(cache) ? cache.getLastBy(measurement, targetMeasurement) : null;
-  }
-
-  // Shall pass in "" if last by time
   public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String sourceMeasurement, final List<String> targetMeasurements) {
     final TableDeviceLastCache cache = lastCache.get();

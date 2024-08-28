@@ -151,14 +151,10 @@ public class TableDeviceSchemaCacheTest {
 
     // Test get from empty cache
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s0"));
-    Assert.assertNull(cache.getLastTime(database, table1, device0, "s0"));
-    Assert.assertNull(cache.getLastBy(database, table1, device0, "s0", "s1"));
     Assert.assertFalse(
         cache
             .getLastRow(database, table1, device0, "s0", Collections.singletonList("s1"))
             .isPresent());
-    Assert.assertNull(cache.getLastTime(database, table1, device0, ""));
-    Assert.assertNull(cache.getLastBy(database, table1, device0, "", "s1"));
     Assert.assertFalse(
         cache
             .getLastRow(database, table1, device0, "", Collections.singletonList("s1"))
@@ -196,36 +192,17 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s3"));
 
-    // Test last time / last by
-    Assert.assertEquals((Long) 2L, cache.getLastTime(database, table1, device0, ""));
-    Assert.assertEquals((Long) 1L, cache.getLastTime(database, table1, device0, "s0"));
-    Assert.assertSame(
-        TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
-        cache.getLastBy(database, table1, device0, "s2", "s1"));
-    Assert.assertEquals(
-        new TsPrimitiveType.TsInt(3), cache.getLastBy(database, table1, device0, "s0", "s1"));
-
     // Test null hit measurements
     cache.updateLastCache(
         database,
         table1,
         device0,
         Collections.singletonMap("s4", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR));
-    Assert.assertEquals((Long) Long.MIN_VALUE, cache.getLastTime(database, table1, device0, "s4"));
-    Assert.assertSame(
-        TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
-        cache.getLastBy(database, table1, device0, "s4", "s3"));
-    Assert.assertSame(
-        TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE,
-        cache.getLastBy(database, table1, device0, "s3", "s4"));
     Assert.assertSame(
         TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR,
         cache.getLastEntry(database, table1, device0, "s4"));
 
     // Test null miss measurements
-    Assert.assertNull(cache.getLastTime(database, table1, device0, "s5"));
-    Assert.assertNull(cache.getLastBy(database, table1, device0, "s5", "s3"));
-    Assert.assertNull(cache.getLastBy(database, table1, device0, "s3", "s5"));
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s5"));
 
     // Test lastRow
