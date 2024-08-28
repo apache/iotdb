@@ -116,7 +116,10 @@ public abstract class EnrichedEvent implements Event {
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
         isSuccessful = false;
-      } else if (referenceCount.get() == 0) {
+        return isSuccessful;
+      }
+
+      if (referenceCount.get() == 0) {
         // We assume that this function will not throw any exceptions.
         isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
         if (!isSuccessful) {
@@ -126,7 +129,6 @@ public abstract class EnrichedEvent implements Event {
               Thread.currentThread().getStackTrace());
         }
       }
-
       if (isSuccessful) {
         referenceCount.incrementAndGet();
       }
@@ -168,6 +170,7 @@ public abstract class EnrichedEvent implements Event {
             "decrease reference count to event that has already been released: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
+        isSuccessful = false;
         return isSuccessful;
       }
 
@@ -180,6 +183,7 @@ public abstract class EnrichedEvent implements Event {
         PipeEventCommitManager.getInstance().commit(this, committerKey);
       }
 
+      // No matter whether the resource is released, we should decrease the reference count.
       final int newReferenceCount = referenceCount.decrementAndGet();
       if (newReferenceCount <= 0) {
         isReleased.set(true);
@@ -195,7 +199,10 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (!isSuccessful) {
-      LOGGER.warn("decrease reference count failed, EnrichedEvent: {}", coreReportMessage());
+      LOGGER.warn(
+          "decrease reference count failed, EnrichedEvent: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
     }
     return isSuccessful;
   }
@@ -218,6 +225,7 @@ public abstract class EnrichedEvent implements Event {
             "clear reference count to event that has already been released: {}, stack trace: {}",
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
+        isSuccessful = false;
         return isSuccessful;
       }
 
