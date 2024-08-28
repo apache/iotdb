@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -48,6 +54,7 @@ import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -398,5 +405,41 @@ public class CommonUtils {
     System.err.println("error: " + e.getMessage());
     System.err.println("-- StackTrace --");
     System.err.println(Throwables.getStackTraceAsString(e));
+  }
+
+  /** Add stat of operation into metrics */
+  public static void addStatementExecutionLatency(
+      OperationType operation, String statementType, long costTime) {
+    if (statementType == null) {
+      return;
+    }
+
+    MetricService.getInstance()
+        .timer(
+            costTime,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            operation.toString(),
+            Tag.TYPE.toString(),
+            statementType);
+  }
+
+  public static void addQueryLatency(StatementType statementType, long costTimeInNanos) {
+    if (statementType == null) {
+      return;
+    }
+
+    MetricService.getInstance()
+        .timer(
+            costTimeInNanos,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            OperationType.QUERY_LATENCY.toString(),
+            Tag.TYPE.toString(),
+            statementType.name());
   }
 }
