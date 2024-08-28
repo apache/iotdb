@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -150,6 +151,14 @@ public class AggregationTableScanNode extends TableScanNode {
 
   public AggregationNode.Step getStep() {
     return step;
+  }
+
+  public int getGroupingSetCount() {
+    return groupingSets.getGroupingSetCount();
+  }
+
+  public Set<Integer> getGlobalGroupingSets() {
+    return groupingSets.getGlobalGroupingSets();
   }
 
   @Override

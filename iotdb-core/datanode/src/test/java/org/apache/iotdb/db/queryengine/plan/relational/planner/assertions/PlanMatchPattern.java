@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -232,6 +233,51 @@ public final class PlanMatchPattern {
             aggregation ->
                 result.withAlias(
                     aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
+    return result;
+  }
+
+  public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
+      String name, List<String> args) {
+    return new AggregationFunctionProvider(
+        name, false, toSymbolAliases(args), ImmutableList.of(), Optional.empty());
+  }
+
+  public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
+      String name, List<String> args, List<PlanMatchPattern.Ordering> orderBy) {
+    return new AggregationFunctionProvider(
+        name, false, toSymbolAliases(args), orderBy, Optional.empty());
+  }
+
+  public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
+      String name, boolean distinct, List<PlanTestSymbol> args) {
+    return new AggregationFunctionProvider(
+        name, distinct, args, ImmutableList.of(), Optional.empty());
+  }
+
+  public static PlanMatchPattern aggregationTableScan(
+      GroupingSetDescriptor groupingSets,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      String expectedTableName,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys) {
+    PlanMatchPattern result = node(AggregationTableScanNode.class);
+
+    result.with(
+        new AggregationTableScanMatcher(
+            groupingSets,
+            ImmutableList.of(),
+            ImmutableList.of(),
+            groupId,
+            step,
+            expectedTableName,
+            Optional.empty(),
+            outputSymbols,
+            assignmentsKeys));
+
+    outputSymbols.forEach(
+        outputSymbol ->
+            result.withAlias(outputSymbol, new ColumnReference(expectedTableName, outputSymbol)));
     return result;
   }
 
