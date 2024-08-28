@@ -190,7 +190,7 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s1"));
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
-    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s3"));
+    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s3"));
 
     // Test null hit measurements
     cache.updateLastCache(
@@ -208,6 +208,12 @@ public class TableDeviceSchemaCacheTest {
     // Test lastRow
     Optional<Pair<OptionalLong, TsPrimitiveType[]>> result =
         cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
+    Assert.assertFalse(result.isPresent());
+
+    cache.updateLastCache(
+        database, table1, device0, Collections.singletonMap("", new TimeValuePair(2L, null)));
+
+    result = cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
     Assert.assertEquals(OptionalLong.of(2L), result.get().getLeft());
@@ -262,11 +268,11 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(cache.getLastEntry(database, table2, device2, "s2"));
 
     // Test Long.MIN_VALUE
-    cache.updateLastCache(
-        database,
-        table2,
-        device0,
-        Collections.singletonMap("s2", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR));
+    measurementQueryUpdateMap.clear();
+    measurementQueryUpdateMap.put("", new TimeValuePair(Long.MIN_VALUE, null));
+    measurementQueryUpdateMap.put("s2", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR);
+
+    cache.updateLastCache(database, table2, device0, measurementQueryUpdateMap);
     result = cache.getLastRow(database, table2, device0, "", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
