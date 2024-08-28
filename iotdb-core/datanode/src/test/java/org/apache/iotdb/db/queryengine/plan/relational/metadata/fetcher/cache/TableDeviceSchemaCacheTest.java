@@ -332,10 +332,10 @@ public class TableDeviceSchemaCacheTest {
         database,
         table1,
         device0,
-        Collections.singletonMap("s0", new TimeValuePair(0L, new TsPrimitiveType.TsInt(3))));
-    cache.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
+        Collections.singletonMap("s0", new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))));
+    cache.mayUpdateLastCacheWithoutLock(database, table1, device0, measurementWriteUpdateMap);
 
-    Assert.assertEquals(tv3, cache.getLastEntry(database, table2, device0, "s0"));
+    Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
   }
 
