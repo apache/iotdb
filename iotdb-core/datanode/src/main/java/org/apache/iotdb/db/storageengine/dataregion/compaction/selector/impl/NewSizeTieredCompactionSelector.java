@@ -128,8 +128,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           continue;
         }
 
-        if (!currentFile.isValidCandidate
-            || !levelTaskSelection.isFileLevelSatisfied(innerCompactionCount)) {
+        if (!currentFile.isValidCandidate) {
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
@@ -140,7 +139,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           continue;
         }
 
-        if (!levelTaskSelection.currentFileSatisfied(currentFile)) {
+        if (!levelTaskSelection.currentFileSizeSatisfied(currentFile)
+            || !levelTaskSelection.isFileLevelSatisfied(innerCompactionCount)) {
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
@@ -175,10 +175,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       this.level = level;
     }
 
-    private boolean isFileLevelSatisfied(long innerCompactionCount) {
-      return Math.abs(innerCompactionCount - level) <= maxLevelGap;
-    }
-
     private boolean haveOverlappedDevices(TsFileResourceCandidate resourceCandidate)
         throws IOException {
       return currentSelectedDevices.isEmpty()
@@ -205,8 +201,12 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       lastContinuousSkippedResources.add(currentFile.resource);
     }
 
-    private boolean currentFileSatisfied(TsFileResourceCandidate currentFile) {
+    private boolean currentFileSizeSatisfied(TsFileResourceCandidate currentFile) {
       return currentFile.resource.getTsFileSize() < totalFileSizeThreshold;
+    }
+
+    private boolean isFileLevelSatisfied(long innerCompactionCount) {
+      return Math.abs(innerCompactionCount - level) <= maxLevelGap;
     }
 
     private boolean isCurrentTaskEmpty() {
@@ -229,9 +229,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
 
     private void endCurrentTaskSelection() {
-      if (isCurrentTaskEmpty()) {
-        return;
-      }
       try {
         // When the total files size does not exceed the limit of the
         // size of a single file, merge all files together and try to include
@@ -240,7 +237,8 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         nextTaskStartIndex = lastSelectedFileIndex + 1;
         for (TsFileResource resource : lastContinuousSkippedResources) {
           long currentFileSize = resource.getTsFileSize();
-          if (totalFileSize + currentFileSize > singleFileSizeThreshold) {
+          if (totalFileSize + currentFileSize > singleFileSizeThreshold
+              || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())) {
             break;
           }
           currentSkippedResources.add(resource);
