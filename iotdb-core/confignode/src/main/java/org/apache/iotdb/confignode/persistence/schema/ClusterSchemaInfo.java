@@ -1051,8 +1051,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     databaseReadWriteLock.writeLock().lock();
     try {
       mTree.rollbackCreateTable(
-          PartialPath.getDatabasePath(PathUtils.qualifyDatabaseName(plan.getDatabase())),
-          plan.getTableName());
+          getQualifiedDatabasePartialPath(plan.getDatabase()), plan.getTableName());
       return RpcUtils.SUCCESS_STATUS;
     } catch (final MetadataException e) {
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
