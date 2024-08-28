@@ -94,10 +94,16 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       return false;
     }
 
-    final Event event =
-        lastEvent != null
-            ? lastEvent
-            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+    final Event event;
+    synchronized (this) {
+      event =
+          lastEvent != null
+              ? lastEvent
+              : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+    }
+    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
+      return true;
+    }
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
 
@@ -223,41 +229,43 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  // synchronized to use the lastEvent, lastExceptionEvent and inputPendingQueue
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
-    // Try to remove the events as much as possible
-    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
+    // synchronized to use the lastEvent, lastExceptionEvent and inputPendingQueue
+    synchronized (this) {
+      // Try to remove the events as much as possible
+      inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
 
-    // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
-    // stopped submission but will not be stopped by critical exceptions, because when it acquires
-    // lock, the pipe is already dropped, thus it will do nothing.
-    // Note that since we use a new thread to stop all the pipes, we will not encounter deadlock
-    // here. Or else we will.
-    if (lastEvent instanceof EnrichedEvent
-        && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())) {
-      // Do not clear last event's reference count because it may be on transferring
-      lastEvent = null;
-      // Submit self to avoid that the lastEvent has been retried "max times" times and has
-      // stopped executing.
-      // 1. If the last event is still on execution, or submitted by the previous "onSuccess" or
-      //    "onFailure", the "submitSelf" cause nothing.
-      // 2. If the last event is waiting the instance lock to call "onSuccess", then the callback
-      //    method will skip this turn of submission.
-      // 3. If the last event is waiting to call "onFailure", then it will be ignored because the
-      //    last event has been set to null.
-      // 4. If the last event has called "onFailure" and caused the subtask to stop submission,
-      //    it's submitted here and the "report" will wait for the "drop pipe" lock to stop all
-      //    the pipes with critical exceptions. As illustrated above, the "report" will do
-      //    nothing.
-      submitSelf();
-    }
+      // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
+      // stopped submission but will not be stopped by critical exceptions, because when it acquires
+      // lock, the pipe is already dropped, thus it will do nothing.
+      // Note that since we use a new thread to stop all the pipes, we will not encounter deadlock
+      // here. Or else we will.
+      if (lastEvent instanceof EnrichedEvent
+          && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())) {
+        // Do not clear last event's reference count because it may be on transferring
+        lastEvent = null;
+        // Submit self to avoid that the lastEvent has been retried "max times" times and has
+        // stopped executing.
+        // 1. If the last event is still on execution, or submitted by the previous "onSuccess" or
+        //    "onFailure", the "submitSelf" cause nothing.
+        // 2. If the last event is waiting the instance lock to call "onSuccess", then the callback
+        //    method will skip this turn of submission.
+        // 3. If the last event is waiting to call "onFailure", then it will be ignored because the
+        //    last event has been set to null.
+        // 4. If the last event has called "onFailure" and caused the subtask to stop submission,
+        //    it's submitted here and the "report" will wait for the "drop pipe" lock to stop all
+        //    the pipes with critical exceptions. As illustrated above, the "report" will do
+        //    nothing.
+        submitSelf();
+      }
 
-    // We only clear the lastEvent's reference count when it's already on failure. Namely, we
-    // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
-    // "nonnull" detection.
-    if (lastExceptionEvent instanceof EnrichedEvent
-        && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())) {
-      clearReferenceCountAndReleaseLastExceptionEvent();
+      // We only clear the lastEvent's reference count when it's already on failure. Namely, we
+      // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
+      // "nonnull" detection.
+      if (lastExceptionEvent instanceof EnrichedEvent
+          && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())) {
+        clearReferenceCountAndReleaseLastExceptionEvent();
+      }
     }
 
     if (outputPipeConnector instanceof IoTDBConnector) {
