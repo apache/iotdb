@@ -320,13 +320,23 @@ public class TableDeviceSchemaCacheTest {
     measurementWriteUpdateMap.put("s3", tv3);
 
     // Test disable put cache by writing
-    final TableDeviceSchemaCache cache2 = new TableDeviceSchemaCache();
+    final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
 
-    cache2.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
-    cache2.mayUpdateLastCacheWithoutLock(database2, table1, device0, measurementWriteUpdateMap);
+    cache.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
+    cache.mayUpdateLastCacheWithoutLock(database2, table1, device0, measurementWriteUpdateMap);
 
-    Assert.assertNull(cache2.getLastEntry(database, table2, device0, "s2"));
-    Assert.assertNull(cache2.getLastEntry(database2, table1, device0, "s2"));
+    Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
+    Assert.assertNull(cache.getLastEntry(database2, table1, device0, "s2"));
+
+    cache.updateLastCache(
+        database,
+        table1,
+        device0,
+        Collections.singletonMap("s0", new TimeValuePair(0L, new TsPrimitiveType.TsInt(3))));
+    cache.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
+
+    Assert.assertEquals(tv3, cache.getLastEntry(database, table2, device0, "s0"));
+    Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));
   }
 
   @Test
