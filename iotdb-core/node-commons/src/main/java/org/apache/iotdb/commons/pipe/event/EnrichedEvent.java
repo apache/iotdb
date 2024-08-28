@@ -122,15 +122,15 @@ public abstract class EnrichedEvent implements Event {
       if (referenceCount.get() == 0) {
         // We assume that this function will not throw any exceptions.
         isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
-        if (!isSuccessful) {
-          LOGGER.warn(
-              "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
-              coreReportMessage(),
-              Thread.currentThread().getStackTrace());
-        }
       }
+
       if (isSuccessful) {
         referenceCount.incrementAndGet();
+      } else {
+        LOGGER.warn(
+            "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
       }
     }
 
@@ -176,7 +176,12 @@ public abstract class EnrichedEvent implements Event {
 
       if (referenceCount.get() == 1) {
         // We assume that this function will not throw any exceptions.
-        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
+        if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+          LOGGER.warn(
+              "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+              coreReportMessage(),
+              Thread.currentThread().getStackTrace());
+        }
         if (!shouldReport) {
           shouldReportOnCommit = false;
         }
@@ -187,6 +192,7 @@ public abstract class EnrichedEvent implements Event {
       final int newReferenceCount = referenceCount.decrementAndGet();
       if (newReferenceCount <= 0) {
         isReleased.set(true);
+        isSuccessful = newReferenceCount == 0;
         if (newReferenceCount < 0) {
           LOGGER.warn(
               "reference count is decreased to {}, event: {}, stack trace: {}",
@@ -219,6 +225,7 @@ public abstract class EnrichedEvent implements Event {
    */
   public boolean clearReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
+
     synchronized (this) {
       if (isReleased.get()) {
         LOGGER.warn(
@@ -232,9 +239,9 @@ public abstract class EnrichedEvent implements Event {
       if (referenceCount.get() >= 1) {
         // We assume that this function will not throw any exceptions.
         isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        referenceCount.set(0);
       }
 
+      referenceCount.set(0);
       isReleased.set(true);
     }
 
