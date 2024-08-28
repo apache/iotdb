@@ -496,6 +496,7 @@ public class SubQueryTest {
         tableScanNode, ALL_DEVICE_ENTRIES, ASC, 0, 0, true, "((\"s1\" > 1) AND (\"s2\" > 2))");
   }
 
+  // test MergeLimits
   @Test
   public void subQueryTest6() {
     sql = "SELECT * FROM (SELECT * FROM table1 limit 10) limit 5";
