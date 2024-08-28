@@ -24,7 +24,6 @@ import org.apache.iotdb.db.pipe.receiver.transform.converter.ValueConverter;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -36,7 +35,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.nio.charset.StandardCharsets;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -403,13 +401,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     for (Pair pair : pairs) {
       resultSet.add(
           String.format(
-              "%s,%s,",
-              pair.left,
-              RpcUtils.formatDatetime(
-                  "default",
-                  "ms",
-                  (long) ValueConverter.convert(sourceType, targetType, pair.right),
-                  ZoneOffset.UTC)));
+              "%s,%s,", pair.left, ValueConverter.convert(sourceType, targetType, pair.right)));
     }
     return resultSet;
   }
