@@ -312,7 +312,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       CheckedTriConsumer<ISession, ISession, Tablet, Exception> consumer, boolean isTsFile) {
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
-    long timeoutSeconds = 120;
+
+    // Generate createTimeSeries in sender and receiver
     String uuid = RandomStringUtils.random(8, true, false);
     for (Pair<MeasurementSchema, MeasurementSchema> pair : measurementSchemas) {
       createTimeSeries(
@@ -325,16 +326,22 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
         ISession receiverSession = receiverEnv.getSessionConnection()) {
       Tablet tablet = generateTabletAndMeasurementSchema(measurementSchemas, "root.test." + uuid);
       if (isTsFile) {
+        // Send TsFile data to receiver
         consumer.accept(senderSession, receiverSession, tablet);
-        Thread.sleep(10000);
+        Thread.sleep(2000);
         createDataPipe(uuid, true);
         senderSession.executeNonQueryStatement("flush");
       } else {
+        // Send Tablet data to receiver
         createDataPipe(uuid, false);
-        Thread.sleep(10000);
+        Thread.sleep(2000);
+        // The actual implementation logic of inserting data
         consumer.accept(senderSession, receiverSession, tablet);
         senderSession.executeNonQueryStatement("flush");
       }
+
+      // Verify receiver data
+      long timeoutSeconds = 120;
       List<List<Object>> expectedValues =
           generateTabletResultSetForTable(tablet, measurementSchemas);
       await()
@@ -510,7 +517,17 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       "Hello World!",
       "This is a test.",
       "IoTDB Hello World!!!!",
-      "IoTDB is an excellent time series database!!!!!!!!!"
+      "IoTDB is an excellent time series database!!!!!!!!!",
+      "12345678910!!!!!!!!",
+      "123456",
+      "1234567.123213",
+      "21232131.21",
+      "enable =  true",
+      "true",
+      "false",
+      "12345678910",
+      "123231232132131233213123123123123123131312",
+      "123231232132131233213123123123123123131312.212312321312312",
     };
     Binary[] data = new Binary[generateDataSize];
     for (int i = 0; i < data.length; i++) {

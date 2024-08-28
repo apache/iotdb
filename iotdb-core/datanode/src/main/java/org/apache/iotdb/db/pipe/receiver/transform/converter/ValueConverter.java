@@ -304,9 +304,9 @@ public class ValueConverter {
 
   private static final Binary BINARY_TRUE = parseString(Boolean.TRUE.toString());
   private static final Binary BINARY_FALSE = parseString(Boolean.FALSE.toString());
-  private static final int TRUE_DATE = DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
+  private static final int TRUE_DATE = DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 2));
   private static final int FALSE_DATE =
-      DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 2));
+      DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
   private static final int DEFAULT_DATE =
       DateUtils.parseDateExpressionToInt(LocalDate.of(1970, 1, 1));
 
