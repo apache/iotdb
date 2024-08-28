@@ -178,15 +178,14 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertEquals(tv2, cache.getLastEntry(database, table1, device0, "s2"));
 
     // Write update existing
-    final Map<String, TimeValuePair> measurementWriteUpdateMap = new HashMap<>();
-
     final TimeValuePair tv3 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(3));
-    measurementWriteUpdateMap.put("s0", tv3);
-    measurementWriteUpdateMap.put("s1", tv3);
-    measurementWriteUpdateMap.put("s2", tv3);
-    measurementWriteUpdateMap.put("s3", tv3);
 
-    cache.mayUpdateLastCacheWithoutLock(database, table1, device0, measurementWriteUpdateMap);
+    cache.mayUpdateLastCacheWithoutLock(
+        database,
+        table1,
+        device0,
+        new String[] {"s0", "s1", "s2", "s3"},
+        new TimeValuePair[] {tv3, tv3, tv3, tv3});
 
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s1"));
@@ -329,18 +328,18 @@ public class TableDeviceSchemaCacheTest {
     final String table2 = "t2";
     final String[] device0 = new String[] {"hebei", "p_1", "d_0"};
 
-    final Map<String, TimeValuePair> measurementWriteUpdateMap = new HashMap<>();
     final TimeValuePair tv3 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(3));
-    measurementWriteUpdateMap.put("s0", tv3);
-    measurementWriteUpdateMap.put("s1", tv3);
-    measurementWriteUpdateMap.put("s2", tv3);
-    measurementWriteUpdateMap.put("s3", tv3);
+
+    final String[] testMeasurements = new String[] {"s0", "s1", "s2", "s3"};
+    final TimeValuePair[] testTimeValuePairs = new TimeValuePair[] {tv3, tv3, tv3, tv3};
 
     // Test disable put cache by writing
     final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
 
-    cache.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
-    cache.mayUpdateLastCacheWithoutLock(database2, table1, device0, measurementWriteUpdateMap);
+    cache.mayUpdateLastCacheWithoutLock(
+        database, table2, device0, testMeasurements, testTimeValuePairs);
+    cache.mayUpdateLastCacheWithoutLock(
+        database2, table1, device0, testMeasurements, testTimeValuePairs);
 
     Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
     Assert.assertNull(cache.getLastEntry(database2, table1, device0, "s2"));
@@ -351,7 +350,8 @@ public class TableDeviceSchemaCacheTest {
         device0,
         new String[] {"s0"},
         new TimeValuePair[] {new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))});
-    cache.mayUpdateLastCacheWithoutLock(database, table1, device0, measurementWriteUpdateMap);
+    cache.mayUpdateLastCacheWithoutLock(
+        database, table1, device0, testMeasurements, testTimeValuePairs);
 
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertNull(cache.getLastEntry(database, table1, device0, "s2"));

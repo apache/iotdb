@@ -127,24 +127,31 @@ public class TableDeviceLastCache {
   public int tryUpdate(
       final @Nonnull String database,
       final @Nonnull String tableName,
-      final @Nonnull Map<String, TimeValuePair> measurementUpdateMap) {
+      final @Nonnull String[] measurements,
+      final TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
 
-    measurementUpdateMap.forEach(
-        (k, v) -> {
-          if (Objects.nonNull(lastTime) && lastTime < v.getTimestamp()) {
-            lastTime = v.getTimestamp();
-          }
-          measurement2CachedLastMap.compute(
-              k,
-              (measurement, tvPair) -> {
-                if (Objects.nonNull(tvPair) && tvPair.getTimestamp() <= v.getTimestamp()) {
-                  diff.addAndGet(LastCacheContainer.getDiffSize(tvPair.getValue(), v.getValue()));
-                  return v;
-                }
-                return tvPair;
-              });
-        });
+    for (int i = 0; i < measurements.length; ++i) {
+      if (Objects.isNull(timeValuePairs[i])) {
+        continue;
+      }
+      final int finalI = i;
+      if (Objects.nonNull(lastTime) && lastTime < timeValuePairs[i].getTimestamp()) {
+        lastTime = timeValuePairs[i].getTimestamp();
+      }
+      measurement2CachedLastMap.compute(
+          measurements[i],
+          (measurement, tvPair) -> {
+            if (Objects.nonNull(tvPair)
+                && tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
+              diff.addAndGet(
+                  LastCacheContainer.getDiffSize(
+                      tvPair.getValue(), timeValuePairs[finalI].getValue()));
+              return timeValuePairs[finalI];
+            }
+            return tvPair;
+          });
+    }
     return diff.get();
   }
 
