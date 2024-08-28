@@ -538,7 +538,7 @@ public class TsFileInsertionDataContainerTest {
     t.addValue("s2", 1, 2L);
 
     try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
-      writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+      writer.registerAlignedTimeseries(new Path("root.sg.d"), schemaList);
       writer.writeAligned(t);
     }
     testTsFilePointNum(
