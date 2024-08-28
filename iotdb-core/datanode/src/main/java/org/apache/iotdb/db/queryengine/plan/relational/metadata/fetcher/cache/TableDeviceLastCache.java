@@ -125,7 +125,7 @@ public class TableDeviceLastCache {
 
     measurementUpdateMap.forEach(
         (k, v) -> {
-          if (lastTime < v.getTimestamp()) {
+          if (Objects.nonNull(lastTime) && lastTime < v.getTimestamp()) {
             lastTime = v.getTimestamp();
           }
           measurement2CachedLastMap.compute(
