@@ -84,7 +84,7 @@ public class TsFileID {
   }
 
   /**
-   * @return a long array whose length is 2, the first long value is tsfile timestamp, the second
+   * @return a long array whose length is 3, the first long value is tsfile timestamp, the second
    *     long value is tsfile version, third long value is compaction version , high 32 bit is
    *     in-space compaction count, low 32 bit is cross-space compaction count
    */
