@@ -127,10 +127,13 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    return (lastCache.compareAndSet(null, new TableDeviceLastCache())
+    int result =
+        lastCache.compareAndSet(null, new TableDeviceLastCache())
             ? TableDeviceLastCache.INSTANCE_SIZE
-            : 0)
-        + tryUpdate(database, tableName, measurementUpdateMap);
+            : 0;
+    final TableDeviceLastCache cache = lastCache.get();
+    result += Objects.nonNull(cache) ? cache.update(database, tableName, measurementUpdateMap) : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
   public int tryUpdate(
@@ -139,7 +142,7 @@ public class TableDeviceCacheEntry {
       final Map<String, TimeValuePair> measurementUpdateMap) {
     final TableDeviceLastCache cache = lastCache.get();
     final int result =
-        Objects.nonNull(cache) ? cache.update(database, tableName, measurementUpdateMap) : 0;
+        Objects.nonNull(cache) ? cache.tryUpdate(database, tableName, measurementUpdateMap) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 

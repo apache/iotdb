@@ -114,6 +114,30 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
+  public int tryUpdate(
+      final @Nonnull String database,
+      final @Nonnull String tableName,
+      final @Nonnull Map<String, TimeValuePair> measurementUpdateMap) {
+    final AtomicInteger diff = new AtomicInteger(0);
+
+    measurementUpdateMap.forEach(
+        (k, v) -> {
+          if (lastTime < v.getTimestamp()) {
+            lastTime = v.getTimestamp();
+          }
+          measurement2CachedLastMap.compute(
+              k,
+              (measurement, tvPair) -> {
+                if (Objects.nonNull(tvPair) && tvPair.getTimestamp() <= v.getTimestamp()) {
+                  diff.addAndGet(LastCacheContainer.getDiffSize(tvPair.getValue(), v.getValue()));
+                  return v;
+                }
+                return tvPair;
+              });
+        });
+    return diff.get();
+  }
+
   public @Nullable TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
     return measurement2CachedLastMap.get(measurement);
   }
