@@ -92,11 +92,14 @@ public class TableDeviceLastCache {
     final AtomicInteger diff = new AtomicInteger(0);
     measurementUpdateMap.forEach(
         (k, v) -> {
+          if (k.isEmpty()) {
+            if (lastTime < v.getTimestamp()) {
+              lastTime = v.getTimestamp();
+            }
+            return;
+          }
           if (!measurement2CachedLastMap.containsKey(k)) {
             k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
-          }
-          if (lastTime < v.getTimestamp()) {
-            lastTime = v.getTimestamp();
           }
           measurement2CachedLastMap.compute(
               k,
