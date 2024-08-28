@@ -126,7 +126,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -146,7 +146,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -166,7 +166,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertAlignedRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -186,7 +186,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertAlignedRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -247,7 +247,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         false);
   }
@@ -261,7 +261,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         true);
   }
@@ -275,7 +275,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertAlignedStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         false);
   }
@@ -289,13 +289,13 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertAlignedStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         true);
   }
 
   private SessionDataSet query(
-      ISession session, List<IMeasurementSchema> measurementSchemas, String deviceId)
+      ISession session, List<MeasurementSchema> measurementSchemas, String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
     String sql = "select ";
     StringBuffer param = new StringBuffer();
@@ -353,7 +353,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
               () -> {
                 try {
                   validateResultSet(
-                      query(receiverSession, tablet.getSchemas(), tablet.getDeviceId()),
+                      query(receiverSession, tablet.getSchemas(), tablet.deviceId),
                       expectedValues,
                       tablet.timestamps);
                 } catch (Exception e) {
@@ -568,7 +568,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   private List<String> getDeviceID(Tablet tablet) {
     List<String> data = new ArrayList<>(tablet.rowSize);
     for (int i = 0; i < tablet.rowSize; i++) {
-      data.add(tablet.getDeviceId());
+      data.add(tablet.deviceId);
     }
     return data;
   }
@@ -576,7 +576,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
   private List<List<Object>> generateTabletResultSetForTable(
       final Tablet tablet, List<Pair<MeasurementSchema, MeasurementSchema>> pairs) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
-    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    final List<MeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
     for (int i = 0; i < tablet.rowSize; i++) {
       List<Object> insertRecord = new ArrayList<>();
@@ -644,7 +644,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
 
   private List<List<Object>> generateTabletInsertRecordForTable(final Tablet tablet) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
-    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    final List<MeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
     for (int i = 0; i < tablet.rowSize; i++) {
       List<Object> insertRecord = new ArrayList<>();
@@ -687,7 +687,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
 
   private List<List<String>> generateTabletInsertStrRecordForTable(Tablet tablet) {
     List<List<String>> insertRecords = new ArrayList<>(tablet.rowSize);
-    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    final List<MeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
     for (int i = 0; i < tablet.rowSize; i++) {
       List<String> insertRecord = new ArrayList<>();
@@ -738,16 +738,14 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       List<Pair<MeasurementSchema, MeasurementSchema>> pairs, String deviceId) {
     long[] timestamp = createTestDataForTimestamp();
     Object[] objects = new Object[pairs.size()];
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>(pairs.size());
+    List<MeasurementSchema> measurementSchemas = new ArrayList<>(pairs.size());
     BitMap[] bitMaps = new BitMap[pairs.size()];
     for (int i = 0; i < bitMaps.length; i++) {
       bitMaps[i] = new BitMap(generateDataSize);
     }
-    List<Tablet.ColumnType> columnTypes = new ArrayList<>(pairs.size());
     for (int i = 0; i < objects.length; i++) {
       MeasurementSchema schema = pairs.get(i).left;
       measurementSchemas.add(schema);
-      columnTypes.add(Tablet.ColumnType.MEASUREMENT);
       switch (schema.getType()) {
         case INT64:
           objects[i] = createTestDataForInt64();
@@ -777,8 +775,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
           break;
       }
     }
-    return new Tablet(
-        deviceId, measurementSchemas, columnTypes, timestamp, objects, bitMaps, generateDataSize);
+    return new Tablet(deviceId, measurementSchemas, timestamp, objects, bitMaps, generateDataSize);
   }
 
   private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemas() {
