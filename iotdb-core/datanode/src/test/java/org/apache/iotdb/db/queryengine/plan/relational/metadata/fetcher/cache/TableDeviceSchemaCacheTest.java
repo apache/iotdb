@@ -342,17 +342,7 @@ public class TableDeviceSchemaCacheTest {
     measurementWriteUpdateMap.put("s2", tv3);
     measurementWriteUpdateMap.put("s3", tv3);
 
-    // Enable put cache by default
-    final TableDeviceSchemaCache cache1 = new TableDeviceSchemaCache();
-
-    cache1.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
-    cache1.mayUpdateLastCacheWithoutLock(database2, table1, device0, measurementWriteUpdateMap);
-
-    Assert.assertEquals(tv3, cache1.getLastEntry(database, table2, device0, "s2"));
-    Assert.assertEquals(tv3, cache1.getLastEntry(database2, table1, device0, "s2"));
-
-    // Disable put cache
-    config.setPutLastCacheWhenWriting(false);
+    // Test disable put cache by writing
     final TableDeviceSchemaCache cache2 = new TableDeviceSchemaCache();
 
     cache2.mayUpdateLastCacheWithoutLock(database, table2, device0, measurementWriteUpdateMap);
@@ -360,7 +350,6 @@ public class TableDeviceSchemaCacheTest {
 
     Assert.assertNull(cache2.getLastEntry(database, table2, device0, "s2"));
     Assert.assertNull(cache2.getLastEntry(database2, table1, device0, "s2"));
-    config.setPutLastCacheWhenWriting(true);
   }
 
   @Test

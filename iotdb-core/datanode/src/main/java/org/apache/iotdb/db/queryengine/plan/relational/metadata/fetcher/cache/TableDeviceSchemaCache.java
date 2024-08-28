@@ -66,8 +66,6 @@ public class TableDeviceSchemaCache {
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  private final boolean putLastCacheWhenWriting = config.getPutLastCacheWhenWriting();
-
   public TableDeviceSchemaCache() {
     final DualKeyCacheBuilder<TableId, TableDeviceId, TableDeviceCacheEntry> dualKeyCacheBuilder =
         new DualKeyCacheBuilder<>();
@@ -166,7 +164,12 @@ public class TableDeviceSchemaCache {
       final Map<String, TimeValuePair> measurementUpdateMap) {
     readWriteLock.readLock().lock();
     try {
-      forceUpdateCache(database, tableName, deviceId, measurementUpdateMap);
+      dualKeyCache.update(
+              new TableId(database, tableName),
+              new TableDeviceId(deviceId),
+              new TableDeviceCacheEntry(),
+              entry -> entry.updateLastCache(database, tableName, measurementUpdateMap),
+              true);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -174,11 +177,8 @@ public class TableDeviceSchemaCache {
 
   /**
    * Update the last cache in writing. The input "TimeValuePair" shall never contain {@code null}
-   * value.
-   *
-   * <p>If the {@link #putLastCacheWhenWriting} is {@code true} this will force put the cache of the
-   * device like in query. Otherwise, this will put the cache lazily and only update the existing
-   * last caches of devices.
+   * value. For correctness, this will put the cache lazily and only update the existing
+   * last caches of measurements.
    *
    * @param database the device's database, without "root"
    * @param tableName tableName
@@ -190,29 +190,12 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-    if (putLastCacheWhenWriting) {
-      forceUpdateCache(database, tableName, deviceId, measurementUpdateMap);
-    } else {
       dualKeyCache.update(
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(),
           entry -> entry.tryUpdate(database, tableName, measurementUpdateMap),
           false);
-    }
-  }
-
-  private void forceUpdateCache(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final Map<String, TimeValuePair> measurementUpdateMap) {
-    dualKeyCache.update(
-        new TableId(database, tableName),
-        new TableDeviceId(deviceId),
-        new TableDeviceCacheEntry(),
-        entry -> entry.updateLastCache(database, tableName, measurementUpdateMap),
-        true);
   }
 
   /**
