@@ -261,7 +261,8 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
     if (!testParams.getTestModeName().equals("MemoryMode")) {
       return;
     }
-    final String database = "sg";
+    // Database with "`"
+    final String database = "`sg";
     final String tableName = "t";
     final List<ColumnHeader> columnHeaderList =
         Arrays.asList(
