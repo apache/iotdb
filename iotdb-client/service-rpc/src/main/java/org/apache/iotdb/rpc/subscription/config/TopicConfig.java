@@ -51,6 +51,9 @@ public class TopicConfig extends PipeParameters {
   private static final Map<String, String> REALTIME_STREAM_MODE_CONFIG =
       Collections.singletonMap("realtime.mode", "stream");
 
+  private static final Map<String, String> SINK_TABLET_FORMAT_CONFIG =
+      Collections.singletonMap("format", "tablet");
+
   private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
       Collections.singletonMap("mode", MODE_SNAPSHOT_VALUE);
   private static final Map<String, String> LIVE_MODE_CONFIG =
@@ -59,7 +62,7 @@ public class TopicConfig extends PipeParameters {
   private static final Set<String> LOOSE_RANGE_KEY_SET;
 
   static {
-    Set<String> set = new HashSet<>(2);
+    final Set<String> set = new HashSet<>(2);
     set.add("history.loose-range");
     set.add("realtime.loose-range");
     LOOSE_RANGE_KEY_SET = Collections.unmodifiableSet(set);
@@ -130,5 +133,12 @@ public class TopicConfig extends PipeParameters {
           }
         });
     return attributesWithProcessorPrefix;
+  }
+
+  public Map<String, String> getAttributesWithSinkFormat() {
+    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
+            attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
+        ? Collections.emptyMap()
+        : SINK_TABLET_FORMAT_CONFIG;
   }
 }

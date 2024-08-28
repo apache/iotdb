@@ -46,11 +46,20 @@ import java.util.stream.Collectors;
 public class SubscriptionSession extends Session {
 
   public SubscriptionSession(final String host, final int port) {
-    this(host, port, SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD);
+    this(
+        host,
+        port,
+        SessionConfig.DEFAULT_USER,
+        SessionConfig.DEFAULT_PASSWORD,
+        SessionConfig.DEFAULT_MAX_FRAME_SIZE);
   }
 
   public SubscriptionSession(
-      final String host, final int port, final String username, final String password) {
+      final String host,
+      final int port,
+      final String username,
+      final String password,
+      final int thriftMaxFrameSize) {
     // TODO: more configs control
     super(
         new Session.Builder()
@@ -58,12 +67,11 @@ public class SubscriptionSession extends Session {
             .port(port)
             .username(username)
             .password(password)
+            .thriftMaxFrameSize(thriftMaxFrameSize)
             // disable auto fetch
             .enableAutoFetch(false)
             // disable redirection
-            .enableRedirection(false)
-            // TODO: config
-            .thriftMaxFrameSize(Integer.MAX_VALUE));
+            .enableRedirection(false));
   }
 
   @Override
@@ -93,8 +101,8 @@ public class SubscriptionSession extends Session {
    * <p>If the topic name contains single quotes, it must be enclosed in backticks (`). For example,
    * to create a topic named 'topic', the value passed in as topicName should be `'topic'`
    *
-   * @param If the created topic name contains single quotes, the passed parameter needs to be
-   *     enclosed in backticks.
+   * @param topicName If the created topic name contains single quotes, the passed parameter needs
+   *     to be enclosed in backticks.
    * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
    * @throws StatementExecutionException If there is an issue executing the SQL statement.
    */
@@ -110,8 +118,8 @@ public class SubscriptionSession extends Session {
    * <p>This method is similar to {@link #createTopic(String)}, but includes the 'IF NOT EXISTS'
    * condition. If the topic name contains single quotes, it must be enclosed in backticks (`).
    *
-   * @param If the created topic name contains single quotes, the passed parameter needs to be
-   *     enclosed in backticks.
+   * @param topicName If the created topic name contains single quotes, the passed parameter needs
+   *     to be enclosed in backticks.
    * @throws IoTDBConnectionException If there is an issue with the connection to IoTDB.
    * @throws StatementExecutionException If there is an issue executing the SQL statement.
    */

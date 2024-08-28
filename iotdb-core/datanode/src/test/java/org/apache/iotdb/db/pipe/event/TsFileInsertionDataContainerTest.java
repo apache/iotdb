@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
@@ -31,6 +33,8 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.access.Row;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -38,6 +42,10 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
+import org.apache.tsfile.write.TsFileWriter;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
@@ -46,8 +54,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,6 +109,9 @@ public class TsFileInsertionDataContainerTest {
   public void testToTabletInsertionEvents(final boolean isQuery) throws Exception {
     // Test empty chunk
     testMixedTsFileWithEmptyChunk(isQuery);
+
+    // Test partial null value
+    testPartialNullValue(isQuery);
 
     // Test the combinations of pipe and tsFile settings
     final Set<Integer> deviceNumbers = new HashSet<>();
@@ -505,6 +518,31 @@ public class TsFileInsertionDataContainerTest {
         115);
     resource.remove();
     resource = null;
+  }
+
+  private void testPartialNullValue(final boolean isQuery)
+      throws IOException, WriteProcessException, IllegalPathException {
+    alignedTsFile = new File("0-0-2-0.tsfile");
+
+    final List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+
+    final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+    t.rowSize = 2;
+    t.addTimestamp(0, 1000);
+    t.addTimestamp(1, 2000);
+    t.addValue("s1", 0, 2);
+    t.addValue("s2", 0, null);
+    t.addValue("s1", 1, null);
+    t.addValue("s2", 1, 2L);
+
+    try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
+      writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
+      writer.writeAligned(t);
+    }
+    testTsFilePointNum(
+        alignedTsFile, new PrefixPipePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, isQuery, 2);
   }
 
   private void testTsFilePointNum(

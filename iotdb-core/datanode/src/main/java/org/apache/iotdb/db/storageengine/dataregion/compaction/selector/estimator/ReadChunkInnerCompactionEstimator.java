@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.util.List;
 
@@ -39,12 +37,7 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    cost += sizeForFileWriter;
+    cost += memoryBudgetForFileWriter;
 
     return cost;
   }
@@ -86,6 +79,6 @@ public class ReadChunkInnerCompactionEstimator extends AbstractInnerSpaceEstimat
     long maxPageSize = tsFileConfig.getPageSizeInByte();
     // source files (chunk + uncompressed page)
     // target file (chunk + unsealed page writer)
-    return 2 * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize);
+    return 2 * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize) + memoryBudgetForFileWriter;
   }
 }

@@ -201,6 +201,7 @@ public class TopicMeta {
     connectorAttributes.put("sink", "subscription-sink");
     connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
     connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
+    connectorAttributes.putAll(config.getAttributesWithSinkFormat());
     return connectorAttributes;
   }
 
