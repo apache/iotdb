@@ -193,6 +193,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
+        // TODO: Send a restart RPC to the ConfigNode leader and add clusterId check when restarting
+        // the ConfigNode
 
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
@@ -232,12 +234,14 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             "The current {} is now starting as the Seed-ConfigNode.",
             ConfigNodeConstant.GLOBAL_NAME);
 
-        /* Always set ClusterId and ConfigNodeId before initConsensusManager */
+        /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(SEED_CONFIG_NODE_ID);
         configManager.initConsensusManager();
 
         // Persistence system parameters after the consensusGroup is built,
         // or the consensusGroup will not be initialized successfully otherwise.
+        configManager.getClusterManager().checkClusterId();
+        CONF.setClusterId(configManager.getClusterManager().getClusterId());
         SystemPropertiesUtils.storeSystemParameters();
 
         // Wait for ConfigNode-leader elected before applying itself
@@ -416,6 +420,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         }
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
+        CONF.setClusterId(resp.getClusterId());
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

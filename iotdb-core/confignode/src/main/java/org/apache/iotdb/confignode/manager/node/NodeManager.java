@@ -360,7 +360,7 @@ public class NodeManager {
     }
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
     List<TConsensusGroupId> consensusGroupIds =
         getPartitionManager().getAllReplicaSets(nodeId).stream()
             .map(TRegionReplicaSet::getRegionId)
@@ -421,9 +421,11 @@ public class NodeManager {
     int nodeId = nodeInfo.generateNextNodeId();
     req.getConfigNodeLocation().setConfigNodeId(nodeId);
     configManager.getProcedureManager().addConfigNode(req);
+    String clusterId = configManager.getClusterManager().getClusterId();
     return new TConfigNodeRegisterResp()
         .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
-        .setConfigNodeId(nodeId);
+        .setConfigNodeId(nodeId)
+        .setClusterId(clusterId);
   }
 
   public TSStatus updateConfigNodeIfNecessary(int configNodeId, TNodeVersionInfo versionInfo) {

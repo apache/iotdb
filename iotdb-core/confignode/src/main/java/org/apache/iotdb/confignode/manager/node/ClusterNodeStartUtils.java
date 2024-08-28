@@ -325,12 +325,11 @@ public class ClusterNodeStartUtils {
               "Reject %s restart. Because the clusterId of the current %s and the target cluster are inconsistent. "
                   + "ClusterId of the current Node: %s, ClusterId of the target cluster: %s."
                   + POSSIBLE_SOLUTIONS
-                  + "\t1. Change the cluster_id parameter in %s to match the target cluster.",
+                  + "\t1. Please check if the node configuration or path is correct.",
               nodeType.getNodeType(),
               nodeType.getNodeType(),
               clusterId,
-              configManager.getClusterManager().getClusterId(),
-              CommonConfig.SYSTEM_CONFIG_NAME));
+              configManager.getClusterManager().getClusterId()));
       return status;
     }
 

@@ -240,6 +240,8 @@ public class SystemPropertiesUtils {
     // Cluster configuration
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
     LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
+    systemProperties.setProperty("cluster_id", conf.getClusterId());
+    LOGGER.info("[SystemProperties] store cluster_id: {}", conf.getClusterId());
     systemProperties.setProperty(
         "is_seed_config_node",
         String.valueOf(ConfigNodeDescriptor.getInstance().isSeedConfigNode()));
@@ -316,6 +318,17 @@ public class SystemPropertiesUtils {
               + "Please delete data dir data/confignode and restart again.",
           e);
     }
+  }
+
+  /**
+   * Load the cluster_id in confignode-system.properties file. We only invoke this interface when
+   * restarted.
+   *
+   * @return cluster_id
+   */
+  public static String loadClusterIdWhenRestarted() throws IOException {
+    Properties systemProperties = systemPropertiesHandler.read();
+    return systemProperties.getProperty("cluster_id", null);
   }
 
   /**
