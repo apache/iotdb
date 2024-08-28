@@ -426,21 +426,11 @@ groupBy
     ;
 
 groupingElement
-    : TIME '(' (timeRange ',')? windowInterval=timeDuration (',' windowStep=timeDuration)?')'      #timenGrouping
-    | VARIATION '(' expression (',' delta=number)? (',' propertyAssignments)? ')'                  #variationGrouping
-    | CONDITION '(' expression (',' keepExpression)? (',' propertyAssignments)? ')'                #conditionGrouping
-    | SESSION '(' timeInterval=timeDuration ')'                                                    #sessionGrouping
-    | COUNT '(' expression ',' countNumber=INTEGER_VALUE (',' propertyAssignments)? ')'            #countGrouping
-    | groupingSet                                                                                  #singleGroupingSet
+    : groupingSet                                                                                  #singleGroupingSet
     // the following three haven't been supported yet
     | ROLLUP '(' (groupingSet (',' groupingSet)*)? ')'                                             #rollup
     | CUBE '(' (groupingSet (',' groupingSet)*)? ')'                                               #cube
     | GROUPING SETS '(' groupingSet (',' groupingSet)* ')'                                         #multipleGroupingSets
-    ;
-
-timeRange
-    : '[' startTime=timeValue ',' endTime=timeValue ')'       #leftClosedRightOpen
-    | '(' startTime=timeValue ',' endTime=timeValue ']'       #leftOpenRightClosed
     ;
 
 timeValue

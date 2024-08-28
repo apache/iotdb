@@ -122,7 +122,11 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     if (2 * fileNumDiff >= Math.min(selectedFilesOfO1.size(), selectedFilesOfO2.size())) {
       return selectedFilesOfO2.size() - selectedFilesOfO1.size();
     }
-    return 0;
+
+    // if the number of selected files is roughly the same,
+    // we prefer to execute the one with the smaller total
+    // file size
+    return o2.getSelectedFileSize() > o1.getSelectedFileSize() ? -1 : 1;
   }
 
   public int compareCrossSpaceCompactionTask(

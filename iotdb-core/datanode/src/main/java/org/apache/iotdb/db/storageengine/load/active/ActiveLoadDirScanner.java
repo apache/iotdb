@@ -85,6 +85,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
                   (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS))
                       ? getTsFilePath(file.getAbsolutePath())
                       : file.getAbsolutePath())
+          .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
           .filter(this::isTsFileCompleted)
           .limit(currentAllowedPendingSize)
           .forEach(file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
@@ -161,7 +162,7 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       }
       ActiveLoadingFilesMetricsSet.getInstance().recordPendingFileCounter(fileCount[0]);
     } catch (final IOException e) {
-      LOGGER.warn("Failed to count active listening dirs file number.", e);
+      LOGGER.debug("Failed to count active listening dirs file number.", e);
     }
     return fileCount[0];
   }
