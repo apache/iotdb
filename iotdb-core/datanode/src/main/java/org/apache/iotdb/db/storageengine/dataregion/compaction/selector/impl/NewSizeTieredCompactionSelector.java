@@ -120,8 +120,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         new InnerSpaceCompactionTaskSelection(level);
     int startSelectIndex = 0;
     while (startSelectIndex < tsFileResourceCandidateList.size()) {
-      for (int i = startSelectIndex; i < tsFileResourceCandidateList.size(); i++) {
-        TsFileResourceCandidate currentFile = tsFileResourceCandidateList.get(i);
+      int idx = 0;
+      for (idx = startSelectIndex; idx < tsFileResourceCandidateList.size(); idx++) {
+        TsFileResourceCandidate currentFile = tsFileResourceCandidateList.get(idx);
         long innerCompactionCount = currentFile.resource.getTsFileID().getInnerCompactionCount();
 
         if (levelTaskSelection.isCurrentTaskEmpty() && innerCompactionCount != level) {
@@ -135,7 +136,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
 
         boolean skipCurrentFile = !levelTaskSelection.haveOverlappedDevices(currentFile);
         if (skipCurrentFile) {
-          levelTaskSelection.addSkippedResource(currentFile, i);
+          levelTaskSelection.addSkippedResource(currentFile, idx);
           continue;
         }
 
@@ -149,10 +150,10 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
           levelTaskSelection.endCurrentTaskSelection();
           break;
         }
-        levelTaskSelection.addSelectedResource(currentFile, i);
+        levelTaskSelection.addSelectedResource(currentFile, idx);
       }
       levelTaskSelection.endCurrentTaskSelection();
-      startSelectIndex = levelTaskSelection.getNextTaskStartIndex();
+      startSelectIndex = Math.min(idx + 1, levelTaskSelection.getNextTaskStartIndex());
     }
     return levelTaskSelection.getSelectedTaskList();
   }
@@ -229,6 +230,9 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
     }
 
     private void endCurrentTaskSelection() {
+      if (isCurrentTaskEmpty()) {
+        return;
+      }
       try {
         // When the total files size does not exceed the limit of the
         // size of a single file, merge all files together and try to include
