@@ -70,7 +70,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
-    SystemInfo.getInstance().setMemorySizeForCompaction(100 * 1024 * 1024);
+    SystemInfo.getInstance().setMemorySizeForCompaction(1000 * 1024 * 1024);
   }
 
   @After
