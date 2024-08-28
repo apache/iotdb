@@ -165,11 +165,11 @@ public class TableDeviceSchemaCache {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
-              new TableId(database, tableName),
-              new TableDeviceId(deviceId),
-              new TableDeviceCacheEntry(),
-              entry -> entry.updateLastCache(database, tableName, measurementUpdateMap),
-              true);
+          new TableId(database, tableName),
+          new TableDeviceId(deviceId),
+          new TableDeviceCacheEntry(),
+          entry -> entry.updateLastCache(database, tableName, measurementUpdateMap),
+          true);
     } finally {
       readWriteLock.readLock().unlock();
     }
@@ -177,8 +177,8 @@ public class TableDeviceSchemaCache {
 
   /**
    * Update the last cache in writing. The input "TimeValuePair" shall never contain {@code null}
-   * value. For correctness, this will put the cache lazily and only update the existing
-   * last caches of measurements.
+   * value. For correctness, this will put the cache lazily and only update the existing last caches
+   * of measurements.
    *
    * @param database the device's database, without "root"
    * @param tableName tableName
@@ -190,12 +190,12 @@ public class TableDeviceSchemaCache {
       final String tableName,
       final String[] deviceId,
       final Map<String, TimeValuePair> measurementUpdateMap) {
-      dualKeyCache.update(
-          new TableId(database, tableName),
-          new TableDeviceId(deviceId),
-          new TableDeviceCacheEntry(),
-          entry -> entry.tryUpdate(database, tableName, measurementUpdateMap),
-          false);
+    dualKeyCache.update(
+        new TableId(database, tableName),
+        new TableDeviceId(deviceId),
+        new TableDeviceCacheEntry(),
+        entry -> entry.tryUpdate(database, tableName, measurementUpdateMap),
+        false);
   }
 
   /**
