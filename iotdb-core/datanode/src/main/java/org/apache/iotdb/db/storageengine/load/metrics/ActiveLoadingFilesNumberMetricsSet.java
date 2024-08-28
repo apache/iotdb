@@ -28,27 +28,22 @@ import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class ActiveLoadingFilesMetricsSet implements IMetricSet {
+public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesOperator
+    implements IMetricSet {
 
-  private static final ActiveLoadingFilesMetricsSet INSTANCE = new ActiveLoadingFilesMetricsSet();
+  private static final ActiveLoadingFilesNumberMetricsSet INSTANCE =
+      new ActiveLoadingFilesNumberMetricsSet();
 
-  public static final String PENDING = "pending";
-  public static final String QUEUING = "queuing";
-  public static final String LOADING = "loading";
-  public static final String FAILED = "failed";
+  private static final String PENDING = "pending";
+  private static final String QUEUING = "queuing";
+  private static final String LOADING = "loading";
 
-  private ActiveLoadingFilesMetricsSet() {
+  private ActiveLoadingFilesNumberMetricsSet() {
     // empty construct
   }
 
-  private Counter pendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-  private Counter failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-
-  public void recordPendingFileCounter(final long number) {
-    pendingFileCounter.inc(number - pendingFileCounter.getCount());
-  }
 
   public void recordQueuingFileCounter(final long number) {
     queuingFileCounter.inc(number);
@@ -58,12 +53,14 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
     loadingFileCounter.inc(number);
   }
 
-  public void recordFailedFileCounter(final long number) {
-    failedFileCounter.inc(number - failedFileCounter.getCount());
+  @Override
+  public void bindTo(final AbstractMetricService metricService) {
+    this.metricService.set(metricService);
+    bindFileCounter(metricService);
   }
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
+  protected void bindFileCounter(final AbstractMetricService metricService) {
     pendingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES.toString(),
@@ -82,20 +79,20 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             LOADING);
-    failedFileCounter =
-        metricService.getOrCreateCounter(
-            Metric.ACTIVE_LOADING_FILES.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.TYPE.toString(),
-            FAILED);
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
+    unbindFileCounter(metricService);
+    unbindListeningDirsCounter(metricService);
+    unbindFailedDirCounter(metricService);
+  }
+
+  @Override
+  protected void unbindFileCounter(final AbstractMetricService metricService) {
     pendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-    failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
     metricService.remove(
         MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), PENDING);
@@ -103,11 +100,14 @@ public class ActiveLoadingFilesMetricsSet implements IMetricSet {
         MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), QUEUING);
     metricService.remove(
         MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), LOADING);
-    metricService.remove(
-        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), FAILED);
   }
 
-  public static ActiveLoadingFilesMetricsSet getInstance() {
-    return ActiveLoadingFilesMetricsSet.INSTANCE;
+  @Override
+  protected String getMetrics() {
+    return Metric.ACTIVE_LOADING_FILES.toString();
+  }
+
+  public static ActiveLoadingFilesNumberMetricsSet getInstance() {
+    return ActiveLoadingFilesNumberMetricsSet.INSTANCE;
   }
 }

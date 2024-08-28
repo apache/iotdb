@@ -34,7 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
@@ -96,6 +97,9 @@ public class ActiveLoadTsFileLoader {
                 e);
           }
           failDir.set(IOTDB_CONFIG.getLoadActiveListeningFailDir());
+
+          ActiveLoadingFilesSizeMetricsSet.getInstance().updateFailedDir(failDir.get());
+          ActiveLoadingFilesNumberMetricsSet.getInstance().updateFailedDir(failDir.get());
         }
       }
     }
@@ -262,6 +266,7 @@ public class ActiveLoadTsFileLoader {
   // Metrics
   public long countAndReportFailedFileNumber() {
     final long[] fileCount = {0};
+    final long[] fileSizeCount = {0};
     try {
       initFailDirIfNecessary();
       Files.walkFileTree(
@@ -270,12 +275,14 @@ public class ActiveLoadTsFileLoader {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               fileCount[0]++;
+              fileSizeCount[0] += file.toFile().length();
               return FileVisitResult.CONTINUE;
             }
           });
-      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().recordFailedFileCounter(fileSizeCount[0]);
     } catch (final IOException e) {
-      LOGGER.warn("Failed to count failed files in fail directory.", e);
+      LOGGER.debug("Failed to count failed files in fail directory.", e);
     }
     return fileCount[0];
   }
