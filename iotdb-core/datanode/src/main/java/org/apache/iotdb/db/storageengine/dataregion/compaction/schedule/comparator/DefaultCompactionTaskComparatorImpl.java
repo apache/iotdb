@@ -119,7 +119,7 @@ public class DefaultCompactionTaskComparatorImpl implements ICompactionTaskCompa
     // if the number of selected files are different
     // we prefer to execute task with more files
     int fileNumDiff = Math.abs(selectedFilesOfO1.size() - selectedFilesOfO2.size());
-    if (5 * fileNumDiff >= Math.min(selectedFilesOfO1.size(), selectedFilesOfO2.size())) {
+    if (2 * fileNumDiff >= Math.min(selectedFilesOfO1.size(), selectedFilesOfO2.size())) {
       return selectedFilesOfO2.size() - selectedFilesOfO1.size();
     }
 
