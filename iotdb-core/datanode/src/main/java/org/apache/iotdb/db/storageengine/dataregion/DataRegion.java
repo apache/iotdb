@@ -3892,6 +3892,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
+  public void compactFileTimeIndexCache() {
+    for (long timePartition : partitionMaxFileVersions.keySet()) {
+      tsFileManager.compactFileTimeIndexCache(timePartition);
+    }
+  }
+
   @TestOnly
   public ILastFlushTimeMap getLastFlushTimeMap() {
     return lastFlushTimeMap;

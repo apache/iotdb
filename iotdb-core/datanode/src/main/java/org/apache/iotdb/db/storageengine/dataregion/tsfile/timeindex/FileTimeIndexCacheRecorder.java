@@ -63,9 +63,15 @@ public class FileTimeIndexCacheRecorder {
   private FileTimeIndexCacheRecorder() {
     recordFileIndexThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.FILE_TIMEINDEX_RECORD.getName());
+            ThreadName.FILE_TIME_INDEX_RECORD.getName());
     ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-        recordFileIndexThread, this::executeTasks, 10, 10, TimeUnit.MILLISECONDS);
+        recordFileIndexThread, this::executeTasks, 100, 100, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        recordFileIndexThread,
+        StorageEngine.getInstance().executeCompactFileTimeIndexCache(),
+        120_000L,
+        120_000L,
+        TimeUnit.MILLISECONDS);
   }
 
   private void executeTasks() {

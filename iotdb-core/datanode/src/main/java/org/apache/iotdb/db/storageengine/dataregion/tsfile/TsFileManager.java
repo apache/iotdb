@@ -249,13 +249,6 @@ public class TsFileManager {
           TsFileResourceManager.getInstance().removeTsFileResource(tsFileResource);
         }
       }
-      FileTimeIndexCacheRecorder.getInstance()
-          .compactFileTimeIndexIfNeeded(
-              storageGroupName,
-              Integer.parseInt(dataRegionId),
-              timePartition,
-              sequenceFiles.get(timePartition),
-              unsequenceFiles.get(timePartition));
       for (TsFileResource resource : targetFileResources) {
         if (!resource.isDeleted()) {
           TsFileResourceManager.getInstance().registerSealedTsFileResource(resource);
@@ -397,5 +390,20 @@ public class TsFileManager {
   public boolean isLatestTimePartition(long timePartitionId) {
     return (sequenceFiles.higherKey(timePartitionId) == null
         && unsequenceFiles.higherKey(timePartitionId) == null);
+  }
+
+  public void compactFileTimeIndexCache(long timePartition) {
+    readLock();
+    try {
+      FileTimeIndexCacheRecorder.getInstance()
+          .compactFileTimeIndexIfNeeded(
+              storageGroupName,
+              Integer.parseInt(dataRegionId),
+              timePartition,
+              sequenceFiles.get(timePartition),
+              unsequenceFiles.get(timePartition));
+    } finally {
+      readUnlock();
+    }
   }
 }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.storageengine.StorageEngine;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,8 +177,14 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     return partitionLatestFlushedTime.get(timePartitionId).getLastFlushTime(deviceId);
   }
 
+  // This method is for creating last cache entry when insert
   @Override
   public long getGlobalFlushedTime(IDeviceID path) {
+    // If TsFileResource is not fully recovered, we should return Long.MAX_VALUE
+    // to avoid create Last cache entry
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      return Long.MAX_VALUE;
+    }
     return globalLatestFlushedTimeForEachDevice.getOrDefault(path, Long.MIN_VALUE);
   }
 

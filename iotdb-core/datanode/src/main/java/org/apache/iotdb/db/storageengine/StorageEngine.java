@@ -998,6 +998,16 @@ public class StorageEngine implements IService {
         systemDir + File.separator + dataBaseName, dataRegionId);
   }
 
+  public Runnable executeCompactFileTimeIndexCache() {
+    return () -> {
+      for (DataRegion dataRegion : dataRegionMap.values()) {
+        if (dataRegion != null) {
+          dataRegion.compactFileTimeIndexCache();
+        }
+      }
+    };
+  }
+
   static class InstanceHolder {
 
     private static final StorageEngine INSTANCE = new StorageEngine();

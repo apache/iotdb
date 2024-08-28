@@ -22,17 +22,24 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.getFileTimeIndexSerializedSize;
 
 public class FileTimeIndexCacheReader {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileTimeIndexCacheReader.class);
 
   private final File logFile;
   private final long fileLength;
@@ -48,9 +55,9 @@ public class FileTimeIndexCacheReader {
 
   public Map<TsFileID, FileTimeIndex> read() throws IOException {
     Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
+    long readLength = 0L;
     try (DataInputStream logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())))) {
-      long readLength = 0L;
       while (readLength < fileLength) {
         long timestamp = logStream.readLong();
         long fileVersion = logStream.readLong();
@@ -62,6 +69,14 @@ public class FileTimeIndexCacheReader {
         FileTimeIndex fileTimeIndex = new FileTimeIndex(minStartTime, maxEndTime);
         fileTimeIndexMap.put(tsFileID, fileTimeIndex);
         readLength += getFileTimeIndexSerializedSize();
+      }
+    } catch (IOException ignored) {
+      // the error can be ignored
+    }
+    if (readLength != fileLength) {
+      // if the file is complete, we can truncate the file
+      try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.WRITE)) {
+        channel.truncate(readLength);
       }
     }
     return fileTimeIndexMap;
