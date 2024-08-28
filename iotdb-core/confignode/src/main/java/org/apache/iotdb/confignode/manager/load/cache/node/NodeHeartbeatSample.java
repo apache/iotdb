@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.confignode.manager.load.cache.node;
 
+import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatResp;
+import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.manager.load.cache.AbstractHeartbeatSample;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
-import org.apache.iotdb.mpp.rpc.thrift.TLoadSample;
 
 /** NodeHeartbeatSample records the heartbeat sample of a Node. */
 public class NodeHeartbeatSample extends AbstractHeartbeatSample {
@@ -56,6 +57,18 @@ public class NodeHeartbeatSample extends AbstractHeartbeatSample {
     this.status = NodeStatus.parse(heartbeatResp.getStatus());
     this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
     this.loadSample = heartbeatResp.isSetLoadSample() ? heartbeatResp.getLoadSample() : null;
+  }
+
+  /** Constructor for AINode sample. */
+  public NodeHeartbeatSample(TAIHeartbeatResp heartbeatResp) {
+    super(heartbeatResp.getHeartbeatTimestamp());
+    this.status = NodeStatus.parse(heartbeatResp.getStatus());
+    this.statusReason = heartbeatResp.isSetStatusReason() ? heartbeatResp.getStatusReason() : null;
+    if (heartbeatResp.isSetLoadSample()) {
+      this.loadSample = heartbeatResp.getLoadSample();
+    } else {
+      this.loadSample = null;
+    }
   }
 
   /** Constructor for ConfigNode sample. */

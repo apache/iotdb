@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -185,6 +186,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
@@ -242,6 +244,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -268,6 +271,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
@@ -2216,6 +2220,49 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         dataTypes,
         filePrefix,
         getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  @Override
+  public Operator visitInference(InferenceNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                org.apache.iotdb.db.queryengine.execution.operator.process.AI.InferenceOperator
+                    .class
+                    .getSimpleName());
+
+    ModelInferenceDescriptor modelInferenceDescriptor = node.getModelInferenceDescriptor();
+    ModelInformation modelInformation = modelInferenceDescriptor.getModelInformation();
+    int[] inputShape = modelInformation.getInputShape();
+    int[] outputShape = modelInformation.getOutputShape();
+    TSDataType[] inputTypes = modelInferenceDescriptor.getModelInformation().getInputDataType();
+    TSDataType[] outputTypes = modelInferenceDescriptor.getModelInformation().getOutputDataType();
+
+    long maxRetainedSize =
+        calculateSize(inputShape[0], inputTypes) + TimeColumn.SIZE_IN_BYTES_PER_POSITION;
+    long maxReturnSize = calculateSize(outputShape[0], outputTypes);
+
+    return new org.apache.iotdb.db.queryengine.execution.operator.process.AI.InferenceOperator(
+        operatorContext,
+        child,
+        modelInferenceDescriptor,
+        FragmentInstanceManager.getInstance().getModelInferenceExecutor(),
+        node.getInputColumnNames(),
+        node.getChild().getOutputColumnNames(),
+        maxRetainedSize,
+        maxReturnSize);
+  }
+
+  private long calculateSize(long rowNumber, TSDataType[] dataTypes) {
+    long size = 0;
+    for (int i = 0; i < dataTypes.length; i++) {
+      size += getOutputColumnSizePerLine(dataTypes[i]);
+    }
+    return size * rowNumber;
   }
 
   @Override

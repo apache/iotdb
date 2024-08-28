@@ -59,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SeriesSchemaFetchScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.InferenceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -1365,6 +1366,19 @@ public class LogicalPlanBuilder {
               queryStatement.isGroupByTime(),
               queryStatement.getResultTimeOrder());
     }
+
+    return this;
+  }
+
+  public LogicalPlanBuilder planInference(Analysis analysis) {
+    this.root =
+        new InferenceNode(
+            context.getQueryId().genPlanNodeId(),
+            root,
+            analysis.getModelInferenceDescriptor(),
+            analysis.getOutputExpressions().stream()
+                .map(expressionStringPair -> expressionStringPair.left.getExpressionString())
+                .collect(Collectors.toList()));
 
     return this;
   }

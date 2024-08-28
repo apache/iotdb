@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -53,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataParti
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -60,6 +62,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.response.ainode.AINodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
@@ -72,6 +76,12 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeConfigurationResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
@@ -91,6 +101,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -114,6 +125,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
@@ -128,6 +140,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -155,11 +169,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -276,6 +293,47 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     // Print log to record the ConfigNode that performs the RestartDatanodeRequest
     LOGGER.info("Execute RestartDataNodeRequest {} with result {}", req, resp);
 
+    return resp;
+  }
+
+  @Override
+  public TAINodeRegisterResp registerAINode(TAINodeRegisterReq req) {
+    TAINodeRegisterResp resp =
+        ((AINodeRegisterResp) configManager.registerAINode(req)).convertToAINodeRegisterResp();
+    LOGGER.info("Execute RegisterAINodeRequest {} with result {}", req, resp);
+    return resp;
+  }
+
+  @Override
+  public TAINodeRestartResp restartAINode(TAINodeRestartReq req) {
+    TAINodeRestartResp resp = configManager.restartAINode(req);
+    LOGGER.info("Execute RestartAINodeRequest {} with result {}", req, resp);
+    return resp;
+  }
+
+  @Override
+  public TSStatus removeAINode(TAINodeRemoveReq req) {
+    LOGGER.info("ConfigNode RPC Service start to remove AINode, req: {}", req);
+    RemoveAINodePlan removeAINodePlan = new RemoveAINodePlan(req.getAiNodeLocation());
+    TSStatus status = configManager.removeAINode(removeAINodePlan);
+    LOGGER.info(
+        "ConfigNode RPC Service finished to remove AINode, req: {}, result: {}", req, status);
+    return status;
+  }
+
+  @Override
+  public TShowAINodesResp showAINodes() throws TException {
+    return configManager.showAINodes();
+  }
+
+  @Override
+  public TAINodeConfigurationResp getAINodeConfiguration(int aiNodeId) throws TException {
+    GetAINodeConfigurationPlan getAINodeConfigurationPlan =
+        new GetAINodeConfigurationPlan(aiNodeId);
+    AINodeConfigurationResp aiNodeConfigurationResp =
+        (AINodeConfigurationResp) configManager.getAINodeConfiguration(getAINodeConfigurationPlan);
+    TAINodeConfigurationResp resp = new TAINodeConfigurationResp();
+    aiNodeConfigurationResp.convertToRpcAINodeLocationResp(resp);
     return resp;
   }
 
@@ -1163,6 +1221,26 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowCQResp showCQ() {
     return configManager.showCQ();
+  }
+
+  @Override
+  public TSStatus createModel(TCreateModelReq req) {
+    return configManager.createModel(req);
+  }
+
+  @Override
+  public TSStatus dropModel(TDropModelReq req) {
+    return configManager.dropModel(req);
+  }
+
+  @Override
+  public TShowModelResp showModel(TShowModelReq req) {
+    return configManager.showModel(req);
+  }
+
+  @Override
+  public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
+    return configManager.getModelInfo(req);
   }
 
   @Override
