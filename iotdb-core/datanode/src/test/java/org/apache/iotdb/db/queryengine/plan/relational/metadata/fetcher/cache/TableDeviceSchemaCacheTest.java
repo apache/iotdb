@@ -161,16 +161,17 @@ public class TableDeviceSchemaCacheTest {
             .isPresent());
 
     // Query update
-    final Map<String, TimeValuePair> measurementQueryUpdateMap = new HashMap<>();
 
     final TimeValuePair tv0 = new TimeValuePair(0L, new TsPrimitiveType.TsInt(0));
     final TimeValuePair tv1 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(1));
     final TimeValuePair tv2 = new TimeValuePair(2L, new TsPrimitiveType.TsInt(2));
-    measurementQueryUpdateMap.put("s0", tv0);
-    measurementQueryUpdateMap.put("s1", tv1);
-    measurementQueryUpdateMap.put("s2", tv2);
 
-    cache.updateLastCache(database, table1, device0, measurementQueryUpdateMap);
+    cache.updateLastCache(
+        database,
+        table1,
+        device0,
+        new String[] {"s0", "s1", "s2"},
+        new TimeValuePair[] {tv0, tv1, tv2});
 
     Assert.assertEquals(tv0, cache.getLastEntry(database, table1, device0, "s0"));
     Assert.assertEquals(tv1, cache.getLastEntry(database, table1, device0, "s1"));
@@ -197,7 +198,8 @@ public class TableDeviceSchemaCacheTest {
         database,
         table1,
         device0,
-        Collections.singletonMap("s4", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR));
+        new String[] {"s4"},
+        new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
     Assert.assertSame(
         TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR,
         cache.getLastEntry(database, table1, device0, "s4"));
@@ -211,7 +213,11 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertFalse(result.isPresent());
 
     cache.updateLastCache(
-        database, table1, device0, Collections.singletonMap("", new TimeValuePair(2L, null)));
+        database,
+        table1,
+        device0,
+        new String[] {""},
+        new TimeValuePair[] {new TimeValuePair(2L, null)});
 
     result = cache.getLastRow(database, table1, device0, "", Collections.singletonList("s2"));
     Assert.assertTrue(result.isPresent());
@@ -255,9 +261,11 @@ public class TableDeviceSchemaCacheTest {
     final String[] device1 = new String[] {"hebei", "p_1", "d_1"};
     final String[] device2 = new String[] {"hebei", "p_1", "d_2"};
 
-    cache.updateLastCache(database, table2, device0, measurementQueryUpdateMap);
-    cache.updateLastCache(database, table2, device1, measurementQueryUpdateMap);
-    cache.updateLastCache(database, table2, device2, measurementQueryUpdateMap);
+    final String[] tempMeasurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
+    final TimeValuePair[] tempTimeValuePairs = new TimeValuePair[] {tv0, tv0, tv0, tv0, tv0};
+    cache.updateLastCache(database, table2, device0, tempMeasurements, tempTimeValuePairs);
+    cache.updateLastCache(database, table2, device1, tempMeasurements, tempTimeValuePairs);
+    cache.updateLastCache(database, table2, device2, tempMeasurements, tempTimeValuePairs);
 
     // Test cache eviction
     Assert.assertNull(cache.getLastEntry(database, table2, device0, "s2"));
@@ -268,11 +276,14 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(cache.getLastEntry(database, table2, device2, "s2"));
 
     // Test Long.MIN_VALUE
-    measurementQueryUpdateMap.clear();
-    measurementQueryUpdateMap.put("", new TimeValuePair(Long.MIN_VALUE, null));
-    measurementQueryUpdateMap.put("s2", TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR);
-
-    cache.updateLastCache(database, table2, device0, measurementQueryUpdateMap);
+    cache.updateLastCache(
+        database,
+        table2,
+        device0,
+        new String[] {"", "s2"},
+        new TimeValuePair[] {
+          new TimeValuePair(Long.MIN_VALUE, null), TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
+        });
     result = cache.getLastRow(database, table2, device0, "", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
     Assert.assertTrue(result.get().getLeft().isPresent());
@@ -285,8 +296,8 @@ public class TableDeviceSchemaCacheTest {
         database,
         table2,
         device0,
-        Collections.singletonMap(
-            "s3", new TimeValuePair(Long.MIN_VALUE, new TsPrimitiveType.TsInt(3))));
+        new String[] {"s3"},
+        new TimeValuePair[] {new TimeValuePair(Long.MIN_VALUE, new TsPrimitiveType.TsInt(3))});
 
     result = cache.getLastRow(database, table2, device0, "s3", Arrays.asList("s2", "s3"));
     Assert.assertTrue(result.isPresent());
@@ -338,7 +349,8 @@ public class TableDeviceSchemaCacheTest {
         database,
         table1,
         device0,
-        Collections.singletonMap("s0", new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))));
+        new String[] {"s0"},
+        new TimeValuePair[] {new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))});
     cache.mayUpdateLastCacheWithoutLock(database, table1, device0, measurementWriteUpdateMap);
 
     Assert.assertEquals(tv3, cache.getLastEntry(database, table1, device0, "s0"));
