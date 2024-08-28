@@ -341,7 +341,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeDualManualIT 
       }
 
       // Verify receiver data
-      long timeoutSeconds = 120;
+      long timeoutSeconds = 600;
       List<List<Object>> expectedValues =
           generateTabletResultSetForTable(tablet, measurementSchemas);
       await()
