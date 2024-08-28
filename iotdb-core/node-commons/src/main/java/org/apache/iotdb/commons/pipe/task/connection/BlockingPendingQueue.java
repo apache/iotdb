@@ -116,8 +116,9 @@ public abstract class BlockingPendingQueue<E extends Event> {
         event -> {
           if (event instanceof EnrichedEvent
               && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
-            ((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName());
-            eventCounter.decreaseEventCount(event);
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
             return true;
           }
           return false;

@@ -154,7 +154,7 @@ public abstract class PipeSubtask
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(
       final boolean shouldReport) {
     if (lastEvent != null) {
-      if (lastEvent instanceof EnrichedEvent) {
+      if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent)
             .decreaseReferenceCount(PipeSubtask.class.getName(), shouldReport);
       }
@@ -164,7 +164,7 @@ public abstract class PipeSubtask
 
   protected synchronized void clearReferenceCountAndReleaseLastEvent() {
     if (lastEvent != null) {
-      if (lastEvent instanceof EnrichedEvent) {
+      if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastEvent = null;

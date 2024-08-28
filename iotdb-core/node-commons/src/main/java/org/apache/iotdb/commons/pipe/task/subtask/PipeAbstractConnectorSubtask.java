@@ -227,7 +227,8 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
   protected synchronized void clearReferenceCountAndReleaseLastExceptionEvent() {
     if (lastExceptionEvent != null) {
-      if (lastExceptionEvent instanceof EnrichedEvent) {
+      if (lastExceptionEvent instanceof EnrichedEvent
+          && !((EnrichedEvent) lastExceptionEvent).isReleased()) {
         ((EnrichedEvent) lastExceptionEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastExceptionEvent = null;

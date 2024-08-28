@@ -158,9 +158,10 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
         event -> {
           if (event instanceof EnrichedEvent
               && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
-            ((EnrichedEvent) event)
-                .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName());
-            eventCounter.decreaseEventCount(event);
+            if (((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
             return true;
           }
           return false;
