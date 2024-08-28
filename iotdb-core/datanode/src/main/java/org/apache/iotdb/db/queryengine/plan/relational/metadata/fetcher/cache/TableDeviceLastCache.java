@@ -88,32 +88,39 @@ public class TableDeviceLastCache {
   public int update(
       final @Nonnull String database,
       final @Nonnull String tableName,
-      final @Nonnull Map<String, TimeValuePair> measurementUpdateMap) {
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
-    measurementUpdateMap.forEach(
-        (k, v) -> {
-          if (k.isEmpty()) {
-            if (Objects.isNull(lastTime) || lastTime < v.getTimestamp()) {
-              lastTime = v.getTimestamp();
+
+    for (int i = 0; i < measurements.length; ++i) {
+      final int finalI = i;
+      if (measurements[i].isEmpty()) {
+        if (Objects.isNull(lastTime) || lastTime < timeValuePairs[i].getTimestamp()) {
+          lastTime = timeValuePairs[i].getTimestamp();
+        }
+        continue;
+      }
+      if (!measurement2CachedLastMap.containsKey(measurements[i])) {
+        measurements[i] =
+            DataNodeTableCache.getInstance()
+                .tryGetInternColumnName(database, tableName, measurements[i]);
+      }
+      measurement2CachedLastMap.compute(
+          measurements[i],
+          (measurement, tvPair) -> {
+            if (Objects.isNull(tvPair)
+                || tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
+              diff.addAndGet(
+                  Objects.nonNull(tvPair)
+                      ? LastCacheContainer.getDiffSize(
+                          tvPair.getValue(), timeValuePairs[finalI].getValue())
+                      : (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          + timeValuePairs[finalI].getSize());
+              return timeValuePairs[finalI];
             }
-            return;
-          }
-          if (!measurement2CachedLastMap.containsKey(k)) {
-            k = DataNodeTableCache.getInstance().tryGetInternColumnName(database, tableName, k);
-          }
-          measurement2CachedLastMap.compute(
-              k,
-              (measurement, tvPair) -> {
-                if (Objects.isNull(tvPair) || tvPair.getTimestamp() <= v.getTimestamp()) {
-                  diff.addAndGet(
-                      Objects.nonNull(tvPair)
-                          ? LastCacheContainer.getDiffSize(tvPair.getValue(), v.getValue())
-                          : (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY + v.getSize());
-                  return v;
-                }
-                return tvPair;
-              });
-        });
+            return tvPair;
+          });
+    }
     return diff.get();
   }
 

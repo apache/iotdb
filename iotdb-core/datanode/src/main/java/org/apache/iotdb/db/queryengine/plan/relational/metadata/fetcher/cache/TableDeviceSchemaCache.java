@@ -163,20 +163,22 @@ public class TableDeviceSchemaCache {
    * @param database the device's database, without "root"
    * @param tableName tableName
    * @param deviceId the deviceId without tableName
-   * @param measurementUpdateMap the fetched measurement -> timeValuePair
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCache(
       final String database,
       final String tableName,
       final String[] deviceId,
-      final Map<String, TimeValuePair> measurementUpdateMap) {
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
           new TableId(database, tableName),
           new TableDeviceId(deviceId),
           new TableDeviceCacheEntry(),
-          entry -> entry.updateLastCache(database, tableName, measurementUpdateMap),
+          entry -> entry.updateLastCache(database, tableName, measurements, timeValuePairs),
           true);
     } finally {
       readWriteLock.readLock().unlock();
