@@ -193,8 +193,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         LOGGER.info("{} is in restarting process...", ConfigNodeConstant.GLOBAL_NAME);
-        // TODO: Send a restart RPC to the ConfigNode leader and add clusterId check when restarting
-        // the ConfigNode
 
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();

@@ -421,7 +421,6 @@ public class NodeManager {
     int nodeId = nodeInfo.generateNextNodeId();
     req.getConfigNodeLocation().setConfigNodeId(nodeId);
     configManager.getProcedureManager().addConfigNode(req);
-    String clusterId = configManager.getClusterManager().getClusterId();
     return new TConfigNodeRegisterResp()
         .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
         .setConfigNodeId(nodeId);
