@@ -95,13 +95,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     final Event event;
-    synchronized (this) {
+    synchronized (inputPendingQueue) {
       event =
           lastEvent != null
               ? lastEvent
               : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     }
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
+      lastEvent = null;
       return true;
     }
     // Record this event for retrying on connection failure or other exceptions
@@ -210,7 +211,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
-      synchronized (this) {
+      synchronized (inputPendingQueue) {
         inputPendingQueue.forEach(
             event -> {
               if (event instanceof EnrichedEvent) {
@@ -230,10 +231,13 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * its queued events in the output pipe connector.
    */
   public void discardEventsOfPipe(final String pipeNameToDrop) {
-    // synchronized to use the lastEvent, lastExceptionEvent and inputPendingQueue
-    synchronized (this) {
+    synchronized (inputPendingQueue) {
       // Try to remove the events as much as possible
       inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
+    }
+
+    // synchronized to use the lastEvent & lastExceptionEvent
+    synchronized (this) {
 
       // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
       // stopped submission but will not be stopped by critical exceptions, because when it acquires
