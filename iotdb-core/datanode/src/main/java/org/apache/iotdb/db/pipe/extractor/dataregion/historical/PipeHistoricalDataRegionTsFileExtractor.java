@@ -368,6 +368,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      return;
+    }
     if (!shouldExtractInsertion) {
       return;
     }
