@@ -105,6 +105,8 @@ public abstract class ServerCommandLine {
       output.println("An error occurred while running the command: " + e.getMessage());
       // Forward the exit code from the exception to the calling process
       return e.getErrorCode();
+    } finally {
+      output.flush();
     }
   }
 
