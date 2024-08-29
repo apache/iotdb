@@ -25,11 +25,9 @@ IF "%~1"=="--help" (
     echo Usage:
     echo Remove the AINode with ainode_id
     echo ./sbin/remove-ainode.bat -t [ainode_id]
-    echo Remove the AINode with address:port
-    echo ./sbin/remove-ainode.bat -t [ain_inference_rpc_address:ain_inference_rpc_port]
     echo.
     echo Options:
-    echo ^ ^ -t = ainode_id or [ain_inference_rpc_address:ain_inference_rpc_port]
+    echo ^ ^ -t = ainode_id
     echo ^ ^ -i = When specifying the Python interpreter please enter the address of the executable file of the Python interpreter in the virtual environment. Currently AINode supports virtual environments such as venv, conda, etc. Inputting the system Python interpreter as the installation location is not supported. In order to ensure that scripts are recognized properly, please use absolute paths whenever possible!
     EXIT /B 0
 )
