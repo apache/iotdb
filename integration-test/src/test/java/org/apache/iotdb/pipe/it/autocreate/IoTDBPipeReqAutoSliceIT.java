@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.utils.Pair;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -46,6 +47,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
     receiverEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(32);
   }
 
+  @Test
   public void pipeReqAutoSliceTest() {
     try {
       ISession senderSession = senderEnv.getSessionConnection();
