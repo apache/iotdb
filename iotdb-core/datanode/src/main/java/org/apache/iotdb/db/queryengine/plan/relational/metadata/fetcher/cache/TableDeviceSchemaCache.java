@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
@@ -69,6 +70,8 @@ public class TableDeviceSchemaCache {
    * IDeviceID(translated), Map{@literal <}Measurement, Schema{@literal >}/templateInfo{@literal >}
    */
   private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
+
+  private final Map<String, String> treeModelDatabasePool = new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 

@@ -27,6 +27,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,7 +47,7 @@ public class TableDeviceCacheEntry {
   // create from remote
   // there may exist key is not null, but value is null in this map, which means that the key's
   // corresponding value is null, doesn't mean that the key doesn't exist
-  private final AtomicReference<TableAttributeSchema> deviceSchema = new AtomicReference<>();
+  private final AtomicReference<IDeviceSchema> deviceSchema = new AtomicReference<>();
   private final AtomicReference<TableDeviceLastCache> lastCache = new AtomicReference<>();
 
   /////////////////////////////// Attribute ///////////////////////////////
@@ -63,7 +64,8 @@ public class TableDeviceCacheEntry {
 
   public int updateAttribute(
       final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
-    final TableAttributeSchema schema = deviceSchema.get();
+    // Shall only call this for original table device
+    final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
     final int result =
         Objects.nonNull(schema) ? schema.updateAttribute(database, tableName, updateMap) : 0;
     return Objects.nonNull(deviceSchema.get()) ? result : 0;
@@ -81,14 +83,18 @@ public class TableDeviceCacheEntry {
     return size.get();
   }
 
-  public String getAttribute(final String key) {
-    final TableAttributeSchema map = deviceSchema.get();
-    return Objects.nonNull(map) ? map.getAttributeMap().get(key) : null;
+  public Map<String, String> getAttributeMap() {
+    final IDeviceSchema map = deviceSchema.get();
+    // Cache miss
+    if (Objects.isNull(map)) {
+      return null;
+    }
+    return map instanceof TableAttributeSchema
+        ? ((TableAttributeSchema) map).getAttributeMap()
+        : Collections.emptyMap();
   }
 
-  public Map<String, String> getAttributeMap() {
-    return deviceSchema.get().getAttributeMap();
-  }
+  /////////////////////////////// Tree model ///////////////////////////////
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
