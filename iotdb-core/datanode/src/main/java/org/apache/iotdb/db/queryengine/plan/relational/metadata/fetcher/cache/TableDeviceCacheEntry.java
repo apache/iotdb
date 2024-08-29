@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
+
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -52,7 +54,7 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Attribute ///////////////////////////////
 
-  public int setAttribute(
+  int setAttribute(
       final String database,
       final String tableName,
       final @Nonnull Map<String, String> attributeSetMap) {
@@ -62,7 +64,7 @@ public class TableDeviceCacheEntry {
         + updateAttribute(database, tableName, attributeSetMap);
   }
 
-  public int updateAttribute(
+  int updateAttribute(
       final String database, final String tableName, final @Nonnull Map<String, String> updateMap) {
     // Shall only call this for original table device
     final TableAttributeSchema schema = (TableAttributeSchema) deviceSchema.get();
@@ -71,7 +73,7 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(deviceSchema.get()) ? result : 0;
   }
 
-  public int invalidateAttribute() {
+  int invalidateAttribute() {
     final AtomicInteger size = new AtomicInteger(0);
     deviceSchema.updateAndGet(
         map -> {
@@ -83,7 +85,7 @@ public class TableDeviceCacheEntry {
     return size.get();
   }
 
-  public Map<String, String> getAttributeMap() {
+  Map<String, String> getAttributeMap() {
     final IDeviceSchema map = deviceSchema.get();
     // Cache miss
     if (Objects.isNull(map)) {
@@ -96,9 +98,22 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
+  int setMeasurementSchema(
+      final String database, final String measurement, final SchemaCacheEntry entry) {
+    // Safe here because tree schema is invalidated by the whole entry
+    return (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database))
+            ? TreeDeviceNormalSchema.INSTANCE_SIZE
+            : 0)
+        + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurement, entry);
+  }
+
+  IDeviceSchema getDeviceSchema() {
+    return deviceSchema.get();
+  }
+
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  public int updateLastCache(
+  int updateLastCache(
       final String database,
       final String tableName,
       final String[] measurements,
@@ -115,7 +130,7 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  public int tryUpdate(
+  int tryUpdate(
       final String database,
       final String tableName,
       final String[] measurements,
@@ -128,13 +143,13 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  public TimeValuePair getTimeValuePair(final String measurement) {
+  TimeValuePair getTimeValuePair(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
   }
 
   // Shall pass in "" if last by time
-  public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
+  Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final String sourceMeasurement, final List<String> targetMeasurements) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache)
@@ -142,7 +157,7 @@ public class TableDeviceCacheEntry {
         : Optional.empty();
   }
 
-  public int invalidateLastCache() {
+  int invalidateLastCache() {
     final AtomicInteger size = new AtomicInteger(0);
     lastCache.updateAndGet(
         cacheEntry -> {
@@ -156,7 +171,7 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Management ///////////////////////////////
 
-  public int estimateSize() {
+  int estimateSize() {
     final IDeviceSchema schema = deviceSchema.get();
     final TableDeviceLastCache cache = lastCache.get();
     return (int)

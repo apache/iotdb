@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
-import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
@@ -42,10 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -78,64 +74,6 @@ public class TimeSeriesSchemaCache {
 
   public long getRequestCount() {
     return dualKeyCache.stats().requestCount();
-  }
-
-  /**
-   * Get SchemaEntity info without auto create schema
-   *
-   * @param devicePath should not be measurementPath or AlignedPath
-   * @param measurements
-   * @return timeseries partialPath and its SchemaEntity
-   */
-  public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    Set<String> storageGroupSet = new HashSet<>();
-
-    dualKeyCache.compute(
-        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
-          @Override
-          public PartialPath getFirstKey() {
-            return devicePath;
-          }
-
-          @Override
-          public String[] getSecondKeyList() {
-            return measurements;
-          }
-
-          @Override
-          public void computeValue(int index, SchemaCacheEntry value) {
-            if (value != null) {
-              schemaTree.appendSingleMeasurement(
-                  devicePath.concatAsMeasurementPath(value.getSchemaEntryId()),
-                  value.getIMeasurementSchema(),
-                  value.getTagMap(),
-                  null,
-                  null,
-                  value.isAligned());
-              storageGroupSet.add(value.getStorageGroup());
-            }
-          }
-        });
-    schemaTree.setDatabases(storageGroupSet);
-    return schemaTree;
-  }
-
-  public ClusterSchemaTree get(PartialPath fullPath) {
-    SchemaCacheEntry schemaCacheEntry =
-        dualKeyCache.get(fullPath.getDevicePath(), fullPath.getMeasurement());
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    if (schemaCacheEntry != null) {
-      schemaTree.appendSingleMeasurement(
-          fullPath,
-          schemaCacheEntry.getIMeasurementSchema(),
-          schemaCacheEntry.getTagMap(),
-          null,
-          null,
-          schemaCacheEntry.isAligned());
-      schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
-    }
-    return schemaTree;
   }
 
   public List<Integer> computeAndRecordLogicalView(ISchemaComputation schemaComputation) {

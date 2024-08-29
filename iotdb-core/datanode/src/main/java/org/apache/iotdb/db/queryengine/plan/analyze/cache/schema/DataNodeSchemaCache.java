@@ -29,6 +29,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 
@@ -39,7 +42,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -112,18 +118,30 @@ public class DataNodeSchemaCache {
    * @param measurements
    * @return timeseries partialPath and its SchemaEntity
    */
-  public ClusterSchemaTree get(PartialPath devicePath, String[] measurements) {
-    return timeSeriesSchemaCache.get(devicePath, measurements);
-  }
-
-  public ClusterSchemaTree get(PartialPath fullPath) {
-    ClusterSchemaTree clusterSchemaTree =
-        deviceUsingTemplateSchemaCache.get(fullPath.getDevicePath());
-    if (clusterSchemaTree == null || clusterSchemaTree.isEmpty()) {
-      return timeSeriesSchemaCache.get(fullPath);
-    } else {
-      return clusterSchemaTree;
+  public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
+    final ClusterSchemaTree tree = new ClusterSchemaTree();
+    final IDeviceSchema schema =
+        TableDeviceSchemaFetcher.getInstance()
+            .getTableDeviceCache()
+            .getDeviceSchema(devicePath.getNodes());
+    if (!(schema instanceof TreeDeviceNormalSchema)) {
+      return tree;
     }
+    final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+    for (final String measurement : measurements) {
+      final SchemaCacheEntry entry = treeSchema.getSchemaCacheEntry(measurement);
+      if (Objects.nonNull(entry)) {
+        tree.appendSingleMeasurement(
+            devicePath.concatNode(measurement),
+            entry.getIMeasurementSchema(),
+            entry.getTagMap(),
+            null,
+            null,
+            entry.isAligned());
+      }
+    }
+    tree.setDatabases(Collections.singleton(treeSchema.getStorageGroup()));
+    return tree;
   }
 
   /**
@@ -142,8 +160,24 @@ public class DataNodeSchemaCache {
    * @param fullPath full path
    * @return empty if cache miss
    */
-  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(PartialPath fullPath) {
-    return timeSeriesSchemaCache.get(fullPath);
+  public ClusterSchemaTree getMatchedSchemaWithoutTemplate(final PartialPath fullPath) {
+    final ClusterSchemaTree tree = new ClusterSchemaTree();
+    final IDeviceSchema schema =
+        TableDeviceSchemaFetcher.getInstance()
+            .getTableDeviceCache()
+            .getDeviceSchema(Arrays.copyOf(fullPath.getNodes(), fullPath.getNodeLength() - 1));
+    if (!(schema instanceof TreeDeviceNormalSchema)) {
+      return tree;
+    }
+    final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+    final SchemaCacheEntry entry = treeSchema.getSchemaCacheEntry(fullPath.getMeasurement());
+    if (Objects.isNull(entry)) {
+      return tree;
+    }
+    tree.appendSingleMeasurement(
+        fullPath, entry.getIMeasurementSchema(), entry.getTagMap(), null, null, entry.isAligned());
+    tree.setDatabases(Collections.singleton(treeSchema.getStorageGroup()));
+    return tree;
   }
 
   public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {

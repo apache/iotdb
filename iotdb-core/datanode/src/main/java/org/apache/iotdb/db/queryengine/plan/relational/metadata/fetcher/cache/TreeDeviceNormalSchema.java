@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public class TreeDeviceNormalSchema implements IDeviceSchema {
 
-  private static final int INSTANCE_SIZE =
+  static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class)
           + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   private final String storageGroup;
@@ -39,7 +39,15 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     this.storageGroup = storageGroup;
   }
 
-  int update(final String measurement, final SchemaCacheEntry entry) {
+  public String getStorageGroup() {
+    return storageGroup;
+  }
+
+  public SchemaCacheEntry getSchemaCacheEntry(final String measurement) {
+    return measurementMap.get(measurement);
+  }
+
+  public int update(final String measurement, final SchemaCacheEntry entry) {
     final SchemaCacheEntry cachedEntry = measurementMap.put(measurement, entry);
     return Objects.isNull(cachedEntry)
         ? (int) (RamUsageEstimator.sizeOf(measurement) + SchemaCacheEntry.estimateSize(entry))

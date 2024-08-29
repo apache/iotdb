@@ -21,12 +21,14 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -290,7 +292,44 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
+  public void putMeasurementSchema(
+      String database,
+      final String[] devicePath,
+      final String measurement,
+      final SchemaCacheEntry measurementSchema) {
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(devicePath));
+    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    dualKeyCache.update(
+        new TableId(devicePath[1], deviceID.getTableName()),
+        deviceID,
+        new TableDeviceCacheEntry(),
+        entry ->
+            entry.setMeasurementSchema(
+                Objects.nonNull(previousDatabase) ? previousDatabase : database,
+                measurement,
+                measurementSchema),
+        false);
+  }
+
+  public IDeviceSchema getDeviceSchema(final String[] devicePath) {
+    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath);
+    final TableDeviceCacheEntry entry =
+        dualKeyCache.get(new TableId(devicePath[1], deviceID.getTableName()), deviceID);
+    return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
+  }
+
   /////////////////////////////// Common ///////////////////////////////
+
+  public long getHitCount() {
+    return dualKeyCache.stats().hitCount();
+  }
+
+  public long getRequestCount() {
+    return dualKeyCache.stats().requestCount();
+  }
+
   public void invalidate(final String database) {
     readWriteLock.writeLock().lock();
     try {
@@ -307,5 +346,9 @@ public class TableDeviceSchemaCache {
     } finally {
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  public void invalidateAll() {
+    dualKeyCache.invalidateAll();
   }
 }
