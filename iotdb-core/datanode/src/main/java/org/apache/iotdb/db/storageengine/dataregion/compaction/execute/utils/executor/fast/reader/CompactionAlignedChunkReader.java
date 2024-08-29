@@ -39,7 +39,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 
 public class CompactionAlignedChunkReader {
 
@@ -109,9 +109,10 @@ public class CompactionAlignedChunkReader {
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
 
-    // uncompress time page data
+    // decrypt and uncompress time page data
     ByteBuffer uncompressedTimePageData =
-        uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData, decryptor);
+        decryptAndUncompressPageData(
+            timePageHeader, timeUnCompressor, compressedTimePageData, decryptor);
     // uncompress value page datas
     List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>();
     List<TSDataType> valueTypes = new ArrayList<>();
@@ -124,7 +125,7 @@ public class CompactionAlignedChunkReader {
       } else {
         ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
         uncompressedValuePageDatas.add(
-            uncompressPageData(
+            decryptAndUncompressPageData(
                 valuePageHeaders.get(i),
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
                 compressedValuePageDatas.get(i),

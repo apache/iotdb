@@ -332,7 +332,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
               == TsFileConstant.TIME_COLUMN_MASK) {
             timeChunkList.add(
                 new Chunk(
-                    chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+                    chunkHeader,
+                    tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                    tsFileSequenceReader.getDecryptor()));
             break;
           }
 
@@ -347,12 +349,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
                   ? new ChunkReader(
                       new Chunk(
                           chunkHeader,
-                          tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())),
+                          tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                          tsFileSequenceReader.getDecryptor()),
                       filter)
                   : new SinglePageWholeChunkReader(
                       new Chunk(
                           chunkHeader,
-                          tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+                          tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                          tsFileSequenceReader.getDecryptor()));
           currentIsAligned = false;
           currentMeasurements.add(
               new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
@@ -396,7 +400,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
           valueChunkList.add(
               new Chunk(
-                  chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+                  chunkHeader,
+                  tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize()),
+                  tsFileSequenceReader.getDecryptor()));
           currentMeasurements.add(
               new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
           break;

@@ -40,7 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 
 public class CompactionChunkReader {
 
@@ -130,9 +130,10 @@ public class CompactionChunkReader {
    */
   public TsBlock readPageData(PageHeader pageHeader, ByteBuffer compressedPageData)
       throws IOException {
-    // uncompress page data
+    // decrypt and uncompress page data
     ByteBuffer pageData =
-        uncompressPageData(pageHeader, unCompressor, compressedPageData, decryptor);
+        decryptAndUncompressPageData(pageHeader, unCompressor, compressedPageData, decryptor);
+    ;
 
     // decode page data
     TSDataType dataType = chunkHeader.getDataType();

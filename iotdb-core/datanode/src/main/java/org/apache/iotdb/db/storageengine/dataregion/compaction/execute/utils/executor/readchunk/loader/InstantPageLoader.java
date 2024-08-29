@@ -28,12 +28,14 @@ import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.EncryptionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import static org.apache.tsfile.read.reader.chunk.ChunkReader.decryptAndUncompressPageData;
 import static org.apache.tsfile.read.reader.chunk.ChunkReader.uncompressPageData;
 
 public class InstantPageLoader extends PageLoader {
@@ -67,7 +69,11 @@ public class InstantPageLoader extends PageLoader {
   @Override
   public ByteBuffer getUnCompressedData() throws IOException {
     IUnCompressor unCompressor = IUnCompressor.getUnCompressor(compressionType);
-    return uncompressPageData(pageHeader, unCompressor, pageData, decryptor);
+    if (decryptor == null || decryptor.getEncryptionType() == EncryptionType.UNENCRYPTED) {
+      return uncompressPageData(pageHeader, unCompressor, pageData);
+    } else {
+      return decryptAndUncompressPageData(pageHeader, unCompressor, pageData, decryptor);
+    }
   }
 
   @Override
