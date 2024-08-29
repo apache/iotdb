@@ -246,6 +246,25 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
 
+      if (isUsingPipeConsensus()) {
+        long dataRegionStartTime = System.currentTimeMillis();
+        while (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+          try {
+            TimeUnit.MILLISECONDS.sleep(1000);
+          } catch (InterruptedException e) {
+            logger.warn("IoTDB DataNode failed to set up.", e);
+            Thread.currentThread().interrupt();
+            return;
+          }
+        }
+        DataRegionConsensusImpl.getInstance().start();
+        long dataRegionEndTime = System.currentTimeMillis();
+        logger.info(
+            "DataRegion consensus start successfully, which takes {} ms.",
+            (dataRegionEndTime - dataRegionStartTime));
+        dataRegionConsensusStarted = true;
+      }
+
     } catch (StartupException | IOException e) {
       logger.error("Fail to start server", e);
       stop();
@@ -664,12 +683,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           "SchemaRegion consensus start successfully, which takes {} ms.",
           (schemaRegionEndTime - startTime));
       schemaRegionConsensusStarted = true;
-      DataRegionConsensusImpl.getInstance().start();
-      long dataRegionEndTime = System.currentTimeMillis();
-      logger.info(
-          "DataRegion consensus start successfully, which takes {} ms.",
-          (dataRegionEndTime - schemaRegionEndTime));
-      dataRegionConsensusStarted = true;
+      if (!isUsingPipeConsensus()) {
+        DataRegionConsensusImpl.getInstance().start();
+        long dataRegionEndTime = System.currentTimeMillis();
+        logger.info(
+            "DataRegion consensus start successfully, which takes {} ms.",
+            (dataRegionEndTime - schemaRegionEndTime));
+        dataRegionConsensusStarted = true;
+      }
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -718,7 +739,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     logger.info(
         "IoTDB DataNode is setting up, some databases may not be ready now, please wait several seconds...");
     long startTime = System.currentTimeMillis();
-    while (!StorageEngine.getInstance().isAllSgReady()) {
+    while (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
       try {
         TimeUnit.MILLISECONDS.sleep(1000);
       } catch (InterruptedException e) {
@@ -812,6 +833,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     resource.setMaxMemory(Runtime.getRuntime().totalMemory());
 
     return new TDataNodeConfiguration(location, resource);
+  }
+
+  private boolean isUsingPipeConsensus() {
+    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS);
   }
 
   private void registerUdfServices() throws StartupException {
