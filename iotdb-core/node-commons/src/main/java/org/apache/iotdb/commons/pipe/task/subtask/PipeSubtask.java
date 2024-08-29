@@ -148,7 +148,7 @@ public abstract class PipeSubtask
 
   @Override
   public void close() {
-    clearReferenceCountAndReleaseLastEvent();
+    clearReferenceCountAndReleaseLastEvent(null);
   }
 
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(
@@ -162,12 +162,21 @@ public abstract class PipeSubtask
     }
   }
 
-  protected synchronized void clearReferenceCountAndReleaseLastEvent() {
+  protected synchronized void clearReferenceCountAndReleaseLastEvent(final Event actualLastEvent) {
+    // lastEvent may be set to null due to PipeConnectorSubtask#discardEventsOfPipe
     if (lastEvent != null) {
       if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastEvent = null;
+    }
+
+    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
+    // and finally exception occurs, we need to release the actual last event from the connector
+    // given by the parameter
+    if (actualLastEvent instanceof EnrichedEvent
+        && !((EnrichedEvent) actualLastEvent).isReleased()) {
+      ((EnrichedEvent) actualLastEvent).clearReferenceCount(PipeSubtask.class.getName());
     }
   }
 

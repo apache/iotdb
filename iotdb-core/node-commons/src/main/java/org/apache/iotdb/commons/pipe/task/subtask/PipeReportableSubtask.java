@@ -39,7 +39,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   public synchronized void onFailure(final Throwable throwable) {
     if (isClosed.get()) {
       LOGGER.info("onFailure in pipe subtask, ignored because pipe is dropped.", throwable);
-      clearReferenceCountAndReleaseLastEvent();
+      clearReferenceCountAndReleaseLastEvent(null);
       return;
     }
 

@@ -201,7 +201,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     }
 
