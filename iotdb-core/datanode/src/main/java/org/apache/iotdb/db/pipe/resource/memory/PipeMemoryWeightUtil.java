@@ -83,14 +83,25 @@ public class PipeMemoryWeightUtil {
 
     // values
     final List<Field> fields = row.getFields();
-    int schemaCount = fields.size();
-    for (final Field field : fields) {
-      final TSDataType tsDataType = field.getDataType();
-      if (tsDataType.isBinary()) {
-        final Binary binary = field.getBinaryV();
-        totalSizeInBytes += binary == null ? 0 : binary.getLength();
-      } else {
-        totalSizeInBytes += tsDataType.getDataTypeSize();
+    int schemaCount = 0;
+    if (fields != null) {
+      schemaCount = fields.size();
+      for (final Field field : fields) {
+        if (field == null) {
+          continue;
+        }
+
+        final TSDataType tsDataType = field.getDataType();
+        if (tsDataType == null) {
+          continue;
+        }
+
+        if (tsDataType.isBinary()) {
+          final Binary binary = field.getBinaryV();
+          totalSizeInBytes += binary == null ? 0 : binary.getLength();
+        } else {
+          totalSizeInBytes += tsDataType.getDataTypeSize();
+        }
       }
     }
 
@@ -105,30 +116,37 @@ public class PipeMemoryWeightUtil {
    */
   public static Pair<Integer, Integer> calculateTabletRowCountAndMemory(BatchData batchData) {
     int totalSizeInBytes = 0;
-    int schemaCount = 1;
+    int schemaCount = 0;
 
     // timestamp
     totalSizeInBytes += 8L;
 
     // values
     final TSDataType type = batchData.getDataType();
-    if (type == TSDataType.VECTOR) {
-      schemaCount = batchData.getVector().length;
-      for (int i = 0; i < schemaCount; ++i) {
-        final TsPrimitiveType primitiveType = batchData.getVector()[i];
-        if (primitiveType.getDataType().isBinary()) {
-          final Binary binary = primitiveType.getBinary();
+    if (type != null) {
+      if (type == TSDataType.VECTOR && batchData.getVector() != null) {
+        schemaCount = batchData.getVector().length;
+        for (int i = 0; i < schemaCount; ++i) {
+          final TsPrimitiveType primitiveType = batchData.getVector()[i];
+          if (primitiveType == null || primitiveType.getDataType() == null) {
+            continue;
+          }
+
+          if (primitiveType.getDataType().isBinary()) {
+            final Binary binary = primitiveType.getBinary();
+            totalSizeInBytes += binary == null ? 0 : binary.getLength();
+          } else {
+            totalSizeInBytes += primitiveType.getDataType().getDataTypeSize();
+          }
+        }
+      } else {
+        schemaCount = 1;
+        if (type.isBinary()) {
+          final Binary binary = batchData.getBinary();
           totalSizeInBytes += binary == null ? 0 : binary.getLength();
         } else {
-          totalSizeInBytes += primitiveType.getDataType().getDataTypeSize();
+          totalSizeInBytes += type.getDataTypeSize();
         }
-      }
-    } else {
-      if (type.isBinary()) {
-        final Binary binary = batchData.getBinary();
-        totalSizeInBytes += binary == null ? 0 : binary.getLength();
-      } else {
-        totalSizeInBytes += type.getDataTypeSize();
       }
     }
 

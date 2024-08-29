@@ -194,10 +194,12 @@ public class PipeRow implements Row {
     int rowSize = 0;
     rowSize += 8; // timestamp
     for (int i = 0; i < valueColumnTypes.length; i++) {
-      if (valueColumnTypes[i].isBinary()) {
-        rowSize += getBinary(i) != null ? getBinary(i).getLength() : 0;
-      } else {
-        rowSize += valueColumnTypes[i].getDataTypeSize();
+      if (valueColumnTypes[i] != null) {
+        if (valueColumnTypes[i].isBinary()) {
+          rowSize += getBinary(i) != null ? getBinary(i).getLength() : 0;
+        } else {
+          rowSize += valueColumnTypes[i].getDataTypeSize();
+        }
       }
     }
     return rowSize;
