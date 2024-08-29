@@ -102,6 +102,17 @@ public class TestUtils {
     }
   }
 
+  public static void assertTableScan(
+      TableScanNode tableScanNode,
+      List<String> deviceEntries,
+      Ordering ordering,
+      long pushLimit,
+      long pushOffset,
+      boolean pushLimitToEachDevice) {
+    assertTableScan(
+        tableScanNode, deviceEntries, ordering, pushLimit, pushOffset, pushLimitToEachDevice, "");
+  }
+
   public static void assertMergeSortNode(MergeSortNode mergeSortNode) {
     assertTrue(mergeSortNode.getChildren().get(0) instanceof ExchangeNode);
     assertTrue(mergeSortNode.getChildren().get(1) instanceof SortNode);

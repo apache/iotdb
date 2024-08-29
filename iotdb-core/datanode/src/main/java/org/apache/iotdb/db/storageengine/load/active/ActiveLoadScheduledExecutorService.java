@@ -47,7 +47,6 @@ public abstract class ActiveLoadScheduledExecutorService {
       IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds();
   private final ScheduledExecutorService scheduledExecutorService;
   private Future<?> future;
-  private long rounds;
 
   private final List<Pair<WrappedRunnable, Long>> jobs = new CopyOnWriteArrayList<>();
 
@@ -74,8 +73,6 @@ public abstract class ActiveLoadScheduledExecutorService {
 
   public synchronized void start() {
     if (future == null) {
-      rounds = 0;
-
       future =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               scheduledExecutorService,
@@ -88,12 +85,8 @@ public abstract class ActiveLoadScheduledExecutorService {
   }
 
   private void execute() {
-    ++rounds;
-
     for (final Pair<WrappedRunnable, Long> periodicalJob : jobs) {
-      if (rounds % periodicalJob.right == 0) {
-        periodicalJob.left.run();
-      }
+      periodicalJob.left.run();
     }
   }
 

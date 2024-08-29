@@ -751,7 +751,6 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice,
-        "");
+        isPushLimitToEachDevice);
   }
 }

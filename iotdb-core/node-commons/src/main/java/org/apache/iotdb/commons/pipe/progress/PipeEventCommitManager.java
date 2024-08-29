@@ -130,6 +130,35 @@ public class PipeEventCommitManager {
     return String.format("%s_%s_%s", pipeName, regionId, creationTime);
   }
 
+  /**
+   * Parses the region ID from the given committer key.
+   *
+   * <p>The committer key is expected to be in the format of {@code
+   * <pipeName>_<regionId>_<creationTime>}, where {@code pipeName} may contain underscores. This
+   * method extracts the region ID, which is assumed to be an integer between the second-to-last and
+   * the last underscore in the string.
+   *
+   * @param committerKey the committer key to parse.
+   * @return the parsed region ID as an {@code int}, or {@code -1} if the committer key format is
+   *     invalid or if the region ID is not a valid integer.
+   */
+  public static int parseRegionIdFromCommitterKey(final String committerKey) {
+    try {
+      final int lastUnderscoreIndex = committerKey.lastIndexOf('_');
+      final int secondLastUnderscoreIndex = committerKey.lastIndexOf('_', lastUnderscoreIndex - 1);
+
+      if (lastUnderscoreIndex == -1 || secondLastUnderscoreIndex == -1) {
+        return -1; // invalid format
+      }
+
+      final String regionIdStr =
+          committerKey.substring(secondLastUnderscoreIndex + 1, lastUnderscoreIndex);
+      return Integer.parseInt(regionIdStr); // convert region id to integer
+    } catch (final NumberFormatException e) {
+      return -1; // return -1 if the region id is not a valid integer
+    }
+  }
+
   public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
   }
