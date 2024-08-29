@@ -145,7 +145,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitInsertRows(
       final InsertRowsStatement insertRowsStatement, final TSStatus status) {
     if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
       return Optional.empty();
     }
@@ -167,7 +168,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitInsertRowsOfOneDevice(
       final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, final TSStatus status) {
     if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
       return Optional.empty();
     }
@@ -200,7 +202,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   public Optional<TSStatus> visitInsertMultiTablets(
       final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus status) {
     if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode())
         && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
       return Optional.empty();
     }
