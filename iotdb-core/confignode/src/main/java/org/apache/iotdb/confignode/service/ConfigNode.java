@@ -240,8 +240,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
         // Persistence system parameters after the consensusGroup is built,
         // or the consensusGroup will not be initialized successfully otherwise.
-        configManager.getClusterManager().checkClusterId();
-        CONF.setClusterId(configManager.getClusterManager().getClusterId());
         SystemPropertiesUtils.storeSystemParameters();
 
         // Wait for ConfigNode-leader elected before applying itself
@@ -420,7 +418,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         }
         /* Always set ConfigNodeId before initConsensusManager */
         CONF.setConfigNodeId(resp.getConfigNodeId());
-        CONF.setClusterId(resp.getClusterId());
         configManager.initConsensusManager();
         return;
       } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {

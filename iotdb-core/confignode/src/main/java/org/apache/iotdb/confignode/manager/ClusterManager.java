@@ -70,7 +70,7 @@ public class ClusterManager {
     this.clusterInfo = clusterInfo;
   }
 
-  public synchronized void checkClusterId() {
+  public void checkClusterId() {
     if (clusterInfo.getClusterId() != null) {
       LOGGER.info("clusterID: {}", clusterInfo.getClusterId());
       return;

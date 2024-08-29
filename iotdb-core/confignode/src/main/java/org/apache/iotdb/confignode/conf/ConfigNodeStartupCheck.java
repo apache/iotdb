@@ -74,9 +74,8 @@ public class ConfigNodeStartupCheck extends StartupChecks {
     checkGlobalConfig();
     createDirsIfNecessary();
     if (SystemPropertiesUtils.isRestarted()) {
-      /* Always restore ConfigNodeId and ClusterId first */
+      /* Always restore ConfigNodeId first */
       CONF.setConfigNodeId(SystemPropertiesUtils.loadConfigNodeIdWhenRestarted());
-      CONF.setClusterId(SystemPropertiesUtils.loadClusterIdWhenRestarted());
 
       SystemPropertiesUtils.checkSystemProperties();
     }

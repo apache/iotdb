@@ -446,7 +446,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     initTTLInformation(runtimeConfiguration.getAllTTLInformation());
 
     /* Store cluster ID */
-    storeClusterID(runtimeConfiguration.getClusterId());
+    String clusterId = runtimeConfiguration.getClusterId();
+    if (clusterId != null) {
+      storeClusterID(clusterId);
+    }
 
     /* Store table info*/
     DataNodeTableCache.getInstance().init(runtimeConfiguration.getTableInfo());

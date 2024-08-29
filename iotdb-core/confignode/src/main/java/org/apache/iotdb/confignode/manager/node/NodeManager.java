@@ -424,8 +424,7 @@ public class NodeManager {
     String clusterId = configManager.getClusterManager().getClusterId();
     return new TConfigNodeRegisterResp()
         .setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION)
-        .setConfigNodeId(nodeId)
-        .setClusterId(clusterId);
+        .setConfigNodeId(nodeId);
   }
 
   public TSStatus updateConfigNodeIfNecessary(int configNodeId, TNodeVersionInfo versionInfo) {

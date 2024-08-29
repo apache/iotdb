@@ -414,7 +414,6 @@ struct TConfigNodeRegisterReq {
 struct TConfigNodeRegisterResp {
   1: required common.TSStatus status
   2: optional i32 configNodeId
-  3: optional string clusterId
 }
 
 struct TConfigNodeHeartbeatReq {

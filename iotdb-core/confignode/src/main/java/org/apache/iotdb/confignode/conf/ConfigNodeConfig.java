@@ -38,9 +38,6 @@ public class ConfigNodeConfig {
   /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
 
-  /** ClusterId, the default value "" will be changed after join cluster. */
-  private volatile String clusterId = "";
-
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
   private volatile int configNodeId = -1;
 
@@ -342,14 +339,6 @@ public class ConfigNodeConfig {
 
   public void setClusterName(String clusterName) {
     this.clusterName = clusterName;
-  }
-
-  public String getClusterId() {
-    return clusterId;
-  }
-
-  public void setClusterId(String clusterId) {
-    this.clusterId = clusterId;
   }
 
   public int getConfigNodeId() {
