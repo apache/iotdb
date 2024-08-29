@@ -614,6 +614,15 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final TSStatus status = executeStatement(statement);
+    if (statement instanceof InsertBaseStatement) {
+      InsertBaseStatement insertBaseStatement = (InsertBaseStatement) statement;
+      return (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                  && !insertBaseStatement.hasFailedMeasurements())
+              || !shouldConvertDataTypeOnTypeMismatch
+          ? status
+          : statement.accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, status).orElse(status);
+    }
+
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
             || !shouldConvertDataTypeOnTypeMismatch
         ? status
