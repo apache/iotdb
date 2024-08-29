@@ -114,7 +114,7 @@ public class IoTDBDeviceIT {
           Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "count devices from table0 where substring(region_id, cast(plant_id as int32), 1) < plant_id"),
+              "count devices from table0 where substring(region_id, cast((cast(plant_id as int32) - 4) as int32 ) , 1) < plant_id"),
           "count(devices),",
           Collections.singleton("1,"));
       // Test get from cache

@@ -56,6 +56,8 @@ public enum TableBuiltinScalarFunction {
   LN("ln"),
   LOG10("log10"),
   SQRT("sqrt"),
+  PI("pi"),
+  E("e"),
   DATE_BIN("date_bin"),
   ;
 
