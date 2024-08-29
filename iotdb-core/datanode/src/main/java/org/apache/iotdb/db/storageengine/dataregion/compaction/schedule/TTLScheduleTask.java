@@ -53,7 +53,7 @@ public class TTLScheduleTask implements Callable<Void> {
     while (true) {
       try {
         Thread.sleep(ttlCheckInterval);
-        if (!StorageEngine.getInstance().isAllSgReady()) {
+        if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
           continue;
         }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);
