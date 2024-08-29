@@ -62,6 +62,12 @@ public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  /**
+   * In table model: {@literal <}QualifiedObjectName, IDeviceID, lastCache / attributes{@literal >}
+   *
+   * <p>In tree model: {@literal <}Pair{@literal <}node[1], {@code null}{@literal >}, IDeviceID(With
+   * partial path nodes), Map{@literal <}Measurement, Schema{@literal >}/templateInfo{@literal >}
+   */
   private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
@@ -281,6 +287,9 @@ public class TableDeviceSchemaCache {
         false);
   }
 
+  /////////////////////////////// Tree model ///////////////////////////////
+
+  /////////////////////////////// Common ///////////////////////////////
   public void invalidate(final String database) {
     readWriteLock.writeLock().lock();
     try {
