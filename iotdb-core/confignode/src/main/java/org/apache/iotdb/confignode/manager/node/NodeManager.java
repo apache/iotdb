@@ -262,6 +262,7 @@ public class NodeManager {
           DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
       runtimeConfiguration.setTableInfo(
           getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
+      runtimeConfiguration.setClusterId(configManager.getClusterManager().getClusterId());
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
@@ -315,8 +316,7 @@ public class NodeManager {
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    String clusterId = configManager.getClusterManager().getClusterId();
-    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
     return resp;
   }
 

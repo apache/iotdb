@@ -447,9 +447,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store cluster ID */
     String clusterId = runtimeConfiguration.getClusterId();
-    if (clusterId != null) {
-      storeClusterID(clusterId);
-    }
+    storeClusterID(clusterId);
 
     /* Store table info*/
     DataNodeTableCache.getInstance().init(runtimeConfiguration.getTableInfo());
@@ -1084,8 +1082,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void storeClusterID(String clusterID) throws StartupException {
     try {
-      config.setClusterId(clusterID);
-      IoTDBStartCheck.getInstance().serializeClusterID(clusterID);
+      if (config.getClusterId().isEmpty()) {
+        config.setClusterId(clusterID);
+        IoTDBStartCheck.getInstance().serializeClusterID(clusterID);
+      }
     } catch (IOException e) {
       throw new StartupException(e);
     }
