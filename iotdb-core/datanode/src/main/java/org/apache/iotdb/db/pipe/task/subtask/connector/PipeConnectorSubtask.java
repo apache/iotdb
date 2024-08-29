@@ -93,13 +93,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       return false;
     }
 
-    final Event event;
-    synchronized (inputPendingQueue) {
-      event =
-          lastEvent != null
-              ? lastEvent
-              : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
-    }
+    final Event event =
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
@@ -210,9 +207,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
-      synchronized (inputPendingQueue) {
-        inputPendingQueue.discardAllEvents();
-      }
+      inputPendingQueue.discardAllEvents();
 
       // Should be called after outputPipeConnector.close()
       super.close();
@@ -224,10 +219,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * its queued events in the output pipe connector.
    */
   public void discardEventsOfPipe(final String pipeNameToDrop) {
-    synchronized (inputPendingQueue) {
-      // Try to remove the events as much as possible
-      inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
-    }
+    // Try to remove the events as much as possible
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
 
     // synchronized to use the lastEvent & lastExceptionEvent
     synchronized (this) {
