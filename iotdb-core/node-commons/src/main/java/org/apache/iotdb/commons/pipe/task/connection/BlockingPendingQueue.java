@@ -111,6 +111,18 @@ public abstract class BlockingPendingQueue<E extends Event> {
     pendingQueue.forEach(action);
   }
 
+  public void discardAllEvents() {
+    pendingQueue.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+          }
+          return true;
+        });
+  }
+
   public void discardEventsOfPipe(final String pipeNameToDrop) {
     pendingQueue.removeIf(
         event -> {

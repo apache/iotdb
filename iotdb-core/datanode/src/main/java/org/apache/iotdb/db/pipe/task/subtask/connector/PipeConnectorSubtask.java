@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
@@ -32,7 +34,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionConnectorMetrics;
-import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -41,12 +42,8 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
@@ -94,13 +91,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       return false;
     }
 
-    final Event event;
-    synchronized (this) {
-      event =
+    final Event event =
           lastEvent != null
               ? lastEvent
               : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
-    }
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
       lastEvent = null;
       return true;
@@ -211,15 +205,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
-      synchronized (this) {
-        inputPendingQueue.forEach(
-            event -> {
-              if (event instanceof EnrichedEvent) {
-                ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
-              }
-            });
-        inputPendingQueue.clear();
-      }
+      inputPendingQueue.discardAllEvents();
 
       // Should be called after outputPipeConnector.close()
       super.close();
@@ -231,11 +217,11 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * its queued events in the output pipe connector.
    */
   public void discardEventsOfPipe(final String pipeNameToDrop) {
-    // synchronized to use the lastEvent, lastExceptionEvent and inputPendingQueue
-    synchronized (this) {
-      // Try to remove the events as much as possible
-      inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
+    // Try to remove the events as much as possible
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
 
+    // synchronized to use the lastEvent & lastExceptionEvent
+    synchronized (this) {
       // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
       // stopped submission but will not be stopped by critical exceptions, because when it acquires
       // lock, the pipe is already dropped, thus it will do nothing.
