@@ -67,7 +67,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected volatile boolean shouldReportOnCommit = false;
+  protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
 
   protected EnrichedEvent(
@@ -180,8 +180,8 @@ public abstract class EnrichedEvent implements Event {
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
       }
-      if (shouldReport) {
-        shouldReportOnCommit = true;
+      if (!shouldReport) {
+        shouldReportOnCommit = false;
       }
       PipeEventCommitManager.getInstance().commit(this, committerKey);
     }
