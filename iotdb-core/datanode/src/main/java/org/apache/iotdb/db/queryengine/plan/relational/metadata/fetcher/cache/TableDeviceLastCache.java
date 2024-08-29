@@ -85,7 +85,7 @@ public class TableDeviceLastCache {
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
   private Long lastTime = null;
 
-  public int update(
+  int update(
       final @Nonnull String database,
       final @Nonnull String tableName,
       final String[] measurements,
@@ -124,7 +124,7 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
-  public int tryUpdate(
+  int tryUpdate(
       final @Nonnull String database,
       final @Nonnull String tableName,
       final @Nonnull String[] measurements,
@@ -155,12 +155,13 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
-  public @Nullable TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
+  @Nullable
+  TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
     return measurement2CachedLastMap.get(measurement);
   }
 
   // Shall pass in "" if last by time
-  public Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
+  Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
     final long alignTime;
     if (Objects.equals(sourceMeasurement, "")) {
@@ -201,7 +202,7 @@ public class TableDeviceLastCache {
                 .toArray(TsPrimitiveType[]::new)));
   }
 
-  public int estimateSize() {
+  int estimateSize() {
     return INSTANCE_SIZE
         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY * measurement2CachedLastMap.size()
         + measurement2CachedLastMap.values().stream()

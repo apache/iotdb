@@ -287,8 +287,6 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
-  
-
   /////////////////////////////// Common ///////////////////////////////
   public void invalidate(final String database) {
     readWriteLock.writeLock().lock();
