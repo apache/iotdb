@@ -26,12 +26,14 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
+import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
@@ -50,6 +52,8 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -119,13 +123,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
 import static org.apache.iotdb.db.conf.IoTDBStartCheck.PROPERTIES_FILE_NAME;
 
-public class DataNode implements DataNodeMBean {
+public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -161,8 +166,10 @@ public class DataNode implements DataNodeMBean {
   private boolean schemaRegionConsensusStarted = false;
   private boolean dataRegionConsensusStarted = false;
 
-  private DataNode() {
+  public DataNode() {
+    super("DataNode");
     // We do not init anything here, so that we can re-initialize the instance in IT.
+    DataNodeHolder.INSTANCE = this;
   }
 
   // TODO: This needs removal of statics ...
@@ -184,11 +191,16 @@ public class DataNode implements DataNodeMBean {
   public static void main(String[] args) {
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
-    new DataNodeServerCommandLine().doMain(args);
+    DataNode dataNode = new DataNode();
+    int returnCode = dataNode.run(args);
+    if (returnCode != 0) {
+      System.exit(returnCode);
+    }
   }
 
-  protected void doAddNode() {
-    boolean isFirstStart = false;
+  @Override
+  protected void start() {
+    boolean isFirstStart;
     try {
       // Check if this DataNode is start for the first time and do other pre-checks
       isFirstStart = prepareDataNode();
@@ -238,6 +250,56 @@ public class DataNode implements DataNodeMBean {
       logger.error("Fail to start server", e);
       stop();
       System.exit(-1);
+    }
+  }
+
+  @Override
+  protected void remove(Long nodeId) throws IoTDBException {
+    // If the nodeId was null, this is a shorthand for removing the current dataNode.
+    // In this case we need to find our nodeId.
+    if (nodeId == null) {
+      nodeId = (long) config.getDataNodeId();
+    }
+
+    logger.info("Starting to remove DataNode with node-id {} from cluster", nodeId);
+
+    // Load ConfigNodeList from system.properties file
+    ConfigNodeInfo.getInstance().loadConfigNodeList();
+
+    int removeNodeId = nodeId.intValue();
+    try (ConfigNodeClient configNodeClient =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      // Find a datanode location with the given node id.
+      Optional<TDataNodeLocation> dataNodeLocationOpt =
+          configNodeClient
+              .getDataNodeConfiguration(-1)
+              .getDataNodeConfigurationMap()
+              .values()
+              .stream()
+              .map(TDataNodeConfiguration::getLocation)
+              .filter(location -> location.getDataNodeId() == removeNodeId)
+              .findFirst();
+      if (!dataNodeLocationOpt.isPresent()) {
+        throw new IoTDBException("Invalid node-id", -1);
+      }
+      TDataNodeLocation dataNodeLocation = dataNodeLocationOpt.get();
+
+      logger.info("Start to remove datanode, removed datanode endpoint: {}", dataNodeLocation);
+      TDataNodeRemoveReq removeReq =
+          new TDataNodeRemoveReq(Collections.singletonList(dataNodeLocation));
+      TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
+      logger.info("Remove result {} ", removeResp);
+      if (removeResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBException(
+            removeResp.getStatus().toString(), removeResp.getStatus().getCode());
+      }
+      logger.info(
+          "Submit remove-datanode request successfully, but the process may fail. "
+              + "more details are shown in the logs of confignode-leader and removed-datanode, "
+              + "and after the process of removing datanode ends successfully, "
+              + "you are supposed to delete directory and data of the removed-datanode manually");
+    } catch (TException | ClientManagerException e) {
+      throw new IoTDBException("Failed removing datanode", e, -1);
     }
   }
 
@@ -628,7 +690,7 @@ public class DataNode implements DataNodeMBean {
     // Get resources for trigger,udf,pipe...
     prepareResources();
 
-    Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
+    Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook(generateDataNodeLocation()));
     setUncaughtExceptionHandler();
 
     logger.info("Recover the schema...");
@@ -1089,7 +1151,7 @@ public class DataNode implements DataNodeMBean {
 
   private static class DataNodeHolder {
 
-    private static final DataNode INSTANCE = new DataNode();
+    private static DataNode INSTANCE;
 
     private DataNodeHolder() {
       // Empty constructor
