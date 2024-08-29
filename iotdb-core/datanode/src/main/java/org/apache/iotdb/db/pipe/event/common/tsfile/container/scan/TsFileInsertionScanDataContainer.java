@@ -220,11 +220,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         }
       }
 
+      if (tablet == null) {
+        tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
+        tablet.initBitMaps();
+        // Ignore the memory cost of tablet
+        PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
+      }
+
       // Switch chunk reader iff current chunk is all consumed
       if (!data.hasCurrent()) {
         prepareData();
       }
-
       return tablet;
     } catch (final Exception e) {
       close();
