@@ -44,22 +44,25 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExp
 public final class NormalizeOrExpressionRewriter {
 
   public static Expression normalizeOrExpression(Expression expression) {
-    return new Visitor().process(expression, null);
+    return ExpressionTreeRewriter.rewriteWith(new Visitor(), expression);
   }
 
   private NormalizeOrExpressionRewriter() {}
 
-  private static class Visitor extends RewritingVisitor<Void> {
+  private static class Visitor extends ExpressionRewriter<Void> {
 
     @Override
-    public Expression visitLogicalExpression(LogicalExpression node, Void context) {
+    public Expression rewriteLogicalExpression(
+        LogicalExpression node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
       List<Expression> terms =
           node.getTerms().stream()
-              .map(expression -> process(expression, context))
+              .map(expression -> treeRewriter.rewrite(expression, context))
               .collect(toImmutableList());
+
       if (node.getOperator() == AND) {
         return and(terms);
       }
+
       ImmutableList.Builder<InPredicate> inPredicateBuilder = ImmutableList.builder();
       ImmutableSet.Builder<Expression> expressionToSkipBuilder = ImmutableSet.builder();
       ImmutableList.Builder<Expression> othersExpressionBuilder = ImmutableList.builder();
@@ -72,21 +75,26 @@ public final class NormalizeOrExpressionRewriter {
                   expressionToSkipBuilder.add(expression);
                 }
               });
+
       Set<Expression> expressionToSkip = expressionToSkipBuilder.build();
       for (Expression expression : terms) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
-          if (!expressionToSkip.contains(((ComparisonExpression) expression).getLeft())) {
+          ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+          if (!expressionToSkip.contains(comparisonExpression.getLeft())) {
             othersExpressionBuilder.add(expression);
           }
-        } else if (expression instanceof InPredicate) {
-          if (!expressionToSkip.contains(((InPredicate) expression).getValue())) {
+        } else if (expression instanceof InPredicate
+            && ((InPredicate) expression).getValueList() instanceof InListExpression) {
+          InPredicate inPredicate = (InPredicate) expression;
+          if (!expressionToSkip.contains(inPredicate.getValue())) {
             othersExpressionBuilder.add(expression);
           }
         } else {
           othersExpressionBuilder.add(expression);
         }
       }
+
       return or(
           ImmutableList.<Expression>builder()
               .addAll(othersExpressionBuilder.build())
@@ -99,11 +107,13 @@ public final class NormalizeOrExpressionRewriter {
       for (Expression expression : expressions) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
-          expressionValues.add(((ComparisonExpression) expression).getRight());
+          ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+          expressionValues.add(comparisonExpression.getRight());
         } else if (expression instanceof InPredicate
             && ((InPredicate) expression).getValueList() instanceof InListExpression) {
-          expressionValues.addAll(
-              ((InListExpression) ((InPredicate) expression).getValueList()).getValues());
+          InPredicate inPredicate = (InPredicate) expression;
+          InListExpression valueList = (InListExpression) inPredicate.getValueList();
+          expressionValues.addAll(valueList.getValues());
         } else {
           throw new IllegalStateException("Unexpected expression: " + expression);
         }
@@ -119,8 +129,10 @@ public final class NormalizeOrExpressionRewriter {
       for (Expression expression : terms) {
         if (expression instanceof ComparisonExpression
             && ((ComparisonExpression) expression).getOperator() == EQUAL) {
-          expressionBuilder.put(((ComparisonExpression) expression).getLeft(), expression);
-        } else if (expression instanceof InPredicate) {
+          ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+          expressionBuilder.put(comparisonExpression.getLeft(), comparisonExpression);
+        } else if (expression instanceof InPredicate
+            && ((InPredicate) expression).getValueList() instanceof InListExpression) {
           InPredicate inPredicate = (InPredicate) expression;
           expressionBuilder.put(inPredicate.getValue(), inPredicate);
         }

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpres
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
@@ -40,11 +41,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Row;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 
 public class ExpressionRewriter<C> {
 
@@ -127,6 +131,11 @@ public class ExpressionRewriter<C> {
     return rewriteExpression(node, context, treeRewriter);
   }
 
+  public Expression rewriteWhenClause(
+      WhenClause node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
   public Expression rewriteCoalesceExpression(
       CoalesceExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
@@ -181,6 +190,21 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteSymbolReference(
       SymbolReference node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteParameter(
+      Parameter node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteQuantifiedComparison(
+      QuantifiedComparisonExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteGenericDataType(
+      GenericDataType node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 }

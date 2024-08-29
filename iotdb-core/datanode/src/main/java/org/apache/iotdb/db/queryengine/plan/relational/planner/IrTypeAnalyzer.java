@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNullPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -405,12 +406,19 @@ public class IrTypeAnalyzer {
 
       Type type = process(value, context);
       for (Expression item : valueList.getValues()) {
-        Type itemType = process(item, context);
-        checkArgument(itemType.equals(type), "Types must be equal: %s vs %s", itemType, type);
+        process(item, context);
       }
 
       setExpressionType(valueList, type);
 
+      return setExpressionType(node, BOOLEAN);
+    }
+
+    @Override
+    protected Type visitLikePredicate(LikePredicate node, Context context) {
+      process(node.getValue(), context);
+      process(node.getPattern(), context);
+      node.getEscape().ifPresent(e -> process(e, context));
       return setExpressionType(node, BOOLEAN);
     }
 
