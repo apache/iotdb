@@ -576,11 +576,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     final TsFileResource resource = pendingQueue.poll();
     if (resource == null) {
-      isTerminateSignalSent = true;
       final PipeTerminateEvent terminateEvent =
           new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
-      terminateEvent.increaseReferenceCount(
-          PipeHistoricalDataRegionTsFileExtractor.class.getName());
+      if (!terminateEvent.increaseReferenceCount(
+          PipeHistoricalDataRegionTsFileExtractor.class.getName())) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+            pipeName,
+            dataRegionId);
+        return null;
+      }
+      isTerminateSignalSent = true;
       return terminateEvent;
     }
 
@@ -605,18 +611,28 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       event.skipParsingTime();
     }
 
-    event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
-      PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath());
+      final boolean isReferenceCountIncreased =
+          event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
+      if (!isReferenceCountIncreased) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
+            pipeName,
+            dataRegionId,
+            event);
+      }
+      return isReferenceCountIncreased ? event : null;
+    } finally {
+      try {
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath());
+      }
     }
-
-    return event;
   }
 
   @Override
