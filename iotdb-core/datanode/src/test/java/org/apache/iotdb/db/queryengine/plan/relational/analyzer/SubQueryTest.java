@@ -372,9 +372,9 @@ public class SubQueryTest {
     // only the limit and sort in sub query can be pushed down into TableScan.
     sql =
         "SELECT time, tag2, attr2, CAST(add_s2 as double) "
-            + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2, s2+1 as add_s2 FROM table1 "
+            + "FROM (SELECT time, SUBSTRING(tag1, 1) as sub_tag1, tag2, attr2, s1, s2+1 as add_s2 FROM table1 "
             + "WHERE s1>1 ORDER BY tag1 DESC limit 3) "
-            + "WHERE s2>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
+            + "WHERE s1>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
         new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
@@ -384,18 +384,24 @@ public class SubQueryTest {
     // LogicalPlan: `Output - Offset - ProjectNode - TopK - Project - Filter - Limit - Project -
     // StreamSort - Project -
     // TableScan`
-    assertTrue(logicalPlanNode instanceof OutputNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof TopKNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
-    // Notice that, the filter in outer query can not be pushed down into subquery
-    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof FilterNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof LimitNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 8) instanceof StreamSortNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 9) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 10) instanceof TableScanNode);
+    assertNodeMatches(
+        logicalPlanNode,
+        OutputNode.class,
+        OffsetNode.class,
+        ProjectNode.class,
+        TopKNode.class,
+        ProjectNode.class,
+        // Notice that, the filter in outer query can not be pushed down into subquery
+        FilterNode.class,
+        LimitNode.class,
+        ProjectNode.class,
+        StreamSortNode.class,
+        ProjectNode.class,
+        TableScanNode.class);
+    assertEquals(
+        "(\"s1\" > 1)",
+        ((FilterNode) getChildrenNode(logicalPlanNode, 5)).getPredicate().toString());
+    assertEquals(3, ((LimitNode) getChildrenNode(logicalPlanNode, 6)).getCount());
     tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 10);
     assertEquals(3, tableScanNode.getPushDownLimit());
     assertTrue(tableScanNode.isPushLimitToEachDevice());

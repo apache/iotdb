@@ -23,9 +23,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SingleChildProcessNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
@@ -67,6 +64,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
@@ -142,76 +140,87 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitPlan(PlanNode node, RewriteContext context) {
-      throw new IllegalArgumentException(
-          String.format("Unexpected plan node: %s in rule PushPredicateIntoTableScan", node));
-    }
-
-    @Override
-    public PlanNode visitSingleChildProcess(SingleChildProcessNode node, RewriteContext context) {
-      PlanNode rewrittenChild = node.getChild().accept(this, new RewriteContext());
-      node.setChild(rewrittenChild);
-      return node;
-    }
-
-    @Override
-    public PlanNode visitTwoChildProcess(TwoChildProcessNode node, RewriteContext context) {
-      node.setLeftChild(node.getLeftChild().accept(this, new RewriteContext()));
-      node.setRightChild(node.getRightChild().accept(this, new RewriteContext()));
-      return node;
-    }
-
-    @Override
-    public PlanNode visitMultiChildProcess(MultiChildProcessNode node, RewriteContext context) {
-      List<PlanNode> rewrittenChildren = new ArrayList<>();
+      PlanNode rewrittenNode = node.clone();
       for (PlanNode child : node.getChildren()) {
-        rewrittenChildren.add(child.accept(this, new RewriteContext()));
+        RewriteContext subContext = new RewriteContext();
+        PlanNode rewrittenChild = child.accept(this, subContext);
+        rewrittenNode.addChild(rewrittenChild);
       }
-      node.setChildren(rewrittenChildren);
-      return node;
+      if (!TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        FilterNode filterNode =
+            new FilterNode(queryId.genPlanNodeId(), rewrittenNode, context.inheritedPredicate);
+        context.inheritedPredicate = TRUE_LITERAL;
+        return filterNode;
+      } else {
+        return rewrittenNode;
+      }
     }
 
     @Override
     public PlanNode visitProject(ProjectNode node, RewriteContext context) {
       for (Expression expression : node.getAssignments().getMap().values()) {
         if (containsDiffFunction(expression)) {
-          return node;
+          if (!TRUE_LITERAL.equals(context.inheritedPredicate)) {
+            FilterNode filterNode =
+                new FilterNode(
+                    queryId.genPlanNodeId(), node.getChild(), context.inheritedPredicate);
+            context.inheritedPredicate = TRUE_LITERAL;
+            return filterNode;
+          }
         }
       }
+      // TODO(beyyes) in some situation, predicate can not be pushed down below ProjectNode
       node.setChild(node.getChild().accept(this, context));
       return node;
     }
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriteContext context) {
+      checkArgument(node.getPredicate() != null, "Filter predicate of FilterNode is null");
 
-      if (node.getPredicate() != null) {
+      Expression predicate = combineConjuncts(node.getPredicate(), context.inheritedPredicate);
 
-        Expression predicate = combineConjuncts(node.getPredicate(), context.predicate);
-        context.predicate = predicate;
-
-        // when exist diff function, predicate can not be pushed down into TableScanNode
-        if (containsDiffFunction(predicate)) {
-          node.setChild(node.getChild().accept(this, context));
-          return node;
-        }
-
-        if (node.getChild() instanceof TableScanNode) {
-          // child of FilterNode is TableScanNode, means FilterNode must get from where clause
-          return combineFilterAndScan((TableScanNode) node.getChild(), predicate);
-        } else if (node.getChild() instanceof JoinNode) {
-          return visitJoin((JoinNode) node.getChild(), context);
-        } else {
-          // FilterNode may get from having, subquery or join
-          // For example, sql `select x from (select * from table0 where ID='A') t1 join (select *
-          // from table0) t2 ON t1.time=t2.time and t1.s1>1` will push FilterNode in Join into
-          // subquery
-          return node.getChild().accept(this, context);
-        }
-
-      } else {
-        throw new IllegalStateException(
-            "Filter node has no predicate, node: " + node.getPlanNodeId());
+      // when exist diff function, predicate can not be pushed down into TableScanNode
+      if (containsDiffFunction(predicate)) {
+        node.setChild(node.getChild().accept(this, context));
+        return node;
       }
+
+      //      if (node.getChild() instanceof TableScanNode) {
+      //        context.inheritedPredicate = TRUE_LITERAL;
+      //        return combineFilterAndScan((TableScanNode) node.getChild(), predicate);
+      //      }
+
+      // FilterNode may get from having, subquery or join
+      PlanNode rewrittenPlan = node.getChild().accept(this, new RewriteContext(predicate));
+      if (!(rewrittenPlan instanceof FilterNode)) {
+        return rewrittenPlan;
+      }
+      FilterNode rewrittenFilterNode = (FilterNode) rewrittenPlan;
+      if (
+      //              !areExpressionsEquivalent(rewrittenFilterNode.getPredicate(),
+      // node.getPredicate())
+      !rewrittenFilterNode.getPredicate().equals(node.getPredicate())
+          || node.getChild() != rewrittenFilterNode.getChild()) {
+        return rewrittenPlan;
+      }
+      return node;
+    }
+
+    //    private boolean areExpressionsEquivalent(Expression leftExpression, Expression
+    // rightExpression)
+    //    {
+    //      return expressionEquivalence.areExpressionsEquivalent(queryContext.getSession(),
+    // leftExpression, rightExpression, types);
+    //    }
+
+    @Override
+    public PlanNode visitTableScan(TableScanNode node, RewriteContext context) {
+      if (!TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        return combineFilterAndScan(node, context.inheritedPredicate);
+      }
+
+      return tableMetadataIndexScan(node, Collections.emptyList());
     }
 
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
@@ -307,248 +316,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       return new SplitExpression(
           metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
-    }
-
-    @Override
-    public PlanNode visitJoin(JoinNode node, RewriteContext context) {
-      Expression inheritedPredicate = context.predicate != null ? context.predicate : TRUE_LITERAL;
-
-      // See if we can rewrite outer joins in terms of a plain inner join
-      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
-
-      Expression leftEffectivePredicate = TRUE_LITERAL;
-      // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
-      Expression rightEffectivePredicate = TRUE_LITERAL;
-      // effectivePredicateExtractor.extract(session, node.getRightChild(), types, typeAnalyzer);
-      Expression joinPredicate = extractJoinPredicate(node);
-
-      Expression leftPredicate;
-      Expression rightPredicate;
-      Expression postJoinPredicate;
-      Expression newJoinPredicate;
-
-      switch (node.getJoinType()) {
-        case INNER:
-          JoinUtils.InnerJoinPushDownResult innerJoinPushDownResult =
-              processInnerJoin(
-                  metadata,
-                  inheritedPredicate,
-                  leftEffectivePredicate,
-                  rightEffectivePredicate,
-                  joinPredicate,
-                  node.getLeftChild().getOutputSymbols(),
-                  node.getRightChild().getOutputSymbols());
-          leftPredicate = innerJoinPushDownResult.getLeftPredicate();
-          rightPredicate = innerJoinPushDownResult.getRightPredicate();
-          postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
-          newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
-          break;
-        default:
-          throw new IllegalStateException("Only support INNER JOIN in current version");
-      }
-
-      // newJoinPredicate = simplifyExpression(newJoinPredicate);
-
-      // Create identity projections for all existing symbols
-      Assignments.Builder leftProjections = Assignments.builder();
-      leftProjections.putAll(
-          node.getLeftChild().getOutputSymbols().stream()
-              .collect(toImmutableMap(key -> key, Symbol::toSymbolReference)));
-
-      Assignments.Builder rightProjections = Assignments.builder();
-      rightProjections.putAll(
-          node.getRightChild().getOutputSymbols().stream()
-              .collect(toImmutableMap(key -> key, Symbol::toSymbolReference)));
-
-      // Create new projections for the new join clauses
-      List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
-      ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
-      for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
-        if (joinEqualityExpression(
-            conjunct,
-            node.getLeftChild().getOutputSymbols(),
-            node.getRightChild().getOutputSymbols())) {
-          ComparisonExpression equality = (ComparisonExpression) conjunct;
-
-          boolean alignedComparison =
-              node.getLeftChild().getOutputSymbols().containsAll(extractUnique(equality.getLeft()));
-          Expression leftExpression = alignedComparison ? equality.getLeft() : equality.getRight();
-          Expression rightExpression = alignedComparison ? equality.getRight() : equality.getLeft();
-
-          Symbol leftSymbol = symbolForExpression(leftExpression);
-          if (!node.getLeftChild().getOutputSymbols().contains(leftSymbol)) {
-            leftProjections.put(leftSymbol, leftExpression);
-          }
-
-          Symbol rightSymbol = symbolForExpression(rightExpression);
-          if (!node.getRightChild().getOutputSymbols().contains(rightSymbol)) {
-            rightProjections.put(rightSymbol, rightExpression);
-          }
-
-          equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
-        } else {
-          joinFilterBuilder.add(conjunct);
-        }
-      }
-
-      List<Expression> joinFilter = joinFilterBuilder.build();
-      //      DynamicFiltersResult dynamicFiltersResult = createDynamicFilters(node,
-      // equiJoinClauses, joinFilter, session, idAllocator);
-      //      Map<DynamicFilterId, Symbol> dynamicFilters =
-      // dynamicFiltersResult.getDynamicFilters();
-      // leftPredicate = combineConjuncts(metadata, leftPredicate, combineConjuncts(metadata,
-      // dynamicFiltersResult.getPredicates()));
-
-      PlanNode leftSource;
-      PlanNode rightSource;
-      boolean equiJoinClausesUnmodified =
-          ImmutableSet.copyOf(equiJoinClauses).equals(ImmutableSet.copyOf(node.getCriteria()));
-      // TODO(beyyes) make the judgement code tidy
-      if (!equiJoinClausesUnmodified) {
-        ProjectNode projectNode =
-            new ProjectNode(queryId.genPlanNodeId(), node.getLeftChild(), leftProjections.build());
-        if (TRUE_LITERAL.equals(leftPredicate)) {
-          leftSource = projectNode.accept(this, new RewriteContext());
-        } else {
-          FilterNode filterNode =
-              new FilterNode(queryId.genPlanNodeId(), projectNode, leftPredicate);
-          leftSource = filterNode.accept(this, new RewriteContext());
-        }
-
-        projectNode =
-            new ProjectNode(
-                queryId.genPlanNodeId(), node.getRightChild(), rightProjections.build());
-        if (TRUE_LITERAL.equals(rightPredicate)) {
-          rightSource = projectNode.accept(this, new RewriteContext());
-        } else {
-          FilterNode filterNode =
-              new FilterNode(queryId.genPlanNodeId(), projectNode, rightPredicate);
-          rightSource = filterNode.accept(this, new RewriteContext());
-        }
-      } else {
-        if (TRUE_LITERAL.equals(leftPredicate)) {
-          leftSource = node.getLeftChild().accept(this, new RewriteContext());
-        } else {
-          FilterNode filterNode =
-              new FilterNode(queryId.genPlanNodeId(), node.getLeftChild(), leftPredicate);
-          leftSource = filterNode.accept(this, new RewriteContext());
-        }
-        if (TRUE_LITERAL.equals(rightPredicate)) {
-          rightSource = node.getRightChild().accept(this, new RewriteContext());
-        } else {
-          FilterNode filterNode =
-              new FilterNode(queryId.genPlanNodeId(), node.getRightChild(), rightPredicate);
-          rightSource = filterNode.accept(this, new RewriteContext());
-        }
-      }
-
-      Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
-      if (newJoinFilter.get().equals(TRUE_LITERAL)) {
-        newJoinFilter = Optional.empty();
-      }
-
-      if (node.getJoinType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
-        throw new IllegalStateException("INNER JOIN only support equiJoinClauses");
-        // if we do not have any equi conjunct we do not pushdown non-equality condition into
-        // inner join, so we plan execution as nested-loops-join followed by filter instead
-        // hash join.
-        // postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
-        // newJoinFilter = Optional.empty();
-      }
-
-      boolean filtersEquivalent =
-          newJoinFilter.isPresent() == node.getFilter().isPresent() && (!newJoinFilter.isPresent());
-      // areExpressionsEquivalent(newJoinFilter.get(), node.getFilter().get());
-
-      PlanNode output = node;
-      if (leftSource != node.getLeftChild()
-          || rightSource != node.getRightChild()
-          || !filtersEquivalent
-          // !dynamicFilters.equals(node.getDynamicFilters()) ||
-          || !equiJoinClausesUnmodified) {
-        leftSource =
-            new ProjectNode(
-                queryContext.getQueryId().genPlanNodeId(), leftSource, leftProjections.build());
-        rightSource =
-            new ProjectNode(
-                queryContext.getQueryId().genPlanNodeId(), rightSource, rightProjections.build());
-
-        output =
-            new JoinNode(
-                node.getPlanNodeId(),
-                node.getJoinType(),
-                leftSource,
-                rightSource,
-                equiJoinClauses,
-                leftSource.getOutputSymbols(),
-                rightSource.getOutputSymbols(),
-                node.isMaySkipOutputDuplicates(),
-                newJoinFilter,
-                node.getLeftHashSymbol(),
-                node.getRightHashSymbol(),
-                node.isSpillable());
-      }
-      Symbol timeSymbol = Symbol.of("time");
-      OrderingScheme orderingScheme =
-          new OrderingScheme(
-              Collections.singletonList(timeSymbol),
-              Collections.singletonMap(timeSymbol, ASC_NULLS_LAST));
-      SortNode leftSortNode =
-          new SortNode(
-              queryId.genPlanNodeId(),
-              ((JoinNode) output).getLeftChild(),
-              orderingScheme,
-              false,
-              false);
-      SortNode rightSortNode =
-          new SortNode(
-              queryId.genPlanNodeId(),
-              ((JoinNode) output).getRightChild(),
-              orderingScheme,
-              false,
-              false);
-      ((JoinNode) output).setLeftChild(leftSortNode);
-      ((JoinNode) output).setRightChild(rightSortNode);
-
-      if (!postJoinPredicate.equals(TRUE_LITERAL)) {
-        output =
-            new FilterNode(queryContext.getQueryId().genPlanNodeId(), output, postJoinPredicate);
-      }
-
-      if (!node.getOutputSymbols().equals(output.getOutputSymbols())) {
-        output =
-            new ProjectNode(
-                queryContext.getQueryId().genPlanNodeId(),
-                output,
-                Assignments.identity(node.getOutputSymbols()));
-      }
-
-      return output;
-    }
-
-    private Symbol symbolForExpression(Expression expression) {
-      if (expression instanceof SymbolReference) {
-        return Symbol.from(expression);
-      }
-
-      // TODO(beyyes) verify the rightness of type
-      return symbolAllocator.newSymbol(expression, analysis.getType(expression));
-    }
-
-    @Override
-    public PlanNode visitTableScan(TableScanNode node, RewriteContext context) {
-      return tableMetadataIndexScan(node, Collections.emptyList());
-    }
-
-    @Override
-    public PlanNode visitInsertTablet(InsertTabletNode node, RewriteContext context) {
-      return node;
-    }
-
-    @Override
-    public PlanNode visitRelationalInsertTablet(
-        RelationalInsertTabletNode node, RewriteContext context) {
-      return node;
     }
 
     /** Get deviceEntries and DataPartition used in TableScan. */
@@ -655,6 +422,217 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
     }
 
+    @Override
+    public PlanNode visitJoin(JoinNode node, RewriteContext context) {
+      Expression inheritedPredicate =
+          context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
+
+      // See if we can rewrite outer joins in terms of a plain inner join
+      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+
+      Expression leftEffectivePredicate = TRUE_LITERAL;
+      // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
+      Expression rightEffectivePredicate = TRUE_LITERAL;
+      // effectivePredicateExtractor.extract(session, node.getRightChild(), types, typeAnalyzer);
+      Expression joinPredicate = extractJoinPredicate(node);
+
+      Expression leftPredicate;
+      Expression rightPredicate;
+      Expression postJoinPredicate;
+      Expression newJoinPredicate;
+
+      switch (node.getJoinType()) {
+        case INNER:
+          JoinUtils.InnerJoinPushDownResult innerJoinPushDownResult =
+              processInnerJoin(
+                  metadata,
+                  inheritedPredicate,
+                  leftEffectivePredicate,
+                  rightEffectivePredicate,
+                  joinPredicate,
+                  node.getLeftChild().getOutputSymbols(),
+                  node.getRightChild().getOutputSymbols());
+          leftPredicate = innerJoinPushDownResult.getLeftPredicate();
+          rightPredicate = innerJoinPushDownResult.getRightPredicate();
+          postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
+          newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
+          break;
+        default:
+          throw new IllegalStateException("Only support INNER JOIN in current version");
+      }
+
+      // newJoinPredicate = simplifyExpression(newJoinPredicate);
+
+      // Create identity projections for all existing symbols
+      Assignments.Builder leftProjections = Assignments.builder();
+      leftProjections.putAll(
+          node.getLeftChild().getOutputSymbols().stream()
+              .collect(toImmutableMap(key -> key, Symbol::toSymbolReference)));
+
+      Assignments.Builder rightProjections = Assignments.builder();
+      rightProjections.putAll(
+          node.getRightChild().getOutputSymbols().stream()
+              .collect(toImmutableMap(key -> key, Symbol::toSymbolReference)));
+
+      // Create new projections for the new join clauses
+      List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
+      ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
+      for (Expression conjunct : extractConjuncts(newJoinPredicate)) {
+        if (joinEqualityExpression(
+            conjunct,
+            node.getLeftChild().getOutputSymbols(),
+            node.getRightChild().getOutputSymbols())) {
+          ComparisonExpression equality = (ComparisonExpression) conjunct;
+
+          boolean alignedComparison =
+              node.getLeftChild().getOutputSymbols().containsAll(extractUnique(equality.getLeft()));
+          Expression leftExpression = alignedComparison ? equality.getLeft() : equality.getRight();
+          Expression rightExpression = alignedComparison ? equality.getRight() : equality.getLeft();
+
+          Symbol leftSymbol = symbolForExpression(leftExpression);
+          if (!node.getLeftChild().getOutputSymbols().contains(leftSymbol)) {
+            leftProjections.put(leftSymbol, leftExpression);
+          }
+
+          Symbol rightSymbol = symbolForExpression(rightExpression);
+          if (!node.getRightChild().getOutputSymbols().contains(rightSymbol)) {
+            rightProjections.put(rightSymbol, rightExpression);
+          }
+
+          equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
+        } else {
+          joinFilterBuilder.add(conjunct);
+        }
+      }
+
+      List<Expression> joinFilter = joinFilterBuilder.build();
+      //      DynamicFiltersResult dynamicFiltersResult = createDynamicFilters(node,
+      // equiJoinClauses, joinFilter, session, idAllocator);
+      //      Map<DynamicFilterId, Symbol> dynamicFilters =
+      // dynamicFiltersResult.getDynamicFilters();
+      // leftPredicate = combineConjuncts(metadata, leftPredicate, combineConjuncts(metadata,
+      // dynamicFiltersResult.getPredicates()));
+
+      PlanNode leftSource;
+      PlanNode rightSource;
+      boolean equiJoinClausesUnmodified =
+          ImmutableSet.copyOf(equiJoinClauses).equals(ImmutableSet.copyOf(node.getCriteria()));
+      if (!equiJoinClausesUnmodified) {
+        leftSource =
+            new ProjectNode(queryId.genPlanNodeId(), node.getLeftChild(), leftProjections.build())
+                .accept(this, new RewriteContext(leftPredicate));
+        rightSource =
+            new ProjectNode(queryId.genPlanNodeId(), node.getRightChild(), rightProjections.build())
+                .accept(this, new RewriteContext(rightPredicate));
+      } else {
+        leftSource = node.getLeftChild().accept(this, new RewriteContext(leftPredicate));
+        rightSource = node.getRightChild().accept(this, new RewriteContext(rightPredicate));
+      }
+
+      Optional<Expression> newJoinFilter = Optional.of(combineConjuncts(joinFilter));
+      if (newJoinFilter.get().equals(TRUE_LITERAL)) {
+        newJoinFilter = Optional.empty();
+      }
+
+      if (node.getJoinType() == INNER && newJoinFilter.isPresent() && equiJoinClauses.isEmpty()) {
+        throw new IllegalStateException("INNER JOIN only support equiJoinClauses");
+        // if we do not have any equi conjunct we do not pushdown non-equality condition into
+        // inner join, so we plan execution as nested-loops-join followed by filter instead
+        // hash join.
+        // postJoinPredicate = combineConjuncts(postJoinPredicate, newJoinFilter.get());
+        // newJoinFilter = Optional.empty();
+      }
+
+      boolean filtersEquivalent =
+          newJoinFilter.isPresent() == node.getFilter().isPresent() && (!newJoinFilter.isPresent());
+      // areExpressionsEquivalent(newJoinFilter.get(), node.getFilter().get());
+
+      PlanNode output = node;
+      if (leftSource != node.getLeftChild()
+          || rightSource != node.getRightChild()
+          || !filtersEquivalent
+          // !dynamicFilters.equals(node.getDynamicFilters()) ||
+          || !equiJoinClausesUnmodified) {
+        leftSource =
+            new ProjectNode(
+                queryContext.getQueryId().genPlanNodeId(), leftSource, leftProjections.build());
+        rightSource =
+            new ProjectNode(
+                queryContext.getQueryId().genPlanNodeId(), rightSource, rightProjections.build());
+
+        output =
+            new JoinNode(
+                node.getPlanNodeId(),
+                node.getJoinType(),
+                leftSource,
+                rightSource,
+                equiJoinClauses,
+                leftSource.getOutputSymbols(),
+                rightSource.getOutputSymbols(),
+                node.isMaySkipOutputDuplicates(),
+                newJoinFilter,
+                node.getLeftHashSymbol(),
+                node.getRightHashSymbol(),
+                node.isSpillable());
+      }
+      Symbol timeSymbol = Symbol.of("time");
+      OrderingScheme orderingScheme =
+          new OrderingScheme(
+              Collections.singletonList(timeSymbol),
+              Collections.singletonMap(timeSymbol, ASC_NULLS_LAST));
+      SortNode leftSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(),
+              ((JoinNode) output).getLeftChild(),
+              orderingScheme,
+              false,
+              false);
+      SortNode rightSortNode =
+          new SortNode(
+              queryId.genPlanNodeId(),
+              ((JoinNode) output).getRightChild(),
+              orderingScheme,
+              false,
+              false);
+      ((JoinNode) output).setLeftChild(leftSortNode);
+      ((JoinNode) output).setRightChild(rightSortNode);
+
+      if (!postJoinPredicate.equals(TRUE_LITERAL)) {
+        output =
+            new FilterNode(queryContext.getQueryId().genPlanNodeId(), output, postJoinPredicate);
+      }
+
+      if (!node.getOutputSymbols().equals(output.getOutputSymbols())) {
+        output =
+            new ProjectNode(
+                queryContext.getQueryId().genPlanNodeId(),
+                output,
+                Assignments.identity(node.getOutputSymbols()));
+      }
+
+      return output;
+    }
+
+    private Symbol symbolForExpression(Expression expression) {
+      if (expression instanceof SymbolReference) {
+        return Symbol.from(expression);
+      }
+
+      // TODO(beyyes) verify the rightness of type
+      return symbolAllocator.newSymbol(expression, analysis.getType(expression));
+    }
+
+    @Override
+    public PlanNode visitInsertTablet(InsertTabletNode node, RewriteContext context) {
+      return node;
+    }
+
+    @Override
+    public PlanNode visitRelationalInsertTablet(
+        RelationalInsertTabletNode node, RewriteContext context) {
+      return node;
+    }
+
     private DataPartition fetchDataPartitionByDevices(
         String database, List<DeviceEntry> deviceEntries, Filter globalTimeFilter) {
       Pair<List<TTimePartitionSlot>, Pair<Boolean, Boolean>> res =
@@ -702,14 +680,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
   }
 
   private static class RewriteContext {
-    Expression predicate;
+    Expression inheritedPredicate;
 
-    RewriteContext(Expression predicate) {
-      this.predicate = predicate;
+    RewriteContext(Expression inheritedPredicate) {
+      this.inheritedPredicate = inheritedPredicate;
     }
 
     RewriteContext() {
-      this.predicate = TRUE_LITERAL;
+      this.inheritedPredicate = TRUE_LITERAL;
     }
   }
 

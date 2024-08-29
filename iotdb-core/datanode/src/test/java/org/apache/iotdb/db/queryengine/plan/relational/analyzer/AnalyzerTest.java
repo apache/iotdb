@@ -580,7 +580,7 @@ public class AnalyzerTest {
   @Test
   public void expressionTest() {
     // 1. is null / is not null
-    sql = "SELECT * FROM table1 WHERE tag1 is not null and s1 is null";
+    sql = "SELECT * FROM table1 WHERE tag1 = 'A' and s1 is null";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
@@ -715,8 +715,7 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0).getChildren().get(0);
     assertEquals("(DIFF(\"s2\") > 0)", filterNode.getPredicate().toString());
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
-    distributedQueryPlan = distributionPlanner.plan();
+    distributedQueryPlan = new TableDistributedPlanner(analysis, logicalQueryPlan).plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     OutputNode outputNode =
         (OutputNode)

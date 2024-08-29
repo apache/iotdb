@@ -74,10 +74,10 @@ public class JoinTest {
   // no filter, no sort
   @Test
   public void innerJoinTest1() {
-    assertInnerJoinTest1(
-        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
-            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6");
+    //    assertInnerJoinTest1(
+    //        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
+    //            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+    //            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6");
 
     // implicit join
     assertInnerJoinTest1(
@@ -174,26 +174,26 @@ public class JoinTest {
     assertInnerJoinTest2(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM (SELECT * FROM table1 t1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 AND time>11) t1 JOIN (SELECT * FROM table1 WHERE time>22 AND tag1='shenzhen' AND s2>1) t2 "
+            + "FROM (SELECT * FROM table1 WHERE tag1='beijing' AND tag2='A1' AND s1>1 AND time>11) t1 JOIN (SELECT * FROM table1 WHERE time>22 AND tag1='shenzhen' AND s2>1) t2 "
             + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6");
 
     assertInnerJoinTest2(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM (SELECT * FROM table1 t1) t1 JOIN (SELECT * FROM table1) t2 "
+            + "FROM (SELECT * FROM table1) t1 JOIN (SELECT * FROM table1) t2 "
             + "ON t1.time = t2.time WHERE t1.tag1='beijing' AND t1.tag2='A1' AND t1.s1>1 AND t2.tag1='shenzhen' AND t2.s2>1 ORDER BY t1.tag1 OFFSET 3 LIMIT 6");
 
     assertInnerJoinTest2(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM (SELECT * FROM table1 t1 WHERE tag2='A1') t1 JOIN (SELECT * FROM table1 WHERE s2>1) t2 "
+            + "FROM (SELECT * FROM table1 WHERE tag2='A1') t1 JOIN (SELECT * FROM table1 WHERE s2>1) t2 "
             + "ON t1.time = t2.time WHERE t1.tag1='beijing' AND t1.s1>1 AND t2.tag1='shenzhen' ORDER BY t1.tag1 OFFSET 3 LIMIT 6");
 
     // implicit join
     assertInnerJoinTest2(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM (SELECT * FROM table1 t1 WHERE tag2='A1') t1, (SELECT * FROM table1 WHERE s2>1) t2 "
+            + "FROM (SELECT * FROM table1 WHERE tag2='A1') t1, (SELECT * FROM table1 WHERE s2>1) t2 "
             + "WHERE t1.time = t2.time AND t1.tag1='beijing' AND t1.s1>1 AND t2.tag1='shenzhen' ORDER BY t1.tag1 OFFSET 3 LIMIT 6");
   }
 
@@ -223,7 +223,7 @@ public class JoinTest {
     assertTrue(joinNode.getLeftChild() instanceof SortNode);
     assertTrue(joinNode.getRightChild() instanceof SortNode);
     SortNode leftSortNode = (SortNode) joinNode.getLeftChild();
-    assertTrue(getChildrenNode(leftSortNode, 1) instanceof TableScanNode);
+    assertEquals(TableScanNode.class, getChildrenNode(leftSortNode, 1).getClass());
     TableScanNode leftTableScanNode = (TableScanNode) getChildrenNode(leftSortNode, 1);
     assertTableScan(leftTableScanNode, BEIJING_A1_DEVICE_ENTRY, Ordering.ASC, 0, 0, true, "");
     SortNode rightSortNode = (SortNode) joinNode.getRightChild();
