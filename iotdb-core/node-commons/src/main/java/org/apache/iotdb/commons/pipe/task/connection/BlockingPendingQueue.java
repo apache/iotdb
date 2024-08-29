@@ -121,6 +121,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
           }
           return true;
         });
+    eventCounter.reset();
   }
 
   public void discardEventsOfPipe(final String pipeNameToDrop) {

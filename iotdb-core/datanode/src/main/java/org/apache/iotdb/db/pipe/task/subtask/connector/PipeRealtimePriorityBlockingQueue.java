@@ -164,6 +164,7 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
           }
           return true;
         });
+    eventCounter.reset();
   }
 
   @Override
