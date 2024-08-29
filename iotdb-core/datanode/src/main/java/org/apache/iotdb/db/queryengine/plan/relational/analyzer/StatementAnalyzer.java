@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
@@ -159,6 +160,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifySourceAggregations;
@@ -191,6 +193,12 @@ public class StatementAnalyzer {
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
+
+  public static final String ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN =
+      "Only support time column equi-join in current version";
+
+  public static final String ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE =
+      "Only support time column as the parameter in JOIN USING";
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -1857,16 +1865,14 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitJoin(Join node, Optional<Scope> scope) {
       JoinCriteria criteria = node.getCriteria().orElse(null);
-      if (criteria instanceof NaturalJoin) {
-        throw new SemanticException("Natural join not supported");
-      }
+
+      joinConditionCheck(criteria);
 
       Scope left = process(node.getLeft(), scope);
       Scope right = process(node.getRight(), scope);
 
       if (criteria instanceof JoinUsing) {
-        throw new SemanticException("Join Using clause is not supported in current version");
-        // return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
+        return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
       }
 
       Scope output =
@@ -1922,6 +1928,52 @@ public class StatementAnalyzer {
       }
 
       return output;
+    }
+
+    private void joinConditionCheck(JoinCriteria criteria) {
+      if (criteria instanceof NaturalJoin) {
+        throw new SemanticException("Natural join not supported");
+      }
+
+      if (criteria instanceof JoinOn) {
+        JoinOn joinOn = (JoinOn) criteria;
+        Expression expression = joinOn.getExpression();
+        if (!(expression instanceof ComparisonExpression)) {
+          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+        }
+        ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+        if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
+          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+        }
+        checkArgument(
+            comparisonExpression.getLeft() instanceof DereferenceExpression,
+            ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+        checkArgument(
+            comparisonExpression.getRight() instanceof DereferenceExpression,
+            ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+        DereferenceExpression left = (DereferenceExpression) comparisonExpression.getLeft();
+        if (!left.getField().isPresent()
+            || !left.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
+          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+        }
+        DereferenceExpression right = (DereferenceExpression) comparisonExpression.getLeft();
+        if (!right.getField().isPresent()
+            || !right.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
+          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+        }
+
+        //        if (comparisonExpression instanceof DereferenceExpression.getLeft().equals()) {
+        //
+        //        }
+      }
+
+      if (criteria instanceof JoinUsing) {
+        List<Identifier> identifiers = ((JoinUsing) criteria).getColumns();
+        if (identifiers.size() != 1
+            || !identifiers.get(0).equals(new Identifier(TIME_COLUMN_NAME))) {
+          throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
+        }
+      }
     }
 
     private Scope analyzeJoinUsing(

@@ -110,10 +110,7 @@ public class JoinUtils {
             node.getCriteria(),
             node.getLeftOutputSymbols(),
             node.getRightOutputSymbols(),
-            node.isMaySkipOutputDuplicates(),
             node.getFilter(),
-            node.getLeftHashSymbol(),
-            node.getRightHashSymbol(),
             node.isSpillable());
       }
       return new JoinNode(
@@ -124,10 +121,7 @@ public class JoinUtils {
           node.getCriteria(),
           node.getLeftOutputSymbols(),
           node.getRightOutputSymbols(),
-          node.isMaySkipOutputDuplicates(),
           node.getFilter(),
-          node.getLeftHashSymbol(),
-          node.getRightHashSymbol(),
           node.isSpillable());
     }
 
@@ -146,10 +140,7 @@ public class JoinUtils {
         node.getCriteria(),
         node.getLeftOutputSymbols(),
         node.getRightOutputSymbols(),
-        node.isMaySkipOutputDuplicates(),
         node.getFilter(),
-        node.getLeftHashSymbol(),
-        node.getRightHashSymbol(),
         node.isSpillable());
   }
 

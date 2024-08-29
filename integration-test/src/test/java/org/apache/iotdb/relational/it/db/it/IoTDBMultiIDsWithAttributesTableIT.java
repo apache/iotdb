@@ -402,7 +402,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.080Z,l4,d2,10.0,",
         };
 
-    expectedHeader = new String[] {"time", "level", "device", "add_num"};
     tableResultSetEqualTest(
         "SELECT time, level, device, add_num FROM (\n"
             + "SELECT time, level, device, substring(str, 2) as cast_str, attr2, bignum, num+1 as add_num FROM table0 WHERE num>1 ORDER BY level DESC, time, device LIMIT 12\n"
@@ -411,7 +410,4 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         retArray,
         DATABASE_NAME);
   }
-
-  @Test
-  public void jointTest1() {}
 }

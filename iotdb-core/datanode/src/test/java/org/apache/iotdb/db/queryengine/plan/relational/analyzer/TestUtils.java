@@ -146,7 +146,7 @@ public class TestUtils {
           new SessionInfo(
               0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
       analyzeStatementWithException(statement, TEST_MATADATA, QUERY_CONTEXT, sqlParser, session);
-      fail("Fail test sql: " + sql);
+      fail("Expect test sql throws exception: " + sql);
     } catch (Exception e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(message));
     }

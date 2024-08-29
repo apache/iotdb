@@ -354,9 +354,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             equiClauses.build(),
             leftPlanBuilder.getRoot().getOutputSymbols(),
             rightPlanBuilder.getRoot().getOutputSymbols(),
-            false,
-            Optional.empty(),
-            Optional.empty(),
             Optional.empty(),
             Optional.empty());
 
@@ -404,14 +401,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
               equiClauses.build(),
               leftPlanBuilder.getRoot().getOutputSymbols(),
               rightPlanBuilder.getRoot().getOutputSymbols(),
-              false,
               Optional.of(
                   IrUtils.and(
                       complexJoinExpressions.stream()
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
-              Optional.empty(),
-              Optional.empty(),
               Optional.empty());
     }
 

@@ -48,13 +48,13 @@ public class JoinNode extends TwoChildProcessNode {
   private final List<EquiJoinClause> criteria;
   private final List<Symbol> leftOutputSymbols;
   private final List<Symbol> rightOutputSymbols;
-  private final boolean maySkipOutputDuplicates;
   // some filter like 'a.xx_column < b.yy_column'
   private final Optional<Expression> filter;
-  private final Optional<Symbol> leftHashSymbol;
-  private final Optional<Symbol> rightHashSymbol;
   private final Optional<Boolean> spillable;
 
+  // private final boolean maySkipOutputDuplicates;
+  // private final Optional<Symbol> leftHashSymbol;
+  // private final Optional<Symbol> rightHashSymbol;
   // private final Optional<DistributionType> distributionType;
   // private final Map<DynamicFilterId, Symbol> dynamicFilters;
 
@@ -66,10 +66,7 @@ public class JoinNode extends TwoChildProcessNode {
       List<EquiJoinClause> criteria,
       List<Symbol> leftOutputSymbols,
       List<Symbol> rightOutputSymbols,
-      boolean maySkipOutputDuplicates,
       Optional<Expression> filter,
-      Optional<Symbol> leftHashSymbol,
-      Optional<Symbol> rightHashSymbol,
       Optional<Boolean> spillable) {
     super(id);
     requireNonNull(joinType, "type is null");
@@ -86,8 +83,8 @@ public class JoinNode extends TwoChildProcessNode {
         !filter.isPresent() || !(filter.get() instanceof NullLiteral),
         "Filter must be an expression of boolean type: %s",
         filter);
-    requireNonNull(leftHashSymbol, "leftHashSymbol is null");
-    requireNonNull(rightHashSymbol, "rightHashSymbol is null");
+    // requireNonNull(leftHashSymbol, "leftHashSymbol is null");
+    // requireNonNull(rightHashSymbol, "rightHashSymbol is null");
     requireNonNull(spillable, "spillable is null");
 
     this.joinType = joinType;
@@ -96,11 +93,11 @@ public class JoinNode extends TwoChildProcessNode {
     this.criteria = ImmutableList.copyOf(criteria);
     this.leftOutputSymbols = ImmutableList.copyOf(leftOutputSymbols);
     this.rightOutputSymbols = ImmutableList.copyOf(rightOutputSymbols);
-    this.maySkipOutputDuplicates = maySkipOutputDuplicates;
     this.filter = filter;
-    this.leftHashSymbol = leftHashSymbol;
-    this.rightHashSymbol = rightHashSymbol;
     this.spillable = spillable;
+    // this.maySkipOutputDuplicates = maySkipOutputDuplicates;
+    // this.leftHashSymbol = leftHashSymbol;
+    // this.rightHashSymbol = rightHashSymbol;
 
     Set<Symbol> leftSymbols = ImmutableSet.copyOf(leftChild.getOutputSymbols());
     Set<Symbol> rightSymbols = ImmutableSet.copyOf(rightChild.getOutputSymbols());
@@ -112,12 +109,12 @@ public class JoinNode extends TwoChildProcessNode {
         rightSymbols.containsAll(rightOutputSymbols),
         "Right source inputs do not contain all right output symbols");
 
-    checkArgument(
-        !(criteria.isEmpty() && leftHashSymbol.isPresent()),
-        "Left hash symbol is only valid in an equijoin");
-    checkArgument(
-        !(criteria.isEmpty() && rightHashSymbol.isPresent()),
-        "Right hash symbol is only valid in an equijoin");
+    //    checkArgument(
+    //        !(criteria.isEmpty() && leftHashSymbol.isPresent()),
+    //        "Left hash symbol is only valid in an equijoin");
+    //    checkArgument(
+    //        !(criteria.isEmpty() && rightHashSymbol.isPresent()),
+    //        "Right hash symbol is only valid in an equijoin");
 
     criteria.forEach(
         equiJoinClause ->
@@ -144,10 +141,7 @@ public class JoinNode extends TwoChildProcessNode {
         criteria,
         leftOutputSymbols,
         rightOutputSymbols,
-        maySkipOutputDuplicates,
         filter,
-        leftHashSymbol,
-        rightHashSymbol,
         spillable);
   }
 
@@ -170,10 +164,7 @@ public class JoinNode extends TwoChildProcessNode {
             criteria,
             leftOutputSymbols,
             rightOutputSymbols,
-            maySkipOutputDuplicates,
             filter,
-            leftHashSymbol,
-            rightHashSymbol,
             spillable);
     joinNode.setLeftChild(null);
     joinNode.setRightChild(null);
@@ -207,20 +198,8 @@ public class JoinNode extends TwoChildProcessNode {
     return rightOutputSymbols;
   }
 
-  public boolean isMaySkipOutputDuplicates() {
-    return maySkipOutputDuplicates;
-  }
-
   public Optional<Expression> getFilter() {
     return filter;
-  }
-
-  public Optional<Symbol> getLeftHashSymbol() {
-    return leftHashSymbol;
-  }
-
-  public Optional<Symbol> getRightHashSymbol() {
-    return rightHashSymbol;
   }
 
   public Optional<Boolean> isSpillable() {

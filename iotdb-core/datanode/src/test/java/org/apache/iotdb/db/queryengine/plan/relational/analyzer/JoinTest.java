@@ -39,6 +39,8 @@ import org.junit.Test;
 import java.util.Collections;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.ALL_DEVICE_ENTRIES;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.BEIJING_A1_DEVICE_ENTRY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
@@ -298,6 +300,18 @@ public class JoinTest {
 
   @Test
   public void innerJoinTest5() {
+    String sql1 =
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time=t2.time AND t1.tag1=t2.tag1";
+    analysis = analyzeSQL(sql1, TEST_MATADATA, QUERY_CONTEXT);
+    logicalQueryPlan =
+        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
+
+    // LogicalPlan: `Output-Offset-TopK-Join-(Left + Right)-Sort-(Project)-TableScan`
+    logicalPlanNode = logicalQueryPlan.getRootNode();
+
+    System.out.println("e");
+
     // 1. has logical or in subquery filter, outer query filter
 
     // 2. where t1.value1 > t2.value2
@@ -307,9 +321,30 @@ public class JoinTest {
   @Test
   public void unsupportedJoinTest() {
     assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(time)",
-        "Join Using clause is not supported in current version");
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time",
+        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
 
+    assertAnalyzeSemanticException(
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.tag1=t2.tag2",
+        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+
+    assertAnalyzeSemanticException(
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time AND t1.tag1=t2.tag2",
+        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+
+    assertAnalyzeSemanticException(
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time>t2.time OR t1.tag1=t2.tag2",
+        ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
+
+    assertAnalyzeSemanticException(
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1)",
+        ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
+
+    assertAnalyzeSemanticException(
+        "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1, time)",
+        ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
+
+    // FULL, LEFT, RIGHT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 FULL JOIN table1 t2 ON t1.time=t2.time",
         "FULL JOIN is not supported, only support INNER JOIN in current version");

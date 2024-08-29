@@ -569,10 +569,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 equiJoinClauses,
                 leftSource.getOutputSymbols(),
                 rightSource.getOutputSymbols(),
-                node.isMaySkipOutputDuplicates(),
                 newJoinFilter,
-                node.getLeftHashSymbol(),
-                node.getRightHashSymbol(),
                 node.isSpillable());
       }
       Symbol timeSymbol = Symbol.of("time");
