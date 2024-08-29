@@ -46,7 +46,8 @@ public class IoTDBFilterNullIT {
         "CREATE DATABASE root.testNullFilter",
         "CREATE TIMESERIES root.testNullFilter.d1.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.testNullFilter.d1.s2 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.testNullFilter.d1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN"
+        "CREATE TIMESERIES root.testNullFilter.d1.s3 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+        "CREATE ALIGNED TIMESERIES root.testNullFilter.d2(s1 INT32, s2 BOOLEAN, s3 DOUBLE);"
       };
 
   private static final String[] insertSqls =
@@ -54,6 +55,9 @@ public class IoTDBFilterNullIT {
         "INSERT INTO root.testNullFilter.d1(timestamp,s2,s3) " + "values(1, false, 11.1)",
         "INSERT INTO root.testNullFilter.d1(timestamp,s1,s2) " + "values(2, 22, true)",
         "INSERT INTO root.testNullFilter.d1(timestamp,s1,s3) " + "values(3, 23, 33.3)",
+        "INSERT INTO root.testNullFilter.d2(timestamp,s2,s3) " + "values(1, false, 11.1)",
+        "INSERT INTO root.testNullFilter.d2(timestamp,s1,s2) " + "values(2, 22, true)",
+        "INSERT INTO root.testNullFilter.d2(timestamp,s1,s2) " + "values(3, 22, false)",
       };
 
   private static void prepareData() {
@@ -128,7 +132,34 @@ public class IoTDBFilterNullIT {
         assertEquals(retArray.length, count);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void inPushDownTest() {
+    String[] retArray = new String[] {"2,22,true,null", "3,22,false,null"};
+    try (Connection connectionIsNull = EnvFactory.getEnv().getConnection();
+        Statement statementIsNull = connectionIsNull.createStatement()) {
+      int count = 0;
+      try (ResultSet resultSet =
+          statementIsNull.executeQuery(
+              "select * from root.testNullFilter.d2 where s1 in (22, 23)")) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(ColumnHeaderConstant.TIME)
+                  + ","
+                  + resultSet.getString("root.testNullFilter.d2.s1")
+                  + ","
+                  + resultSet.getString("root.testNullFilter.d2.s2")
+                  + ","
+                  + resultSet.getString("root.testNullFilter.d2.s3");
+          assertEquals(retArray[count], ans);
+          count++;
+        }
+        assertEquals(retArray.length, count);
+      }
+    } catch (Exception e) {
       fail(e.getMessage());
     }
   }
