@@ -30,6 +30,11 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
@@ -40,11 +45,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.AdditionResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.DivisionResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.ModulusResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.MultiplicationResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.SubtractionResolver;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
@@ -156,7 +156,7 @@ public class TableMetadataImpl implements Metadata {
               argumentTypes,
               new IllegalArgumentException("Should have one numeric operands."));
         }
-        return DOUBLE;
+        return argumentTypes.get(0);
       case EQUAL:
       case LESS_THAN:
       case LESS_THAN_OR_EQUAL:

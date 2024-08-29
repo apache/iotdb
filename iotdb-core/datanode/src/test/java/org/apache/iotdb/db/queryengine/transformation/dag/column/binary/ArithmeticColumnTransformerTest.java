@@ -12,21 +12,16 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation;
+package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
+import org.junit.After;
+import org.junit.Before;
 
-import org.apache.tsfile.read.common.type.Type;
-import org.junit.Test;
+public class ArithmeticColumnTransformerTest {
 
-import static org.apache.tsfile.read.common.type.DateType.DATE;
-import static org.apache.tsfile.read.common.type.IntType.INT32;
+  @Before
+  public void setUp() throws Exception {}
 
-public class TypeResolverTest {
-
-  @Test
-  public void test() {
-    Type result = SubtractionResolver.checkConditions(DATE, INT32);
-    System.out.println(result);
-  }
+  @After
+  public void tearDown() throws Exception {}
 }

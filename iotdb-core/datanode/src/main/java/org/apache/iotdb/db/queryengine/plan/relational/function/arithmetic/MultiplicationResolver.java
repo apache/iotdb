@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.dag.util.visitor;
+package org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic;
 
 import org.apache.tsfile.read.common.type.Type;
 
@@ -24,8 +24,9 @@ import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 
-public class DivisionResolver {
-  private static final Map<Type, Map<Type, Type>> conditionMap = new HashMap<>();
+public class MultiplicationResolver {
+
+  private static final Map<Type, Map<Type, Type>> CONDITION_MAP = new HashMap<>();
 
   static {
     addCondition(INT32, INT32, INT32);
@@ -49,15 +50,15 @@ public class DivisionResolver {
     addCondition(DOUBLE, DOUBLE, DOUBLE);
   }
 
-  public static void addCondition(Type condition1, Type condition2, Type result) {
-    conditionMap.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
+  private static void addCondition(Type condition1, Type condition2, Type result) {
+    CONDITION_MAP.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
   }
 
   public static Type checkConditions(Type condition1, Type condition2) {
     Type result =
-        conditionMap.getOrDefault(condition1, new HashMap<>()).getOrDefault(condition2, null);
+        CONDITION_MAP.getOrDefault(condition1, new HashMap<>()).getOrDefault(condition2, null);
     if (result == null) {
-      throw new UnsupportedOperationException("Unsupported : " + condition1 + " / " + condition2);
+      throw new UnsupportedOperationException("Unsupported : " + condition1 + " * " + condition2);
     }
     return result;
   }

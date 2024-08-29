@@ -61,11 +61,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticBinaryColumnTransformerApi;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticSubtractionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
@@ -87,7 +83,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InMultiCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
@@ -145,11 +140,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ta
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Trim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.AdditionTransformerVisitor;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.DivisionResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.ModulusResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.MultiplicationResolver;
-import org.apache.iotdb.db.queryengine.transformation.dag.util.visitor.SubtractionResolver;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -164,6 +154,7 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -210,38 +201,26 @@ public class ColumnTransformerBuilder
         context.inputDataTypes.add(TSDataType.DOUBLE);
         context.cache.put(node, identity);
       } else {
+        ZoneId zoneId = context.sessionInfo.getZoneId();
         ColumnTransformer left = process(node.getLeft(), context);
         ColumnTransformer right = process(node.getRight(), context);
         ColumnTransformer child;
         switch (node.getOperator()) {
           case ADD:
-            child =
-                ArithmeticBinaryColumnTransformerApi.accept(
-                    new AdditionTransformerVisitor(), left, right);
+            child = ArithmeticColumnTransformerApi.getAdditionTransformer(left, right, zoneId);
             break;
           case SUBTRACT:
-            child =
-                new ArithmeticSubtractionColumnTransformer(
-                    SubtractionResolver.checkConditions(left.getType(), right.getType()),
-                    left,
-                    right);
+            child = ArithmeticColumnTransformerApi.getSubtractionTransformer(left, right, zoneId);
             break;
           case MULTIPLY:
             child =
-                new ArithmeticMultiplicationColumnTransformer(
-                    MultiplicationResolver.checkConditions(left.getType(), right.getType()),
-                    left,
-                    right);
+                ArithmeticColumnTransformerApi.getMultiplicationTransformer(left, right, zoneId);
             break;
           case DIVIDE:
-            child =
-                new ArithmeticDivisionColumnTransformer(
-                    DivisionResolver.checkConditions(left.getType(), right.getType()), left, right);
+            child = ArithmeticColumnTransformerApi.getDivisionTransformer(left, right, zoneId);
             break;
           case MODULUS:
-            child =
-                new ArithmeticModuloColumnTransformer(
-                    ModulusResolver.checkConditions(left.getType(), right.getType()), left, right);
+            child = ArithmeticColumnTransformerApi.getModulusTransformer(left, right, zoneId);
             break;
           default:
             throw new UnsupportedOperationException(
@@ -276,7 +255,8 @@ public class ColumnTransformerBuilder
           } else {
             ColumnTransformer childColumnTransformer = process(node.getValue(), context);
             context.cache.put(
-                node, new ArithmeticNegationColumnTransformer(DOUBLE, childColumnTransformer));
+                node,
+                ArithmeticColumnTransformerApi.getNegationTransformer(childColumnTransformer));
           }
         }
         ColumnTransformer res = context.cache.get(node);
