@@ -49,11 +49,13 @@ public class IoTDBSubStringFunctionTableIT {
         "CREATE DATABASE " + DATABASE_NAME,
         "use " + DATABASE_NAME,
         "create table table1(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
-        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 1, 1, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
+        "INSERT INTO table1(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', -1, 3, 1, 1, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         "INSERT INTO table1(Time,device_id,s1) values(2, 'd1', 'test')",
         "INSERT INTO table1(Time,device_id,s1) values(3, 'd1', 'abcdefg')",
         "INSERT INTO table1(Time,device_id,s9) values(2, 'd1', 'test')",
         "INSERT INTO table1(Time,device_id,s9) values(3, 'd1', 'abcdefg')",
+        "INSERT INTO table1(Time,device_id,s2,s3) values(2, 'd1', -1, 10)",
+        "INSERT INTO table1(Time,device_id,s2,s3) values(3, 'd1', 2, 3)",
         "flush"
       };
 
@@ -83,44 +85,45 @@ public class IoTDBSubStringFunctionTableIT {
   @Test
   public void testNewTransformer() {
     // Normal
-    String[] expectedHeader = new String[] {"time", "s1", "_col2", "_col3"};
+    String[] expectedHeader = new String[] {"time", "s1", "_col2", "_col3", "s9", "_col5", "_col6"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,abcd,abcd,abc,",
-          "1970-01-01T00:00:00.002Z,test,test,tes,",
-          "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,abc,",
+          "1970-01-01T00:00:00.001Z,abcd,abcd,abc,abcd,abcd,abc,",
+          "1970-01-01T00:00:00.002Z,test,test,tes,test,test,tes,",
+          "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,abc,abcdefg,abcdefg,abc,",
         };
     tableResultSetEqualTest(
-        "select time,s1,SUBSTRING(s1 FROM 1),SUBSTRING(s1 FROM 1 FOR 3) from table1",
+        "select time,s1,SUBSTRING(s1 FROM 1),SUBSTRING(s1 FROM 1 FOR 3),s9,SUBSTRING(s9 from 1),SUBSTRING(s9 from 1 for 3) from table1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    // Param 1 greater than input series length
+    // 2 column
+    expectedHeader = new String[] {"time", "s1", "s9", "s2", "_col4", "_col5"};
     retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,abcd,,,",
-          "1970-01-01T00:00:00.002Z,test,,,",
-          "1970-01-01T00:00:00.003Z,abcdefg,,,",
+          "1970-01-01T00:00:00.001Z,abcd,abcd,-1,abcd,abcd,",
+          "1970-01-01T00:00:00.002Z,test,test,-1,test,test,",
+          "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,2,bcdefg,bcdefg,",
         };
     tableResultSetEqualTest(
-        "select time,s1,SUBSTRING(s1 from 11),SUBSTRING(s1 from 11 for 13) from table1",
+        "select time,s1,s9,s2,SUBSTRING(s1 from s2),SUBSTRING(s1 from s2) from table1",
         expectedHeader,
         retArray,
         DATABASE_NAME);
 
-    // Normal
-    expectedHeader = new String[] {"time", "s9", "_col2", "_col3"};
-    String[] retArray2 =
+    // 3 column
+    expectedHeader = new String[] {"time", "s1", "s9", "s2", "s3", "_col5", "_col6"};
+    retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,abcd,abcd,abc,",
-          "1970-01-01T00:00:00.002Z,test,test,tes,",
-          "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,abc,",
+          "1970-01-01T00:00:00.001Z,abcd,abcd,-1,3,a,a,",
+          "1970-01-01T00:00:00.002Z,test,test,-1,10,test,test,",
+          "1970-01-01T00:00:00.003Z,abcdefg,abcdefg,2,3,bcd,bcd,",
         };
     tableResultSetEqualTest(
-        "select time,s9,SUBSTRING(s9 from 1),SUBSTRING(s9 from 1 for 3) from table1",
+        "select time,s1,s9,s2,s3,SUBSTRING(s1 from s2 for s3),SUBSTRING(s1 from s2 for s3) from table1",
         expectedHeader,
-        retArray2,
+        retArray,
         DATABASE_NAME);
   }
 
@@ -206,14 +209,14 @@ public class IoTDBSubStringFunctionTableIT {
     tableAssertTestFail(
         "select SUBSTRING(s1 FROM 1 FOR -10) from table1",
         TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0",
+            + ": Argument exception,the scalar function substring length must not be less than 0",
         DATABASE_NAME);
 
-    // Negative characters begin
+    // big characters begin
     tableAssertTestFail(
-        "select SUBSTRING(s1 FROM -1 FOR 10) from table1",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
-            + ": Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0",
+        "select SUBSTRING(s1 FROM 100 FOR 1) from table1",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            + ": Argument exception,the scalar function substring beginPosition must not be greater than the string length",
         DATABASE_NAME);
   }
 }

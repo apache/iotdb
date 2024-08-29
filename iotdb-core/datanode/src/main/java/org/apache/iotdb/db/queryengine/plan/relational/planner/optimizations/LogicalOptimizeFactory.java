@@ -18,8 +18,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Iterati
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
@@ -67,12 +69,15 @@ public class LogicalOptimizeFactory {
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), columnPruningRules);
 
-    IterativeOptimizer inlineProjectionsOptimizer =
+    IterativeOptimizer inlineProjectionLimitFiltersOptimizer =
         new IterativeOptimizer(
             plannerContext,
             new RuleStatsRecorder(),
             ImmutableSet.of(
-                new InlineProjections(plannerContext), new RemoveRedundantIdentityProjections()));
+                new InlineProjections(plannerContext),
+                new RemoveRedundantIdentityProjections(),
+                new MergeFilters(),
+                new MergeLimits()));
 
     IterativeOptimizer limitPushdownOptimizer =
         new IterativeOptimizer(
@@ -98,11 +103,11 @@ public class LogicalOptimizeFactory {
             simplifyExpressionOptimizer,
             columnPruningOptimizer,
             unAliasSymbolReferences,
-            inlineProjectionsOptimizer,
+            inlineProjectionLimitFiltersOptimizer,
             pushPredicateIntoTableScanOptimizer,
             // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
             columnPruningOptimizer,
-            inlineProjectionsOptimizer,
+            inlineProjectionLimitFiltersOptimizer,
             limitPushdownOptimizer,
             pushLimitOffsetIntoTableScanOptimizer,
             pushAggregationIntoTableScanOptimizer,
