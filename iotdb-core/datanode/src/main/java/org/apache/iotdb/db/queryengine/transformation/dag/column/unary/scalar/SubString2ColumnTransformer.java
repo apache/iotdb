@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryColumnTransformer;
 
@@ -27,8 +28,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
-
-import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer.EMPTY_STRING;
 
 public class SubString2ColumnTransformer extends BinaryColumnTransformer {
   public SubString2ColumnTransformer(
@@ -49,10 +48,12 @@ public class SubString2ColumnTransformer extends BinaryColumnTransformer {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         String currentValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
         int beginPosition = rightType.getInt(rightColumn, i);
-        if (beginPosition >= currentValue.length()) {
-          currentValue = EMPTY_STRING;
+        if (beginPosition > currentValue.length()) {
+          throw new SemanticException(
+              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
         } else {
-          currentValue = currentValue.substring(beginPosition);
+          int maxMin = Math.max(1, beginPosition);
+          currentValue = currentValue.substring(maxMin - 1);
         }
         builder.writeBinary(BytesUtils.valueOf(currentValue));
       } else {
