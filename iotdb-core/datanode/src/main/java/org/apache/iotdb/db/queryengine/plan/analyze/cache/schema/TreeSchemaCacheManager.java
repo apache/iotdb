@@ -22,24 +22,22 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,10 +54,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
  * This class takes the responsibility of metadata cache management of all DataRegions under
  * StorageEngine
  */
-public class DataNodeSchemaCache {
-
-  private static final Logger logger = LoggerFactory.getLogger(DataNodeSchemaCache.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+public class TreeSchemaCacheManager {
 
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -67,32 +62,24 @@ public class DataNodeSchemaCache {
 
   private final TimeSeriesSchemaCache timeSeriesSchemaCache;
 
+  private final TableDeviceSchemaCache tableDeviceSchemaCache;
+
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  private DataNodeSchemaCache() {
+  private TreeSchemaCacheManager() {
     deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
     timeSeriesSchemaCache = new TimeSeriesSchemaCache();
-
-    MetricService.getInstance().addMetricSet(new DataNodeSchemaCacheMetrics(this));
+    tableDeviceSchemaCache = TableDeviceSchemaFetcher.getInstance().getTableDeviceCache();
   }
 
-  public long getHitCount() {
-    return deviceUsingTemplateSchemaCache.getHitCount() + timeSeriesSchemaCache.getHitCount();
-  }
-
-  public long getRequestCount() {
-    return deviceUsingTemplateSchemaCache.getRequestCount()
-        + timeSeriesSchemaCache.getRequestCount();
-  }
-
-  public static DataNodeSchemaCache getInstance() {
-    return DataNodeSchemaCacheHolder.INSTANCE;
+  public static TreeSchemaCacheManager getInstance() {
+    return TreeSchemaCacheManagerHolder.INSTANCE;
   }
 
   /** singleton pattern. */
-  private static class DataNodeSchemaCacheHolder {
-    private static final DataNodeSchemaCache INSTANCE = new DataNodeSchemaCache();
+  private static class TreeSchemaCacheManagerHolder {
+    private static final TreeSchemaCacheManager INSTANCE = new TreeSchemaCacheManager();
   }
 
   public void takeReadLock() {
@@ -163,9 +150,8 @@ public class DataNodeSchemaCache {
   public ClusterSchemaTree getMatchedSchemaWithoutTemplate(final PartialPath fullPath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
     final IDeviceSchema schema =
-        TableDeviceSchemaFetcher.getInstance()
-            .getTableDeviceCache()
-            .getDeviceSchema(Arrays.copyOf(fullPath.getNodes(), fullPath.getNodeLength() - 1));
+        tableDeviceSchemaCache.getDeviceSchema(
+            Arrays.copyOf(fullPath.getNodes(), fullPath.getNodeLength() - 1));
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       return tree;
     }
@@ -227,8 +213,14 @@ public class DataNodeSchemaCache {
     }
   }
 
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    return timeSeriesSchemaCache.getLastCache(seriesPath);
+  public TimeValuePair getLastCache(final PartialPath seriesPath) {
+    final String[] nodes = seriesPath.getNodes();
+    final int index = nodes.length - 1;
+    return tableDeviceSchemaCache.getLastEntry(
+        nodes[1],
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(Arrays.copyOf(nodes, index))),
+        nodes[index]);
   }
 
   public void invalidateLastCache(PartialPath path) {

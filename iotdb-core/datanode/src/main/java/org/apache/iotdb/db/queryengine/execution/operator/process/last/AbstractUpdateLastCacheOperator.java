@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -51,7 +51,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected Operator child;
 
-  protected DataNodeSchemaCache lastCache;
+  protected TreeSchemaCacheManager lastCache;
 
   protected final boolean needUpdateCache;
 
@@ -64,12 +64,12 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   protected AbstractUpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
-      DataNodeSchemaCache dataNodeSchemaCache,
+      TreeSchemaCacheManager treeSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry) {
     this.operatorContext = operatorContext;
     this.child = child;
-    this.lastCache = dataNodeSchemaCache;
+    this.lastCache = treeSchemaCacheManager;
     this.needUpdateCache = needUpdateCache;
     this.needUpdateNullEntry = needUpdateNullEntry;
     this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder(1);

@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TableDeviceSchemaCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
@@ -87,6 +89,8 @@ public class TableDeviceSchemaCache {
             .secondKeySizeComputer(deviceID -> (int) deviceID.ramBytesUsed())
             .valueSizeComputer(TableDeviceCacheEntry::estimateSize)
             .build();
+
+    MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
   }
 
   /////////////////////////////// Attribute ///////////////////////////////
@@ -314,7 +318,9 @@ public class TableDeviceSchemaCache {
   }
 
   public IDeviceSchema getDeviceSchema(final String[] devicePath) {
-    final IDeviceID deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath);
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(devicePath));
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(devicePath[1], deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;

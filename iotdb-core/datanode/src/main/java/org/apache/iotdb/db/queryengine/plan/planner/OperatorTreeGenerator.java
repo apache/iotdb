@@ -157,8 +157,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -324,8 +324,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
-  private static final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE =
-      DataNodeSchemaCache.getInstance();
+  private static final TreeSchemaCacheManager DATA_NODE_SCHEMA_CACHE =
+      TreeSchemaCacheManager.getInstance();
 
   private static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
 
