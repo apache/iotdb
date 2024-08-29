@@ -236,7 +236,7 @@ final class SubscriptionProviders {
   private void heartbeatInternal(final SubscriptionConsumer consumer) {
     for (final SubscriptionProvider provider : getAllProviders()) {
       try {
-        consumer.subscribedTopics = provider.heartbeat();
+        consumer.subscribedTopics = provider.heartbeat().getTopics();
         provider.setAvailable();
       } catch (final Exception e) {
         LOGGER.warn(
@@ -299,7 +299,7 @@ final class SubscriptionProviders {
       } else {
         // existing provider
         try {
-          consumer.subscribedTopics = provider.heartbeat();
+          consumer.subscribedTopics = provider.heartbeat().getTopics();
           provider.setAvailable();
         } catch (final Exception e) {
           LOGGER.warn(
