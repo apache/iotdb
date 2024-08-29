@@ -73,10 +73,8 @@ public class TableDeviceSchemaCache {
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   public TableDeviceSchemaCache() {
-    final DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCacheBuilder =
-        new DualKeyCacheBuilder<>();
     dualKeyCache =
-        dualKeyCacheBuilder
+        new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
                 DualKeyCachePolicy.valueOf(config.getDataNodeSchemaCacheEvictionPolicy()))
             .memoryCapacity(config.getAllocateMemoryForSchemaCache())
@@ -288,6 +286,8 @@ public class TableDeviceSchemaCache {
   }
 
   /////////////////////////////// Tree model ///////////////////////////////
+
+  
 
   /////////////////////////////// Common ///////////////////////////////
   public void invalidate(final String database) {
