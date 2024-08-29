@@ -100,12 +100,12 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
               ? lastEvent
               : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     }
+    // Record this event for retrying on connection failure or other exceptions
+    setLastEvent(event);
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
       lastEvent = null;
       return true;
     }
-    // Record this event for retrying on connection failure or other exceptions
-    setLastEvent(event);
 
     try {
       if (event == null) {
