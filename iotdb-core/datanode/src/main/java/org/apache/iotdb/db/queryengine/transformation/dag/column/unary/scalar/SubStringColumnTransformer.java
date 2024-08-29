@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 
@@ -28,18 +29,26 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.BytesUtils;
 
-public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
+public class SubStringColumnTransformer extends UnaryColumnTransformer {
 
   private final int beginPosition;
   private final int endPosition;
   public static final String EMPTY_STRING = "";
 
-  public SubStringFunctionColumnTransformer(
+  public SubStringColumnTransformer(
       Type returnType, ColumnTransformer childColumnTransformer, int beginPosition, int length) {
     super(returnType, childColumnTransformer);
-    this.endPosition =
-        (length == Integer.MAX_VALUE ? Integer.MAX_VALUE : beginPosition + length - 1);
-    this.beginPosition = beginPosition > 0 ? beginPosition - 1 : 0;
+    if (length < 0) {
+      throw new SemanticException(
+          "Argument exception,the scalar function substring length must not be less than 0");
+    }
+    // case which is two args or the result of the beginPosition add length is over
+    if (length == Integer.MAX_VALUE || beginPosition > Integer.MAX_VALUE - length) {
+      this.endPosition = Integer.MAX_VALUE;
+    } else {
+      this.endPosition = beginPosition + length - 1;
+    }
+    this.beginPosition = beginPosition;
   }
 
   @Override
@@ -47,13 +56,16 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        if (beginPosition >= currentValue.length() || endPosition < 0) {
-          currentValue = EMPTY_STRING;
+        if (beginPosition > currentValue.length()) {
+          throw new SemanticException(
+              "Argument exception,the scalar function substring beginPosition must not be greater than the string length");
         } else {
-          if (endPosition >= currentValue.length()) {
-            currentValue = currentValue.substring(beginPosition);
+          int maxMin = Math.max(1, beginPosition);
+          int minMax = Math.min(currentValue.length(), endPosition);
+          if (maxMin > minMax) {
+            currentValue = EMPTY_STRING;
           } else {
-            currentValue = currentValue.substring(beginPosition, endPosition);
+            currentValue = currentValue.substring(maxMin - 1, minMax);
           }
         }
         columnBuilder.writeBinary(BytesUtils.valueOf(currentValue));
