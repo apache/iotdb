@@ -177,7 +177,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text or string data type.");
       }
-      return argumentTypes.get(0);
+      return STRING;
     } else if (TableBuiltinScalarFunction.SUBSTRING
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
@@ -193,7 +193,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
-      return argumentTypes.get(0);
+      return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
@@ -454,6 +454,22 @@ public class TableMetadataImpl implements Metadata {
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
+      }
+      return DOUBLE;
+    } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.isEmpty())) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " accepts no argument.");
+      }
+      return DOUBLE;
+    } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.isEmpty())) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " accepts no argument.");
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.DATE_BIN

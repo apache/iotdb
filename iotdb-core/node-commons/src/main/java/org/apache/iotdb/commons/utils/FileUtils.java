@@ -62,6 +62,10 @@ public class FileUtils {
   }
 
   public static void deleteFileOrDirectory(File file) {
+    deleteFileOrDirectory(file, false);
+  }
+
+  public static void deleteFileOrDirectory(File file, boolean quiteForNoSuchFile) {
     if (file.isDirectory()) {
       for (File subfile : file.listFiles()) {
         deleteFileOrDirectory(subfile);
@@ -69,7 +73,11 @@ public class FileUtils {
     }
     try {
       Files.delete(file.toPath());
-    } catch (NoSuchFileException | DirectoryNotEmptyException e) {
+    } catch (NoSuchFileException e) {
+      if (!quiteForNoSuchFile) {
+        LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+      }
+    } catch (DirectoryNotEmptyException e) {
       LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
       LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
