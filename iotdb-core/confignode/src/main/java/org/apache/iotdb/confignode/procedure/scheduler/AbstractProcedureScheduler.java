@@ -78,6 +78,10 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
 
   @Override
   public void addFront(final Procedure procedure) {
+    if (procedure.isSuccess()) {
+      LOG.warn("Don't add a successful procedure back to the scheduler, it will be ignored");
+      return;
+    }
     push(procedure, true, true);
   }
 
@@ -88,6 +92,10 @@ public abstract class AbstractProcedureScheduler implements ProcedureScheduler {
 
   @Override
   public void addBack(final Procedure procedure) {
+    if (procedure.isSuccess()) {
+      LOG.warn("Don't add a successful procedure back to the scheduler, it will be ignored");
+      return;
+    }
     push(procedure, false, true);
   }
 

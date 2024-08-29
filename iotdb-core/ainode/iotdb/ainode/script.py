@@ -47,45 +47,30 @@ def main():
     elif command == 'remove':
         try:
             logger.info("Removing AINode...")
-            if len(arguments) >= 3:
-                target_ainode = arguments[2]
-                # parameter pattern: <ainode-id> or <ip>:<rpc-port>
-                ainode_info = target_ainode.split(POINT_COLON)
-                target_ainode_id = -1
-
-                # ainode id
-                if len(ainode_info) == 1:
-                    target_ainode_id = int(ainode_info[0])
-
-                    ainode_configuration_map = client_manager.borrow_config_node_client().get_ainode_configuration(
-                        target_ainode_id)
-
-                    end_point = ainode_configuration_map[target_ainode_id].location.internalEndPoint
-                    target_rpc_address = end_point.ip
-                    target_rpc_port = end_point.port
-                elif len(ainode_info) == 2:
-                    target_rpc_address = ainode_info[0]
-                    target_rpc_port = int(ainode_info[1])
-
-                    ainode_configuration_map = client_manager.borrow_config_node_client().get_ainode_configuration(-1)
-
-                    for cur_ainode_id, cur_configuration in ainode_configuration_map.items():
-                        cur_end_point = cur_configuration.location.internalEndPoint
-                        if cur_end_point.ip == target_rpc_address and cur_end_point.port == target_rpc_port:
-                            target_ainode_id = cur_ainode_id
-                            break
-                    if target_ainode_id == -1:
-                        raise MissingConfigError(
-                            "Can't find ainode through {}:{}".format(target_rpc_port, target_rpc_address))
-                else:
-                    raise MissingConfigError("NodeId or IP:Port should be provided to remove AINode")
-
-                logger.info('Got target AINode id: {}, address: {}, port: {}'
-                            .format(target_ainode_id, target_rpc_address, target_rpc_port))
-            else:
+            # Delete the current node
+            if len(arguments) == 2:
                 target_ainode_id = descriptor.get_config().get_ainode_id()
                 target_rpc_address = descriptor.get_config().get_ain_inference_rpc_address()
                 target_rpc_port = descriptor.get_config().get_ain_inference_rpc_port()
+
+            # Delete the node with a given id
+            elif len(arguments) == 3:
+                target_ainode_id = arguments[2]
+
+                # ainode id
+                ainode_configuration_map = client_manager.borrow_config_node_client().get_ainode_configuration(target_ainode_id)
+
+                end_point = ainode_configuration_map[target_ainode_id].location.internalEndPoint
+                target_rpc_address = end_point.ip
+                target_rpc_port = end_point.port
+
+                if not end_point:
+                    raise MissingConfigError("NodeId: {} not found in cluster ".format(target_ainode_id))
+
+                logger.info('Got target AINode id: {}'.format(target_ainode_id))
+
+            else:
+                raise MissingConfigError("Invalid command")
 
             location = TAINodeLocation(target_ainode_id, TEndPoint(target_rpc_address, target_rpc_port))
             status = client_manager.borrow_config_node_client().node_remove(location)
@@ -100,3 +85,6 @@ def main():
             sys.exit(1)
     else:
         logger.warning("Unknown argument: {}.".format(command))
+
+if __name__ == '__main__':
+    main()

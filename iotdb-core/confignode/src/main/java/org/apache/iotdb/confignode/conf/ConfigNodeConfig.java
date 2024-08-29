@@ -35,7 +35,7 @@ import java.util.Arrays;
 
 public class ConfigNodeConfig {
 
-  /** ClusterId, the default value "defaultCluster" will be changed after join cluster. */
+  /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
 
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
