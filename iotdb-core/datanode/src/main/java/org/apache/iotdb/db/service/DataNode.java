@@ -176,10 +176,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
-        .resetFilePath(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + PROPERTIES_FILE_NAME);
+        .resetFilePath(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
   }
 
   private static RegisterManager registerManager = new RegisterManager();
@@ -448,7 +445,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     initTTLInformation(runtimeConfiguration.getAllTTLInformation());
 
     /* Store cluster ID */
-    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
+    String clusterId = runtimeConfiguration.getClusterId();
+    storeClusterID(clusterId);
   }
 
   /**
@@ -581,6 +579,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
+    req.setClusterId(config.getClusterId());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -1074,6 +1073,17 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       } catch (IllegalPathException e) {
         throw new StartupException(e);
       }
+    }
+  }
+
+  private void storeClusterID(String clusterID) throws StartupException {
+    try {
+      if (config.getClusterId().isEmpty()) {
+        config.setClusterId(clusterID);
+        IoTDBStartCheck.getInstance().serializeClusterID(clusterID);
+      }
+    } catch (IOException e) {
+      throw new StartupException(e);
     }
   }
 
