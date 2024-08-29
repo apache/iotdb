@@ -129,7 +129,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       return false;
     }
 
-    outputEventCollector.resetCollectInvocationCountAndGenerateFlag();
+    outputEventCollector.resetFlags();
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
@@ -168,6 +168,9 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               // of the event must be zero in the processor stage, at this time, the progress of the
               // event needs to be reported.
               && outputEventCollector.hasNoGeneratedEvent()
+              // If the event's reference count cannot be increased, it means that the event has
+              // been released, and the progress of the event can not be reported.
+              && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
               && !(pipeProcessor instanceof PipeConsensusProcessor);
       if (shouldReport

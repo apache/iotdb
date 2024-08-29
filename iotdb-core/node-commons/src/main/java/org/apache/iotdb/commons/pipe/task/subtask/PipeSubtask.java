@@ -160,6 +160,7 @@ public abstract class PipeSubtask
             .decreaseReferenceCount(PipeSubtask.class.getName(), shouldReport);
       }
       lastEvent = null;
+      return;
     }
 
     // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
@@ -179,6 +180,7 @@ public abstract class PipeSubtask
         ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastEvent = null;
+      return;
     }
 
     // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
