@@ -17,18 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.type;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.tsfile.read.common.type.Type;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 
-import java.util.function.Function;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressionRewriter.rewrite;
 
-import static java.util.Objects.requireNonNull;
-
-public class TypeCoercion {
-  private final Function<TypeSignature, Type> lookupType;
-
-  public TypeCoercion(Function<TypeSignature, Type> lookupType) {
-    this.lookupType = requireNonNull(lookupType, "lookupType is null");
+public class CanonicalizeExpressions extends ExpressionRewriteRuleSet {
+  public CanonicalizeExpressions(PlannerContext plannerContext, IrTypeAnalyzer typeAnalyzer) {
+    super(
+        (expression, context) ->
+            rewrite(
+                expression,
+                context.getSessionInfo(),
+                plannerContext,
+                typeAnalyzer,
+                context.getSymbolAllocator().getTypes()));
   }
 }

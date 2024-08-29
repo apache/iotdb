@@ -17,16 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.metadata;
+package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import static java.util.Objects.requireNonNull;
+public class NoOpSymbolResolver implements SymbolResolver {
+  public static final NoOpSymbolResolver INSTANCE = new NoOpSymbolResolver();
 
-public class FunctionManager {
-
-  private final FunctionManager functionManager;
-
-  public InterpretedFunctionInvoker(FunctionManager functionManager) {
-    this.functionManager = requireNonNull(functionManager, "functionManager is null");
+  @Override
+  public Object getValue(Symbol symbol) {
+    return symbol.toSymbolReference();
   }
-
 }

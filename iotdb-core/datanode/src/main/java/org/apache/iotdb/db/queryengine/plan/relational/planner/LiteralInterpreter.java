@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.TimestampType;
@@ -69,7 +70,7 @@ public class LiteralInterpreter {
     }
 
     @Override
-    protected Object visitBooleanLiteral(BooleanLiteral node, Void context) {
+    protected Boolean visitBooleanLiteral(BooleanLiteral node, Void context) {
       return node.getValue();
     }
 

@@ -183,7 +183,8 @@ public class InlineProjections implements Rule<ProjectNode> {
         dependencies.keySet().stream()
             .filter(
                 input ->
-                    isEffectivelyLiteral(child.getAssignments().get(input))
+                    isEffectivelyLiteral(
+                            child.getAssignments().get(input), plannerContext, sessionInfo)
                         || child.getAssignments().get(input) instanceof SymbolReference)
             .filter(
                 input ->

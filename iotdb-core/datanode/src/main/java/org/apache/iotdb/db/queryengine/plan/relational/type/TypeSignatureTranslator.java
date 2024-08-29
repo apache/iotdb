@@ -32,7 +32,6 @@ import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -44,9 +43,9 @@ public class TypeSignatureTranslator {
 
   private TypeSignatureTranslator() {}
 
-  public static DataType toSqlType(Type type)
-  {
-    return new GenericDataType(new Identifier(type.getTypeEnum().name(), false), Collections.emptyList());
+  public static DataType toSqlType(Type type) {
+    return new GenericDataType(
+        new Identifier(type.getTypeEnum().name(), false), Collections.emptyList());
   }
 
   public static TypeSignature toTypeSignature(DataType type) {

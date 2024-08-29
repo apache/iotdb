@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
@@ -29,6 +28,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.TimestampType;
@@ -36,8 +37,9 @@ import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.UnknownType;
 import org.apache.tsfile.utils.Binary;
 
-import java.util.List;
 import javax.annotation.Nullable;
+
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
@@ -86,11 +88,9 @@ public final class LiteralEncoder {
       return new Cast(new NullLiteral(), toSqlType(type), false);
     }
 
-
     if (type.equals(INT32) || type.equals(INT64)) {
       return new LongLiteral(object.toString());
     }
-
 
     if (type.equals(FLOAT) || type.equals(DOUBLE)) {
       Double value = (Double) object;
@@ -111,7 +111,6 @@ public final class LiteralEncoder {
       return new BinaryLiteral(value.getValues());
     }
 
-
     if (type.equals(DateType.DATE)) {
       return new GenericLiteral(DateType.DATE.getTypeEnum().name(), ((Integer) object).toString());
     }
@@ -122,5 +121,4 @@ public final class LiteralEncoder {
 
     throw new IllegalArgumentException("Unknown type: " + type);
   }
-
 }

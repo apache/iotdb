@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -108,6 +109,11 @@ public class ExpressionRewriter<C> {
 
   public Expression rewriteNullIfExpression(
       NullIfExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
+    return rewriteExpression(node, context, treeRewriter);
+  }
+
+  public Expression rewriteIfExpression(
+      IfExpression node, C context, ExpressionTreeRewriter<C> treeRewriter) {
     return rewriteExpression(node, context, treeRewriter);
   }
 

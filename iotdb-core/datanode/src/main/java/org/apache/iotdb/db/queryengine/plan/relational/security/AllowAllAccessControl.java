@@ -19,5 +19,4 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-public class AllowAllAccessControl implements AccessControl {
-}
+public class AllowAllAccessControl implements AccessControl {}

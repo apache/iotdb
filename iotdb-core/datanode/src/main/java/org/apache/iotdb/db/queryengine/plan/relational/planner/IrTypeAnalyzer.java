@@ -19,16 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
-import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -61,8 +55,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpre
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.read.common.type.BlobType;
+import org.apache.tsfile.read.common.type.DateType;
 import org.apache.tsfile.read.common.type.StringType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -73,8 +72,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.collect.ImmutableList.toImmutableList;
-import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
@@ -91,9 +88,8 @@ public class IrTypeAnalyzer {
     this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
   }
 
-
-  public Map<NodeRef<Expression>, Type> getTypes(SessionInfo session, TypeProvider inputTypes, Iterable<Expression> expressions)
-  {
+  public Map<NodeRef<Expression>, Type> getTypes(
+      SessionInfo session, TypeProvider inputTypes, Iterable<Expression> expressions) {
     Visitor visitor = new Visitor(plannerContext, session, inputTypes);
 
     for (Expression expression : expressions) {
@@ -103,46 +99,35 @@ public class IrTypeAnalyzer {
     return visitor.getTypes();
   }
 
-  public Map<NodeRef<Expression>, Type> getTypes(SessionInfo session, TypeProvider inputTypes, Expression expression)
-  {
+  public Map<NodeRef<Expression>, Type> getTypes(
+      SessionInfo session, TypeProvider inputTypes, Expression expression) {
     return getTypes(session, inputTypes, ImmutableList.of(expression));
   }
 
-  public Type getType(SessionInfo session, TypeProvider inputTypes, Expression expression)
-  {
+  public Type getType(SessionInfo session, TypeProvider inputTypes, Expression expression) {
     return getTypes(session, inputTypes, expression).get(NodeRef.of(expression));
   }
 
-  private static class Visitor
-      extends AstVisitor<Type, Context>
-  {
+  private static class Visitor extends AstVisitor<Type, Context> {
     private static final AccessControl ALLOW_ALL_ACCESS_CONTROL = new AllowAllAccessControl();
 
     private final PlannerContext plannerContext;
     private final SessionInfo session;
     private final TypeProvider symbolTypes;
-    private final FunctionResolver functionResolver;
-
-    // Cache from SQL type name to Type; every Type in the cache has a CAST defined from VARCHAR
-    private final Cache<String, Type> varcharCastableTypeCache = buildNonEvictableCache(CacheBuilder.newBuilder().maximumSize(1000));
 
     private final Map<NodeRef<Expression>, Type> expressionTypes = new LinkedHashMap<>();
 
-    public Visitor(PlannerContext plannerContext, SessionInfo session, TypeProvider symbolTypes)
-    {
+    public Visitor(PlannerContext plannerContext, SessionInfo session, TypeProvider symbolTypes) {
       this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
       this.session = requireNonNull(session, "session is null");
       this.symbolTypes = requireNonNull(symbolTypes, "symbolTypes is null");
-      this.functionResolver = plannerContext.getFunctionResolver(WarningCollector.NOOP);
     }
 
-    public Map<NodeRef<Expression>, Type> getTypes()
-    {
+    public Map<NodeRef<Expression>, Type> getTypes() {
       return expressionTypes;
     }
 
-    private Type setExpressionType(Expression expression, Type type)
-    {
+    private Type setExpressionType(Expression expression, Type type) {
       requireNonNull(expression, "expression cannot be null");
       requireNonNull(type, "type cannot be null");
 
@@ -151,8 +136,7 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    public Type process(Node node, Context context)
-    {
+    public Type process(Node node, Context context) {
       if (node instanceof Expression) {
         // don't double process a node
         Type type = expressionTypes.get(NodeRef.of(((Expression) node)));
@@ -163,10 +147,8 @@ public class IrTypeAnalyzer {
       return super.process(node, context);
     }
 
-
     @Override
-    protected Type visitSymbolReference(SymbolReference node, Context context)
-    {
+    protected Type visitSymbolReference(SymbolReference node, Context context) {
       Symbol symbol = Symbol.from(node);
       Type type = context.getArgumentTypes().get(symbol);
       if (type == null) {
@@ -177,44 +159,38 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitNotExpression(NotExpression node, Context context)
-    {
+    protected Type visitNotExpression(NotExpression node, Context context) {
       process(node.getValue(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitLogicalExpression(LogicalExpression node, Context context)
-    {
+    protected Type visitLogicalExpression(LogicalExpression node, Context context) {
       node.getTerms().forEach(term -> process(term, context));
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitComparisonExpression(ComparisonExpression node, Context context)
-    {
+    protected Type visitComparisonExpression(ComparisonExpression node, Context context) {
       process(node.getLeft(), context);
       process(node.getRight(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitIsNullPredicate(IsNullPredicate node, Context context)
-    {
+    protected Type visitIsNullPredicate(IsNullPredicate node, Context context) {
       process(node.getValue(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitIsNotNullPredicate(IsNotNullPredicate node, Context context)
-    {
+    protected Type visitIsNotNullPredicate(IsNotNullPredicate node, Context context) {
       process(node.getValue(), context);
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitNullIfExpression(NullIfExpression node, Context context)
-    {
+    protected Type visitNullIfExpression(NullIfExpression node, Context context) {
       Type firstType = process(node.getFirst(), context);
       Type ignored = process(node.getSecond(), context);
 
@@ -229,111 +205,133 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitIfExpression(IfExpression node, Context context)
-    {
+    protected Type visitIfExpression(IfExpression node, Context context) {
       Type conditionType = process(node.getCondition(), context);
       checkArgument(conditionType.equals(BOOLEAN), "Condition must be boolean: %s", conditionType);
 
       Type trueType = process(node.getTrueValue(), context);
       if (node.getFalseValue().isPresent()) {
         Type falseType = process(node.getFalseValue().get(), context);
-        checkArgument(trueType.equals(falseType), "Types must be equal: %s vs %s", trueType, falseType);
+        checkArgument(
+            trueType.equals(falseType), "Types must be equal: %s vs %s", trueType, falseType);
       }
 
       return setExpressionType(node, trueType);
     }
 
     @Override
-    protected Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context)
-    {
-      Set<Type> resultTypes = node.getWhenClauses().stream()
-          .map(clause -> {
-            Type operandType = process(clause.getOperand(), context);
-            checkArgument(operandType.equals(BOOLEAN), "When clause operand must be boolean: %s", operandType);
-            return setExpressionType(clause, process(clause.getResult(), context));
-          })
-          .collect(Collectors.toSet());
+    protected Type visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
+      Set<Type> resultTypes =
+          node.getWhenClauses().stream()
+              .map(
+                  clause -> {
+                    Type operandType = process(clause.getOperand(), context);
+                    checkArgument(
+                        operandType.equals(BOOLEAN),
+                        "When clause operand must be boolean: %s",
+                        operandType);
+                    return setExpressionType(clause, process(clause.getResult(), context));
+                  })
+              .collect(Collectors.toSet());
 
       checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
       Type resultType = resultTypes.iterator().next();
-      node.getDefaultValue().ifPresent(defaultValue -> {
-        Type defaultType = process(defaultValue, context);
-        checkArgument(defaultType.equals(resultType), "Default result type must be the same as WHEN result types: %s vs %s", defaultType, resultType);
-      });
+      node.getDefaultValue()
+          .ifPresent(
+              defaultValue -> {
+                Type defaultType = process(defaultValue, context);
+                checkArgument(
+                    defaultType.equals(resultType),
+                    "Default result type must be the same as WHEN result types: %s vs %s",
+                    defaultType,
+                    resultType);
+              });
 
       return setExpressionType(node, resultType);
     }
 
     @Override
-    protected Type visitSimpleCaseExpression(SimpleCaseExpression node, Context context)
-    {
+    protected Type visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
       Type operandType = process(node.getOperand(), context);
 
-      Set<Type> resultTypes = node.getWhenClauses().stream()
-          .map(clause -> {
-            Type clauseOperandType = process(clause.getOperand(), context);
-            checkArgument(clauseOperandType.equals(operandType), "WHEN clause operand type must match CASE operand type: %s vs %s", clauseOperandType, operandType);
-            return setExpressionType(clause, process(clause.getResult(), context));
-          })
-          .collect(Collectors.toSet());
+      Set<Type> resultTypes =
+          node.getWhenClauses().stream()
+              .map(
+                  clause -> {
+                    Type clauseOperandType = process(clause.getOperand(), context);
+                    checkArgument(
+                        clauseOperandType.equals(operandType),
+                        "WHEN clause operand type must match CASE operand type: %s vs %s",
+                        clauseOperandType,
+                        operandType);
+                    return setExpressionType(clause, process(clause.getResult(), context));
+                  })
+              .collect(Collectors.toSet());
 
       checkArgument(resultTypes.size() == 1, "All result types must be the same: %s", resultTypes);
       Type resultType = resultTypes.iterator().next();
-      node.getDefaultValue().ifPresent(defaultValue -> {
-        Type defaultType = process(defaultValue, context);
-        checkArgument(defaultType.equals(resultType), "Default result type must be the same as WHEN result types: %s vs %s", defaultType, resultType);
-      });
+      node.getDefaultValue()
+          .ifPresent(
+              defaultValue -> {
+                Type defaultType = process(defaultValue, context);
+                checkArgument(
+                    defaultType.equals(resultType),
+                    "Default result type must be the same as WHEN result types: %s vs %s",
+                    defaultType,
+                    resultType);
+              });
 
       return setExpressionType(node, resultType);
     }
 
     @Override
-    protected Type visitCoalesceExpression(CoalesceExpression node, Context context)
-    {
-      Set<Type> types = node.getOperands().stream()
-          .map(operand -> process(operand, context))
-          .collect(Collectors.toSet());
+    protected Type visitCoalesceExpression(CoalesceExpression node, Context context) {
+      Set<Type> types =
+          node.getOperands().stream()
+              .map(operand -> process(operand, context))
+              .collect(Collectors.toSet());
 
       checkArgument(types.size() == 1, "All operands must have the same type: %s", types);
       return setExpressionType(node, types.iterator().next());
     }
 
     @Override
-    protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, Context context)
-    {
+    protected Type visitArithmeticUnary(ArithmeticUnaryExpression node, Context context) {
       return setExpressionType(node, process(node.getValue(), context));
     }
 
     @Override
-    protected Type visitArithmeticBinary(ArithmeticBinaryExpression node, Context context)
-    {
+    protected Type visitArithmeticBinary(ArithmeticBinaryExpression node, Context context) {
       ImmutableList.Builder<Type> argumentTypes = ImmutableList.builder();
       argumentTypes.add(process(node.getLeft(), context));
       argumentTypes.add(process(node.getRight(), context));
 
       try {
-        return setExpressionType(node, plannerContext.getMetadata().getOperatorReturnType(OperatorType.valueOf(node.getOperator().name()), argumentTypes.build()));
+        return setExpressionType(
+            node,
+            plannerContext
+                .getMetadata()
+                .getOperatorReturnType(
+                    OperatorType.valueOf(node.getOperator().name()), argumentTypes.build()));
       } catch (OperatorNotFoundException e) {
         throw new SemanticException(e.getMessage());
       }
     }
 
     @Override
-    protected Type visitStringLiteral(StringLiteral node, Context context)
-    {
+    protected Type visitStringLiteral(StringLiteral node, Context context) {
       return setExpressionType(node, StringType.STRING);
     }
 
     @Override
-    protected Type visitBinaryLiteral(BinaryLiteral node, Context context)
-    {
+    protected Type visitBinaryLiteral(BinaryLiteral node, Context context) {
       return setExpressionType(node, BlobType.BLOB);
     }
 
     @Override
-    protected Type visitLongLiteral(LongLiteral node, Context context)
-    {
-      if (node.getParsedValue() >= Integer.MIN_VALUE && node.getParsedValue() <= Integer.MAX_VALUE) {
+    protected Type visitLongLiteral(LongLiteral node, Context context) {
+      if (node.getParsedValue() >= Integer.MIN_VALUE
+          && node.getParsedValue() <= Integer.MAX_VALUE) {
         return setExpressionType(node, INT32);
       }
 
@@ -341,97 +339,51 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitDoubleLiteral(DoubleLiteral node, Context context)
-    {
+    protected Type visitDoubleLiteral(DoubleLiteral node, Context context) {
       return setExpressionType(node, DOUBLE);
     }
 
     @Override
-    protected Type visitBooleanLiteral(BooleanLiteral node, Context context)
-    {
+    protected Type visitBooleanLiteral(BooleanLiteral node, Context context) {
       return setExpressionType(node, BOOLEAN);
     }
 
     @Override
-    protected Type visitGenericLiteral(GenericLiteral node, Context context)
-    {
-      return setExpressionType(
-          node,
-          switch (node.getType()) {
-            case String name when name.equalsIgnoreCase("CHAR") -> CharType.createCharType(node.getValue().length());
-            case String name when name.equalsIgnoreCase("TIMESTAMP") && timestampHasTimeZone(node.getValue()) -> createTimestampWithTimeZoneType(extractTimestampPrecision(node.getValue()));
-            case String name when name.equalsIgnoreCase("TIMESTAMP") -> createTimestampType(extractTimestampPrecision(node.getValue()));
-            case String name when name.equalsIgnoreCase("TIME") && timeHasTimeZone(node.getValue()) -> createTimeWithTimeZoneType(extractTimePrecision(node.getValue()));
-            case String name when name.equalsIgnoreCase("TIME") -> createTimeType(extractTimePrecision(node.getValue()));
-            default -> uncheckedCacheGet(varcharCastableTypeCache, node.getType(), () -> plannerContext.getTypeManager().fromSqlType(node.getType()));
-          });
+    protected Type visitGenericLiteral(GenericLiteral node, Context context) {
+      Type type;
+      if (DateType.DATE.getTypeEnum().name().equals(node.getType())) {
+        type = DateType.DATE;
+      } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(node.getType())) {
+        type = TimestampType.TIMESTAMP;
+      } else {
+        throw new SemanticException("Unsupported type in GenericLiteral: " + node.getType());
+      }
+      return setExpressionType(node, type);
     }
 
     @Override
-    protected Type visitNullLiteral(NullLiteral node, Context context)
-    {
+    protected Type visitNullLiteral(NullLiteral node, Context context) {
       return setExpressionType(node, UNKNOWN);
     }
 
     @Override
-    protected Type visitFunctionCall(FunctionCall node, Context context)
-    {
+    protected Type visitFunctionCall(FunctionCall node, Context context) {
       // Function should already be resolved in IR
-      ResolvedFunction function = functionResolver.resolveFunction(session, node.getName(), null, ALLOW_ALL_ACCESS_CONTROL);
-
-      BoundSignature signature = function.getSignature();
+      List<Type> argumentTypes = new ArrayList<>(node.getArguments().size());
       for (int i = 0; i < node.getArguments().size(); i++) {
         Expression argument = node.getArguments().get(i);
-        Type formalType = signature.getArgumentTypes().get(i);
-
-        Type unused = switch (argument) {
-          case LambdaExpression lambda -> processLambdaExpression(lambda, ((FunctionType) formalType).getArgumentTypes());
-          case BindExpression bind -> processBindExpression(bind, (FunctionType) formalType, context);
-          default -> process(argument, context);
-        };
-
-        // TODO
-        // checkArgument(actualType.equals(formalType), "Actual and formal argument types do not match: %s vs %s", actualType, formalType);
+        argumentTypes.add(process(argument, context));
       }
 
-      return setExpressionType(node, signature.getReturnType());
-    }
-
-    private Type processBindExpression(BindExpression bind, FunctionType formalType, Context context)
-    {
-      List<Type> argumentTypes = new ArrayList<>();
-
-      argumentTypes.addAll(bind.getValues().stream()
-          .map(value -> process(value, context))
-          .collect(toImmutableList()));
-
-      argumentTypes.addAll(formalType.getArgumentTypes());
-
-      if (bind.getFunction() instanceof LambdaExpression) {
-        Type unused = processLambdaExpression((LambdaExpression) bind.getFunction(), argumentTypes);
-        // TODO: validate actual type and expected type are the same
-        return setExpressionType(bind, formalType);
-      }
-
-      throw new UnsupportedOperationException("not yet implemented");
-    }
-
-    private Type processLambdaExpression(LambdaExpression lambda, List<Type> argumentTypes)
-    {
-      ImmutableMap.Builder<Symbol, Type> typeBindings = ImmutableMap.builder();
-      for (int i = 0; i < argumentTypes.size(); i++) {
-        typeBindings.put(
-            new Symbol(lambda.getArguments().get(i).getName().getValue()),
-            argumentTypes.get(i));
-      }
-
-      Type returnType = process(lambda.getBody(), new Context(typeBindings.buildOrThrow()));
-      return setExpressionType(lambda, new FunctionType(argumentTypes, returnType));
+      return setExpressionType(
+          node,
+          plannerContext
+              .getMetadata()
+              .getFunctionReturnType(node.getName().getSuffix(), argumentTypes));
     }
 
     @Override
-    protected Type visitBetweenPredicate(BetweenPredicate node, Context context)
-    {
+    protected Type visitBetweenPredicate(BetweenPredicate node, Context context) {
       process(node.getValue(), context);
       process(node.getMin(), context);
       process(node.getMax(), context);
@@ -440,15 +392,14 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    public Type visitCast(Cast node, Context context)
-    {
+    public Type visitCast(Cast node, Context context) {
       process(node.getExpression(), context);
-      return setExpressionType(node, plannerContext.getTypeManager().getType(toTypeSignature(node.getType())));
+      return setExpressionType(
+          node, plannerContext.getTypeManager().getType(toTypeSignature(node.getType())));
     }
 
     @Override
-    protected Type visitInPredicate(InPredicate node, Context context)
-    {
+    protected Type visitInPredicate(InPredicate node, Context context) {
       Expression value = node.getValue();
       InListExpression valueList = (InListExpression) node.getValueList();
 
@@ -464,15 +415,15 @@ public class IrTypeAnalyzer {
     }
 
     @Override
-    protected Type visitExpression(Expression node, Context context)
-    {
-      throw new UnsupportedOperationException("Not a valid IR expression: " + node.getClass().getName());
+    protected Type visitExpression(Expression node, Context context) {
+      throw new UnsupportedOperationException(
+          "Not a valid IR expression: " + node.getClass().getName());
     }
 
     @Override
-    protected Type visitNode(Node node, Context context)
-    {
-      throw new UnsupportedOperationException("Not a valid IR expression: " + node.getClass().getName());
+    protected Type visitNode(Node node, Context context) {
+      throw new UnsupportedOperationException(
+          "Not a valid IR expression: " + node.getClass().getName());
     }
   }
 
@@ -487,5 +438,4 @@ public class IrTypeAnalyzer {
       return argumentTypes;
     }
   }
-
 }

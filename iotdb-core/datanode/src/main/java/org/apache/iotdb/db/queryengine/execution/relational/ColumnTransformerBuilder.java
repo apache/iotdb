@@ -158,7 +158,6 @@ import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -436,7 +435,8 @@ public class ColumnTransformerBuilder
         context.cache.computeIfAbsent(
             node,
             e -> {
-              ConstantColumnTransformer columnTransformer = getColumnTransformerForGenericLiteral(node);
+              ConstantColumnTransformer columnTransformer =
+                  getColumnTransformerForGenericLiteral(node);
               context.leafList.add(columnTransformer);
               return columnTransformer;
             });
@@ -447,7 +447,8 @@ public class ColumnTransformerBuilder
   // currently, we only support Date and Timestamp
   // for Date, GenericLiteral.value is an int value
   // for Timestamp, GenericLiteral.value is a long value
-  private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(GenericLiteral literal) {
+  private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(
+      GenericLiteral literal) {
     if (DateType.DATE.getTypeEnum().name().equals(literal.getType())) {
       return new ConstantColumnTransformer(
           DateType.DATE,
@@ -457,7 +458,7 @@ public class ColumnTransformerBuilder
           TimestampType.TIMESTAMP,
           new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
     } else {
-      throw new IllegalArgumentException("Unsupported type in GenericLiteral: " + literal.getType());
+      throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
     }
   }
 
@@ -994,7 +995,7 @@ public class ColumnTransformerBuilder
     return res;
   }
 
-  private InMultiColumnTransformer constructInColumnTransformer(
+  private static InMultiColumnTransformer constructInColumnTransformer(
       TypeEnum childType,
       List<ColumnTransformer> valueColumnTransformerList,
       List<Literal> values) {
