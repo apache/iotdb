@@ -139,7 +139,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
                 : event);
       }
 
-      decreaseReferenceCountAndReleaseLastEvent(true);
+      decreaseReferenceCountAndReleaseLastEvent(event, true);
     } catch (final PipeException e) {
       if (!isClosed.get()) {
         setLastExceptionEvent(event);

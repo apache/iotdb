@@ -182,7 +182,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
         PipeEventCommitManager.getInstance()
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
       }
-      decreaseReferenceCountAndReleaseLastEvent(shouldReport);
+      decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
           "Temporarily out of memory in pipe event processing, will wait for the memory to release.",

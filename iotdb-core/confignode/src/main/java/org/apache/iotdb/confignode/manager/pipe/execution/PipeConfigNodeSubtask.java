@@ -186,7 +186,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         outputPipeConnector.transfer(event);
         PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
       }
-      decreaseReferenceCountAndReleaseLastEvent(true);
+      decreaseReferenceCountAndReleaseLastEvent(event, true);
 
     } catch (final PipeException e) {
       setLastExceptionEvent(event);
