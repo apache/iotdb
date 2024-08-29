@@ -162,6 +162,11 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
 
       // calculate DataSet part
+      if (groupingKeys.isEmpty()) {
+        // GlobalAggregation
+        return PushDownLevel.COMPLETE;
+      }
+
       List<FunctionCall> dateBinFunctionsOfTime = new ArrayList<>();
       if (groupingKeys.stream()
               .anyMatch(

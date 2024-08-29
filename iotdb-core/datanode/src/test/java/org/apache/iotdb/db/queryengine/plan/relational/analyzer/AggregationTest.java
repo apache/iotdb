@@ -287,5 +287,17 @@ public class AggregationTest {
                     "testdb.table1",
                     ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time", "count_0"),
                     ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "count_0")))));
+
+    // GlobalAggregation
+    assertPlan(
+        planTester.createPlan("SELECT count(s2) FROM table1"),
+        output(
+            aggregationTableScan(
+                singleGroupingSet(),
+                Optional.empty(),
+                SINGLE,
+                "testdb.table1",
+                ImmutableList.of("count_0"),
+                ImmutableSet.of("count_0"))));
   }
 }
