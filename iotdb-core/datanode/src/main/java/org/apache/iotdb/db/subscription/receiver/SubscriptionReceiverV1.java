@@ -164,15 +164,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               "Subscription: something unexpected happened when handshaking with request %s: %s",
               req, e);
       return PipeSubscribeHandshakeResp.toTPipeSubscribeResp(
-          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, exceptionMessage),
-          -1,
-          "",
-          "");
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_HANDSHAKE_ERROR, exceptionMessage));
     }
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHandshakeInternal(
-      final PipeSubscribeHandshakeReq req) throws SubscriptionException {
+      final PipeSubscribeHandshakeReq req) throws SubscriptionException, IOException {
     // set consumer config thread local
     final ConsumerConfig existedConsumerConfig = consumerConfigThreadLocal.get();
     final ConsumerConfig consumerConfig = req.getConsumerConfig();
@@ -309,7 +306,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeUnsubscribeInternal(
-      final PipeSubscribeUnsubscribeReq req) throws IOException {
+      final PipeSubscribeUnsubscribeReq req) throws SubscriptionException, IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
