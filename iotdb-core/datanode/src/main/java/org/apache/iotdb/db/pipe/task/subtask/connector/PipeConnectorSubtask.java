@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
@@ -42,8 +40,12 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
@@ -92,9 +94,9 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
     }
 
     final Event event =
-          lastEvent != null
-              ? lastEvent
-              : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
+        lastEvent != null
+            ? lastEvent
+            : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
       lastEvent = null;
       return true;
