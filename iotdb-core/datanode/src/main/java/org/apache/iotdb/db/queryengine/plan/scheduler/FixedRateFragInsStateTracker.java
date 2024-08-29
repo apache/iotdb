@@ -143,6 +143,14 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   private void updateQueryState(FragmentInstanceId instanceId, FragmentInstanceInfo instanceInfo) {
+    // no such instance may be caused by DN restarting
+    if (instanceInfo.getState() == FragmentInstanceState.NO_SUCH_INSTANCE) {
+      stateMachine.transitionToFailed(
+          new RuntimeException(
+              String.format(
+                  "FragmentInstance[%s] is failed. %s, may be caused by DN restarting.",
+                  instanceId, instanceInfo.getMessage())));
+    }
     if (instanceInfo.getState().isFailed()) {
       if (instanceInfo.getFailureInfoList() == null
           || instanceInfo.getFailureInfoList().isEmpty()) {
