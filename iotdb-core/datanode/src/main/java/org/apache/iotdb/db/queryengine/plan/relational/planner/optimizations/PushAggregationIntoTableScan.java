@@ -101,7 +101,8 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
           tableScanNode = (TableScanNode) projectNode.getChild();
         }
       }
-      if (tableScanNode == null) { // no need to optimize
+      if (tableScanNode == null
+          || tableScanNode.getPushDownPredicate() != null) { // no need to optimize
         return node;
       }
 

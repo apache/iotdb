@@ -155,7 +155,7 @@ public class AggregationTableScanMatcher extends TableScanMatcher {
         .add("expectedTableName", expectedTableName)
         .add("hasTableLayout", hasTableLayout.orElse(null))
         .add("outputSymbols", outputSymbols)
-        .add("assignmentsKeys", assignmentsKeys)
+        .add("originalTableAssignmentsKeys", assignmentsKeys)
         .toString();
   }
 }

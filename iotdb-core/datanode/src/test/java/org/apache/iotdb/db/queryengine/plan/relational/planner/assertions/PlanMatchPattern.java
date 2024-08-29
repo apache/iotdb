@@ -254,6 +254,8 @@ public final class PlanMatchPattern {
         name, distinct, args, ImmutableList.of(), Optional.empty());
   }
 
+  // Attention: Now we only pass aliases according to outputSymbols, but we don't verify the output
+  // column if exists in Table because there maybe partial Agg-result.
   public static PlanMatchPattern aggregationTableScan(
       GroupingSetDescriptor groupingSets,
       Optional<Symbol> groupId,
