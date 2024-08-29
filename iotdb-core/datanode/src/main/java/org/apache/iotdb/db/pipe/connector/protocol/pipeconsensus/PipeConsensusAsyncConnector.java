@@ -274,8 +274,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
       // We increase the reference count for this event to determine if the event may be released.
       if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
           PipeConsensusAsyncConnector.class.getName())) {
-        pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
-            PipeConsensusAsyncConnector.class.getName(), false);
         return;
       }
 
@@ -354,8 +352,6 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeTsFileInsertionEvent.increaseReferenceCount(
         PipeConsensusAsyncConnector.class.getName())) {
-      pipeTsFileInsertionEvent.decreaseReferenceCount(
-          PipeConsensusAsyncConnector.class.getName(), false);
       return;
     }
 

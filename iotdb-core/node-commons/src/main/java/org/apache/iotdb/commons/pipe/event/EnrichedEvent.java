@@ -67,7 +67,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected boolean shouldReportOnCommit = true;
+  protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
 
   protected EnrichedEvent(
@@ -106,29 +106,32 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be incremented
    *     regardless of the circumstances
    */
-  public boolean increaseReferenceCount(final String holderMessage) {
+  public synchronized boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
-    synchronized (this) {
-      if (isReleased.get()) {
-        LOGGER.warn(
-            "re-increase reference count to event that has already been released: {}, stack trace: {}",
-            coreReportMessage(),
-            Thread.currentThread().getStackTrace());
-        isSuccessful = false;
-        // Here we still increase the reference count, to remain consistent with the behavior after
-        // internal increase failure.
-        referenceCount.incrementAndGet();
-      } else {
-        if (referenceCount.get() == 0) {
-          // We assume that this function will not throw any exceptions.
-          isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
-        }
-        referenceCount.incrementAndGet();
-      }
+
+    if (isReleased.get()) {
+      LOGGER.warn(
+          "re-increase reference count to event that has already been released: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+      isSuccessful = false;
+      return isSuccessful;
     }
-    if (!isSuccessful) {
-      LOGGER.warn("increase reference count failed, EnrichedEvent: {}", coreReportMessage());
+
+    if (referenceCount.get() == 0) {
+      // We assume that this function will not throw any exceptions.
+      isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
     }
+
+    if (isSuccessful) {
+      referenceCount.incrementAndGet();
+    } else {
+      LOGGER.warn(
+          "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+    }
+
     return isSuccessful;
   }
 
@@ -156,31 +159,53 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be decremented
    *     regardless of the circumstances
    */
-  public boolean decreaseReferenceCount(final String holderMessage, final boolean shouldReport) {
+  public synchronized boolean decreaseReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     boolean isSuccessful = true;
-    synchronized (this) {
-      if (referenceCount.get() == 1 && !isReleased.get()) {
-        // We assume that this function will not throw any exceptions.
-        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        if (!shouldReport) {
-          shouldReportOnCommit = false;
-        }
-        PipeEventCommitManager.getInstance().commit(this, committerKey);
+
+    if (isReleased.get()) {
+      LOGGER.warn(
+          "decrease reference count to event that has already been released: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+      isSuccessful = false;
+      return isSuccessful;
+    }
+
+    if (referenceCount.get() == 1) {
+      // We assume that this function will not throw any exceptions.
+      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+        LOGGER.warn(
+            "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
       }
-      final int newReferenceCount = referenceCount.decrementAndGet();
-      if (newReferenceCount == 0) {
-        isReleased.set(true);
+      if (!shouldReport) {
+        shouldReportOnCommit = false;
       }
+      PipeEventCommitManager.getInstance().commit(this, committerKey);
+    }
+
+    // No matter whether the resource is released, we should decrease the reference count.
+    final int newReferenceCount = referenceCount.decrementAndGet();
+    if (newReferenceCount <= 0) {
+      isReleased.set(true);
+      isSuccessful = newReferenceCount == 0;
       if (newReferenceCount < 0) {
-        LOGGER.debug(
+        LOGGER.warn(
             "reference count is decreased to {}, event: {}, stack trace: {}",
             newReferenceCount,
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
+        referenceCount.set(0);
       }
     }
+
     if (!isSuccessful) {
-      LOGGER.warn("decrease reference count failed, EnrichedEvent: {}", coreReportMessage());
+      LOGGER.warn(
+          "decrease reference count failed, EnrichedEvent: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
     }
     return isSuccessful;
   }
@@ -195,20 +220,29 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be reset to zero
    *     regardless of the circumstances
    */
-  public boolean clearReferenceCount(final String holderMessage) {
-    boolean isSuccessful = true;
-    synchronized (this) {
-      if (referenceCount.get() >= 1 && !isReleased.get()) {
-        // We assume that this function will not throw any exceptions.
-        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        isReleased.set(true);
+  public synchronized boolean clearReferenceCount(final String holderMessage) {
+    if (isReleased.get()) {
+      LOGGER.warn(
+          "clear reference count to event that has already been released: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+      return false;
+    }
+
+    if (referenceCount.get() >= 1) {
+      shouldReportOnCommit = false;
+      // We assume that this function will not throw any exceptions.
+      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+        LOGGER.warn(
+            "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
       }
-      referenceCount.set(0);
     }
-    if (!isSuccessful) {
-      LOGGER.warn("clear reference count failed, EnrichedEvent: {}", coreReportMessage());
-    }
-    return isSuccessful;
+
+    referenceCount.set(0);
+    isReleased.set(true);
+    return true;
   }
 
   /**
