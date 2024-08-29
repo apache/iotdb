@@ -67,7 +67,7 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected boolean shouldReportOnCommit = true;
+  protected volatile boolean shouldReportOnCommit = true;
   protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
 
   protected EnrichedEvent(
@@ -230,6 +230,7 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (referenceCount.get() >= 1) {
+      shouldReportOnCommit = false;
       // We assume that this function will not throw any exceptions.
       if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
         LOGGER.warn(
