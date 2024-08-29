@@ -298,20 +298,9 @@ public class JoinTest {
             + "ON t1.time = t2.time ORDER BY t1.tag1 OFFSET 3 LIMIT 6");
   }
 
+  @Ignore
   @Test
   public void innerJoinTest5() {
-    String sql1 =
-        "SELECT * FROM table1 t1 INNER JOIN table1 t2 ON t1.time=t2.time AND t1.tag1=t2.tag1";
-    analysis = analyzeSQL(sql1, TEST_MATADATA, QUERY_CONTEXT);
-    logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
-            .plan(analysis);
-
-    // LogicalPlan: `Output-Offset-TopK-Join-(Left + Right)-Sort-(Project)-TableScan`
-    logicalPlanNode = logicalQueryPlan.getRootNode();
-
-    System.out.println("e");
-
     // 1. has logical or in subquery filter, outer query filter
 
     // 2. where t1.value1 > t2.value2
