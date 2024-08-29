@@ -27,43 +27,48 @@ public class TableId {
 
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(TableId.class);
 
-  private final String database;
+  // In tree model: node[1], like root.db.device.measurement -> db
+  // In table model: real database
+  private final String prefix;
 
   private final String tableName;
 
-  public TableId(String database, String tableName) {
-    this.database = database;
+  public TableId(final String prefix, final String tableName) {
+    this.prefix = prefix;
     this.tableName = tableName;
   }
 
-  public String getDatabase() {
-    return database;
+  public String getPrefix() {
+    return prefix;
   }
 
   public String getTableName() {
     return tableName;
   }
 
-  public boolean belongTo(String database) {
-    return Objects.equals(this.database, database);
+  public boolean belongTo(final String prefix) {
+    return Objects.equals(this.prefix, prefix);
   }
 
   public int estimateSize() {
     // The size of table name has been computed in deviceID
-    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(database));
+    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(prefix));
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof TableId)) return false;
-    TableId tableId = (TableId) o;
-    return Objects.equals(database, tableId.database)
-        && Objects.equals(tableName, tableId.tableName);
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof TableId)) {
+      return false;
+    }
+    final TableId tableId = (TableId) o;
+    return Objects.equals(prefix, tableId.prefix) && Objects.equals(tableName, tableId.tableName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName);
+    return Objects.hash(prefix, tableName);
   }
 }
