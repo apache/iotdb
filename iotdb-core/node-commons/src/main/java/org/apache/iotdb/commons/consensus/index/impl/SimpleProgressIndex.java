@@ -37,11 +37,11 @@ public class SimpleProgressIndex extends ProgressIndex {
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final int rebootTimes;
-  private final long memtableFlushOrderId;
+  private final long memTableFlushOrderId;
 
   public SimpleProgressIndex(int rebootTimes, long memtableFlushOrderId) {
     this.rebootTimes = rebootTimes;
-    this.memtableFlushOrderId = memtableFlushOrderId;
+    this.memTableFlushOrderId = memtableFlushOrderId;
   }
 
   @Override
@@ -51,7 +51,7 @@ public class SimpleProgressIndex extends ProgressIndex {
       ProgressIndexType.SIMPLE_PROGRESS_INDEX.serialize(byteBuffer);
 
       ReadWriteIOUtils.write(rebootTimes, byteBuffer);
-      ReadWriteIOUtils.write(memtableFlushOrderId, byteBuffer);
+      ReadWriteIOUtils.write(memTableFlushOrderId, byteBuffer);
     } finally {
       lock.readLock().unlock();
     }
@@ -64,7 +64,7 @@ public class SimpleProgressIndex extends ProgressIndex {
       ProgressIndexType.SIMPLE_PROGRESS_INDEX.serialize(stream);
 
       ReadWriteIOUtils.write(rebootTimes, stream);
-      ReadWriteIOUtils.write(memtableFlushOrderId, stream);
+      ReadWriteIOUtils.write(memTableFlushOrderId, stream);
     } finally {
       lock.readLock().unlock();
     }
@@ -95,8 +95,8 @@ public class SimpleProgressIndex extends ProgressIndex {
         return false;
       }
       // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
-      return thisSimpleProgressIndex.memtableFlushOrderId
-          > thatSimpleProgressIndex.memtableFlushOrderId;
+      return thisSimpleProgressIndex.memTableFlushOrderId
+          > thatSimpleProgressIndex.memTableFlushOrderId;
     } finally {
       lock.readLock().unlock();
     }
@@ -113,8 +113,8 @@ public class SimpleProgressIndex extends ProgressIndex {
       final SimpleProgressIndex thisSimpleProgressIndex = this;
       final SimpleProgressIndex thatSimpleProgressIndex = (SimpleProgressIndex) progressIndex;
       return thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
-          && thisSimpleProgressIndex.memtableFlushOrderId
-              == thatSimpleProgressIndex.memtableFlushOrderId;
+          && thisSimpleProgressIndex.memTableFlushOrderId
+              == thatSimpleProgressIndex.memTableFlushOrderId;
     } finally {
       lock.readLock().unlock();
     }
@@ -156,12 +156,12 @@ public class SimpleProgressIndex extends ProgressIndex {
         return progressIndex;
       }
       // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
-      if (thisSimpleProgressIndex.memtableFlushOrderId
-          > thatSimpleProgressIndex.memtableFlushOrderId) {
+      if (thisSimpleProgressIndex.memTableFlushOrderId
+          > thatSimpleProgressIndex.memTableFlushOrderId) {
         return this;
       }
-      if (thisSimpleProgressIndex.memtableFlushOrderId
-          < thatSimpleProgressIndex.memtableFlushOrderId) {
+      if (thisSimpleProgressIndex.memTableFlushOrderId
+          < thatSimpleProgressIndex.memTableFlushOrderId) {
         return progressIndex;
       }
       // thisSimpleProgressIndex.memtableFlushOrderId ==
@@ -178,7 +178,7 @@ public class SimpleProgressIndex extends ProgressIndex {
 
   @Override
   public TotalOrderSumTuple getTotalOrderSumTuple() {
-    return new TotalOrderSumTuple(memtableFlushOrderId, (long) rebootTimes);
+    return new TotalOrderSumTuple(memTableFlushOrderId, (long) rebootTimes);
   }
 
   public static SimpleProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
@@ -193,13 +193,21 @@ public class SimpleProgressIndex extends ProgressIndex {
     return new SimpleProgressIndex(rebootTimes, memtableFlushOrderId);
   }
 
+  public int getRebootTimes() {
+    return rebootTimes;
+  }
+
+  public long getMemTableFlushOrderId() {
+    return memTableFlushOrderId;
+  }
+
   @Override
   public String toString() {
     return "SimpleProgressIndex{"
         + "rebootTimes="
         + rebootTimes
         + ", memtableFlushOrderId="
-        + memtableFlushOrderId
+        + memTableFlushOrderId
         + '}';
   }
 }

@@ -19,45 +19,57 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
+import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-public class DeletionResourceManager {
+public class DeletionResourceManager implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResourceManager.class);
-  private static final long DELETION_TIME_TO_LIVE_IN_MS = 1000L;
-  private static final long CHECK_DELETION_DURATION_IN_MS = 1000L * 5;
-  private static final String DELETION_CHECKER_TASK_ID = "pipe_consensus_deletion_checker";
-  private static final String DELETION_FILE_SUFFIX = ".deletion";
+  public static final String DELETION_FILE_SUFFIX = ".deletion";
+  public static final String MAGIC_VERSION_V1 = "DELETION_V1";
+  private static final String REBOOT_TIME = "REBOOT_TIME";
+  private static final String MEM_TABLE_FLUSH_ORDER = "MEM_TABLE_FLUSH_ORDER";
+  private static final String DELETION_FILE_NAME_PATTERN =
+      String.format(
+          "^_(?<%s>\\d+)_(?<%s>\\d+)\\%s$",
+          REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
+  private final String dataRegionId;
+  private final DeletionBuffer deletionBuffer;
+
   // TODO: read it from conf
-  private final File storageDir = new File("tmp");
+  private final File storageDir;
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
 
-  public DeletionResourceManager() throws IOException {
+  public DeletionResourceManager(String dataRegionId) throws IOException {
+    this.dataRegionId = dataRegionId;
+    this.storageDir = new File("tmp" + File.separator + dataRegionId);
+    this.deletionBuffer = new DeletionBuffer(dataRegionId, storageDir.getAbsolutePath());
     initAndRecover();
-    // Register scheduled deletion check task.
-    PipeDataNodeAgent.runtime()
-        .registerPeriodicalJob(
-            DELETION_CHECKER_TASK_ID, this::checkAndCleanDeletions, CHECK_DELETION_DURATION_IN_MS);
+    // Only after initAndRecover can we start serialize and sync new deletions.
+    this.deletionBuffer.start();
   }
 
   private void initAndRecover() throws IOException {
@@ -73,112 +85,118 @@ public class DeletionResourceManager {
       Path[] deletionPaths =
           pathStream
               .filter(Files::isRegularFile)
-              .filter(path -> path.endsWith(DELETION_FILE_SUFFIX))
+              .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
               .toArray(Path[]::new);
-      ByteBuffer readBuffer;
+
       for (Path path : deletionPaths) {
-        readBuffer = ByteBuffer.wrap(Files.readAllBytes(path));
-        deletionResources.add(
-            DeletionResource.deserialize(readBuffer, this::persist, this::removeDeletionResource));
+        try (DeletionReader deletionReader =
+            new DeletionReader(path.toFile(), this::removeDeletionResource)) {
+          deletionResources.addAll(deletionReader.readAllDeletions());
+        }
       }
     }
   }
 
+  @Override
+  public void close() throws Exception {
+    this.deletionBuffer.close();
+    this.deletionResources.clear();
+  }
+
   public void registerDeletionResource(PipeSchemaRegionWritePlanEvent event) {
-    DeletionResource deletionResource =
-        new DeletionResource(event, this::persist, this::removeDeletionResource);
+    DeletionResource deletionResource = new DeletionResource(event, this::removeDeletionResource);
     event.setDeletionResource(deletionResource);
     this.deletionResources.add(deletionResource);
+    deletionBuffer.registerDeletionResource(deletionResource);
   }
 
   public List<DeletionResource> getAllDeletionResources() {
     return deletionResources.stream().collect(ImmutableList.toImmutableList());
   }
 
-  public void persist(final DeletionResource deletionResource) {
-    File deletionFile =
-        new File(
-            storageDir, String.format("%d%s", deletionResource.hashCode(), DELETION_FILE_SUFFIX));
-    if (deletionFile.exists()) {
-      LOGGER.warn("Deletion file {} already exists, delete it.", deletionFile);
-      FileUtils.deleteFileOrDirectory(deletionFile);
-    }
+  /**
+   * This is a hook function, which will be automatically invoked when deletionResource's reference
+   * count returns to 0.
+   */
+  private void removeDeletionResource(DeletionResource deletionResource) {
+    // Clean memory
+    deletionResources.remove(deletionResource);
+    // Clean disk
+    int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    SimpleProgressIndex currentProgressIndex =
+        ((RecoverProgressIndex) deletionResource.getProgressIndex())
+            .getDataNodeId2LocalIndex()
+            .get(thisDataNodeId);
 
-    try (FileOutputStream fileOutputStream = new FileOutputStream(deletionFile)) {
-      try (DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream)) {
-        final ByteBuffer byteBuffer = deletionResource.serialize();
-        ReadWriteIOUtils.write(byteBuffer, dataOutputStream);
-      } finally {
-        try {
-          fileOutputStream.flush();
-          fileOutputStream.getFD().sync();
-        } catch (IOException ignore) {
-          // ignore sync exception
-        }
+    try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
+      Path[] deletionPaths =
+          pathStream
+              .filter(Files::isRegularFile)
+              .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
+              .filter(
+                  path ->
+                      isCurrentFileCanBeDeleted(
+                          path.getFileName().toString(), currentProgressIndex))
+              .toArray(Path[]::new);
+      for (Path path : deletionPaths) {
+        FileUtils.deleteFileOrDirectory(path.toFile());
       }
     } catch (IOException e) {
-      // log error and ignore exception
-      LOGGER.error(
-          "Failed to persist deletion resource {}, may cause inconsistency during replication",
-          deletionResource,
-          e);
+      LOGGER.warn(
+          "DeletionManager-{} failed to delete file in {} dir, please manually check!",
+          dataRegionId,
+          storageDir);
     }
   }
 
-  private void removeDeletionResource(DeletionResource deletionResource) {
-    // TODO: 参考 WAL 的水位线机制，攒批之类的，参数也可以参考 WAL
-    // TODO: 删除文件也可以通过考虑利用 progressIndex 来删
-    // TODO: 需要考虑删除后的 index 维护，恢复之类的
-  }
+  private boolean isCurrentFileCanBeDeleted(
+      String fileName, SimpleProgressIndex currentProgressIndex) {
+    int curRebootTimes = currentProgressIndex.getRebootTimes();
+    long curMemTableFlushOrderId = currentProgressIndex.getMemTableFlushOrderId();
 
-  private void checkAndCleanDeletions() {
-    final ImmutableList<DeletionResource> toBeCleaned =
-        deletionResources.stream()
-            .filter(deletionResource -> deletionResource.getReferenceCount() == 0)
-            .collect(ImmutableList.toImmutableList());
-
-    toBeCleaned.forEach(
-        deletionResource -> {
-          // Clean disk
-          File deletionFile =
-              new File(
-                  storageDir,
-                  String.format("%d%s", deletionResource.hashCode(), DELETION_FILE_SUFFIX));
-          if (deletionFile.exists()) {
-            FileUtils.deleteFileOrDirectory(deletionFile);
-          }
-          // Clean memory
-          deletionResources.remove(deletionResource);
-          deletionResource.releaseSelf();
-        });
+    Pattern pattern = Pattern.compile(DELETION_FILE_NAME_PATTERN);
+    Matcher matcher = pattern.matcher(fileName);
+    // Definitely match. Because upper caller has filtered fileNames.
+    if (matcher.matches()) {
+      int fileRebootTimes = Integer.parseInt(matcher.group(REBOOT_TIME));
+      long fileMemTableFlushOrderId = Long.parseLong(matcher.group(MEM_TABLE_FLUSH_ORDER));
+      return fileRebootTimes == curRebootTimes
+          ? fileMemTableFlushOrderId < curMemTableFlushOrderId
+          : fileRebootTimes < curMemTableFlushOrderId;
+    }
+    return false;
   }
 
   //////////////////////////// singleton ////////////////////////////
   private static class DeletionResourceManagerHolder {
-    private static DeletionResourceManager INSTANCE;
+    private static Map<String, DeletionResourceManager> CONSENSU_GROUP_ID_2_INSTANCE_MAP;
 
     private DeletionResourceManagerHolder() {}
 
-    public static void build() throws IOException {
-      if (INSTANCE == null) {
-        INSTANCE = new DeletionResourceManager();
+    public static void build() {
+      if (CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
+        CONSENSU_GROUP_ID_2_INSTANCE_MAP = new ConcurrentHashMap<>();
       }
     }
   }
 
-  public static DeletionResourceManager getInstance() {
-    return DeletionResourceManager.DeletionResourceManagerHolder.INSTANCE;
+  public static DeletionResourceManager getInstance(String groupId) {
+    return DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
+        groupId,
+        key -> {
+          try {
+            return new DeletionResourceManager(groupId);
+          } catch (IOException e) {
+            LOGGER.error("Failed to initialize DeletionResourceManager", e);
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   // Only when consensus protocol is PipeConsensus, will this class be initialized.
   public static void build() {
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus) {
-      try {
-        DeletionResourceManagerHolder.build();
-      } catch (IOException e) {
-        LOGGER.error("Failed to initialize DeletionResourceManager", e);
-        throw new RuntimeException(e);
-      }
+      DeletionResourceManagerHolder.build();
     }
   }
 }

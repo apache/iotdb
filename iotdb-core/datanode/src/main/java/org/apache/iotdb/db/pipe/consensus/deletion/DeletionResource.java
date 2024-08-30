@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -32,18 +34,14 @@ import java.util.function.Consumer;
  * framework, PipeConsensus will use {@link PipeSchemaRegionWritePlanEvent}
  */
 public class DeletionResource {
-  private final Consumer<DeletionResource> persistFunc;
-  private final Consumer<DeletionResource> removeFunc;
+  private final Consumer<DeletionResource> removeHook;
   private final AtomicLong latestUpdateTime;
   private PipeSchemaRegionWritePlanEvent deletionEvent;
 
   public DeletionResource(
-      PipeSchemaRegionWritePlanEvent deletionEvent,
-      Consumer<DeletionResource> persistFunc,
-      Consumer<DeletionResource> removeFunc) {
+      PipeSchemaRegionWritePlanEvent deletionEvent, Consumer<DeletionResource> removeHook) {
     this.deletionEvent = deletionEvent;
-    this.persistFunc = persistFunc;
-    this.removeFunc = removeFunc;
+    this.removeHook = removeHook;
     latestUpdateTime = new AtomicLong(System.currentTimeMillis());
   }
 
@@ -56,12 +54,8 @@ public class DeletionResource {
     deletionEvent = null;
   }
 
-  public void persistSelf() {
-    persistFunc.accept(this);
-  }
-
   public void removeSelf() {
-    removeFunc.accept(this);
+    removeHook.accept(this);
   }
 
   public void increaseReferenceCount() {
@@ -81,17 +75,19 @@ public class DeletionResource {
     return latestUpdateTime.get();
   }
 
+  public ProgressIndex getProgressIndex() {
+    return ((DeleteDataNode) deletionEvent.getPlanNode()).getProgressIndex();
+  }
+
   public ByteBuffer serialize() {
     return deletionEvent.serializeToByteBuffer();
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer,
-      final Consumer<DeletionResource> persistFunc,
-      Consumer<DeletionResource> removeFunc) {
+      final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) {
     PipeSchemaRegionWritePlanEvent event = new PipeSchemaRegionWritePlanEvent();
     event.deserializeFromByteBuffer(buffer);
-    return new DeletionResource(event, persistFunc, removeFunc);
+    return new DeletionResource(event, removeHook);
   }
 
   private void updateLatestUpdateTime() {

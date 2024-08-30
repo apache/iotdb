@@ -69,16 +69,9 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    if (deletionResource != null) {
-      deletionResource.persistSelf();
-    }
-    return true;
-  }
-
-  @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     if (deletionResource != null) {
+      // Trigger hook function.
       deletionResource.removeSelf();
       // Resolve circular reference to let GC reclaim them all.
       deletionResource.releaseSelf();
