@@ -241,7 +241,7 @@ public class TableDeviceSchemaCacheTest {
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {""},
-        new TimeValuePair[] {new TimeValuePair(2L, null)});
+        new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
 
     result =
         cache.getLastRow(

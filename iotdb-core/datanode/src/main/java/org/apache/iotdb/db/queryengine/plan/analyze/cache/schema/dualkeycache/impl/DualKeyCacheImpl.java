@@ -30,6 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -40,6 +42,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
@@ -199,7 +202,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void update(
       final FK firstKey,
-      final SK secondKey,
+      final @Nonnull SK secondKey,
       final V value,
       final ToIntFunction<V> updater,
       final boolean createIfNotExists) {
@@ -217,40 +220,60 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           }
           final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
 
-          if (Objects.nonNull(secondKey)) {
-            final T cacheEntry =
-                createIfNotExists
-                    ? cacheEntryGroup.computeCacheEntryIfAbsent(
-                        secondKey,
-                        sk -> {
-                          final T entry =
-                              cacheEntryManager.createCacheEntry(
-                                  secondKey, value, finalCacheEntryGroup);
-                          cacheEntryManager.put(entry);
-                          usedMemorySize.getAndAdd(
-                              sizeComputer.computeSecondKeySize(sk)
-                                  + sizeComputer.computeValueSize(entry.getValue()));
-                          return entry;
-                        })
-                    : cacheEntryGroup.getCacheEntry(secondKey);
+          final T cacheEntry =
+              createIfNotExists
+                  ? cacheEntryGroup.computeCacheEntryIfAbsent(
+                      secondKey,
+                      sk -> {
+                        final T entry =
+                            cacheEntryManager.createCacheEntry(
+                                secondKey, value, finalCacheEntryGroup);
+                        cacheEntryManager.put(entry);
+                        usedMemorySize.getAndAdd(
+                            sizeComputer.computeSecondKeySize(sk)
+                                + sizeComputer.computeValueSize(entry.getValue()));
+                        return entry;
+                      })
+                  : cacheEntryGroup.getCacheEntry(secondKey);
 
-            if (Objects.nonNull(cacheEntry)) {
-              final int result = updater.applyAsInt(cacheEntry.getValue());
-              if (Objects.nonNull(cacheEntryGroup.getCacheEntry(secondKey))) {
-                usedMemorySize.getAndAdd(result);
-              }
+          if (Objects.nonNull(cacheEntry)) {
+            final int result = updater.applyAsInt(cacheEntry.getValue());
+            if (Objects.nonNull(cacheEntryGroup.getCacheEntry(secondKey))) {
+              usedMemorySize.getAndAdd(result);
             }
-          } else {
-            cacheEntryGroup
-                .getAllCacheEntries()
-                .forEachRemaining(
-                    entry -> {
-                      final int result = updater.applyAsInt(entry.getValue().getValue());
-                      if (Objects.nonNull(finalCacheEntryGroup.getCacheEntry(entry.getKey()))) {
-                        usedMemorySize.getAndAdd(result);
-                      }
-                    });
           }
+          return cacheEntryGroup;
+        });
+    cacheStats.increaseMemoryUsage(usedMemorySize.get());
+    if (cacheStats.isExceedMemoryCapacity()) {
+      executeCacheEviction(usedMemorySize.get());
+    }
+  }
+
+  public void update(
+      final FK firstKey, final Predicate<SK> secondKeyMapper, final ToIntFunction<V> updater) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+
+    firstKeyMap.compute(
+        firstKey,
+        (k, cacheEntryGroup) -> {
+          if (cacheEntryGroup == null) {
+            return null;
+          }
+          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+
+          cacheEntryGroup
+              .getAllCacheEntries()
+              .forEachRemaining(
+                  entry -> {
+                    if (!secondKeyMapper.test(entry.getKey())) {
+                      return;
+                    }
+                    final int result = updater.applyAsInt(entry.getValue().getValue());
+                    if (Objects.nonNull(finalCacheEntryGroup.getCacheEntry(entry.getKey()))) {
+                      usedMemorySize.getAndAdd(result);
+                    }
+                  });
           return cacheEntryGroup;
         });
     cacheStats.increaseMemoryUsage(usedMemorySize.get());
