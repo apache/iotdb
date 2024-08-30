@@ -20,6 +20,7 @@
 package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.commons.cli.CommandLine;
@@ -31,12 +32,14 @@ import org.apache.commons.cli.ParseException;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -82,10 +85,15 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static int threadNum = 8;
 
+  private static boolean isRemoteLoad = false;
+
   private static final LongAdder loadFileSuccessfulNum = new LongAdder();
   private static final LongAdder loadFileFailedNum = new LongAdder();
   private static final LongAdder processingLoadSuccessfulFileSuccessfulNum = new LongAdder();
   private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
+
+  private static final LongAdder transferFileSuccessfulNum = new LongAdder();
+  private static final LongAdder transferFileFailedNum = new LongAdder();
 
   private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
   private static final Set<String> tsfileSet = new HashSet<>();
@@ -204,7 +212,24 @@ public class ImportTsFile extends AbstractTsFileTool {
       System.exit(CODE_ERROR);
     }
 
+    ioTPrinter.println(isRemoteLoad ? "load locally" : "load remotely");
+
     final int resultCode = importFromTargetPath();
+
+    if (isRemoteLoad) {
+      ioTPrinter.println(
+          "Successfully transfer "
+              + transferFileSuccessfulNum.sum()
+              + " tsfile(s) "
+              + transferFileFailedNum.sum()
+              + " failed");
+      ioTPrinter.println("For more details, please check the log.");
+      ioTPrinter.println(
+          "Total operation time: " + (System.currentTimeMillis() - startTime) + " ms.");
+      ioTPrinter.println("Work has been completed!");
+      System.exit(resultCode);
+    }
+
     ioTPrinter.println(
         "Successfully load "
             + loadFileSuccessfulNum.sum()
@@ -261,6 +286,12 @@ public class ImportTsFile extends AbstractTsFileTool {
 
     if (commandLine.getOptionValue(THREAD_NUM_ARGS) != null) {
       threadNum = Integer.parseInt(commandLine.getOptionValue(THREAD_NUM_ARGS));
+    }
+
+    try {
+      isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
+    } catch (UnknownHostException e) {
+      ioTPrinter.println("unknown host: " + e.getMessage());
     }
   }
 
@@ -371,9 +402,65 @@ public class ImportTsFile extends AbstractTsFileTool {
   }
 
   public static void asyncImportTsFiles() {
+    if (isRemoteLoad) {
+      loadRemotely();
+    } else {
+      loadLocally();
+    }
+  }
+
+  public static void loadRemotely() {
     final List<Thread> list = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
-      final Thread thread = new Thread(ImportTsFile::importTsFile);
+      final Thread thread = new Thread(() -> importTsFileRemotely(getRemoteLoadTsFile()));
+      thread.start();
+      list.add(thread);
+    }
+    list.forEach(
+        thread -> {
+          try {
+            thread.join();
+          } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
+          }
+        });
+  }
+
+  private static ImportTsFileRemotely getRemoteLoadTsFile() {
+    final ImportTsFileRemotely remoteLoadTsFile = new ImportTsFileRemotely(host, port);
+    remoteLoadTsFile.sendHandshake();
+
+    return remoteLoadTsFile;
+  }
+
+  private static void importTsFileRemotely(final ImportTsFileRemotely remote) {
+    String filePath;
+    try {
+      while ((filePath = tsfileQueue.poll()) != null) {
+        final File tsFile = new File(filePath);
+
+        if (resourceOrModsSet.contains(filePath + MODS)) {
+          remote.doTransfer(tsFile, new File(filePath + MODS));
+        } else {
+          remote.doTransfer(tsFile, null);
+        }
+
+        transferFileSuccessfulNum.increment();
+      }
+    } catch (final Exception e) {
+      transferFileFailedNum.increment();
+
+      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
+    } finally {
+      remote.close();
+    }
+  }
+
+  public static void loadLocally() {
+    final List<Thread> list = new ArrayList<>(threadNum);
+    for (int i = 0; i < threadNum; i++) {
+      final Thread thread = new Thread(ImportTsFile::importTsFileLocally);
       thread.start();
       list.add(thread);
     }
@@ -388,7 +475,7 @@ public class ImportTsFile extends AbstractTsFileTool {
         });
   }
 
-  public static void importTsFile() {
+  public static void importTsFileLocally() {
     String filePath;
     try {
       while ((filePath = tsfileQueue.poll()) != null) {
