@@ -19,25 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.tsfile.read.common.type.Type;
+
+import java.util.function.Function;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
 
-public class TypeNotFoundException extends IoTDBRuntimeException {
+public class TypeCoercion {
+  private final Function<TypeSignature, Type> lookupType;
 
-  private final TypeSignature type;
-
-  public TypeNotFoundException(TypeSignature type) {
-    this(type, null);
-  }
-
-  public TypeNotFoundException(TypeSignature type, Throwable cause) {
-    super("Unknown type: " + type, cause, TYPE_NOT_FOUND.getStatusCode());
-    this.type = requireNonNull(type, "type is null");
-  }
-
-  public TypeSignature getType() {
-    return type;
+  public TypeCoercion(Function<TypeSignature, Type> lookupType) {
+    this.lookupType = requireNonNull(lookupType, "lookupType is null");
   }
 }

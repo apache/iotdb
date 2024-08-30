@@ -14,8 +14,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.NoOpSymbolResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -23,10 +32,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import static java.util.Objects.requireNonNull;
@@ -161,8 +174,7 @@ public final class IrUtils {
             .filter(e -> !e.equals(TRUE_LITERAL))
             .collect(toList());
 
-    // TODO add removeDuplicates impl
-    // conjuncts = removeDuplicates(conjuncts);
+    conjuncts = removeDuplicates(conjuncts);
 
     if (conjuncts.contains(FALSE_LITERAL)) {
       return FALSE_LITERAL;
@@ -205,8 +217,7 @@ public final class IrUtils {
             .filter(e -> !e.equals(FALSE_LITERAL))
             .collect(toList());
 
-    // TODO add removeDuplicates impl
-    // disjuncts = removeDuplicates(disjuncts);
+    disjuncts = removeDuplicates(disjuncts);
 
     if (disjuncts.contains(TRUE_LITERAL)) {
       return TRUE_LITERAL;
@@ -236,8 +247,35 @@ public final class IrUtils {
     return combineConjuncts(conjuncts);
   }
 
-  public static boolean isEffectivelyLiteral(Expression expression) {
-    return expression instanceof Literal;
+  public static boolean isEffectivelyLiteral(
+      Expression expression, PlannerContext plannerContext, SessionInfo session) {
+    if (expression instanceof Literal) {
+      return true;
+    }
+    if (expression instanceof Cast) {
+      return ((Cast) expression).getExpression() instanceof Literal
+          // a Cast(Literal(...)) can fail, so this requires verification
+          && constantExpressionEvaluatesSuccessfully(plannerContext, session, expression);
+    }
+    if (expression instanceof FunctionCall) {
+      String functionName = ((FunctionCall) expression).getName().getSuffix();
+      if (functionName.equals("pi") || functionName.equals("e")) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private static boolean constantExpressionEvaluatesSuccessfully(
+      PlannerContext plannerContext, SessionInfo session, Expression constantExpression) {
+    Map<NodeRef<Expression>, Type> types =
+        new IrTypeAnalyzer(plannerContext)
+            .getTypes(session, TypeProvider.empty(), constantExpression);
+    IrExpressionInterpreter interpreter =
+        new IrExpressionInterpreter(constantExpression, plannerContext, session, types);
+    Object literalValue = interpreter.optimize(NoOpSymbolResolver.INSTANCE);
+    return !(literalValue instanceof Expression);
   }
 
   //    @SafeVarargs
@@ -273,28 +311,25 @@ public final class IrUtils {
    * Removes duplicate deterministic expressions. Preserves the relative order of the expressions in
    * the list.
    */
-  //    private static List<Expression> removeDuplicates(List<Expression> expressions)
-  //    {
-  //        Set<Expression> seen = new HashSet<>();
-  //
-  //        ImmutableList.Builder<Expression> result = ImmutableList.builder();
-  //        for (Expression expression : expressions) {
-  //            if (!DeterminismEvaluator.isDeterministic(expression)) {
-  //                result.add(expression);
-  //            }
-  //            else if (!seen.contains(expression)) {
-  //                result.add(expression);
-  //                seen.add(expression);
-  //            }
-  //        }
-  //
-  //        return result.build();
-  //    }
+  private static List<Expression> removeDuplicates(List<Expression> expressions) {
+    Set<Expression> seen = new HashSet<>();
 
-  //    public static Stream<Expression> preOrder(Expression node)
-  //    {
-  //        return stream(
-  //                Traverser.forTree((SuccessorsFunction<Expression>) Expression::getChildren)
-  //                        .depthFirstPreOrder(requireNonNull(node, "node is null")));
-  //    }
+    ImmutableList.Builder<Expression> result = ImmutableList.builder();
+    for (Expression expression : expressions) {
+      if (!DeterminismEvaluator.isDeterministic(expression)) {
+        result.add(expression);
+      } else if (!seen.contains(expression)) {
+        result.add(expression);
+        seen.add(expression);
+      }
+    }
+
+    return result.build();
+  }
+
+  //  public static Stream<Expression> preOrder(Expression node) {
+  //    return stream(
+  //        Traverser.forTree((SuccessorsFunction<Expression>) Expression::getChildren)
+  //            .depthFirstPreOrder(requireNonNull(node, "node is null")));
+  //  }
 }

@@ -23,8 +23,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpres
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
@@ -42,6 +44,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -334,6 +337,26 @@ public class TranslationMap {
             return escape.isPresent()
                 ? new LikePredicate(value, pattern, escape.get())
                 : new LikePredicate(value, pattern, null);
+          }
+
+          @Override
+          public Expression rewriteParameter(
+              Parameter node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            Optional<SymbolReference> mapped = tryGetMapping(node);
+            if (mapped.isPresent()) {
+              return coerceIfNecessary(node, mapped.get());
+            }
+
+            checkState(analysis.getParameters().size() > node.getId(), "Too few parameter values");
+            return coerceIfNecessary(
+                node, treeRewriter.rewrite(analysis.getParameters().get(NodeRef.of(node)), null));
+          }
+
+          @Override
+          public Expression rewriteGenericDataType(
+              GenericDataType node, Void context, ExpressionTreeRewriter<Void> treeRewriter) {
+            // do not rewrite identifiers within type parameters
+            return node;
           }
         },
         expression);

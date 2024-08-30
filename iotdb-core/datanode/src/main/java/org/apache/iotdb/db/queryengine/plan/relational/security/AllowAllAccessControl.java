@@ -17,27 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.type;
+package org.apache.iotdb.db.queryengine.plan.relational.security;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
-
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
-
-public class TypeNotFoundException extends IoTDBRuntimeException {
-
-  private final TypeSignature type;
-
-  public TypeNotFoundException(TypeSignature type) {
-    this(type, null);
-  }
-
-  public TypeNotFoundException(TypeSignature type, Throwable cause) {
-    super("Unknown type: " + type, cause, TYPE_NOT_FOUND.getStatusCode());
-    this.type = requireNonNull(type, "type is null");
-  }
-
-  public TypeSignature getType() {
-    return type;
-  }
-}
+public class AllowAllAccessControl implements AccessControl {}

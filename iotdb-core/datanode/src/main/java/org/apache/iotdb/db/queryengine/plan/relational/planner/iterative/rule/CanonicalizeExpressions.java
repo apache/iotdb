@@ -17,27 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.type;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 
-import static java.util.Objects.requireNonNull;
-import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressionRewriter.rewrite;
 
-public class TypeNotFoundException extends IoTDBRuntimeException {
-
-  private final TypeSignature type;
-
-  public TypeNotFoundException(TypeSignature type) {
-    this(type, null);
-  }
-
-  public TypeNotFoundException(TypeSignature type, Throwable cause) {
-    super("Unknown type: " + type, cause, TYPE_NOT_FOUND.getStatusCode());
-    this.type = requireNonNull(type, "type is null");
-  }
-
-  public TypeSignature getType() {
-    return type;
+public class CanonicalizeExpressions extends ExpressionRewriteRuleSet {
+  public CanonicalizeExpressions(PlannerContext plannerContext, IrTypeAnalyzer typeAnalyzer) {
+    super(
+        (expression, context) ->
+            rewrite(
+                expression,
+                context.getSessionInfo(),
+                plannerContext,
+                typeAnalyzer,
+                context.getSymbolAllocator().getTypes()));
   }
 }
