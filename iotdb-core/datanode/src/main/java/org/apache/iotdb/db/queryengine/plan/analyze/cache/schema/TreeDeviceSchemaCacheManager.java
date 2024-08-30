@@ -50,7 +50,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -145,10 +144,7 @@ public class TreeDeviceSchemaCacheManager {
    */
   public ClusterSchemaTree getMatchedSchemaWithTemplate(final PartialPath devicePath) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema =
-        TableDeviceSchemaFetcher.getInstance()
-            .getTableDeviceCache()
-            .getDeviceSchema(devicePath.getNodes());
+    final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceTemplateSchema)) {
       return tree;
     }
@@ -186,16 +182,14 @@ public class TreeDeviceSchemaCacheManager {
 
   public List<Integer> computeWithoutTemplate(final ISchemaComputation schemaComputation) {
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    final AtomicBoolean isFirstNonViewMeasurement = new AtomicBoolean(true);
     final String[] measurements = schemaComputation.getMeasurements();
 
     final IDeviceSchema schema =
         tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
     if (!(schema instanceof TreeDeviceNormalSchema)) {
-      for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
-        indexOfMissingMeasurements.add(i);
-      }
-      return indexOfMissingMeasurements;
+      return IntStream.range(0, schemaComputation.getMeasurements().length)
+          .boxed()
+          .collect(Collectors.toList());
     }
     final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
 
@@ -204,9 +198,6 @@ public class TreeDeviceSchemaCacheManager {
       if (value == null) {
         indexOfMissingMeasurements.add(i);
       } else {
-        if (isFirstNonViewMeasurement.get() && (!value.isLogicalView())) {
-          isFirstNonViewMeasurement.getAndSet(false);
-        }
         schemaComputation.computeMeasurement(i, value);
       }
     }
