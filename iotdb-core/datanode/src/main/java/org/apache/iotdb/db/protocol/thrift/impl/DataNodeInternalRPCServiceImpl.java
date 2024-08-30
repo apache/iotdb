@@ -516,7 +516,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path
-      TreeDeviceSchemaCacheManager.getInstance().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       // clear table related cache
       String database = req.getFullPath().substring(5);

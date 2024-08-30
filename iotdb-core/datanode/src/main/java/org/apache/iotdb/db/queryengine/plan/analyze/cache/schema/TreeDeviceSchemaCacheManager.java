@@ -495,11 +495,6 @@ public class TreeDeviceSchemaCacheManager {
     }
   }
 
-  public void invalidate(String database) {
-    deviceUsingTemplateSchemaCache.invalidateCache(database);
-    timeSeriesSchemaCache.invalidate(database);
-  }
-
   public void invalidate(List<? extends PartialPath> partialPathList) {
     boolean doPrecise = true;
     for (PartialPath partialPath : partialPathList) {
