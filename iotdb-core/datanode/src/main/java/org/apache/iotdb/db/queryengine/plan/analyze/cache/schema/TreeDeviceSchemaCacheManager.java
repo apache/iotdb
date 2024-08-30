@@ -415,16 +415,11 @@ public class TreeDeviceSchemaCacheManager {
     }
   }
 
-  public void invalidateLastCacheInDataRegion(String database) {
+  public void invalidateLastCacheInDataRegion(final String database) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.invalidateDataRegionLastCache(database);
-    } finally {
-      releaseReadLock();
-    }
+    tableDeviceSchemaCache.invalidate(database);
   }
 
   public void updateLastCache(
@@ -437,21 +432,7 @@ public class TreeDeviceSchemaCacheManager {
       IntPredicate shouldUpdateProvider,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.updateLastCache(
-          database,
-          devicePath,
-          measurements,
-          measurementSchemas,
-          isAligned,
-          timeValuePairProvider,
-          shouldUpdateProvider,
-          highPriorityUpdate,
-          latestFlushedTime);
-    } finally {
-      releaseReadLock();
-    }
+    // Deprecated
   }
 
   public void updateLastCacheWithoutLock(
@@ -464,16 +445,7 @@ public class TreeDeviceSchemaCacheManager {
       IntPredicate shouldUpdateProvider,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        database,
-        devicePath,
-        measurements,
-        measurementSchemas,
-        isAligned,
-        timeValuePairProvider,
-        shouldUpdateProvider,
-        highPriorityUpdate,
-        latestFlushedTime);
+    // Deprecated
   }
 
   /**
