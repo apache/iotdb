@@ -167,11 +167,11 @@ public class TableDeviceSchemaCache {
    * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
    *
    * <p>If the global last time is queried or recovered, the measurement shall be an empty string
-   * and time shall be in the timeValuePair's timestamp, or the device's last time won't be updated
-   * because we cannot guarantee the completeness of the existing measurements in cache.
+   * and time shall be in the timeValuePair's timestamp, whose value is typically {@link
+   * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. Or, the device's last time won't be updated because
+   * we cannot guarantee the completeness of the existing measurements in cache.
    *
-   * <p>The input "TimeValuePair" shall never be or contain {@code null} unless the measurement is
-   * the time measurement "".
+   * <p>The input "TimeValuePair" shall never be or contain {@code null}.
    *
    * @param database the device's database, without "root"
    * @param deviceId IDeviceID
