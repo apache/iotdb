@@ -266,7 +266,8 @@ public class ActiveLoadTsFileLoader {
   // Metrics
   public long countAndReportFailedFileNumber() {
     final long[] fileCount = {0};
-    final long[] fileSizeCount = {0};
+    final long[] fileSize = {0};
+
     try {
       initFailDirIfNecessary();
       Files.walkFileTree(
@@ -275,15 +276,21 @@ public class ActiveLoadTsFileLoader {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               fileCount[0]++;
-              fileSizeCount[0] += file.toFile().length();
+              try {
+                fileSize[0] += file.toFile().length();
+              } catch (Exception e) {
+                LOGGER.debug("Failed to count failed files in fail directory.", e);
+              }
               return FileVisitResult.CONTINUE;
             }
           });
+
       ActiveLoadingFilesNumberMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
-      ActiveLoadingFilesSizeMetricsSet.getInstance().recordFailedFileCounter(fileSizeCount[0]);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().recordFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
       LOGGER.debug("Failed to count failed files in fail directory.", e);
     }
+
     return fileCount[0];
   }
 }
