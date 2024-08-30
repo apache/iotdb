@@ -405,7 +405,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void invalidate(FK firstKey) {
+  public void invalidate(final FK firstKey) {
     int estimateSize = 0;
     final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);
     if (cacheEntryGroup != null) {
@@ -435,8 +435,9 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (!secondKeyChecker.test(entry.getKey())) {
           continue;
         }
-        estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-        estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
+        estimateSize +=
+            sizeComputer.computeSecondKeySize(entry.getKey())
+                + sizeComputer.computeValueSize(entry.getValue().getValue());
         cacheEntryManager.invalid(entry.getValue());
       }
     }
