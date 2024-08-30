@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.pipe.it.autocreate;
+package org.apache.iotdb.pipe.it.manual;
 
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
+import org.apache.iotdb.itbase.category.MultiClusterIT2ManualCreateSchema;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
@@ -39,8 +39,8 @@ import java.util.List;
 import java.util.Random;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2AutoCreateSchema.class})
-public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
+@Category({MultiClusterIT2ManualCreateSchema.class})
+public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
 
   @Override
   protected void setupConfig() {

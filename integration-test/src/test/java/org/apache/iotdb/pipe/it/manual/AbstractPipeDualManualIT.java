@@ -37,6 +37,11 @@ abstract class AbstractPipeDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
+  }
+
+  protected void setupConfig() {
     // TODO: delete ratis configurations
     senderEnv
         .getConfig()
@@ -54,9 +59,6 @@ abstract class AbstractPipeDualManualIT {
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setCnConnectionTimeoutMs(600000);
-
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
   }
 
   @After
