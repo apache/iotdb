@@ -36,7 +36,7 @@ abstract class AbstractPipeDualManualIT {
     MultiEnvFactory.createEnv(2);
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
-
+    setupConfig();
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
   }
