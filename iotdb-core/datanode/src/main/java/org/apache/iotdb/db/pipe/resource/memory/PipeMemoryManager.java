@@ -66,7 +66,7 @@ public class PipeMemoryManager {
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
-            this::tryExpandAll,
+            this::tryExpandAllAndCheckConsistency,
             PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
   }
 
@@ -290,8 +290,31 @@ public class PipeMemoryManager {
     }
   }
 
-  public synchronized void tryExpandAll() {
+  public synchronized void tryExpandAllAndCheckConsistency() {
     allocatedBlocks.forEach(PipeMemoryBlock::expand);
+
+    long blockSum =
+        allocatedBlocks.stream().mapToLong(PipeMemoryBlock::getMemoryUsageInBytes).sum();
+    if (blockSum != usedMemorySizeInBytes) {
+      LOGGER.warn(
+          "tryExpandAllAndCheckConsistency: memory usage is not consistent with allocated blocks,"
+              + " usedMemorySizeInBytes is {} but sum of all blocks is {}",
+          usedMemorySizeInBytes,
+          blockSum);
+    }
+
+    long tabletBlockSum =
+        allocatedBlocks.stream()
+            .filter(PipeTabletMemoryBlock.class::isInstance)
+            .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
+            .sum();
+    if (tabletBlockSum != usedMemorySizeInBytesOfTablets) {
+      LOGGER.warn(
+          "tryExpandAllAndCheckConsistency: memory usage of tablets is not consistent with allocated blocks,"
+              + " usedMemorySizeInBytesOfTablets is {} but sum of all tablet blocks is {}",
+          usedMemorySizeInBytesOfTablets,
+          tabletBlockSum);
+    }
   }
 
   public synchronized void release(PipeMemoryBlock block) {
