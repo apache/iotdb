@@ -135,11 +135,7 @@ public class TableDeviceSchemaCache {
 
   public void invalidateAttributes(final String database, final String tableName) {
     dualKeyCache.update(
-        new TableId(database, tableName),
-        null,
-        new TableDeviceCacheEntry(),
-        entry -> -entry.invalidateAttribute(),
-        false);
+        new TableId(database, tableName), deviceId -> true, entry -> -entry.invalidateAttribute());
   }
 
   /**
@@ -335,7 +331,14 @@ public class TableDeviceSchemaCache {
   public void invalidate(final String database) {
     readWriteLock.writeLock().lock();
     try {
-      dualKeyCache.invalidateForTable(database);
+      if (!database.contains(".")) {
+        dualKeyCache.invalidate(tableId -> tableId.belongTo(database), deviceID -> true);
+      } else {
+        // Multi-layered database in tree model
+        final String prefix = database.substring(0, database.indexOf("."));
+        dualKeyCache.invalidate(
+            tableId -> tableId.belongTo(prefix), deviceID -> deviceID.matchDatabaseName(database));
+      }
     } finally {
       readWriteLock.writeLock().unlock();
     }

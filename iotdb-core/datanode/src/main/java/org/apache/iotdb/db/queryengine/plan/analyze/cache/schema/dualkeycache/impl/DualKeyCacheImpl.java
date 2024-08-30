@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheUpdating;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.DataNodeLastCacheManager;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 
 import javax.annotation.Nonnull;
 
@@ -252,7 +251,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
 
   @Override
   public void update(
-      final FK firstKey, final Predicate<SK> secondKeyMapper, final ToIntFunction<V> updater) {
+      final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater) {
     final AtomicInteger usedMemorySize = new AtomicInteger(0);
 
     firstKeyMap.compute(
@@ -267,7 +266,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
               .getAllCacheEntries()
               .forEachRemaining(
                   entry -> {
-                    if (!secondKeyMapper.test(entry.getKey())) {
+                    if (!secondKeyChecker.test(entry.getKey())) {
                       return;
                     }
                     final int result = updater.applyAsInt(entry.getValue().getValue());
@@ -493,20 +492,22 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void invalidateForTable(String database) {
+  public void invalidate(
+      final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker) {
     int estimateSize = 0;
-    for (FK firstKey : firstKeyMap.getAllKeys()) {
-      TableId tableId = (TableId) firstKey;
-      if (tableId.belongTo(database)) {
-        estimateSize += sizeComputer.computeFirstKeySize(firstKey);
-        ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
-        for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-          Map.Entry<SK, T> entry = it.next();
-          estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-          estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-          cacheEntryManager.invalid(entry.getValue());
+    for (final FK firstKey : firstKeyMap.getAllKeys()) {
+      if (!firstKeyChecker.test(firstKey)) {
+        continue;
+      }
+      final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
+      for (final Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
+        final Map.Entry<SK, T> entry = it.next();
+        if (!secondKeyChecker.test(entry.getKey())) {
+          continue;
         }
-        firstKeyMap.remove(firstKey);
+        estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
+        estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
+        cacheEntryManager.invalid(entry.getValue());
       }
     }
     cacheStats.decreaseMemoryUsage(estimateSize);

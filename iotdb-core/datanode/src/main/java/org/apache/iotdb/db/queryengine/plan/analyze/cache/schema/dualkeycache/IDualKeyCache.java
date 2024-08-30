@@ -81,7 +81,8 @@ public interface IDualKeyCache<FK, SK, V> {
    * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
    * the concurrency safety for the value update.
    */
-  void update(final FK firstKey, final Predicate<SK> secondKey, final ToIntFunction<V> updater);
+  void update(
+      final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater);
 
   /**
    * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.
@@ -129,12 +130,7 @@ public interface IDualKeyCache<FK, SK, V> {
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidate(FK firstKey);
 
-  /**
-   * remove all entries of specified database, and for the reason that table model's first key is
-   * different from tree model, we add this new method which only be used for table model.
-   *
-   * <p>FK must be TableId in such case
-   */
+  /** remove all entries matching the firstKey and the secondKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidateForTable(String database);
+  void invalidate(final Predicate<FK> firstKeyChecker, final Predicate<SK> secondKeyChecker);
 }
