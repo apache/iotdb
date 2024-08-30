@@ -669,6 +669,7 @@ public class WALBuffer extends AbstractWALBuffer {
   @Override
   public void close() {
     // first waiting serialize and sync tasks finished, then release all resources
+    isClosed = true;
     if (serializeThread != null) {
       // add close signal WALEntry to notify serializeThread
       try {
@@ -677,7 +678,6 @@ public class WALBuffer extends AbstractWALBuffer {
         logger.error("Fail to put CLOSE_SIGNAL to walEntries.", e);
         Thread.currentThread().interrupt();
       }
-      isClosed = true;
       shutdownThread(serializeThread, ThreadName.WAL_SERIALIZE);
     }
     if (syncBufferThread != null) {
