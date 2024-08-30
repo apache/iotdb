@@ -36,6 +36,7 @@ public class PipeConvertedInsertTabletStatement extends InsertTabletStatement {
     // Statement
     isDebug = insertTabletStatement.isDebug();
     // InsertBaseStatement
+    insertTabletStatement.removeAllFailedMeasurementMarks();
     devicePath = insertTabletStatement.getDevicePath();
     isAligned = insertTabletStatement.isAligned();
     measurementSchemas = insertTabletStatement.getMeasurementSchemas();

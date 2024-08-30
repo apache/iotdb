@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemAlignedPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.MemPageReader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.DescPriorityMergeReader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityMergeReader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -558,6 +559,7 @@ public class SeriesScanUtil implements Accountable {
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, scanOptions.getGlobalTimeFilter());
+    long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
@@ -568,6 +570,7 @@ public class SeriesScanUtil implements Accountable {
           seqPageReaders.add(
               new VersionPageReader(
                   context,
+                  timestampInFileName,
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
@@ -578,6 +581,7 @@ public class SeriesScanUtil implements Accountable {
           seqPageReaders.add(
               new VersionPageReader(
                   context,
+                  timestampInFileName,
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
@@ -590,6 +594,7 @@ public class SeriesScanUtil implements Accountable {
               unSeqPageReaders.add(
                   new VersionPageReader(
                       context,
+                      timestampInFileName,
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
@@ -1188,7 +1193,7 @@ public class SeriesScanUtil implements Accountable {
 
   protected static class VersionPageReader {
     private final QueryContext context;
-    private final PriorityMergeReader.MergeReaderPriority version;
+    private final MergeReaderPriority version;
     private final IPageReader data;
 
     private final boolean isSeq;
@@ -1196,9 +1201,14 @@ public class SeriesScanUtil implements Accountable {
     private final boolean isMem;
 
     VersionPageReader(
-        QueryContext context, long version, long offset, IPageReader data, boolean isSeq) {
+        QueryContext context,
+        long fileTimestamp,
+        long version,
+        long offset,
+        IPageReader data,
+        boolean isSeq) {
       this.context = context;
-      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset, isSeq);
+      this.version = new MergeReaderPriority(fileTimestamp, version, offset, isSeq);
       this.data = data;
       this.isSeq = isSeq;
       this.isAligned = data instanceof AlignedPageReader || data instanceof MemAlignedPageReader;

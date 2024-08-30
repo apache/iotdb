@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -40,8 +39,10 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionPayloadExceedException;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollFilePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.PollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.PollTabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
@@ -85,10 +86,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
 
-  private static final long POLL_PAYLOAD_MAX_SIZE =
-      SubscriptionConfig.getInstance().getSubscriptionPollPayloadMaxSize();
-
-  private static final double POLL_PAYLOAD_SIZE_THRESHOLD = POLL_PAYLOAD_MAX_SIZE * 0.75;
+  private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.95;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -113,7 +111,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.nonNull(consumerConfig)) {
       LOGGER.info(
-          "Subscription: close and remove consumer config {} when handling exit",
+          "Subscription: remove consumer config {} when handling exit",
           consumerConfigThreadLocal.get());
       // closeConsumer(consumerConfig);
       consumerConfigThreadLocal.remove();
@@ -237,7 +235,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private TPipeSubscribeResp handlePipeSubscribeHeartbeatInternal(
-      final PipeSubscribeHeartbeatReq req) {
+      final PipeSubscribeHeartbeatReq req) throws IOException {
     // check consumer config thread local
     final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
     if (Objects.isNull(consumerConfig)) {
@@ -249,7 +247,13 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     // TODO: do something
 
     LOGGER.info("Subscription: consumer {} heartbeat successfully", consumerConfig);
-    return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+    return PipeSubscribeHeartbeatResp.toTPipeSubscribeResp(
+        RpcUtils.SUCCESS_STATUS,
+        SubscriptionAgent.topic()
+            .getTopicConfigs(
+                SubscriptionAgent.consumer()
+                    .getTopicNamesSubscribedByConsumer(
+                        consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId())));
   }
 
   private TPipeSubscribeResp handlePipeSubscribeSubscribe(final PipeSubscribeSubscribeReq req) {
@@ -339,19 +343,26 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     final List<SubscriptionEvent> events;
+    final SubscriptionPollRequest request = req.getRequest();
+    final long maxBytes = (long) (request.getMaxBytes() * POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD);
     try {
-      final SubscriptionPollRequest request = req.getRequest();
       final short requestType = request.getRequestType();
       if (SubscriptionPollRequestType.isValidatedRequestType(requestType)) {
         switch (SubscriptionPollRequestType.valueOf(requestType)) {
           case POLL:
             events =
-                handlePipeSubscribePollInternal(consumerConfig, (PollPayload) request.getPayload());
+                handlePipeSubscribePollInternal(
+                    consumerConfig, (PollPayload) request.getPayload(), maxBytes);
             break;
           case POLL_FILE:
             events =
                 handlePipeSubscribePollTsFileInternal(
                     consumerConfig, (PollFilePayload) request.getPayload());
+            break;
+          case POLL_TABLETS:
+            events =
+                handlePipeSubscribePollTabletsInternal(
+                    consumerConfig, (PollTabletsPayload) request.getPayload());
             break;
           default:
             events = null;
@@ -389,12 +400,12 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                       final ByteBuffer byteBuffer = event.getCurrentResponseByteBuffer();
 
                       // payload size control
-                      final long size = byteBuffer.limit();
-                      if (totalSize.get() + size > POLL_PAYLOAD_SIZE_THRESHOLD) {
-                        throw new SubscriptionException(
+                      final long size = event.getCurrentResponseSize();
+                      if (totalSize.get() + size > maxBytes) {
+                        throw new SubscriptionPayloadExceedException(
                             String.format(
-                                "payload size will exceed the threshold %s",
-                                POLL_PAYLOAD_SIZE_THRESHOLD));
+                                "payload size %s byte(s) will exceed the threshold %s byte(s)",
+                                totalSize.get() + size, maxBytes));
                       }
                       totalSize.getAndAdd(size);
 
@@ -411,12 +422,21 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
                           req.getRequest());
                       return byteBuffer;
                     } catch (final Exception e) {
-                      LOGGER.warn(
-                          "Subscription: consumer {} poll {} failed with request: {}",
-                          consumerConfig,
-                          response,
-                          req.getRequest(),
-                          e);
+                      if (e instanceof SubscriptionPayloadExceedException) {
+                        LOGGER.error(
+                            "Subscription: consumer {} poll excessive payload {} with request: {}, something unexpected happened with parameter configuration or payload control...",
+                            consumerConfig,
+                            response,
+                            req.getRequest(),
+                            e);
+                      } else {
+                        LOGGER.warn(
+                            "Subscription: consumer {} poll {} failed with request: {}",
+                            consumerConfig,
+                            response,
+                            req.getRequest(),
+                            e);
+                      }
                       // nack
                       SubscriptionAgent.broker()
                           .commit(consumerConfig, Collections.singletonList(commitContext), true);
@@ -438,32 +458,32 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollInternal(
-      final ConsumerConfig consumerConfig, final PollPayload messagePayload) {
+      final ConsumerConfig consumerConfig, final PollPayload messagePayload, final long maxBytes) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
                 consumerConfig.getConsumerGroupId(), consumerConfig.getConsumerId());
-
-    Set<String> topicNames = messagePayload.getTopicNames();
+    final Set<String> topicNames = messagePayload.getTopicNames();
     if (topicNames.isEmpty()) {
-      // poll all subscribed topics
-      topicNames = subscribedTopicNames;
-    } else {
-      // filter unsubscribed topics
-      topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
+      return Collections.emptyList();
     }
 
-    return SubscriptionAgent.broker().poll(consumerConfig, topicNames);
+    // filter unsubscribed topics
+    topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
+    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, maxBytes);
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileInternal(
       final ConsumerConfig consumerConfig, final PollFilePayload messagePayload) {
     return SubscriptionAgent.broker()
         .pollTsFile(
-            consumerConfig,
-            messagePayload.getTopicName(),
-            messagePayload.getFileName(),
-            messagePayload.getWritingOffset());
+            consumerConfig, messagePayload.getCommitContext(), messagePayload.getWritingOffset());
+  }
+
+  private List<SubscriptionEvent> handlePipeSubscribePollTabletsInternal(
+      final ConsumerConfig consumerConfig, final PollTabletsPayload messagePayload) {
+    return SubscriptionAgent.broker()
+        .pollTablets(consumerConfig, messagePayload.getCommitContext(), messagePayload.getOffset());
   }
 
   private TPipeSubscribeResp handlePipeSubscribeCommit(final PipeSubscribeCommitReq req) {

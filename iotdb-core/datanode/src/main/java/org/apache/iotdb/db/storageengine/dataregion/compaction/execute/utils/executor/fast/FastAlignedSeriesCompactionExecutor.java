@@ -164,10 +164,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
-                resource.getVersion(),
                 i == alignedChunkMetadataList.size() - 1,
-                fileElement,
-                isBatchedCompaction));
+                fileElement));
       }
     }
   }
@@ -329,8 +327,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
               new CompactionAlignedChunkReader(timeChunk, valueChunks),
               chunkMetadataElement,
               i == timePages.size() - 1,
-              isBatchedCompaction,
-              chunkMetadataElement.priority);
+              isBatchedCompaction);
       pageQueue.add(alignedPageElement);
     }
     chunkMetadataElement.clearChunks();

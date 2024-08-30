@@ -427,10 +427,6 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
-  protected R visitGroupByTime(GroupByTime node, C context) {
-    return visitGroupingElement(node, context);
-  }
-
   protected R visitGroupingSets(GroupingSets node, C context) {
     return visitGroupingElement(node, context);
   }
@@ -487,7 +483,7 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
-  protected R visitCreateDevice(CreateDevice node, C context) {
+  protected R visitCreateDevice(CreateOrUpdateDevice node, C context) {
     return visitStatement(node, context);
   }
 

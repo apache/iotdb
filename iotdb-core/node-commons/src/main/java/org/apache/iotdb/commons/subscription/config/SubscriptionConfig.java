@@ -71,12 +71,12 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionReadFileBufferSize();
   }
 
-  public long getSubscriptionTsFileDeduplicationWindowSeconds() {
-    return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
+  public long getSubscriptionReadTabletBufferSize() {
+    return COMMON_CONFIG.getSubscriptionReadTabletBufferSize();
   }
 
-  public long getSubscriptionPollPayloadMaxSize() {
-    return COMMON_CONFIG.getSubscriptionPollPayloadMaxSize();
+  public long getSubscriptionTsFileDeduplicationWindowSeconds() {
+    return COMMON_CONFIG.getSubscriptionTsFileDeduplicationWindowSeconds();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -107,10 +107,10 @@ public class SubscriptionConfig {
         "SubscriptionRecycleUncommittedEventIntervalMs: {}",
         getSubscriptionRecycleUncommittedEventIntervalMs());
     LOGGER.info("SubscriptionReadFileBufferSize: {}", getSubscriptionReadFileBufferSize());
+    LOGGER.info("SubscriptionReadTabletBufferSize: {}", getSubscriptionReadTabletBufferSize());
     LOGGER.info(
         "SubscriptionTsFileDeduplicationWindowSeconds: {}",
         getSubscriptionTsFileDeduplicationWindowSeconds());
-    LOGGER.info("SubscriptionPollPayloadMaxSize: {}", getSubscriptionPollPayloadMaxSize());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

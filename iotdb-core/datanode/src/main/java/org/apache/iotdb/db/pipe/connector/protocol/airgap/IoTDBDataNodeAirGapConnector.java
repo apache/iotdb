@@ -103,6 +103,8 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
         Boolean.toString(shouldReceiverConvertOnTypeMismatch));
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
 
     return PipeTransferDataNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
@@ -111,12 +113,12 @@ public abstract class IoTDBDataNodeAirGapConnector extends IoTDBAirGapConnector 
       final AirGapSocket socket,
       final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBDataNodeAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBDataNodeAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeSchemaRegionWritePlanEvent);
     } finally {
       pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(

@@ -222,7 +222,7 @@ public class LastFlushTimeMapTest {
     unseqResource1.setFile(unseqResourceFile1);
     unseqResource1.updateStartTime(device, 1);
     unseqResource1.updateEndTime(device, 100);
-    dataRegion.updateLastFlushTime(unseqResource1);
+    dataRegion.updateDeviceLastFlushTime(unseqResource1);
 
     File unseqResourceFile2 = new File(unseqDirPath + File.separator + "5-5-0-0.tsfile.resource");
     TsFileResource unseqResource2 = new TsFileResource();
@@ -230,7 +230,7 @@ public class LastFlushTimeMapTest {
     unseqResource2.setFile(unseqResourceFile2);
     unseqResource2.updateStartTime(device, 1);
     unseqResource2.updateEndTime(device, 10);
-    dataRegion.updateLastFlushTime(unseqResource2);
+    dataRegion.updateDeviceLastFlushTime(unseqResource2);
 
     File unseqResourceFile3 = new File(unseqDirPath + File.separator + "6-6-0-0.tsfile.resource");
     TsFileResource unseqResource3 = new TsFileResource();
@@ -238,7 +238,7 @@ public class LastFlushTimeMapTest {
     unseqResource3.setFile(unseqResourceFile3);
     unseqResource3.updateStartTime(device, 1);
     unseqResource3.updateEndTime(device, 70);
-    dataRegion.updateLastFlushTime(unseqResource3);
+    dataRegion.updateDeviceLastFlushTime(unseqResource3);
 
     Assert.assertEquals(100, dataRegion.getLastFlushTimeMap().getFlushedTime(0, device));
     dataRegion.getLastFlushTimeMap().degradeLastFlushTime(0);

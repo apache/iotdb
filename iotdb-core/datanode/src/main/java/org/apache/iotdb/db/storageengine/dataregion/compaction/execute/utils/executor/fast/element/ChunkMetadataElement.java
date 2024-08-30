@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element;
 
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeReaderPriority;
+
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
 
@@ -27,8 +29,6 @@ import java.util.List;
 @SuppressWarnings("squid:S1104")
 public class ChunkMetadataElement {
   public IChunkMetadata chunkMetadata;
-
-  public long priority;
 
   public long startTime;
 
@@ -42,24 +42,20 @@ public class ChunkMetadataElement {
 
   public boolean needForceDecodingPage;
 
-  public boolean isBatchedCompaction;
-
   public ChunkMetadataElement(
-      IChunkMetadata chunkMetadata,
-      long priority,
-      boolean isLastChunk,
-      FileElement fileElement,
-      boolean isBatchedCompaction) {
+      IChunkMetadata chunkMetadata, boolean isLastChunk, FileElement fileElement) {
     this.chunkMetadata = chunkMetadata;
-    this.priority = priority;
     this.startTime = chunkMetadata.getStartTime();
     this.isLastChunk = isLastChunk;
     this.fileElement = fileElement;
-    this.isBatchedCompaction = isBatchedCompaction;
   }
 
   public void clearChunks() {
     chunk = null;
     valueChunks = null;
+  }
+
+  public MergeReaderPriority getPriority() {
+    return this.fileElement.getPriority();
   }
 }

@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -88,7 +89,7 @@ public class TableHeaderSchemaValidator {
     List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
       throw new IllegalArgumentException(
-          "Column List in TableSchema should never be null or empty.");
+          "No column other than Time present, please check the request");
     }
     TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     List<ColumnSchema> missingColumnList = new ArrayList<>();
@@ -119,13 +120,15 @@ public class TableHeaderSchemaValidator {
           throw new SemanticException(
               String.format(
                   "Unknown column category for %s. Cannot auto create column.",
-                  columnSchema.getName()));
+                  columnSchema.getName()),
+              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
         }
         if (columnSchema.getType() == null) {
           throw new SemanticException(
               String.format(
                   "Unknown column data type for %s. Cannot auto create column.",
-                  columnSchema.getName()));
+                  columnSchema.getName()),
+              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
         }
         missingColumnList.add(columnSchema);
       } else {
@@ -136,7 +139,8 @@ public class TableHeaderSchemaValidator {
         if (columnSchema.getColumnCategory() != null
             && !existingColumn.getColumnCategory().equals(columnSchema.getColumnCategory())) {
           throw new SemanticException(
-              String.format("Wrong category at column %s.", columnSchema.getName()));
+              String.format("Wrong category at column %s.", columnSchema.getName()),
+              TSStatusCode.COLUMN_CATEGORY_MISMATCH.getStatusCode());
         }
       }
     }
@@ -148,6 +152,13 @@ public class TableHeaderSchemaValidator {
       // check id or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
       table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+    } else if (!missingColumnList.isEmpty()
+        && !IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+      throw new SemanticException(
+          String.format(
+              "Missing columns %s.",
+              missingColumnList.stream().map(ColumnSchema::getName).collect(Collectors.toList())),
+          TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
     }
 
     table

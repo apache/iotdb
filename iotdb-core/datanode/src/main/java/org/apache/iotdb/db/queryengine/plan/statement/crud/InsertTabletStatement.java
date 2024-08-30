@@ -229,6 +229,20 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   }
 
   @Override
+  public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+    failedMeasurementIndex2Info.forEach(
+        (index, info) -> {
+          measurements[index] = info.getMeasurement();
+          dataTypes[index] = info.getDataType();
+          columns[index] = info.getValue();
+        });
+    failedMeasurementIndex2Info.clear();
+  }
+
+  @Override
   public void semanticCheck() {
     super.semanticCheck();
     if (measurements.length != columns.length) {
@@ -450,7 +464,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
     }
     if (deviceIDs[rowIdx] == null) {
       String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
-      deviceIdSegments[0] = this.devicePath.getFullPath();
+      deviceIdSegments[0] = this.getTableName();
       for (int i = 0; i < getIdColumnIndices().size(); i++) {
         final Integer columnIndex = getIdColumnIndices().get(i);
         Object idSeg = ((Object[]) columns[columnIndex])[rowIdx];

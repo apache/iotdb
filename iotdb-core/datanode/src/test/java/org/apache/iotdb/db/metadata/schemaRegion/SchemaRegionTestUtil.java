@@ -26,6 +26,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -419,26 +421,28 @@ public class SchemaRegionTestUtil {
       final Object[] deviceIds,
       final Map<String, String> attributes)
       throws MetadataException {
-    schemaRegion.createTableDevice(
-        table,
-        Collections.singletonList(deviceIds),
-        new ArrayList<>(attributes.keySet()),
-        Collections.singletonList(
-            attributes.values().stream()
-                .map(s -> s != null ? new Binary(s.getBytes(StandardCharsets.UTF_8)) : null)
-                .toArray()));
+    schemaRegion.createOrUpdateTableDevice(
+        new CreateOrUpdateTableDeviceNode(
+            new PlanNodeId(""),
+            null,
+            table,
+            Collections.singletonList(deviceIds),
+            new ArrayList<>(attributes.keySet()),
+            Collections.singletonList(
+                attributes.values().stream()
+                    .map(s -> s != null ? new Binary(s.getBytes(StandardCharsets.UTF_8)) : null)
+                    .toArray())));
   }
 
   public static List<IDeviceSchemaInfo> getTableDevice(
-      ISchemaRegion schemaRegion, String table, List<String[]> deviceIdList)
-      throws MetadataException {
-    List<IDeviceSchemaInfo> result = new ArrayList<>();
-    try (ISchemaReader<IDeviceSchemaInfo> reader =
+      final ISchemaRegion schemaRegion, final String table, final List<String[]> deviceIdList) {
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    try (final ISchemaReader<IDeviceSchemaInfo> reader =
         schemaRegion.getTableDeviceReader(table, new ArrayList<>(deviceIdList))) {
       while (reader.hasNext()) {
         result.add(reader.next());
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new RuntimeException(e);
     }
     return result;

@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -178,10 +179,11 @@ public class RegionWriteExecutor {
             status);
       } catch (ConsensusException e) {
         LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-        return RegionExecutionResult.create(
-            false,
-            e.toString(),
-            RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
+        TSStatus status = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        if (e instanceof ConsensusGroupNotExistException) {
+          status.setCode(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+        }
+        return RegionExecutionResult.create(false, e.toString(), status);
       }
     }
 
@@ -241,7 +243,7 @@ public class RegionWriteExecutor {
       if (context.getRegionWriteValidationRWLock() == null) {
         String message = "Failed to get the lock of the region because the region is not existed.";
         return RegionExecutionResult.create(
-            false, message, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, message));
+            false, message, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP, message));
       }
 
       context.getRegionWriteValidationRWLock().readLock().lock();
@@ -253,10 +255,11 @@ public class RegionWriteExecutor {
             status);
       } catch (ConsensusException e) {
         LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-        return RegionExecutionResult.create(
-            false,
-            e.toString(),
-            RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString()));
+        TSStatus status = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_ERROR, e.toString());
+        if (e instanceof ConsensusGroupNotExistException) {
+          status.setCode(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
+        }
+        return RegionExecutionResult.create(false, e.toString(), status);
       } finally {
         context.getRegionWriteValidationRWLock().readLock().unlock();
       }

@@ -1067,4 +1067,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     }
     return Factory.DEFAULT_FACTORY.create(segments);
   }
+
+  public void toLowerCase() {
+    for (int i = 0; i < nodes.length; i++) {
+      nodes[i] = nodes[i].toLowerCase();
+    }
+    if (fullPath != null) {
+      fullPath = fullPath.toLowerCase();
+    }
+  }
 }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.node;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -30,6 +32,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -159,9 +162,56 @@ public class ClusterNodeStartUtils {
     return ACCEPT_NODE_REGISTRATION;
   }
 
+  public static TSStatus confirmAINodeRegistration(
+      TAINodeRegisterReq req, ConfigManager configManager) {
+    // Confirm cluster name
+    TSStatus status = confirmClusterName(NodeType.AINode, req.getClusterName());
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Confirm end point conflicts
+    List<TEndPoint> conflictEndPoints =
+        checkConflictTEndPointForNewAINode(
+            req.getAiNodeConfiguration().getLocation(),
+            configManager.getNodeManager().getRegisteredAINodes());
+    if (!conflictEndPoints.isEmpty()) {
+      return rejectRegistrationBecauseConflictEndPoints(NodeType.AINode, conflictEndPoints);
+    }
+    // Confirm whether cluster id has been generated
+    status = confirmClusterId(configManager);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+    // Success
+    return ACCEPT_NODE_REGISTRATION;
+  }
+
+  /**
+   * Check if there exist conflict TEndPoints on the DataNode to be registered.
+   *
+   * @param newAINodeLocation The TDataNodeLocation of the DataNode to be registered
+   * @param registeredAINodes All registered DataNodes
+   * @return The conflict TEndPoints if exist
+   */
+  public static List<TEndPoint> checkConflictTEndPointForNewAINode(
+      TAINodeLocation newAINodeLocation, List<TAINodeConfiguration> registeredAINodes) {
+    Set<TEndPoint> conflictEndPointSet = new HashSet<>();
+    for (TAINodeConfiguration registeredAINode : registeredAINodes) {
+      TAINodeLocation registeredLocation = registeredAINode.getLocation();
+      if (registeredLocation
+          .getInternalEndPoint()
+          .equals(newAINodeLocation.getInternalEndPoint())) {
+        conflictEndPointSet.add(newAINodeLocation.getInternalEndPoint());
+      }
+    }
+
+    return new ArrayList<>(conflictEndPointSet);
+  }
+
   public static TSStatus confirmNodeRestart(
       NodeType nodeType,
       String clusterName,
+      String clusterId,
       int nodeId,
       Object nodeLocation,
       ConfigManager configManager) {
@@ -263,6 +313,24 @@ public class ClusterNodeStartUtils {
           }
         }
         break;
+    }
+
+    // check clusterId if not empty
+    if (clusterId != null
+        && !clusterId.isEmpty()
+        && !clusterId.equals(configManager.getClusterManager().getClusterId())) {
+      status.setCode(TSStatusCode.REJECT_NODE_START.getStatusCode());
+      status.setMessage(
+          String.format(
+              "Reject %s restart. Because the clusterId of the current %s and the target cluster are inconsistent. "
+                  + "ClusterId of the current Node: %s, ClusterId of the target cluster: %s."
+                  + POSSIBLE_SOLUTIONS
+                  + "\t1. Please check if the node configuration or path is correct.",
+              nodeType.getNodeType(),
+              nodeType.getNodeType(),
+              clusterId,
+              configManager.getClusterManager().getClusterId()));
+      return status;
     }
 
     if (!acceptRestart) {

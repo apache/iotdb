@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schem
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IsNotNullPredicate;
@@ -38,23 +39,30 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, Void> {
 
   @Override
+  public String visitExpression(final Expression expression, final Void context) {
+    // TODO: implement schema function filter and parse some function call and arithmetic filters
+    // into id determined filter
+    return null;
+  }
+
+  @Override
   protected String visitInPredicate(final InPredicate node, final Void context) {
-    return ((SymbolReference) node.getValue()).getName();
+    return node.getValue().accept(this, context);
   }
 
   @Override
   protected String visitIsNullPredicate(final IsNullPredicate node, final Void context) {
-    return ((SymbolReference) node.getValue()).getName();
+    return node.getValue().accept(this, context);
   }
 
   @Override
   protected String visitIsNotNullPredicate(final IsNotNullPredicate node, final Void context) {
-    return ((SymbolReference) node.getValue()).getName();
+    return node.getValue().accept(this, context);
   }
 
   @Override
   protected String visitLikePredicate(final LikePredicate node, final Void context) {
-    return ((SymbolReference) node.getValue()).getName();
+    return node.getValue().accept(this, context);
   }
 
   @Override
@@ -71,17 +79,9 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
   protected String visitComparisonExpression(final ComparisonExpression node, final Void context) {
     final String columnName;
     if (node.getLeft() instanceof Literal) {
-      if (!(node.getRight() instanceof SymbolReference)) {
-        // TODO: implement schema function filter and parse some function call into id determined
-        // filter
-        return null;
-      }
-      columnName = ((SymbolReference) (node.getRight())).getName();
+      columnName = node.getRight().accept(this, context);
     } else {
-      if (!(node.getLeft() instanceof SymbolReference)) {
-        return null;
-      }
-      columnName = ((SymbolReference) (node.getLeft())).getName();
+      columnName = node.getLeft().accept(this, context);
     }
     return columnName;
   }

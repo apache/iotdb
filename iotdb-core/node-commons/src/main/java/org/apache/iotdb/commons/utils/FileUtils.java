@@ -21,6 +21,8 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +32,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.Arrays;
@@ -58,6 +62,10 @@ public class FileUtils {
   }
 
   public static void deleteFileOrDirectory(File file) {
+    deleteFileOrDirectory(file, false);
+  }
+
+  public static void deleteFileOrDirectory(File file, boolean quiteForNoSuchFile) {
     if (file.isDirectory()) {
       for (File subfile : file.listFiles()) {
         deleteFileOrDirectory(subfile);
@@ -65,7 +73,11 @@ public class FileUtils {
     }
     try {
       Files.delete(file.toPath());
-    } catch (NoSuchFileException | DirectoryNotEmptyException e) {
+    } catch (NoSuchFileException e) {
+      if (!quiteForNoSuchFile) {
+        LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
+      }
+    } catch (DirectoryNotEmptyException e) {
       LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
     } catch (Exception e) {
       LOGGER.warn("{}: {}", e.getMessage(), file.getName(), e);
@@ -303,5 +315,54 @@ public class FileUtils {
       ci.next();
     }
     return String.format("%.2f %cB", bytes / 1000.0, ci.current());
+  }
+
+  public static void moveFileWithMD5Check(final File sourceFile, final File targetDir)
+      throws IOException {
+    final String sourceFileName = sourceFile.getName();
+    final File targetFile = new File(targetDir, sourceFileName);
+
+    if (targetFile.exists()) {
+      if (haveSameMD5(sourceFile, targetFile)) {
+        org.apache.commons.io.FileUtils.forceDelete(sourceFile);
+        LOGGER.info(
+            "Deleted the file {} because it already exists in the fail directory: {}",
+            sourceFile.getName(),
+            targetDir.getAbsolutePath());
+      } else {
+        renameWithMD5(sourceFile, targetDir);
+        LOGGER.info(
+            "Renamed file {} to {} because it already exists in the fail directory: {}",
+            sourceFile.getName(),
+            targetFile.getName(),
+            targetDir.getAbsolutePath());
+      }
+    } else {
+      org.apache.commons.io.FileUtils.moveFileToDirectory(sourceFile, targetDir, true);
+    }
+  }
+
+  private static boolean haveSameMD5(final File file1, final File file2) {
+    try (final InputStream is1 = Files.newInputStream(file1.toPath());
+        final InputStream is2 = Files.newInputStream(file2.toPath())) {
+      return DigestUtils.md5Hex(is1).equals(DigestUtils.md5Hex(is2));
+    } catch (final Exception e) {
+      return false;
+    }
+  }
+
+  private static void renameWithMD5(File sourceFile, File targetDir) throws IOException {
+    try (final InputStream is = Files.newInputStream(sourceFile.toPath())) {
+      final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());
+      final String sourceFileExtension = FilenameUtils.getExtension(sourceFile.getName());
+      final String sourceFileMD5 = DigestUtils.md5Hex(is);
+
+      final String targetFileName =
+          sourceFileBaseName + "-" + sourceFileMD5.substring(0, 16) + "." + sourceFileExtension;
+      final File targetFile = new File(targetDir, targetFileName);
+
+      org.apache.commons.io.FileUtils.moveFile(
+          sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+    }
   }
 }

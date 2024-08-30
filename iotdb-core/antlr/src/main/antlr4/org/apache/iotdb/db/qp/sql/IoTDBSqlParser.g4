@@ -65,6 +65,8 @@ ddlStatement
     // Cluster
     | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList | migrateRegion | verifyConnection
+    // AINode
+    | showAINodes | createModel | dropModel | showModels | callInference
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
@@ -489,6 +491,11 @@ showConfigNodes
     : SHOW CONFIGNODES
     ;
 
+// ---- Show AI Nodes
+showAINodes
+    : SHOW AINODES
+    ;
+
 // ---- Show Cluster Id
 showClusterId
     : SHOW CLUSTERID
@@ -655,6 +662,42 @@ showTopics
 // Subscriptions =========================================================================================
 showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
+    ;
+
+// AI Model =========================================================================================
+// ---- Create Model
+createModel
+    : CREATE MODEL modelName=identifier USING URI modelUri=STRING_LITERAL
+    ;
+
+windowFunction
+    : TAIL LR_BRACKET windowSize=INTEGER_LITERAL RR_BRACKET
+    | HEAD LR_BRACKET windowSize=INTEGER_LITERAL RR_BRACKET
+    | COUNT LR_BRACKET interval=INTEGER_LITERAL COMMA step=INTEGER_LITERAL RR_BRACKET
+    ;
+
+callInference
+    : CALL INFERENCE LR_BRACKET modelId=identifier COMMA inputSql=STRING_LITERAL (COMMA hparamPair)* RR_BRACKET
+    ;
+
+hparamPair
+    : hparamKey=attributeKey operator_eq hparamValue
+    ;
+
+hparamValue
+    : attributeValue
+    | windowFunction
+    ;
+
+// ---- Drop Model
+dropModel
+    : DROP MODEL modelId=identifier
+    ;
+
+// ---- Show Models
+showModels
+    : SHOW MODELS
+    | SHOW MODELS modelId=identifier
     ;
 
 // Create Logical View
