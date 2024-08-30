@@ -2268,9 +2268,6 @@ public class DataRegion implements IDataRegionForQuery {
         .forEach(unsealedResource::add);
   }
 
-  /**
-   * @param pattern Must be a pattern start with a precise device path
-   */
   public void deleteByDevice(
       MeasurementPath pattern, long startTime, long endTime, long searchIndex) throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
