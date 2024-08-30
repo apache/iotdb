@@ -30,7 +30,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.ThreadSafe;
+import javax.annotation.concurrent.GuardedBy;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,6 @@ import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@ThreadSafe
 public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class);
@@ -119,6 +118,7 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
+  @GuardedBy("DataRegionInsertLock#writeLock")
   int tryUpdate(final @Nonnull String[] measurements, final TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
     long lastTime = Long.MIN_VALUE;
@@ -154,6 +154,7 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
+  @GuardedBy("DataRegionInsertLock#writeLock")
   int invalidate(final String measurement) {
     return 2 * (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
         + measurement2CachedLastMap.remove(measurement).getSize()
