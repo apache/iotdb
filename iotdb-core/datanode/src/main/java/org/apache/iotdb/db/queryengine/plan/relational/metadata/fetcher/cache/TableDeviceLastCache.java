@@ -124,11 +124,7 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
-  int tryUpdate(
-      final @Nonnull String database,
-      final @Nonnull String tableName,
-      final @Nonnull String[] measurements,
-      final TimeValuePair[] timeValuePairs) {
+  int tryUpdate(final @Nonnull String[] measurements, final TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (int i = 0; i < measurements.length; ++i) {

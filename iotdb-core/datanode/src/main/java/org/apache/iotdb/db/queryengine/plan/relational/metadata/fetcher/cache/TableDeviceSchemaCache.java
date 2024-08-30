@@ -217,7 +217,7 @@ public class TableDeviceSchemaCache {
         new TableId(database, deviceId.getTableName()),
         deviceId,
         new TableDeviceCacheEntry(),
-        entry -> entry.tryUpdate(database, deviceId.getTableName(), measurements, timeValuePairs),
+        entry -> entry.tryUpdate(measurements, timeValuePairs),
         false);
   }
 
