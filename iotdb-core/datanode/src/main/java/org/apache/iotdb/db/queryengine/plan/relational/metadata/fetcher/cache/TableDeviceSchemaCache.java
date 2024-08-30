@@ -159,8 +159,8 @@ public class TableDeviceSchemaCache {
 
   /**
    * Update the last cache on query or data recover. The input "TimeValuePair" shall never be or
-   * contain {@code null} unless the measurement is the time measurement "". If the measurements are
-   * all {@code null}s, the timeValuePair shall be {@link
+   * contain {@code null} unless the measurement is the time measurement "". If a measurement is
+   * with all {@code null}s or is an id/attribute column, its timeValuePair shall be {@link
    * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
    *
    * <p>If the global last time is queried or recovered, the measurement shall be an empty string
@@ -319,6 +319,24 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
+  /**
+   * Update the last cache on query or data recover in tree model. The input "TimeValuePair" shall
+   * never be or contain {@code null} unless the measurement is the time measurement "". If the
+   * measurements are all {@code null}s, the timeValuePair shall be {@link
+   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
+   *
+   * <p>If the global last time is queried or recovered, the measurement shall be an empty string
+   * and time shall be in the timeValuePair's timestamp, whose value is typically {@link
+   * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. Or, the device's last time won't be updated because
+   * we cannot guarantee the completeness of the existing measurements in cache.
+   *
+   * <p>The input "TimeValuePair" shall never be or contain {@code null}.
+   *
+   * @param database the device's database, without "root"
+   * @param deviceId IDeviceID
+   * @param measurements the fetched measurements
+   * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
+   */
   public void updateLastCache(
       final String database,
       final IDeviceID deviceId,
