@@ -90,9 +90,11 @@ public class TabletExample {
             case BOOLEAN:
               ret.get(measurement).add(Boolean.parseBoolean(items[idx]));
               break;
+            case DATE:
             case INT32:
               ret.get(measurement).add(Integer.parseInt(items[idx]));
               break;
+            case TIMESTAMP:
             case INT64:
               ret.get(measurement).add(Long.parseLong(items[idx]));
               break;
@@ -102,6 +104,8 @@ public class TabletExample {
             case DOUBLE:
               ret.get(measurement).add(Double.parseDouble(items[idx]));
               break;
+            case STRING:
+            case BLOB:
             case TEXT:
               ret.get(measurement).add(BytesUtils.valueOf(items[idx]));
               break;

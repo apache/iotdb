@@ -101,6 +101,8 @@ public class UDAFSum implements UDAF {
         addDoubleInput(sumState, columns, bitMap);
         return;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(

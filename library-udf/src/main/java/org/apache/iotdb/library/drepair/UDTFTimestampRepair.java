@@ -95,6 +95,12 @@ public class UDTFTimestampRepair implements UDTF {
           collector.putLong(timestamp[i], (long) value[i]);
         }
         break;
+      case DATE:
+      case TIMESTAMP:
+      case BLOB:
+      case BOOLEAN:
+      case TEXT:
+      case STRING:
       default:
         throw new UDFException("");
     }

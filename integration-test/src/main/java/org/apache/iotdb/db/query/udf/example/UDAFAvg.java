@@ -101,6 +101,8 @@ public class UDAFAvg implements UDAF {
         addDoubleInput(avgState, columns, bitMap);
         return;
       case TEXT:
+      case STRING:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(

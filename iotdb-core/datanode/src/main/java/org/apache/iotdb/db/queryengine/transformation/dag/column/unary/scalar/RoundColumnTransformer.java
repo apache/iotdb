@@ -59,6 +59,12 @@ public class RoundColumnTransformer extends BinaryColumnTransformer {
             builder.writeDouble(
                 Math.rint(leftColumn.getDouble(i) * Math.pow(10, places)) / Math.pow(10, places));
             break;
+          case DATE:
+          case TEXT:
+          case BOOLEAN:
+          case BLOB:
+          case STRING:
+          case TIMESTAMP:
           default:
             throw new UnsupportedOperationException(
                 String.format("Unsupported source dataType: %s", sourceType));
