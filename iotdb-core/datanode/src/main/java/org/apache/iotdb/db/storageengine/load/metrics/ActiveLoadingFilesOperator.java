@@ -54,11 +54,11 @@ public abstract class ActiveLoadingFilesOperator {
     failedFileCounter.inc(number - failedFileCounter.getCount());
   }
 
-  public void recordPendingFileCounter(final long number) {
+  public void updateFileMetricInTotal(final long number) {
     pendingFileCounter.inc(number - pendingFileCounter.getCount());
   }
 
-  public void recordFileMetric(final String dirName, final long number) {
+  public void updateFileMetricInDir(final String dirName, final long number) {
     final Counter counter = fileCounterMap.get(dirName);
     if (counter == null) {
       LOGGER.warn("Failed to update file counter, dir({}) does not exist", dirName);
@@ -67,7 +67,7 @@ public abstract class ActiveLoadingFilesOperator {
     counter.inc(number - counter.getCount());
   }
 
-  public void updateFileNameList(final Set<String> fileNameSet) {
+  public void updateListeningDirList(final Set<String> fileNameSet) {
     if (fileNameSet.equals(listeningDirs)) {
       return;
     }

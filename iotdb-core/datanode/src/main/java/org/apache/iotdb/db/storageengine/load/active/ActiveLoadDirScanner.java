@@ -118,11 +118,11 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       // Active load is always enabled for pipe data sync
       listeningDirs.add(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
 
-      ActiveLoadingFilesNumberMetricsSet.getInstance().updateFileNameList(listeningDirs);
-      ActiveLoadingFilesSizeMetricsSet.getInstance().updateFileNameList(listeningDirs);
-
       // Create directories if not exists
       listeningDirs.forEach(this::createDirectoriesIfNotExists);
+
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updateListeningDirList(listeningDirs);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateListeningDirList(listeningDirs);
     } catch (final Exception e) {
       LOGGER.warn(
           "Error occurred during hot reload active load dirs. "
@@ -150,38 +150,43 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
   // Metrics
   public long countAndReportActiveListeningDirsFileNumber() {
-    final long[] fileCount = {0};
-    final long[] singleDirCount = {0};
-    final long[] fileSizeCount = {0};
-    final long[] singleDirSizeCount = {0};
+    long totalFileCount = 0;
+    long totalFileSize = 0;
 
     try {
-      for (String dir : listeningDirs) {
+      for (final String dir : listeningDirs) {
+        final long[] fileCountInDir = {0};
+        final long[] fileSizeInDir = {0};
+
         Files.walkFileTree(
             new File(dir).toPath(),
             new SimpleFileVisitor<Path>() {
               @Override
               public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                singleDirCount[0]++;
-                singleDirSizeCount[0] += file.toFile().length();
+                fileCountInDir[0]++;
+                try {
+                  fileSizeInDir[0] += file.toFile().length();
+                } catch (Exception e) {
+                  LOGGER.debug("Failed to count active listening dirs file number.", e);
+                }
                 return FileVisitResult.CONTINUE;
               }
             });
 
-        ActiveLoadingFilesNumberMetricsSet.getInstance().recordFileMetric(dir, singleDirCount[0]);
-        ActiveLoadingFilesSizeMetricsSet.getInstance().recordFileMetric(dir, singleDirSizeCount[0]);
+        ActiveLoadingFilesNumberMetricsSet.getInstance()
+            .updateFileMetricInDir(dir, fileCountInDir[0]);
+        ActiveLoadingFilesSizeMetricsSet.getInstance().updateFileMetricInDir(dir, fileSizeInDir[0]);
 
-        fileCount[0] += singleDirCount[0];
-        fileSizeCount[0] += singleDirSizeCount[0];
-        singleDirCount[0] = 0;
-        singleDirSizeCount[0] = 0;
+        totalFileCount += fileCountInDir[0];
+        totalFileSize += fileSizeInDir[0];
       }
 
-      ActiveLoadingFilesNumberMetricsSet.getInstance().recordPendingFileCounter(fileCount[0]);
-      ActiveLoadingFilesSizeMetricsSet.getInstance().recordPendingFileCounter(fileSizeCount[0]);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updateFileMetricInTotal(totalFileCount);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateFileMetricInTotal(totalFileSize);
     } catch (final IOException e) {
       LOGGER.debug("Failed to count active listening dirs file number.", e);
     }
-    return fileCount[0];
+
+    return totalFileCount;
   }
 }
