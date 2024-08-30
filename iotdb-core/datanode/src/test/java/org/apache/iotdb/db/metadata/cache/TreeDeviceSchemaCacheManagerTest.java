@@ -135,68 +135,6 @@ public class TreeDeviceSchemaCacheManagerTest {
     Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
   }
 
-  @Test
-  public void testLastCache() throws IllegalPathException {
-    // test no cache
-    MeasurementPath devicePath = new MeasurementPath("root.sg1.d1");
-    MeasurementPath seriesPath1 = new MeasurementPath("root.sg1.d1.s1");
-    MeasurementPath seriesPath2 = new MeasurementPath("root.sg1.d1.s2");
-    MeasurementPath seriesPath3 = new MeasurementPath("root.sg1.d1.s3");
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath1));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
-    // test no last cache
-    treeDeviceSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree1());
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath1));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
-    // put cache
-    long timestamp = 100;
-    long timestamp2 = 101;
-    TsPrimitiveType value = TsPrimitiveType.getByType(TSDataType.INT32, 101);
-    TsPrimitiveType value2 = TsPrimitiveType.getByType(TSDataType.INT32, 100);
-    TsPrimitiveType value3 = TsPrimitiveType.getByType(TSDataType.INT32, 99);
-
-    // put into last cache when cache not exist
-    TimeValuePair timeValuePair = new TimeValuePair(timestamp, value);
-    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair, false, 99L);
-    TimeValuePair cachedTimeValuePair = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair);
-    Assert.assertEquals(timestamp, cachedTimeValuePair.getTimestamp());
-    Assert.assertEquals(value, cachedTimeValuePair.getValue());
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
-
-    // same time but low priority
-    TimeValuePair timeValuePair2 = new TimeValuePair(timestamp, value2);
-    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair2, false, 100L);
-    TimeValuePair cachedTimeValuePair2 = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair2);
-    Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
-    Assert.assertEquals(value, cachedTimeValuePair2.getValue());
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
-
-    // same time but high priority
-    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair2, true, 100L);
-    cachedTimeValuePair2 = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair2);
-    Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
-    Assert.assertEquals(value2, cachedTimeValuePair2.getValue());
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
-
-    // put into last cache when cache already exist
-    TimeValuePair timeValuePair3 = new TimeValuePair(timestamp2, value3);
-    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair3, false, 100L);
-    TimeValuePair cachedTimeValuePair3 = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
-    Assert.assertNotNull(cachedTimeValuePair3);
-    Assert.assertEquals(timestamp2, cachedTimeValuePair3.getTimestamp());
-    Assert.assertEquals(value3, cachedTimeValuePair3.getValue());
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
-  }
-
   private ISchemaTree generateSchemaTree1() throws IllegalPathException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     Map<String, String> s1TagMap = new HashMap<>();

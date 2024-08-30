@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -55,6 +54,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
@@ -230,7 +231,6 @@ public class TreeDeviceSchemaCacheManager {
     }
 
     final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    final List<String> missedPathStringList = new ArrayList<>();
     final Pair<Integer, Integer> beginToEnd =
         schemaComputation.getRangeOfLogicalViewSchemaListRecorded();
     final List<LogicalViewSchema> logicalViewSchemaList =
@@ -242,24 +242,25 @@ public class TreeDeviceSchemaCacheManager {
     for (int i = beginToEnd.left; i < beginToEnd.right; i++) {
       final LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(i);
       final int realIndex = indexListOfLogicalViewPaths.get(i);
-      final int recordMissingIndex = i;
       if (!logicalViewSchema.isWritable()) {
-        PartialPath path = schemaComputation.getDevicePath();
-        path = path.concatAsMeasurementPath(schemaComputation.getMeasurements()[realIndex]);
-        throw new RuntimeException(new InsertNonWritableViewException(path.getFullPath()));
+        throw new RuntimeException(
+            new InsertNonWritableViewException(
+                schemaComputation
+                    .getDevicePath()
+                    .concatAsMeasurementPath(schemaComputation.getMeasurements()[realIndex])
+                    .getFullPath()));
       }
 
       final IDeviceSchema schema =
           tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
       if (!(schema instanceof TreeDeviceNormalSchema)) {
-        for (int index = 0; index < schemaComputation.getMeasurements().length; index++) {
-          indexOfMissingMeasurements.add(index);
-        }
-        for (int index : indexOfMissingMeasurements) {
-          missedPathStringList.add(
-              logicalViewSchemaList.get(index).getSourcePathStringIfWritable());
-        }
-        return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
+        return new Pair<>(
+            IntStream.range(0, schemaComputation.getMeasurements().length)
+                .boxed()
+                .collect(Collectors.toList()),
+            logicalViewSchemaList.stream()
+                .map(LogicalViewSchema::getSourcePathStringIfWritable)
+                .collect(Collectors.toList()));
       }
 
       final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
@@ -267,7 +268,7 @@ public class TreeDeviceSchemaCacheManager {
       for (int index = 0; index < schemaComputation.getMeasurements().length; index++) {
         final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[index]);
         if (value == null) {
-          indexOfMissingMeasurements.add(recordMissingIndex);
+          indexOfMissingMeasurements.add(i);
         } else {
           // Can not call function computeDevice here, because the value is source of one
           // view, but schemaComputation is the device in this insert statement. The
@@ -285,11 +286,11 @@ public class TreeDeviceSchemaCacheManager {
         }
       }
     }
-
-    for (int index : indexOfMissingMeasurements) {
-      missedPathStringList.add(logicalViewSchemaList.get(index).getSourcePathStringIfWritable());
-    }
-    return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
+    return new Pair<>(
+        indexOfMissingMeasurements,
+        indexOfMissingMeasurements.stream()
+            .map(index -> logicalViewSchemaList.get(index).getSourcePathStringIfWritable())
+            .collect(Collectors.toList()));
   }
 
   public List<Integer> computeWithTemplate(final ISchemaComputation computation) {
@@ -297,12 +298,11 @@ public class TreeDeviceSchemaCacheManager {
     final String[] measurements = computation.getMeasurements();
     final IDeviceSchema deviceSchema =
         tableDeviceSchemaCache.getDeviceSchema(computation.getDevicePath().getNodes());
+
     if (!(deviceSchema instanceof TreeDeviceTemplateSchema)) {
-      for (int i = 0; i < measurements.length; i++) {
-        indexOfMissingMeasurements.add(i);
-      }
-      return indexOfMissingMeasurements;
+      return IntStream.range(0, measurements.length).boxed().collect(Collectors.toList());
     }
+
     final TreeDeviceTemplateSchema deviceTemplateSchema = (TreeDeviceTemplateSchema) deviceSchema;
 
     computation.computeDevice(
@@ -425,18 +425,6 @@ public class TreeDeviceSchemaCacheManager {
     } finally {
       releaseReadLock();
     }
-  }
-
-  /** get SchemaCacheEntry and update last cache */
-  @TestOnly
-  public void updateLastCache(
-      PartialPath devicePath,
-      String measurement,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    timeSeriesSchemaCache.updateLastCache(
-        devicePath, measurement, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   public void updateLastCache(
