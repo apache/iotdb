@@ -69,6 +69,10 @@ public class WindowManagerFactory {
         return new EqualBinaryWindowManager(eventWindowParameter, ascending);
       case BOOLEAN:
         return new EqualBooleanWindowManager(eventWindowParameter, ascending);
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new UnSupportedDataTypeException(
             String.format(
@@ -88,6 +92,12 @@ public class WindowManagerFactory {
         return new VariationFloatWindowManager(eventWindowParameter, ascending);
       case DOUBLE:
         return new VariationDoubleWindowManager(eventWindowParameter, ascending);
+      case TIMESTAMP:
+      case DATE:
+      case STRING:
+      case BOOLEAN:
+      case BLOB:
+      case TEXT:
       default:
         throw new UnSupportedDataTypeException(
             String.format(

@@ -54,6 +54,12 @@ public class UDTFNonNegativeValueDifference extends UDTFValueDifference {
         collector.putDouble(time, Math.abs(currentDouble - previousDouble));
         previousDouble = currentDouble;
         break;
+      case BOOLEAN:
+      case TEXT:
+      case STRING:
+      case TIMESTAMP:
+      case BLOB:
+      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

@@ -134,6 +134,12 @@ public class UDTFChangePoints implements UDTF {
             collector.putString(row.getTime(), cacheString);
           }
         }
+      case STRING:
+      case BLOB:
+      case DATE:
+      case TIMESTAMP:
+      default:
+        break;
     }
   }
 }

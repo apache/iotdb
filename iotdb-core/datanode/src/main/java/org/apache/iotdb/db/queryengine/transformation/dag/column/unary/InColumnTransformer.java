@@ -27,6 +27,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
+import org.apache.tsfile.utils.Binary;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -143,9 +144,13 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           booleanSet.add(strictCastToBool(value));
         }
         break;
-      case BINARY:
-        stringSet = values;
+      case TEXT:
+      case STRING:
+        stringSet =
+            values;
         break;
+      case BLOB:
+      case DATE:
       default:
         throw new UnsupportedOperationException("unsupported data type: " + childType);
     }

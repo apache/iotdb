@@ -86,6 +86,12 @@ public class UDTFRange implements UDTF {
           collector.putDouble(timestamp, doubleValue);
         }
         break;
+      case DATE:
+      case TIMESTAMP:
+      case TEXT:
+      case STRING:
+      case BOOLEAN:
+      case BLOB:
       default:
         throw new UDFException("No such kind of data type.");
     }

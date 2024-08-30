@@ -151,6 +151,12 @@ public class UDTFSample implements UDTF {
               case DOUBLE:
                 collector.putDouble(p.getLeft(), p.getRight());
                 break;
+              case TIMESTAMP:
+              case DATE:
+              case BLOB:
+              case BOOLEAN:
+              case STRING:
+              case TEXT:
               default:
                 throw new NoNumberException();
             }
