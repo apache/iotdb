@@ -224,12 +224,12 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        PipeConsensusSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          PipeConsensusSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
