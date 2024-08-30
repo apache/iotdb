@@ -3031,7 +3031,8 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      TreeDeviceSchemaCacheManager.getInstance().invalidateAll();
+      // TODO: do more precise control
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     }
   }
 

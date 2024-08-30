@@ -465,17 +465,11 @@ public class TreeDeviceSchemaCacheManager {
       deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
       timeSeriesSchemaCache.invalidate(partialPathList);
     } else {
-      invalidateAll();
+      cleanUp();
     }
   }
 
-  public void invalidateAll() {
-    deviceUsingTemplateSchemaCache.invalidateCache();
-    timeSeriesSchemaCache.invalidateAll();
-  }
-
   public void cleanUp() {
-    deviceUsingTemplateSchemaCache.invalidateCache();
-    timeSeriesSchemaCache.invalidateAll();
+    tableDeviceSchemaCache.invalidateAll();
   }
 }
