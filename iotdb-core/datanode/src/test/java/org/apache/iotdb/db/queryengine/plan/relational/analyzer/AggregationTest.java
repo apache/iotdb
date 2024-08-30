@@ -72,6 +72,22 @@ public class AggregationTest {
                         "testdb.table1",
                         ImmutableList.of("s1", "s2"),
                         ImmutableSet.of("s1", "s2"))))));
+    assertPlan(
+        planTester.createPlan("SELECT count(s2) FROM table1 group by s1, tag1, tag2, tag3, time"),
+        output(
+            project(
+                aggregation(
+                    singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
+                    ImmutableMap.of(
+                        Optional.empty(), aggregationFunction("count", ImmutableList.of("s2"))),
+                    ImmutableList.of("s1", "tag1", "tag2", "tag3", "time"), // Streamable
+                    Optional.empty(),
+                    SINGLE,
+                    tableScan(
+                        "testdb.table1",
+                        ImmutableList.of("time", "tag1", "tag2", "tag3", "s1", "s2"),
+                        ImmutableSet.of("time", "tag1", "tag2", "tag3", "s1", "s2"))))));
+    // TODO Add more tests about streamable when develop subquery, especially when there is SortNode
 
     // Expr appears in groupingKeys, and it is not date_bin(time)
     // Output - Project - Aggregation - Project - TableScan
