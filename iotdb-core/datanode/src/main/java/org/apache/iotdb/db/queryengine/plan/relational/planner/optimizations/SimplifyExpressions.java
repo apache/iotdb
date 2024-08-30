@@ -20,6 +20,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ConstantsFoldingRewriter.constantsFolding;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.NormalizeOrExpressionRewriter.normalizeOrExpression;
 
@@ -43,7 +44,9 @@ public class SimplifyExpressions implements PlanOptimizer {
 
     @Override
     public PlanNode visitFilter(FilterNode node, RewriterContext context) {
-      Expression predicate = extractCommonPredicates(node.getPredicate());
+      Expression predicate = node.getPredicate();
+      predicate = constantsFolding(predicate);
+      predicate = extractCommonPredicates(predicate);
       predicate = normalizeOrExpression(predicate);
       node.setPredicate(predicate);
       return node;

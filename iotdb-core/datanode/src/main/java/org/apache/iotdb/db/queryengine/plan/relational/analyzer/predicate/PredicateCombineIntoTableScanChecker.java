@@ -121,15 +121,14 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   @Override
   protected Boolean visitBetweenPredicate(BetweenPredicate node, Void context) {
     return (isMeasurementColumn(node.getValue())
-        && isLiteral(node.getMin())
-        && isLiteral(node.getMax()));
-    // TODO After Constant-Folding introduced
-    /*|| (isLiteral(node.getValue())
-        && isMeasurementColumn(node.getMin())
-        && isLiteral(node.getMax()))
-    || (isLiteral(node.getValue())
-        && isLiteral(node.getMin())
-        && isMeasurementColumn(node.getMax()));*/
+            && isLiteral(node.getMin())
+            && isLiteral(node.getMax()))
+        || (isLiteral(node.getValue())
+            && isMeasurementColumn(node.getMin())
+            && isLiteral(node.getMax()))
+        || (isLiteral(node.getValue())
+            && isLiteral(node.getMin())
+            && isMeasurementColumn(node.getMax()));
   }
 
   @Override

@@ -46,6 +46,11 @@ public class BooleanLiteral extends Literal {
     this.value = value.toLowerCase(ENGLISH).equals("true");
   }
 
+  public BooleanLiteral(boolean value) {
+    super(null);
+    this.value = value;
+  }
+
   public BooleanLiteral(NodeLocation location, String value) {
     super(requireNonNull(location, "location is null"));
     requireNonNull(value, "value is null");
