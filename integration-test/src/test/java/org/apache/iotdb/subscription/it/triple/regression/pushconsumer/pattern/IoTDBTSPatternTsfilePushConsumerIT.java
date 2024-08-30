@@ -168,7 +168,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
                     Path path_d0s0 = new Path(device, "s_0", true);
                     Path path_d0s1 = new Path(device, "s_1", true);
                     Path path_d1s0 = new Path(database + ".d_1", "s_0", true);
-                    Path path_other_d2 = new Path("" + database2 + ".d_2", "s_0", true);
+                    Path path_other_d2 = new Path(database2 + ".d_2", "s_0", true);
                     List<Path> paths = new ArrayList<>(4);
                     paths.add(path_d0s0);
                     paths.add(path_d0s1);
@@ -206,7 +206,7 @@ public class IoTDBTSPatternTsfilePushConsumerIT extends AbstractSubscriptionRegr
           assertEquals(rowCounts.get(0).get(), 10, device + ".s_0");
           assertEquals(rowCounts.get(1).get(), 0, device + ".s_1");
           assertEquals(rowCounts.get(2).get(), 0, database + ".d_1.s_0");
-          assertEquals(rowCounts.get(3).get(), 0, "" + database2 + ".d_2.s_0");
+          assertEquals(rowCounts.get(3).get(), 0, database2 + ".d_2.s_0");
         });
     // Unsubscribe
     consumer.unsubscribe(topicName);

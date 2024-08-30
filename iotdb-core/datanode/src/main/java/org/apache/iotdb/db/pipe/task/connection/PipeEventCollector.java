@@ -56,6 +56,7 @@ public class PipeEventCollector implements EventCollector {
 
   private final AtomicInteger collectInvocationCount = new AtomicInteger(0);
   private boolean hasNoGeneratedEvent = true;
+  private boolean isFailedToIncreaseReferenceCount = false;
 
   public PipeEventCollector(
       final UnboundedBlockingPendingQueue<Event> pendingQueue,
@@ -162,10 +163,12 @@ public class PipeEventCollector implements EventCollector {
   }
 
   private void collectEvent(final Event event) {
-    collectInvocationCount.incrementAndGet();
-
     if (event instanceof EnrichedEvent) {
-      ((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName());
+      if (!((EnrichedEvent) event).increaseReferenceCount(PipeEventCollector.class.getName())) {
+        LOGGER.warn("PipeEventCollector: The event {} is already released, skipping it.", event);
+        isFailedToIncreaseReferenceCount = true;
+        return;
+      }
 
       // Assign a commit id for this event in order to report progress in order.
       PipeEventCommitManager.getInstance()
@@ -180,11 +183,13 @@ public class PipeEventCollector implements EventCollector {
     }
 
     pendingQueue.directOffer(event);
+    collectInvocationCount.incrementAndGet();
   }
 
-  public void resetCollectInvocationCountAndGenerateFlag() {
+  public void resetFlags() {
     collectInvocationCount.set(0);
     hasNoGeneratedEvent = true;
+    isFailedToIncreaseReferenceCount = false;
   }
 
   public long getCollectInvocationCount() {
@@ -197,5 +202,9 @@ public class PipeEventCollector implements EventCollector {
 
   public boolean hasNoGeneratedEvent() {
     return hasNoGeneratedEvent;
+  }
+
+  public boolean isFailedToIncreaseReferenceCount() {
+    return isFailedToIncreaseReferenceCount;
   }
 }

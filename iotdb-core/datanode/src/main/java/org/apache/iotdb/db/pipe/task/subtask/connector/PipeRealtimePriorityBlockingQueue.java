@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
@@ -33,7 +34,6 @@ import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
@@ -153,9 +153,35 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public void removeIf(final Predicate<? super Event> filter) {
-    super.removeIf(filter);
-    pendingQueue.removeIf(filter);
+  public void discardAllEvents() {
+    super.discardAllEvents();
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+          }
+          return true;
+        });
+    eventCounter.reset();
+  }
+
+  @Override
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
+    super.discardEventsOfPipe(pipeNameToDrop);
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            if (((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override

@@ -19,145 +19,138 @@
 
 package org.apache.iotdb.db.subscription.broker;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
-import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
-import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeTabletEventBatch;
-import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.apache.tsfile.utils.Pair;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQueue {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(SubscriptionPrefetchingTabletQueue.class);
 
-  private static final int BATCH_MAX_DELAY_IN_MS =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxDelayInMs();
-  private static final long BATCH_MAX_SIZE_IN_BYTES =
-      SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes();
-
-  private final AtomicReference<SubscriptionPipeTabletEventBatch> currentBatchRef =
-      new AtomicReference<>();
-
   public SubscriptionPrefetchingTabletQueue(
       final String brokerId,
       final String topicName,
       final SubscriptionBlockingPendingQueue inputPendingQueue,
       final AtomicLong commitIdGenerator) {
-    super(brokerId, topicName, inputPendingQueue, commitIdGenerator);
-
-    this.currentBatchRef.set(
-        new SubscriptionPipeTabletEventBatch(this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES));
+    super(
+        brokerId,
+        topicName,
+        inputPendingQueue,
+        commitIdGenerator,
+        SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxDelayInMs(),
+        SubscriptionConfig.getInstance().getSubscriptionPrefetchTabletBatchMaxSizeInBytes());
   }
 
-  @Override
-  public void cleanup() {
-    super.cleanup();
+  /////////////////////////////// poll ///////////////////////////////
 
-    // clean up batch
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          if (Objects.nonNull(batch)) {
-            batch.cleanup();
-          }
-          return null;
-        });
+  public SubscriptionEvent pollTablets(
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+    acquireReadLock();
+    try {
+      return isClosed() ? null : pollTabletsInternal(consumerId, commitContext, offset);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  private @NonNull SubscriptionEvent pollTabletsInternal(
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+    // 1. Extract current event and check it
+    final SubscriptionEvent event =
+        inFlightEvents.compute(
+            new Pair<>(consumerId, commitContext),
+            (key, ev) -> {
+              if (Objects.nonNull(ev) && ev.isCommitted()) {
+                ev.cleanUp();
+                return null; // remove this entry
+              }
+              return ev;
+            });
+
+    if (Objects.isNull(event)) {
+      final String errorMessage =
+          String.format(
+              "SubscriptionPrefetchingTabletQueue %s is currently not transferring any tablet to consumer %s, commit context: %s, offset: %s",
+              this, consumerId, commitContext, offset);
+      LOGGER.warn(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
+    }
+
+    // check consumer id
+    if (!Objects.equals(event.getLastPolledConsumerId(), consumerId)) {
+      final String errorMessage =
+          String.format(
+              "inconsistent polled consumer id, current: %s, incoming: %s, commit context: %s, offset: %s, prefetching queue: %s",
+              event.getLastPolledConsumerId(), consumerId, commitContext, offset, this);
+      LOGGER.warn(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
+    }
+
+    final SubscriptionPollResponse response = event.getCurrentResponse();
+    final SubscriptionPollPayload payload = response.getPayload();
+
+    // 2. Check previous response type and offset
+    final short responseType = response.getResponseType();
+    if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
+      final String errorMessage = String.format("unexpected response type: %s", responseType);
+      LOGGER.warn(errorMessage);
+      return generateSubscriptionPollErrorResponse(errorMessage);
+    }
+
+    switch (SubscriptionPollResponseType.valueOf(responseType)) {
+      case TABLETS:
+        // check offset
+        if (!Objects.equals(offset, ((TabletsPayload) payload).getNextOffset())) {
+          final String errorMessage =
+              String.format(
+                  "inconsistent offset, current: %s, incoming: %s, consumer: %s, prefetching queue: %s",
+                  ((TabletsPayload) payload).getNextOffset(), offset, consumerId, this);
+          LOGGER.warn(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
+        }
+        break;
+      default:
+        {
+          final String errorMessage = String.format("unexpected response type: %s", responseType);
+          LOGGER.warn(errorMessage);
+          return generateSubscriptionPollErrorResponse(errorMessage);
+        }
+    }
+
+    // 3. Poll next tablets
+    try {
+      event.fetchNextResponse();
+    } catch (final Exception ignored) {
+      // no exceptions will be thrown
+    }
+
+    event.recordLastPolledTimestamp();
+    return event;
   }
 
   /////////////////////////////// prefetch ///////////////////////////////
 
   @Override
-  public void executePrefetch() {
-    super.tryPrefetch(false);
-    this.serializeEventsInQueue();
-  }
-
-  @Override
-  protected boolean onEvent(final TabletInsertionEvent event) {
-    return onEventInternal((EnrichedEvent) event);
-  }
-
-  @Override
-  protected boolean onEvent(final PipeTsFileInsertionEvent event) {
-    return onEventInternal(event);
-  }
-
-  @Override
-  protected boolean onEvent() {
-    return onEventInternal(null);
-  }
-
-  // missing synchronization can cause IoTDBSubscriptionSharingIT to lose data
-  private synchronized boolean onEventInternal(@Nullable final EnrichedEvent event) {
-    final AtomicBoolean result = new AtomicBoolean(false);
-    currentBatchRef.getAndUpdate(
-        (batch) -> {
-          final List<SubscriptionEvent> evs = batch.onEvent(event);
-          if (!evs.isEmpty()) {
-            evs.forEach(
-                (ev) -> {
-                  uncommittedEvents.put(ev.getCommitContext(), ev); // before enqueuing the event
-                  prefetchingQueue.add(ev);
-                });
-            result.set(true);
-            return new SubscriptionPipeTabletEventBatch(
-                this, BATCH_MAX_DELAY_IN_MS, BATCH_MAX_SIZE_IN_BYTES);
-          }
-          // If onEvent returns an empty list, one possibility is that the batch has already been
-          // sealed, which would result in the failure of weakCompareAndSetVolatile to obtain the
-          // most recent batch.
-          return batch;
-        });
-    return result.get();
-  }
-
-  /**
-   * serialize uncommitted and pollable events in {@link
-   * SubscriptionPrefetchingQueue#prefetchingQueue}
-   */
-  private void serializeEventsInQueue() {
-    final long size = prefetchingQueue.size();
-    long count = 0;
-
-    SubscriptionEvent event;
-    try {
-      while (count++ < size // limit control
-          && Objects.nonNull(
-              event =
-                  prefetchingQueue.poll(
-                      SubscriptionConfig.getInstance().getSubscriptionSerializeMaxBlockingTimeMs(),
-                      TimeUnit.MILLISECONDS))) {
-        if (event.isCommitted()) {
-          event.cleanup();
-          continue;
-        }
-        // Serialize the uncommitted and pollable event.
-        if (event.pollable()) {
-          // No need to concern whether serialization is successful.
-          event.trySerializeCurrentResponse();
-        }
-        // Re-enqueue the uncommitted event at the end of the queue.
-        prefetchingQueue.add(event);
-      }
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.warn(
-          "Subscription: SubscriptionPrefetchingTabletQueue {} interrupted while serializing events.",
-          this,
-          e);
-    }
+  protected boolean onEvent(final TsFileInsertionEvent event) {
+    LOGGER.warn(
+        "Subscription: SubscriptionPrefetchingTabletQueue {} ignore TsFileInsertionEvent {} when prefetching.",
+        this,
+        event);
+    return false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////
@@ -165,12 +158,5 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
   @Override
   public String toString() {
     return "SubscriptionPrefetchingTabletQueue" + this.coreReportMessage();
-  }
-
-  @Override
-  protected Map<String, String> allReportMessage() {
-    final Map<String, String> allReportMessage = super.allReportMessage();
-    allReportMessage.put("currentBatch", currentBatchRef.toString());
-    return allReportMessage;
   }
 }

@@ -95,6 +95,7 @@ public class IoTDBStartCheck {
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
   private static final String COMMIT_ID_STRING = "commit_id";
   private static final String DATA_NODE_ID = "data_node_id";
+  private static final String CLUSTER_ID = "cluster_id";
   private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
   // endregion
@@ -267,6 +268,9 @@ public class IoTDBStartCheck {
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
     }
+    if (properties.containsKey(CLUSTER_ID)) {
+      config.setClusterId(properties.getProperty(CLUSTER_ID));
+    }
     if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
       config.setSchemaRegionConsensusProtocolClass(
           properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
@@ -287,6 +291,10 @@ public class IoTDBStartCheck {
 
   public void serializeDataNodeId(int dataNodeId) throws IOException {
     systemPropertiesHandler.put(DATA_NODE_ID, String.valueOf(dataNodeId));
+  }
+
+  public void serializeClusterID(String clusterId) throws IOException {
+    systemPropertiesHandler.put(CLUSTER_ID, clusterId);
   }
 
   public boolean checkConsensusProtocolExists(TConsensusGroupType type) {

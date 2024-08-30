@@ -31,6 +31,7 @@ public abstract class LeafColumnTransformer extends ColumnTransformer {
 
   @Override
   public void evaluate() {
+    System.out.println("test");
     // do nothing
   }
 

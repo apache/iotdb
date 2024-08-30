@@ -166,7 +166,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>1.2.0-b31fb57c-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.2.0-20a94fb3-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -1354,7 +1354,7 @@
                     <execution>
                         <id>create-source-package</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                         <phase>package</phase>
                     </execution>
@@ -1426,6 +1426,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1441,6 +1443,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1456,6 +1460,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1471,6 +1477,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1486,6 +1494,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-x86_64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1501,6 +1511,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-aarch64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>

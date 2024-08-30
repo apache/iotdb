@@ -32,9 +32,14 @@ import org.apache.iotdb.db.pipe.pattern.CachedSchemaPatternMatcher;
 import org.apache.iotdb.db.pipe.pattern.PipeDataRegionMatcher;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Closeable;
 
 public class PipeDataRegionAssigner implements Closeable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
   private static final int nonForwardingEventsProgressReportInterval =
       PipeConfig.getInstance().getPipeNonForwardingEventsProgressReportInterval();
@@ -64,7 +69,11 @@ public class PipeDataRegionAssigner implements Closeable {
   }
 
   public void publishToAssign(final PipeRealtimeEvent event) {
-    event.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+    if (!event.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+      LOGGER.warn(
+          "The reference count of the realtime event {} cannot be increased, skipping it.", event);
+      return;
+    }
 
     disruptor.publish(event);
 
@@ -99,7 +108,12 @@ public class PipeDataRegionAssigner implements Closeable {
                         extractor.getRealtimeDataExtractionStartTime(),
                         extractor.getRealtimeDataExtractionEndTime());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
-                reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+                if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+                  LOGGER.warn(
+                      "The reference count of the event {} cannot be increased, skipping it.",
+                      reportEvent);
+                  return;
+                }
                 extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
                 return;
               }
@@ -118,7 +132,12 @@ public class PipeDataRegionAssigner implements Closeable {
                     .disableMod4NonTransferPipes(extractor.isShouldTransferModFile());
               }
 
-              copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName());
+              if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
+                LOGGER.warn(
+                    "The reference count of the event {} cannot be increased, skipping it.",
+                    copiedEvent);
+                return;
+              }
               extractor.extract(copiedEvent);
 
               if (innerEvent instanceof PipeHeartbeatEvent) {

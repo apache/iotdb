@@ -49,10 +49,10 @@ import org.junit.Test;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
@@ -746,29 +746,5 @@ public class SortTest {
         expectedPushDownLimit,
         expectedPushDownOffset,
         isPushLimitToEachDevice);
-  }
-
-  public void assertStreamSortWithFilter(
-      Ordering expectedOrdering,
-      long expectedPushDownLimit,
-      long expectedPushDownOffset,
-      boolean isPushLimitToEachDevice) {}
-
-  public static void assertTableScan(
-      TableScanNode tableScanNode,
-      List<String> deviceEntries,
-      Ordering ordering,
-      long pushLimit,
-      long pushOffset,
-      boolean pushLimitToEachDevice) {
-    assertEquals(
-        deviceEntries,
-        tableScanNode.getDeviceEntries().stream()
-            .map(d -> d.getDeviceID().toString())
-            .collect(Collectors.toList()));
-    assertEquals(ordering, tableScanNode.getScanOrder());
-    assertEquals(pushLimit, tableScanNode.getPushDownLimit());
-    assertEquals(pushOffset, tableScanNode.getPushDownOffset());
-    assertEquals(pushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());
   }
 }

@@ -159,7 +159,8 @@ public class TableMetadataImpl implements Metadata {
       }
       return DOUBLE;
     } else if (TableBuiltinScalarFunction.ROUND.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!isOneNumericType(argumentTypes) && !isTwoNumericType(argumentTypes)) {
+      if (!isOneSupportedMathNumericType(argumentTypes)
+          && !isTwoSupportedMathNumericType(argumentTypes)) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
@@ -176,7 +177,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only supports text or string data type.");
       }
-      return argumentTypes.get(0);
+      return STRING;
     } else if (TableBuiltinScalarFunction.SUBSTRING
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
@@ -192,7 +193,7 @@ public class TableMetadataImpl implements Metadata {
                 + functionName.toLowerCase(Locale.ENGLISH)
                 + " only accepts two or three arguments and first must be text or string data type, second and third must be numeric data types [INT32, INT64]");
       }
-      return argumentTypes.get(0);
+      return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
@@ -455,6 +456,22 @@ public class TableMetadataImpl implements Metadata {
                 + " only accepts one argument and it must be Double, Float, Int32 or Int64 data type.");
       }
       return DOUBLE;
+    } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.isEmpty())) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " accepts no argument.");
+      }
+      return DOUBLE;
+    } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.isEmpty())) {
+        throw new SemanticException(
+            "Scalar function "
+                + functionName.toLowerCase(Locale.ENGLISH)
+                + " accepts no argument.");
+      }
+      return DOUBLE;
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
@@ -481,7 +498,7 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-        if (!isOneNumericType(argumentTypes)) {
+        if (!isOneSupportedMathNumericType(argumentTypes)) {
           throw new SemanticException(
               String.format(
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
@@ -652,6 +669,16 @@ public class TableMetadataImpl implements Metadata {
     return argumentTypes.size() == 1 && isNumericType(argumentTypes.get(0));
   }
 
+  public static boolean isTwoSupportedMathNumericType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 2
+        && isSupportedMathNumericType(argumentTypes.get(0))
+        && isSupportedMathNumericType(argumentTypes.get(1));
+  }
+
+  public static boolean isOneSupportedMathNumericType(List<? extends Type> argumentTypes) {
+    return argumentTypes.size() == 1 && isSupportedMathNumericType(argumentTypes.get(0));
+  }
+
   public static boolean isOneBooleanType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 1 && BOOLEAN.equals(argumentTypes.get(0));
   }
@@ -679,6 +706,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isBlobType(Type type) {
     return BlobType.BLOB.equals(type);
+  }
+
+  public static boolean isBool(Type type) {
+    return BOOLEAN.equals(type);
   }
 
   public static boolean isSupportedMathNumericType(Type type) {

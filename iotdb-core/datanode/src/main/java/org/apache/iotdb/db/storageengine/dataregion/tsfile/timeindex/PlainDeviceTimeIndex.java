@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -53,11 +55,14 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      String path =
-          DataNodeDevicePathCache.getInstance()
-              .getDeviceId(ReadWriteIOUtils.readString(inputStream));
+      String path = ReadWriteIOUtils.readString(inputStream);
       int index = ReadWriteIOUtils.readInt(inputStream);
-      deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create(path), index);
+      try {
+        PartialPath partialPath = DataNodeDevicePathCache.getInstance().getPartialPath(path);
+        deviceToIndex.put(partialPath.getIDeviceID(), index);
+      } catch (IllegalPathException e) {
+        deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create(path), index);
+      }
     }
     return this;
   }
@@ -76,10 +81,14 @@ public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeI
     }
 
     for (int i = 0; i < deviceNum; i++) {
-      String path =
-          DataNodeDevicePathCache.getInstance().getDeviceId(ReadWriteIOUtils.readString(buffer));
+      String path = ReadWriteIOUtils.readString(buffer);
       int index = buffer.getInt();
-      deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create(path), index);
+      try {
+        PartialPath partialPath = DataNodeDevicePathCache.getInstance().getPartialPath(path);
+        deviceToIndex.put(partialPath.getIDeviceID(), index);
+      } catch (IllegalPathException e) {
+        deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create(path), index);
+      }
     }
     return this;
   }

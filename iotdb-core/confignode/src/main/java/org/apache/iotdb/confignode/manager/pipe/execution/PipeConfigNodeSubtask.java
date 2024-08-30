@@ -186,7 +186,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         outputPipeConnector.transfer(event);
         PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
       }
-      decreaseReferenceCountAndReleaseLastEvent(true);
+      decreaseReferenceCountAndReleaseLastEvent(event, true);
 
     } catch (final PipeException e) {
       setLastExceptionEvent(event);
@@ -197,7 +197,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             "{} in pipe transfer, ignored because pipe is dropped.",
             e.getClass().getSimpleName(),
             e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     } catch (final Exception e) {
       setLastExceptionEvent(event);
@@ -208,7 +208,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     }
 

@@ -323,6 +323,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
                 String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
+    config.setPipeSubtaskExecutorForcedRestartIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_subtask_executor_forced_restart_interval_ms",
+                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalMs()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
@@ -663,16 +668,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionReadTabletBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_read_tablet_buffer_size",
+                String.valueOf(config.getSubscriptionReadTabletBufferSize()))));
     config.setSubscriptionTsFileDeduplicationWindowSeconds(
         Long.parseLong(
             properties.getProperty(
                 "subscription_ts_file_deduplication_window_seconds",
                 String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
-    config.setSubscriptionPollPayloadMaxSize(
-        Long.parseLong(
-            properties.getProperty(
-                "subscription_poll_payload_max_size",
-                String.valueOf(config.getSubscriptionPollPayloadMaxSize()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

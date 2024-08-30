@@ -209,6 +209,7 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
+  private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
@@ -284,10 +285,8 @@ public class CommonConfig {
   private long subscriptionLaunchRetryIntervalMs = 1000;
   private int subscriptionRecycleUncommittedEventIntervalMs = 60000; // 60s
   private long subscriptionReadFileBufferSize = 8 * MB;
+  private long subscriptionReadTabletBufferSize = 8 * MB;
   private long subscriptionTsFileDeduplicationWindowSeconds = 120; // 120s
-
-  // default to SessionConfig.DEFAULT_MAX_FRAME_SIZE
-  private long subscriptionPollPayloadMaxSize = 64 * MB;
 
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
@@ -894,6 +893,15 @@ public class CommonConfig {
         pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
   }
 
+  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
+    return pipeSubtaskExecutorForcedRestartIntervalMs;
+  }
+
+  public void setPipeSubtaskExecutorForcedRestartIntervalMs(
+      long pipeSubtaskExecutorForcedRestartIntervalMs) {
+    this.pipeSubtaskExecutorForcedRestartIntervalMs = pipeSubtaskExecutorForcedRestartIntervalMs;
+  }
+
   public int getPipeRealTimeQueuePollHistoryThreshold() {
     return pipeRealTimeQueuePollHistoryThreshold;
   }
@@ -1276,6 +1284,14 @@ public class CommonConfig {
     this.subscriptionReadFileBufferSize = subscriptionReadFileBufferSize;
   }
 
+  public long getSubscriptionReadTabletBufferSize() {
+    return subscriptionReadTabletBufferSize;
+  }
+
+  public void setSubscriptionReadTabletBufferSize(long subscriptionReadTabletBufferSize) {
+    this.subscriptionReadTabletBufferSize = subscriptionReadTabletBufferSize;
+  }
+
   public long getSubscriptionTsFileDeduplicationWindowSeconds() {
     return subscriptionTsFileDeduplicationWindowSeconds;
   }
@@ -1284,14 +1300,6 @@ public class CommonConfig {
       long subscriptionTsFileDeduplicationWindowSeconds) {
     this.subscriptionTsFileDeduplicationWindowSeconds =
         subscriptionTsFileDeduplicationWindowSeconds;
-  }
-
-  public long getSubscriptionPollPayloadMaxSize() {
-    return subscriptionPollPayloadMaxSize;
-  }
-
-  public void setSubscriptionPollPayloadMaxSize(long subscriptionPollPayloadMaxSize) {
-    this.subscriptionPollPayloadMaxSize = subscriptionPollPayloadMaxSize;
   }
 
   public String getSchemaEngineMode() {

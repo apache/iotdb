@@ -109,7 +109,7 @@ public class IoTDBPartialInsertionIT {
       EnvironmentUtils.restartDaemon();
       StorageEngine.getInstance().recover();
       // wait for recover
-      while (!StorageEngine.getInstance().isAllSgReady()) {
+      while (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
         Thread.sleep(500);
         time += 500;
         if (time > 10000) {
