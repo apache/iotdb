@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -170,12 +171,14 @@ public class FileTimeIndexCacheRecorder {
         k -> {
           File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, FILE_NAME);
           try {
-            if (!logFile.createNewFile()) {
-              LOGGER.debug(
-                  "FileTimeIndex log file has existed，filePath:{}", logFile.getAbsolutePath());
+            if (!dataRegionSysDir.exists() && !dataRegionSysDir.mkdirs()) {
+              LOGGER.debug("DataRegionSysDir has existed，filePath:{}", logFile.getAbsolutePath());
             }
+            Files.createFile(logFile.toPath());
             return new FileTimeIndexCacheWriter(logFile, true);
           } catch (IOException e) {
+            LOGGER.error(
+                "FileTimeIndex log file create filed，filePath:{}", logFile.getAbsolutePath(), e);
             throw new RuntimeException(e);
           }
         });
