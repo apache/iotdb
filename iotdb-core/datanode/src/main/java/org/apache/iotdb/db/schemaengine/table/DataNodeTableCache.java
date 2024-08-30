@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -190,7 +192,12 @@ public class DataNodeTableCache implements ITableCache {
 
   // Database shall not start with "root"
   public String tryGetInternColumnName(
-      final String database, final String tableName, final String columnName) {
+      final @Nonnull String database,
+      final @Nonnull String tableName,
+      final @Nonnull String columnName) {
+    if (columnName.isEmpty()) {
+      return columnName;
+    }
     try {
       return databaseTableMap
           .get(database)

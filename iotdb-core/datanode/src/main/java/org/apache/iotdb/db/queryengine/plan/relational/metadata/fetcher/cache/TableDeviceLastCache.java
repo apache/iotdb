@@ -82,8 +82,9 @@ public class TableDeviceLastCache {
       Optional.of(new Pair<>(OptionalLong.empty(), null));
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
+
+  // Time is seen as "" as a measurement
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
-  private Long lastTime = null;
 
   int update(
       final @Nonnull String database,
@@ -94,12 +95,6 @@ public class TableDeviceLastCache {
 
     for (int i = 0; i < measurements.length; ++i) {
       final int finalI = i;
-      if (measurements[i].isEmpty()) {
-        if (Objects.isNull(lastTime) || lastTime < timeValuePairs[i].getTimestamp()) {
-          lastTime = timeValuePairs[i].getTimestamp();
-        }
-        continue;
-      }
       if (!measurement2CachedLastMap.containsKey(measurements[i])) {
         measurements[i] =
             DataNodeTableCache.getInstance()
@@ -126,13 +121,14 @@ public class TableDeviceLastCache {
 
   int tryUpdate(final @Nonnull String[] measurements, final TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
+    long lastTime = Long.MIN_VALUE;
 
     for (int i = 0; i < measurements.length; ++i) {
       if (Objects.isNull(timeValuePairs[i])) {
         continue;
       }
       final int finalI = i;
-      if (Objects.nonNull(lastTime) && lastTime < timeValuePairs[i].getTimestamp()) {
+      if (lastTime < timeValuePairs[i].getTimestamp()) {
         lastTime = timeValuePairs[i].getTimestamp();
       }
       measurement2CachedLastMap.compute(
@@ -148,6 +144,13 @@ public class TableDeviceLastCache {
             return tvPair;
           });
     }
+    final long finalLastTime = lastTime;
+    measurement2CachedLastMap.computeIfPresent(
+        "",
+        (time, tvPair) ->
+            tvPair.getTimestamp() < finalLastTime
+                ? new TimeValuePair(finalLastTime, null)
+                : tvPair);
     return diff.get();
   }
 
@@ -159,22 +162,14 @@ public class TableDeviceLastCache {
   // Shall pass in "" if last by time
   Optional<Pair<OptionalLong, TsPrimitiveType[]>> getLastRow(
       final @Nonnull String sourceMeasurement, final List<String> targetMeasurements) {
-    final long alignTime;
-    if (Objects.equals(sourceMeasurement, "")) {
-      if (Objects.isNull(lastTime)) {
-        return Optional.empty();
-      }
-      alignTime = lastTime;
-    } else {
-      if (!measurement2CachedLastMap.containsKey(sourceMeasurement)) {
-        return Optional.empty();
-      }
-      final TimeValuePair pair = measurement2CachedLastMap.get(sourceMeasurement);
-      if (pair == EMPTY_TIME_VALUE_PAIR) {
-        return HIT_AND_ALL_NULL;
-      }
-      alignTime = measurement2CachedLastMap.get(sourceMeasurement).getTimestamp();
+    if (!measurement2CachedLastMap.containsKey(sourceMeasurement)) {
+      return Optional.empty();
     }
+    final TimeValuePair pair = measurement2CachedLastMap.get(sourceMeasurement);
+    if (pair == EMPTY_TIME_VALUE_PAIR) {
+      return HIT_AND_ALL_NULL;
+    }
+    final long alignTime = measurement2CachedLastMap.get(sourceMeasurement).getTimestamp();
 
     return Optional.of(
         new Pair<>(
