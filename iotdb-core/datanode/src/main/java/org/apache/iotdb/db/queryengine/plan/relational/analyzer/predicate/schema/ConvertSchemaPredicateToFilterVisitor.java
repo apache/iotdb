@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.Predic
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -75,7 +76,7 @@ public class ConvertSchemaPredicateToFilterVisitor
     return wrapIdOrAttributeFilter(
         new InFilter(
             values.stream()
-                .map(value -> ((StringLiteral) value).getValue())
+                .map(value -> getLiteralValue((Literal) value))
                 .collect(Collectors.toSet())),
         ((SymbolReference) node.getValue()).getName(),
         context);
@@ -127,11 +128,11 @@ public class ConvertSchemaPredicateToFilterVisitor
     final String columnName;
     final String value;
     if (node.getLeft() instanceof Literal) {
-      value = ((StringLiteral) (node.getLeft())).getValue();
+      value = getLiteralValue((Literal) node.getLeft());
       checkArgument(isSymbolReference(node.getRight()));
       columnName = ((SymbolReference) (node.getRight())).getName();
     } else {
-      value = ((StringLiteral) (node.getRight())).getValue();
+      value = getLiteralValue((Literal) node.getRight());
       checkArgument(isSymbolReference(node.getLeft()));
       columnName = ((SymbolReference) (node.getLeft())).getName();
     }
@@ -143,6 +144,19 @@ public class ConvertSchemaPredicateToFilterVisitor
                 convertExpressionOperator2SchemaOperator(node.getOperator()), value),
         columnName,
         context);
+  }
+
+  private String getLiteralValue(final Literal literal) {
+    if (literal instanceof StringLiteral) {
+      return ((StringLiteral) literal).getValue();
+    }
+    if (literal instanceof GenericLiteral) {
+      return ((GenericLiteral) literal).getValue();
+    }
+    throw new UnsupportedOperationException(
+        String.format(
+            "The literal type %s is unsupported now in schema filter.",
+            literal.getClass().getSimpleName()));
   }
 
   private ComparisonFilter.Operator convertExpressionOperator2SchemaOperator(
