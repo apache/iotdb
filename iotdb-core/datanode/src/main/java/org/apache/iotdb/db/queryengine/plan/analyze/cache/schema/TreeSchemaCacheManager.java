@@ -22,27 +22,33 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceTemplateSchema;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
@@ -127,7 +133,7 @@ public class TreeSchemaCacheManager {
             entry.isAligned());
       }
     }
-    tree.setDatabases(Collections.singleton(treeSchema.getStorageGroup()));
+    tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
     return tree;
   }
 
@@ -137,8 +143,20 @@ public class TreeSchemaCacheManager {
    * @param devicePath full path of the device
    * @return empty if cache miss or the device path is not a template activated path
    */
-  public ClusterSchemaTree getMatchedSchemaWithTemplate(PartialPath devicePath) {
-    return deviceUsingTemplateSchemaCache.getMatchedSchemaWithTemplate(devicePath);
+  public ClusterSchemaTree getMatchedSchemaWithTemplate(final PartialPath devicePath) {
+    final ClusterSchemaTree tree = new ClusterSchemaTree();
+    final IDeviceSchema schema =
+        TableDeviceSchemaFetcher.getInstance()
+            .getTableDeviceCache()
+            .getDeviceSchema(devicePath.getNodes());
+    if (!(schema instanceof TreeDeviceTemplateSchema)) {
+      return tree;
+    }
+    final TreeDeviceTemplateSchema treeSchema = (TreeDeviceTemplateSchema) schema;
+    Template template = templateManager.getTemplate(treeSchema.getTemplateId());
+    tree.appendTemplateDevice(devicePath, template.isDirectAligned(), template.getId(), template);
+    tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
+    return tree;
   }
 
   /**
@@ -162,7 +180,7 @@ public class TreeSchemaCacheManager {
     }
     tree.appendSingleMeasurement(
         fullPath, entry.getIMeasurementSchema(), entry.getTagMap(), null, null, entry.isAligned());
-    tree.setDatabases(Collections.singleton(treeSchema.getStorageGroup()));
+    tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
     return tree;
   }
 
@@ -189,8 +207,85 @@ public class TreeSchemaCacheManager {
     return timeSeriesSchemaCache.computeSourceOfLogicalView(schemaComputation);
   }
 
-  public List<Integer> computeWithTemplate(ISchemaComputation schemaComputation) {
-    return deviceUsingTemplateSchemaCache.compute(schemaComputation);
+  public List<Integer> computeWithTemplate(final ISchemaComputation computation) {
+    final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    final String[] measurements = computation.getMeasurements();
+    final IDeviceSchema deviceSchema =
+        tableDeviceSchemaCache.getDeviceSchema(computation.getDevicePath().getNodes());
+    if (!(deviceSchema instanceof TreeDeviceTemplateSchema)) {
+      for (int i = 0; i < measurements.length; i++) {
+        indexOfMissingMeasurements.add(i);
+      }
+      return indexOfMissingMeasurements;
+    }
+    final TreeDeviceTemplateSchema deviceTemplateSchema = (TreeDeviceTemplateSchema) deviceSchema;
+
+    computation.computeDevice(
+        templateManager.getTemplate(deviceTemplateSchema.getTemplateId()).isDirectAligned());
+    final Map<String, IMeasurementSchema> templateSchema =
+        templateManager.getTemplate(deviceTemplateSchema.getTemplateId()).getSchemaMap();
+    for (int i = 0; i < measurements.length; i++) {
+      if (!templateSchema.containsKey(measurements[i])) {
+        indexOfMissingMeasurements.add(i);
+        continue;
+      }
+      final IMeasurementSchema schema = templateSchema.get(measurements[i]);
+      computation.computeMeasurement(
+          i,
+          new IMeasurementSchemaInfo() {
+            @Override
+            public String getName() {
+              return schema.getMeasurementId();
+            }
+
+            @Override
+            public IMeasurementSchema getSchema() {
+              if (isLogicalView()) {
+                return new LogicalViewSchema(
+                    schema.getMeasurementId(), ((LogicalViewSchema) schema).getExpression());
+              } else {
+                return this.getSchemaAsMeasurementSchema();
+              }
+            }
+
+            @Override
+            public MeasurementSchema getSchemaAsMeasurementSchema() {
+              return new MeasurementSchema(
+                  schema.getMeasurementId(),
+                  schema.getType(),
+                  schema.getEncodingType(),
+                  schema.getCompressor());
+            }
+
+            @Override
+            public LogicalViewSchema getSchemaAsLogicalViewSchema() {
+              throw new RuntimeException(
+                  new UnsupportedOperationException(
+                      "Function getSchemaAsLogicalViewSchema is not supported in DeviceUsingTemplateSchemaCache."));
+            }
+
+            @Override
+            public Map<String, String> getTagMap() {
+              return null;
+            }
+
+            @Override
+            public Map<String, String> getAttributeMap() {
+              return null;
+            }
+
+            @Override
+            public String getAlias() {
+              return null;
+            }
+
+            @Override
+            public boolean isLogicalView() {
+              return schema.isLogicalView();
+            }
+          });
+    }
+    return indexOfMissingMeasurements;
   }
 
   /**
@@ -223,7 +318,7 @@ public class TreeSchemaCacheManager {
         nodes[index]);
   }
 
-  public void invalidateLastCache(PartialPath path) {
+  public void invalidateLastCache(final PartialPath path) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }

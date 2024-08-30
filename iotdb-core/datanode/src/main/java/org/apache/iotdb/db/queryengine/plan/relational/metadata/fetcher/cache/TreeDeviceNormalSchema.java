@@ -39,7 +39,7 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     this.storageGroup = storageGroup;
   }
 
-  public String getStorageGroup() {
+  public String getDatabase() {
     return storageGroup;
   }
 

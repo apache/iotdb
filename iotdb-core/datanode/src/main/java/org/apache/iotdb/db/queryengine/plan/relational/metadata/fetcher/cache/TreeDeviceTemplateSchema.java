@@ -34,11 +34,11 @@ public class TreeDeviceTemplateSchema implements IDeviceSchema {
     this.templateId = templateId;
   }
 
-  int getTemplateId() {
+  public int getTemplateId() {
     return templateId;
   }
 
-  String getDatabase() {
+  public String getDatabase() {
     return database;
   }
 

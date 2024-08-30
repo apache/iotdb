@@ -297,7 +297,7 @@ public class TableDeviceSchemaCache {
   /////////////////////////////// Tree model ///////////////////////////////
 
   public void putMeasurementSchema(
-      String database,
+      final String database,
       final String[] devicePath,
       final String measurement,
       final SchemaCacheEntry measurementSchema) {
