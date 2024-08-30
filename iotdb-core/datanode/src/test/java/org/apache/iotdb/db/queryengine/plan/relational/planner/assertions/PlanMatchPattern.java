@@ -258,6 +258,7 @@ public final class PlanMatchPattern {
   // column if exists in Table because there maybe partial Agg-result.
   public static PlanMatchPattern aggregationTableScan(
       GroupingSetDescriptor groupingSets,
+      List<String> preGroupedSymbols,
       Optional<Symbol> groupId,
       AggregationNode.Step step,
       String expectedTableName,
@@ -268,7 +269,7 @@ public final class PlanMatchPattern {
     result.with(
         new AggregationTableScanMatcher(
             groupingSets,
-            ImmutableList.of(),
+            preGroupedSymbols,
             ImmutableList.of(),
             groupId,
             step,

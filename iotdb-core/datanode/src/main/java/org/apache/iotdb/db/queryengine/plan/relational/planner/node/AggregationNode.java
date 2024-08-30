@@ -49,7 +49,7 @@ import static java.util.Objects.requireNonNull;
 public class AggregationNode extends SingleChildProcessNode {
   private final Map<Symbol, Aggregation> aggregations;
   private final GroupingSetDescriptor groupingSets;
-  private final List<Symbol> preGroupedSymbols;
+  private List<Symbol> preGroupedSymbols;
   private final Step step;
   private final Optional<Symbol> hashSymbol;
   private final Optional<Symbol> groupIdSymbol;
@@ -126,6 +126,10 @@ public class AggregationNode extends SingleChildProcessNode {
 
   public GroupingSetDescriptor getGroupingSets() {
     return groupingSets;
+  }
+
+  public void setPreGroupedSymbols(List<Symbol> preGroupedSymbols) {
+    this.preGroupedSymbols = preGroupedSymbols;
   }
 
   /**

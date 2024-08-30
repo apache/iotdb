@@ -65,6 +65,7 @@ public class AggregationTest {
                     singleGroupingSet("s1"),
                     ImmutableMap.of(
                         Optional.empty(), aggregationFunction("count", ImmutableList.of("s2"))),
+                    ImmutableList.of(), // UnStreamable
                     Optional.empty(),
                     SINGLE,
                     tableScan(
@@ -84,6 +85,7 @@ public class AggregationTest {
                     singleGroupingSet("substring"),
                     ImmutableMap.of(
                         Optional.empty(), aggregationFunction("count", ImmutableList.of("s2"))),
+                    ImmutableList.of(), // UnStreamable
                     Optional.empty(),
                     SINGLE,
                     project(
@@ -111,6 +113,7 @@ public class AggregationTest {
                     singleGroupingSet("tag1"),
                     ImmutableMap.of(
                         Optional.empty(), aggregationFunction("count", ImmutableList.of("s2"))),
+                    ImmutableList.of("tag1"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     tableScan(
@@ -131,6 +134,7 @@ public class AggregationTest {
                     singleGroupingSet("tag1"),
                     ImmutableMap.of(
                         Optional.empty(), aggregationFunction("mode", ImmutableList.of("s2"))),
+                    ImmutableList.of("tag1"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     tableScan(
@@ -149,6 +153,7 @@ public class AggregationTest {
                     singleGroupingSet("tag1"),
                     ImmutableMap.of(
                         Optional.empty(), aggregationFunction("count", ImmutableList.of("expr_1"))),
+                    ImmutableList.of("tag1"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     project(
@@ -180,10 +185,12 @@ public class AggregationTest {
                     ImmutableMap.of(
                         Optional.empty(),
                         aggregationFunction("count", ImmutableList.of("count_0"))),
+                    ImmutableList.of("tag1"), // Streamable
                     Optional.empty(),
                     FINAL,
                     aggregationTableScan(
                         singleGroupingSet("tag1"),
+                        ImmutableList.of("tag1"), // Streamable
                         Optional.empty(),
                         PARTIAL,
                         "testdb.table1",
@@ -202,10 +209,12 @@ public class AggregationTest {
                     ImmutableMap.of(
                         Optional.empty(),
                         aggregationFunction("count", ImmutableList.of("count_0"))),
+                    ImmutableList.of(), // UnStreamable
                     Optional.empty(),
                     FINAL,
                     aggregationTableScan(
                         singleGroupingSet("attr1"),
+                        ImmutableList.of(), // UnStreamable
                         Optional.empty(),
                         PARTIAL,
                         "testdb.table1",
@@ -226,10 +235,12 @@ public class AggregationTest {
                     ImmutableMap.of(
                         Optional.empty(),
                         aggregationFunction("count", ImmutableList.of("count_0"))),
+                    ImmutableList.of(), // UnStreamable
                     Optional.empty(),
                     FINAL,
                     aggregationTableScan(
                         singleGroupingSet("attr1", "tag1", "date_bin"),
+                        ImmutableList.of(), // UnStreamable
                         Optional.empty(),
                         PARTIAL,
                         "testdb.table1",
@@ -251,6 +262,7 @@ public class AggregationTest {
             project(
                 aggregationTableScan(
                     singleGroupingSet("tag1", "tag2", "tag3"),
+                    ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
@@ -268,6 +280,7 @@ public class AggregationTest {
             project(
                 aggregationTableScan(
                     singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin"),
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
@@ -282,6 +295,7 @@ public class AggregationTest {
             project(
                 aggregationTableScan(
                     singleGroupingSet("tag1", "tag2", "tag3", "attr1", "time"),
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
@@ -294,6 +308,7 @@ public class AggregationTest {
         output(
             aggregationTableScan(
                 singleGroupingSet(),
+                ImmutableList.of(), // UnStreamable
                 Optional.empty(),
                 SINGLE,
                 "testdb.table1",

@@ -88,6 +88,9 @@ public class LogicalOptimizeFactory {
     PlanOptimizer unAliasSymbolReferences =
         new UnaliasSymbolReferences(plannerContext.getMetadata());
 
+    PlanOptimizer transformAggregationToStreamableOptimizer =
+        new TransformAggregationToStreamable();
+
     PlanOptimizer pushAggregationIntoTableScanOptimizer = new PushAggregationIntoTableScan();
 
     PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
@@ -110,6 +113,7 @@ public class LogicalOptimizeFactory {
             inlineProjectionLimitFiltersOptimizer,
             limitPushdownOptimizer,
             pushLimitOffsetIntoTableScanOptimizer,
+            transformAggregationToStreamableOptimizer,
             pushAggregationIntoTableScanOptimizer,
             transformSortToStreamSortOptimizer,
             topKOptimizer);
