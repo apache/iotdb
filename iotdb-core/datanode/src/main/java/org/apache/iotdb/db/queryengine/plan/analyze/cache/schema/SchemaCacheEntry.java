@@ -33,37 +33,17 @@ import java.util.Map;
 
 public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
-  private final String storageGroup;
-
   private final IMeasurementSchema iMeasurementSchema;
 
   private final Map<String, String> tagMap;
-  private final boolean isAligned;
 
   @SuppressWarnings("java:S3077")
   private volatile ILastCacheContainer lastCacheContainer = null;
 
   public SchemaCacheEntry(
-      String storageGroup,
-      IMeasurementSchema iMeasurementSchema,
-      Map<String, String> tagMap,
-      boolean isAligned) {
-    this.storageGroup = storageGroup.intern();
+      final IMeasurementSchema iMeasurementSchema, final Map<String, String> tagMap) {
     this.iMeasurementSchema = iMeasurementSchema;
-    this.isAligned = isAligned;
     this.tagMap = tagMap;
-  }
-
-  public String getSchemaEntryId() {
-    return iMeasurementSchema.getMeasurementId();
-  }
-
-  public String getStorageGroup() {
-    return storageGroup;
-  }
-
-  public IMeasurementSchema getIMeasurementSchema() {
-    return iMeasurementSchema;
   }
 
   @Override
@@ -78,10 +58,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
 
   public TSDataType getTsDataType() {
     return iMeasurementSchema.getType();
-  }
-
-  public boolean isAligned() {
-    return isAligned;
   }
 
   public ILastCacheContainer getLastCacheContainer() {
@@ -131,7 +107,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
             ? 0
             : schemaCacheEntry.getLastCacheContainer().estimateSize();
     return 100
-        + 2 * schemaCacheEntry.getIMeasurementSchema().getMeasurementId().length()
+        + 2 * schemaCacheEntry.getSchema().getMeasurementId().length()
         + lastCacheContainerSize;
   }
 

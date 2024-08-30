@@ -126,11 +126,11 @@ public class TreeDeviceSchemaCacheManager {
       if (Objects.nonNull(entry)) {
         tree.appendSingleMeasurement(
             devicePath.concatNode(measurement),
-            entry.getIMeasurementSchema(),
+            entry.getSchema(),
             entry.getTagMap(),
             null,
             null,
-            entry.isAligned());
+            treeSchema.isAligned());
       }
     }
     tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
@@ -179,7 +179,7 @@ public class TreeDeviceSchemaCacheManager {
       return tree;
     }
     tree.appendSingleMeasurement(
-        fullPath, entry.getIMeasurementSchema(), entry.getTagMap(), null, null, entry.isAligned());
+        fullPath, entry.getSchema(), entry.getTagMap(), null, null, treeSchema.isAligned());
     tree.setDatabases(Collections.singleton(treeSchema.getDatabase()));
     return tree;
   }
@@ -205,12 +205,12 @@ public class TreeDeviceSchemaCacheManager {
         indexOfMissingMeasurements.add(i);
       } else {
         if (isFirstNonViewMeasurement.get() && (!value.isLogicalView())) {
-          schemaComputation.computeDevice(value.isAligned());
           isFirstNonViewMeasurement.getAndSet(false);
         }
         schemaComputation.computeMeasurement(i, value);
       }
     }
+    schemaComputation.computeDevice(treeSchema.isAligned());
     schemaComputation.recordRangeOfLogicalViewSchemaListNow();
     return indexOfMissingMeasurements;
   }
@@ -282,7 +282,7 @@ public class TreeDeviceSchemaCacheManager {
                             + "Please check it.",
                         logicalViewSchema.getSourcePathIfWritable())));
           }
-          schemaComputation.computeMeasurementOfView(realIndex, value, value.isAligned());
+          schemaComputation.computeMeasurementOfView(realIndex, value, treeSchema.isAligned());
         }
       }
     }
@@ -486,13 +486,7 @@ public class TreeDeviceSchemaCacheManager {
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.updateLastCache(
-          storageGroup, measurementPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } finally {
-      releaseReadLock();
-    }
+    // Deprecated
   }
 
   public void invalidate(List<? extends PartialPath> partialPathList) {

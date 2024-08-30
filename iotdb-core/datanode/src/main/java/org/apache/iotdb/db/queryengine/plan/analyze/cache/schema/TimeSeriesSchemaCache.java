@@ -180,10 +180,7 @@ public class TimeSeriesSchemaCache {
         if (null == entry) {
           entry =
               new SchemaCacheEntry(
-                  storageGroup,
-                  measurementPath.getMeasurementSchema(),
-                  measurementPath.getTagMap(),
-                  measurementPath.isUnderAlignedEntity());
+                  measurementPath.getMeasurementSchema(), measurementPath.getTagMap());
           dualKeyCache.put(seriesPath.getDevicePath(), seriesPath.getMeasurement(), entry);
         }
       }

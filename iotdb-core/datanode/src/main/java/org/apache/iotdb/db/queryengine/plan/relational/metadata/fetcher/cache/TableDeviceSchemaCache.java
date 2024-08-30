@@ -34,6 +34,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -316,6 +317,28 @@ public class TableDeviceSchemaCache {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(devicePath[1], deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
+  }
+
+  public void updateLastCache(
+      final String database,
+      final IDeviceID deviceId,
+      final String[] measurements,
+      final TimeValuePair[] timeValuePairs,
+      final boolean isAligned,
+      final MeasurementSchema[] measurementSchemas) {
+    final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    dualKeyCache.update(
+        new TableId(database, deviceId.getTableName()),
+        deviceId,
+        new TableDeviceCacheEntry(),
+        entry ->
+            entry.updateLastCache(database, deviceId.getTableName(), measurements, timeValuePairs)
+                + entry.setMeasurementSchema(
+                    Objects.nonNull(previousDatabase) ? previousDatabase : database,
+                    isAligned,
+                    measurements,
+                    measurementSchemas),
+        true);
   }
 
   /////////////////////////////// Common ///////////////////////////////

@@ -25,6 +25,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
@@ -101,10 +102,26 @@ public class TableDeviceCacheEntry {
   int setMeasurementSchema(
       final String database, final String measurement, final SchemaCacheEntry entry) {
     // Safe here because tree schema is invalidated by the whole entry
-    return (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database))
+    return (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, false))
             ? TreeDeviceNormalSchema.INSTANCE_SIZE
             : 0)
-        + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurement, entry);
+        + ((TreeDeviceNormalSchema) deviceSchema.get())
+            .update(new String[] {measurement}, new SchemaCacheEntry[] {entry});
+  }
+
+  int setMeasurementSchema(
+      final String database,
+      final boolean isAligned,
+      final String[] measurement,
+      final MeasurementSchema[] schemas) {
+    // Safe here because tree schema is invalidated by the whole entry
+    final int result =
+        (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, isAligned))
+            ? TreeDeviceNormalSchema.INSTANCE_SIZE
+            : 0);
+    return deviceSchema.get() instanceof TreeDeviceNormalSchema
+        ? result + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurement, schemas)
+        : 0;
   }
 
   IDeviceSchema getDeviceSchema() {
