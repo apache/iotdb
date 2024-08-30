@@ -141,9 +141,10 @@ public class PipeInsertionDataNodeListener {
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
-  public void listenToDeleteData(DeleteDataNode node) {
+  public void listenToDeleteData(DeleteDataNode node, String regionId) {
     dataRegionId2Assigner.forEach(
-        (key, value) -> value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node)));
+        (key, value) ->
+            value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node, regionId)));
   }
 
   /////////////////////////////// singleton ///////////////////////////////

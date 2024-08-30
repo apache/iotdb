@@ -2078,7 +2078,7 @@ public class DataRegion implements IDataRegionForQuery {
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       Set<String> deviceMatchInfo = new HashSet<>();
       deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
-      PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
+      PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node, dataRegionId);
       writeUnlock();
       hasReleasedLock = true;
 
@@ -2121,7 +2121,7 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
-      PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node);
+      PipeInsertionDataNodeListener.getInstance().listenToDeleteData(node, dataRegionId);
       writeUnlock();
       releasedLock = true;
       deleteDataDirectlyInFile(sealedTsFileResource, pathToDelete, startTime, endTime);
@@ -2159,7 +2159,6 @@ public class DataRegion implements IDataRegionForQuery {
     // but it's still necessary to write to the WAL, so that iotconsensus can synchronize the delete
     // operation to other nodes.
     if (walFlushListeners.isEmpty()) {
-      // TODO: IoTConsensusV2 deletion support
       getWALNode()
           .ifPresent(
               walNode ->
@@ -3477,9 +3476,7 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /**
-   * @return the disk space occupied by this data region, unit is MB
-   */
+  /** @return the disk space occupied by this data region, unit is MB */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()

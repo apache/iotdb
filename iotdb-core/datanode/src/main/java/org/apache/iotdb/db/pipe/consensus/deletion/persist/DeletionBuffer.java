@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -272,10 +272,13 @@ public class DeletionBuffer implements AutoCloseable {
         throws IOException {
       this.deletionNum = deletionNum;
       // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
-      RecoverProgressIndex maxProgressIndex = (RecoverProgressIndex) maxProgressIndexInCurrentBatch;
-      int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-      SimpleProgressIndex progressIndex =
-          maxProgressIndex.getDataNodeId2LocalIndex().get(thisDataNodeId);
+      ProgressIndex curProgressIndex =
+          ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(
+              maxProgressIndexInCurrentBatch);
+      if (!(curProgressIndex instanceof SimpleProgressIndex)) {
+        throw new IOException("Invalid deletion progress index: " + curProgressIndex);
+      }
+      SimpleProgressIndex progressIndex = (SimpleProgressIndex) curProgressIndex;
       // Deletion file name format: "_{rebootTimes}_{memTableFlushOrderId}.deletion"
       this.logFile =
           new File(

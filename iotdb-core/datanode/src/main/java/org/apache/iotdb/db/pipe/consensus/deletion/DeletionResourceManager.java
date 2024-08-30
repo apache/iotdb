@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
-import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
@@ -122,11 +122,9 @@ public class DeletionResourceManager implements AutoCloseable {
     // Clean memory
     deletionResources.remove(deletionResource);
     // Clean disk
-    int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    SimpleProgressIndex currentProgressIndex =
-        ((RecoverProgressIndex) deletionResource.getProgressIndex())
-            .getDataNodeId2LocalIndex()
-            .get(thisDataNodeId);
+    ProgressIndex currentProgressIndex =
+        ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(
+            deletionResource.getProgressIndex());
 
     try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
       Path[] deletionPaths =
@@ -149,20 +147,22 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  private boolean isCurrentFileCanBeDeleted(
-      String fileName, SimpleProgressIndex currentProgressIndex) {
-    int curRebootTimes = currentProgressIndex.getRebootTimes();
-    long curMemTableFlushOrderId = currentProgressIndex.getMemTableFlushOrderId();
+  private boolean isCurrentFileCanBeDeleted(String fileName, ProgressIndex currentProgressIndex) {
+    if (currentProgressIndex instanceof SimpleProgressIndex) {
+      SimpleProgressIndex simpleProgressIndex = (SimpleProgressIndex) currentProgressIndex;
+      int curRebootTimes = simpleProgressIndex.getRebootTimes();
+      long curMemTableFlushOrderId = simpleProgressIndex.getMemTableFlushOrderId();
 
-    Pattern pattern = Pattern.compile(DELETION_FILE_NAME_PATTERN);
-    Matcher matcher = pattern.matcher(fileName);
-    // Definitely match. Because upper caller has filtered fileNames.
-    if (matcher.matches()) {
-      int fileRebootTimes = Integer.parseInt(matcher.group(REBOOT_TIME));
-      long fileMemTableFlushOrderId = Long.parseLong(matcher.group(MEM_TABLE_FLUSH_ORDER));
-      return fileRebootTimes == curRebootTimes
-          ? fileMemTableFlushOrderId < curMemTableFlushOrderId
-          : fileRebootTimes < curMemTableFlushOrderId;
+      Pattern pattern = Pattern.compile(DELETION_FILE_NAME_PATTERN);
+      Matcher matcher = pattern.matcher(fileName);
+      // Definitely match. Because upper caller has filtered fileNames.
+      if (matcher.matches()) {
+        int fileRebootTimes = Integer.parseInt(matcher.group(REBOOT_TIME));
+        long fileMemTableFlushOrderId = Long.parseLong(matcher.group(MEM_TABLE_FLUSH_ORDER));
+        return fileRebootTimes == curRebootTimes
+            ? fileMemTableFlushOrderId < curMemTableFlushOrderId
+            : fileRebootTimes < curMemTableFlushOrderId;
+      }
     }
     return false;
   }
@@ -181,6 +181,10 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   public static DeletionResourceManager getInstance(String groupId) {
+    // If consensusImpl is not PipeConsensus.
+    if (DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
+      return null;
+    }
     return DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
         groupId,
         key -> {

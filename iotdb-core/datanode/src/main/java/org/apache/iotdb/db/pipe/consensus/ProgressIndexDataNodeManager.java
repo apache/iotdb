@@ -50,6 +50,30 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
     recoverMaxProgressIndexFromDataRegion();
   }
 
+  public static ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
+    if (progressIndex instanceof RecoverProgressIndex) {
+      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
+          ((RecoverProgressIndex) progressIndex).getDataNodeId2LocalIndex();
+      return dataNodeId2LocalIndex.containsKey(DATA_NODE_ID)
+          ? dataNodeId2LocalIndex.get(DATA_NODE_ID)
+          : MinimumProgressIndex.INSTANCE;
+    } else if (progressIndex instanceof HybridProgressIndex) {
+      final Map<Short, ProgressIndex> type2Index =
+          ((HybridProgressIndex) progressIndex).getType2Index();
+      if (!type2Index.containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
+        return MinimumProgressIndex.INSTANCE;
+      }
+      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
+          ((RecoverProgressIndex)
+                  type2Index.get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType()))
+              .getDataNodeId2LocalIndex();
+      return dataNodeId2LocalIndex.containsKey(DATA_NODE_ID)
+          ? dataNodeId2LocalIndex.get(DATA_NODE_ID)
+          : MinimumProgressIndex.INSTANCE;
+    }
+    return MinimumProgressIndex.INSTANCE;
+  }
+
   private void recoverMaxProgressIndexFromDataRegion() {
     StorageEngine.getInstance()
         .getAllDataRegionIds()
@@ -84,30 +108,6 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
             });
 
     // TODO: update deletion progress index
-  }
-
-  private ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
-    if (progressIndex instanceof RecoverProgressIndex) {
-      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
-          ((RecoverProgressIndex) progressIndex).getDataNodeId2LocalIndex();
-      return dataNodeId2LocalIndex.containsKey(DATA_NODE_ID)
-          ? dataNodeId2LocalIndex.get(DATA_NODE_ID)
-          : MinimumProgressIndex.INSTANCE;
-    } else if (progressIndex instanceof HybridProgressIndex) {
-      final Map<Short, ProgressIndex> type2Index =
-          ((HybridProgressIndex) progressIndex).getType2Index();
-      if (!type2Index.containsKey(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType())) {
-        return MinimumProgressIndex.INSTANCE;
-      }
-      final Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex =
-          ((RecoverProgressIndex)
-                  type2Index.get(ProgressIndexType.RECOVER_PROGRESS_INDEX.getType()))
-              .getDataNodeId2LocalIndex();
-      return dataNodeId2LocalIndex.containsKey(DATA_NODE_ID)
-          ? dataNodeId2LocalIndex.get(DATA_NODE_ID)
-          : MinimumProgressIndex.INSTANCE;
-    }
-    return MinimumProgressIndex.INSTANCE;
   }
 
   @Override

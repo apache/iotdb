@@ -35,8 +35,6 @@ import java.util.Optional;
 public class PipeRealtimeEventFactory {
 
   private static final TsFileEpochManager TS_FILE_EPOCH_MANAGER = new TsFileEpochManager();
-  private static final DeletionResourceManager DELETION_RESOURCE_MANAGER =
-      DeletionResourceManager.getInstance();
 
   public static PipeRealtimeEvent createRealtimeEvent(
       TsFileResource resource, boolean isLoaded, boolean isGeneratedByPipe) {
@@ -63,10 +61,10 @@ public class PipeRealtimeEventFactory {
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(DeleteDataNode node) {
+  public static PipeRealtimeEvent createRealtimeEvent(DeleteDataNode node, String regionId) {
     PipeSchemaRegionWritePlanEvent deletionEvent =
         new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe());
-    Optional.ofNullable(DELETION_RESOURCE_MANAGER)
+    Optional.ofNullable(DeletionResourceManager.getInstance(regionId))
         .ifPresent(mgr -> mgr.registerDeletionResource(deletionEvent));
     return new PipeRealtimeEvent(deletionEvent, null, null, null);
   }
