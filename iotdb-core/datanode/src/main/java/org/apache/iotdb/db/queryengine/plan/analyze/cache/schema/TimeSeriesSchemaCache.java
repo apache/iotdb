@@ -37,8 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,8 +44,6 @@ import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
 public class TimeSeriesSchemaCache {
-
-  private static final Logger logger = LoggerFactory.getLogger(TreeDeviceSchemaCacheManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // <device, measurement, entry>
@@ -67,63 +63,6 @@ public class TimeSeriesSchemaCache {
             .build();
   }
 
-  public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
-      ISchemaComputation schemaComputation) {
-    List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    List<String> missedPathStringList = new ArrayList<>();
-    Pair<Integer, Integer> beginToEnd = schemaComputation.getRangeOfLogicalViewSchemaListRecorded();
-    List<LogicalViewSchema> logicalViewSchemaList = schemaComputation.getLogicalViewSchemaList();
-    List<Integer> indexListOfLogicalViewPaths = schemaComputation.getIndexListOfLogicalViewPaths();
-    for (int i = beginToEnd.left; i < beginToEnd.right; i++) {
-      LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(i);
-      final int realIndex = indexListOfLogicalViewPaths.get(i);
-      final int recordMissingIndex = i;
-      if (!logicalViewSchema.isWritable()) {
-        PartialPath path = schemaComputation.getDevicePath();
-        path = path.concatAsMeasurementPath(schemaComputation.getMeasurements()[realIndex]);
-        throw new RuntimeException(new InsertNonWritableViewException(path.getFullPath()));
-      }
-      PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
-      dualKeyCache.compute(
-          new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
-            @Override
-            public PartialPath getFirstKey() {
-              return fullPath.getDevicePath();
-            }
-
-            @Override
-            public String[] getSecondKeyList() {
-              return new String[] {fullPath.getMeasurement()};
-            }
-
-            @Override
-            public void computeValue(int index, SchemaCacheEntry value) {
-              if (value == null) {
-                indexOfMissingMeasurements.add(recordMissingIndex);
-              } else {
-                // Can not call function computeDevice here, because the value is source of one
-                // view, but schemaComputation is the device in this insert statement. The
-                // computation between them is miss matched.
-                if (value.isLogicalView()) {
-                  // does not support views in views
-                  throw new RuntimeException(
-                      new UnsupportedOperationException(
-                          String.format(
-                              "The source of view [%s] is also a view! Nested view is unsupported! "
-                                  + "Please check it.",
-                              fullPath)));
-                }
-                schemaComputation.computeMeasurementOfView(realIndex, value, value.isAligned());
-              }
-            }
-          });
-    }
-    for (int index : indexOfMissingMeasurements) {
-      missedPathStringList.add(logicalViewSchemaList.get(index).getSourcePathStringIfWritable());
-    }
-    return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
-  }
-
   public void putSingleMeasurementPath(String storageGroup, MeasurementPath measurementPath) {
     SchemaCacheEntry schemaCacheEntry =
         new SchemaCacheEntry(
@@ -133,16 +72,6 @@ public class TimeSeriesSchemaCache {
             measurementPath.isUnderAlignedEntity());
     dualKeyCache.put(
         measurementPath.getDevicePath(), measurementPath.getMeasurement(), schemaCacheEntry);
-  }
-
-  public TimeValuePair getLastCache(PartialPath seriesPath) {
-    SchemaCacheEntry entry =
-        dualKeyCache.get(seriesPath.getDevicePath(), seriesPath.getMeasurement());
-    if (null == entry) {
-      return null;
-    }
-
-    return DataNodeLastCacheManager.getLastCache(entry);
   }
 
   /** get SchemaCacheEntry and update last cache */

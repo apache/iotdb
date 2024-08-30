@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
@@ -114,10 +115,7 @@ public class TreeDeviceSchemaCacheManager {
    */
   public ClusterSchemaTree get(final PartialPath devicePath, final String[] measurements) {
     final ClusterSchemaTree tree = new ClusterSchemaTree();
-    final IDeviceSchema schema =
-        TableDeviceSchemaFetcher.getInstance()
-            .getTableDeviceCache()
-            .getDeviceSchema(devicePath.getNodes());
+    final IDeviceSchema schema = tableDeviceSchemaCache.getDeviceSchema(devicePath.getNodes());
     if (!(schema instanceof TreeDeviceNormalSchema)) {
       return tree;
     }
@@ -230,7 +228,68 @@ public class TreeDeviceSchemaCacheManager {
     if (!schemaComputation.hasLogicalViewNeedProcess()) {
       return new Pair<>(new ArrayList<>(), new ArrayList<>());
     }
-    return timeSeriesSchemaCache.computeSourceOfLogicalView(schemaComputation);
+
+    final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    final List<String> missedPathStringList = new ArrayList<>();
+    final Pair<Integer, Integer> beginToEnd =
+        schemaComputation.getRangeOfLogicalViewSchemaListRecorded();
+    final List<LogicalViewSchema> logicalViewSchemaList =
+        schemaComputation.getLogicalViewSchemaList();
+    final List<Integer> indexListOfLogicalViewPaths =
+        schemaComputation.getIndexListOfLogicalViewPaths();
+    final String[] measurements = schemaComputation.getMeasurements();
+
+    for (int i = beginToEnd.left; i < beginToEnd.right; i++) {
+      final LogicalViewSchema logicalViewSchema = logicalViewSchemaList.get(i);
+      final int realIndex = indexListOfLogicalViewPaths.get(i);
+      final int recordMissingIndex = i;
+      if (!logicalViewSchema.isWritable()) {
+        PartialPath path = schemaComputation.getDevicePath();
+        path = path.concatAsMeasurementPath(schemaComputation.getMeasurements()[realIndex]);
+        throw new RuntimeException(new InsertNonWritableViewException(path.getFullPath()));
+      }
+
+      final IDeviceSchema schema =
+          tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
+      if (!(schema instanceof TreeDeviceNormalSchema)) {
+        for (int index = 0; index < schemaComputation.getMeasurements().length; index++) {
+          indexOfMissingMeasurements.add(index);
+        }
+        for (int index : indexOfMissingMeasurements) {
+          missedPathStringList.add(
+              logicalViewSchemaList.get(index).getSourcePathStringIfWritable());
+        }
+        return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
+      }
+
+      final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+
+      for (int index = 0; index < schemaComputation.getMeasurements().length; index++) {
+        final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[index]);
+        if (value == null) {
+          indexOfMissingMeasurements.add(recordMissingIndex);
+        } else {
+          // Can not call function computeDevice here, because the value is source of one
+          // view, but schemaComputation is the device in this insert statement. The
+          // computation between them is miss matched.
+          if (value.isLogicalView()) {
+            // does not support views in views
+            throw new RuntimeException(
+                new UnsupportedOperationException(
+                    String.format(
+                        "The source of view [%s] is also a view! Nested view is unsupported! "
+                            + "Please check it.",
+                        logicalViewSchema.getSourcePathIfWritable())));
+          }
+          schemaComputation.computeMeasurementOfView(realIndex, value, value.isAligned());
+        }
+      }
+    }
+
+    for (int index : indexOfMissingMeasurements) {
+      missedPathStringList.add(logicalViewSchemaList.get(index).getSourcePathStringIfWritable());
+    }
+    return new Pair<>(indexOfMissingMeasurements, missedPathStringList);
   }
 
   public List<Integer> computeWithTemplate(final ISchemaComputation computation) {
