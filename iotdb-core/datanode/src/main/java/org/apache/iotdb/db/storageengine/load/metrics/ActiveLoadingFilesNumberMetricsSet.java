@@ -63,19 +63,19 @@ public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesOperat
   protected void bindFileCounter(final AbstractMetricService metricService) {
     pendingFileCounter =
         metricService.getOrCreateCounter(
-            Metric.ACTIVE_LOADING_FILES.toString(),
+            Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             PENDING);
     queuingFileCounter =
         metricService.getOrCreateCounter(
-            Metric.ACTIVE_LOADING_FILES.toString(),
+            Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             QUEUING);
     loadingFileCounter =
         metricService.getOrCreateCounter(
-            Metric.ACTIVE_LOADING_FILES.toString(),
+            Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
             MetricLevel.IMPORTANT,
             Tag.TYPE.toString(),
             LOADING);
@@ -95,16 +95,25 @@ public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesOperat
     loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
     metricService.remove(
-        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), PENDING);
+        MetricType.COUNTER,
+        Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
+        Tag.TYPE.toString(),
+        PENDING);
     metricService.remove(
-        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), QUEUING);
+        MetricType.COUNTER,
+        Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
+        Tag.TYPE.toString(),
+        QUEUING);
     metricService.remove(
-        MetricType.COUNTER, Metric.ACTIVE_LOADING_FILES.toString(), Tag.TYPE.toString(), LOADING);
+        MetricType.COUNTER,
+        Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
+        Tag.TYPE.toString(),
+        LOADING);
   }
 
   @Override
   protected String getMetrics() {
-    return Metric.ACTIVE_LOADING_FILES.toString();
+    return Metric.ACTIVE_LOADING_FILES_NUMBER.toString();
   }
 
   public static ActiveLoadingFilesNumberMetricsSet getInstance() {
