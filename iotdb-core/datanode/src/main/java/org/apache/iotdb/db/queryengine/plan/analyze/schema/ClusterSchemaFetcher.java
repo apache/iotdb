@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -60,7 +60,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   // DataNodeSchemaCache's rwlock is used to block deletion when we insert the same timeseries
   // and will be released after coordinator's execute().
-  private final TreeSchemaCacheManager schemaCache = TreeSchemaCacheManager.getInstance();
+  private final TreeDeviceSchemaCacheManager schemaCache =
+      TreeDeviceSchemaCacheManager.getInstance();
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
   private final AutoCreateSchemaExecutor autoCreateSchemaExecutor =

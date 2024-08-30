@@ -47,7 +47,7 @@ import java.util.function.IntPredicate;
 
 public class TimeSeriesSchemaCache {
 
-  private static final Logger logger = LoggerFactory.getLogger(TreeSchemaCacheManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(TreeDeviceSchemaCacheManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   // <device, measurement, entry>

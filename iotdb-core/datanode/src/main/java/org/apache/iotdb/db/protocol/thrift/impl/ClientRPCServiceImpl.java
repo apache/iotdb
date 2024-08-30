@@ -76,7 +76,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOpera
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
@@ -250,8 +250,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final TsBlockSerde serde = new TsBlockSerde();
 
-  private final TreeSchemaCacheManager DATA_NODE_SCHEMA_CACHE =
-      TreeSchemaCacheManager.getInstance();
+  private final TreeDeviceSchemaCacheManager DATA_NODE_SCHEMA_CACHE =
+      TreeDeviceSchemaCacheManager.getInstance();
 
   public static Duration DEFAULT_TIME_SLICE = new Duration(60_000, TimeUnit.MILLISECONDS);
 

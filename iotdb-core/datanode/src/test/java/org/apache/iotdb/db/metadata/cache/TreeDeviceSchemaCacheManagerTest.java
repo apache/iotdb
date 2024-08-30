@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
@@ -49,20 +49,20 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
-public class TreeSchemaCacheManagerTest {
-  TreeSchemaCacheManager treeSchemaCacheManager;
+public class TreeDeviceSchemaCacheManagerTest {
+  TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager;
   private Map<String, String> s1TagMap;
 
   @Before
   public void setUp() throws Exception {
-    treeSchemaCacheManager = TreeSchemaCacheManager.getInstance();
+    treeDeviceSchemaCacheManager = TreeDeviceSchemaCacheManager.getInstance();
     s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
   }
 
   @After
   public void tearDown() throws Exception {
-    treeSchemaCacheManager.cleanUp();
+    treeDeviceSchemaCacheManager.cleanUp();
     ClusterTemplateManager.getInstance().clear();
   }
 
@@ -74,10 +74,10 @@ public class TreeSchemaCacheManagerTest {
     measurements[1] = "s2";
     measurements[2] = "s3";
 
-    treeSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree1());
+    treeDeviceSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree1());
 
     Map<PartialPath, SchemaCacheEntry> schemaCacheEntryMap =
-        treeSchemaCacheManager.get(device1, measurements).getAllDevices().stream()
+        treeDeviceSchemaCacheManager.get(device1, measurements).getAllDevices().stream()
             .flatMap(deviceSchemaInfo -> deviceSchemaInfo.getMeasurementSchemaPathList().stream())
             .collect(
                 Collectors.toMap(
@@ -107,10 +107,10 @@ public class TreeSchemaCacheManagerTest {
     otherMeasurements[1] = "s4";
     otherMeasurements[2] = "s5";
 
-    treeSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree2());
+    treeDeviceSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree2());
 
     schemaCacheEntryMap =
-        treeSchemaCacheManager.get(device1, otherMeasurements).getAllDevices().stream()
+        treeDeviceSchemaCacheManager.get(device1, otherMeasurements).getAllDevices().stream()
             .flatMap(deviceSchemaInfo -> deviceSchemaInfo.getMeasurementSchemaPathList().stream())
             .collect(
                 Collectors.toMap(
@@ -142,14 +142,14 @@ public class TreeSchemaCacheManagerTest {
     MeasurementPath seriesPath1 = new MeasurementPath("root.sg1.d1.s1");
     MeasurementPath seriesPath2 = new MeasurementPath("root.sg1.d1.s2");
     MeasurementPath seriesPath3 = new MeasurementPath("root.sg1.d1.s3");
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath1));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath3));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath1));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
     // test no last cache
-    treeSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree1());
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath1));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath3));
+    treeDeviceSchemaCacheManager.put((ClusterSchemaTree) generateSchemaTree1());
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath1));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
     // put cache
     long timestamp = 100;
     long timestamp2 = 101;
@@ -159,42 +159,42 @@ public class TreeSchemaCacheManagerTest {
 
     // put into last cache when cache not exist
     TimeValuePair timeValuePair = new TimeValuePair(timestamp, value);
-    treeSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair, false, 99L);
-    TimeValuePair cachedTimeValuePair = treeSchemaCacheManager.getLastCache(seriesPath1);
+    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair, false, 99L);
+    TimeValuePair cachedTimeValuePair = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
     Assert.assertNotNull(cachedTimeValuePair);
     Assert.assertEquals(timestamp, cachedTimeValuePair.getTimestamp());
     Assert.assertEquals(value, cachedTimeValuePair.getValue());
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath3));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
 
     // same time but low priority
     TimeValuePair timeValuePair2 = new TimeValuePair(timestamp, value2);
-    treeSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair2, false, 100L);
-    TimeValuePair cachedTimeValuePair2 = treeSchemaCacheManager.getLastCache(seriesPath1);
+    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair2, false, 100L);
+    TimeValuePair cachedTimeValuePair2 = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
     Assert.assertNotNull(cachedTimeValuePair2);
     Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
     Assert.assertEquals(value, cachedTimeValuePair2.getValue());
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath3));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
 
     // same time but high priority
-    treeSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair2, true, 100L);
-    cachedTimeValuePair2 = treeSchemaCacheManager.getLastCache(seriesPath1);
+    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair2, true, 100L);
+    cachedTimeValuePair2 = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
     Assert.assertNotNull(cachedTimeValuePair2);
     Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
     Assert.assertEquals(value2, cachedTimeValuePair2.getValue());
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath3));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
 
     // put into last cache when cache already exist
     TimeValuePair timeValuePair3 = new TimeValuePair(timestamp2, value3);
-    treeSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair3, false, 100L);
-    TimeValuePair cachedTimeValuePair3 = treeSchemaCacheManager.getLastCache(seriesPath1);
+    treeDeviceSchemaCacheManager.updateLastCache(devicePath, "s1", timeValuePair3, false, 100L);
+    TimeValuePair cachedTimeValuePair3 = treeDeviceSchemaCacheManager.getLastCache(seriesPath1);
     Assert.assertNotNull(cachedTimeValuePair3);
     Assert.assertEquals(timestamp2, cachedTimeValuePair3.getTimestamp());
     Assert.assertEquals(value3, cachedTimeValuePair3.getValue());
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath2));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(seriesPath3));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath2));
+    Assert.assertNull(treeDeviceSchemaCacheManager.getLastCache(seriesPath3));
   }
 
   private ISchemaTree generateSchemaTree1() throws IllegalPathException {
@@ -267,7 +267,7 @@ public class TreeSchemaCacheManagerTest {
           new MeasurementSchema("s3", TSDataType.INT32)
         };
 
-    treeSchemaCacheManager.updateLastCache(
+    treeDeviceSchemaCacheManager.updateLastCache(
         database,
         device,
         measurements,
@@ -278,11 +278,14 @@ public class TreeSchemaCacheManagerTest {
         true,
         1L);
 
-    Assert.assertNotNull(treeSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
-    Assert.assertNull(treeSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s2")));
-    Assert.assertNotNull(treeSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s3")));
+    Assert.assertNotNull(
+        treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
+    Assert.assertNull(
+        treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s2")));
+    Assert.assertNotNull(
+        treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s3")));
 
-    treeSchemaCacheManager.updateLastCache(
+    treeDeviceSchemaCacheManager.updateLastCache(
         database,
         device,
         measurements,
@@ -295,13 +298,13 @@ public class TreeSchemaCacheManagerTest {
 
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        treeSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
+        treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        treeSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s2")));
+        treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s2")));
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        treeSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s3")));
+        treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s3")));
   }
 
   @Test
@@ -330,13 +333,13 @@ public class TreeSchemaCacheManagerTest {
     clusterSchemaTree.setDatabases(Collections.singleton("root.sg1"));
     clusterSchemaTree.appendSingleMeasurementPath(
         new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
-    treeSchemaCacheManager.put(clusterSchemaTree);
+    treeDeviceSchemaCacheManager.put(clusterSchemaTree);
     ClusterSchemaTree d1Tree =
-        treeSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
+        treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
     ClusterSchemaTree d2Tree =
-        treeSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
+        treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
     ClusterSchemaTree d3Tree =
-        treeSchemaCacheManager.getMatchedSchemaWithoutTemplate(
+        treeDeviceSchemaCacheManager.getMatchedSchemaWithoutTemplate(
             new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());

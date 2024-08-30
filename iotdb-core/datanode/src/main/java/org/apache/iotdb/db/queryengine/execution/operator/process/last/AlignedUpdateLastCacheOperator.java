@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -45,10 +45,11 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       OperatorContext operatorContext,
       Operator child,
       AlignedPath seriesPath,
-      TreeSchemaCacheManager treeSchemaCacheManager,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry) {
-    super(operatorContext, child, treeSchemaCacheManager, needUpdateCache, needUpdateNullEntry);
+    super(
+        operatorContext, child, treeDeviceSchemaCacheManager, needUpdateCache, needUpdateNullEntry);
     this.seriesPath = seriesPath;
     this.devicePath = seriesPath.getDevicePath();
   }

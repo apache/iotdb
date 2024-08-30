@@ -105,7 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -513,10 +513,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus invalidateSchemaCache(TInvalidateCacheReq req) {
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
-    TreeSchemaCacheManager.getInstance().takeWriteLock();
+    TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
       // req.getFullPath() is a database path
-      TreeSchemaCacheManager.getInstance().invalidate(req.getFullPath());
+      TreeDeviceSchemaCacheManager.getInstance().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
       // clear table related cache
       String database = req.getFullPath().substring(5);
@@ -524,7 +524,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       TableDeviceSchemaFetcher.getInstance().getTableDeviceCache().invalidate(database);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
-      TreeSchemaCacheManager.getInstance().releaseWriteLock();
+      TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();
       DataNodeSchemaLockManager.getInstance().releaseWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     }
   }
@@ -591,7 +591,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus invalidateMatchedSchemaCache(TInvalidateMatchedSchemaCacheReq req) {
-    TreeSchemaCacheManager cache = TreeSchemaCacheManager.getInstance();
+    TreeDeviceSchemaCacheManager cache = TreeDeviceSchemaCacheManager.getInstance();
     DataNodeSchemaLockManager.getInstance().takeWriteLock(SchemaLockType.VALIDATE_VS_DELETION);
     cache.takeWriteLock();
     try {
@@ -2400,11 +2400,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     status.setMessage("disable datanode succeed");
     // TODO what need to clean?
     ClusterPartitionFetcher.getInstance().invalidAllCache();
-    TreeSchemaCacheManager.getInstance().takeWriteLock();
+    TreeDeviceSchemaCacheManager.getInstance().takeWriteLock();
     try {
-      TreeSchemaCacheManager.getInstance().cleanUp();
+      TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     } finally {
-      TreeSchemaCacheManager.getInstance().releaseWriteLock();
+      TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();
     }
     DataNodeDevicePathCache.getInstance().cleanUp();
     return status;

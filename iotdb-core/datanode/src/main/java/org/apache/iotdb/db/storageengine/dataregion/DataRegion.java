@@ -53,7 +53,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -1361,7 +1361,7 @@ public class DataRegion implements IDataRegionForQuery {
         rawMeasurements[i] = measurements[i];
       }
     }
-    TreeSchemaCacheManager.getInstance()
+    TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
@@ -1406,7 +1406,7 @@ public class DataRegion implements IDataRegionForQuery {
         rawMeasurements[i] = measurements[i];
       }
     }
-    TreeSchemaCacheManager.getInstance()
+    TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCache(
             getDatabaseName(),
             node.getDevicePath(),
@@ -1486,7 +1486,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
-    TreeSchemaCacheManager.getInstance().takeReadLock();
+    TreeDeviceSchemaCacheManager.getInstance().takeReadLock();
     try {
       for (InsertRowNode node : nodeList) {
         long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
@@ -1501,7 +1501,7 @@ public class DataRegion implements IDataRegionForQuery {
             rawMeasurements[i] = measurements[i];
           }
         }
-        TreeSchemaCacheManager.getInstance()
+        TreeDeviceSchemaCacheManager.getInstance()
             .updateLastCacheWithoutLock(
                 getDatabaseName(),
                 node.getDevicePath(),
@@ -1514,7 +1514,7 @@ public class DataRegion implements IDataRegionForQuery {
                 latestFlushedTime);
       }
     } finally {
-      TreeSchemaCacheManager.getInstance().releaseReadLock();
+      TreeDeviceSchemaCacheManager.getInstance().releaseReadLock();
     }
   }
 
@@ -2285,7 +2285,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean hasReleasedLock = false;
 
     try {
-      TreeSchemaCacheManager.getInstance().invalidateLastCache(pattern);
+      TreeDeviceSchemaCacheManager.getInstance().invalidateLastCache(pattern);
       Set<PartialPath> devicePaths = new HashSet<>(pattern.getDevicePathPattern());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
@@ -2333,7 +2333,7 @@ public class DataRegion implements IDataRegionForQuery {
     boolean releasedLock = false;
 
     try {
-      TreeSchemaCacheManager.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
+      TreeDeviceSchemaCacheManager.getInstance().invalidateLastCacheInDataRegion(getDatabaseName());
       // write log to impacted working TsFileProcessors
       List<WALFlushListener> walListeners =
           logDeletionInWAL(startTime, endTime, searchIndex, pathToDelete);
@@ -3031,7 +3031,7 @@ public class DataRegion implements IDataRegionForQuery {
       throw new LoadFileException(e);
     } finally {
       writeUnlock();
-      TreeSchemaCacheManager.getInstance().invalidateAll();
+      TreeDeviceSchemaCacheManager.getInstance().invalidateAll();
     }
   }
 

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -37,7 +37,7 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
       Operator child,
       MeasurementPath fullPath,
       TSDataType dataType,
-      TreeSchemaCacheManager treeSchemaCacheManager,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry,
       String outputViewPath) {
@@ -46,7 +46,7 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
         child,
         fullPath,
         dataType,
-        treeSchemaCacheManager,
+        treeDeviceSchemaCacheManager,
         needUpdateCache,
         needUpdateNullEntry);
     this.outputViewPath = outputViewPath;

@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -50,10 +50,15 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       Operator child,
       MeasurementPath fullPath,
       TSDataType dataType,
-      TreeSchemaCacheManager treeSchemaCacheManager,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean isNeedUpdateNullEntry) {
-    super(operatorContext, child, treeSchemaCacheManager, needUpdateCache, isNeedUpdateNullEntry);
+    super(
+        operatorContext,
+        child,
+        treeDeviceSchemaCacheManager,
+        needUpdateCache,
+        isNeedUpdateNullEntry);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
   }

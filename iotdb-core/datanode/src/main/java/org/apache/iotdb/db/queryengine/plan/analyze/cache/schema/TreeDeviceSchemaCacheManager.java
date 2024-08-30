@@ -61,7 +61,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
  * This class takes the responsibility of metadata cache management of all DataRegions under
  * StorageEngine
  */
-public class TreeSchemaCacheManager {
+public class TreeDeviceSchemaCacheManager {
 
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
@@ -74,19 +74,19 @@ public class TreeSchemaCacheManager {
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  private TreeSchemaCacheManager() {
+  private TreeDeviceSchemaCacheManager() {
     deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
     timeSeriesSchemaCache = new TimeSeriesSchemaCache();
     tableDeviceSchemaCache = TableDeviceSchemaFetcher.getInstance().getTableDeviceCache();
   }
 
-  public static TreeSchemaCacheManager getInstance() {
-    return TreeSchemaCacheManagerHolder.INSTANCE;
+  public static TreeDeviceSchemaCacheManager getInstance() {
+    return TreeDeviceSchemaCacheManagerHolder.INSTANCE;
   }
 
   /** singleton pattern. */
-  private static class TreeSchemaCacheManagerHolder {
-    private static final TreeSchemaCacheManager INSTANCE = new TreeSchemaCacheManager();
+  private static class TreeDeviceSchemaCacheManagerHolder {
+    private static final TreeDeviceSchemaCacheManager INSTANCE = new TreeDeviceSchemaCacheManager();
   }
 
   public void takeReadLock() {
