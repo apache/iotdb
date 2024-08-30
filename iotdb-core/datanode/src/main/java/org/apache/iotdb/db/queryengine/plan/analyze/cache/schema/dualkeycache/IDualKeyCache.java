@@ -85,6 +85,19 @@ public interface IDualKeyCache<FK, SK, V> {
       final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater);
 
   /**
+   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
+   * predicate. The updater shall return the difference caused by the update, because we do not want
+   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
+   *
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   */
+  void update(
+      final Predicate<FK> firstKeyChecker,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater);
+
+  /**
    * Invalidate all cache values in the cache and clear related cache keys. The cache status and
    * statistics won't be clear and they can still be accessed via cache.stats().
    */

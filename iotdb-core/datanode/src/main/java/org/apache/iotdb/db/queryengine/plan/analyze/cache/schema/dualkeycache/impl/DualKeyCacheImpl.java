@@ -141,8 +141,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
               }
             }
           }
-          if (changeSize != 0 && cacheStats.isExceedMemoryCapacity()) {
-            executeCacheEviction(changeSize);
+          if (changeSize > 0) {
+            increaseMemoryUsageAndMayEvict(changeSize);
           }
           hitCount++;
         }
@@ -153,16 +153,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void put(FK firstKey, SK secondKey, V value) {
-    int usedMemorySize = putToCache(firstKey, secondKey, value);
-    cacheStats.increaseMemoryUsage(usedMemorySize);
-    if (cacheStats.isExceedMemoryCapacity()) {
-      executeCacheEviction(usedMemorySize);
-    }
-  }
-
-  private int putToCache(FK firstKey, SK secondKey, V value) {
-    AtomicInteger usedMemorySize = new AtomicInteger(0);
+  public void put(final FK firstKey, final SK secondKey, final V value) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
     firstKeyMap.compute(
         firstKey,
         (k, cacheEntryGroup) -> {
@@ -170,7 +162,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
             cacheEntryGroup = new CacheEntryGroupImpl<>(firstKey);
             usedMemorySize.getAndAdd(sizeComputer.computeFirstKeySize(firstKey));
           }
-          ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
+          final ICacheEntryGroup<FK, SK, V, T> finalCacheEntryGroup = cacheEntryGroup;
           cacheEntryGroup.computeCacheEntry(
               secondKey,
               (sk, cacheEntry) -> {
@@ -180,7 +172,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                   cacheEntryManager.put(cacheEntry);
                   usedMemorySize.getAndAdd(sizeComputer.computeSecondKeySize(sk));
                 } else {
-                  V existingValue = cacheEntry.getValue();
+                  final V existingValue = cacheEntry.getValue();
                   if (existingValue != value && !existingValue.equals(value)) {
                     cacheEntry.replaceValue(value);
                     usedMemorySize.getAndAdd(-sizeComputer.computeValueSize(existingValue));
@@ -193,7 +185,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
               });
           return cacheEntryGroup;
         });
-    return usedMemorySize.get();
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
   }
 
   @Override
@@ -241,10 +233,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           }
           return cacheEntryGroup;
         });
-    cacheStats.increaseMemoryUsage(usedMemorySize.get());
-    if (cacheStats.isExceedMemoryCapacity()) {
-      executeCacheEviction(usedMemorySize.get());
-    }
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
   }
 
   @Override
@@ -274,36 +263,54 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
                   });
           return cacheEntryGroup;
         });
-    cacheStats.increaseMemoryUsage(usedMemorySize.get());
-    if (cacheStats.isExceedMemoryCapacity()) {
-      executeCacheEviction(usedMemorySize.get());
-    }
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
   }
 
-  /**
-   * Each thread putting new cache value only needs to evict cache values, total memory equals that
-   * the new cache value occupied.
-   */
-  private void executeCacheEviction(int targetSize) {
-    int evictedSize;
-    while (targetSize > 0 && cacheStats.memoryUsage() > 0) {
-      evictedSize = evictOneCacheEntry();
-      cacheStats.decreaseMemoryUsage(evictedSize);
-      targetSize -= evictedSize;
+  @Override
+  public void update(
+      final Predicate<FK> firstKeyChecker,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater) {
+    final AtomicInteger usedMemorySize = new AtomicInteger(0);
+    for (final FK firstKey : firstKeyMap.getAllKeys()) {
+      if (!firstKeyChecker.test(firstKey)) {
+        continue;
+      }
+      final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
+      entryGroup
+          .getAllCacheEntries()
+          .forEachRemaining(
+              entry -> {
+                if (!secondKeyChecker.test(entry.getKey())) {
+                  return;
+                }
+                final int result = updater.applyAsInt(entry.getValue().getValue());
+                if (Objects.nonNull(entryGroup.getCacheEntry(entry.getKey()))) {
+                  usedMemorySize.getAndAdd(result);
+                }
+              });
+    }
+    increaseMemoryUsageAndMayEvict(usedMemorySize.get());
+  }
+
+  private void increaseMemoryUsageAndMayEvict(final int memorySize) {
+    cacheStats.increaseMemoryUsage(memorySize);
+    while (cacheStats.isExceedMemoryCapacity()) {
+      cacheStats.decreaseMemoryUsage(evictOneCacheEntry());
     }
   }
 
   private int evictOneCacheEntry() {
 
-    ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
+    final ICacheEntry<SK, V> evictCacheEntry = cacheEntryManager.evict();
     if (evictCacheEntry == null) {
       return 0;
     }
     synchronized (evictCacheEntry) {
-      AtomicInteger evictedSize = new AtomicInteger(0);
+      final AtomicInteger evictedSize = new AtomicInteger(0);
       evictedSize.getAndAdd(sizeComputer.computeValueSize(evictCacheEntry.getValue()));
 
-      ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
+      final ICacheEntryGroup<FK, SK, V, T> belongedGroup = evictCacheEntry.getBelongedGroup();
       evictCacheEntry.setBelongedGroup(null);
       belongedGroup.removeCacheEntry(evictCacheEntry.getSecondKey());
       evictedSize.getAndAdd(sizeComputer.computeSecondKeySize(evictCacheEntry.getSecondKey()));
@@ -400,11 +407,12 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void invalidate(FK firstKey) {
     int estimateSize = 0;
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.remove(firstKey);
     if (cacheEntryGroup != null) {
       estimateSize += sizeComputer.computeFirstKeySize(firstKey);
-      for (Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries(); it.hasNext(); ) {
-        Map.Entry<SK, T> entry = it.next();
+      for (final Iterator<Map.Entry<SK, T>> it = cacheEntryGroup.getAllCacheEntries();
+          it.hasNext(); ) {
+        final Map.Entry<SK, T> entry = it.next();
         estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
         estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
         cacheEntryManager.invalid(entry.getValue());
