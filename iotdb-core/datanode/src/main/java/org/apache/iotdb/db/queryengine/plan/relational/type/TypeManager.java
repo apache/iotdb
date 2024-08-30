@@ -27,7 +27,7 @@ public interface TypeManager {
    *
    * @throws TypeNotFoundException if not found
    */
-  Type getType(TypeSignature signature) throws TypeNotFoundException;
+  Type getType(TypeSignature signature);
 
   /** Gets a type given it's SQL representation */
   Type fromSqlType(String type);

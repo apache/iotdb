@@ -51,6 +51,15 @@ public class ArithmeticUnaryExpression extends Expression {
     this.sign = sign;
   }
 
+  public ArithmeticUnaryExpression(Sign sign, Expression value) {
+    super(null);
+    requireNonNull(value, "value is null");
+    requireNonNull(sign, "sign is null");
+
+    this.value = value;
+    this.sign = sign;
+  }
+
   public ArithmeticUnaryExpression(ByteBuffer byteBuffer) {
     super(null);
     this.value = Expression.deserialize(byteBuffer);

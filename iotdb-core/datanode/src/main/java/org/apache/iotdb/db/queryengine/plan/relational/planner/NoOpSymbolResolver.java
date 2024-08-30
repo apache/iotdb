@@ -19,30 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
+public class NoOpSymbolResolver implements SymbolResolver {
+  public static final NoOpSymbolResolver INSTANCE = new NoOpSymbolResolver();
 
-/**
- * A carrier of core, global, non-derived services for planner and analyzer. This is used to ease
- * the addition of new services in the future without having to modify large portions the planner
- * and analyzer just to pass around the service.
- */
-public class PlannerContext {
-
-  private final Metadata metadata;
-
-  private final TypeManager typeManager;
-
-  public PlannerContext(Metadata metadata, TypeManager typeManager) {
-    this.metadata = metadata;
-    this.typeManager = typeManager;
-  }
-
-  public Metadata getMetadata() {
-    return metadata;
-  }
-
-  public TypeManager getTypeManager() {
-    return typeManager;
+  @Override
+  public Object getValue(Symbol symbol) {
+    return symbol.toSymbolReference();
   }
 }

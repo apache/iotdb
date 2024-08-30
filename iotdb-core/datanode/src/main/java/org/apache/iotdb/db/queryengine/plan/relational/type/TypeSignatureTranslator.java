@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TypeParameter;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collections;
 import java.util.Locale;
@@ -41,6 +42,11 @@ import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature
 public class TypeSignatureTranslator {
 
   private TypeSignatureTranslator() {}
+
+  public static DataType toSqlType(Type type) {
+    return new GenericDataType(
+        new Identifier(type.getTypeEnum().name(), false), Collections.emptyList());
+  }
 
   public static TypeSignature toTypeSignature(DataType type) {
     return toTypeSignature(type, Collections.emptySet());
