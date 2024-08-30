@@ -198,41 +198,6 @@ public class DualKeyCacheTest {
   }
 
   @Test
-  public void testInvalidDatabase() throws IllegalPathException {
-    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
-    dualKeyCache.invalidate("root.db1");
-    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
-    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
-    Assert.assertNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
-    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s1"));
-    Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db2.d1"), "s2"));
-    int expectSize =
-        PartialPath.estimateSize(new PartialPath("root.db2.d1"))
-            + computeStringSize("s1") * 2
-            + SchemaCacheEntry.estimateSize(
-                    new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false))
-                * 2;
-    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
-    dualKeyCache.evictOneEntry();
-    expectSize =
-        PartialPath.estimateSize(new PartialPath("root.db2.d1"))
-            + computeStringSize("s1")
-            + SchemaCacheEntry.estimateSize(
-                new SchemaCacheEntry(
-                    "root.db1",
-                    new MeasurementSchema("s1", TSDataType.INT32),
-                    Collections.emptyMap(),
-                    false));
-    Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
-    dualKeyCache.evictOneEntry();
-    Assert.assertEquals(0, dualKeyCache.stats().memoryUsage());
-  }
-
-  @Test
   public void testInvalidPathPattern1() throws IllegalPathException {
     IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateCache();
     dualKeyCache.invalidate(
@@ -446,47 +411,5 @@ public class DualKeyCacheTest {
             + SchemaCacheEntry.estimateSize(cacheEntry1) * 5;
     Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
     return dualKeyCache;
-  }
-
-  @Test
-  public void testInvalidateSimpleTimeseriesAndDataRegion() throws IllegalPathException {
-    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateLastCache();
-    long memUse = dualKeyCache.stats().memoryUsage();
-
-    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.d1.s1"));
-    SchemaCacheEntry cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s1");
-    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
-
-    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.d1.*"));
-    cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s2");
-    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
-
-    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db2.d1.**"));
-    cacheEntry = dualKeyCache.get(new PartialPath("root.db2.d1"), "s2");
-    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
-
-    dualKeyCache.invalidateDataRegionLastCache("root.db2");
-    cacheEntry = dualKeyCache.get(new PartialPath("root.db2.d1"), "s1");
-    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
-
-    cacheEntry = dualKeyCache.get(new PartialPath("root.db1"), "s2");
-    // last cache container' estimateSize(): header 8b + Ilastcachevalueref 8b +  lastcache's size
-    // invalidate operation: make Ilastcachevalueref = null.
-    // So the amount of change in size is estimateSize() - 8b - 8b
-    int size = cacheEntry.getLastCacheContainer().estimateSize() - 16;
-    Assert.assertEquals(memUse - size * 4, dualKeyCache.stats().memoryUsage());
-  }
-
-  @Test
-  public void testComplexInvalidate() throws IllegalPathException {
-    IDualKeyCache<PartialPath, String, SchemaCacheEntry> dualKeyCache = generateLastCache();
-
-    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.*.s1"));
-    SchemaCacheEntry cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s1");
-    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
-
-    dualKeyCache.invalidateLastCache(new MeasurementPath("root.db1.**.s2"));
-    cacheEntry = dualKeyCache.get(new PartialPath("root.db1.d1"), "s2");
-    Assert.assertNull(cacheEntry.getLastCacheContainer().getCachedLast());
   }
 }

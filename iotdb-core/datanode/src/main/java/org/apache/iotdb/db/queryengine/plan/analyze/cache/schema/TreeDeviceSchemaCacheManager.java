@@ -407,12 +407,7 @@ public class TreeDeviceSchemaCacheManager {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
-    takeReadLock();
-    try {
-      timeSeriesSchemaCache.invalidateLastCache(path);
-    } finally {
-      releaseReadLock();
-    }
+    tableDeviceSchemaCache.invalidateLastCache(path.getDevicePath(), path.getMeasurement());
   }
 
   public void invalidateLastCacheInDataRegion(final String database) {

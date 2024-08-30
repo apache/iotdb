@@ -375,6 +375,8 @@ public class TableDeviceSchemaCache {
               StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
       dualKeyCache.update(
           new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
+    } else {
+
     }
   }
 

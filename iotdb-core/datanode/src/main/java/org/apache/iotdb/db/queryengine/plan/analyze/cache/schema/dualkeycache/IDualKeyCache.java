@@ -85,27 +85,11 @@ public interface IDualKeyCache<FK, SK, V> {
       final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater);
 
   /**
-   * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.
-   *
-   * @param partialPathList
-   */
-  void invalidateLastCache(PartialPath partialPath);
-
-  void invalidateDataRegionLastCache(String database);
-
-  /**
    * Invalidate all cache values in the cache and clear related cache keys. The cache status and
    * statistics won't be clear and they can still be accessed via cache.stats().
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
-
-  /**
-   * Invalidate cache values in the cache and clear related cache keys. The cache status and
-   * statistics won't be clear and they can still be accessed via cache.stats().
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(String database);
 
   /**
    * Invalidate cache values in the cache and clear related cache keys. The cache status and
