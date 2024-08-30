@@ -21,7 +21,6 @@ package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
@@ -134,22 +133,12 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitInsertRow(
       final InsertRowStatement insertRowStatement, final TSStatus status) {
-    return status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            && status.getMessage() != null
-            && status.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
-        ? tryExecute(new PipeConvertedInsertRowStatement(insertRowStatement))
-        : Optional.empty();
+    return tryExecute(new PipeConvertedInsertRowStatement(insertRowStatement));
   }
 
   @Override
   public Optional<TSStatus> visitInsertRows(
       final InsertRowsStatement insertRowsStatement, final TSStatus status) {
-    if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-        && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
-      return Optional.empty();
-    }
-
     if (insertRowsStatement.getInsertRowStatementList() == null
         || insertRowsStatement.getInsertRowStatementList().isEmpty()) {
       return Optional.empty();
@@ -166,12 +155,6 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitInsertRowsOfOneDevice(
       final InsertRowsOfOneDeviceStatement insertRowsOfOneDeviceStatement, final TSStatus status) {
-    if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-        && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
-      return Optional.empty();
-    }
-
     if (insertRowsOfOneDeviceStatement.getInsertRowStatementList() == null
         || insertRowsOfOneDeviceStatement.getInsertRowStatementList().isEmpty()) {
       return Optional.empty();
@@ -189,22 +172,12 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitInsertTablet(
       final InsertTabletStatement insertTabletStatement, final TSStatus status) {
-    return status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            && status.getMessage() != null
-            && status.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
-        ? tryExecute(new PipeConvertedInsertTabletStatement(insertTabletStatement))
-        : Optional.empty();
+    return tryExecute(new PipeConvertedInsertTabletStatement(insertTabletStatement));
   }
 
   @Override
   public Optional<TSStatus> visitInsertMultiTablets(
       final InsertMultiTabletsStatement insertMultiTabletsStatement, final TSStatus status) {
-    if (!((status.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
-            || status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-        && status.toString().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING))) {
-      return Optional.empty();
-    }
-
     if (insertMultiTabletsStatement.getInsertTabletStatementList() == null
         || insertMultiTabletsStatement.getInsertTabletStatementList().isEmpty()) {
       return Optional.empty();

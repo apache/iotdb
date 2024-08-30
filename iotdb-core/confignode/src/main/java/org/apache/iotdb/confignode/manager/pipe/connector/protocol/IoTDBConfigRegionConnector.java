@@ -114,12 +114,12 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransferWrapper(
       final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBConfigRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeConfigRegionWritePlanEvent);
     } finally {
       pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
@@ -175,12 +175,12 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBConfigRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeConfigRegionSnapshotEvent);
     } finally {
       pipeConfigRegionSnapshotEvent.decreaseReferenceCount(

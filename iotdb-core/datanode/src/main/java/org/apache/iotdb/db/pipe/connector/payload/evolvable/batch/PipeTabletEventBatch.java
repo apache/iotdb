@@ -26,6 +26,8 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,6 +35,8 @@ import java.util.List;
 import java.util.Objects;
 
 public abstract class PipeTabletEventBatch implements AutoCloseable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeTabletEventBatch.class);
 
   protected final List<EnrichedEvent> events = new ArrayList<>();
 
@@ -74,8 +78,7 @@ public abstract class PipeTabletEventBatch implements AutoCloseable {
           firstEventProcessingTime = System.currentTimeMillis();
         }
       } else {
-        ((EnrichedEvent) event)
-            .decreaseReferenceCount(PipeTransferBatchReqBuilder.class.getName(), false);
+        LOGGER.warn("Cannot increase reference count for event: {}, ignore it in batch.", event);
       }
     }
 
