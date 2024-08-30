@@ -448,11 +448,6 @@ public class TreeDeviceSchemaCacheManager {
     }
   }
 
-  private IDeviceID convertNodes2IDeviceID(final String[] deviceNodes) {
-    return IDeviceID.Factory.DEFAULT_FACTORY.create(
-        StringArrayDeviceID.splitDeviceIdString(deviceNodes));
-  }
-
   public void invalidate(String database) {
     deviceUsingTemplateSchemaCache.invalidateCache(database);
     timeSeriesSchemaCache.invalidate(database);

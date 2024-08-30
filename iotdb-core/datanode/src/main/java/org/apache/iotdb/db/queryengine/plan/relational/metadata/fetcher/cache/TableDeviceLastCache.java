@@ -83,7 +83,7 @@ public class TableDeviceLastCache {
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
-  private volatile Long lastTime = null;
+  private Long lastTime = null;
 
   int update(
       final @Nonnull String database,
