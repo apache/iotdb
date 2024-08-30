@@ -3476,7 +3476,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** @return the disk space occupied by this data region, unit is MB */
+  /**
+   * @return the disk space occupied by this data region, unit is MB
+   */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()

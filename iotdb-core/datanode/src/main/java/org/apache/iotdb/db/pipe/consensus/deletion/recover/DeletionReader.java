@@ -50,7 +50,7 @@ public class DeletionReader implements Closeable {
     // Read metaData
     ByteBuffer intBuffer = ByteBuffer.allocate(4);
     fileChannel.read(intBuffer);
-    intBuffer.flip(); // 切换到读模式
+    intBuffer.flip();
     int deletionNum = intBuffer.getInt();
 
     // Read deletions
