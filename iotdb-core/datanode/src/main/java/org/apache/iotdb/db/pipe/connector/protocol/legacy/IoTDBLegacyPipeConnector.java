@@ -313,12 +313,12 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeInsertionEvent)
       throws IoTDBConnectionException, StatementExecutionException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeInsertionEvent.increaseReferenceCount(
+        IoTDBLegacyPipeConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeInsertionEvent.increaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeInsertNodeInsertionEvent);
     } finally {
       pipeInsertNodeInsertionEvent.decreaseReferenceCount(
@@ -344,12 +344,12 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IoTDBConnectionException, StatementExecutionException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+        IoTDBLegacyPipeConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeRawTabletInsertionEvent);
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(
@@ -369,12 +369,12 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
 
   private void doTransferWrapper(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, TException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+        IoTDBLegacyPipeConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBLegacyPipeConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeTsFileInsertionEvent);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(

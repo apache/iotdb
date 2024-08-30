@@ -61,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
@@ -262,6 +263,7 @@ public class NodeManager {
           DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
       runtimeConfiguration.setTableInfo(
           getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
+      runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
@@ -315,8 +317,7 @@ public class NodeManager {
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    String clusterId = configManager.getClusterManager().getClusterId();
-    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
     return resp;
   }
 
@@ -360,7 +361,7 @@ public class NodeManager {
     }
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
     List<TConsensusGroupId> consensusGroupIds =
         getPartitionManager().getAllReplicaSets(nodeId).stream()
             .map(TRegionReplicaSet::getRegionId)
@@ -1102,6 +1103,10 @@ public class NodeManager {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
+  }
+
+  private ClusterManager getClusterManager() {
+    return configManager.getClusterManager();
   }
 
   private PartitionManager getPartitionManager() {

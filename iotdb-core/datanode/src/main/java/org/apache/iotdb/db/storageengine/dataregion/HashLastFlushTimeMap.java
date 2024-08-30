@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.storageengine.StorageEngine;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,22 +61,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
 
-  // For load
-  @Override
-  public void updateOneDeviceFlushedTime(long timePartitionId, IDeviceID deviceId, long time) {
-    ILastFlushTime flushTimeMapForPartition =
-        partitionLatestFlushedTime.computeIfAbsent(
-            timePartitionId, id -> new DeviceLastFlushTime());
-    long lastFlushTime = flushTimeMapForPartition.getLastFlushTime(deviceId);
-    if (lastFlushTime == Long.MIN_VALUE) {
-      long memCost = HASHMAP_NODE_BASIC_SIZE + deviceId.ramBytesUsed();
-      memCostForEachPartition.compute(
-          timePartitionId, (k1, v1) -> v1 == null ? memCost : v1 + memCost);
-    }
-    flushTimeMapForPartition.updateLastFlushTime(deviceId, time);
-  }
-
-  // For recover
+  // For sync recover resource without fileTimeIndexCache and load
   @Override
   public void updateMultiDeviceFlushedTime(
       long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
@@ -82,7 +69,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         partitionLatestFlushedTime.computeIfAbsent(
             timePartitionId, id -> new DeviceLastFlushTime());
 
-    long memIncr = 0;
+    long memIncr = 0L;
     for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
@@ -94,10 +81,60 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
         timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
   }
 
+  // For async recover resource with fileTimeIndexCache
   @Override
-  public void updateOneDeviceGlobalFlushedTime(IDeviceID path, long time) {
-    globalLatestFlushedTimeForEachDevice.compute(
-        path, (k, v) -> v == null ? time : Math.max(v, time));
+  public void upgradeAndUpdateMultiDeviceFlushedTime(
+      long timePartitionId, Map<IDeviceID, Long> flushedTimeMap) {
+    ILastFlushTime flushTimeMapForPartition =
+        partitionLatestFlushedTime.computeIfAbsent(
+            timePartitionId, id -> new DeviceLastFlushTime());
+    // upgrade DeviceLastFlushTime to PartitionLastFlushTime
+    if (flushTimeMapForPartition instanceof PartitionLastFlushTime) {
+      long maxFlushTime = flushTimeMapForPartition.getLastFlushTime(null);
+      ILastFlushTime newDeviceLastFlushTime = new DeviceLastFlushTime();
+      long memIncr = 0;
+      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+        memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
+        newDeviceLastFlushTime.updateLastFlushTime(entry.getKey(), entry.getValue());
+        maxFlushTime = Math.max(maxFlushTime, entry.getValue());
+      }
+      long finalMemIncr = memIncr;
+      memCostForEachPartition.compute(
+          timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
+    } else {
+      // go here when DeviceLastFlushTime was recovered by wal recovery
+      long memIncr = 0;
+      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+        if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
+          memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
+        }
+        flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
+      }
+      long finalMemIncr = memIncr;
+      memCostForEachPartition.compute(
+          timePartitionId, (k1, v1) -> v1 == null ? finalMemIncr : v1 + finalMemIncr);
+    }
+  }
+
+  // For fileTimeIndexCache recovered before the async resource recover start
+  @Override
+  public void updatePartitionFlushedTime(long timePartitionId, long maxFlushedTime) {
+    ILastFlushTime flushTimeMapForPartition =
+        partitionLatestFlushedTime.computeIfAbsent(
+            timePartitionId, id -> new PartitionLastFlushTime(maxFlushedTime));
+
+    if (flushTimeMapForPartition instanceof PartitionLastFlushTime) {
+      long memIncr = Long.BYTES;
+      flushTimeMapForPartition.updateLastFlushTime(null, maxFlushedTime);
+      memCostForEachPartition.putIfAbsent(timePartitionId, memIncr);
+    } else {
+      // go here when DeviceLastFlushTime was recovered by wal recovery
+      DeviceLastFlushTime deviceLastFlushTime = (DeviceLastFlushTime) flushTimeMapForPartition;
+      Map<IDeviceID, Long> flushedTimeMap = deviceLastFlushTime.getDeviceLastFlushTimeMap();
+      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+        flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
+      }
+    }
   }
 
   @Override
@@ -108,9 +145,14 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public boolean checkAndCreateFlushedTimePartition(long timePartitionId) {
+  public boolean checkAndCreateFlushedTimePartition(
+      long timePartitionId, boolean usingDeviceFlushTime) {
     if (!partitionLatestFlushedTime.containsKey(timePartitionId)) {
-      partitionLatestFlushedTime.put(timePartitionId, new DeviceLastFlushTime());
+      partitionLatestFlushedTime.put(
+          timePartitionId,
+          usingDeviceFlushTime
+              ? new DeviceLastFlushTime()
+              : new PartitionLastFlushTime(Long.MIN_VALUE));
       return false;
     }
     return true;
@@ -135,8 +177,14 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     return partitionLatestFlushedTime.get(timePartitionId).getLastFlushTime(deviceId);
   }
 
+  // This method is for creating last cache entry when insert
   @Override
   public long getGlobalFlushedTime(IDeviceID path) {
+    // If TsFileResource is not fully recovered, we should return Long.MAX_VALUE
+    // to avoid create Last cache entry
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      return Long.MAX_VALUE;
+    }
     return globalLatestFlushedTimeForEachDevice.getOrDefault(path, Long.MIN_VALUE);
   }
 
