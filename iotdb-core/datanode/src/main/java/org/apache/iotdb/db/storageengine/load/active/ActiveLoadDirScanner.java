@@ -121,8 +121,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       // Create directories if not exists
       listeningDirs.forEach(this::createDirectoriesIfNotExists);
 
-      ActiveLoadingFilesNumberMetricsSet.getInstance().updateListeningDirList(listeningDirs);
-      ActiveLoadingFilesSizeMetricsSet.getInstance().updateListeningDirList(listeningDirs);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updatePendingDirList(listeningDirs);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updatePendingDirList(listeningDirs);
     } catch (final Exception e) {
       LOGGER.warn(
           "Error occurred during hot reload active load dirs. "
@@ -174,15 +174,17 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
             });
 
         ActiveLoadingFilesNumberMetricsSet.getInstance()
-            .updateFileMetricInDir(dir, fileCountInDir[0]);
-        ActiveLoadingFilesSizeMetricsSet.getInstance().updateFileMetricInDir(dir, fileSizeInDir[0]);
+            .updatePendingFileCounterInDir(dir, fileCountInDir[0]);
+        ActiveLoadingFilesSizeMetricsSet.getInstance()
+            .updatePendingFileCounterInDir(dir, fileSizeInDir[0]);
 
         totalFileCount += fileCountInDir[0];
         totalFileSize += fileSizeInDir[0];
       }
 
-      ActiveLoadingFilesNumberMetricsSet.getInstance().updateFileMetricInTotal(totalFileCount);
-      ActiveLoadingFilesSizeMetricsSet.getInstance().updateFileMetricInTotal(totalFileSize);
+      ActiveLoadingFilesNumberMetricsSet.getInstance()
+          .updateTotalPendingFileCounter(totalFileCount);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalPendingFileCounter(totalFileSize);
     } catch (final IOException e) {
       LOGGER.debug("Failed to count active listening dirs file number.", e);
     }

@@ -285,8 +285,8 @@ public class ActiveLoadTsFileLoader {
             }
           });
 
-      ActiveLoadingFilesNumberMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
-      ActiveLoadingFilesSizeMetricsSet.getInstance().recordFailedFileCounter(fileSize[0]);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
       LOGGER.debug("Failed to count failed files in fail directory.", e);
     }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.metrics;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
@@ -30,12 +31,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 
-public abstract class ActiveLoadingFilesMetricsSet {
+public abstract class ActiveLoadingFilesMetricsSet implements IMetricSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadingFilesMetricsSet.class);
 
@@ -43,92 +45,120 @@ public abstract class ActiveLoadingFilesMetricsSet {
   protected static final String PENDING_PREFIX = "pending - ";
 
   protected AtomicReference<AbstractMetricService> metricService = new AtomicReference<>();
+
   private final AtomicReference<String> failedDir = new AtomicReference<>();
-  private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
+  private final Set<String> pendingDirs = new CopyOnWriteArraySet<>();
 
-  protected Counter pendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-  protected Counter failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-  protected Map<String, Counter> fileCounterMap = new ConcurrentHashMap<>();
+  protected Counter totalFailedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  protected Counter totalPendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  protected Map<String, Counter> dir2PendingFileCounterMap = new ConcurrentHashMap<>();
 
-  public void recordFailedFileCounter(final long number) {
-    failedFileCounter.inc(number - failedFileCounter.getCount());
+  public void updateTotalFailedFileCounter(final long number) {
+    totalFailedFileCounter.inc(number - totalFailedFileCounter.getCount());
   }
 
-  public void updateFileMetricInTotal(final long number) {
-    pendingFileCounter.inc(number - pendingFileCounter.getCount());
+  public void updateTotalPendingFileCounter(final long number) {
+    totalPendingFileCounter.inc(number - totalPendingFileCounter.getCount());
   }
 
-  public void updateFileMetricInDir(final String dirName, final long number) {
-    final Counter counter = fileCounterMap.get(dirName);
+  public void updatePendingFileCounterInDir(final String dirName, final long number) {
+    final Counter counter = dir2PendingFileCounterMap.get(dirName);
     if (counter == null) {
-      LOGGER.warn("Failed to update file counter, dir({}) does not exist", dirName);
+      LOGGER.debug("Failed to update file counter, dir({}) does not exist", dirName);
       return;
     }
     counter.inc(number - counter.getCount());
   }
 
-  public void updateListeningDirList(final Set<String> fileNameSet) {
-    if (fileNameSet.equals(listeningDirs)) {
+  public void updatePendingDirList(final Set<String> givenListeningDirs) {
+    if (metricService.get() == null || Objects.equals(pendingDirs, givenListeningDirs)) {
       return;
     }
-    if (metricService.get() == null) {
-      return;
-    }
-    listeningDirs.clear();
-    listeningDirs.addAll(fileNameSet);
-    unbindListeningDirsCounter(metricService.get());
-    rebindFileMapCounter();
+
+    pendingDirs.clear();
+    pendingDirs.addAll(givenListeningDirs);
+
+    unbindDir2PendingFileCounters(metricService.get());
+    rebindDir2PendingFileCounters();
   }
 
-  protected void unbindListeningDirsCounter(AbstractMetricService metricService) {
-    fileCounterMap
+  protected void unbindDir2PendingFileCounters(final AbstractMetricService metricService) {
+    dir2PendingFileCounterMap
         .keySet()
         .forEach(
-            fileName ->
+            dir ->
                 metricService.remove(
                     MetricType.COUNTER,
-                    getMetrics(),
+                    getMetricName(),
                     Tag.TYPE.toString(),
-                    PENDING_PREFIX + fileName));
+                    PENDING_PREFIX + dir));
+    dir2PendingFileCounterMap.clear();
   }
 
-  private void rebindFileMapCounter() {
-    fileCounterMap.clear();
-    if (!listeningDirs.isEmpty()) {
-      for (String fileName : listeningDirs) {
-        fileCounterMap.put(fileName, getOrCreateFileCounter(PENDING_PREFIX + fileName));
+  private void rebindDir2PendingFileCounters() {
+    dir2PendingFileCounterMap.clear();
+    if (!pendingDirs.isEmpty()) {
+      for (String dir : pendingDirs) {
+        dir2PendingFileCounterMap.put(
+            dir,
+            metricService
+                .get()
+                .getOrCreateCounter(
+                    getMetricName(),
+                    MetricLevel.IMPORTANT,
+                    Tag.TYPE.toString(),
+                    PENDING_PREFIX + dir));
       }
     }
   }
 
   public void updateFailedDir(final String dirName) {
-    if (dirName.equals(failedDir.get())) {
+    if (metricService.get() == null || Objects.equals(failedDir.get(), dirName)) {
       return;
     }
-    if (metricService.get() == null) {
-      return;
-    }
+
     failedDir.set(dirName);
+
     unbindFailedDirCounter(metricService.get());
-    failedFileCounter = getOrCreateFileCounter(FAILED_PREFIX + failedDir.get());
+    rebindFailedDirCounter();
   }
 
   protected void unbindFailedDirCounter(final AbstractMetricService metricService) {
-    failedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
-
+    totalFailedFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     metricService.remove(
-        MetricType.COUNTER, getMetrics(), Tag.TYPE.toString(), FAILED_PREFIX + failedDir.get());
+        MetricType.COUNTER, getMetricName(), Tag.TYPE.toString(), FAILED_PREFIX + failedDir.get());
   }
 
-  private Counter getOrCreateFileCounter(final String fileName) {
-    return metricService
-        .get()
-        .getOrCreateCounter(getMetrics(), MetricLevel.IMPORTANT, Tag.TYPE.toString(), fileName);
+  private void rebindFailedDirCounter() {
+    totalFailedFileCounter =
+        metricService
+            .get()
+            .getOrCreateCounter(
+                getMetricName(),
+                MetricLevel.IMPORTANT,
+                Tag.TYPE.toString(),
+                FAILED_PREFIX + failedDir.get());
   }
 
-  protected abstract void bindFileCounter(final AbstractMetricService metricService);
+  @Override
+  public void bindTo(final AbstractMetricService metricService) {
+    this.metricService.set(metricService);
 
-  protected abstract void unbindFileCounter(final AbstractMetricService metricService);
+    // Dir2PendingFileCounters' binding is triggered by updatePendingDirList
+    // FailedDirCounter's binding is triggered by updateFailedDir
+    bindOtherCounters(metricService);
+  }
 
-  protected abstract String getMetrics();
+  protected abstract void bindOtherCounters(final AbstractMetricService metricService);
+
+  @Override
+  public void unbindFrom(final AbstractMetricService metricService) {
+    unbindDir2PendingFileCounters(metricService);
+    unbindFailedDirCounter(metricService);
+    unbindOtherCounters(metricService);
+  }
+
+  protected abstract void unbindOtherCounters(final AbstractMetricService metricService);
+
+  protected abstract String getMetricName();
 }

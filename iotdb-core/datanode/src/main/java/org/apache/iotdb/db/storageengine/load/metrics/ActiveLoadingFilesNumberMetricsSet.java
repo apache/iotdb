@@ -23,45 +23,30 @@ import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetricsSet
-    implements IMetricSet {
-
-  private static final ActiveLoadingFilesNumberMetricsSet INSTANCE =
-      new ActiveLoadingFilesNumberMetricsSet();
+public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetricsSet {
 
   private static final String PENDING = "pending";
   private static final String QUEUING = "queuing";
   private static final String LOADING = "loading";
 
-  private ActiveLoadingFilesNumberMetricsSet() {
-    // empty construct
-  }
-
   private Counter queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
-  public void recordQueuingFileCounter(final long number) {
+  public void increaseQueuingFileCounter(final long number) {
     queuingFileCounter.inc(number);
   }
 
-  public void recordLoadingFileCounter(final long number) {
+  public void increaseLoadingFileCounter(final long number) {
     loadingFileCounter.inc(number);
   }
 
   @Override
-  public void bindTo(final AbstractMetricService metricService) {
-    this.metricService.set(metricService);
-    bindFileCounter(metricService);
-  }
-
-  @Override
-  protected void bindFileCounter(final AbstractMetricService metricService) {
-    pendingFileCounter =
+  protected void bindOtherCounters(final AbstractMetricService metricService) {
+    totalPendingFileCounter =
         metricService.getOrCreateCounter(
             Metric.ACTIVE_LOADING_FILES_NUMBER.toString(),
             MetricLevel.IMPORTANT,
@@ -82,15 +67,8 @@ public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetric
   }
 
   @Override
-  public void unbindFrom(final AbstractMetricService metricService) {
-    unbindFileCounter(metricService);
-    unbindListeningDirsCounter(metricService);
-    unbindFailedDirCounter(metricService);
-  }
-
-  @Override
-  protected void unbindFileCounter(final AbstractMetricService metricService) {
-    pendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
+  protected void unbindOtherCounters(final AbstractMetricService metricService) {
+    totalPendingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     queuingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
     loadingFileCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
@@ -112,11 +90,18 @@ public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetric
   }
 
   @Override
-  protected String getMetrics() {
+  protected String getMetricName() {
     return Metric.ACTIVE_LOADING_FILES_NUMBER.toString();
   }
 
   public static ActiveLoadingFilesNumberMetricsSet getInstance() {
     return ActiveLoadingFilesNumberMetricsSet.INSTANCE;
+  }
+
+  private static final ActiveLoadingFilesNumberMetricsSet INSTANCE =
+      new ActiveLoadingFilesNumberMetricsSet();
+
+  private ActiveLoadingFilesNumberMetricsSet() {
+    // empty construct
   }
 }
