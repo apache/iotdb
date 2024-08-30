@@ -27,11 +27,13 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.utils.Pair;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
@@ -50,14 +52,16 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
   @Test
   public void pipeReqAutoSliceTest() {
     try {
+      createTimeSeries();
       ISession senderSession = senderEnv.getSessionConnection();
       createPipe(senderSession);
-      Thread.sleep(1000);
+      Thread.sleep(2000);
       List<Pair<Long, Integer>> data = createTestDataForInt32();
       executeDataInsertions(senderSession, data);
       verify(data);
     } catch (Exception e) {
-
+      e.printStackTrace();
+      Assert.fail();
     }
   }
 
@@ -67,7 +71,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
         String.format(
             "create pipe test"
                 + " with source ('source'='iotdb-source','source.path'='root.test.**')"
-                + " with sink ('sink'='iotdb-thrift-sync-sink','node-urls'='%s:%s','batch.enable'='false'",
+                + " with sink ('sink'='iotdb-thrift-sync-sink','node-urls'='%s:%s','batch.enable'='false')",
             receiverEnv.getIP(), receiverEnv.getPort()));
   }
 
@@ -96,6 +100,15 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
       set.add(String.format("%d,%d,", pair.left, pair.right));
     }
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "select * form root.test.**", "time,root.test.db.status", set);
+        receiverEnv, "select * from root.test.**", "Time,root.test.db.status,", set);
+  }
+
+  private void createTimeSeries() {
+    String timeSeriesCreation =
+        String.format("create timeseries root.test.db.status with datatype=INT32,encoding=PLAIN");
+    TestUtils.tryExecuteNonQueriesWithRetry(
+        senderEnv, Collections.singletonList(timeSeriesCreation));
+    TestUtils.tryExecuteNonQueriesWithRetry(
+        receiverEnv, Collections.singletonList(timeSeriesCreation));
   }
 }
