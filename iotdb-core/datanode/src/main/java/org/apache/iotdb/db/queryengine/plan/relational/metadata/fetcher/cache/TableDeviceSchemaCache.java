@@ -272,11 +272,7 @@ public class TableDeviceSchemaCache {
    */
   public void invalidateLastCache(final String database, final String table) {
     dualKeyCache.update(
-        new TableId(database, table),
-        null,
-        new TableDeviceCacheEntry(),
-        entry -> -entry.invalidateLastCache(),
-        false);
+        new TableId(database, table), deviceId -> true, entry -> -entry.invalidateLastCache());
   }
 
   /**

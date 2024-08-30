@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -53,16 +54,17 @@ public interface IDualKeyCache<FK, SK, V> {
   void update(IDualKeyCacheUpdating<FK, SK, V> updating);
 
   /** put the cache value into cache */
-  void put(FK firstKey, SK secondKey, V value);
+  void put(final FK firstKey, final SK secondKey, final V value);
 
   /**
-   * Put the value to cache iff it does not exist, and update the existing value. This method will
-   * update all the {@link SK}s in the {@link FK} if the secondKey is {@code null}. The updater
-   * shall return the difference caused by the update, because we do not want to call
-   * "valueSizeComputer" twice, which may include abundant useless calculations.
+   * Update the existing value. The updater shall return the difference caused by the update,
+   * because we do not want to call "valueSizeComputer" twice, which may include abundant useless
+   * calculations.
    *
    * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
    * the concurrency safety for the value update.
+   *
+   * @param createIfNotExists put the value to cache iff it does not exist,
    */
   void update(
       final FK firstKey,
@@ -70,6 +72,16 @@ public interface IDualKeyCache<FK, SK, V> {
       final V value,
       final ToIntFunction<V> updater,
       final boolean createIfNotExists);
+
+  /**
+   * Update all the existing value with {@link SK} and a the {@link SK}s matching the given
+   * predicate. The updater shall return the difference caused by the update, because we do not want
+   * to call "valueSizeComputer" twice, which may include abundant useless calculations.
+   *
+   * <p>Warning: This method is without any locks for performance concerns. The caller shall ensure
+   * the concurrency safety for the value update.
+   */
+  void update(final FK firstKey, final Predicate<SK> secondKey, final ToIntFunction<V> updater);
 
   /**
    * Invalidate last cache in datanode schema cache. Do not invalidate time series cache.

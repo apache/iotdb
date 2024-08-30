@@ -250,6 +250,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
     }
   }
 
+  @Override
   public void update(
       final FK firstKey, final Predicate<SK> secondKeyMapper, final ToIntFunction<V> updater) {
     final AtomicInteger usedMemorySize = new AtomicInteger(0);

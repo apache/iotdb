@@ -241,7 +241,7 @@ public class TableDeviceSchemaCacheTest {
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {""},
-        new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
+        new TimeValuePair[] {new TimeValuePair(2L, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE)});
 
     result =
         cache.getLastRow(
@@ -329,7 +329,8 @@ public class TableDeviceSchemaCacheTest {
         convertIdValuesToDeviceID(table2, device0),
         new String[] {"", "s2"},
         new TimeValuePair[] {
-          new TimeValuePair(Long.MIN_VALUE, null), TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
+          new TimeValuePair(Long.MIN_VALUE, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
+          TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
         });
     result =
         cache.getLastRow(
