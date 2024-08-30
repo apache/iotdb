@@ -59,18 +59,6 @@ public class DeviceUsingTemplateSchemaCache {
     cache.put(path, new DeviceCacheEntry(database, id));
   }
 
-  public void invalidateCache() {
-    cache.invalidateAll();
-  }
-
-  public void invalidateCache(String database) {
-    for (PartialPath key : cache.asMap().keySet()) {
-      if (key.startsWith(database)) {
-        cache.invalidate(key);
-      }
-    }
-  }
-
   public void invalidateCache(List<? extends PartialPath> partialPathList) {
     for (PartialPath path : partialPathList) {
       for (PartialPath key : cache.asMap().keySet()) {

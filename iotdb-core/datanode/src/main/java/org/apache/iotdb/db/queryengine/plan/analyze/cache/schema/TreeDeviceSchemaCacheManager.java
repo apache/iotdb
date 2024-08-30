@@ -462,14 +462,7 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   public void invalidate(List<? extends PartialPath> partialPathList) {
-    boolean doPrecise = true;
-    for (PartialPath partialPath : partialPathList) {
-      if (partialPath.getDevicePath().hasWildcard()) {
-        doPrecise = false;
-        break;
-      }
-    }
-    if (doPrecise) {
+    if (partialPathList.stream().noneMatch(path -> path.getDevicePath().hasWildcard())) {
       deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
       timeSeriesSchemaCache.invalidate(partialPathList);
     } else {

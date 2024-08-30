@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,6 +47,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.ToIntFunction;
 
 /**
  * The {@link TableDeviceSchemaCache} caches some of the devices and their attributes of tables.
@@ -129,7 +132,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
-        new TableDeviceCacheEntry(),
+        null,
         entry -> entry.updateAttribute(database, deviceId.getTableName(), attributeMap),
         false);
   }
@@ -150,7 +153,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
-        new TableDeviceCacheEntry(),
+        null,
         entry -> -entry.invalidateAttribute(),
         false);
   }
@@ -213,7 +216,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
-        new TableDeviceCacheEntry(),
+        null,
         entry -> entry.tryUpdateLastCache(measurements, timeValuePairs),
         false);
   }
@@ -282,7 +285,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
-        new TableDeviceCacheEntry(),
+        null,
         entry -> -entry.invalidateLastCache(),
         false);
   }
@@ -301,7 +304,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(devicePath[1], deviceID.getTableName()),
         deviceID,
-        new TableDeviceCacheEntry(),
+        null,
         entry ->
             entry.setMeasurementSchema(
                 Objects.nonNull(previousDatabase) ? previousDatabase : database,
@@ -348,7 +351,7 @@ public class TableDeviceSchemaCache {
     dualKeyCache.update(
         new TableId(database, deviceId.getTableName()),
         deviceId,
-        new TableDeviceCacheEntry(),
+        null,
         entry ->
             entry.tryUpdateLastCache(measurements, timeValuePairs)
                 + entry.setMeasurementSchema(
@@ -356,10 +359,26 @@ public class TableDeviceSchemaCache {
                     isAligned,
                     measurements,
                     measurementSchemas),
-        true);
+        false);
   }
 
-  /////////////////////////////// Common ///////////////////////////////
+  public void invalidateLastCache(final PartialPath devicePath, final String measurement) {
+    final ToIntFunction<TableDeviceCacheEntry> updateFunction =
+        PathPatternUtil.hasWildcard(measurement)
+            ? entry -> -entry.invalidateLastCache()
+            : entry -> -entry.invalidateLastCache(measurement);
+
+    if (!devicePath.hasWildcard()) {
+      final String[] nodes = devicePath.getNodes();
+      final IDeviceID deviceID =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
+      dualKeyCache.update(
+          new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
+    }
+  }
+
+  /////////////////////////////// Management  ///////////////////////////////
 
   public long getHitCount() {
     return dualKeyCache.stats().hitCount();

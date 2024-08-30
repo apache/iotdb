@@ -153,6 +153,12 @@ public class TableDeviceCacheEntry {
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
+  int invalidateLastCache(final String measurement) {
+    final TableDeviceLastCache cache = lastCache.get();
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
+    return Objects.nonNull(lastCache.get()) ? result : 0;
+  }
+
   TimeValuePair getTimeValuePair(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;

@@ -154,6 +154,12 @@ public class TableDeviceLastCache {
     return diff.get();
   }
 
+  int invalidate(final String measurement) {
+    return 2 * (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+        + measurement2CachedLastMap.remove(measurement).getSize()
+        + measurement2CachedLastMap.remove("").getSize();
+  }
+
   @Nullable
   TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
     return measurement2CachedLastMap.get(measurement);
