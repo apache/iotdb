@@ -102,6 +102,9 @@ public enum ThreadName {
   PIPE_CONSENSUS_RPC_SERVICE("PipeConsensusRPC-Service"),
   PIPE_CONSENSUS_RPC_PROCESSOR("PipeConsensusRPC-Processor"),
   ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL("AsyncDataNodePipeConsensusServiceClientPool"),
+  PIPE_CONSENSUS_DELETION_SERIALIZE("WAL-Serialize"),
+  PIPE_CONSENSUS_DELETION_SYNC("WAL-Sync"),
+  PIPE_CONSENSUS_DELETION_DELETE("WAL-Delete"),
 
   // -------------------------- IoTConsensus --------------------------
   IOT_CONSENSUS_RPC_SERVICE("IoTConsensusRPC-Service"),
