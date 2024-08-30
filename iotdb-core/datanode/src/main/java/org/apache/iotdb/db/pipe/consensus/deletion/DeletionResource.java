@@ -79,6 +79,10 @@ public class DeletionResource {
     return ((DeleteDataNode) deletionEvent.getPlanNode()).getProgressIndex();
   }
 
+  public PipeSchemaRegionWritePlanEvent getDeletionEvent() {
+    return deletionEvent;
+  }
+
   public ByteBuffer serialize() {
     return deletionEvent.serializeToByteBuffer();
   }

@@ -104,7 +104,7 @@ public class DeletionBuffer implements AutoCloseable {
   }
 
   public void start() {
-    // start receiving serialize tasks
+    // Start serialize and sync pipeline.
     serializeThread.submit(new SerializeTask());
   }
 
