@@ -28,7 +28,7 @@ import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesOperator
+public class ActiveLoadingFilesNumberMetricsSet extends ActiveLoadingFilesMetricsSet
     implements IMetricSet {
 
   private static final ActiveLoadingFilesNumberMetricsSet INSTANCE =

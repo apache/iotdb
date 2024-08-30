@@ -35,9 +35,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicReference;
 
-public abstract class ActiveLoadingFilesOperator {
+public abstract class ActiveLoadingFilesMetricsSet {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadingFilesOperator.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadingFilesMetricsSet.class);
 
   protected static final String FAILED_PREFIX = "failed - ";
   protected static final String PENDING_PREFIX = "pending - ";

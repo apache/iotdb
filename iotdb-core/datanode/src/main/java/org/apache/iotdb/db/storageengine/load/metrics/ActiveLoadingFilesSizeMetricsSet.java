@@ -27,7 +27,7 @@ import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 
-public class ActiveLoadingFilesSizeMetricsSet extends ActiveLoadingFilesOperator
+public class ActiveLoadingFilesSizeMetricsSet extends ActiveLoadingFilesMetricsSet
     implements IMetricSet {
 
   private static final ActiveLoadingFilesSizeMetricsSet INSTANCE =
