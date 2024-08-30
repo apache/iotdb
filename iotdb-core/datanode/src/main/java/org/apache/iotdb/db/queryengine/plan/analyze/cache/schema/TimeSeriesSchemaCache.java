@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 
@@ -66,45 +65,6 @@ public class TimeSeriesSchemaCache {
             .secondKeySizeComputer(s -> 32 + 2 * s.length())
             .valueSizeComputer(SchemaCacheEntry::estimateSize)
             .build();
-  }
-
-  public long getHitCount() {
-    return dualKeyCache.stats().hitCount();
-  }
-
-  public long getRequestCount() {
-    return dualKeyCache.stats().requestCount();
-  }
-
-  public List<Integer> computeAndRecordLogicalView(ISchemaComputation schemaComputation) {
-    List<Integer> indexOfMissingMeasurements = new ArrayList<>();
-    final AtomicBoolean isFirstNonViewMeasurement = new AtomicBoolean(true);
-    dualKeyCache.compute(
-        new IDualKeyCacheComputation<PartialPath, String, SchemaCacheEntry>() {
-          @Override
-          public PartialPath getFirstKey() {
-            return schemaComputation.getDevicePath();
-          }
-
-          @Override
-          public String[] getSecondKeyList() {
-            return schemaComputation.getMeasurements();
-          }
-
-          @Override
-          public void computeValue(int index, SchemaCacheEntry value) {
-            if (value == null) {
-              indexOfMissingMeasurements.add(index);
-            } else {
-              if (isFirstNonViewMeasurement.get() && (!value.isLogicalView())) {
-                schemaComputation.computeDevice(value.isAligned());
-                isFirstNonViewMeasurement.getAndSet(false);
-              }
-              schemaComputation.computeMeasurement(index, value);
-            }
-          }
-        });
-    return indexOfMissingMeasurements;
   }
 
   public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(

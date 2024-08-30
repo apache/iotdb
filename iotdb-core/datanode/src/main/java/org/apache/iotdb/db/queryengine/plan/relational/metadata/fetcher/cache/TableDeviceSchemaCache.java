@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TableDeviceSchemaCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
@@ -324,6 +325,11 @@ public class TableDeviceSchemaCache {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(devicePath[1], deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
+  }
+
+  public void compute(
+      final IDualKeyCacheComputation<TableId, IDeviceID, TableDeviceCacheEntry> computation) {
+    dualKeyCache.compute(computation);
   }
 
   /////////////////////////////// Common ///////////////////////////////

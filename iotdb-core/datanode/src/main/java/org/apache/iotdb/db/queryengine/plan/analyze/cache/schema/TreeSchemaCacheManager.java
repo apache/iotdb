@@ -50,6 +50,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
@@ -184,10 +185,35 @@ public class TreeSchemaCacheManager {
     return tree;
   }
 
-  public List<Integer> computeWithoutTemplate(ISchemaComputation schemaComputation) {
-    List<Integer> result = timeSeriesSchemaCache.computeAndRecordLogicalView(schemaComputation);
+  public List<Integer> computeWithoutTemplate(final ISchemaComputation schemaComputation) {
+    final List<Integer> indexOfMissingMeasurements = new ArrayList<>();
+    final AtomicBoolean isFirstNonViewMeasurement = new AtomicBoolean(true);
+    final String[] measurements = schemaComputation.getMeasurements();
+
+    final IDeviceSchema schema =
+        tableDeviceSchemaCache.getDeviceSchema(schemaComputation.getDevicePath().getNodes());
+    if (!(schema instanceof TreeDeviceNormalSchema)) {
+      for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
+        indexOfMissingMeasurements.add(i);
+      }
+      return indexOfMissingMeasurements;
+    }
+    final TreeDeviceNormalSchema treeSchema = (TreeDeviceNormalSchema) schema;
+
+    for (int i = 0; i < schemaComputation.getMeasurements().length; i++) {
+      final SchemaCacheEntry value = treeSchema.getSchemaCacheEntry(measurements[i]);
+      if (value == null) {
+        indexOfMissingMeasurements.add(i);
+      } else {
+        if (isFirstNonViewMeasurement.get() && (!value.isLogicalView())) {
+          schemaComputation.computeDevice(value.isAligned());
+          isFirstNonViewMeasurement.getAndSet(false);
+        }
+        schemaComputation.computeMeasurement(i, value);
+      }
+    }
     schemaComputation.recordRangeOfLogicalViewSchemaListNow();
-    return result;
+    return indexOfMissingMeasurements;
   }
 
   /**
@@ -420,6 +446,11 @@ public class TreeSchemaCacheManager {
     } finally {
       releaseReadLock();
     }
+  }
+
+  private IDeviceID convertNodes2IDeviceID(final String[] deviceNodes) {
+    return IDeviceID.Factory.DEFAULT_FACTORY.create(
+        StringArrayDeviceID.splitDeviceIdString(deviceNodes));
   }
 
   public void invalidate(String database) {
