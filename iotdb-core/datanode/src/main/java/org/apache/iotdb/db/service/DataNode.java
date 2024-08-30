@@ -176,10 +176,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public static void reinitializeStatics() {
     registerManager = new RegisterManager();
     DataNodeSystemPropertiesHandler.getInstance()
-        .resetFilePath(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-                + File.separator
-                + PROPERTIES_FILE_NAME);
+        .resetFilePath(config.getSystemDir() + File.separator + PROPERTIES_FILE_NAME);
   }
 
   private static RegisterManager registerManager = new RegisterManager();
@@ -448,7 +445,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     initTTLInformation(runtimeConfiguration.getAllTTLInformation());
 
     /* Store cluster ID */
-    IoTDBDescriptor.getInstance().getConfig().setClusterId(runtimeConfiguration.getClusterId());
+    String clusterId = runtimeConfiguration.getClusterId();
+    storeClusterID(clusterId);
   }
 
   /**
@@ -523,28 +521,51 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
-    List<ConsensusGroupId> invalidConsensusGroupIds =
+    List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
-    if (!invalidConsensusGroupIds.isEmpty()) {
-      logger.info("Remove invalid region directories... {}", invalidConsensusGroupIds);
-      for (ConsensusGroupId consensusGroupId : invalidConsensusGroupIds) {
-        File oldDir =
-            new File(
-                DataRegionConsensusImpl.getInstance()
-                    .getRegionDirFromConsensusGroupId(consensusGroupId));
-        if (oldDir.exists()) {
-          try {
-            FileUtils.recursivelyDeleteFolder(oldDir.getPath());
-            logger.info("delete {} succeed.", oldDir.getAbsolutePath());
-          } catch (IOException e) {
-            logger.error("delete {} failed.", oldDir.getAbsolutePath());
-          }
-        } else {
-          logger.info("delete {} failed, because it does not exist.", oldDir.getAbsolutePath());
-        }
+
+    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
+        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList());
+    removeInvalidDataRegions(invalidDataRegionConsensusGroupIds);
+    removeInvalidSchemaRegions(invalidSchemaRegionConsensusGroupIds);
+  }
+
+  private void removeInvalidDataRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
+    logger.info("Remove invalid dataRegion directories... {}", invalidConsensusGroupId);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+      File oldDir =
+          new File(
+              DataRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
+      removeRegionsDir(oldDir);
+    }
+  }
+
+  private void removeInvalidSchemaRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
+    logger.info("Remove invalid schemaRegion directories... {}", invalidConsensusGroupId);
+    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+      File oldDir =
+          new File(
+              SchemaRegionConsensusImpl.getInstance()
+                  .getRegionDirFromConsensusGroupId(consensusGroupId));
+      removeRegionsDir(oldDir);
+    }
+  }
+
+  private void removeRegionsDir(File regionDir) {
+    if (regionDir.exists()) {
+      try {
+        FileUtils.recursivelyDeleteFolder(regionDir.getPath());
+        logger.info("delete {} succeed.", regionDir.getAbsolutePath());
+      } catch (IOException e) {
+        logger.error("delete {} failed.", regionDir.getAbsolutePath());
       }
+    } else {
+      logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
   }
 
@@ -558,6 +579,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         config.getClusterName() == null ? DEFAULT_CLUSTER_NAME : config.getClusterName());
     req.setDataNodeConfiguration(generateDataNodeConfiguration());
     req.setVersionInfo(new TNodeVersionInfo(IoTDBConstant.VERSION, IoTDBConstant.BUILD_INFO));
+    req.setClusterId(config.getClusterId());
     TDataNodeRestartResp dataNodeRestartResp = null;
     while (retry > 0) {
       try (ConfigNodeClient configNodeClient =
@@ -723,6 +745,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
+    // Start InternalRPCService to indicate that the current DataNode can accept request from AINode
+    if (config.isEnableAINodeService()) {
+      registerManager.register(AINodeRPCService.getInstance());
+    }
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because
@@ -1047,6 +1073,17 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       } catch (IllegalPathException e) {
         throw new StartupException(e);
       }
+    }
+  }
+
+  private void storeClusterID(String clusterID) throws StartupException {
+    try {
+      if (config.getClusterId().isEmpty()) {
+        config.setClusterId(clusterID);
+        IoTDBStartCheck.getInstance().serializeClusterID(clusterID);
+      }
+    } catch (IOException e) {
+      throw new StartupException(e);
     }
   }
 

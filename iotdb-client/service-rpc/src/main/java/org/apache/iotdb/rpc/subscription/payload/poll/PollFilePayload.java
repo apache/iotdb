@@ -28,18 +28,14 @@ import java.util.Objects;
 
 public class PollFilePayload implements SubscriptionPollPayload {
 
-  private transient String topicName;
+  /** The commit context associated with the {@link SubscriptionPollResponse}. */
+  private transient SubscriptionCommitContext commitContext;
 
-  private transient String fileName;
-
+  /** The offset from which the file content should be read. */
   private transient long writingOffset;
 
-  public String getTopicName() {
-    return topicName;
-  }
-
-  public String getFileName() {
-    return fileName;
+  public SubscriptionCommitContext getCommitContext() {
+    return commitContext;
   }
 
   public long getWritingOffset() {
@@ -48,23 +44,20 @@ public class PollFilePayload implements SubscriptionPollPayload {
 
   public PollFilePayload() {}
 
-  public PollFilePayload(final String topicName, final String fileName, final long writingOffset) {
-    this.topicName = topicName;
-    this.fileName = fileName;
+  public PollFilePayload(final SubscriptionCommitContext commitContext, final long writingOffset) {
+    this.commitContext = commitContext;
     this.writingOffset = writingOffset;
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(topicName, stream);
-    ReadWriteIOUtils.write(fileName, stream);
+    commitContext.serialize(stream);
     ReadWriteIOUtils.write(writingOffset, stream);
   }
 
   @Override
   public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
-    topicName = ReadWriteIOUtils.readString(buffer);
-    fileName = ReadWriteIOUtils.readString(buffer);
+    commitContext = SubscriptionCommitContext.deserialize(buffer);
     writingOffset = ReadWriteIOUtils.readLong(buffer);
     return this;
   }
@@ -80,22 +73,19 @@ public class PollFilePayload implements SubscriptionPollPayload {
       return false;
     }
     final PollFilePayload that = (PollFilePayload) obj;
-    return Objects.equals(this.topicName, that.topicName)
-        && Objects.equals(this.fileName, that.fileName)
+    return Objects.equals(this.commitContext, that.commitContext)
         && Objects.equals(this.writingOffset, that.writingOffset);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicName, fileName, writingOffset);
+    return Objects.hash(commitContext, writingOffset);
   }
 
   @Override
   public String toString() {
-    return "PollFilePayload{topicName="
-        + topicName
-        + ", fileName="
-        + fileName
+    return "PollFilePayload{commitContext="
+        + commitContext
         + ", writingOffset="
         + writingOffset
         + "}";

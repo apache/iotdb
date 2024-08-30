@@ -37,4 +37,12 @@
         <module>metrics</module>
         <module>node-commons</module>
     </modules>
+    <profiles>
+        <profile>
+            <id>with-ainode</id>
+            <modules>
+                <module>ainode</module>
+            </modules>
+        </profile>
+    </profiles>
 </project>

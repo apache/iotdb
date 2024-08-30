@@ -129,6 +129,10 @@ CACHE
     : C A C H E
     ;
 
+CALL
+    : C A L L
+    ;
+
 CAST
     : C A S T
     ;
@@ -358,6 +362,10 @@ HAVING
     : H A V I N G
     ;
 
+HEAD
+    : H E A D
+    ;
+
 HYPERPARAMETERS
     : H Y P E R P A R A M E T E R S
     ;
@@ -368,6 +376,10 @@ IN
 
 INDEX
     : I N D E X
+    ;
+
+INFERENCE
+    : I N F E R E N C E
     ;
 
 INFO
@@ -448,6 +460,18 @@ METADATA
 
 MIGRATE
     : M I G R A T E
+    ;
+
+AINODES
+    : A I N O D E S
+    ;
+
+MODEL
+    : M O D E L
+    ;
+
+MODELS
+    : M O D E L S
     ;
 
 MODIFY
@@ -764,6 +788,10 @@ SYSTEM
 
 TAGS
     : T A G S
+    ;
+
+TAIL
+    : T A I L
     ;
 
 TASK

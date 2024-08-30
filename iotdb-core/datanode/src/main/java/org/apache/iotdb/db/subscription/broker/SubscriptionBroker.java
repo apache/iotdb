@@ -34,6 +34,9 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TerminationPayload;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +47,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -60,11 +65,19 @@ public class SubscriptionBroker {
   // The subscription pipe that was restarted should reuse the previous commit ID.
   private final Map<String, AtomicLong> topicNameToCommitIdGenerator;
 
+  private final LoadingCache<String, SubscriptionStates> consumerIdToSubscriptionStates;
+
   public SubscriptionBroker(final String brokerId) {
     this.brokerId = brokerId;
     this.topicNameToPrefetchingQueue = new ConcurrentHashMap<>();
     this.completedTopicNames = new ConcurrentHashMap<>();
     this.topicNameToCommitIdGenerator = new ConcurrentHashMap<>();
+
+    this.consumerIdToSubscriptionStates =
+        Caffeine.newBuilder()
+            // TODO: config
+            .expireAfterAccess(60L, TimeUnit.SECONDS)
+            .build(consumerId -> new SubscriptionStates());
   }
 
   public boolean isEmpty() {
@@ -75,7 +88,8 @@ public class SubscriptionBroker {
 
   //////////////////////////// provided for SubscriptionBrokerAgent ////////////////////////////
 
-  public List<SubscriptionEvent> poll(final String consumerId, final Set<String> topicNames) {
+  public List<SubscriptionEvent> poll(
+      final String consumerId, final Set<String> topicNames, final long maxBytes) {
     final List<SubscriptionEvent> events = new ArrayList<>();
     for (final String topicName : topicNames) {
       final SubscriptionPrefetchingQueue prefetchingQueue =
@@ -119,14 +133,24 @@ public class SubscriptionBroker {
         events.add(event);
       }
     }
-    return events;
+
+    final Pair<List<SubscriptionEvent>, List<SubscriptionEvent>> eventsToPollWithEventsToNack =
+        Objects.requireNonNull(consumerIdToSubscriptionStates.get(consumerId))
+            .filter(events, maxBytes);
+    commit(
+        consumerId,
+        eventsToPollWithEventsToNack.right.stream()
+            .map(SubscriptionEvent::getCommitContext)
+            .collect(Collectors.toList()),
+        true);
+    return eventsToPollWithEventsToNack.left;
   }
 
   public List<SubscriptionEvent> pollTsFile(
       final String consumerId,
-      final String topicName,
-      final String fileName,
+      final SubscriptionCommitContext commitContext,
       final long writingOffset) {
+    final String topicName = commitContext.getTopicName();
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -154,9 +178,50 @@ public class SubscriptionBroker {
     }
     final SubscriptionEvent event =
         ((SubscriptionPrefetchingTsFileQueue) prefetchingQueue)
-            .pollTsFile(consumerId, fileName, writingOffset);
-    // Only one SubscriptionEvent polled currently...
-    return Collections.singletonList(event);
+            .pollTsFile(consumerId, commitContext, writingOffset);
+    if (Objects.nonNull(event)) {
+      // only one SubscriptionEvent polled currently
+      return Collections.singletonList(event);
+    }
+    return Collections.emptyList();
+  }
+
+  public List<SubscriptionEvent> pollTablets(
+      final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
+    final String topicName = commitContext.getTopicName();
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] does not exist",
+              topicName, brokerId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    if (!(prefetchingQueue instanceof SubscriptionPrefetchingTabletQueue)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: prefetching queue bound to topic [%s] for consumer group [%s] is invalid",
+              topicName, brokerId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    if (prefetchingQueue.isClosed()) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          topicName,
+          brokerId);
+      return Collections.emptyList();
+    }
+    final SubscriptionEvent event =
+        ((SubscriptionPrefetchingTabletQueue) prefetchingQueue)
+            .pollTablets(consumerId, commitContext, offset);
+    if (Objects.nonNull(event)) {
+      // only one SubscriptionEvent polled currently
+      return Collections.singletonList(event);
+    }
+    return Collections.emptyList();
   }
 
   /**
@@ -255,7 +320,7 @@ public class SubscriptionBroker {
     }
 
     // clean up events in prefetching queue
-    prefetchingQueue.cleanup();
+    prefetchingQueue.cleanUp();
 
     // deregister metrics
     SubscriptionPrefetchingQueueMetrics.getInstance()

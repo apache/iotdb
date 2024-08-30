@@ -114,7 +114,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.10</milo.version>
+        <milo.version>0.6.14</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
@@ -154,7 +154,7 @@
         <spotless.skip>false</spotless.skip>
         <spotless.version>2.43.0</spotless.version>
         <!-- This was the last version to support Java 8 -->
-        <swagger.version>1.6.11</swagger.version>
+        <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
         <!--
@@ -166,7 +166,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>1.1.0-86d5641f-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.1.0-1fd60299-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -1354,7 +1354,7 @@
                     <execution>
                         <id>create-source-package</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                         <phase>package</phase>
                     </execution>
@@ -1426,6 +1426,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1441,6 +1443,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1456,6 +1460,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1471,6 +1477,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1486,6 +1494,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-x86_64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1501,6 +1511,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-aarch64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1629,7 +1641,7 @@
                                 <phase>generate-sources</phase>
                                 <configuration>
                                     <generator>py</generator>
-                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift</includes>
+                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/ainode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>

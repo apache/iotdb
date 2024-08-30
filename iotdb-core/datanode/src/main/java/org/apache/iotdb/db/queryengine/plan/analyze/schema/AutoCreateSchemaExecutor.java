@@ -500,8 +500,8 @@ class AutoCreateSchemaExecutor {
 
   // Auto create timeseries and return the existing timeseries info
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
-      Statement statement, MPPQueryContext context) {
-    TSStatus status =
+      final Statement statement, final MPPQueryContext context) {
+    final TSStatus status =
         AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
@@ -509,7 +509,7 @@ class AutoCreateSchemaExecutor {
 
     ExecutionResult executionResult = executeStatement(statement, context);
 
-    int statusCode = executionResult.status.getCode();
+    final int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return Collections.emptyList();
     }
@@ -519,19 +519,23 @@ class AutoCreateSchemaExecutor {
           new IoTDBException(executionResult.status.getMessage(), statusCode));
     }
 
-    Set<String> failedCreationSet = new HashSet<>();
-    List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
-    for (TSStatus subStatus : executionResult.status.subStatus) {
+    final Set<TSStatus> failedCreationSet = new HashSet<>();
+    final List<MeasurementPath> alreadyExistingMeasurements = new ArrayList<>();
+    for (final TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
             MeasurementPath.parseDataFromString(subStatus.getMessage()));
       } else {
-        failedCreationSet.add(subStatus.message);
+        failedCreationSet.add(subStatus);
       }
     }
 
     if (!failedCreationSet.isEmpty()) {
-      throw new SemanticException(new MetadataException(String.join("; ", failedCreationSet)));
+      throw new SemanticException(
+          new MetadataException(
+              failedCreationSet.stream()
+                  .map(TSStatus::toString)
+                  .collect(Collectors.joining("; "))));
     }
 
     return alreadyExistingMeasurements;

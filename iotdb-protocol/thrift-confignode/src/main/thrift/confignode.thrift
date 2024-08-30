@@ -126,6 +126,7 @@ struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
 }
 
 struct TDataNodeRestartResp {
@@ -513,8 +514,9 @@ struct TShowClusterResp {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
-  4: required map<i32, string> nodeStatus
-  5: required map<i32, TNodeVersionInfo> nodeVersionInfo
+  4: required list<common.TAINodeLocation> aiNodeList
+  5: required map<i32, string> nodeStatus
+  6: required map<i32, TNodeVersionInfo> nodeVersionInfo
 }
 
 struct TGetClusterIdResp {
@@ -547,9 +549,21 @@ struct TDataNodeInfo {
   7: optional i32 cpuCoreNum
 }
 
+struct TAINodeInfo{
+  1: required i32 aiNodeId
+  2: required string status
+  3: required string internalAddress
+  4: required i32 internalPort
+}
+
 struct TShowDataNodesResp {
   1: required common.TSStatus status
   2: optional list<TDataNodeInfo> dataNodesInfoList
+}
+
+struct TShowAINodesResp {
+  1: required common.TSStatus status
+  2: optional list<TAINodeInfo> aiNodesInfoList
 }
 
 // Show confignodes
@@ -907,6 +921,34 @@ struct TUnsetSchemaTemplateReq {
   4: optional bool isGeneratedByPipe
 }
 
+struct TCreateModelReq {
+  1: required string modelName
+  2: required string uri
+}
+
+struct TDropModelReq {
+  1: required string modelId
+}
+
+struct TShowModelReq {
+  1: optional string modelId
+}
+
+struct TShowModelResp {
+  1: required common.TSStatus status
+  2: required list<binary> modelInfoList
+}
+
+struct TGetModelInfoReq {
+  1: required string modelId
+}
+
+struct TGetModelInfoResp {
+  1: required common.TSStatus status
+  2: optional binary modelInfo
+  3: optional common.TEndPoint aiNodeAddress
+}
+
 // ====================================================
 // Quota
 // ====================================================
@@ -935,6 +977,44 @@ struct TLicenseContentResp {
 
 enum TActivationControl {
   ALL_LICENSE_FILE_DELETED
+}
+
+// ====================================================
+// AINode
+// ====================================================
+
+struct TAINodeConfigurationResp {
+  1: required common.TSStatus status
+  2: optional map<i32, common.TAINodeConfiguration> aiNodeConfigurationMap
+}
+
+
+struct TAINodeRegisterReq{
+  1: required string clusterName
+  2: required common.TAINodeConfiguration aiNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
+}
+
+struct TAINodeRegisterResp{
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: optional i32 aiNodeId
+}
+
+struct TAINodeRestartReq{
+  1: required string clusterName
+  2: required common.TAINodeConfiguration aiNodeConfiguration
+  3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
+}
+
+struct TAINodeRestartResp{
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+}
+
+struct TAINodeRemoveReq{
+  1: required common.TAINodeLocation aiNodeLocation
 }
 
 // ====================================================
@@ -977,6 +1057,24 @@ service IConfigNodeRPCService {
    *                           and a detailed error message will be returned.
    */
   TDataNodeRestartResp restartDataNode(TDataNodeRestartReq req)
+
+
+   // ======================================================
+   // AINode
+   // ======================================================
+
+  /**
+  * node management for ainode, it's similar to datanode above
+  */
+  TAINodeRegisterResp registerAINode(TAINodeRegisterReq req)
+
+  TAINodeRestartResp restartAINode(TAINodeRestartReq req)
+
+  common.TSStatus removeAINode(TAINodeRemoveReq req)
+
+  TShowAINodesResp showAINodes()
+
+  TAINodeConfigurationResp getAINodeConfiguration(i32 aiNodeId)
 
   /**
    * Get system configurations. i.e. configurations that is not associated with the DataNodeId
@@ -1593,6 +1691,34 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // AI Model
+  // ====================================================
+
+  /**
+   * Create a model
+   *
+   * @return SUCCESS_STATUS if the model was created successfully
+   */
+  common.TSStatus createModel(TCreateModelReq req)
+
+  /**
+   * Drop a model
+   *
+   * @return SUCCESS_STATUS if the model was removed successfully
+   */
+  common.TSStatus dropModel(TDropModelReq req)
+
+  /**
+   * Return the model table
+   */
+  TShowModelResp showModel(TShowModelReq req)
+
+   /**
+   * Return the model info by model_id
+   */
+  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
 
   // ======================================================
   // Quota

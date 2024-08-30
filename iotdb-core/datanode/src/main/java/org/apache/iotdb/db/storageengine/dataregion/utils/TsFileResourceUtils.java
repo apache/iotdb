@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
@@ -67,6 +68,9 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileResourceCorrectness(TsFileResource resource) {
+    if (resource.isDeleted()) {
+      return true;
+    }
     DeviceTimeIndex timeIndex;
     try {
       if (resource.getTimeIndexType() != 1) {
@@ -148,7 +152,8 @@ public class TsFileResourceUtils {
         return false;
       }
 
-      List<long[]> alignedTimeBatch = new ArrayList<>();
+      List<List<long[]>> alignedTimeBatches = new ArrayList<>();
+      Map<String, Integer> valueColumn2TimeBatchIndex = new HashMap<>();
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       int pageIndex = 0;
       byte marker;
@@ -170,6 +175,17 @@ public class TsFileResourceUtils {
               return false;
             }
 
+            String measurement = header.getMeasurementID();
+            List<long[]> alignedTimeBatch = null;
+            if (header.getDataType() == TSDataType.VECTOR) {
+              alignedTimeBatch = new ArrayList<>();
+              alignedTimeBatches.add(alignedTimeBatch);
+            } else if (marker == MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER
+                || marker == MetaMarker.VALUE_CHUNK_HEADER) {
+              int timeBatchIndex = valueColumn2TimeBatchIndex.getOrDefault(measurement, 0);
+              valueColumn2TimeBatchIndex.put(measurement, timeBatchIndex + 1);
+              alignedTimeBatch = alignedTimeBatches.get(timeBatchIndex);
+            }
             // empty value chunk
             int dataSize = header.getDataSize();
             if (dataSize == 0) {
@@ -186,9 +202,6 @@ public class TsFileResourceUtils {
 
             pageIndex = 0;
 
-            if (header.getDataType() == TSDataType.VECTOR) {
-              alignedTimeBatch.clear();
-            }
             LinkedList<Long> lastNoAlignedPageTimeStamps = new LinkedList<>();
             while (dataSize > 0) {
               valueDecoder.reset();
@@ -273,6 +286,8 @@ public class TsFileResourceUtils {
 
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
+            valueColumn2TimeBatchIndex.clear();
+            alignedTimeBatches.clear();
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             if (chunkGroupHeader.getDeviceID() == null
                 || chunkGroupHeader.getDeviceID().isEmpty()) {
@@ -362,7 +377,7 @@ public class TsFileResourceUtils {
       if (resource.getTimeIndexType() != 1) {
         // if time index is not device time index, then deserialize it from resource file
         try {
-          timeIndex = resource.buildDeviceTimeIndex();
+          timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
         } catch (IOException e) {
           // skip such files
           continue;

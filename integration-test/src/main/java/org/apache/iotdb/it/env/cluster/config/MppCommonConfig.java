@@ -124,11 +124,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
     setProperty(
-        "max_inner_compaction_candidate_file_num",
-        String.valueOf(maxInnerCompactionCandidateFileNum));
+        "inner_compaction_candidate_file_num", String.valueOf(maxInnerCompactionCandidateFileNum));
     return this;
   }
 

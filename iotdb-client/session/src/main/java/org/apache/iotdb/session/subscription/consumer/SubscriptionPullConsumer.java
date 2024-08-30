@@ -151,15 +151,39 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return poll(topicNames, timeout.toMillis());
   }
 
-  @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
     // parse topic names from external source
-    final Set<String> parsedTopicNames =
+    Set<String> parsedTopicNames =
         topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
 
-    // poll messages
-    final List<SubscriptionMessage> messages = super.poll(parsedTopicNames, timeoutMs);
+    if (!parsedTopicNames.isEmpty()) {
+      // filter unsubscribed topics
+      parsedTopicNames.stream()
+          .filter(topicName -> !subscribedTopics.containsKey(topicName))
+          .forEach(
+              topicName ->
+                  LOGGER.warn(
+                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
+                      this,
+                      topicName));
+    } else {
+      parsedTopicNames = subscribedTopics.keySet();
+    }
+
+    if (parsedTopicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
+    if (messages.isEmpty()) {
+      LOGGER.info(
+          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
+          this,
+          parsedTopicNames,
+          timeoutMs);
+      return messages;
+    }
 
     // add to uncommitted messages
     if (autoCommit) {
@@ -330,6 +354,18 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     @Override
     public Builder fileSaveFsync(final boolean fileSaveFsync) {
       super.fileSaveFsync(fileSaveFsync);
+      return this;
+    }
+
+    @Override
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      super.thriftMaxFrameSize(thriftMaxFrameSize);
+      return this;
+    }
+
+    @Override
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      super.maxPollParallelism(maxPollParallelism);
       return this;
     }
 

@@ -113,7 +113,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     }
 
     public boolean checkHasReachedThreshold() {
-      return resources.size() >= config.getFileLimitPerInnerTask()
+      return resources.size() >= config.getInnerCompactionCandidateFileNum()
           || totalFileSize >= config.getTargetCompactionFileSize();
     }
   }
@@ -203,7 +203,7 @@ public class SettleSelectorImpl implements ISettleSelector {
     ModificationFile modFile = resource.getModFile();
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
-      timeIndex = resource.buildDeviceTimeIndex();
+      timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
     }
     Set<IDeviceID> deletedDevices = new HashSet<>();
     boolean hasExpiredTooLong = false;
