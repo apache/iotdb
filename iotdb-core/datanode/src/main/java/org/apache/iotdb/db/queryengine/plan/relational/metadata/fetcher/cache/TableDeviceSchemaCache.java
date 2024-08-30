@@ -160,7 +160,7 @@ public class TableDeviceSchemaCache {
   /**
    * Update the last cache on query or data recover. The input "TimeValuePair" shall never be or
    * contain {@code null} unless the measurement is the time measurement "". If a measurement is
-   * with all {@code null}s or is an id/attribute column, its timeValuePair shall be {@link
+   * with all {@code null}s, its timeValuePair shall be {@link
    * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
    *
    * <p>If the global last time is queried or recovered, the measurement shall be an empty string
@@ -196,9 +196,10 @@ public class TableDeviceSchemaCache {
   }
 
   /**
-   * Update the last cache in writing. The input "TimeValuePair" shall never be or contain {@code
-   * null}. For correctness, this will put the cache lazily and only update the existing last caches
-   * of measurements.
+   * Update the last cache in writing. The input {@link TimeValuePair} shall never be or contain
+   * {@code null}.If a measurement is with all {@code null}s or is an id/attribute column, its
+   * timeValuePair shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. For correctness,
+   * this will put the cache lazily and only update the existing last caches of measurements.
    *
    * @param database the device's database, without "root"
    * @param deviceId IDeviceID
@@ -214,7 +215,7 @@ public class TableDeviceSchemaCache {
         new TableId(database, deviceId.getTableName()),
         deviceId,
         new TableDeviceCacheEntry(),
-        entry -> entry.tryUpdate(measurements, timeValuePairs),
+        entry -> entry.tryUpdateLastCache(measurements, timeValuePairs),
         false);
   }
 
@@ -350,7 +351,7 @@ public class TableDeviceSchemaCache {
         deviceId,
         new TableDeviceCacheEntry(),
         entry ->
-            entry.updateLastCache(database, deviceId.getTableName(), measurements, timeValuePairs)
+            entry.tryUpdateLastCache(measurements, timeValuePairs)
                 + entry.setMeasurementSchema(
                     Objects.nonNull(previousDatabase) ? previousDatabase : database,
                     isAligned,
