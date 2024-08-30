@@ -43,8 +43,8 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
   @Override
   protected void setupConfig() {
     super.setupConfig();
-    senderEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(32);
-    receiverEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(32);
+    senderEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(4);
+    receiverEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(4);
   }
 
   @Test
@@ -67,7 +67,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualAutoIT {
         String.format(
             "create pipe test"
                 + " with source ('source'='iotdb-source','source.path'='root.test.**')"
-                + " with sink ('node-urls'='%s:%s','batch.enable'='false'",
+                + " with sink ('sink'='iotdb-thrift-sync-sink','node-urls'='%s:%s','batch.enable'='false'",
             receiverEnv.getIP(), receiverEnv.getPort()));
   }
 
