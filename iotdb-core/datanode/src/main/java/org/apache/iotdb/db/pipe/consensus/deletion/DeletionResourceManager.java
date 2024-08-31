@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
@@ -58,14 +59,16 @@ public class DeletionResourceManager implements AutoCloseable {
           REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
-
-  // TODO: read it from conf
   private final File storageDir;
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
 
   public DeletionResourceManager(String dataRegionId) throws IOException {
     this.dataRegionId = dataRegionId;
-    this.storageDir = new File("tmp" + File.separator + dataRegionId);
+    this.storageDir =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getPipeConsensusDeletionFileDir()
+                + File.separator
+                + dataRegionId);
     this.deletionBuffer = new DeletionBuffer(dataRegionId, storageDir.getAbsolutePath());
     initAndRecover();
     // Only after initAndRecover can we start serialize and sync new deletions.

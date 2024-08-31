@@ -2279,6 +2279,10 @@ public class IoTDBDescriptor {
                     .split(","))
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
+
+    conf.setPipeConsensusDeletionFileDir(
+        properties.getProperty(
+            "pipe_consensus_deletion_file_dir", conf.getPipeConsensusDeletionFileDir()));
   }
 
   private void loadCQProps(Properties properties) {

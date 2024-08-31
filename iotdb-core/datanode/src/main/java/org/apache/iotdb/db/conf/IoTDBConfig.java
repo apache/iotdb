@@ -68,7 +68,10 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.CONSENSUS_FOLDER_NAME;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.DELETION_FOLDER_NAME;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.OBJECT_STORAGE_DIR;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PIPE_FOLDER_NAME;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
@@ -1128,6 +1131,15 @@ public class IoTDBConfig {
 
   private String[] pipeConsensusReceiverFileDirs = new String[0];
 
+  private String pipeConsensusDeletionFileDir =
+      systemDir
+          + File.separator
+          + PIPE_FOLDER_NAME
+          + File.separator
+          + CONSENSUS_FOLDER_NAME
+          + File.separator
+          + DELETION_FOLDER_NAME;
+
   /** Resource control */
   private boolean quotaEnable = false;
 
@@ -1282,6 +1294,7 @@ public class IoTDBConfig {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
     consensusDir = addDataHomeDir(consensusDir);
+    pipeConsensusDeletionFileDir = addDataHomeDir(pipeConsensusDeletionFileDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
@@ -1468,6 +1481,14 @@ public class IoTDBConfig {
 
   public void setSystemDir(String systemDir) {
     this.systemDir = systemDir;
+  }
+
+  public String getPipeConsensusDeletionFileDir() {
+    return pipeConsensusDeletionFileDir;
+  }
+
+  public void setPipeConsensusDeletionFileDir(String pipeConsensusDeletionFileDir) {
+    this.pipeConsensusDeletionFileDir = pipeConsensusDeletionFileDir;
   }
 
   public String[] getLoadTsFileDirs() {
