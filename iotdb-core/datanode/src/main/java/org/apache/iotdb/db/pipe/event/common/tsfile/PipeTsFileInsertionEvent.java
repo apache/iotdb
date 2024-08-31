@@ -28,6 +28,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeTsFileInsertionEventResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -152,6 +153,12 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
+
+    PipeDataNodeResourceManager.ref()
+        .trackPipeTsFileInsertionEventResources(
+            this,
+            new PipeTsFileInsertionEventResource(
+                this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile));
   }
 
   /**
