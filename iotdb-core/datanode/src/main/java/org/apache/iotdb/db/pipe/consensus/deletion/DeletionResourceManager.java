@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.consensus.deletion;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.pipe.PipeConsensus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
@@ -51,18 +52,18 @@ public class DeletionResourceManager implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResourceManager.class);
   public static final String DELETION_FILE_SUFFIX = ".deletion";
   public static final String MAGIC_VERSION_V1 = "DELETION_V1";
-  private static final String REBOOT_TIME = "REBOOT_TIME";
-  private static final String MEM_TABLE_FLUSH_ORDER = "MEM_TABLE_FLUSH_ORDER";
+  private static final String REBOOT_TIME = "rebootTime";
+  private static final String MEM_TABLE_FLUSH_ORDER = "memTableFlushOrderId";
   private static final String DELETION_FILE_NAME_PATTERN =
       String.format(
-          "^_(?<%s>\\d+)_(?<%s>\\d+)\\%s$",
+          "^_(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
           REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
 
-  public DeletionResourceManager(String dataRegionId) throws IOException {
+  private DeletionResourceManager(String dataRegionId) throws IOException {
     this.dataRegionId = dataRegionId;
     this.storageDir =
         new File(
@@ -163,8 +164,8 @@ public class DeletionResourceManager implements AutoCloseable {
         int fileRebootTimes = Integer.parseInt(matcher.group(REBOOT_TIME));
         long fileMemTableFlushOrderId = Long.parseLong(matcher.group(MEM_TABLE_FLUSH_ORDER));
         return fileRebootTimes == curRebootTimes
-            ? fileMemTableFlushOrderId < curMemTableFlushOrderId
-            : fileRebootTimes < curMemTableFlushOrderId;
+            ? fileMemTableFlushOrderId <= curMemTableFlushOrderId
+            : fileRebootTimes < curRebootTimes;
       }
     }
     return false;
@@ -204,6 +205,31 @@ public class DeletionResourceManager implements AutoCloseable {
   public static void build() {
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus) {
       DeletionResourceManagerHolder.build();
+    }
+  }
+
+  @TestOnly
+  public static void buildForTest() {
+    DeletionResourceManagerHolder.build();
+  }
+
+  @TestOnly
+  public void recoverForTest() {
+    try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
+      Path[] deletionPaths =
+          pathStream
+              .filter(Files::isRegularFile)
+              .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
+              .toArray(Path[]::new);
+
+      for (Path path : deletionPaths) {
+        try (DeletionReader deletionReader =
+            new DeletionReader(path.toFile(), this::removeDeletionResource)) {
+          deletionResources.addAll(deletionReader.readAllDeletions());
+        }
+      }
+    } catch (IOException e) {
+      LOGGER.error("Failed to recover DeletionResourceManager", e);
     }
   }
 }

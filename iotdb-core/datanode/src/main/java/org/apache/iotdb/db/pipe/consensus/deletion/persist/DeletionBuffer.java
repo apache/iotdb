@@ -187,8 +187,9 @@ public class DeletionBuffer implements AutoCloseable {
         // For first serialization, we don't need to judge whether working buffer is exhausted.
         // Because a single DeleteDataNode can't exceed size of working buffer.
         serializeToWorkingBuffer(firstDeletionResource);
-        maxProgressIndexInCurrentBatch.updateToMinimumEqualOrIsAfterProgressIndex(
-            firstDeletionResource.getProgressIndex());
+        maxProgressIndexInCurrentBatch =
+            maxProgressIndexInCurrentBatch.updateToMinimumEqualOrIsAfterProgressIndex(
+                firstDeletionResource.getProgressIndex());
       } catch (InterruptedException e) {
         LOGGER.warn(
             "Interrupted when waiting for taking DeletionResource from blocking queue to serialize.");
@@ -222,8 +223,9 @@ public class DeletionBuffer implements AutoCloseable {
           deletionNum = 0;
         }
         // Update max progressIndex
-        maxProgressIndexInCurrentBatch.updateToMinimumEqualOrIsAfterProgressIndex(
-            deletionResource.getProgressIndex());
+        maxProgressIndexInCurrentBatch =
+            maxProgressIndexInCurrentBatch.updateToMinimumEqualOrIsAfterProgressIndex(
+                deletionResource.getProgressIndex());
       }
       // Persist deletions; Defensive programming here, just in case.
       if (totalSize > 0) {
@@ -284,7 +286,7 @@ public class DeletionBuffer implements AutoCloseable {
           new File(
               baseDirectory,
               String.format(
-                  "_%d_%d%s",
+                  "_%d-%d%s",
                   progressIndex.getRebootTimes(),
                   progressIndex.getMemTableFlushOrderId(),
                   DeletionResourceManager.DELETION_FILE_SUFFIX));
