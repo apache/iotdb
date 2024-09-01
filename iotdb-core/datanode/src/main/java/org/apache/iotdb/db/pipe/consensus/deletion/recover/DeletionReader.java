@@ -78,7 +78,6 @@ public class DeletionReader implements Closeable {
       DeletionResource deletionResource = DeletionResource.deserialize(byteBuffer, removeHook);
       deletions.add(deletionResource);
       LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
-      System.out.println("read deletion" + i + " :" + deletionResource);
     }
     return deletions;
   }
