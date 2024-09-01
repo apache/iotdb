@@ -16,13 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.enums.Metric;
+import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
@@ -42,12 +51,16 @@ import io.airlift.airline.ParseOptionMissingValueException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("java:S106") // for console outputs
 public class CommonUtils {
@@ -398,5 +411,113 @@ public class CommonUtils {
     System.err.println("error: " + e.getMessage());
     System.err.println("-- StackTrace --");
     System.err.println(Throwables.getStackTraceAsString(e));
+  }
+
+  public static String[] deviceIdToStringArray(IDeviceID deviceID) {
+    String[] ret = new String[deviceID.segmentNum()];
+    for (int i = 0; i < ret.length; i++) {
+      ret[i] = deviceID.segment(i) != null ? deviceID.segment(i).toString() : null;
+    }
+    return ret;
+  }
+
+  public static Object[] deviceIdToObjArray(IDeviceID deviceID) {
+    Object[] ret = new Object[deviceID.segmentNum()];
+    for (int i = 0; i < ret.length; i++) {
+      ret[i] = deviceID.segment(i);
+    }
+    return ret;
+  }
+
+  /**
+   * Check whether the time falls in TTL.
+   *
+   * @return whether the given time falls in ttl
+   */
+  public static boolean isAlive(long time, long dataTTL) {
+    return dataTTL == Long.MAX_VALUE || (CommonDateTimeUtils.currentTime() - time) <= dataTTL;
+  }
+
+  public static Object createValueColumnOfDataType(
+      TSDataType dataType, TsTableColumnCategory columnCategory, int rowNum) {
+    Object valueColumn;
+    switch (dataType) {
+      case INT32:
+        valueColumn = new int[rowNum];
+        break;
+      case INT64:
+      case TIMESTAMP:
+        valueColumn = new long[rowNum];
+        break;
+      case FLOAT:
+        valueColumn = new float[rowNum];
+        break;
+      case DOUBLE:
+        valueColumn = new double[rowNum];
+        break;
+      case BOOLEAN:
+        valueColumn = new boolean[rowNum];
+        break;
+      case TEXT:
+      case STRING:
+        if (columnCategory.equals(TsTableColumnCategory.MEASUREMENT)) {
+          valueColumn = new Binary[rowNum];
+        } else {
+          valueColumn = new String[rowNum];
+        }
+        break;
+      case BLOB:
+        valueColumn = new Binary[rowNum];
+        break;
+      case DATE:
+        valueColumn = new LocalDate[rowNum];
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
+    return valueColumn;
+  }
+
+  public static void swapArray(Object[] array, int i, int j) {
+    Object tmp = array[i];
+    array[i] = array[j];
+    array[j] = tmp;
+  }
+
+  /** Add stat of operation into metrics */
+  public static void addStatementExecutionLatency(
+      OperationType operation, String statementType, long costTime) {
+    if (statementType == null) {
+      return;
+    }
+
+    MetricService.getInstance()
+        .timer(
+            costTime,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            operation.toString(),
+            Tag.TYPE.toString(),
+            statementType);
+  }
+
+  public static void addQueryLatency(StatementType statementType, long costTimeInNanos) {
+    if (statementType == null) {
+      return;
+    }
+
+    MetricService.getInstance()
+        .timer(
+            costTimeInNanos,
+            TimeUnit.NANOSECONDS,
+            Metric.PERFORMANCE_OVERVIEW.toString(),
+            MetricLevel.CORE,
+            Tag.INTERFACE.toString(),
+            OperationType.QUERY_LATENCY.toString(),
+            Tag.TYPE.toString(),
+            statementType.name());
   }
 }

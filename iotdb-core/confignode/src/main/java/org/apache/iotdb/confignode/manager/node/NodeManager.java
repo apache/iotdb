@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.node;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
@@ -43,17 +44,24 @@ import org.apache.iotdb.confignode.client.sync.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVersionInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.response.ainode.AINodeConfigurationResp;
+import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.ConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
+import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
@@ -68,6 +76,10 @@ import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -91,6 +103,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -248,6 +261,9 @@ public class NodeManager {
           getPipeManager().getPipePluginCoordinator().getPipePluginTable().getAllPipePluginMeta());
       runtimeConfiguration.setAllTTLInformation(
           DataNodeRegisterResp.convertAllTTLInformation(getTTLManager().getAllTTL()));
+      runtimeConfiguration.setTableInfo(
+          getClusterSchemaManager().getAllTableInfoForDataNodeActivation());
+      runtimeConfiguration.setClusterId(getClusterManager().getClusterId());
       return runtimeConfiguration;
     } finally {
       getTriggerManager().getTriggerInfo().releaseTriggerTableLock();
@@ -301,8 +317,7 @@ public class NodeManager {
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    String clusterId = configManager.getClusterManager().getClusterId();
-    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
     return resp;
   }
 
@@ -346,7 +361,7 @@ public class NodeManager {
     }
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setRuntimeConfiguration(getRuntimeConfiguration().setClusterId(clusterId));
+    resp.setRuntimeConfiguration(getRuntimeConfiguration());
     List<TConsensusGroupId> consensusGroupIds =
         getPartitionManager().getAllReplicaSets(nodeId).stream()
             .map(TRegionReplicaSet::getRegionId)
@@ -425,6 +440,148 @@ public class NodeManager {
       }
     }
     return ClusterNodeStartUtils.ACCEPT_NODE_RESTART;
+  }
+
+  public List<TAINodeInfo> getRegisteredAINodeInfoList() {
+    List<TAINodeInfo> aiNodeInfoList = new ArrayList<>();
+    for (TAINodeConfiguration aiNodeConfiguration : getRegisteredAINodes()) {
+      TAINodeInfo aiNodeInfo = new TAINodeInfo();
+      aiNodeInfo.setAiNodeId(aiNodeConfiguration.getLocation().getAiNodeId());
+      aiNodeInfo.setStatus(getLoadManager().getNodeStatusWithReason(aiNodeInfo.getAiNodeId()));
+      aiNodeInfo.setInternalAddress(aiNodeConfiguration.getLocation().getInternalEndPoint().ip);
+      aiNodeInfo.setInternalPort(aiNodeConfiguration.getLocation().getInternalEndPoint().port);
+      aiNodeInfoList.add(aiNodeInfo);
+    }
+    return aiNodeInfoList;
+  }
+
+  /**
+   * @return All registered AINodes
+   */
+  public List<TAINodeConfiguration> getRegisteredAINodes() {
+    return nodeInfo.getRegisteredAINodes();
+  }
+
+  public TAINodeConfiguration getRegisteredAINode(int aiNodeId) {
+    return nodeInfo.getRegisteredAINode(aiNodeId);
+  }
+
+  /**
+   * Register AINode. Use synchronized to make sure
+   *
+   * @param req TAINodeRegisterReq
+   * @return AINodeConfigurationDataSet. The {@link TSStatus} will be set to {@link
+   *     TSStatusCode#SUCCESS_STATUS} when register success.
+   */
+  public synchronized DataSet registerAINode(TAINodeRegisterReq req) {
+
+    if (!nodeInfo.getRegisteredAINodes().isEmpty()) {
+      AINodeRegisterResp dataSet = new AINodeRegisterResp();
+      dataSet.setConfigNodeList(Collections.emptyList());
+      dataSet.setStatus(
+          new TSStatus(TSStatusCode.REGISTER_AI_NODE_ERROR.getStatusCode())
+              .setMessage("There is already one AINode in the cluster."));
+      return dataSet;
+    }
+
+    int aiNodeId = nodeInfo.generateNextNodeId();
+    getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.AINode, aiNodeId);
+    RegisterAINodePlan registerAINodePlan = new RegisterAINodePlan(req.getAiNodeConfiguration());
+    // Register new DataNode
+    registerAINodePlan.getAINodeConfiguration().getLocation().setAiNodeId(aiNodeId);
+    try {
+      getConsensusManager().write(registerAINodePlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
+
+    // update datanode's versionInfo
+    UpdateVersionInfoPlan updateVersionInfoPlan =
+        new UpdateVersionInfoPlan(req.getVersionInfo(), aiNodeId);
+    try {
+      getConsensusManager().write(updateVersionInfoPlan);
+    } catch (ConsensusException e) {
+      LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+    }
+
+    AINodeRegisterResp resp = new AINodeRegisterResp();
+    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    resp.setAINodeId(registerAINodePlan.getAINodeConfiguration().getLocation().getAiNodeId());
+    return resp;
+  }
+
+  /**
+   * Remove AINodes.
+   *
+   * @param removeAINodePlan removeDataNodePlan
+   */
+  public TSStatus removeAINode(RemoveAINodePlan removeAINodePlan) {
+    LOGGER.info("NodeManager start to remove AINode {}", removeAINodePlan);
+
+    // check if the node exists
+    if (!nodeInfo.containsAINode(removeAINodePlan.getAINodeLocation().getAiNodeId())) {
+      return new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode())
+          .setMessage("AINode doesn't exist.");
+    }
+
+    // Add request to queue, then return to client
+    boolean removeSucceed = configManager.getProcedureManager().removeAINode(removeAINodePlan);
+    TSStatus status;
+    if (removeSucceed) {
+      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setMessage("Server accepted the request");
+    } else {
+      status = new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode());
+      status.setMessage("Server rejected the request, maybe requests are too many");
+    }
+
+    LOGGER.info(
+        "NodeManager submit RemoveAINodePlan finished, removeAINodePlan: {}", removeAINodePlan);
+    return status;
+  }
+
+  public TAINodeRestartResp updateAINodeIfNecessary(TAINodeRestartReq req) {
+    int nodeId = req.getAiNodeConfiguration().getLocation().getAiNodeId();
+    TAINodeConfiguration aiNodeConfiguration = getRegisteredAINode(nodeId);
+    if (!req.getAiNodeConfiguration().equals(aiNodeConfiguration)) {
+      // Update AINodeConfiguration when modified during restart
+      UpdateAINodePlan updateAINodePlan = new UpdateAINodePlan(req.getAiNodeConfiguration());
+      try {
+        getConsensusManager().write(updateAINodePlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      }
+    }
+    TNodeVersionInfo versionInfo = nodeInfo.getVersionInfo(nodeId);
+    if (!req.getVersionInfo().equals(versionInfo)) {
+      // Update versionInfo when modified during restart
+      UpdateVersionInfoPlan updateVersionInfoPlan =
+          new UpdateVersionInfoPlan(req.getVersionInfo(), nodeId);
+      try {
+        getConsensusManager().write(updateVersionInfoPlan);
+      } catch (ConsensusException e) {
+        LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
+      }
+    }
+
+    TAINodeRestartResp resp = new TAINodeRestartResp();
+    resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
+    resp.setConfigNodeList(getRegisteredConfigNodes());
+    return resp;
+  }
+
+  public AINodeConfigurationResp getAINodeConfiguration(GetAINodeConfigurationPlan req) {
+    try {
+      return (AINodeConfigurationResp) getConsensusManager().read(req);
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
+      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      res.setMessage(e.getMessage());
+      AINodeConfigurationResp response = new AINodeConfigurationResp();
+      response.setStatus(res);
+      return response;
+    }
   }
 
   /**
@@ -946,6 +1103,10 @@ public class NodeManager {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
+  }
+
+  private ClusterManager getClusterManager() {
+    return configManager.getClusterManager();
   }
 
   private PartitionManager getPartitionManager() {

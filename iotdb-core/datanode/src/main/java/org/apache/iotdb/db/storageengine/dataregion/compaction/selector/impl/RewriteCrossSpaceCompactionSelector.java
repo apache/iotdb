@@ -25,10 +25,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCrossSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.Ts
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
@@ -63,12 +66,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   protected TsFileManager tsFileManager;
 
   private static boolean hasPrintedLog = false;
+  private static int maxDeserializedFileNumToCheckInsertionCandidateValid = 500;
 
   private final long memoryBudget;
   private final int maxCrossCompactionFileNum;
   private final long maxCrossCompactionFileSize;
 
   private final AbstractCrossSpaceEstimator compactionEstimator;
+  private CompactionScheduleContext context;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
@@ -93,6 +98,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         (AbstractCrossSpaceEstimator)
             ICompactionSelector.getCompactionEstimator(
                 IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
+    this.context = null;
+  }
+
+  public RewriteCrossSpaceCompactionSelector(
+      String logicalStorageGroupName,
+      String dataRegionId,
+      long timePartition,
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
+    this(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+    this.context = context;
   }
 
   /**
@@ -214,9 +230,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           new ArrayList<>(taskResource.getUnseqFiles());
       newSelectedUnseqResources.add(unseqFile);
 
-      long memoryCost =
-          compactionEstimator.estimateCrossCompactionMemory(
+      long roughEstimatedMemoryCost =
+          compactionEstimator.roughEstimateCrossCompactionMemory(
               newSelectedSeqResources, newSelectedUnseqResources);
+      long memoryCost =
+          CompactionEstimateUtils.shouldAccurateEstimate(roughEstimatedMemoryCost)
+              ? roughEstimatedMemoryCost
+              : compactionEstimator.estimateCrossCompactionMemory(
+                  newSelectedSeqResources, newSelectedUnseqResources);
       if (!canAddToTaskResource(taskResource, unseqFile, targetSeqFiles, memoryCost)) {
         break;
       }
@@ -335,7 +356,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     // CrossCompactionTaskResources in this method.
     // Add read lock for candidate source files to avoid being deleted during the selection.
     CrossSpaceCompactionCandidate candidate =
-        new CrossSpaceCompactionCandidate(sequenceFileList, unsequenceFileList, ttlLowerBound);
+        new CrossSpaceCompactionCandidate(
+            sequenceFileList, unsequenceFileList, ttlLowerBound, context);
     try {
       CrossCompactionTaskResource taskResources;
       if (isInsertionTask) {
@@ -449,7 +471,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
 
       boolean hasPreviousSeqFile = false;
-      for (DeviceInfo unseqDeviceInfo : unseqFile.getDevices()) {
+      for (DeviceInfo unseqDeviceInfo : unseqFile.getDeviceInfoList()) {
         IDeviceID deviceId = unseqDeviceInfo.deviceId;
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -554,7 +576,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       for (int i = 0; i < selectedUnseqFileIndex; i++) {
         TsFileResourceCandidate unseqFile = unseqFiles.get(i);
-        if (isOverlap(selectedUnseqFile, unseqFile)) {
+        if (isOverlap(
+            selectedUnseqFile,
+            unseqFile,
+            selectedUnseqFileIndex > maxDeserializedFileNumToCheckInsertionCandidateValid)) {
           selectedUnseqFile.resource.setInsertionCompactionTaskCandidate(
               InsertionCompactionCandidateStatus.NOT_VALID);
           return false;
@@ -566,18 +591,34 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
 
     private boolean isOverlap(
-        TsFileResourceCandidate candidate1, TsFileResourceCandidate candidate2) throws IOException {
+        TsFileResourceCandidate candidate1,
+        TsFileResourceCandidate candidate2,
+        boolean loadDeviceTimeIndex)
+        throws IOException {
       TimeRange timeRangeOfFile1 =
           new TimeRange(
               candidate1.resource.getFileStartTime(), candidate1.resource.getFileEndTime());
       TimeRange timeRangeOfFile2 =
           new TimeRange(
               candidate2.resource.getFileStartTime(), candidate2.resource.getFileEndTime());
-      if (!timeRangeOfFile1.overlaps(timeRangeOfFile2)) {
+      boolean fileTimeOverlap = timeRangeOfFile1.overlaps(timeRangeOfFile2);
+      if (!fileTimeOverlap) {
         return false;
       }
 
-      for (DeviceInfo device : candidate2.getDevices()) {
+      // TimeIndex may be degraded after this check, but it will not affect the correctness of task
+      // selection
+      boolean candidate1NeedDeserialize =
+          !candidate1.hasDetailedDeviceInfo()
+              && candidate1.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+      boolean candidate2NeedDeserialize =
+          !candidate2.hasDetailedDeviceInfo()
+              && candidate2.resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE;
+      if (!loadDeviceTimeIndex && (candidate1NeedDeserialize || candidate2NeedDeserialize)) {
+        return true;
+      }
+
+      for (DeviceInfo device : candidate2.getDeviceInfoList()) {
         IDeviceID deviceId = device.deviceId;
         if (!candidate1.containsDevice(deviceId)) {
           continue;

@@ -50,6 +50,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
   protected volatile boolean isSubmitted = false;
 
   // For cleaning up the last event when the pipe is dropped
+  @SuppressWarnings("java:S3077")
   protected volatile Event lastExceptionEvent;
 
   protected PipeAbstractConnectorSubtask(
@@ -83,7 +84,7 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
       LOGGER.info(
           "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
           throwable);
-      clearReferenceCountAndReleaseLastEvent();
+      clearReferenceCountAndReleaseLastEvent(null);
       return;
     }
 
@@ -226,7 +227,8 @@ public abstract class PipeAbstractConnectorSubtask extends PipeReportableSubtask
 
   protected synchronized void clearReferenceCountAndReleaseLastExceptionEvent() {
     if (lastExceptionEvent != null) {
-      if (lastExceptionEvent instanceof EnrichedEvent) {
+      if (lastExceptionEvent instanceof EnrichedEvent
+          && !((EnrichedEvent) lastExceptionEvent).isReleased()) {
         ((EnrichedEvent) lastExceptionEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastExceptionEvent = null;

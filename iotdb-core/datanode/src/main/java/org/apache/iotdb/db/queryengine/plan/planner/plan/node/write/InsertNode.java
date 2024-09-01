@@ -22,10 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
@@ -40,7 +42,10 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 public abstract class InsertNode extends SearchNode {
@@ -57,6 +62,10 @@ public abstract class InsertNode extends SearchNode {
   protected MeasurementSchema[] measurementSchemas;
   protected String[] measurements;
   protected TSDataType[] dataTypes;
+
+  protected TsTableColumnCategory[] columnCategories;
+  protected List<Integer> idColumnIndices;
+  protected int measurementColumnCnt = -1;
 
   protected int failedMeasurementNumber = 0;
 
@@ -85,11 +94,22 @@ public abstract class InsertNode extends SearchNode {
       boolean isAligned,
       String[] measurements,
       TSDataType[] dataTypes) {
+    this(id, devicePath, isAligned, measurements, dataTypes, null);
+  }
+
+  protected InsertNode(
+      PlanNodeId id,
+      PartialPath devicePath,
+      boolean isAligned,
+      String[] measurements,
+      TSDataType[] dataTypes,
+      TsTableColumnCategory[] columnCategories) {
     super(id);
     this.devicePath = devicePath;
     this.isAligned = isAligned;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
+    setColumnCategories(columnCategories);
   }
 
   public TRegionReplicaSet getDataRegionReplicaSet() {
@@ -128,12 +148,42 @@ public abstract class InsertNode extends SearchNode {
     return measurements;
   }
 
+  public int measureColumnCnt() {
+    if (columnCategories == null) {
+      return measurements.length;
+    }
+    return (int)
+        Arrays.stream(columnCategories)
+            .filter(col -> col == TsTableColumnCategory.MEASUREMENT)
+            .count();
+  }
+
+  public boolean isValidMeasurement(int i) {
+    return measurementSchemas != null
+        && measurementSchemas[i] != null
+        && (columnCategories == null || columnCategories[i] == TsTableColumnCategory.MEASUREMENT);
+  }
+
   public void setMeasurements(String[] measurements) {
     this.measurements = measurements;
   }
 
   public TSDataType[] getDataTypes() {
     return dataTypes;
+  }
+
+  public int getMeasurementColumnCnt() {
+    if (measurementColumnCnt == -1) {
+      measurementColumnCnt = 0;
+      if (measurementSchemas != null) {
+        for (int i = 0; i < measurementSchemas.length; i++) {
+          if (isValidMeasurement(i)) {
+            measurementColumnCnt++;
+          }
+        }
+      }
+    }
+    return measurementColumnCnt;
   }
 
   public TSDataType getDataType(int index) {
@@ -184,6 +234,7 @@ public abstract class InsertNode extends SearchNode {
   }
 
   // region Serialization methods for WAL
+
   /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
@@ -283,9 +334,15 @@ public abstract class InsertNode extends SearchNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     InsertNode that = (InsertNode) o;
     return isAligned == that.isAligned
         && Objects.equals(devicePath, that.devicePath)
@@ -304,5 +361,30 @@ public abstract class InsertNode extends SearchNode {
     result = 31 * result + Arrays.hashCode(measurements);
     result = 31 * result + Arrays.hashCode(dataTypes);
     return result;
+  }
+
+  public TsTableColumnCategory[] getColumnCategories() {
+    return columnCategories;
+  }
+
+  public void setColumnCategories(TsTableColumnCategory[] columnCategories) {
+    this.columnCategories = columnCategories;
+    if (columnCategories != null) {
+      idColumnIndices = new ArrayList<>();
+      for (int i = 0; i < columnCategories.length; i++) {
+        if (columnCategories[i].equals(TsTableColumnCategory.ID)) {
+          idColumnIndices.add(i);
+        }
+      }
+    }
+  }
+
+  public String getTableName() {
+    return null;
+  }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return Collections.emptyList();
   }
 }

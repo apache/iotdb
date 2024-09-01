@@ -23,11 +23,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionTargetFileCountExceededException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
@@ -41,23 +41,40 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
-  private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
+  private List<TsFileResource> targetResources;
   private CompactionTaskSummary summary;
+  private CompactionTsFileWriter currentWriter;
+  private long endedFileSize = 0;
+  private int currentTargetFileIndex = 0;
+  // memory budget for file writer is 5% of per compaction task memory budget
+  private final long memoryBudgetForFileWriter =
+      (long)
+          ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
+              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+              * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+  private Schema schema = null;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
-    this.seqFiles = sourceFiles;
-    this.targetResource = targetFile;
+    this(sourceFiles, Collections.singletonList(targetFile));
+  }
+
+  public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
+    setSourceFiles(sourceFiles);
+    setTargetFiles(targetFiles);
   }
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
-    this.seqFiles = sourceFiles;
+    setSourceFiles(sourceFiles);
   }
 
   public ReadChunkCompactionPerformer() {}
@@ -69,51 +86,85 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           InterruptedException,
           StorageEngineException,
           PageException {
-    // size for file writer is 5% of per compaction task memory budget
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles);
-        CompactionTsFileWriter writer =
-            new CompactionTsFileWriter(
-                targetResource.getTsFile(),
-                sizeForFileWriter,
-                CompactionType.INNER_SEQ_COMPACTION)) {
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
+      schema =
+          CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap());
       while (deviceIterator.hasNextDevice()) {
+        currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
         IDeviceID device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
 
         if (aligned) {
-          compactAlignedSeries(device, targetResource, writer, deviceIterator);
+          compactAlignedSeries(
+              device, targetResources.get(currentTargetFileIndex), currentWriter, deviceIterator);
         } else {
-          compactNotAlignedSeries(device, targetResource, writer, deviceIterator);
+          compactNotAlignedSeries(
+              device, targetResources.get(currentTargetFileIndex), currentWriter, deviceIterator);
         }
         // update temporal file metrics
-        summary.setTemporalFileSize(writer.getPos());
+        summary.setTemporaryFileSize(endedFileSize + currentWriter.getPos());
       }
 
       for (TsFileResource tsFileResource : seqFiles) {
-        targetResource.updatePlanIndexes(tsFileResource);
+        for (TsFileResource targetResource : targetResources) {
+          targetResource.updatePlanIndexes(tsFileResource);
+        }
       }
-      writer.endFile();
-      if (writer.isEmptyTargetFile()) {
-        targetResource.forceMarkDeleted();
+    } finally {
+      for (int i = currentTargetFileIndex + 1; i < targetResources.size(); i++) {
+        targetResources.get(i).forceMarkDeleted();
+      }
+      if (currentWriter == null) {
+        targetResources.get(currentTargetFileIndex).forceMarkDeleted();
+      } else {
+        currentWriter.endFile();
+        if (currentWriter.isEmptyTargetFile()) {
+          targetResources.get(currentTargetFileIndex).forceMarkDeleted();
+        }
       }
     }
   }
 
+  private CompactionTsFileWriter getAvailableCompactionWriter() throws IOException {
+    if (currentWriter == null) {
+      useNewWriter();
+      return currentWriter;
+    }
+    boolean shouldSwitchToNextWriter =
+        currentWriter.getPos()
+                >= IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize()
+            && (currentTargetFileIndex != targetResources.size() - 1);
+    if (shouldSwitchToNextWriter) {
+      rollCompactionFileWriter();
+    }
+    return currentWriter;
+  }
+
+  private void rollCompactionFileWriter() throws IOException {
+    currentWriter.endFile();
+    endedFileSize += currentWriter.getFile().length();
+    if (currentWriter.isEmptyTargetFile()) {
+      targetResources.get(currentTargetFileIndex).forceMarkDeleted();
+    }
+    currentWriter = null;
+
+    currentTargetFileIndex++;
+    useNewWriter();
+  }
+
+  private void useNewWriter() throws IOException {
+    currentWriter =
+        new CompactionTsFileWriter(
+            targetResources.get(currentTargetFileIndex).getTsFile(),
+            memoryBudgetForFileWriter,
+            CompactionType.INNER_SEQ_COMPACTION);
+    currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
+  }
+
   @Override
   public void setTargetFiles(List<TsFileResource> targetFiles) {
-    if (targetFiles.size() != 1) {
-      throw new CompactionTargetFileCountExceededException(
-          String.format(
-              "Current performer only supports for one target file while getting %d target files",
-              targetFiles.size()));
-    }
-    this.targetResource = targetFiles.get(0);
+    this.targetResources = targetFiles;
   }
 
   @Override
@@ -134,8 +185,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       return;
     }
     writer.startChunkGroup(device);
-    ReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
-        new ReadChunkAlignedSeriesCompactionExecutor(
+    BatchedReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
+        new BatchedReadChunkAlignedSeriesCompactionExecutor(
             device, targetResource, readerAndChunkMetadataList, writer, summary);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
@@ -151,8 +202,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private void checkThreadInterrupted() throws InterruptedException {
     if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
-          String.format(
-              "[Compaction] compaction for target file %s abort", targetResource.toString()));
+          String.format("[Compaction] compaction for target files %s abort", targetResources));
     }
   }
 

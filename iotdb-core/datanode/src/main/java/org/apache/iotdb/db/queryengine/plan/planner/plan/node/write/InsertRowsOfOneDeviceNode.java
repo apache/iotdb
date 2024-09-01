@@ -127,11 +127,6 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
   public void addChild(PlanNode child) {}
 
   @Override
@@ -169,7 +164,10 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
-              .getDataRegionReplicaSetForWriting(devicePath.getFullPath(), timePartitionSlot);
+              .getDataRegionReplicaSetForWriting(
+                  devicePath.getIDeviceIDAsFullDevice(),
+                  timePartitionSlot,
+                  analysis.getDatabaseName());
       Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =
           splitMap.computeIfAbsent(dataRegionReplicaSet, k -> new HashMap<>());
       Map<TTimePartitionSlot, List<Integer>> tmpIndexMap =
@@ -306,9 +304,15 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     InsertRowsOfOneDeviceNode that = (InsertRowsOfOneDeviceNode) o;
     return Objects.equals(insertRowNodeIndexList, that.insertRowNodeIndexList)
         && Objects.equals(insertRowNodeList, that.insertRowNodeList);

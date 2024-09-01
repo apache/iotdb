@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSettleReq;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -114,15 +115,15 @@ public class SettleRequestHandlerTest {
     config.setEnableSeqSpaceCompaction(true);
 
     // compaction candidate file num
-    int maxInnerCompactionCandidateFileNum = config.getFileLimitPerInnerTask();
-    config.setFileLimitPerInnerTask(2);
+    int maxInnerCompactionCandidateFileNum = config.getInnerCompactionCandidateFileNum();
+    config.setInnerCompactionCandidateFileNum(2);
     result = reqHandler.handleSettleRequest(req);
     Assert.assertEquals(result.code, TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode());
     String firstTsFilePath = paths.remove(0);
     result = reqHandler.handleSettleRequest(req);
     Assert.assertEquals(result.code, TSStatusCode.SUCCESS_STATUS.getStatusCode());
     paths.add(0, firstTsFilePath);
-    config.setFileLimitPerInnerTask(maxInnerCompactionCandidateFileNum);
+    config.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
 
     // not continuous
     paths.remove(1);
@@ -150,11 +151,11 @@ public class SettleRequestHandlerTest {
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
-        PartialPath path = new PartialPath(deviceId, measurementId);
+          PartialPath path = new PartialPath(deviceId, measurementId);
         DeleteDataNode deleteDataNode =
             new DeleteDataNode(
                 new PlanNodeId("1"), Collections.singletonList(path), 3L * i + 1, 3L * i + 1);
-        dataRegion.deleteByDevice(new PartialPath(deviceId, measurementId), deleteDataNode);
+        dataRegion.deleteByDevice(new MeasurementPath(deviceId, measurementId), deleteDataNode);
       }
     }
   }

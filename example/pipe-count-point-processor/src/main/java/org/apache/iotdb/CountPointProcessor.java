@@ -67,7 +67,7 @@ public class CountPointProcessor implements PipeProcessor {
     if (event instanceof PipeHeartbeatEvent) {
       final Tablet tablet =
           new Tablet(
-              aggregateSeries.getDevice(),
+              aggregateSeries.getIDeviceID().toString(),
               Collections.singletonList(
                   new MeasurementSchema(aggregateSeries.getMeasurement(), TSDataType.INT64)),
               1);

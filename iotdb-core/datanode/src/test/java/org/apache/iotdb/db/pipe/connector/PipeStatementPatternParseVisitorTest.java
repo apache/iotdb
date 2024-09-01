@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.pipe.connector;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeStatementPatternParseVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -37,7 +39,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.Map;
 
 public class PipeStatementPatternParseVisitorTest {
 
@@ -47,24 +49,24 @@ public class PipeStatementPatternParseVisitorTest {
   @Test
   public void testCreateTimeSeries() throws IllegalPathException {
     final CreateTimeSeriesStatement createTimeSeriesStatement = new CreateTimeSeriesStatement();
-    createTimeSeriesStatement.setPath(new PartialPath("root.db.device.s1"));
+    createTimeSeriesStatement.setPath(new MeasurementPath("root.db.device.s1"));
     createTimeSeriesStatement.setDataType(TSDataType.FLOAT);
     createTimeSeriesStatement.setEncoding(TSEncoding.RLE);
     createTimeSeriesStatement.setCompressor(CompressionType.SNAPPY);
-    createTimeSeriesStatement.setProps(new HashMap<>());
-    createTimeSeriesStatement.setTags(new HashMap<>());
-    createTimeSeriesStatement.setAttributes(new HashMap<>());
+    createTimeSeriesStatement.setProps(Collections.emptyMap());
+    createTimeSeriesStatement.setTags(Collections.emptyMap());
+    createTimeSeriesStatement.setAttributes(Collections.emptyMap());
     createTimeSeriesStatement.setAlias("a1");
 
     final CreateTimeSeriesStatement createTimeSeriesStatementToFilter =
         new CreateTimeSeriesStatement();
-    createTimeSeriesStatementToFilter.setPath(new PartialPath("root.db1.device.s1"));
+    createTimeSeriesStatementToFilter.setPath(new MeasurementPath("root.db1.device.s1"));
     createTimeSeriesStatementToFilter.setDataType(TSDataType.FLOAT);
     createTimeSeriesStatementToFilter.setEncoding(TSEncoding.RLE);
     createTimeSeriesStatementToFilter.setCompressor(CompressionType.SNAPPY);
-    createTimeSeriesStatementToFilter.setProps(new HashMap<>());
-    createTimeSeriesStatementToFilter.setTags(new HashMap<>());
-    createTimeSeriesStatementToFilter.setAttributes(new HashMap<>());
+    createTimeSeriesStatementToFilter.setProps(Collections.emptyMap());
+    createTimeSeriesStatementToFilter.setTags(Collections.emptyMap());
+    createTimeSeriesStatementToFilter.setAttributes(Collections.emptyMap());
     createTimeSeriesStatementToFilter.setAlias("a2");
 
     Assert.assertEquals(
@@ -91,9 +93,9 @@ public class PipeStatementPatternParseVisitorTest {
     expectedCreateAlignedTimeSeriesStatement.setCompressors(
         Collections.singletonList(CompressionType.SNAPPY));
     expectedCreateAlignedTimeSeriesStatement.setTagsList(
-        Collections.singletonList(new HashMap<>()));
+        Collections.singletonList(Collections.emptyMap()));
     expectedCreateAlignedTimeSeriesStatement.setAttributesList(
-        Collections.singletonList(new HashMap<>()));
+        Collections.singletonList(Collections.emptyMap()));
     expectedCreateAlignedTimeSeriesStatement.setAliasList(Collections.singletonList("a1"));
 
     final CreateAlignedTimeSeriesStatement originalCreateAlignedTimeSeriesStatement =
@@ -107,9 +109,9 @@ public class PipeStatementPatternParseVisitorTest {
     originalCreateAlignedTimeSeriesStatement.setCompressors(
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     originalCreateAlignedTimeSeriesStatement.setTagsList(
-        Arrays.asList(new HashMap<>(), new HashMap<>()));
+        Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
     originalCreateAlignedTimeSeriesStatement.setAttributesList(
-        Arrays.asList(new HashMap<>(), new HashMap<>()));
+        Arrays.asList(Collections.emptyMap(), Collections.emptyMap()));
     originalCreateAlignedTimeSeriesStatement.setAliasList(Arrays.asList("a1", "a2"));
 
     Assert.assertEquals(
@@ -117,6 +119,37 @@ public class PipeStatementPatternParseVisitorTest {
         new PipeStatementPatternParseVisitor()
             .visitCreateAlignedTimeseries(originalCreateAlignedTimeSeriesStatement, fullPathPattern)
             .orElseThrow(AssertionError::new));
+  }
+
+  @Test
+  public void testAlterTimeSeries() throws IllegalPathException {
+    final AlterTimeSeriesStatement alterTimeSeriesStatement = new AlterTimeSeriesStatement(true);
+
+    final Map<String, String> attributeMap = Collections.singletonMap("k1", "v1");
+    alterTimeSeriesStatement.setPath(new MeasurementPath("root.db.device.s1"));
+    alterTimeSeriesStatement.setAlterMap(attributeMap);
+    alterTimeSeriesStatement.setTagsMap(Collections.emptyMap());
+    alterTimeSeriesStatement.setAttributesMap(attributeMap);
+    alterTimeSeriesStatement.setAlias("");
+
+    final AlterTimeSeriesStatement alterTimeSeriesStatementToFilter =
+        new AlterTimeSeriesStatement(true);
+
+    alterTimeSeriesStatementToFilter.setPath(new MeasurementPath("root.db1.device.s1"));
+    alterTimeSeriesStatementToFilter.setAlterMap(attributeMap);
+    alterTimeSeriesStatementToFilter.setTagsMap(Collections.emptyMap());
+    alterTimeSeriesStatementToFilter.setAttributesMap(attributeMap);
+    alterTimeSeriesStatementToFilter.setAlias("");
+
+    Assert.assertEquals(
+        alterTimeSeriesStatement,
+        new PipeStatementPatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatement, fullPathPattern)
+            .orElseThrow(AssertionError::new));
+    Assert.assertFalse(
+        new PipeStatementPatternParseVisitor()
+            .visitAlterTimeSeries(alterTimeSeriesStatementToFilter, prefixPathPattern)
+            .isPresent());
   }
 
   @Test

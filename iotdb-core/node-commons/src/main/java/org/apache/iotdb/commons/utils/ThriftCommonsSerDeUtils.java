@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -285,5 +287,62 @@ public class ThriftCommonsSerDeUtils {
   private static ConfigurableTByteBuffer generateTByteBuffer(ByteBuffer buffer)
       throws TTransportException {
     return new ConfigurableTByteBuffer(buffer, defaultTConfiguration);
+  }
+
+  public static void serializeTAINodeInfo(
+      TAINodeConfiguration aiNodeInfo, DataOutputStream stream) {
+    try {
+      aiNodeInfo.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TAINodeInfo failed: ", e);
+    }
+  }
+
+  public static TAINodeConfiguration deserializeTAINodeInfo(ByteBuffer buffer) {
+    TAINodeConfiguration aiNodeInfo = new TAINodeConfiguration();
+    try {
+      aiNodeInfo.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TAINodeInfo failed: ", e);
+    }
+    return aiNodeInfo;
+  }
+
+  public static void serializeTAINodeConfiguration(
+      TAINodeConfiguration aiNodeConfiguration, DataOutputStream stream) {
+    try {
+      aiNodeConfiguration.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TDataNodeConfiguration failed: ", e);
+    }
+  }
+
+  public static TAINodeConfiguration deserializeTAINodeConfiguration(ByteBuffer buffer) {
+    TAINodeConfiguration aiNodeConfiguration = new TAINodeConfiguration();
+    try {
+      aiNodeConfiguration.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TAINodeConfiguration failed: ", e);
+    }
+    return aiNodeConfiguration;
+  }
+
+  public static void serializeTAINodeLocation(
+      TAINodeLocation aiNodeLocation, DataOutputStream stream) {
+    try {
+      aiNodeLocation.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TAINodeLocation failed: ", e);
+    }
+  }
+
+  public static TAINodeLocation deserializeTAINodeLocation(ByteBuffer buffer) {
+    TAINodeLocation aiNodeLocation = new TAINodeLocation();
+    try {
+      aiNodeLocation.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TDataNodeLocation failed: ", e);
+    }
+    return aiNodeLocation;
   }
 }

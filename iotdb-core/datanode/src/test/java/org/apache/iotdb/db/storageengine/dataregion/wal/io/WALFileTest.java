@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -67,6 +68,8 @@ public class WALFileTest {
   public void setUp() throws Exception {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
+    } else {
+      walFile.getParentFile().mkdirs();
     }
   }
 
@@ -160,12 +163,12 @@ public class WALFileTest {
   @Test
   public void testReadMetadataFromBrokenFile() throws IOException {
     ILogWriter walWriter = new WALWriter(walFile);
-    assertThrows(
-        IOException.class,
-        () -> WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath())));
+    final FileChannel fileChannel1 = FileChannel.open(walFile.toPath());
+    assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel1));
     walWriter.close();
-    WALMetaData walMetaData =
-        WALMetaData.readFromWALFile(walFile, FileChannel.open(walFile.toPath()));
+    FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
+    WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
+    fileChannel2.close();
     assertTrue(walMetaData.getMemTablesId().isEmpty());
   }
 
@@ -340,7 +343,7 @@ public class WALFileTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
-            Collections.singletonList(new PartialPath(devicePath)),
+            Collections.singletonList(new MeasurementPath(devicePath, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     deleteDataNode.setSearchIndex(100L);

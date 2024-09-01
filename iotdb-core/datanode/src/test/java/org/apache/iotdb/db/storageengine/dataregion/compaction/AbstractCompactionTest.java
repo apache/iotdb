@@ -21,7 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -30,11 +33,13 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -48,33 +53,39 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.MetaMarker;
 import org.apache.tsfile.file.header.ChunkGroupHeader;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.IBatchDataIterator;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.tsfile.utils.TsPrimitiveType;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -367,14 +378,14 @@ public class AbstractCompactionTest {
       int deviceStartindex = isAlign ? TsFileGeneratorUtils.getAlignDeviceOffset() : 0;
       for (int j = 0; j < deviceIndexes.size(); j++) {
         resource.updateStartTime(
-            new PlainDeviceID(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
                 COMPACTION_TEST_SG
                     + PATH_SEPARATOR
                     + "d"
                     + (deviceIndexes.get(j) + deviceStartindex)),
             startTime + pointNum * i + timeInterval * i);
         resource.updateEndTime(
-            new PlainDeviceID(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
                 COMPACTION_TEST_SG
                     + PATH_SEPARATOR
                     + "d"
@@ -406,9 +417,11 @@ public class AbstractCompactionTest {
 
     for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
       resource.updateStartTime(
-          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), startTime);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+          startTime);
       resource.updateEndTime(
-          new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i), endTime);
+          IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+          endTime);
     }
 
     resource.updatePlanIndexes(fileVersion);
@@ -525,14 +538,14 @@ public class AbstractCompactionTest {
     for (TsFileResource resource : tsFileManager.getTsFileList(isSeq)) {
       files.add(resource.getTsFile());
     }
-    TsFileValidationTool.findUncorrectFiles(files);
-    Assert.assertEquals(0, TsFileValidationTool.badFileNum);
+    TsFileValidationTool.findIncorrectFiles(files);
+    Assert.assertEquals(0, TsFileValidationTool.getBadFileNum());
   }
 
-  protected Map<PartialPath, List<TimeValuePair>> readSourceFiles(
-      List<PartialPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
-    Map<PartialPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
-    for (PartialPath path : timeseriesPaths) {
+  protected Map<IFullPath, List<TimeValuePair>> readSourceFiles(
+      List<IFullPath> timeseriesPaths, List<TSDataType> dataTypes) throws IOException {
+    Map<IFullPath, List<TimeValuePair>> sourceData = new LinkedHashMap<>();
+    for (IFullPath path : timeseriesPaths) {
       List<TimeValuePair> dataList = new ArrayList<>();
       sourceData.put(path, dataList);
       IDataBlockReader tsBlockReader =
@@ -558,10 +571,10 @@ public class AbstractCompactionTest {
   }
 
   protected void validateTargetDatas(
-      Map<PartialPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
+      Map<IFullPath, List<TimeValuePair>> sourceDatas, List<TSDataType> dataTypes)
       throws IOException {
-    Map<PartialPath, List<TimeValuePair>> tmpSourceDatas = new HashMap<>();
-    for (Map.Entry<PartialPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
+    Map<IFullPath, List<TimeValuePair>> tmpSourceDatas = new HashMap<>();
+    for (Map.Entry<IFullPath, List<TimeValuePair>> entry : sourceDatas.entrySet()) {
       IDataBlockReader tsBlockReader =
           new SeriesDataBlockReader(
               entry.getKey(),
@@ -672,7 +685,7 @@ public class AbstractCompactionTest {
                   "Target file "
                       + targetResource.getTsFile().getPath()
                       + " contains empty chunk group "
-                      + ((PlainDeviceID) deviceID).toStringID());
+                      + deviceID.toString());
             }
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
@@ -764,5 +777,95 @@ public class AbstractCompactionTest {
     // rename mods file
     file = new File(resource.getTsFilePath() + ModificationFile.FILE_SUFFIX);
     file.renameTo(new File(newFileName + ModificationFile.FILE_SUFFIX));
+  }
+
+  protected TsFileResource generateSingleAlignedSeriesFile(
+      String device,
+      List<String> measurement,
+      TimeRange[] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      List<Boolean> nullValues,
+      boolean isSeq)
+      throws IOException {
+    TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  protected TsFileResource generateSingleAlignedSeriesFile(
+      String device,
+      List<String> measurement,
+      TimeRange[][] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      List<Boolean> nullValues,
+      boolean isSeq)
+      throws IOException {
+    TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  protected TsFileResource generateSingleAlignedSeriesFile(
+      String device,
+      List<String> measurement,
+      TimeRange[][][] chunkTimeRanges,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      List<Boolean> nullValues,
+      boolean isSeq)
+      throws IOException {
+    TsFileResource seqResource1 = createEmptyFileAndResource(isSeq);
+    CompactionTestFileWriter writer1 = new CompactionTestFileWriter(seqResource1);
+    writer1.startChunkGroup(device);
+    writer1.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+        measurement, chunkTimeRanges, encoding, compressionType, nullValues);
+    writer1.endChunkGroup();
+    writer1.endFile();
+    writer1.close();
+    return seqResource1;
+  }
+
+  protected List<IFullPath> getPaths(List<TsFileResource> resources)
+      throws IOException, IllegalPathException {
+    Set<IFullPath> paths = new HashSet<>();
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
+      while (deviceIterator.hasNextDevice()) {
+        Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
+        IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
+        boolean isAlign = iDeviceIDBooleanPair.getRight();
+        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+        IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
+        if (measurementSchemas.isEmpty()) {
+          continue;
+        }
+        List<String> existedMeasurements =
+            measurementSchemas.stream()
+                .map(IMeasurementSchema::getMeasurementId)
+                .collect(Collectors.toList());
+        IFullPath seriesPath;
+        if (isAlign) {
+          seriesPath = new AlignedFullPath(deviceID, existedMeasurements, measurementSchemas);
+        } else {
+          seriesPath = new NonAlignedFullPath(deviceID, measurementSchemas.get(0));
+        }
+        paths.add(seriesPath);
+      }
+    }
+    return new ArrayList<>(paths);
   }
 }

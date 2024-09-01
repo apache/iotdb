@@ -70,6 +70,7 @@ public class PipeInfo implements SnapshotProcessor {
 
   /////////////////////////////////  Non-query  /////////////////////////////////
 
+  @SuppressWarnings("java:S2201")
   public TSStatus createPipe(final CreatePipePlanV2 plan) {
     try {
       final Optional<PipeMeta> pipeMetaBeforeCreation =

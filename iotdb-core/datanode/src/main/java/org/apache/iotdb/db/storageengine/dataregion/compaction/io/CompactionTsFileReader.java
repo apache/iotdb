@@ -105,6 +105,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
     return super.readMemChunk(metaData);
   }
 
+  @SuppressWarnings("java:S2177")
   public ChunkHeader readChunkHeader(long position) throws IOException {
     return ChunkHeader.deserializeFrom(tsFileInput, position);
   }
@@ -155,7 +156,7 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
       } else {
         // internal measurement node
         MetadataIndexNode nextLayerMeasurementNode =
-            MetadataIndexNode.deserializeFrom(nextBuffer, false);
+            getDeserializeContext().deserializeMetadataIndexNode(nextBuffer, false);
         timeseriesMetadataOffsetMap.putAll(
             getTimeseriesMetadataAndOffsetByDevice(
                 nextLayerMeasurementNode, excludedMeasurementIds, needChunkMetadata));

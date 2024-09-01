@@ -20,6 +20,7 @@ import logging
 import random
 import struct
 import time
+import warnings
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
@@ -60,6 +61,7 @@ from .thrift.rpc.ttypes import (
 from .utils.IoTDBConnectionException import IoTDBConnectionException
 
 logger = logging.getLogger("IoTDB")
+warnings.simplefilter("always", DeprecationWarning)
 
 
 class Session(object):
@@ -1810,6 +1812,11 @@ class Session(object):
         return request
 
     def create_schema_template(self, template: Template):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         create device template, users using this method should use the template class as an argument
         :param template: The template contains multiple child node(see Template.py)
@@ -1833,6 +1840,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def drop_schema_template(self, template_name: str):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         drop device template, this method should be used to the template unset anything
         :param template_name: template name
@@ -1861,6 +1873,11 @@ class Session(object):
         compressors: list,
         is_aligned: bool = False,
     ):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         add measurements in the template, the template must already create. This function adds some measurements' node.
         :param template_name: template name, string list, like ["name_x", "name_y", "name_z"]
@@ -1895,6 +1912,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def delete_node_in_template(self, template_name: str, path: str):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         delete a node in the template, this node must be already in the template
         :param template_name: template name
@@ -1916,6 +1938,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def set_schema_template(self, template_name, prefix_path):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         set template in prefix path, template already exit, prefix path is not measurements
         :param template_name: template name
@@ -1937,6 +1964,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def unset_schema_template(self, template_name, prefix_path):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         unset device template from prefix path, this method unsetting the template from entities,
         which have already inserted records using the template, is not supported.
@@ -1961,6 +1993,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def count_measurements_in_template(self, template_name: str):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         drop device template, this method should be used to the template unset anything
         :param template_name: template name
@@ -1986,6 +2023,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def is_measurement_in_template(self, template_name: str, path: str):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         judge the node in the template is measurement or not, this node must in the template
         :param template_name: template name
@@ -2014,6 +2056,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def is_path_exist_in_template(self, template_name: str, path: str):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         judge whether the node is a measurement or not in the template, this node must be in the template
         :param template_name: template name
@@ -2039,6 +2086,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_measurements_in_template(self, template_name: str, pattern: str = ""):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         show all measurements under the pattern in template
         :param template_name: template name
@@ -2067,6 +2119,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_all_templates(self):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         show all device templates
         """
@@ -2092,6 +2149,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_paths_template_set_on(self, template_name):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         show the path prefix where a device template is set
         :param template_name:
@@ -2116,6 +2178,11 @@ class Session(object):
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def show_paths_template_using_on(self, template_name):
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         """
         show the path prefix where a device template is used
         :param template_name:

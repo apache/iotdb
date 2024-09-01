@@ -19,43 +19,113 @@
 
 package org.apache.iotdb.db.subscription.event.batch;
 
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.batch.PipeTabletEventTsFileBatch;
+import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
+import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeTsFileBatchEvents;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
+import org.apache.iotdb.rpc.subscription.payload.poll.FileInitPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
-public class SubscriptionPipeTsFileEventBatch {
+public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
 
   public SubscriptionPipeTsFileEventBatch(
-      final int maxDelayInMs, final long requestMaxBatchSizeInBytes) {
-    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, requestMaxBatchSizeInBytes);
+      final int regionId,
+      final SubscriptionPrefetchingTsFileQueue prefetchingQueue,
+      final int maxDelayInMs,
+      final long maxBatchSizeInBytes) {
+    super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
+    this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
   }
 
-  public synchronized List<File> sealTsFiles() throws Exception {
-    return batch.sealTsFiles();
+  @Override
+  public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
+    if (batch.shouldEmit()) {
+      if (Objects.isNull(events)) {
+        events = generateSubscriptionEvents();
+      }
+      if (Objects.nonNull(events)) {
+        events.forEach(consumer);
+        return true;
+      }
+      return false;
+    }
+    return false;
   }
 
-  public synchronized boolean shouldEmit() {
-    return batch.shouldEmit();
+  @Override
+  public synchronized boolean onEvent(
+      final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer)
+      throws Exception {
+    if (event instanceof TabletInsertionEvent) {
+      batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      event.decreaseReferenceCount(
+          SubscriptionPipeTsFileEventBatch.class.getName(),
+          false); // missing releaseLastEvent decreases reference count
+    }
+    return onEvent(consumer);
   }
 
-  public synchronized boolean onEvent(final TabletInsertionEvent event) throws Exception {
-    return batch.onEvent(event);
+  @Override
+  public synchronized void cleanUp() {
+    // close batch, it includes clearing the reference count of events
+    batch.close();
   }
 
   public synchronized void ack() {
     batch.decreaseEventsReferenceCount(this.getClass().getName(), true);
   }
 
-  public synchronized void cleanup() {
-    // close batch, it includes clearing the reference count of events
-    batch.close();
+  /////////////////////////////// utility ///////////////////////////////
+
+  private List<SubscriptionEvent> generateSubscriptionEvents() throws Exception {
+    if (batch.isEmpty()) {
+      return null;
+    }
+
+    final List<SubscriptionEvent> events = new ArrayList<>();
+    final List<File> tsFiles = batch.sealTsFiles();
+    final AtomicInteger referenceCount = new AtomicInteger(tsFiles.size());
+    for (final File tsFile : tsFiles) {
+      final SubscriptionCommitContext commitContext =
+          prefetchingQueue.generateSubscriptionCommitContext();
+      events.add(
+          new SubscriptionEvent(
+              new SubscriptionPipeTsFileBatchEvents(this, tsFile, referenceCount),
+              new SubscriptionPollResponse(
+                  SubscriptionPollResponseType.FILE_INIT.getType(),
+                  new FileInitPayload(tsFile.getName()),
+                  commitContext)));
+    }
+    return events;
   }
 
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
   public String toString() {
-    return "SubscriptionPipeTsFileEventBatch{batch=" + batch + "}";
+    return "SubscriptionPipeTsFileEventBatch" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("batch", batch.toString());
+    return coreReportMessage;
   }
 }

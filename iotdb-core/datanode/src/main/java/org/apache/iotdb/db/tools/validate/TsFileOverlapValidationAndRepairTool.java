@@ -22,10 +22,10 @@ package org.apache.iotdb.db.tools.validate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +42,7 @@ import java.util.Set;
 
 public class TsFileOverlapValidationAndRepairTool {
 
-  private static final Set<File> toMoveFiles = new HashSet<>();
+  private static final Set<TsFileResource> toMoveFiles = new HashSet<>();
   private static final List<File> partitionDirsWhichHaveOverlapFiles = new ArrayList<>();
   private static int overlapTsFileNum = 0;
   private static int totalTsFileNum = 0;
@@ -73,7 +73,6 @@ public class TsFileOverlapValidationAndRepairTool {
 
     System.out.printf(
         "Overlap tsfile num is %d, total tsfile num is %d\n", overlapTsFileNum, totalTsFileNum);
-    System.out.println("Corresponding file num is " + toMoveFiles.size());
     if (overlapTsFileNum == 0) {
       return false;
     }
@@ -83,34 +82,66 @@ public class TsFileOverlapValidationAndRepairTool {
     return "y".equals(input);
   }
 
-  private static void moveOverlapFilesToUnsequenceSpace(Set<File> toMoveFiles) {
-    for (File f : toMoveFiles) {
-      if (!f.exists()) {
-        System.out.println(f.getAbsolutePath() + "is not exist in repairing");
-        continue;
-      }
-      String filePath = f.getAbsolutePath();
-      String replaceStr = File.separator + "sequence" + File.separator;
-      String replaceToStr = File.separator + "unsequence" + File.separator;
-      int sequenceDirIndex = filePath.indexOf(replaceStr);
-      if (sequenceDirIndex == -1) {
-        continue;
-      }
-      String moveToPath =
-          filePath.substring(0, sequenceDirIndex)
-              + replaceToStr
-              + filePath.substring(sequenceDirIndex + replaceStr.length());
-      File targetFile = new File(moveToPath);
-      File targetParentFile = targetFile.getParentFile();
-      if (targetParentFile.exists()) {
-        targetParentFile.mkdirs();
-      }
-      boolean success = f.renameTo(targetFile);
-      if (!success) {
-        System.out.println("Failed to repair " + f.getAbsolutePath());
-      }
-      System.out.println("Repair file " + targetFile.getName());
+  private static void moveOverlapFilesToUnsequenceSpace(Set<TsFileResource> toMoveResources)
+      throws IOException {
+    for (TsFileResource resource : toMoveResources) {
+      moveSeqResourceToUnsequenceDir(resource);
     }
+  }
+
+  private static void moveSeqResourceToUnsequenceDir(TsFileResource resource) throws IOException {
+    if (!resource.tsFileExists()) {
+      System.out.println(resource.getTsFile().getAbsolutePath() + " does not exist when repairing");
+      return;
+    }
+    String dirPath = resource.getTsFile().getParentFile().getAbsolutePath();
+    String replaceStr = File.separator + "sequence" + File.separator;
+    String replaceToStr = File.separator + "unsequence" + File.separator;
+    int sequenceDirIndex = dirPath.indexOf(replaceStr);
+    if (sequenceDirIndex == -1) {
+      return;
+    }
+    String moveToDir =
+        dirPath.substring(0, sequenceDirIndex)
+            + replaceToStr
+            + dirPath.substring(sequenceDirIndex + replaceStr.length());
+    File targetDir = new File(moveToDir);
+    if (!targetDir.exists()) {
+      targetDir.mkdirs();
+    }
+
+    File tsfile = resource.getTsFile();
+    File targetFile;
+    TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(tsfile.getName());
+    do {
+      String fileNameStr =
+          String.format(
+              "%d-%d-%d-%d" + TsFileConstant.TSFILE_SUFFIX,
+              tsFileName.getTime(),
+              0,
+              tsFileName.getInnerCompactionCnt(),
+              0);
+      targetFile = new File(targetDir.getAbsolutePath() + File.separator + fileNameStr);
+      tsFileName.setTime(tsFileName.getTime() + 1);
+    } while (targetFile.exists());
+
+    moveFile(tsfile, targetFile);
+    moveFile(
+        new File(tsfile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+        new File(targetFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+    if (resource.modFileExists()) {
+      moveFile(
+          new File(tsfile.getAbsolutePath() + ModificationFile.FILE_SUFFIX),
+          new File(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX));
+    }
+  }
+
+  private static void moveFile(File from, File to) {
+    boolean success = from.renameTo(to);
+    if (!success) {
+      System.out.println("Failed to repair " + from.getAbsolutePath());
+    }
+    System.out.println("Repair file " + from.getName());
   }
 
   private static void validateSequenceDataDirs(List<String> sequenceDataDirPaths)
@@ -118,7 +149,9 @@ public class TsFileOverlapValidationAndRepairTool {
     Map<String, List<File>> partitionMap = new HashMap<>();
     for (String sequenceDataDirPath : sequenceDataDirPaths) {
       File sequenceDataDir = new File(sequenceDataDirPath);
-      if (!sequenceDataDir.exists() || sequenceDataDir.isFile()) {
+      if (!sequenceDataDir.exists()
+          || sequenceDataDir.isFile()
+          || !sequenceDataDir.getName().equals("sequence")) {
         System.out.println(sequenceDataDir.getAbsolutePath() + " is not a correct path");
         continue;
       }
@@ -190,7 +223,7 @@ public class TsFileOverlapValidationAndRepairTool {
                   + " device in current file start time is %d\n",
               deviceLastExistTsFileMap.get(device).getTsFilePath(),
               resource.getTsFilePath(),
-              ((PlainDeviceID) device).toStringID(),
+              device.toString(),
               deviceEndTimeInPreviousFile,
               deviceStartTimeInCurrentFile);
           fileHasOverlap = true;
@@ -211,13 +244,7 @@ public class TsFileOverlapValidationAndRepairTool {
   }
 
   private static void recordOverlapTsFile(TsFileResource overlapFile) {
-    String filePath = overlapFile.getTsFilePath();
-    toMoveFiles.add(overlapFile.getTsFile());
-    toMoveFiles.add(new File(filePath + TsFileResource.RESOURCE_SUFFIX));
-    ModificationFile modsFile = overlapFile.getModFile();
-    if (modsFile.exists()) {
-      toMoveFiles.add(new File(modsFile.getFilePath()));
-    }
+    toMoveFiles.add(overlapFile);
   }
 
   private static List<TsFileResource> loadSortedTsFileResources(List<File> timePartitionDirs)

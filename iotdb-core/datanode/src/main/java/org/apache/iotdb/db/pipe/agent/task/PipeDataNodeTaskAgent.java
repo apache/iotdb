@@ -83,6 +83,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -91,6 +92,9 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskAgent.class);
 
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  private static final AtomicLong LAST_FORCED_RESTART_TIME =
+      new AtomicLong(System.currentTimeMillis());
 
   ////////////////////////// Pipe Task Management Entry //////////////////////////
 
@@ -475,18 +479,32 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     if (!tryWriteLockWithTimeOut(5)) {
       return;
     }
+
+    final Set<PipeMeta> stuckPipes;
     try {
-      restartAllStuckPipesInternal();
+      stuckPipes = findAllStuckPipes();
     } finally {
       releaseWriteLock();
     }
+
+    // Restart all stuck pipes
+    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
   }
 
-  private void restartAllStuckPipesInternal() {
+  private Set<PipeMeta> findAllStuckPipes() {
+    final Set<PipeMeta> stuckPipes = new HashSet<>();
+
+    if (System.currentTimeMillis() - LAST_FORCED_RESTART_TIME.get()
+        > PipeConfig.getInstance().getPipeSubtaskExecutorForcedRestartIntervalMs()) {
+      LAST_FORCED_RESTART_TIME.set(System.currentTimeMillis());
+      for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
+        stuckPipes.add(pipeMeta);
+      }
+      return stuckPipes;
+    }
+
     final Map<String, IoTDBDataRegionExtractor> taskId2ExtractorMap =
         PipeDataRegionExtractorMetrics.getInstance().getExtractorMap();
-
-    final Set<PipeMeta> stuckPipes = new HashSet<>();
     for (final PipeMeta pipeMeta : pipeMetaKeeper.getPipeMetaList()) {
       final String pipeName = pipeMeta.getStaticMeta().getPipeName();
       final List<IoTDBDataRegionExtractor> extractors =
@@ -525,8 +543,7 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
       }
     }
 
-    // Restart all stuck pipes
-    stuckPipes.parallelStream().forEach(this::restartStuckPipe);
+    return stuckPipes;
   }
 
   private boolean mayDeletedTsFileSizeReachDangerousThreshold() {
@@ -565,59 +582,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
 
   private void restartStuckPipe(final PipeMeta pipeMeta) {
     LOGGER.warn("Pipe {} will be restarted because of stuck.", pipeMeta.getStaticMeta());
-    final long startTime = System.currentTimeMillis();
-    changePipeStatusBeforeRestart(pipeMeta.getStaticMeta().getPipeName());
-    handleSinglePipeMetaChangesInternal(pipeMeta);
-    LOGGER.warn(
-        "Pipe {} was restarted because of stuck, time cost: {} ms.",
-        pipeMeta.getStaticMeta(),
-        System.currentTimeMillis() - startTime);
-  }
-
-  private void changePipeStatusBeforeRestart(final String pipeName) {
-    final PipeMeta pipeMeta = pipeMetaKeeper.getPipeMeta(pipeName);
-    final Map<Integer, PipeTask> pipeTasks = pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta());
-    final Set<Integer> taskRegionIds = new HashSet<>(pipeTasks.keySet());
-    final Set<Integer> dataRegionIds =
-        StorageEngine.getInstance().getAllDataRegionIds().stream()
-            .map(DataRegionId::getId)
-            .collect(Collectors.toSet());
-    final Set<PipeTask> dataRegionPipeTasks =
-        taskRegionIds.stream()
-            .filter(dataRegionIds::contains)
-            .map(regionId -> pipeTaskManager.removePipeTask(pipeMeta.getStaticMeta(), regionId))
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
-
-    // Drop data region tasks
-    dataRegionPipeTasks.parallelStream().forEach(PipeTask::drop);
-
-    // Stop schema region tasks
-    pipeTaskManager.getPipeTasks(pipeMeta.getStaticMeta()).values().parallelStream()
-        .forEach(PipeTask::stop);
-
-    // Re-create data region tasks
-    dataRegionPipeTasks.parallelStream()
-        .forEach(
-            pipeTask -> {
-              final PipeTask newPipeTask =
-                  new PipeDataNodeTaskBuilder(
-                          pipeMeta.getStaticMeta(),
-                          ((PipeDataNodeTask) pipeTask).getRegionId(),
-                          pipeMeta
-                              .getRuntimeMeta()
-                              .getConsensusGroupId2TaskMetaMap()
-                              .get(((PipeDataNodeTask) pipeTask).getRegionId()))
-                      .build();
-              newPipeTask.create();
-              pipeTaskManager.addPipeTask(
-                  pipeMeta.getStaticMeta(),
-                  ((PipeDataNodeTask) pipeTask).getRegionId(),
-                  newPipeTask);
-            });
-
-    // Set pipe meta status to STOPPED
-    pipeMeta.getRuntimeMeta().getStatus().set(PipeStatus.STOPPED);
+    acquireWriteLock();
+    try {
+      final long startTime = System.currentTimeMillis();
+      final PipeMeta originalPipeMeta = pipeMeta.deepCopy();
+      handleDropPipe(pipeMeta.getStaticMeta().getPipeName());
+      handleSinglePipeMetaChanges(originalPipeMeta);
+      LOGGER.warn(
+          "Pipe {} was restarted because of stuck, time cost: {} ms.",
+          originalPipeMeta.getStaticMeta(),
+          System.currentTimeMillis() - startTime);
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to restart stuck pipe {}.", pipeMeta.getStaticMeta(), e);
+    } finally {
+      releaseWriteLock();
+    }
   }
 
   ///////////////////////// Terminate Logic /////////////////////////
@@ -646,6 +625,21 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
     return pipeMeta == null || pipeMeta.getStaticMeta().getCreationTime() != creationTime
         ? Collections.emptySet()
         : pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap().keySet();
+  }
+
+  public boolean hasPipeReleaseRegionRelatedResource(final int consensusGroupId) {
+    if (!tryReadLockWithTimeOut(10)) {
+      LOGGER.warn(
+          "Failed to check if pipe has release region related resource with consensus group id: {}.",
+          consensusGroupId);
+      return false;
+    }
+
+    try {
+      return !pipeTaskManager.hasPipeTaskInConsensusGroup(consensusGroupId);
+    } finally {
+      releaseReadLock();
+    }
   }
 
   ///////////////////////// Pipe Consensus /////////////////////////

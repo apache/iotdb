@@ -47,6 +47,11 @@ public class PipeRuntimeConnectorCriticalException extends PipeRuntimeCriticalEx
   }
 
   @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
+
+  @Override
   public void serialize(ByteBuffer byteBuffer) {
     PipeRuntimeExceptionType.CONNECTOR_CRITICAL_EXCEPTION.serialize(byteBuffer);
     ReadWriteIOUtils.write(getMessage(), byteBuffer);

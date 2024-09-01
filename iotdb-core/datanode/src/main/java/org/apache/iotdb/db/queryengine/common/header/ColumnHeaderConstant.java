@@ -46,6 +46,7 @@ public class ColumnHeaderConstant {
   public static final String COMPRESSION = "Compression";
   public static final String TAGS = "Tags";
   public static final String ATTRIBUTES = "Attributes";
+  public static final String NOTES = "Notes";
   public static final String DEADBAND = "Deadband";
   public static final String DEADBAND_PARAMETERS = "DeadbandParameters";
   public static final String IS_ALIGNED = "IsAligned";
@@ -109,6 +110,8 @@ public class ColumnHeaderConstant {
   public static final String TRIGGER_NAME = "TriggerName";
   public static final String EVENT = "Event";
   public static final String STATE = "State";
+  public static final String MODEL_TYPE = "ModelType";
+  public static final String CONFIGS = "Configs";
   public static final String PATH_PATTERN = "PathPattern";
   public static final String CLASS_NAME = "ClassName";
 
@@ -128,6 +131,7 @@ public class ColumnHeaderConstant {
   // show cluster status
   public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
   public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String NODE_TYPE_AI_NODE = "AINode";
   public static final String COLUMN_CLUSTER_NAME = "ClusterName";
   public static final String CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS =
       "ConfigNodeConsensusProtocolClass";
@@ -200,6 +204,9 @@ public class ColumnHeaderConstant {
   public static final String USER = "User";
   public static final String READ_WRITE = "Read/Write";
 
+  // column names for show models/trials
+  public static final String MODEL_ID = "ModelId";
+
   // column names for views (e.g. logical view)
   public static final String VIEW_TYPE = "ViewType";
   public static final String SOURCE = "Source";
@@ -207,6 +214,11 @@ public class ColumnHeaderConstant {
   // column names for show current timestamp
   public static final String CURRENT_TIMESTAMP = "CurrentTimestamp";
 
+  // column names for table query
+  public static final String COLUMN_NAME = "ColumnName";
+  public static final String COLUMN_DATA_TYPE = "DataType";
+  public static final String COLUMN_CATEGORY = "Category";
+  public static final String TABLE_NAME = "TableName";
   public static final String PRIVILEGES = "Privileges";
 
   public static final String GRANT_OPTION = "GrantOption";
@@ -328,6 +340,13 @@ public class ColumnHeaderConstant {
           new ColumnHeader(INTERNAL_ADDRESS, TSDataType.TEXT),
           new ColumnHeader(ROLE, TSDataType.TEXT),
           new ColumnHeader(CREATE_TIME, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showAINodesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(NODE_ID, TSDataType.INT32),
+          new ColumnHeader(STATUS, TSDataType.TEXT),
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.INT32));
 
   public static final List<ColumnHeader> showDataNodesColumnHeaders =
       ImmutableList.of(
@@ -497,6 +516,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(LIMIT, TSDataType.TEXT),
           new ColumnHeader(READ_WRITE, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showModelsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(MODEL_ID, TSDataType.TEXT),
+          new ColumnHeader(MODEL_TYPE, TSDataType.TEXT),
+          new ColumnHeader(STATE, TSDataType.TEXT),
+          new ColumnHeader(CONFIGS, TSDataType.TEXT),
+          new ColumnHeader(NOTES, TSDataType.TEXT));
+
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -510,6 +537,23 @@ public class ColumnHeaderConstant {
   public static final List<ColumnHeader> showCurrentTimestampColumnHeaders =
       ImmutableList.of(new ColumnHeader(CURRENT_TIMESTAMP, TSDataType.INT64));
 
+  public static final List<ColumnHeader> showDBColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(SCHEMA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(DATA_REPLICATION_FACTOR, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION_INTERVAL, TSDataType.INT64));
+
+  public static final List<ColumnHeader> describeTableColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showTablesColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(TABLE_NAME, TSDataType.TEXT),
+          new ColumnHeader(COLUMN_TTL, TSDataType.TEXT));
   public static final List<ColumnHeader> LIST_USER_PRIVILEGES_Column_HEADERS =
       ImmutableList.of(
           new ColumnHeader(ROLE, TSDataType.TEXT),

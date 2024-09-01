@@ -22,6 +22,7 @@ package org.apache.iotdb.session.pool;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.isession.INodeSupplier;
+import org.apache.iotdb.isession.IPooledSession;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
@@ -56,6 +57,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+
+import static org.apache.iotdb.rpc.RpcUtils.isUseDatabase;
 
 /**
  * SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider
@@ -151,6 +154,7 @@ public class SessionPool implements ISessionPool {
   private final String formattedNodeUrls;
 
   // used to update datanodeList periodically
+  @SuppressWarnings("java:S3077")
   private volatile ScheduledExecutorService executorService;
 
   private INodeSupplier availableNodes;
@@ -165,6 +169,11 @@ public class SessionPool implements ISessionPool {
   protected int maxRetryCount = SessionConfig.MAX_RETRY_COUNT;
 
   protected long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
+
+  protected String sqlDialect = SessionConfig.SQL_DIALECT;
+
+  // may be null
+  protected String database;
 
   private static final String INSERT_RECORD_FAIL = "insertRecord failed";
 
@@ -500,6 +509,8 @@ public class SessionPool implements ISessionPool {
     this.trustStorePwd = builder.trustStorePwd;
     this.maxRetryCount = builder.maxRetryCount;
     this.retryIntervalInMs = builder.retryIntervalInMs;
+    this.sqlDialect = builder.sqlDialect;
+    this.database = builder.defaultDatabase;
     this.queryTimeoutInMs = builder.queryTimeoutInMs;
 
     if (enableAutoFetch) {
@@ -555,6 +566,8 @@ public class SessionPool implements ISessionPool {
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
+              .database(database)
               .timeOut(queryTimeoutInMs)
               .build();
     } else {
@@ -576,6 +589,8 @@ public class SessionPool implements ISessionPool {
               .trustStorePwd(trustStorePwd)
               .maxRetryCount(maxRetryCount)
               .retryIntervalInMs(retryIntervalInMs)
+              .sqlDialect(sqlDialect)
+              .database(database)
               .timeOut(queryTimeoutInMs)
               .build();
     }
@@ -713,6 +728,11 @@ public class SessionPool implements ISessionPool {
   }
 
   @Override
+  public IPooledSession getPooledSession() throws IoTDBConnectionException {
+    return new SessionWrapper((Session) getSession(), this);
+  }
+
+  @Override
   public int currentAvailableSize() {
     return queue.size();
   }
@@ -723,7 +743,7 @@ public class SessionPool implements ISessionPool {
   }
 
   @SuppressWarnings({"squid:S2446"})
-  private void putBack(ISession session) {
+  protected void putBack(ISession session) {
     queue.push(session);
     synchronized (this) {
       // we do not need to notifyAll as any waited thread can continue to work after waked up.
@@ -835,6 +855,11 @@ public class SessionPool implements ISessionPool {
               formattedNodeUrls, RETRY, e.getMessage()),
           e);
     }
+  }
+
+  protected void cleanSessionAndMayThrowConnectionException(ISession session) {
+    closeSession(session);
+    tryConstructNewSession();
   }
 
   /**
@@ -3039,6 +3064,13 @@ public class SessionPool implements ISessionPool {
   @Override
   public void executeNonQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
+
+    // use XXX is forbidden in SessionPool.executeNonQueryStatement
+    if (isUseDatabase(sql)) {
+      throw new IllegalArgumentException(
+          String.format("SessionPool doesn't support executing %s directly", sql));
+    }
+
     ISession session = getSession();
     try {
       session.executeNonQueryStatement(sql);
@@ -3561,7 +3593,10 @@ public class SessionPool implements ISessionPool {
     // sleep time between each retry
     private long retryIntervalInMs = SessionConfig.RETRY_INTERVAL_IN_MS;
 
+    private String sqlDialect = SessionConfig.SQL_DIALECT;
     private long queryTimeoutInMs = SessionConfig.DEFAULT_QUERY_TIME_OUT;
+
+    private String defaultDatabase;
 
     public Builder useSSL(boolean useSSL) {
       this.useSSL = useSSL;
@@ -3673,8 +3708,18 @@ public class SessionPool implements ISessionPool {
       return this;
     }
 
+    public Builder sqlDialect(String sqlDialect) {
+      this.sqlDialect = sqlDialect;
+      return this;
+    }
+
     public Builder queryTimeoutInMs(long queryTimeoutInMs) {
       this.queryTimeoutInMs = queryTimeoutInMs;
+      return this;
+    }
+
+    public Builder database(String database) {
+      this.defaultDatabase = database;
       return this;
     }
 

@@ -116,7 +116,14 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
     clientManager =
         constructClient(
-            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
+            nodeUrls,
+            useSSL,
+            trustStorePath,
+            trustStorePwd,
+            useLeaderCache,
+            loadBalanceStrategy,
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -125,7 +132,9 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       String trustStorePath,
       String trustStorePwd,
       boolean useLeaderCache,
-      String loadBalanceStrategy);
+      String loadBalanceStrategy,
+      boolean shouldReceiverConvertOnTypeMismatch,
+      String loadTsFileStrategy);
 
   @Override
   public void handshake() throws Exception {

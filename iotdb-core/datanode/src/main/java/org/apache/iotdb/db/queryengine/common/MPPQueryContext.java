@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * This class is used to record the context of a query including QueryId, query statement, session
@@ -80,6 +81,8 @@ public class MPPQueryContext {
   // To avoid query front-end from consuming too much memory, it needs to reserve memory when
   // constructing some Expression and PlanNode.
   private final MemoryReservationManager memoryReservationManager;
+
+  private boolean isTableQuery = false;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -212,9 +215,15 @@ public class MPPQueryContext {
     }
   }
 
+  // used for tree model
   public void generateGlobalTimeFilter(Analysis analysis) {
     this.globalTimeFilter =
         PredicateUtils.convertPredicateToTimeFilter(analysis.getGlobalTimePredicate());
+  }
+
+  // used for table model
+  public void setGlobalTimeFilter(Filter globalTimeFilter) {
+    this.globalTimeFilter = globalTimeFilter;
   }
 
   public Filter getGlobalTimeFilter() {
@@ -334,4 +343,16 @@ public class MPPQueryContext {
   }
 
   // endregion
+
+  public boolean isTableQuery() {
+    return isTableQuery;
+  }
+
+  public void setTableQuery(boolean tableQuery) {
+    isTableQuery = tableQuery;
+  }
+
+  public Optional<String> getDatabaseName() {
+    return session.getDatabaseName();
+  }
 }

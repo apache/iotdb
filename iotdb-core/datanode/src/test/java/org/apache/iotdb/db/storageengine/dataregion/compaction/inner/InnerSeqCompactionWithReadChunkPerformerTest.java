@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.inner;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -1110,7 +1110,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 1000);
     deleteDataNode.setSearchIndex(0);
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), deleteDataNode);
+    vsgp.deleteByDevice(new MeasurementPath(fullPaths[0]), deleteDataNode);
 
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -1129,8 +1129,8 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     DeleteDataNode deleteDataNode3 =
         new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path), 0, 1800);
     deleteDataNode3.setSearchIndex(0);
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), deleteDataNode2);
-    vsgp.deleteByDevice(new PartialPath(fullPaths[0]), deleteDataNode3);
+    vsgp.deleteByDevice(new MeasurementPath(fullPaths[0]), deleteDataNode2);
+    vsgp.deleteByDevice(new MeasurementPath(fullPaths[0]), deleteDataNode3);
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();

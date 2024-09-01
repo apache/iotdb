@@ -28,6 +28,10 @@ import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBool;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
+
 public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
 
   protected CompareBinaryColumnTransformer(
@@ -49,13 +53,13 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         boolean flag = false;
         // compare binary type
-        if (TypeEnum.BINARY.equals(leftTransformer.getType().getTypeEnum())) {
+        if (isCharType(leftTransformer.getType()) || isBlobType(leftTransformer.getType())) {
           flag =
               transform(
                   TransformUtils.compare(
                       leftTransformer.getType().getBinary(leftColumn, i),
                       rightTransformer.getType().getBinary(rightColumn, i)));
-        } else if (TypeEnum.BOOLEAN.equals(leftTransformer.getType().getTypeEnum())) {
+        } else if (isBool(leftTransformer.getType())) {
           flag =
               transform(
                   Boolean.compare(

@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.BinaryCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 
@@ -38,13 +39,14 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.OptionalInt;
 
 public class FilterAndProjectOperator implements ProcessOperator {
 
@@ -116,8 +118,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
     long inputRowCount = input.getPositionCount();
     TsBlock filterResult = getFilterTsBlock(input);
-    filteredRowCount +=
-        filterResult == null ? inputRowCount : inputRowCount - filterResult.getPositionCount();
+    filteredRowCount += inputRowCount - filterResult.getPositionCount();
     operatorContext.recordSpecifiedInfo("Filtered Rows", Long.toString(filteredRowCount));
 
     // contains non-mappable udf, we leave calculation for TransformOperator
@@ -132,7 +133,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
    * subexpressions after filtering.
    */
   private TsBlock getFilterTsBlock(TsBlock input) {
-    final TimeColumn originTimeColumn = input.getTimeColumn();
+    final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
     // feed Filter ColumnTransformer, including TimeStampColumnTransformer and constant
     for (LeafColumnTransformer leafColumnTransformer : filterLeafColumnTransformerList) {
@@ -146,9 +147,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // reuse this builder
     filterTsBlockBuilder.reset();
 
-    final TimeColumnBuilder timeBuilder = filterTsBlockBuilder.getTimeColumnBuilder();
-    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
-
     List<Column> resultColumns = new ArrayList<>();
     for (int i = 0, n = input.getValueColumnCount(); i < n; i++) {
       resultColumns.add(input.getColumn(i));
@@ -161,24 +159,35 @@ public class FilterAndProjectOperator implements ProcessOperator {
       }
     }
 
-    int rowCount =
-        constructFilteredTsBlock(
-            resultColumns,
-            timeBuilder,
-            filterColumn,
-            originTimeColumn,
-            columnBuilders,
-            positionCount);
+    final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
+    if (originTimeColumn instanceof RunLengthEncodedColumn) {
+      int rowCount =
+          constructFilteredTsBlock(resultColumns, filterColumn, columnBuilders, positionCount);
+      filterTsBlockBuilder.declarePositions(rowCount);
 
-    filterTsBlockBuilder.declarePositions(rowCount);
-    return filterTsBlockBuilder.build();
+      return filterTsBlockBuilder.build(originTimeColumn.getRegion(0, rowCount));
+
+    } else {
+      final TimeColumnBuilder timeBuilder = filterTsBlockBuilder.getTimeColumnBuilder();
+      int rowCount =
+          constructFilteredTsBlock(
+              resultColumns,
+              timeBuilder,
+              filterColumn,
+              originTimeColumn,
+              columnBuilders,
+              positionCount);
+
+      filterTsBlockBuilder.declarePositions(rowCount);
+      return filterTsBlockBuilder.build();
+    }
   }
 
-  private int constructFilteredTsBlock(
+  private static int constructFilteredTsBlock(
       List<Column> resultColumns,
       TimeColumnBuilder timeBuilder,
       Column filterColumn,
-      TimeColumn originTimeColumn,
+      Column originTimeColumn,
       ColumnBuilder[] columnBuilders,
       int positionCount) {
     // construct result TsBlock of filter
@@ -202,12 +211,37 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return rowCount;
   }
 
-  private boolean satisfy(Column filterColumn, int rowIndex) {
+  public static int constructFilteredTsBlock(
+      List<Column> resultColumns,
+      Column filterColumn,
+      ColumnBuilder[] columnBuilders,
+      int positionCount) {
+    // construct result TsBlock of filter
+    int rowCount = 0;
+    for (int i = 0, n = resultColumns.size(); i < n; i++) {
+      Column curColumn = resultColumns.get(i);
+      for (int j = 0; j < positionCount; j++) {
+        if (satisfy(filterColumn, j)) {
+          if (i == 0) {
+            rowCount++;
+          }
+          if (curColumn.isNull(j)) {
+            columnBuilders[i].appendNull();
+          } else {
+            columnBuilders[i].write(curColumn, j);
+          }
+        }
+      }
+    }
+    return rowCount;
+  }
+
+  public static boolean satisfy(Column filterColumn, int rowIndex) {
     return !filterColumn.isNull(rowIndex) && filterColumn.getBoolean(rowIndex);
   }
 
   private TsBlock getTransformedTsBlock(TsBlock input) {
-    final TimeColumn originTimeColumn = input.getTimeColumn();
+    final Column originTimeColumn = input.getTimeColumn();
     final int positionCount = originTimeColumn.getPositionCount();
     // feed pre calculated data
     for (LeafColumnTransformer leafColumnTransformer : projectLeafColumnTransformerList) {
@@ -364,6 +398,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
                   ((CaseWhenThenColumnTransformer) columnTransformer).getElseTransformer()));
       childMaxLevel = Math.max(childMaxLevel, childCount + 2);
       return childMaxLevel;
+    } else if (columnTransformer instanceof MultiColumnTransformer) {
+      int childrenCount = ((MultiColumnTransformer) columnTransformer).getChildren().size();
+      OptionalInt childMaxLevel =
+          ((MultiColumnTransformer) columnTransformer)
+              .getChildren().stream().mapToInt(this::getMaxLevelOfColumnTransformerTree).max();
+
+      return Math.max(childrenCount + 1, childMaxLevel.orElse(childrenCount + 1));
     } else {
       throw new UnsupportedOperationException("Unsupported ColumnTransformer");
     }

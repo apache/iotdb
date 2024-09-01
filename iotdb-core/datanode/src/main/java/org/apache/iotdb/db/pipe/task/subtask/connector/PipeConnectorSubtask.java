@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.task.subtask.connector;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeAbstractConnectorSubtask;
@@ -31,7 +32,6 @@ import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionConnectorMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionConnectorMetrics;
-import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -99,6 +99,10 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             : UserDefinedEnrichedEvent.maybeOf(inputPendingQueue.waitedPoll());
     // Record this event for retrying on connection failure or other exceptions
     setLastEvent(event);
+    if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
+      lastEvent = null;
+      return true;
+    }
 
     try {
       if (event == null) {
@@ -132,7 +136,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
                 : event);
       }
 
-      decreaseReferenceCountAndReleaseLastEvent(true);
+      decreaseReferenceCountAndReleaseLastEvent(event, true);
     } catch (final PipeException e) {
       if (!isClosed.get()) {
         setLastExceptionEvent(event);
@@ -142,7 +146,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
             "{} in pipe transfer, ignored because the connector subtask is dropped.",
             e.getClass().getSimpleName(),
             e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     } catch (final Exception e) {
       if (!isClosed.get()) {
@@ -159,7 +163,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       } else {
         LOGGER.info(
             "Exception in pipe transfer, ignored because the connector subtask is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     }
 
@@ -203,13 +207,7 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
     } finally {
-      inputPendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent) {
-              ((EnrichedEvent) event).clearReferenceCount(PipeEventCollector.class.getName());
-            }
-          });
-      inputPendingQueue.clear();
+      inputPendingQueue.discardAllEvents();
 
       // Should be called after outputPipeConnector.close()
       super.close();
@@ -222,18 +220,9 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    */
   public void discardEventsOfPipe(final String pipeNameToDrop) {
     // Try to remove the events as much as possible
-    inputPendingQueue.removeIf(
-        event -> {
-          if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
-            ((EnrichedEvent) event)
-                .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
-            return true;
-          }
-          return false;
-        });
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
 
-    // synchronized to use the lastEvent and lastExceptionEvent
+    // synchronized to use the lastEvent & lastExceptionEvent
     synchronized (this) {
       // Here we discard the last event, and re-submit the pipe task to avoid that the pipe task has
       // stopped submission but will not be stopped by critical exceptions, because when it acquires
@@ -268,8 +257,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       }
     }
 
-    if (outputPipeConnector instanceof IoTDBDataRegionAsyncConnector) {
-      ((IoTDBDataRegionAsyncConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+    if (outputPipeConnector instanceof IoTDBConnector) {
+      ((IoTDBConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
     }
   }
 

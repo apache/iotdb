@@ -20,9 +20,13 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.logfile.visitor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
@@ -46,6 +50,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -69,8 +74,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaRegionPlanDeserializer.class);
 
   @Override
-  public ISchemaRegionPlan deserialize(ByteBuffer byteBuffer) {
-    ISchemaRegionPlan schemaRegionPlan =
+  public ISchemaRegionPlan deserialize(final ByteBuffer byteBuffer) {
+    final ISchemaRegionPlan schemaRegionPlan =
         SchemaRegionWritePlanFactory.getEmptyPlan(SchemaRegionPlanType.deserialize(byteBuffer));
     return schemaRegionPlan.accept(new SchemaRegionPlanDeserializeVisitor(), byteBuffer);
   }
@@ -79,14 +84,16 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
       extends SchemaRegionPlanVisitor<ISchemaRegionPlan, ByteBuffer> {
 
     @Override
-    public ISchemaRegionPlan visitSchemaRegionPlan(ISchemaRegionPlan plan, ByteBuffer byteBuffer) {
+    public ISchemaRegionPlan visitSchemaRegionPlan(
+        final ISchemaRegionPlan plan, final ByteBuffer byteBuffer) {
       throw new UnsupportedOperationException(
           String.format("%s plan doesn't support deserialization.", plan.getPlanType().name()));
     }
 
     @Override
     public ISchemaRegionPlan visitActivateTemplateInCluster(
-        IActivateTemplateInClusterPlan activateTemplateInClusterPlan, ByteBuffer buffer) {
+        final IActivateTemplateInClusterPlan activateTemplateInClusterPlan,
+        final ByteBuffer buffer) {
       try {
         activateTemplateInClusterPlan.setActivatePath(
             new PartialPath(ReadWriteIOUtils.readString(buffer)));
@@ -104,7 +111,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitAutoCreateDeviceMNode(
-        IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, ByteBuffer buffer) {
+        final IAutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan, final ByteBuffer buffer) {
       try {
         autoCreateDeviceMNodePlan.setPath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
       } catch (IllegalPathException e) {
@@ -117,10 +124,11 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
     }
 
     @Override
-    public ISchemaRegionPlan visitChangeAlias(IChangeAliasPlan changeAliasPlan, ByteBuffer buffer) {
+    public ISchemaRegionPlan visitChangeAlias(
+        final IChangeAliasPlan changeAliasPlan, final ByteBuffer buffer) {
       try {
         changeAliasPlan.setPath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
-      } catch (IllegalPathException e) {
+      } catch (final IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
       changeAliasPlan.setAlias(ReadWriteIOUtils.readString(buffer));
@@ -129,10 +137,10 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitChangeTagOffset(
-        IChangeTagOffsetPlan changeTagOffsetPlan, ByteBuffer buffer) {
+        final IChangeTagOffsetPlan changeTagOffsetPlan, final ByteBuffer buffer) {
       try {
         changeTagOffsetPlan.setPath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
-      } catch (IllegalPathException e) {
+      } catch (final IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
       changeTagOffsetPlan.setOffset(buffer.getLong());
@@ -141,45 +149,46 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitCreateAlignedTimeSeries(
-        ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan, ByteBuffer buffer) {
+        final ICreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan, final ByteBuffer buffer) {
       // deserialize a version mark to adapt to old version
       buffer.getInt();
 
-      int length = buffer.getInt();
-      byte[] bytes = new byte[length];
+      final int length = buffer.getInt();
+      final byte[] bytes = new byte[length];
       buffer.get(bytes);
       try {
-        createAlignedTimeSeriesPlan.setDevicePath(new PartialPath(new String(bytes)));
-      } catch (IllegalPathException e) {
+        createAlignedTimeSeriesPlan.setDevicePath(
+            new PartialPath(new String(bytes, TSFileConfig.STRING_CHARSET)));
+      } catch (final IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
-      int size = ReadWriteIOUtils.readInt(buffer);
-      List<String> measurements = new ArrayList<>();
+      final int size = ReadWriteIOUtils.readInt(buffer);
+      final List<String> measurements = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         measurements.add(ReadWriteIOUtils.readString(buffer));
       }
       createAlignedTimeSeriesPlan.setMeasurements(measurements);
 
-      List<TSDataType> dataTypes = new ArrayList<>();
+      final List<TSDataType> dataTypes = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         dataTypes.add(TSDataType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setDataTypes(dataTypes);
 
-      List<TSEncoding> encodings = new ArrayList<>();
+      final List<TSEncoding> encodings = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         encodings.add(TSEncoding.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setEncodings(encodings);
 
-      List<CompressionType> compressors = new ArrayList<>();
+      final List<CompressionType> compressors = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         compressors.add(CompressionType.deserialize(buffer.get()));
       }
       createAlignedTimeSeriesPlan.setCompressors(compressors);
 
-      List<Long> tagOffsets = new ArrayList<>();
+      final List<Long> tagOffsets = new ArrayList<>();
       for (int i = 0; i < size; i++) {
         tagOffsets.add(buffer.getLong());
       }
@@ -220,13 +229,14 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitCreateTimeSeries(
-        ICreateTimeSeriesPlan createTimeSeriesPlan, ByteBuffer buffer) {
-      int length = buffer.getInt();
-      byte[] bytes = new byte[length];
+        final ICreateTimeSeriesPlan createTimeSeriesPlan, final ByteBuffer buffer) {
+      final int length = buffer.getInt();
+      final byte[] bytes = new byte[length];
       buffer.get(bytes);
       try {
-        createTimeSeriesPlan.setPath(new PartialPath(new String(bytes)));
-      } catch (IllegalPathException e) {
+        createTimeSeriesPlan.setPath(
+            new MeasurementPath(new String(bytes, TSFileConfig.STRING_CHARSET)));
+      } catch (final IllegalPathException e) {
         LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
       }
 
@@ -263,7 +273,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitDeleteTimeSeries(
-        IDeleteTimeSeriesPlan deleteTimeSeriesPlan, ByteBuffer buffer) {
+        final IDeleteTimeSeriesPlan deleteTimeSeriesPlan, final ByteBuffer buffer) {
       int pathNumber = buffer.getInt();
 
       try {
@@ -284,7 +294,7 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitPreDeleteTimeSeries(
-        IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, ByteBuffer buffer) {
+        final IPreDeleteTimeSeriesPlan preDeleteTimeSeriesPlan, final ByteBuffer buffer) {
       preDeleteTimeSeriesPlan.setPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
 
       // deserialize a long to keep compatible with old version (raft index)
@@ -295,7 +305,8 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitRollbackPreDeleteTimeSeries(
-        IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan, ByteBuffer buffer) {
+        final IRollbackPreDeleteTimeSeriesPlan rollbackPreDeleteTimeSeriesPlan,
+        final ByteBuffer buffer) {
       rollbackPreDeleteTimeSeriesPlan.setPath(
           (PartialPath) PathDeserializeUtil.deserialize(buffer));
 
@@ -307,28 +318,29 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitPreDeactivateTemplate(
-        IPreDeactivateTemplatePlan preDeactivateTemplatePlan, ByteBuffer buffer) {
+        final IPreDeactivateTemplatePlan preDeactivateTemplatePlan, final ByteBuffer buffer) {
       preDeactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
       return preDeactivateTemplatePlan;
     }
 
     @Override
     public ISchemaRegionPlan visitRollbackPreDeactivateTemplate(
-        IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan, ByteBuffer buffer) {
+        final IRollbackPreDeactivateTemplatePlan rollbackPreDeactivateTemplatePlan,
+        final ByteBuffer buffer) {
       rollbackPreDeactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
       return rollbackPreDeactivateTemplatePlan;
     }
 
     @Override
     public ISchemaRegionPlan visitDeactivateTemplate(
-        IDeactivateTemplatePlan deactivateTemplatePlan, ByteBuffer buffer) {
+        final IDeactivateTemplatePlan deactivateTemplatePlan, final ByteBuffer buffer) {
       deactivateTemplatePlan.setTemplateSetInfo(deserializeTemplateSetInfo(buffer));
       return deactivateTemplatePlan;
     }
 
-    private Map<PartialPath, List<Integer>> deserializeTemplateSetInfo(ByteBuffer buffer) {
-      int size = buffer.getInt();
-      Map<PartialPath, List<Integer>> result = new HashMap<>(size);
+    private Map<PartialPath, List<Integer>> deserializeTemplateSetInfo(final ByteBuffer buffer) {
+      final int size = buffer.getInt();
+      final Map<PartialPath, List<Integer>> result = new HashMap<>(size);
       PartialPath pattern;
       int templateNum;
       List<Integer> templateIdList;
@@ -346,19 +358,19 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitCreateLogicalView(
-        ICreateLogicalViewPlan createLogicalViewPlan, ByteBuffer buffer) {
+        final ICreateLogicalViewPlan createLogicalViewPlan, final ByteBuffer buffer) {
 
-      int viewSize = buffer.getInt();
-      Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
+      final int viewSize = buffer.getInt();
+      final Map<PartialPath, ViewExpression> viewPathToSourceMap = new HashMap<>();
       for (int i = 0; i < viewSize; i++) {
-        int byteSizeOfPath = buffer.getInt();
-        byte[] bytesOfPath = new byte[byteSizeOfPath];
+        final int byteSizeOfPath = buffer.getInt();
+        final byte[] bytesOfPath = new byte[byteSizeOfPath];
         buffer.get(bytesOfPath);
         try {
-          PartialPath thisPath = new PartialPath(new String(bytesOfPath));
+          final PartialPath thisPath = new PartialPath(new String(bytesOfPath));
           ViewExpression thisExp = ViewExpression.deserialize(buffer);
           viewPathToSourceMap.put(thisPath, thisExp);
-        } catch (IllegalPathException e) {
+        } catch (final IllegalPathException e) {
           LOGGER.error("Cannot deserialize SchemaRegionPlan from buffer", e);
         }
       }
@@ -368,14 +380,15 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitPreDeleteLogicalView(
-        IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, ByteBuffer buffer) {
+        final IPreDeleteLogicalViewPlan preDeleteLogicalViewPlan, final ByteBuffer buffer) {
       preDeleteLogicalViewPlan.setPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
       return preDeleteLogicalViewPlan;
     }
 
     @Override
     public ISchemaRegionPlan visitRollbackPreDeleteLogicalView(
-        IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan, ByteBuffer buffer) {
+        final IRollbackPreDeleteLogicalViewPlan rollbackPreDeleteLogicalViewPlan,
+        final ByteBuffer buffer) {
       rollbackPreDeleteLogicalViewPlan.setPath(
           (PartialPath) PathDeserializeUtil.deserialize(buffer));
       return rollbackPreDeleteLogicalViewPlan;
@@ -383,17 +396,31 @@ public class SchemaRegionPlanDeserializer implements IDeserializer<ISchemaRegion
 
     @Override
     public ISchemaRegionPlan visitDeleteLogicalView(
-        IDeleteLogicalViewPlan deleteLogicalViewPlan, ByteBuffer buffer) {
+        final IDeleteLogicalViewPlan deleteLogicalViewPlan, final ByteBuffer buffer) {
       deleteLogicalViewPlan.setPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
       return deleteLogicalViewPlan;
     }
 
     @Override
     public ISchemaRegionPlan visitAlterLogicalView(
-        IAlterLogicalViewPlan alterLogicalViewPlan, ByteBuffer buffer) {
+        final IAlterLogicalViewPlan alterLogicalViewPlan, final ByteBuffer buffer) {
       alterLogicalViewPlan.setViewPath((PartialPath) PathDeserializeUtil.deserialize(buffer));
       alterLogicalViewPlan.setSourceExpression(ViewExpression.deserialize(buffer));
       return alterLogicalViewPlan;
+    }
+
+    @Override
+    public ISchemaRegionPlan visitCreateOrUpdateTableDevice(
+        final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode,
+        final ByteBuffer buffer) {
+      return (CreateOrUpdateTableDeviceNode) PlanNodeType.deserialize(buffer);
+    }
+
+    @Override
+    public ISchemaRegionPlan visitUpdateTableDeviceAttribute(
+        final TableDeviceAttributeUpdateNode updateTableDeviceAttributePlan,
+        final ByteBuffer buffer) {
+      return (TableDeviceAttributeUpdateNode) PlanNodeType.deserialize(buffer);
     }
   }
 }

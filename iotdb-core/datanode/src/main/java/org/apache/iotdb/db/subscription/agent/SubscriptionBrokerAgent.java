@@ -46,7 +46,7 @@ public class SubscriptionBrokerAgent {
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+      final ConsumerConfig consumerConfig, final Set<String> topicNames, final long maxBytes) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -58,13 +58,12 @@ public class SubscriptionBrokerAgent {
     }
     // TODO: currently we fetch messages from all topics
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.poll(consumerId, topicNames);
+    return broker.poll(consumerId, topicNames, maxBytes);
   }
 
   public List<SubscriptionEvent> pollTsFile(
       final ConsumerConfig consumerConfig,
-      final String topicName,
-      final String fileName,
+      final SubscriptionCommitContext commitContext,
       final long writingOffset) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
@@ -76,7 +75,24 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
+    return broker.pollTsFile(consumerId, commitContext, writingOffset);
+  }
+
+  public List<SubscriptionEvent> pollTablets(
+      final ConsumerConfig consumerConfig,
+      final SubscriptionCommitContext commitContext,
+      final int offset) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.pollTablets(consumerId, commitContext, offset);
   }
 
   /**
@@ -116,6 +132,7 @@ public class SubscriptionBrokerAgent {
   public void createBroker(final String consumerGroupId) {
     final SubscriptionBroker broker = new SubscriptionBroker(consumerGroupId);
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
+    LOGGER.info("Subscription: create broker bound to consumer group [{}]", consumerGroupId);
   }
 
   /**
@@ -140,6 +157,7 @@ public class SubscriptionBrokerAgent {
       return false;
     }
     consumerGroupIdToSubscriptionBroker.remove(consumerGroupId);
+    LOGGER.info("Subscription: drop broker bound to consumer group [{}]", consumerGroupId);
     return true;
   }
 
@@ -156,15 +174,24 @@ public class SubscriptionBrokerAgent {
     broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }
 
-  public void unbindPrefetchingQueue(
-      final String consumerGroupId, final String topicName, final boolean doRemove) {
+  public void unbindPrefetchingQueue(final String consumerGroupId, final String topicName) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    broker.unbindPrefetchingQueue(topicName, doRemove);
+    broker.unbindPrefetchingQueue(topicName);
+  }
+
+  public void removePrefetchingQueue(final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      return;
+    }
+    broker.removePrefetchingQueue(topicName);
   }
 
   public void executePrefetch(final String consumerGroupId, final String topicName) {

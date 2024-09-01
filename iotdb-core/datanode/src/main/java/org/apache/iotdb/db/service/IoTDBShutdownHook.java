@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -49,8 +50,11 @@ public class IoTDBShutdownHook extends Thread {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
 
-  public IoTDBShutdownHook() {
+  private final TDataNodeLocation nodeLocation;
+
+  public IoTDBShutdownHook(TDataNodeLocation nodeLocation) {
     super(ThreadName.IOTDB_SHUTDOWN_HOOK.getName());
+    this.nodeLocation = nodeLocation;
   }
 
   @Override
@@ -120,7 +124,7 @@ public class IoTDBShutdownHook extends Thread {
     try (ConfigNodeClient client =
         ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       isReportSuccess =
-          client.reportDataNodeShutdown(DataNode.generateDataNodeLocation()).getCode()
+          client.reportDataNodeShutdown(nodeLocation).getCode()
               == TSStatusCode.SUCCESS_STATUS.getStatusCode();
 
       // Actually stop all services started by the DataNode.

@@ -38,8 +38,8 @@ public class InstantChunkLoader extends ChunkLoader {
 
   public InstantChunkLoader() {}
 
-  public InstantChunkLoader(ChunkMetadata chunkMetadata, Chunk chunk) {
-    super(chunkMetadata);
+  public InstantChunkLoader(String fileName, ChunkMetadata chunkMetadata, Chunk chunk) {
+    super(fileName, chunkMetadata);
     this.chunk = chunk;
   }
 
@@ -86,12 +86,13 @@ public class InstantChunkLoader extends ChunkLoader {
       pageHeader.setModified(pageModifiedStatus != ModifiedStatus.NONE_DELETED);
       pageList.add(
           new InstantPageLoader(
+              file,
               pageHeader,
               pageBodyBuffer,
               chunk.getHeader().getCompressionType(),
               chunk.getHeader().getDataType(),
               chunk.getHeader().getEncodingType(),
-              chunkMetadata.getDeleteIntervalList(),
+              chunkMetadata,
               pageModifiedStatus));
     }
     return pageList;

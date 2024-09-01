@@ -21,12 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
@@ -52,7 +55,7 @@ public class DeviceIDFactory {
   }
 
   private DeviceIDFactory() {
-    getDeviceIDFunction = PlainDeviceID::new;
+    getDeviceIDFunction = IDeviceID.Factory.DEFAULT_FACTORY::create;
   }
 
   // endregion
@@ -63,23 +66,49 @@ public class DeviceIDFactory {
    * @param devicePath device path of the timeseries
    * @return device id of the timeseries
    */
-  public IDeviceID getDeviceID(PartialPath devicePath) {
+  public IDeviceID getDeviceID(final PartialPath devicePath) {
     return getDeviceIDFunction.apply(devicePath.getFullPath());
   }
 
-  /**
-   * get device id by full path
-   *
-   * @param devicePath device path of the timeseries
-   * @return device id of the timeseries
-   */
-  public IDeviceID getDeviceID(String devicePath) {
-    return getDeviceIDFunction.apply(DataNodeDevicePathCache.getInstance().getDeviceId(devicePath));
+  public static List<IDeviceID> convertRawDeviceIDs2PartitionKeys(
+      final String tableName, final List<Object[]> deviceIdList) {
+    final List<IDeviceID> tmpPartitionKeyList = new ArrayList<>();
+    for (final Object[] rawId : deviceIdList) {
+      final String[] partitionKey = new String[rawId.length + 1];
+      partitionKey[0] = tableName;
+      for (int i = 1; i <= rawId.length; i++) {
+        partitionKey[i] = (String) rawId[i - 1];
+      }
+      tmpPartitionKeyList.add(IDeviceID.Factory.DEFAULT_FACTORY.create(partitionKey));
+    }
+    return tmpPartitionKeyList;
+  }
+
+  public static List<Object[]> truncateTailingNull(final List<Object[]> deviceIdList) {
+    return deviceIdList.stream()
+        .map(DeviceIDFactory::truncateTailingNull)
+        .collect(Collectors.toList());
+  }
+
+  public static Object[] truncateTailingNull(final Object[] device) {
+    if (device == null) {
+      throw new IllegalArgumentException("DeviceID's length should be larger than 0.");
+    }
+    int lastNonNullIndex = -1;
+    for (int i = device.length - 1; i >= 0; i--) {
+      if (device[i] != null) {
+        lastNonNullIndex = i;
+        break;
+      }
+    }
+    return lastNonNullIndex == device.length - 1
+        ? device
+        : Arrays.copyOf(device, lastNonNullIndex + 1);
   }
 
   /** reset id method */
   @TestOnly
   public void reset() {
-    getDeviceIDFunction = PlainDeviceID::new;
+    getDeviceIDFunction = StringArrayDeviceID::new;
   }
 }

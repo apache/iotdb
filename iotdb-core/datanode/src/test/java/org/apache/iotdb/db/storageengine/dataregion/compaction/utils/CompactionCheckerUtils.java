@@ -20,10 +20,17 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.SeriesDataBlockReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -31,10 +38,10 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.MetaMarker;
@@ -43,7 +50,6 @@ import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -52,23 +58,31 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.IBatchDataIterator;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.read.reader.page.PageReader;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.apache.iotdb.db.utils.ModificationUtils.modifyChunkMetaData;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -197,7 +211,7 @@ public class CompactionCheckerUtils {
         // Because we do not know how many chunks a ChunkGroup may have, we should read one byte
         // (the
         // marker) ahead and judge accordingly.
-        IDeviceID device = new PlainDeviceID("");
+        IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create("");
         String measurementID = "";
         List<TimeValuePair> currTimeValuePairs = new ArrayList<>();
         reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
@@ -213,7 +227,7 @@ public class CompactionCheckerUtils {
               ChunkHeader header = reader.readChunkHeader(marker);
               // read the next measurement and pack data of last measurement
               if (currTimeValuePairs.size() > 0) {
-                PartialPath path = new PartialPath(device, measurementID);
+                PartialPath path = new MeasurementPath(device, measurementID);
                 List<TimeValuePair> timeValuePairs =
                     mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
                 timeValuePairs.addAll(currTimeValuePairs);
@@ -233,7 +247,7 @@ public class CompactionCheckerUtils {
                 PageHeader pageHeader =
                     reader.readPageHeader(
                         header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-                PartialPath path = new PartialPath(device, measurementID);
+                PartialPath path = new MeasurementPath(device, measurementID);
                 ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
                 PageReader reader1 =
                     new PageReader(
@@ -262,7 +276,7 @@ public class CompactionCheckerUtils {
               ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
               // read the next measurement and pack data of last device
               if (currTimeValuePairs.size() > 0) {
-                PartialPath path = new PartialPath(device, measurementID);
+                PartialPath path = new MeasurementPath(device, measurementID);
                 List<TimeValuePair> timeValuePairs =
                     mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
                 timeValuePairs.addAll(currTimeValuePairs);
@@ -279,7 +293,7 @@ public class CompactionCheckerUtils {
         }
         // pack data of last measurement
         if (currTimeValuePairs.size() > 0) {
-          PartialPath path = new PartialPath(device, measurementID);
+          PartialPath path = new MeasurementPath(device, measurementID);
           List<TimeValuePair> timeValuePairs =
               mergedData.computeIfAbsent(path.getFullPath(), k -> new ArrayList<>());
           timeValuePairs.addAll(currTimeValuePairs);
@@ -322,8 +336,8 @@ public class CompactionCheckerUtils {
       throws IllegalPathException {
     Map<IDeviceID, long[]> devicePointNumMap = new HashMap<>();
     for (Entry<String, List<TimeValuePair>> dataEntry : sourceData.entrySet()) {
-      PartialPath partialPath = new PartialPath(dataEntry.getKey());
-      IDeviceID device = new PlainDeviceID(partialPath.getDevice());
+      PartialPath partialPath = new MeasurementPath(dataEntry.getKey());
+      IDeviceID device = partialPath.getIDeviceID();
       long[] statistics =
           devicePointNumMap.computeIfAbsent(
               device, k -> new long[] {Long.MAX_VALUE, Long.MIN_VALUE});
@@ -391,7 +405,7 @@ public class CompactionCheckerUtils {
     Map<String, List<List<Long>>> mergedChunkPagePointsNum = new HashMap<>();
     List<Long> pagePointsNum = new ArrayList<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(mergedFile.getTsFilePath())) {
-      IDeviceID entity = new PlainDeviceID("");
+      IDeviceID entity = IDeviceID.Factory.DEFAULT_FACTORY.create("");
       String measurement = "";
       // Sequential reading of one ChunkGroup now follows this order:
       // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
@@ -410,7 +424,7 @@ public class CompactionCheckerUtils {
             ChunkHeader header = reader.readChunkHeader(marker);
             // read the next measurement and pack data of last measurement
             if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(entity, measurement).getFullPath();
+              String fullPath = new MeasurementPath(entity, measurement).getFullPath();
               List<List<Long>> currChunkPagePointsNum =
                   mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
               currChunkPagePointsNum.add(pagePointsNum);
@@ -449,7 +463,7 @@ public class CompactionCheckerUtils {
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             // read the next measurement and pack data of last device
             if (pagePointsNum.size() > 0) {
-              String fullPath = new PartialPath(entity, measurement).getFullPath();
+              String fullPath = new MeasurementPath(entity, measurement).getFullPath();
               List<List<Long>> currChunkPagePointsNum =
                   mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
               currChunkPagePointsNum.add(pagePointsNum);
@@ -466,7 +480,7 @@ public class CompactionCheckerUtils {
       }
       // pack data of last measurement
       if (pagePointsNum.size() > 0) {
-        String fullPath = new PartialPath(entity, measurement).getFullPath();
+        String fullPath = new MeasurementPath(entity, measurement).getFullPath();
         List<List<Long>> currChunkPagePointsNum =
             mergedChunkPagePointsNum.computeIfAbsent(fullPath, k -> new ArrayList<>());
         currChunkPagePointsNum.add(pagePointsNum);
@@ -493,43 +507,140 @@ public class CompactionCheckerUtils {
   /**
    * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
    *
-   * @param fullPaths
-   * @param schemas
    * @param sequenceResources
    * @param unsequenceResources
    * @return
    * @throws IllegalPathException
    * @throws IOException
    */
-  public static Map<PartialPath, List<TimeValuePair>> getDataByQuery(
-      List<PartialPath> fullPaths,
-      List<IMeasurementSchema> schemas,
+  public static Map<IFullPath, List<TimeValuePair>> getAllDataByQuery(
+      List<TsFileResource> sequenceResources, List<TsFileResource> unsequenceResources)
+      throws IllegalPathException, IOException {
+    List<IFullPath> partialPaths =
+        getAllPathsOfResources(
+            Stream.concat(sequenceResources.stream(), unsequenceResources.stream())
+                .collect(Collectors.toList()));
+    return getDataByQuery(partialPaths, sequenceResources, unsequenceResources);
+  }
+
+  public static List<IFullPath> getAllPathsOfResources(List<TsFileResource> resources)
+      throws IOException, IllegalPathException {
+    Set<IFullPath> paths = new HashSet<>();
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
+      while (deviceIterator.hasNextDevice()) {
+        Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
+        IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
+        boolean isAlign = iDeviceIDBooleanPair.getRight();
+        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+        IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
+        if (measurementSchemas.isEmpty()) {
+          continue;
+        }
+        List<String> existedMeasurements =
+            measurementSchemas.stream()
+                .map(IMeasurementSchema::getMeasurementId)
+                .collect(Collectors.toList());
+        IFullPath seriesPath;
+        if (isAlign) {
+          seriesPath = new AlignedFullPath(deviceID, existedMeasurements, measurementSchemas);
+        } else {
+          seriesPath = new NonAlignedFullPath(deviceID, measurementSchemas.get(0));
+        }
+        paths.add(seriesPath);
+      }
+    }
+    return new ArrayList<>(paths);
+  }
+
+  public static boolean compareSourceDataAndTargetData(
+      Map<IFullPath, List<TimeValuePair>> source, Map<IFullPath, List<TimeValuePair>> target) {
+    for (Entry<IFullPath, List<TimeValuePair>> entry : target.entrySet()) {
+      IFullPath path = entry.getKey();
+      List<TimeValuePair> sourceList = source.get(path);
+      List<TimeValuePair> targetList = entry.getValue();
+      int sourceIndex = 0;
+      for (int i = 0; i < targetList.size(); i++) {
+        TimeValuePair currentTargetTimeValuePair = targetList.get(i);
+        TimeValuePair currentSourceTimeValuePair = sourceList.get(sourceIndex);
+        if (!compareTimeValuePair(currentSourceTimeValuePair, currentTargetTimeValuePair)) {
+          System.out.println(currentSourceTimeValuePair);
+          System.out.println(currentTargetTimeValuePair);
+          return false;
+        }
+        sourceIndex++;
+      }
+    }
+    return true;
+  }
+
+  private static boolean compareTimeValuePair(
+      TimeValuePair timeValuePair1, TimeValuePair timeValuePair2) {
+    if (timeValuePair1.getTimestamp() != timeValuePair2.getTimestamp()) {
+      return false;
+    }
+    Object[] values1 = timeValuePair1.getValues();
+    Object[] values2 = timeValuePair2.getValues();
+    if (values1.length != values2.length) {
+      return false;
+    }
+    for (int i = 0; i < values1.length; i++) {
+      Object obj1 = values1[i];
+      Object obj2 = values2[i];
+      if (obj1 == null && obj2 == null) {
+        continue;
+      }
+      if (obj1 == null || obj2 == null) {
+        return false;
+      }
+      if (!obj1.equals(obj2)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
+   *
+   * @param fullPaths
+   * @param sequenceResources
+   * @param unsequenceResources
+   * @return
+   * @throws IOException
+   */
+  public static Map<IFullPath, List<TimeValuePair>> getDataByQuery(
+      List<IFullPath> fullPaths,
       List<TsFileResource> sequenceResources,
       List<TsFileResource> unsequenceResources)
       throws IllegalPathException, IOException {
-    Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    Map<IFullPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
       FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
 
-      PartialPath path = fullPaths.get(i);
-      List<TimeValuePair> dataList = new LinkedList<>();
+      IFullPath path = fullPaths.get(i);
+      List<TimeValuePair> dataList = new ArrayList<>();
 
       IDataBlockReader reader =
           new SeriesDataBlockReader(
               path,
-              EnvironmentUtils.TEST_QUERY_FI_CONTEXT,
+              FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID),
               sequenceResources,
               unsequenceResources,
               true);
       while (reader.hasNextBatch()) {
         TsBlock batchData = reader.nextBatch();
-        TsBlock.TsBlockSingleColumnIterator batchDataIterator =
-            batchData.getTsBlockSingleColumnIterator();
-        while (batchDataIterator.hasNextTimeValuePair()) {
-          dataList.add(batchDataIterator.nextTimeValuePair());
+        IPointReader pointReader;
+        if (path instanceof AlignedPath) {
+          pointReader = batchData.getTsBlockAlignedRowIterator();
+        } else {
+          pointReader = batchData.getTsBlockSingleColumnIterator();
+        }
+        while (pointReader.hasNextTimeValuePair()) {
+          dataList.add(pointReader.nextTimeValuePair());
         }
       }
       pathDataMap.put(fullPaths.get(i), dataList);
@@ -543,9 +654,9 @@ public class CompactionCheckerUtils {
   }
 
   public static void validDataByValueList(
-      Map<PartialPath, List<TimeValuePair>> expectedData,
-      Map<PartialPath, List<TimeValuePair>> actualData) {
-    for (PartialPath path : expectedData.keySet()) {
+      Map<IFullPath, List<TimeValuePair>> expectedData,
+      Map<IFullPath, List<TimeValuePair>> actualData) {
+    for (IFullPath path : expectedData.keySet()) {
       List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
       List<TimeValuePair> actualTimeValueList = actualData.get(path);
 

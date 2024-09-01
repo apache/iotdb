@@ -20,24 +20,25 @@
 package org.apache.iotdb.db.pipe.extractor;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.BatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalBatchActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.InternalCreateTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.CreateLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.BatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalBatchActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.InternalCreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.CreateLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 
@@ -63,24 +64,24 @@ public class PipePlanPatternParseVisitorTest {
     final CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            new PartialPath("root.db.device.s1"),
+            new MeasurementPath("root.db.device.s1"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
-            new HashMap<>(),
-            new HashMap<>(),
-            new HashMap<>(),
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptyMap(),
             "a1");
     final CreateTimeSeriesNode createTimeSeriesNodeToFilter =
         new CreateTimeSeriesNode(
             new PlanNodeId("2024-04-30-2"),
-            new PartialPath("root.db1.device.s1"),
+            new MeasurementPath("root.db1.device.s1"),
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
-            new HashMap<>(),
-            new HashMap<>(),
-            new HashMap<>(),
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptyMap(),
             "a1");
 
     Assert.assertEquals(
@@ -105,8 +106,8 @@ public class PipePlanPatternParseVisitorTest {
             Collections.singletonList(TSEncoding.RLE),
             Collections.singletonList(CompressionType.SNAPPY),
             Collections.singletonList("a1"),
-            Collections.singletonList(new HashMap<>()),
-            Collections.singletonList(new HashMap<>())),
+            Collections.singletonList(Collections.emptyMap()),
+            Collections.singletonList(Collections.emptyMap())),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitCreateAlignedTimeSeries(
                 new CreateAlignedTimeSeriesNode(
@@ -117,8 +118,8 @@ public class PipePlanPatternParseVisitorTest {
                     Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
                     Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
                     Arrays.asList("a1", "a2"),
-                    Arrays.asList(new HashMap<>(), new HashMap<>()),
-                    Arrays.asList(new HashMap<>(), new HashMap<>())),
+                    Arrays.asList(Collections.emptyMap(), Collections.emptyMap()),
+                    Arrays.asList(Collections.emptyMap(), Collections.emptyMap())),
                 fullPathPattern)
             .orElseThrow(AssertionError::new));
   }
@@ -128,58 +129,53 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new CreateMultiTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new PartialPath("root.db.device.s1")),
+            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Collections.singletonList(TSDataType.FLOAT),
             Collections.singletonList(TSEncoding.RLE),
             Collections.singletonList(CompressionType.SNAPPY),
-            Collections.singletonList(new HashMap<>()),
+            Collections.singletonList(Collections.emptyMap()),
             Collections.singletonList("a1"),
-            Collections.singletonList(new HashMap<>()),
-            Collections.singletonList(new HashMap<>())),
+            Collections.singletonList(Collections.emptyMap()),
+            Collections.singletonList(Collections.emptyMap())),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitCreateMultiTimeSeries(
                 new CreateMultiTimeSeriesNode(
                     new PlanNodeId("2024-04-30-1"),
                     Arrays.asList(
-                        new PartialPath("root.db.device.s1"),
-                        new PartialPath("root.db1.device.s1")),
+                        new MeasurementPath("root.db.device.s1"),
+                        new MeasurementPath("root.db1.device.s1")),
                     Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN),
                     Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
                     Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY),
-                    Arrays.asList(new HashMap<>(), new HashMap<>()),
+                    Arrays.asList(Collections.emptyMap(), Collections.emptyMap()),
                     Arrays.asList("a1", "a2"),
-                    Arrays.asList(new HashMap<>(), new HashMap<>()),
-                    Arrays.asList(new HashMap<>(), new HashMap<>())),
+                    Arrays.asList(Collections.emptyMap(), Collections.emptyMap()),
+                    Arrays.asList(Collections.emptyMap(), Collections.emptyMap())),
                 fullPathPattern)
             .orElseThrow(AssertionError::new));
   }
 
   @Test
   public void testAlterTimeSeries() throws IllegalPathException {
-    final Map<String, String> attributesMap =
-        new HashMap<String, String>() {
-          {
-            put("k1", "v1");
-          }
-        };
+    final Map<String, String> attributesMap = Collections.singletonMap("k1", "v1");
     final AlterTimeSeriesNode alterTimeSeriesNode =
         new AlterTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            new PartialPath("root.db.device.s1"),
+            new MeasurementPath("root.db.device.s1"),
             AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES,
             attributesMap,
             "",
-            new HashMap<>(),
+            Collections.emptyMap(),
             attributesMap,
             false);
     final AlterTimeSeriesNode alterTimeSeriesNodeToFilter =
         new AlterTimeSeriesNode(
             new PlanNodeId("2024-04-30-2"),
-            new PartialPath("root.db1.device.s1"),
+            new MeasurementPath("root.db1.device.s1"),
             AlterTimeSeriesStatement.AlterType.ADD_ATTRIBUTES,
             attributesMap,
             "",
-            new HashMap<>(),
+            Collections.emptyMap(),
             attributesMap,
             false);
 
@@ -199,10 +195,10 @@ public class PipePlanPatternParseVisitorTest {
     final MeasurementGroup expectedMeasurementGroup = new MeasurementGroup();
     expectedMeasurementGroup.addMeasurement(
         "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    expectedMeasurementGroup.addProps(new HashMap<>());
+    expectedMeasurementGroup.addProps(Collections.emptyMap());
     expectedMeasurementGroup.addAlias("a1");
-    expectedMeasurementGroup.addTags(new HashMap<>());
-    expectedMeasurementGroup.addAttributes(new HashMap<>());
+    expectedMeasurementGroup.addTags(Collections.emptyMap());
+    expectedMeasurementGroup.addAttributes(Collections.emptyMap());
 
     final ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
     expectedMeasurementGroup.serialize(byteBuffer);
@@ -212,10 +208,10 @@ public class PipePlanPatternParseVisitorTest {
 
     originalMeasurementGroup.addMeasurement(
         "s2", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
-    originalMeasurementGroup.addProps(new HashMap<>());
+    originalMeasurementGroup.addProps(Collections.emptyMap());
     originalMeasurementGroup.addAlias("a2");
-    originalMeasurementGroup.addTags(new HashMap<>());
-    originalMeasurementGroup.addAttributes(new HashMap<>());
+    originalMeasurementGroup.addTags(Collections.emptyMap());
+    originalMeasurementGroup.addAttributes(Collections.emptyMap());
 
     Assert.assertEquals(
         new InternalCreateTimeSeriesNode(
@@ -258,11 +254,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new InternalBatchActivateTemplateNode(
             new PlanNodeId("2024-04-30-1"),
-            new HashMap<PartialPath, Pair<Integer, Integer>>() {
-              {
-                put(new PartialPath("root.db.device"), new Pair<>(1, 1));
-              }
-            }),
+            Collections.singletonMap(new PartialPath("root.db.device"), new Pair<>(1, 1))),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitInternalBatchActivateTemplate(
                 new InternalBatchActivateTemplateNode(
@@ -282,10 +274,10 @@ public class PipePlanPatternParseVisitorTest {
     final MeasurementGroup expectedMeasurementGroup = new MeasurementGroup();
     expectedMeasurementGroup.addMeasurement(
         "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
-    expectedMeasurementGroup.addProps(new HashMap<>());
+    expectedMeasurementGroup.addProps(Collections.emptyMap());
     expectedMeasurementGroup.addAlias("a1");
-    expectedMeasurementGroup.addTags(new HashMap<>());
-    expectedMeasurementGroup.addAttributes(new HashMap<>());
+    expectedMeasurementGroup.addTags(Collections.emptyMap());
+    expectedMeasurementGroup.addAttributes(Collections.emptyMap());
 
     final ByteBuffer byteBuffer = ByteBuffer.allocate(1000);
     expectedMeasurementGroup.serialize(byteBuffer);
@@ -295,19 +287,16 @@ public class PipePlanPatternParseVisitorTest {
 
     originalMeasurementGroup.addMeasurement(
         "s2", TSDataType.BOOLEAN, TSEncoding.PLAIN, CompressionType.SNAPPY);
-    originalMeasurementGroup.addProps(new HashMap<>());
+    originalMeasurementGroup.addProps(Collections.emptyMap());
     originalMeasurementGroup.addAlias("a2");
-    originalMeasurementGroup.addTags(new HashMap<>());
-    originalMeasurementGroup.addAttributes(new HashMap<>());
+    originalMeasurementGroup.addTags(Collections.emptyMap());
+    originalMeasurementGroup.addAttributes(Collections.emptyMap());
 
     Assert.assertEquals(
         new InternalCreateMultiTimeSeriesNode(
             new PlanNodeId("2024-04-30-1"),
-            new HashMap<PartialPath, Pair<Boolean, MeasurementGroup>>() {
-              {
-                put(new PartialPath("root.db.device"), new Pair<>(false, expectedMeasurementGroup));
-              }
-            }),
+            Collections.singletonMap(
+                new PartialPath("root.db.device"), new Pair<>(false, expectedMeasurementGroup))),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitInternalCreateMultiTimeSeries(
                 new InternalCreateMultiTimeSeriesNode(
@@ -331,11 +320,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new BatchActivateTemplateNode(
             new PlanNodeId("2024-04-30-1"),
-            new HashMap<PartialPath, Pair<Integer, Integer>>() {
-              {
-                put(new PartialPath("root.db.device"), new Pair<>(1, 1));
-              }
-            }),
+            Collections.singletonMap(new PartialPath("root.db.device"), new Pair<>(1, 1))),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitBatchActivateTemplate(
                 new BatchActivateTemplateNode(
@@ -355,11 +340,8 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new CreateLogicalViewNode(
             new PlanNodeId("2024-04-30-1"),
-            new HashMap<PartialPath, ViewExpression>() {
-              {
-                put(new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"));
-              }
-            }),
+            Collections.singletonMap(
+                new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"))),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitCreateLogicalView(
                 new CreateLogicalViewNode(
@@ -383,11 +365,8 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new AlterLogicalViewNode(
             new PlanNodeId("2024-04-30-1"),
-            new HashMap<PartialPath, ViewExpression>() {
-              {
-                put(new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"));
-              }
-            }),
+            Collections.singletonMap(
+                new PartialPath("root.db.device.a1"), new TimeSeriesViewOperand("root.sg1.d1"))),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
             .visitAlterLogicalView(
                 new AlterLogicalViewNode(
@@ -411,7 +390,7 @@ public class PipePlanPatternParseVisitorTest {
     Assert.assertEquals(
         new DeleteDataNode(
             new PlanNodeId("2024-04-30-1"),
-            Collections.singletonList(new PartialPath("root.db.device.s1")),
+            Collections.singletonList(new MeasurementPath("root.db.device.s1")),
             Long.MIN_VALUE,
             Long.MAX_VALUE),
         IoTDBSchemaRegionExtractor.PATTERN_PARSE_VISITOR
@@ -419,7 +398,8 @@ public class PipePlanPatternParseVisitorTest {
                 new DeleteDataNode(
                     new PlanNodeId("2024-04-30-1"),
                     Arrays.asList(
-                        new PartialPath("root.*.device.s1"), new PartialPath("root.db.*.s1")),
+                        new MeasurementPath("root.*.device.s1"),
+                        new MeasurementPath("root.db.*.s1")),
                     Long.MIN_VALUE,
                     Long.MAX_VALUE),
                 prefixPathPattern)

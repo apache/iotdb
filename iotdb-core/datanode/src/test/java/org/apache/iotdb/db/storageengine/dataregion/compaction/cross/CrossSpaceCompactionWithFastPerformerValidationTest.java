@@ -21,8 +21,10 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.cross;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
@@ -55,7 +57,6 @@ import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -100,7 +101,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
-    TsFileValidationTool.badFileNum = 0;
+    TsFileValidationTool.setBadFileNum(0);
   }
 
   /**
@@ -2149,13 +2150,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
     tsFileManager
         .getTsFileList(true)
         .get(0)
-        .updateEndTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"), 1100L);
+        .updateEndTime(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"),
+            1100L);
 
     // set the end time of d1 in the second seq file to 1200
     tsFileManager
         .getTsFileList(true)
         .get(1)
-        .updateStartTime(new PlainDeviceID(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"), 1200L);
+        .updateStartTime(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1"),
+            1200L);
 
     for (int i = 1; i < seqResources.size(); i++) {
       tsFileManager.getTsFileList(true).get(i).degradeTimeIndex();
@@ -2200,7 +2205,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
   @Test
   public void testCompactionSchedule() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setFileLimitPerCrossTask(1);
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(10, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 10, 1000, 4000, 4000, 0, 100, false, false);
     createFiles(1, 5, 10, 1000, 5000, 5000, 0, 100, false, false);
@@ -2255,7 +2260,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getInnerSequenceCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager, null);
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
 
     // first compaction task finishes successfully
@@ -2285,7 +2290,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles1() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
     createFiles(3, 10, 5, 1000, 7500, 7500, 100, 100, false, true);
@@ -2306,16 +2311,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2358,7 +2364,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles2() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
 
@@ -2378,16 +2384,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2429,7 +2436,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles3() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(4, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
     createFiles(1, 10, 5, 1000, 7500, 7500, 100, 100, false, true);
@@ -2450,16 +2457,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2501,7 +2509,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testNonAlignedUnseqFilesNotOverlapWithSeqFiles4() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 9, 10, 500, 100, 100, 0, 100, false, false);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, false, false);
@@ -2523,16 +2531,17 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new MeasurementPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i + PATH_SEPARATOR + "s" + j,
-                TSDataType.INT64));
+            new NonAlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
+                new MeasurementSchema("s" + j, TSDataType.INT64)));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2575,7 +2584,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles1() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
     createFiles(3, 10, 5, 1000, 7500, 7500, 100, 100, true, true);
@@ -2602,17 +2611,18 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2654,7 +2664,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles2() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
 
@@ -2680,17 +2690,18 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2732,7 +2743,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles3() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(4, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
     createFiles(1, 10, 5, 1000, 7500, 7500, 100, 100, true, true);
@@ -2759,17 +2770,18 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact
@@ -2811,7 +2823,7 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
 
   @Test
   public void testAlignedUnseqFilesNotOverlapWithSeqFiles4() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     createFiles(5, 10, 5, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 9, 10, 500, 100, 100, 0, 100, true, false);
     createFiles(2, 5, 10, 500, 6000, 6000, 0, 100, true, false);
@@ -2839,17 +2851,18 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
       CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
 
-    List<PartialPath> timeseriesPaths = new ArrayList<>();
+    List<IFullPath> timeseriesPaths = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         timeseriesPaths.add(
-            new AlignedPath(
-                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+            new AlignedFullPath(
+                IDeviceID.Factory.DEFAULT_FACTORY.create(
+                    COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i),
                 Collections.singletonList("s" + j),
                 Collections.singletonList(new MeasurementSchema("s" + j, TSDataType.INT64))));
       }
     }
-    Map<PartialPath, List<TimeValuePair>> sourceData =
+    Map<IFullPath, List<TimeValuePair>> sourceData =
         readSourceFiles(timeseriesPaths, Collections.emptyList());
 
     // inner seq space compact

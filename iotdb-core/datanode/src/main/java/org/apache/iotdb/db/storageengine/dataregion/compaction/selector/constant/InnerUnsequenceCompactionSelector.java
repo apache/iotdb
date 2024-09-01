@@ -19,18 +19,24 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 @SuppressWarnings("squid:S6548")
 public enum InnerUnsequenceCompactionSelector {
-  SIZE_TIERED;
+  SIZE_TIERED_SINGLE_TARGET,
+  SIZE_TIERED_MULTI_TARGET;
 
   public static InnerUnsequenceCompactionSelector getInnerUnsequenceCompactionSelector(
       String name) {
-    if (SIZE_TIERED.toString().equalsIgnoreCase(name)) {
-      return SIZE_TIERED;
+    if (SIZE_TIERED_SINGLE_TARGET.toString().equalsIgnoreCase(name)) {
+      return SIZE_TIERED_SINGLE_TARGET;
+    }
+    if (SIZE_TIERED_MULTI_TARGET.toString().equalsIgnoreCase(name)) {
+      return SIZE_TIERED_MULTI_TARGET;
     }
     throw new IllegalCompactionSelectorNameException("Illegal Compaction Selector " + name);
   }
@@ -40,9 +46,13 @@ public enum InnerUnsequenceCompactionSelector {
       String storageGroupName,
       String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     switch (this) {
-      case SIZE_TIERED:
+      case SIZE_TIERED_MULTI_TARGET:
+        return new NewSizeTieredCompactionSelector(
+            storageGroupName, dataRegionId, timePartition, false, tsFileManager, context);
+      case SIZE_TIERED_SINGLE_TARGET:
       default:
         return new SizeTieredCompactionSelector(
             storageGroupName, dataRegionId, timePartition, false, tsFileManager);

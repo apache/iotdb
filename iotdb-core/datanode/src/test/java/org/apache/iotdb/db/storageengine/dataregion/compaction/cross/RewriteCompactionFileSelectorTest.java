@@ -39,7 +39,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -63,17 +63,23 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
   private int oldMinCrossCompactionUnseqLevel =
       IoTDBDescriptor.getInstance().getConfig().getMinCrossCompactionUnseqFileLevel();
+  private long compactionMemory = SystemInfo.getInstance().getMemorySizeForCompaction();
 
   @Before
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
     IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+    SystemInfo.getInstance().setMemorySizeForCompaction(1000 * 1024 * 1024);
   }
 
   @After
   public void tearDown() throws StorageEngineException, IOException {
     super.tearDown();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMinCrossCompactionUnseqFileLevel(oldMinCrossCompactionUnseqLevel);
+    SystemInfo.getInstance().setMemorySizeForCompaction(compactionMemory);
   }
 
   @Test
@@ -754,7 +760,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
 
     TsFileWriter fileWriter = new TsFileWriter(firstFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -807,7 +813,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(secondFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -853,7 +859,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(thirdFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -899,7 +905,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     }
     fileWriter = new TsFileWriter(fourthFile);
     for (IDeviceID deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }

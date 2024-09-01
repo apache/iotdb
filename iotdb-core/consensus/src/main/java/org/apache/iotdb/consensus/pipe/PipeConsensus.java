@@ -116,7 +116,7 @@ public class PipeConsensus implements IConsensus {
   public synchronized void start() throws IOException {
     initAndRecover();
 
-    rpcService.initAsyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
+    rpcService.initSyncedServiceImpl(new PipeConsensusRPCServiceProcessor(this, config.getPipe()));
     try {
       registerManager.register(rpcService);
     } catch (StartupException e) {
@@ -417,8 +417,9 @@ public class PipeConsensus implements IConsensus {
 
   @Override
   public void triggerSnapshot(ConsensusGroupId groupId, boolean force) throws ConsensusException {
-    Optional.ofNullable(stateMachineMap.get(groupId))
-        .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
+    if (!stateMachineMap.containsKey(groupId)) {
+      throw new ConsensusGroupNotExistException(groupId);
+    }
     // Do nothing here because we do not need to transfer snapshot when there are new peers
   }
 

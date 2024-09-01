@@ -50,7 +50,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -374,23 +373,23 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private void extractDeletions(final DeletionResourceManager deletionResourceManager) {
-    LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
-    List<DeletionResource> resourceList = deletionResourceManager.getAllDeletionResources();
-    final int originalDeletionCount = resourceList.size();
-    resourceList =
-        resourceList.stream()
-            .filter(this::mayDeletionUnprocessed)
-            .sorted((o1, o2) -> o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1)
-            .collect(Collectors.toList());
-    pendingDeletionQueue = new ArrayDeque<>(resourceList);
-    LOGGER.info(
-        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}",
-        pipeName,
-        dataRegionId,
-        resourceList.size(),
-        originalDeletionCount);
-  }
+    private void extractDeletions(final DeletionResourceManager deletionResourceManager) {
+        LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
+        List<DeletionResource> resourceList = deletionResourceManager.getAllDeletionResources();
+        final int originalDeletionCount = resourceList.size();
+        resourceList =
+                resourceList.stream()
+                        .filter(this::mayDeletionUnprocessed)
+                        .sorted((o1, o2) -> o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1)
+                        .collect(Collectors.toList());
+        pendingDeletionQueue = new ArrayDeque<>(resourceList);
+        LOGGER.info(
+                "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}",
+                pipeName,
+                dataRegionId,
+                resourceList.size(),
+                originalDeletionCount);
+    }
 
   private void flushTsFilesForExtraction(
       DataRegion dataRegion, final long startHistoricalExtractionTime) {
@@ -499,6 +498,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void start() {
+
+          if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+              return;
+          }
+
     if (!shouldExtractInsertion) {
       return;
     }
@@ -584,7 +588,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     return deviceSet.stream()
         .anyMatch(
             // TODO: use IDeviceID
-            deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
+            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -616,76 +620,93 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private Event supplyTsFileEvent(TsFileResource resource) {
-    final PipeTsFileInsertionEvent event =
-        new PipeTsFileInsertionEvent(
-            resource,
-            shouldTransferModFile,
-            false,
-            false,
-            pipeName,
-            creationTime,
-            pipeTaskMeta,
-            pipePattern,
-            historicalDataExtractionStartTime,
-            historicalDataExtractionEndTime);
-    if (sloppyPattern || isDbNameCoveredByPattern) {
-      event.skipParsingPattern();
+    private Event supplyTsFileEvent(TsFileResource resource) {
+        final PipeTsFileInsertionEvent event =
+                new PipeTsFileInsertionEvent(
+                        resource,
+                        shouldTransferModFile,
+                        false,
+                        false,
+                        true,
+                        pipeName,
+                        creationTime,
+                        pipeTaskMeta,
+                        pipePattern,
+                        historicalDataExtractionStartTime,
+                        historicalDataExtractionEndTime);
+        if (sloppyPattern || isDbNameCoveredByPattern) {
+            event.skipParsingPattern();
+        }
+
+        if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
+            event.skipParsingTime();
+        }
+
+        try {
+            final boolean isReferenceCountIncreased =
+                    event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
+            if (!isReferenceCountIncreased) {
+                LOGGER.warn(
+                        "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
+                        pipeName,
+                        dataRegionId,
+                        event);
+            }
+            return isReferenceCountIncreased ? event : null;
+        } finally {
+            try {
+                PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+            } catch (final IOException e) {
+                LOGGER.warn(
+                        "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
+                        pipeName,
+                        dataRegionId,
+                        resource.getTsFilePath());
+            }
+        }
     }
 
-    if (sloppyTimeRange || isTsFileResourceCoveredByTimeRange(resource)) {
-      event.skipParsingTime();
+    private Event supplyDeletionEvent() {
+        final DeletionResource deletionResource = pendingDeletionQueue.poll();
+        if (deletionResource == null) {
+            final PipeTerminateEvent terminateEvent =
+                    new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+            if (!terminateEvent.increaseReferenceCount(
+                    PipeHistoricalDataRegionTsFileExtractor.class.getName())) {
+                LOGGER.warn(
+                        "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+                        pipeName,
+                        dataRegionId);
+                return null;
+            }
+            isTerminateSignalSent = true;
+            return terminateEvent;
+        }
+        PipeSchemaRegionWritePlanEvent event = deletionResource.getDeletionEvent();
+        event.increaseReferenceCount(
+                PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
+        return event;
     }
 
-    event.increaseReferenceCount(
-        PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
-    try {
-      PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath());
-    }
-    return event;
-  }
+    @Override
+    public synchronized Event supply() {
+        if (Objects.isNull(pendingTsFileQueue) && Objects.isNull(pendingDeletionQueue)) {
+            return null;
+        }
 
-  private Event supplyDeletionEvent() {
-    final DeletionResource deletionResource = pendingDeletionQueue.poll();
-    if (deletionResource == null) {
-      isTerminateSignalSent = true;
-      final PipeTerminateEvent terminateEvent =
-          new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
-      terminateEvent.increaseReferenceCount(
-          PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
-      return terminateEvent;
+        // Consume tsFile first
+        if (!isTsFileEventAllConsumed) {
+            final TsFileResource resource = pendingTsFileQueue.poll();
+            if (resource == null) {
+                isTsFileEventAllConsumed = true;
+                return supplyDeletionEvent();
+            }
+            return supplyTsFileEvent(resource);
+        } else {
+            // Consume deletions
+            return supplyDeletionEvent();
+        }
     }
-    PipeSchemaRegionWritePlanEvent event = deletionResource.getDeletionEvent();
-    event.increaseReferenceCount(
-        PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
-    return event;
-  }
-
-  @Override
-  public synchronized Event supply() {
-    if (Objects.isNull(pendingTsFileQueue) && Objects.isNull(pendingDeletionQueue)) {
-      return null;
-    }
-
-    // Consume tsFile first
-    if (!isTsFileEventAllConsumed) {
-      final TsFileResource resource = pendingTsFileQueue.poll();
-      if (resource == null) {
-        isTsFileEventAllConsumed = true;
-        return supplyDeletionEvent();
-      }
-      return supplyTsFileEvent(resource);
-    } else {
-      // Consume deletions
-      return supplyDeletionEvent();
-    }
-  }
 
   @Override
   public synchronized boolean hasConsumedAll() {

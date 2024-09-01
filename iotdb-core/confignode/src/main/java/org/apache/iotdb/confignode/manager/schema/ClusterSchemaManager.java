@@ -22,11 +22,13 @@ package org.apache.iotdb.confignode.manager.schema;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -49,6 +51,8 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetDataRepli
 import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.ExtendSchemaTemplatePlan;
@@ -74,9 +78,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.exception.metadata.DatabaseAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
@@ -86,6 +89,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,12 +98,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 /** The ClusterSchemaManager Manages cluster schemaengine read and write requests. */
 public class ClusterSchemaManager {
@@ -135,16 +141,9 @@ public class ClusterSchemaManager {
   // ======================================================
 
   /** Set Database */
-  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan, boolean isGeneratedByPipe) {
+  public TSStatus setDatabase(
+      final DatabaseSchemaPlan databaseSchemaPlan, final boolean isGeneratedByPipe) {
     TSStatus result;
-    if (databaseSchemaPlan.getSchema().getName().length() > MAX_DATABASE_NAME_LENGTH) {
-      IllegalPathException illegalPathException =
-          new IllegalPathException(
-              databaseSchemaPlan.getSchema().getName(),
-              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
-      return RpcUtils.getStatus(
-          illegalPathException.getErrorCode(), illegalPathException.getMessage());
-    }
 
     if (getPartitionManager().isDatabasePreDeleted(databaseSchemaPlan.getSchema().getName())) {
       return RpcUtils.getStatus(
@@ -179,21 +178,13 @@ public class ClusterSchemaManager {
           databaseSchemaPlan.getSchema().getSchemaReplicationFactor());
       // Adjust the maximum RegionGroup number of each Database
       adjustMaxRegionGroupNum();
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(CONSENSUS_WRITE_ERROR, e);
       result = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       result.setMessage(e.getMessage());
-    } catch (MetadataException metadataException) {
+    } catch (final MetadataException metadataException) {
       // Reject if Database already set
-      if (metadataException instanceof IllegalPathException) {
-        result = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
-      } else if (metadataException instanceof DatabaseAlreadySetException) {
-        result = new TSStatus(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode());
-      } else if (metadataException instanceof SchemaQuotaExceededException) {
-        result = new TSStatus(TSStatusCode.SCHEMA_QUOTA_EXCEEDED.getStatusCode());
-      } else {
-        result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
+      result = new TSStatus(metadataException.getErrorCode());
       result.setMessage(metadataException.getMessage());
     } finally {
       createDatabaseLock.unlock();
@@ -605,10 +596,10 @@ public class ClusterSchemaManager {
    *
    * @return The DatabaseName of the specified Device. Empty String if not exists.
    */
-  public String getDatabaseNameByDevice(String devicePath) {
+  public String getDatabaseNameByDevice(IDeviceID deviceID) {
     List<String> databases = getDatabaseNames();
     for (String database : databases) {
-      if (PathUtils.isStartWith(devicePath, database)) {
+      if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
     }
@@ -1065,6 +1056,19 @@ public class ClusterSchemaManager {
     }
   }
 
+  // region table management
+
+  public TShowTableResp showTables(final String database) {
+    return clusterSchemaInfo.showTables(database);
+  }
+
+  public byte[] getAllTableInfoForDataNodeActivation() {
+    return TsTableInternalRPCUtil.serializeTableInitializationInfo(
+        clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
+  }
+
+  // endregion
+
   /**
    * Only leader use this interface. Get the remain schema quota of specified schema region.
    *
@@ -1094,6 +1098,126 @@ public class ClusterSchemaManager {
   public void updateSchemaQuotaConfiguration(long seriesThreshold, long deviceThreshold) {
     schemaQuotaStatistics.setDeviceThreshold(deviceThreshold);
     schemaQuotaStatistics.setSeriesThreshold(seriesThreshold);
+  }
+
+  public Optional<TsTable> getTableIfExists(final String database, final String tableName) {
+    return clusterSchemaInfo.getTsTableIfExists(database, tableName);
+  }
+
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnExtension(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
+    }
+
+    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+
+    final String errorMsg =
+        String.format(
+            "Column '%s' already exist",
+            columnSchemaList.stream()
+                .map(TsTableColumnSchema::getColumnName)
+                .collect(Collectors.joining(", ")));
+    columnSchemaList.removeIf(
+        columnSchema -> {
+          if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            expandedTable.addColumnSchema(columnSchema);
+            return false;
+          }
+          return true;
+        });
+
+    if (columnSchemaList.isEmpty()) {
+      return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
+    }
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+  }
+
+  public synchronized TSStatus addTableColumn(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
+        new AddTableColumnPlan(database, tableName, columnSchemaList, false);
+    try {
+      return getConsensusManager().write(addTableColumnPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus rollbackAddTableColumn(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList) {
+    final AddTableColumnPlan addTableColumnPlan =
+        new AddTableColumnPlan(database, tableName, columnSchemaList, true);
+    try {
+      return getConsensusManager().write(addTableColumnPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized TSStatus setTableProperties(
+      final String database, final String tableName, final Map<String, String> properties) {
+    final SetTablePropertiesPlan setTablePropertiesPlan =
+        new SetTablePropertiesPlan(database, tableName, properties);
+    try {
+      return getConsensusManager().write(setTablePropertiesPlan);
+    } catch (final ConsensusException e) {
+      LOGGER.warn(e.getMessage(), e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+  }
+
+  public synchronized Pair<TSStatus, TsTable> updateTableProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> originalProperties,
+      final Map<String, String> updatedProperties) {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format(
+                  "Table '%s.%s' does not exist",
+                  database.substring(ROOT.length() + 1), tableName)),
+          null);
+    }
+
+    updatedProperties
+        .keySet()
+        .removeIf(
+            key ->
+                Objects.equals(
+                    updatedProperties.get(key), originalTable.getPropValue(key).orElse(null)));
+    if (updatedProperties.isEmpty()) {
+      return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
+    }
+
+    final TsTable updatedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    updatedProperties.forEach(
+        (k, v) -> {
+          originalProperties.put(k, originalTable.getPropValue(k).orElse(null));
+          updatedTable.addProp(k, v);
+        });
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, updatedTable);
   }
 
   public void clearSchemaQuotaCache() {
