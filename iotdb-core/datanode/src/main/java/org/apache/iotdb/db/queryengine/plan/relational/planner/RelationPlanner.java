@@ -33,12 +33,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRows;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertTablet;
@@ -62,6 +65,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.read.common.type.LongType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -217,8 +222,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     RelationPlan rightPlan = process(node.getRight(), context);
 
     if (node.getCriteria().isPresent() && node.getCriteria().get() instanceof JoinUsing) {
-      throw new IllegalStateException("JoinUsing is not supported in current version.");
-      // TODO return planJoinUsing(node, leftPlan, rightPlan);
+      return planJoinUsing(node, leftPlan, rightPlan);
     }
 
     return planJoin(
@@ -228,6 +232,125 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
         leftPlan,
         rightPlan,
         analysis.getSubqueries(node));
+  }
+
+  private RelationPlan planJoinUsing(Join node, RelationPlan left, RelationPlan right) {
+    /* Given: l JOIN r USING (k1, ..., kn)
+
+       produces:
+
+        - project
+                coalesce(l.k1, r.k1)
+                ...,
+                coalesce(l.kn, r.kn)
+                l.v1,
+                ...,
+                l.vn,
+                r.v1,
+                ...,
+                r.vn
+          - join (l.k1 = r.k1 and ... l.kn = r.kn)
+                - project
+                    cast(l.k1 as commonType(l.k1, r.k1))
+                    ...
+                - project
+                    cast(rl.k1 as commonType(l.k1, r.k1))
+
+        If casts are redundant (due to column type and common type being equal),
+        they will be removed by optimization passes.
+    */
+
+    List<Identifier> joinColumns =
+        ((JoinUsing)
+                node.getCriteria()
+                    .orElseThrow(() -> new IllegalStateException("JoinUsing criteria is empty")))
+            .getColumns();
+
+    Analysis.JoinUsingAnalysis joinAnalysis = analysis.getJoinUsing(node);
+
+    ImmutableList.Builder<JoinNode.EquiJoinClause> clauses = ImmutableList.builder();
+
+    Map<Identifier, Symbol> leftJoinColumns = new HashMap<>();
+    Map<Identifier, Symbol> rightJoinColumns = new HashMap<>();
+
+    Assignments.Builder leftCoercions = Assignments.builder();
+    Assignments.Builder rightCoercions = Assignments.builder();
+
+    leftCoercions.putIdentities(left.getRoot().getOutputSymbols());
+    rightCoercions.putIdentities(right.getRoot().getOutputSymbols());
+    for (int i = 0; i < joinColumns.size(); i++) {
+      Identifier identifier = joinColumns.get(i);
+      Type type = analysis.getType(identifier);
+
+      // compute the coercion for the field on the left to the common supertype of left & right
+      Symbol leftOutput = symbolAllocator.newSymbol(identifier, type);
+      int leftField = joinAnalysis.getLeftJoinFields().get(i);
+      // will not appear the situation: Cast(toSqlType(type))
+      leftCoercions.put(leftOutput, left.getSymbol(leftField).toSymbolReference());
+      leftJoinColumns.put(identifier, leftOutput);
+      queryContext.getTypeProvider().putTableModelType(leftOutput, LongType.INT64);
+
+      // compute the coercion for the field on the right to the common supertype of left & right
+      Symbol rightOutput = symbolAllocator.newSymbol(identifier, type);
+      int rightField = joinAnalysis.getRightJoinFields().get(i);
+      rightCoercions.put(rightOutput, right.getSymbol(rightField).toSymbolReference());
+      rightJoinColumns.put(identifier, rightOutput);
+      queryContext.getTypeProvider().putTableModelType(rightOutput, LongType.INT64);
+
+      clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput));
+    }
+
+    ProjectNode leftCoercion =
+        new ProjectNode(
+            queryContext.getQueryId().genPlanNodeId(), left.getRoot(), leftCoercions.build());
+    ProjectNode rightCoercion =
+        new ProjectNode(
+            queryContext.getQueryId().genPlanNodeId(), right.getRoot(), rightCoercions.build());
+
+    JoinNode join =
+        new JoinNode(
+            queryContext.getQueryId().genPlanNodeId(),
+            mapJoinType(node.getType()),
+            leftCoercion,
+            rightCoercion,
+            clauses.build(),
+            leftCoercion.getOutputSymbols(),
+            rightCoercion.getOutputSymbols(),
+            Optional.empty(),
+            Optional.empty());
+
+    // Add a projection to produce the outputs of the columns in the USING clause,
+    // which are defined as coalesce(l.k, r.k)
+    Assignments.Builder assignments = Assignments.builder();
+
+    ImmutableList.Builder<Symbol> outputs = ImmutableList.builder();
+    for (Identifier column : joinColumns) {
+      Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
+      outputs.add(output);
+      assignments.put(
+          output,
+          new CoalesceExpression(
+              leftJoinColumns.get(column).toSymbolReference(),
+              rightJoinColumns.get(column).toSymbolReference()));
+    }
+
+    for (int field : joinAnalysis.getOtherLeftFields()) {
+      Symbol symbol = left.getFieldMappings().get(field);
+      outputs.add(symbol);
+      assignments.putIdentity(symbol);
+    }
+
+    for (int field : joinAnalysis.getOtherRightFields()) {
+      Symbol symbol = right.getFieldMappings().get(field);
+      outputs.add(symbol);
+      assignments.putIdentity(symbol);
+    }
+
+    return new RelationPlan(
+        new ProjectNode(queryContext.getQueryId().genPlanNodeId(), join, assignments.build()),
+        analysis.getScope(node),
+        outputs.build());
+    // outerContext);
   }
 
   public RelationPlan planJoin(

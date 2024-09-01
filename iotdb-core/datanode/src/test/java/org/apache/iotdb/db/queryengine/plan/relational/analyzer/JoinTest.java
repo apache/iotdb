@@ -37,6 +37,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzer.ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN;
@@ -76,19 +77,28 @@ public class JoinTest {
   // no filter, no sort
   @Test
   public void innerJoinTest1() {
+    // join on
     //    assertInnerJoinTest1(
     //        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
     //            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
     //            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6");
 
+    // join using
+    assertInnerJoinTest1(
+        "SELECT time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
+            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+            + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6",
+        true);
+
     // implicit join
     assertInnerJoinTest1(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6");
+            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6",
+        false);
   }
 
-  private void assertInnerJoinTest1(String sql) {
+  private void assertInnerJoinTest1(String sql, boolean joinUsing) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
         new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
@@ -96,21 +106,45 @@ public class JoinTest {
 
     // LogicalPlan: `Output-Offset-Limit-Join-(Left + Right)-Sort-(Project)-TableScan`
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertNodeMatches(
-        logicalPlanNode, OutputNode.class, OffsetNode.class, LimitNode.class, JoinNode.class);
-    joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 3);
+    if (joinUsing) {
+      assertNodeMatches(
+          logicalPlanNode,
+          OutputNode.class,
+          OffsetNode.class,
+          ProjectNode.class,
+          LimitNode.class,
+          JoinNode.class);
+    } else {
+      assertNodeMatches(
+          logicalPlanNode, OutputNode.class, OffsetNode.class, LimitNode.class, JoinNode.class);
+    }
+
+    joinNode =
+        joinUsing
+            ? (JoinNode) getChildrenNode(logicalPlanNode, 4)
+            : (JoinNode) getChildrenNode(logicalPlanNode, 3);
+    List<JoinNode.EquiJoinClause> joinCriteria =
+        joinUsing
+            ? Collections.singletonList(
+                new JoinNode.EquiJoinClause(Symbol.of("time_9"), Symbol.of("time_10")))
+            : Collections.singletonList(
+                new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
     assertJoinNodeEquals(
         joinNode,
         INNER,
-        Collections.singletonList(
-            new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0"))),
-        buildSymbols("time", "tag1", "tag2", "attr2", "s1", "s2"),
-        buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8"));
+        joinCriteria,
+        joinUsing
+            ? buildSymbols("tag1", "tag2", "attr2", "s1", "s2", "time_9")
+            : buildSymbols("time", "tag1", "tag2", "attr2", "s1", "s2"),
+        joinUsing
+            ? buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8", "time_10")
+            : buildSymbols("tag1_1", "tag3_3", "attr2_5", "s1_6", "s3_8"));
     assertTrue(joinNode.getLeftChild() instanceof SortNode);
     assertTrue(joinNode.getRightChild() instanceof SortNode);
     SortNode leftSortNode = (SortNode) joinNode.getLeftChild();
-    assertTrue(getChildrenNode(leftSortNode, 1) instanceof TableScanNode);
-    TableScanNode leftTableScanNode = (TableScanNode) getChildrenNode(leftSortNode, 1);
+    assertTrue(getChildrenNode(leftSortNode, joinUsing ? 2 : 1) instanceof TableScanNode);
+    TableScanNode leftTableScanNode =
+        (TableScanNode) getChildrenNode(leftSortNode, joinUsing ? 2 : 1);
     assertTableScan(leftTableScanNode, ALL_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
     SortNode rightSortNode = (SortNode) joinNode.getRightChild();
     assertTrue(getChildrenNode(rightSortNode, 1) instanceof ProjectNode);
