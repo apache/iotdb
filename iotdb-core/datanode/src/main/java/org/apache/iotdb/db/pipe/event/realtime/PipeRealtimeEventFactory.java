@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.event.realtime;
 
-import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
@@ -64,7 +64,8 @@ public class PipeRealtimeEventFactory {
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node, final String regionId) {
+  public static PipeRealtimeEvent createRealtimeEvent(
+      final DeleteDataNode node, final String regionId) {
     PipeSchemaRegionWritePlanEvent deletionEvent =
         new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe());
     Optional.ofNullable(DeletionResourceManager.getInstance(regionId))

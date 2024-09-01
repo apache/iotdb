@@ -1141,7 +1141,7 @@ public class InnerSeqCompactionWithFastPerformerTest {
             COMPACTION_TEST_SG);
     vsgp.getTsFileResourceManager().addAll(sourceResources, true);
     // delete data before compaction
-    PartialPath path = new PartialPath(fullPaths[0]);
+    MeasurementPath path = new MeasurementPath(fullPaths[0]);
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 1000);
     deleteDataNode.setSearchIndex(0);

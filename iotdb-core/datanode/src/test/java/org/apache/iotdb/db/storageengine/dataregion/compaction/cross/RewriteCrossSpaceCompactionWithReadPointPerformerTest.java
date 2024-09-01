@@ -583,8 +583,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, true, false);
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"
@@ -713,8 +713,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
     vsgp.getTsFileResourceManager().addAll(seqResources, true);
     vsgp.getTsFileResourceManager().addAll(unseqResources, false);
 
-    PartialPath path =
-        new PartialPath(
+    MeasurementPath path =
+        new MeasurementPath(
             COMPACTION_TEST_SG
                 + PATH_SEPARATOR
                 + "d"

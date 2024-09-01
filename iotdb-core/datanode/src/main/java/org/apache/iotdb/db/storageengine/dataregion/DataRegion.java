@@ -2323,7 +2323,8 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  public void deleteDataDirectly(MeasurementPath pathToDelete, DeleteDataNode node) throws IOException {
+  public void deleteDataDirectly(MeasurementPath pathToDelete, DeleteDataNode node)
+      throws IOException {
     final long startTime = node.getDeleteStartTime();
     final long endTime = node.getDeleteEndTime();
     final long searchIndex = node.getSearchIndex();

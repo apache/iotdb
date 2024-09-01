@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -151,7 +150,7 @@ public class SettleRequestHandlerTest {
       }
       dataRegion.syncCloseAllWorkingTsFileProcessors();
       if (i != 2) {
-          PartialPath path = new PartialPath(deviceId, measurementId);
+        MeasurementPath path = new MeasurementPath(deviceId, measurementId);
         DeleteDataNode deleteDataNode =
             new DeleteDataNode(
                 new PlanNodeId("1"), Collections.singletonList(path), 3L * i + 1, 3L * i + 1);

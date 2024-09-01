@@ -219,7 +219,7 @@ public class DataRegionTest {
                 CompressionType.UNCOMPRESSED,
                 Collections.emptyMap()));
 
-    PartialPath path = new PartialPath(deviceId, measurementId);
+    MeasurementPath path = new MeasurementPath(deviceId, measurementId);
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 0, 15L);
     dataRegion.deleteByDevice(new MeasurementPath(deviceId, measurementId), deleteDataNode1);
@@ -452,9 +452,7 @@ public class DataRegionTest {
 
   @Test
   public void testIoTDBTabletWriteAndDeleteDataRegion()
-      throws QueryProcessException,
-          IllegalPathException,
-          WriteProcessException,
+      throws QueryProcessException, IllegalPathException, WriteProcessException,
           TsFileProcessorException {
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -1049,11 +1047,8 @@ public class DataRegionTest {
 
   @Test
   public void testInsertUnSequenceRows()
-      throws IllegalPathException,
-          WriteProcessRejectException,
-          QueryProcessException,
-          DataRegionException,
-          TsFileProcessorException {
+      throws IllegalPathException, WriteProcessRejectException, QueryProcessException,
+          DataRegionException, TsFileProcessorException {
     int defaultAvgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     config.setAvgSeriesPointNumberThreshold(2);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.Rows");
@@ -1090,12 +1085,8 @@ public class DataRegionTest {
 
   @Test
   public void testSmallReportProportionInsertRow()
-      throws WriteProcessException,
-          QueryProcessException,
-          IllegalPathException,
-          IOException,
-          DataRegionException,
-          TsFileProcessorException {
+      throws WriteProcessException, QueryProcessException, IllegalPathException, IOException,
+          DataRegionException, TsFileProcessorException {
     double defaultValue = config.getWriteMemoryVariationReportProportion();
     config.setWriteMemoryVariationReportProportion(0);
     DataRegion dataRegion1 = new DummyDataRegion(systemDir, "root.ln22");
@@ -1408,7 +1399,7 @@ public class DataRegionTest {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
-    PartialPath path = new PartialPath("root.vehicle.d2.s0");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
     deleteDataNode1.setSearchIndex(0);
@@ -1464,14 +1455,14 @@ public class DataRegionTest {
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
-    PartialPath path = new PartialPath("root.vehicle.d2.s0");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 70);
     deleteDataNode1.setSearchIndex(0);
     // delete data which is in memtable
     dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d2.s0"), deleteDataNode1);
 
-    PartialPath path2 = new PartialPath("root.vehicle.d200.s0");
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
     DeleteDataNode deleteDataNode2 =
         new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
     deleteDataNode2.setSearchIndex(0);
@@ -1494,11 +1485,11 @@ public class DataRegionTest {
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
     tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
 
-    PartialPath path = new PartialPath("root.vehicle.d0.s0");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 99);
     deleteDataNode1.setSearchIndex(0);
-    PartialPath path2 = new PartialPath("root.vehicle.d200.s0");
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
     DeleteDataNode deleteDataNode2 =
         new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
     deleteDataNode2.setSearchIndex(0);
@@ -1535,11 +1526,11 @@ public class DataRegionTest {
     }
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
-    PartialPath path = new PartialPath("root.vehicle.d0.s0");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 99);
     deleteDataNode1.setSearchIndex(0);
-    PartialPath path2 = new PartialPath("root.vehicle.d200.s0");
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
     DeleteDataNode deleteDataNode2 =
         new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
     deleteDataNode2.setSearchIndex(0);
@@ -1635,11 +1626,11 @@ public class DataRegionTest {
     }
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
-    PartialPath path = new PartialPath("root.vehicle.d0.s0");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 99);
     deleteDataNode1.setSearchIndex(0);
-    PartialPath path2 = new PartialPath("root.vehicle.d200.s0");
+    MeasurementPath path2 = new MeasurementPath("root.vehicle.d200.s0");
     DeleteDataNode deleteDataNode2 =
         new DeleteDataNode(new PlanNodeId("2"), Collections.singletonList(path2), 50, 70);
     deleteDataNode2.setSearchIndex(0);
@@ -1647,7 +1638,7 @@ public class DataRegionTest {
     dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d0.s0"), deleteDataNode1);
     dataRegion.deleteByDevice(new MeasurementPath("root.vehicle.d200.s0"), deleteDataNode2);
 
-    PartialPath path3 = new PartialPath("root.vehicle.d199.*");
+    MeasurementPath path3 = new MeasurementPath("root.vehicle.d199.*");
     DeleteDataNode deleteDataNode3 =
         new DeleteDataNode(new PlanNodeId("3"), Collections.singletonList(path3), 50, 500);
     deleteDataNode3.setSearchIndex(0);
@@ -1672,7 +1663,7 @@ public class DataRegionTest {
     }
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
 
-    PartialPath path = new PartialPath("root.vehicle.d0.s0");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.s0");
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 100, 200);
     deleteDataNode.setSearchIndex(0);
@@ -1713,7 +1704,7 @@ public class DataRegionTest {
 
     TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
     // delete data in work mem, no mods.
-    PartialPath path = new PartialPath("root.vehicle.d0.**");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.**");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 100);
     deleteDataNode1.setSearchIndex(0);
@@ -1765,7 +1756,7 @@ public class DataRegionTest {
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
 
     // already closed, will have a mods file.
-    PartialPath path = new PartialPath("root.vehicle.d0.**");
+    MeasurementPath path = new MeasurementPath("root.vehicle.d0.**");
     DeleteDataNode deleteDataNode1 =
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 40, 60);
     deleteDataNode1.setSearchIndex(0);
