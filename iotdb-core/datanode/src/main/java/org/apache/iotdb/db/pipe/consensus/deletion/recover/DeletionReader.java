@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.consensus.deletion.recover;
 
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,28 +31,41 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class DeletionReader implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionReader.class);
+  private static final int MAGIC_STRING_BYTES_SIZE =
+      DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8).length;
   private final Consumer<DeletionResource> removeHook;
+  private final File logFile;
   private final FileInputStream fileInputStream;
   private final FileChannel fileChannel;
 
   public DeletionReader(File logFile, Consumer<DeletionResource> removeHook) throws IOException {
+    this.logFile = logFile;
     this.fileInputStream = new FileInputStream(logFile);
     this.fileChannel = fileInputStream.getChannel();
     this.removeHook = removeHook;
   }
 
   public List<DeletionResource> readAllDeletions() throws IOException {
+    // Read magic string
+    ByteBuffer magicStringBuffer = ByteBuffer.allocate(MAGIC_STRING_BYTES_SIZE);
+    fileChannel.read(magicStringBuffer);
+    magicStringBuffer.flip();
+    String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
+    LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
+
     // Read metaData
     ByteBuffer intBuffer = ByteBuffer.allocate(4);
     fileChannel.read(intBuffer);
     intBuffer.flip();
     int deletionNum = intBuffer.getInt();
+    LOGGER.debug("Read deletion file-{} contains {} deletions", logFile, deletionNum);
 
     // Read deletions
     long remainingBytes = fileChannel.size() - fileChannel.position();
@@ -61,7 +75,10 @@ public class DeletionReader implements Closeable {
 
     List<DeletionResource> deletions = new ArrayList<>();
     for (int i = 0; i < deletionNum; i++) {
-      deletions.add(DeletionResource.deserialize(byteBuffer, removeHook));
+      DeletionResource deletionResource = DeletionResource.deserialize(byteBuffer, removeHook);
+      deletions.add(deletionResource);
+      LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+      System.out.println("read deletion" + i + " :" + deletionResource);
     }
     return deletions;
   }

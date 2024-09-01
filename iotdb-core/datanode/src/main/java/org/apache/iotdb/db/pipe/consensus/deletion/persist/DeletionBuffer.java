@@ -243,7 +243,7 @@ public class DeletionBuffer implements AutoCloseable {
       if (buffer.position() > workingBuffer.remaining()) {
         return false;
       }
-      workingBuffer.put(buffer);
+      workingBuffer.put(buffer.array());
       totalSize += buffer.position();
       deletionNum++;
       return true;
@@ -308,9 +308,11 @@ public class DeletionBuffer implements AutoCloseable {
         // Write metaData.
         ByteBuffer metaData = ByteBuffer.allocate(4);
         metaData.putInt(deletionNum);
+        metaData.flip();
         this.logChannel.write(metaData);
         // Write deletions.
-        this.logChannel.write(workingBuffer);
+        syncingBuffer.flip();
+        this.logChannel.write(syncingBuffer);
       } catch (IOException e) {
         LOGGER.warn(
             "Deletion persist: Cannot write to {}, may cause data inconsistency.", logFile, e);
