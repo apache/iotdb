@@ -82,6 +82,7 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
 
   @Override
   public void deserializeFromByteBuffer(final ByteBuffer buffer) {
+    byte ignoredEventType = ReadWriteIOUtils.readByte(buffer);
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     planNode = PlanNodeType.deserialize(buffer);
   }
