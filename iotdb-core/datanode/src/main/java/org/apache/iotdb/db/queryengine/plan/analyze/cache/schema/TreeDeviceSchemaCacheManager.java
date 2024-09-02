@@ -400,19 +400,27 @@ public class TreeDeviceSchemaCacheManager {
    * <p>The input "TimeValuePair" shall never be or contain {@code null}.
    *
    * @param database the device's database, without "root"
-   * @param deviceId IDeviceID
+   * @param deviceID IDeviceID
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCache(
       final String database,
-      final IDeviceID deviceId,
+      final String prefix,
+      final IDeviceID deviceID,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final MeasurementSchema[] measurementSchemas) {
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceId, measurements, timeValuePairs, isAligned, measurementSchemas, false);
+        database,
+        prefix,
+        deviceID,
+        measurements,
+        timeValuePairs,
+        isAligned,
+        measurementSchemas,
+        false);
   }
 
   public void updateLastCache(
@@ -451,6 +459,7 @@ public class TreeDeviceSchemaCacheManager {
       final TimeValuePair timeValuePair) {
     tableDeviceSchemaCache.updateLastCache(
         database,
+        measurementPath.getNodes()[1],
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
         new TimeValuePair[] {timeValuePair},
