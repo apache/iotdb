@@ -69,7 +69,7 @@ public class AdditionResolver {
 
   public static Type checkConditions(List<? extends Type> argumentTypes) {
     return CONDITION_MAP
-        .getOrDefault(argumentTypes.get(0), new HashMap<>())
+        .getOrDefault(argumentTypes.get(0), Collections.empty_map())
         .getOrDefault(argumentTypes.get(1), null);
   }
 }
