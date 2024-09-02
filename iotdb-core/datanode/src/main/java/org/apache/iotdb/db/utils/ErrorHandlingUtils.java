@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
@@ -152,6 +153,8 @@ public class ErrorHandlingUtils {
             ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
+    } else if (t instanceof IoTDBRuntimeException) {
+      return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
     } else if (t instanceof MemoryNotEnoughException) {
       return RpcUtils.getStatus(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH, rootCause.getMessage());
     }

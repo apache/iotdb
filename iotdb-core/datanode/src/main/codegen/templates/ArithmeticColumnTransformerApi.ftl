@@ -16,11 +16,14 @@
 <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/transformation/dag/column/binary/ArithmeticColumnTransformerApi.java" />
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
+import org.apache.tsfile.read.common.type.Type;
+
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.DoubleNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.FloatNegationColumnTransformer;
@@ -28,6 +31,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IntNegati
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LongNegationColumnTransformer;
 
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.List;
 
 public class ArithmeticColumnTransformerApi {
   <#list mathematicalOperator.binaryOperators as operator>
@@ -78,37 +83,39 @@ public class ArithmeticColumnTransformerApi {
 
   private static ColumnTransformer get${firstType}${operator.name}Transformer(
       ColumnTransformer leftTransformer, ColumnTransformer rightTransformer, ZoneId zoneId) {
+    List<? extends Type> argumentTypes =
+    Arrays.asList(leftTransformer.getType(), rightTransformer.getType());
     switch (rightTransformer.getType().getTypeEnum()) {
       case INT32:
         return new ${firstType}${operator.name}IntColumnTransformer(
-            ${operator.name}Resolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            ${operator.name}Resolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer);
       case INT64:
         return new ${firstType}${operator.name}LongColumnTransformer(
-            ${operator.name}Resolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            ${operator.name}Resolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer);
       case FLOAT:
         return new ${firstType}${operator.name}FloatColumnTransformer(
-            ${operator.name}Resolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            ${operator.name}Resolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer);
       case DOUBLE:
         return new ${firstType}${operator.name}DoubleColumnTransformer(
-            ${operator.name}Resolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            ${operator.name}Resolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer);
       <#if operator.name == "Addition" && (firstType == "Int" || firstType == "Long")>
       case DATE:
         return new ${firstType}${operator.name}DateColumnTransformer(
-            ${operator.name}Resolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            ${operator.name}Resolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
       case TIMESTAMP:
         return new ${firstType}${operator.name}TimestampColumnTransformer(
-            ${operator.name}Resolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            ${operator.name}Resolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
@@ -123,16 +130,18 @@ public class ArithmeticColumnTransformerApi {
 
   private static ColumnTransformer getDateAdditionTransformer(
       ColumnTransformer leftTransformer, ColumnTransformer rightTransformer, ZoneId zoneId) {
+    List<? extends Type> argumentTypes =
+    Arrays.asList(leftTransformer.getType(), rightTransformer.getType());
     switch (rightTransformer.getType().getTypeEnum()) {
       case INT32:
         return new DateAdditionIntColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
       case INT64:
         return new DateAdditionLongColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
@@ -143,16 +152,18 @@ public class ArithmeticColumnTransformerApi {
 
   private static ColumnTransformer getTimestampAdditionTransformer(
       ColumnTransformer leftTransformer, ColumnTransformer rightTransformer, ZoneId zoneId) {
+    List<? extends Type> argumentTypes =
+    Arrays.asList(leftTransformer.getType(), rightTransformer.getType());
     switch (rightTransformer.getType().getTypeEnum()) {
       case INT32:
         return new TimestampAdditionIntColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
       case INT64:
         return new TimestampAdditionLongColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
@@ -163,16 +174,18 @@ public class ArithmeticColumnTransformerApi {
 
   private static ColumnTransformer getDateSubtractionTransformer(
       ColumnTransformer leftTransformer, ColumnTransformer rightTransformer, ZoneId zoneId) {
+    List<? extends Type> argumentTypes =
+    Arrays.asList(leftTransformer.getType(), rightTransformer.getType());
     switch (rightTransformer.getType().getTypeEnum()) {
       case INT32:
         return new DateSubtractionIntColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
       case INT64:
         return new DateSubtractionLongColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
@@ -183,16 +196,18 @@ public class ArithmeticColumnTransformerApi {
 
   private static ColumnTransformer getTimestampSubtractionTransformer(
       ColumnTransformer leftTransformer, ColumnTransformer rightTransformer, ZoneId zoneId) {
+    List<? extends Type> argumentTypes =
+    Arrays.asList(leftTransformer.getType(), rightTransformer.getType());
     switch (rightTransformer.getType().getTypeEnum()) {
       case INT32:
         return new TimestampSubtractionIntColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);
       case INT64:
         return new TimestampSubtractionLongColumnTransformer(
-            AdditionResolver.checkConditions(leftTransformer.getType(), rightTransformer.getType()),
+            AdditionResolver.checkConditions(argumentTypes),
             leftTransformer,
             rightTransformer,
             zoneId);

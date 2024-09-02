@@ -110,47 +110,52 @@ public class TableMetadataImpl implements Metadata {
 
     switch (operatorType) {
       case ADD:
-        if (!isTwoTypeCalculable(argumentTypes)) {
+        if (!isTwoTypeCalculable(argumentTypes)
+            || AdditionResolver.checkConditions(argumentTypes) == null) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return AdditionResolver.checkConditions(argumentTypes.get(0), argumentTypes.get(1));
+        return AdditionResolver.checkConditions(argumentTypes);
       case SUBTRACT:
-        if (!isTwoTypeCalculable(argumentTypes)) {
+        if (!isTwoTypeCalculable(argumentTypes)
+            || SubtractionResolver.checkConditions(argumentTypes) == null) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return SubtractionResolver.checkConditions(argumentTypes.get(0), argumentTypes.get(1));
+        return SubtractionResolver.checkConditions(argumentTypes);
       case MULTIPLY:
-        if (!isTwoTypeCalculable(argumentTypes)) {
+        if (!isTwoTypeCalculable(argumentTypes)
+            || MultiplicationResolver.checkConditions(argumentTypes) == null) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return MultiplicationResolver.checkConditions(argumentTypes.get(0), argumentTypes.get(1));
+        return MultiplicationResolver.checkConditions(argumentTypes);
       case DIVIDE:
-        if (!isTwoTypeCalculable(argumentTypes)) {
+        if (!isTwoTypeCalculable(argumentTypes)
+            || DivisionResolver.checkConditions(argumentTypes) == null) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return DivisionResolver.checkConditions(argumentTypes.get(0), argumentTypes.get(1));
+        return DivisionResolver.checkConditions(argumentTypes);
       case MODULUS:
-        if (!isTwoTypeCalculable(argumentTypes)) {
+        if (!isTwoTypeCalculable(argumentTypes)
+            || ModulusResolver.checkConditions(argumentTypes) == null) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return ModulusResolver.checkConditions(argumentTypes.get(0), argumentTypes.get(1));
+        return ModulusResolver.checkConditions(argumentTypes);
       case NEGATION:
-        if (!isOneNumericType(argumentTypes)) {
+        if (!isOneNumericType(argumentTypes) && !isTimestampType(argumentTypes.get(0))) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
@@ -755,7 +760,6 @@ public class TableMetadataImpl implements Metadata {
         || FLOAT.equals(type)
         || INT32.equals(type)
         || INT64.equals(type)
-        || DATE.equals(type)
         || TIMESTAMP.equals(type);
   }
 

@@ -137,7 +137,7 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
       case TIMESTAMP:
         returnType.writeLong(
             columnBuilder,
-            DateTimeUtils.correctPrecision(DateUtils.parseIntToDate(value).getTime()));
+            DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(value, zoneId)));
         break;
       case FLOAT:
         returnType.writeFloat(columnBuilder, value);

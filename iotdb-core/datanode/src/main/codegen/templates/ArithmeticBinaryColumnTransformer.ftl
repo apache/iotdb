@@ -42,9 +42,6 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
 
-<#if operator.name == "Division" || operator.name == "Modulus">
-import static org.apache.iotdb.rpc.TSStatusCode.DIVISION_BY_ZERO;
-</#if>
 <#if first.dataType == "int" || second.dataType == "int" || first.dataType == "long" || second.dataType == "long">
 import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
 </#if>
@@ -86,17 +83,17 @@ public class ${className} extends BinaryColumnTransformer {
     <#if first.instance == "DATE">
     <#--Date + int || Date + long-->
     try{
-      long timestamp = Math.addExact(DateTimeUtils.correctPrecision(DateUtils.parseIntToDate(left).getTime()), right);
+      long timestamp = Math.addExact(DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(left,zoneId)), right);
       return DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(timestamp, zoneId));
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${first.dataType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
     }
     <#else>
     <#--Timestamp + int || Timestamp + long-->
     try{
       return Math.addExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${first.dataType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
     }
     </#if>
     <#break>
@@ -104,17 +101,17 @@ public class ${className} extends BinaryColumnTransformer {
     <#if first.instance == "DATE">
     <#--Date - int || Date - long-->
     try{
-      long timestamp = Math.subtractExact(DateTimeUtils.correctPrecision(DateUtils.parseIntToDate(left).getTime()), right);
+      long timestamp = Math.subtractExact(DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(left, zoneId)), right);
       return DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(timestamp, zoneId));
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${first.dataType} ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
     }
     <#else>
     <#--Timestamp - int || Timestamp - long-->
     try{
       return Math.subtractExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${first.dataType} ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
     }
     </#if>
     <#break>
@@ -139,9 +136,6 @@ import org.apache.tsfile.utils.DateUtils;
 
 import java.time.ZoneId;
 
-<#if operator.name == "Division" || operator.name == "Modulus">
-import static org.apache.iotdb.rpc.TSStatusCode.DIVISION_BY_ZERO;
-</#if>
 <#if first.dataType == "int" || second.dataType == "int" || first.dataType == "long" || second.dataType == "long">
 import static org.apache.iotdb.rpc.TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE;
 </#if>
@@ -180,16 +174,16 @@ public class ${className} extends BinaryColumnTransformer {
   public static ${second.dataType} transform(${first.dataType} left, ${second.dataType} right) {
     <#if second.instance == "DATE">
     try{
-      long timestamp = Math.addExact(left,DateTimeUtils.correctPrecision(DateUtils.parseIntToDate(right).getTime()));
+      long timestamp = Math.addExact(left,DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(right, zoneId)));
       return DateUtils.parseDateExpressionToInt(DateTimeUtils.convertToLocalDate(timestamp, zoneId));
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${second.dataType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
     }
     <#else>
     try{
       return Math.addExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${second.dataType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("long ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
     }
     </#if>
   }
@@ -212,6 +206,7 @@ public class ${className} extends BinaryColumnTransformer {
 package org.apache.iotdb.db.queryengine.transformation.dag.column.binary;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -259,14 +254,14 @@ public class ${className} extends BinaryColumnTransformer {
     try{
       return Math.addExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s + %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),false);
     }
     <#break>
     <#case "Subtraction">
     try{
       return Math.subtractExact(left, right);
     }catch (ArithmeticException e){
-      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),true);
+      throw new IoTDBRuntimeException(String.format("${resultType} ${operator.name} overflow: %s - %s", left, right),NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(),false);
     }
     <#break>
     <#case "Multiplication">

@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -54,12 +55,9 @@ public class ModulusResolver {
     CONDITION_MAP.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
   }
 
-  public static Type checkConditions(Type condition1, Type condition2) {
-    Type result =
-        CONDITION_MAP.getOrDefault(condition1, new HashMap<>()).getOrDefault(condition2, null);
-    if (result == null) {
-      throw new UnsupportedOperationException("Unsupported : " + condition1 + " % " + condition2);
-    }
-    return result;
+  public static Type checkConditions(List<? extends Type> argumentTypes) {
+    return CONDITION_MAP
+        .getOrDefault(argumentTypes.get(0), new HashMap<>())
+        .getOrDefault(argumentTypes.get(1), null);
   }
 }
