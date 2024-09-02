@@ -299,14 +299,12 @@ public class TableDeviceSchemaCache {
   // Shall be accessed through "TreeDeviceSchemaCacheManager"
 
   public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
-    final String[] devicePath = deviceSchemaInfo.getDevicePath().getNodes();
-    final IDeviceID deviceID =
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(devicePath));
+    final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+    final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
 
     dualKeyCache.update(
-        new TableId(devicePath[1], deviceID.getTableName()),
+        new TableId(devicePath.getNodes()[1], deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
         entry ->
@@ -360,9 +358,7 @@ public class TableDeviceSchemaCache {
     final String[] nodes = devicePath.getNodes();
 
     if (!devicePath.hasWildcard()) {
-      final IDeviceID deviceID =
-          IDeviceID.Factory.DEFAULT_FACTORY.create(
-              StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
+      final IDeviceID deviceID = devicePath.getIDeviceID();
       dualKeyCache.update(
           new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
     } else {
@@ -392,9 +388,7 @@ public class TableDeviceSchemaCache {
     final String[] nodes = devicePath.getNodes();
 
     if (!devicePath.hasWildcard()) {
-      final IDeviceID deviceID =
-          IDeviceID.Factory.DEFAULT_FACTORY.create(
-              StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
+      final IDeviceID deviceID = devicePath.getIDeviceID();
       dualKeyCache.invalidate(new TableId(nodes[1], deviceID.getTableName()), deviceID);
     } else {
       // This may take quite a long time to perform, yet it has avoided that
