@@ -67,7 +67,7 @@ public class AdditionResolver {
     CONDITION_MAP.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
   }
 
-  public static Type checkConditions(List<? extends Type> argumentTypes) {
+  public static Optional<Type> checkConditions(List<? extends Type> argumentTypes) {
     return CONDITION_MAP
         .getOrDefault(argumentTypes.get(0), Collections.empty_map())
         .getOrDefault(argumentTypes.get(1), null);
