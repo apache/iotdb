@@ -36,18 +36,18 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class)
           + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-  private final String storageGroup;
+  private final String database;
   private final boolean isAligned;
 
   private final ConcurrentMap<String, SchemaCacheEntry> measurementMap = new ConcurrentHashMap<>();
 
-  public TreeDeviceNormalSchema(final String storageGroup, final boolean isAligned) {
-    this.storageGroup = storageGroup;
+  public TreeDeviceNormalSchema(final String database, final boolean isAligned) {
+    this.database = database;
     this.isAligned = isAligned;
   }
 
   public String getDatabase() {
-    return storageGroup;
+    return database;
   }
 
   public boolean isAligned() {

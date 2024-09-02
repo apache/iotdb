@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceTemplateSchema;
@@ -387,19 +386,12 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   /**
-   * Update the last cache on query or data recover in tree model. The input "TimeValuePair" shall
-   * never be or contain {@code null} unless the measurement is the time measurement "". If the
-   * measurements are all {@code null}s, the timeValuePair shall be {@link
-   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}.
+   * Update the last cache in writing for tree model. If a measurement is with all {@code null}s or
+   * is an id/attribute column, its timeValuePair shall be {@code null}. For correctness, this will
+   * put the cache lazily and only update the existing last caches of measurements.
    *
-   * <p>If the global last time is queried or recovered, the measurement shall be an empty string
-   * and time shall be in the timeValuePair's timestamp, whose value is typically {@link
-   * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. Or, the device's last time won't be updated because
-   * we cannot guarantee the completeness of the existing measurements in cache.
-   *
-   * <p>The input "TimeValuePair" shall never be or contain {@code null}.
-   *
-   * @param database the device's database, without "root"
+   * @param database the device's database, WITH "root"
+   * @param prefix node[1] of the device's partialPath
    * @param deviceID IDeviceID
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
