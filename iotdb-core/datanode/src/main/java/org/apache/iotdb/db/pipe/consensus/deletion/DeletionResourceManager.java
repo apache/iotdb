@@ -44,6 +44,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -62,6 +65,10 @@ public class DeletionResourceManager implements AutoCloseable {
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
+  private final Lock recoverLock = new ReentrantLock();
+  // condition to guarantee correctness of switching buffers
+  private final Condition recoveryReadyCondition = recoverLock.newCondition();
+  private boolean hasCompletedRecovery = false;
 
   private DeletionResourceManager(String dataRegionId) throws IOException {
     this.dataRegionId = dataRegionId;
@@ -77,27 +84,34 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   private void initAndRecover() throws IOException {
-    if (!storageDir.exists()) {
-      // Init
-      if (!storageDir.mkdirs()) {
-        LOGGER.warn("Unable to create pipeConsensus deletion dir at {}", storageDir);
-        throw new IOException(
-            String.format("Unable to create pipeConsensus deletion dir at %s", storageDir));
-      }
-    }
-    try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
-      Path[] deletionPaths =
-          pathStream
-              .filter(Files::isRegularFile)
-              .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
-              .toArray(Path[]::new);
-
-      for (Path path : deletionPaths) {
-        try (DeletionReader deletionReader =
-            new DeletionReader(path.toFile(), this::removeDeletionResource)) {
-          deletionResources.addAll(deletionReader.readAllDeletions());
+    recoverLock.lock();
+    try {
+      if (!storageDir.exists()) {
+        // Init
+        if (!storageDir.mkdirs()) {
+          LOGGER.warn("Unable to create pipeConsensus deletion dir at {}", storageDir);
+          throw new IOException(
+              String.format("Unable to create pipeConsensus deletion dir at %s", storageDir));
         }
       }
+      try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
+        Path[] deletionPaths =
+            pathStream
+                .filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
+                .toArray(Path[]::new);
+
+        for (Path path : deletionPaths) {
+          try (DeletionReader deletionReader =
+              new DeletionReader(path.toFile(), this::removeDeletionResource)) {
+            deletionResources.addAll(deletionReader.readAllDeletions());
+          }
+        }
+        this.hasCompletedRecovery = true;
+        recoveryReadyCondition.signalAll();
+      }
+    } finally {
+      recoverLock.unlock();
     }
   }
 
@@ -115,7 +129,22 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   public List<DeletionResource> getAllDeletionResources() {
-    return deletionResources.stream().collect(ImmutableList.toImmutableList());
+    recoverLock.lock();
+    try {
+      if (!hasCompletedRecovery) {
+        recoveryReadyCondition.await();
+      }
+      return deletionResources.stream().collect(ImmutableList.toImmutableList());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "DeletionManager-{}: current waiting is interrupted. May because current application is down. ",
+          dataRegionId,
+          e);
+      return deletionResources.stream().collect(ImmutableList.toImmutableList());
+    } finally {
+      recoverLock.unlock();
+    }
   }
 
   /**

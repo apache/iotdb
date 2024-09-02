@@ -1463,7 +1463,6 @@ public class PipeConsensusReceiver {
                   consensusPipeName,
                   tCommitId.getCommitIndex(),
                   e);
-              Thread.currentThread().interrupt();
               // Avoid infinite loop when RPC thread is killed by OS
               return new TPipeConsensusTransferResp(
                   RpcUtils.getStatus(
