@@ -21,8 +21,10 @@ package org.apache.iotdb.db.pipe.consensus.deletion;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -88,9 +90,9 @@ public class DeletionResource {
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) {
-    PipeSchemaRegionWritePlanEvent event = new PipeSchemaRegionWritePlanEvent();
-    event.deserializeFromByteBuffer(buffer);
+      final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) throws IOException {
+    PipeSchemaRegionWritePlanEvent event =
+        (PipeSchemaRegionWritePlanEvent) PipeSchemaSerializableEventType.deserialize(buffer);
     return new DeletionResource(event, removeHook);
   }
 
