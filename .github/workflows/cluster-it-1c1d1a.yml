@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: build AINode
         shell: bash
-        run: mvn clean package -DskipTests -pl iotdb-core/ainode -am -P with-ainode
+        run: mvn clean package -DskipTests -P with-ainode
       - name: IT/UT Test
         shell: bash
         run: |
