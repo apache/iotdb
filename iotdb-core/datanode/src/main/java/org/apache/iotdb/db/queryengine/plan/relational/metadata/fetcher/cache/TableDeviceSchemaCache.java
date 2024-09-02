@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TableDeviceSchemaCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
@@ -297,24 +297,20 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
-  public void putMeasurementSchema(
-      final String database,
-      final String[] devicePath,
-      final String measurement,
-      final SchemaCacheEntry measurementSchema) {
+  public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+    final String[] devicePath = deviceSchemaInfo.getDevicePath().getNodes();
     final IDeviceID deviceID =
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(devicePath));
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+
     dualKeyCache.update(
         new TableId(devicePath[1], deviceID.getTableName()),
         deviceID,
         null,
         entry ->
-            entry.setMeasurementSchema(
-                Objects.nonNull(previousDatabase) ? previousDatabase : database,
-                measurement,
-                measurementSchema),
+            entry.setDeviceSchema(
+                Objects.nonNull(previousDatabase) ? previousDatabase : database, deviceSchemaInfo),
         false);
   }
 

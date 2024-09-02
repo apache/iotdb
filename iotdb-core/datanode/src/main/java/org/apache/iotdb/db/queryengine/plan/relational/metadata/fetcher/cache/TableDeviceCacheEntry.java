@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
+import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
@@ -38,6 +38,8 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 @ThreadSafe
 public class TableDeviceCacheEntry {
@@ -99,20 +101,31 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Tree model ///////////////////////////////
 
-  int setMeasurementSchema(
-      final String database, final String measurement, final SchemaCacheEntry entry) {
+  int setDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     // Safe here because tree schema is invalidated by the whole entry
-    return (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, false))
-            ? TreeDeviceNormalSchema.INSTANCE_SIZE
-            : 0)
-        + ((TreeDeviceNormalSchema) deviceSchema.get())
-            .update(new String[] {measurement}, new SchemaCacheEntry[] {entry});
+    if (deviceSchemaInfo.getTemplateId() == NON_TEMPLATE) {
+      final int result =
+          (deviceSchema.compareAndSet(
+                  null, new TreeDeviceNormalSchema(database, deviceSchemaInfo.isAligned()))
+              ? TreeDeviceNormalSchema.INSTANCE_SIZE
+              : 0);
+      return deviceSchema.get() instanceof TreeDeviceNormalSchema
+          ? result
+              + ((TreeDeviceNormalSchema) deviceSchema.get())
+                  .update(deviceSchemaInfo.getMeasurementSchemaInfoList())
+          : 0;
+    } else {
+      return deviceSchema.compareAndSet(
+              null, new TreeDeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId()))
+          ? TreeDeviceNormalSchema.INSTANCE_SIZE
+          : 0;
+    }
   }
 
   int setMeasurementSchema(
       final String database,
       final boolean isAligned,
-      final String[] measurement,
+      final String[] measurements,
       final MeasurementSchema[] schemas) {
     // Safe here because tree schema is invalidated by the whole entry
     final int result =
@@ -120,7 +133,7 @@ public class TableDeviceCacheEntry {
             ? TreeDeviceNormalSchema.INSTANCE_SIZE
             : 0);
     return deviceSchema.get() instanceof TreeDeviceNormalSchema
-        ? result + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurement, schemas)
+        ? result + ((TreeDeviceNormalSchema) deviceSchema.get()).update(measurements, schemas)
         : 0;
   }
 

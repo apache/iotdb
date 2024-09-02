@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -55,22 +57,28 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     return measurementMap.get(measurement);
   }
 
-  public int update(final String[] measurements, final MeasurementSchema[] schemas) {
+  public int update(final String[] measurements, final IMeasurementSchema[] schemas) {
     int diff = 0;
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {
-      final SchemaCacheEntry putEntry = new SchemaCacheEntry(schemas[i], null);
-      final SchemaCacheEntry cachedEntry = measurementMap.put(measurements[i], putEntry);
-      diff +=
-          Objects.isNull(cachedEntry)
-              ? (int)
-                  (RamUsageEstimator.sizeOf(measurements[i])
-                      + SchemaCacheEntry.estimateSize(putEntry))
-              : SchemaCacheEntry.estimateSize(putEntry)
-                  - SchemaCacheEntry.estimateSize(cachedEntry);
+      diff += putEntry(measurements[i], schemas[i]);
     }
     return diff;
+  }
+
+  public int update(final List<IMeasurementSchemaInfo> schemaInfoList) {
+    return schemaInfoList.stream()
+        .mapToInt(schemaInfo -> putEntry(schemaInfo.getName(), schemaInfo.getSchema()))
+        .reduce(0, Integer::sum);
+  }
+
+  private int putEntry(final String measurement, final IMeasurementSchema schema) {
+    final SchemaCacheEntry putEntry = new SchemaCacheEntry(schema, null);
+    final SchemaCacheEntry cachedEntry = measurementMap.put(measurement, putEntry);
+    return Objects.isNull(cachedEntry)
+        ? (int) (RamUsageEstimator.sizeOf(measurement) + SchemaCacheEntry.estimateSize(putEntry))
+        : SchemaCacheEntry.estimateSize(putEntry) - SchemaCacheEntry.estimateSize(cachedEntry);
   }
 
   @Override

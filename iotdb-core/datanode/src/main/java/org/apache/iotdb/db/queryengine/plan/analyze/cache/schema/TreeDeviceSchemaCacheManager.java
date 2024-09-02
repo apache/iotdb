@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
-import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
@@ -55,8 +54,6 @@ import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * This class takes the responsibility of metadata cache management of all DataRegions under
@@ -368,20 +365,12 @@ public class TreeDeviceSchemaCacheManager {
    * Store the fetched schema in either the schemaCache or templateSchemaCache, depending on its
    * associated device.
    */
-  public void put(ClusterSchemaTree tree) {
-    PartialPath devicePath;
-    for (DeviceSchemaInfo deviceSchemaInfo : tree.getAllDevices()) {
-      devicePath = deviceSchemaInfo.getDevicePath();
-      if (deviceSchemaInfo.getTemplateId() != NON_TEMPLATE) {
-        deviceUsingTemplateSchemaCache.put(
-            devicePath, tree.getBelongedDatabase(devicePath), deviceSchemaInfo.getTemplateId());
-      } else {
-        for (MeasurementPath measurementPath : deviceSchemaInfo.getMeasurementSchemaPathList()) {
-          timeSeriesSchemaCache.putSingleMeasurementPath(
-              tree.getBelongedDatabase(devicePath), measurementPath);
-        }
-      }
-    }
+  public void put(final ClusterSchemaTree tree) {
+    tree.getAllDevices()
+        .forEach(
+            deviceSchemaInfo ->
+                tableDeviceSchemaCache.putDeviceSchema(
+                    tree.getBelongedDatabase(deviceSchemaInfo.getDevicePath()), deviceSchemaInfo));
   }
 
   public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
