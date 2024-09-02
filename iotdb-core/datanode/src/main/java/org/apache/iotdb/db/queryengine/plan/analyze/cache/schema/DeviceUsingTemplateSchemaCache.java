@@ -30,8 +30,6 @@ import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 public class DeviceUsingTemplateSchemaCache {
 
   private static final Logger logger =
@@ -57,16 +55,6 @@ public class DeviceUsingTemplateSchemaCache {
 
   public void put(PartialPath path, String database, Integer id) {
     cache.put(path, new DeviceCacheEntry(database, id));
-  }
-
-  public void invalidateCache(List<? extends PartialPath> partialPathList) {
-    for (PartialPath path : partialPathList) {
-      for (PartialPath key : cache.asMap().keySet()) {
-        if (key.startsWith(path.getIDeviceID().toString())) {
-          cache.invalidate(key);
-        }
-      }
-    }
   }
 
   private static class DeviceCacheEntry {

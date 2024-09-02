@@ -405,7 +405,7 @@ public class TableDeviceSchemaCache {
     }
   }
 
-  public void invalidateCache(final PartialPath devicePath, final String measurement) {
+  public void invalidateCache(final PartialPath devicePath) {
     final String[] nodes = devicePath.getNodes();
 
     if (!devicePath.hasWildcard()) {

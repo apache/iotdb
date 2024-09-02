@@ -384,7 +384,7 @@ public class TreeDeviceSchemaCacheManager {
     }
   }
 
-  public TimeValuePair getLastCache(final PartialPath seriesPath) {
+  public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
     final String[] nodes = seriesPath.getNodes();
     final int index = nodes.length - 1;
     return tableDeviceSchemaCache.getLastEntry(
@@ -394,7 +394,7 @@ public class TreeDeviceSchemaCacheManager {
         nodes[index]);
   }
 
-  public void invalidateLastCache(final PartialPath path) {
+  public void invalidateLastCache(final MeasurementPath path) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
       return;
     }
@@ -447,13 +447,10 @@ public class TreeDeviceSchemaCacheManager {
     // Deprecated
   }
 
-  public void invalidate(List<? extends PartialPath> partialPathList) {
-    if (partialPathList.stream().noneMatch(path -> path.getDevicePath().hasWildcard())) {
-      deviceUsingTemplateSchemaCache.invalidateCache(partialPathList);
-      timeSeriesSchemaCache.invalidate(partialPathList);
-    } else {
-      cleanUp();
-    }
+  public void invalidate(final List<MeasurementPath> partialPathList) {
+    // Currently invalidate by device
+    partialPathList.forEach(
+        measurementPath -> tableDeviceSchemaCache.invalidateCache(measurementPath.getDevicePath()));
   }
 
   public void cleanUp() {

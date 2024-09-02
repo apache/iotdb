@@ -2269,7 +2269,11 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteByDevice(
-      MeasurementPath pattern, long startTime, long endTime, long searchIndex) throws IOException {
+      final MeasurementPath pattern,
+      final long startTime,
+      final long endTime,
+      final long searchIndex)
+      throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");

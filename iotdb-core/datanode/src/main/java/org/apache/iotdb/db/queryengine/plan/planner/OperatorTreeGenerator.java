@@ -2790,8 +2790,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   @Override
-  public Operator visitLastQueryScan(LastQueryScanNode node, LocalExecutionPlanContext context) {
-    MeasurementPath seriesPath = node.getSeriesPath();
+  public Operator visitLastQueryScan(
+      final LastQueryScanNode node, final LocalExecutionPlanContext context) {
+    final MeasurementPath seriesPath = node.getSeriesPath();
     TimeValuePair timeValuePair = null;
     context.dataNodeQueryContext.lock();
     try {
@@ -3005,7 +3006,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<Integer> unCachedMeasurementIndexes = new ArrayList<>();
     List<String> measurementList = alignedPath.getMeasurementList();
     for (int i = 0; i < measurementList.size(); i++) {
-      MeasurementPath measurementPath = devicePath.concatAsMeasurementPath(measurementList.get(i));
+      final MeasurementPath measurementPath =
+          devicePath.concatAsMeasurementPath(measurementList.get(i));
       TimeValuePair timeValuePair = null;
       try {
         context.dataNodeQueryContext.lock();

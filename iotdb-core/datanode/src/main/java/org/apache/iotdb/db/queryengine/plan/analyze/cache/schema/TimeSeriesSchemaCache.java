@@ -27,8 +27,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.ID
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
 
-import java.util.List;
-
 public class TimeSeriesSchemaCache {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -54,9 +52,5 @@ public class TimeSeriesSchemaCache {
         new SchemaCacheEntry(measurementPath.getMeasurementSchema(), measurementPath.getTagMap());
     dualKeyCache.put(
         measurementPath.getDevicePath(), measurementPath.getMeasurement(), schemaCacheEntry);
-  }
-
-  public void invalidate(List<? extends PartialPath> partialPathList) {
-    dualKeyCache.invalidate(partialPathList);
   }
 }
