@@ -50,7 +50,6 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -401,12 +400,10 @@ public class TableDeviceSchemaCache {
       // This may take quite a long time to perform, yet it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
-      final Predicate<TableId> firstKeyChecker =
-          PathPatternUtil.hasWildcard(nodes[1])
-              ? tableId -> true
-              : tableId -> tableId.belongTo(nodes[1]);
       dualKeyCache.invalidate(
-          firstKeyChecker,
+          PathPatternUtil.hasWildcard(nodes[1])
+              ? tableId -> PathPatternUtil.isNodeMatch(nodes[1], tableId.getPrefix())
+              : tableId -> tableId.belongTo(nodes[1]),
           cachedDeviceID -> {
             try {
               return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
