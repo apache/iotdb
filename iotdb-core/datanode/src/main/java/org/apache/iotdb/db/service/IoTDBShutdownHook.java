@@ -29,6 +29,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
@@ -84,6 +85,9 @@ public class IoTDBShutdownHook extends Thread {
     }
     WALManager.getInstance().syncDeleteOutdatedFilesInWALNodes();
 
+    // Wait all deletions are flushed
+    DeletionResourceManager.exit();
+
     // We did this work because the RatisConsensus recovery mechanism is different from other
     // consensus algorithms, which will replace the underlying storage engine based on its
     // own
@@ -93,7 +97,9 @@ public class IoTDBShutdownHook extends Thread {
         .getConfig()
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().parallelStream()
+      DataRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .parallelStream()
           .forEach(
               id -> {
                 try {

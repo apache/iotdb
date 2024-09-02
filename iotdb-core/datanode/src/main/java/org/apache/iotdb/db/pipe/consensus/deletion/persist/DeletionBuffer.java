@@ -118,6 +118,15 @@ public class DeletionBuffer implements AutoCloseable {
     deletionResources.add(deletionResource);
   }
 
+  public boolean isAllDeletionFlushed() {
+    buffersLock.lock();
+    try {
+      return deletionResources.isEmpty() && workingBuffer.position() == 0 && syncingBuffer == null;
+    } finally {
+      buffersLock.unlock();
+    }
+  }
+
   private void allocateBuffers() {
     try {
       workingBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);

@@ -115,9 +115,21 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
-    this.deletionBuffer.close();
+  public void close() {
     this.deletionResources.clear();
+    this.deletionBuffer.close();
+    waitUntilFlushAllDeletions();
+  }
+
+  private void waitUntilFlushAllDeletions() {
+    while (!deletionBuffer.isAllDeletionFlushed()) {
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted when waiting for all deletions flushed.");
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   public void registerDeletionResource(PipeSchemaRegionWritePlanEvent event) {
@@ -234,6 +246,16 @@ public class DeletionResourceManager implements AutoCloseable {
     if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus) {
       DeletionResourceManagerHolder.build();
     }
+  }
+
+  public static void exit() {
+    if (DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
+      return;
+    }
+    DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.forEach(
+        (groupId, resourceManager) -> {
+          resourceManager.close();
+        });
   }
 
   @TestOnly
