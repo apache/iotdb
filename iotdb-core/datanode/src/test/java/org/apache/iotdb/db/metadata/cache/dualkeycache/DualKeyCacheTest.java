@@ -156,18 +156,10 @@ public class DualKeyCacheTest {
       dualKeyCache.put(
           firstKey,
           s,
-          new SchemaCacheEntry(
-              "root.db",
-              new MeasurementSchema(s, TSDataType.INT32),
-              Collections.emptyMap(),
-              false));
+          new SchemaCacheEntry(new MeasurementSchema(s, TSDataType.INT32), Collections.emptyMap()));
     }
     SchemaCacheEntry schemaCacheEntry =
-        new SchemaCacheEntry(
-            "root.db",
-            new MeasurementSchema("s1", TSDataType.INT32),
-            Collections.emptyMap(),
-            false);
+        new SchemaCacheEntry(new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap());
     int expectedSize =
         computeStringSize("root.db.d1")
             + computeStringSize("s1") * 2

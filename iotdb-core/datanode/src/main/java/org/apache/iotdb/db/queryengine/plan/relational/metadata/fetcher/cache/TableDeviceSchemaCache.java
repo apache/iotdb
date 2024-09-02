@@ -373,11 +373,11 @@ public class TableDeviceSchemaCache {
             ? entry -> -entry.invalidateLastCache()
             : entry -> -entry.invalidateLastCache(measurement);
     final String[] nodes = devicePath.getNodes();
-    final IDeviceID deviceID =
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
 
     if (!devicePath.hasWildcard()) {
+      final IDeviceID deviceID =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
       dualKeyCache.update(
           new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
     } else {
@@ -392,7 +392,7 @@ public class TableDeviceSchemaCache {
           firstKeyChecker,
           cachedDeviceID -> {
             try {
-              return new PartialPath(cachedDeviceID).matchFullPath(deviceID, measurement);
+              return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
             } catch (final IllegalPathException e) {
               logger.warn(
                   "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",

@@ -30,20 +30,6 @@ public class DataNodeLastCacheManager {
       CommonDescriptor.getInstance().getConfig().isLastCacheEnable();
 
   /**
-   * get the last cache value from time series
-   *
-   * @param entry schema cache entry in DataNodeSchemaCache
-   * @return the last cache value
-   */
-  public static TimeValuePair getLastCache(SchemaCacheEntry entry) {
-    if (!CACHE_ENABLED || null == entry) {
-      return null;
-    }
-    ILastCacheContainer lastCacheContainer = entry.getLastCacheContainer();
-    return lastCacheContainer == null ? null : lastCacheContainer.getCachedLast();
-  }
-
-  /**
    * update the last cache value of time series
    *
    * @param entry schema cache entry in DataNodeSchemaCache
@@ -61,12 +47,5 @@ public class DataNodeLastCacheManager {
       return 0;
     }
     return entry.updateLastCache(timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  public static int invalidateLastCache(SchemaCacheEntry entry) {
-    if (!CACHE_ENABLED || null == entry) {
-      return 0;
-    }
-    return entry.invalidateLastCache();
   }
 }
