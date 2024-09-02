@@ -122,7 +122,7 @@ public class DeletionResourceManager implements AutoCloseable {
    * This is a hook function, which will be automatically invoked when deletionResource's reference
    * count returns to 0.
    */
-  private void removeDeletionResource(DeletionResource deletionResource) {
+  private synchronized void removeDeletionResource(DeletionResource deletionResource) {
     // Clean memory
     deletionResources.remove(deletionResource);
     // Clean disk
