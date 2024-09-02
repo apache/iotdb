@@ -437,16 +437,13 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (!secondKeyChecker.test(entry.getKey())) {
           continue;
         }
-        try {
-          cacheEntryManager.invalid(entry.getValue());
-        } catch (final Exception e) {
-          // This entry may have already been invalidated
-          continue;
+
+        if (cacheEntryManager.invalid(entry.getValue())) {
+          entryGroup.removeCacheEntry(entry.getKey());
+          estimateSize +=
+              sizeComputer.computeSecondKeySize(entry.getKey())
+                  + sizeComputer.computeValueSize(entry.getValue().getValue());
         }
-        entryGroup.removeCacheEntry(entry.getKey());
-        estimateSize +=
-            sizeComputer.computeSecondKeySize(entry.getKey())
-                + sizeComputer.computeValueSize(entry.getValue().getValue());
       }
     }
     cacheStats.decreaseMemoryUsage(estimateSize);

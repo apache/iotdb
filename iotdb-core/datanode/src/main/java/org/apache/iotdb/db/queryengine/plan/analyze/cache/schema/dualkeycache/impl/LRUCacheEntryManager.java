@@ -55,11 +55,12 @@ class LRUCacheEntryManager<FK, SK, V>
   }
 
   @Override
-  public void invalid(LRUCacheEntry<SK, V> cacheEntry) {
+  public boolean invalid(final LRUCacheEntry<SK, V> cacheEntry) {
     cacheEntry.next.pre = cacheEntry.pre;
     cacheEntry.pre.next = cacheEntry.next;
     cacheEntry.next = null;
     cacheEntry.pre = null;
+    return true;
   }
 
   @Override
