@@ -38,7 +38,6 @@ import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -369,13 +368,8 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
-    final String[] nodes = seriesPath.getNodes();
-    final int index = nodes.length - 1;
     return tableDeviceSchemaCache.getLastEntry(
-        nodes[1],
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(Arrays.copyOf(nodes, index))),
-        nodes[index]);
+        seriesPath.getNodes()[1], seriesPath.getIDeviceID(), seriesPath.getMeasurement());
   }
 
   public void invalidateLastCache(final MeasurementPath path) {
@@ -457,8 +451,7 @@ public class TreeDeviceSchemaCacheManager {
       final TimeValuePair timeValuePair) {
     tableDeviceSchemaCache.updateLastCache(
         database,
-        IDeviceID.Factory.DEFAULT_FACTORY.create(
-            StringArrayDeviceID.splitDeviceIdString(measurementPath.getDevicePath().getNodes())),
+        measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
         new TimeValuePair[] {timeValuePair},
         measurementPath.isUnderAlignedEntity(),
