@@ -88,16 +88,28 @@ public class TableDeviceLastCache {
       final @Nonnull String database,
       final @Nonnull String tableName,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs) {
+      final TimeValuePair[] timeValuePairs,
+      final boolean isTableModel) {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (int i = 0; i < measurements.length; ++i) {
       final int finalI = i;
+      final int measurementSize;
+
       if (!measurement2CachedLastMap.containsKey(measurements[i])) {
-        measurements[i] =
-            DataNodeTableCache.getInstance()
-                .tryGetInternColumnName(database, tableName, measurements[i]);
+        if (isTableModel) {
+          measurements[i] =
+              DataNodeTableCache.getInstance()
+                  .tryGetInternColumnName(database, tableName, measurements[i]);
+          measurementSize = 0;
+        } else {
+          measurementSize = (int) RamUsageEstimator.sizeOf(measurements[i]);
+        }
+      } else {
+          measurementSize = 0;
       }
+
+
       measurement2CachedLastMap.compute(
           measurements[i],
           (measurement, tvPair) -> {
@@ -106,7 +118,8 @@ public class TableDeviceLastCache {
               diff.addAndGet(
                   Objects.nonNull(tvPair)
                       ? getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue())
-                      : (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                      : measurementSize
+                          + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                           + timeValuePairs[finalI].getSize());
               return timeValuePairs[finalI];
             }

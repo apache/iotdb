@@ -418,7 +418,7 @@ public class TreeDeviceSchemaCacheManager {
       final boolean isAligned,
       final MeasurementSchema[] measurementSchemas) {
     tableDeviceSchemaCache.updateLastCache(
-        database, deviceId, measurements, timeValuePairs, isAligned, measurementSchemas);
+        database, deviceId, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
   public void updateLastCache(

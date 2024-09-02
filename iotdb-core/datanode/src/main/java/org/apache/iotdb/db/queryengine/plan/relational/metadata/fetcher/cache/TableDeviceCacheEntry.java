@@ -147,7 +147,8 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs) {
+      final TimeValuePair[] timeValuePairs,
+      final boolean isTableModel) {
     int result =
         lastCache.compareAndSet(null, new TableDeviceLastCache())
             ? TableDeviceLastCache.INSTANCE_SIZE
@@ -155,7 +156,7 @@ public class TableDeviceCacheEntry {
     final TableDeviceLastCache cache = lastCache.get();
     result +=
         Objects.nonNull(cache)
-            ? cache.update(database, tableName, measurements, timeValuePairs)
+            ? cache.update(database, tableName, measurements, timeValuePairs, isTableModel)
             : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }

@@ -196,7 +196,7 @@ public class TableDeviceSchemaCache {
           new TableDeviceCacheEntry(),
           entry ->
               entry.updateLastCache(
-                  database, deviceId.getTableName(), measurements, timeValuePairs),
+                  database, deviceId.getTableName(), measurements, timeValuePairs, true),
           true);
     } finally {
       readWriteLock.readLock().unlock();
@@ -331,21 +331,29 @@ public class TableDeviceSchemaCache {
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       final boolean isAligned,
-      final MeasurementSchema[] measurementSchemas) {
+      final MeasurementSchema[] measurementSchemas,
+      final boolean isQuery) {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
+    final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
+
+    final ToIntFunction<TableDeviceCacheEntry> updater =
+        isQuery
+            ? entry ->
+                entry.setMeasurementSchema(
+                        database2Use, isAligned, measurements, measurementSchemas)
+                    + entry.updateLastCache(
+                        database, deviceID.getTableName(), measurements, timeValuePairs, false)
+            : entry ->
+                entry.setMeasurementSchema(
+                        database2Use, isAligned, measurements, measurementSchemas)
+                    + entry.tryUpdateLastCache(measurements, timeValuePairs);
 
     dualKeyCache.update(
         new TableId(database, deviceID.getTableName()),
         deviceID,
-        null,
-        entry ->
-            entry.setMeasurementSchema(
-                    Objects.nonNull(previousDatabase) ? previousDatabase : database,
-                    isAligned,
-                    measurements,
-                    measurementSchemas)
-                + entry.tryUpdateLastCache(measurements, timeValuePairs),
-        false);
+        new TableDeviceCacheEntry(),
+        updater,
+        true);
   }
 
   public void invalidateLastCache(final PartialPath devicePath, final String measurement) {
