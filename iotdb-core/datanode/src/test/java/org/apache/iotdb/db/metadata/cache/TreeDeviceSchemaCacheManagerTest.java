@@ -82,12 +82,7 @@ public class TreeDeviceSchemaCacheManagerTest {
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
-                    o ->
-                        new SchemaCacheEntry(
-                            "root.sg1",
-                            o.getMeasurementSchema(),
-                            o.getTagMap(),
-                            o.isUnderAlignedEntity())));
+                    o -> new SchemaCacheEntry(o.getMeasurementSchema(), o.getTagMap())));
     Assert.assertEquals(
         TSDataType.INT32,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
@@ -115,12 +110,7 @@ public class TreeDeviceSchemaCacheManagerTest {
             .collect(
                 Collectors.toMap(
                     o -> new PartialPath(o.getNodes()),
-                    o ->
-                        new SchemaCacheEntry(
-                            "root.sg1",
-                            o.getMeasurementSchema(),
-                            o.getTagMap(),
-                            o.isUnderAlignedEntity())));
+                    o -> new SchemaCacheEntry(o.getMeasurementSchema(), o.getTagMap())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());

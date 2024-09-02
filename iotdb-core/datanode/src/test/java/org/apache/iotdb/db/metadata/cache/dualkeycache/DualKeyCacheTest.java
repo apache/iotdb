@@ -193,16 +193,10 @@ public class DualKeyCacheTest {
             + computeStringSize("s11")
             + SchemaCacheEntry.estimateSize(
                 new SchemaCacheEntry(
-                    "root.db1",
-                    new MeasurementSchema("s1", TSDataType.INT32),
-                    Collections.emptyMap(),
-                    false))
+                    new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()))
             + SchemaCacheEntry.estimateSize(
                 new SchemaCacheEntry(
-                    "root.db1",
-                    new MeasurementSchema("s11", TSDataType.INT32),
-                    Collections.emptyMap(),
-                    false));
+                    new MeasurementSchema("s11", TSDataType.INT32), Collections.emptyMap()));
     Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
     dualKeyCache.evictOneEntry();
     dualKeyCache.evictOneEntry();
@@ -224,10 +218,7 @@ public class DualKeyCacheTest {
             + computeStringSize("s2")
             + SchemaCacheEntry.estimateSize(
                 new SchemaCacheEntry(
-                    "root.db2",
-                    new MeasurementSchema("s2", TSDataType.INT32),
-                    Collections.emptyMap(),
-                    false));
+                    new MeasurementSchema("s2", TSDataType.INT32), Collections.emptyMap()));
     Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
     dualKeyCache.evictOneEntry();
     Assert.assertEquals(0, dualKeyCache.stats().memoryUsage());
@@ -249,50 +240,32 @@ public class DualKeyCacheTest {
         new PartialPath("root.db1.d1"),
         "s1",
         new SchemaCacheEntry(
-            "root.db1",
-            new MeasurementSchema("s1", TSDataType.INT32),
-            Collections.emptyMap(),
-            false));
+            new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()));
     dualKeyCache.put(
         new PartialPath("root.db1.d1"),
         "s2",
         new SchemaCacheEntry(
-            "root.db1",
-            new MeasurementSchema("s1", TSDataType.INT32),
-            Collections.emptyMap(),
-            false));
+            new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()));
     dualKeyCache.put(
         new PartialPath("root.db1"),
         "s11",
         new SchemaCacheEntry(
-            "root.db1",
-            new MeasurementSchema("s11", TSDataType.INT32),
-            Collections.emptyMap(),
-            false));
+            new MeasurementSchema("s11", TSDataType.INT32), Collections.emptyMap()));
     dualKeyCache.put(
         new PartialPath("root.db1.d1"),
         "s2",
         new SchemaCacheEntry(
-            "root.db1",
-            new MeasurementSchema("s1", TSDataType.INT32),
-            Collections.emptyMap(),
-            false));
+            new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()));
     dualKeyCache.put(
         new PartialPath("root.db2.d1"),
         "s1",
         new SchemaCacheEntry(
-            "root.db2",
-            new MeasurementSchema("s1", TSDataType.INT32),
-            Collections.emptyMap(),
-            false));
+            new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()));
     dualKeyCache.put(
         new PartialPath("root.db2.d1"),
         "s2",
         new SchemaCacheEntry(
-            "root.db2",
-            new MeasurementSchema("s1", TSDataType.INT32),
-            Collections.emptyMap(),
-            false));
+            new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()));
     Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s1"));
     Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1.d1"), "s2"));
     Assert.assertNotNull(dualKeyCache.get(new PartialPath("root.db1"), "s11"));
@@ -305,17 +278,11 @@ public class DualKeyCacheTest {
             + computeStringSize("s11")
             + SchemaCacheEntry.estimateSize(
                     new SchemaCacheEntry(
-                        "root.db1",
-                        new MeasurementSchema("s1", TSDataType.INT32),
-                        Collections.emptyMap(),
-                        false))
+                        new MeasurementSchema("s1", TSDataType.INT32), Collections.emptyMap()))
                 * 4
             + SchemaCacheEntry.estimateSize(
                 new SchemaCacheEntry(
-                    "root.db1",
-                    new MeasurementSchema("s11", TSDataType.INT32),
-                    Collections.emptyMap(),
-                    false));
+                    new MeasurementSchema("s11", TSDataType.INT32), Collections.emptyMap()));
     Assert.assertEquals(expectSize, dualKeyCache.stats().memoryUsage());
     return dualKeyCache;
   }
