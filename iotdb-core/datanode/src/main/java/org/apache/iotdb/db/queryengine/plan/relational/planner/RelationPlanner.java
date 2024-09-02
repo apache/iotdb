@@ -327,6 +327,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     for (Identifier column : joinColumns) {
       Symbol output = symbolAllocator.newSymbol(column, analysis.getType(column));
       outputs.add(output);
+      queryContext.getTypeProvider().putTableModelType(output, LongType.INT64);
       assignments.put(
           output,
           new CoalesceExpression(
