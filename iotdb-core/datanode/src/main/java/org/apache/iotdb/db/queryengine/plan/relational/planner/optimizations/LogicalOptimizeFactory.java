@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.IrTypeAnalyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
@@ -38,7 +41,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneTopKColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveDuplicateConditions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -51,8 +57,9 @@ public class LogicalOptimizeFactory {
   private final List<PlanOptimizer> planOptimizers;
 
   public LogicalOptimizeFactory(PlannerContext plannerContext) {
+    IrTypeAnalyzer typeAnalyzer = new IrTypeAnalyzer(plannerContext);
+    Metadata metadata = plannerContext.getMetadata();
 
-    PlanOptimizer simplifyExpressionOptimizer = new SimplifyExpressions();
     PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();
     PlanOptimizer transformSortToStreamSortOptimizer = new TransformSortToStreamSort();
 
@@ -80,6 +87,16 @@ public class LogicalOptimizeFactory {
                 new MergeFilters(),
                 new MergeLimits()));
 
+    Set<Rule<?>> simplifyOptimizerRules =
+        ImmutableSet.<Rule<?>>builder()
+            .addAll(new SimplifyExpressions(plannerContext, typeAnalyzer).rules())
+            .addAll(new RemoveDuplicateConditions(metadata).rules())
+            .addAll(new CanonicalizeExpressions(plannerContext, typeAnalyzer).rules())
+            .add(new RemoveTrivialFilters())
+            .build();
+    IterativeOptimizer simplifyOptimizer =
+        new IterativeOptimizer(plannerContext, new RuleStatsRecorder(), simplifyOptimizerRules);
+
     IterativeOptimizer limitPushdownOptimizer =
         new IterativeOptimizer(
             plannerContext,
@@ -96,7 +113,7 @@ public class LogicalOptimizeFactory {
 
     this.planOptimizers =
         ImmutableList.of(
-            simplifyExpressionOptimizer,
+            simplifyOptimizer,
             columnPruningOptimizer,
             inlineProjectionLimitFiltersOptimizer,
             pushPredicateIntoTableScanOptimizer,

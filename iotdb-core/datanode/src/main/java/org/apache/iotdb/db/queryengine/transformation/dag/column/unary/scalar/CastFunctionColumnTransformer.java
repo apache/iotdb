@@ -37,9 +37,9 @@ import org.apache.tsfile.utils.DateUtils;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 
-public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
+import static org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.helper.CastFunctionHelper.ERROR_MSG;
 
-  private static final String ERROR_MSG = "Unsupported target dataType: %s";
+public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
 
   private final ZoneId zoneId;
 
@@ -331,8 +331,11 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
           returnType.writeInt(columnBuilder, DateUtils.parseDateExpressionToInt(stringValue));
           break;
         case INT64:
-        case TIMESTAMP:
           returnType.writeLong(columnBuilder, Long.parseLong(stringValue));
+          break;
+        case TIMESTAMP:
+          returnType.writeLong(
+              columnBuilder, DateTimeUtils.convertDatetimeStrToLong(stringValue, zoneId));
           break;
         case FLOAT:
           returnType.writeFloat(columnBuilder, CastFunctionHelper.castTextToFloat(stringValue));

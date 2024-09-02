@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -52,7 +53,6 @@ import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -160,12 +160,13 @@ public class ConvertPredicateToFilterVisitor
     try {
       switch (dataType.getTypeEnum()) {
         case INT32:
-          return (T) Integer.valueOf(Long.valueOf(getLongValue(value)).intValue());
+          return (T) Integer.valueOf((int) getLongValue(value));
         case DATE:
-          return (T) DateUtils.parseDateExpressionToInt(getStringValue(value));
+          return (T) getDateValue(value);
         case INT64:
-        case TIMESTAMP:
           return (T) Long.valueOf(getLongValue(value));
+        case TIMESTAMP:
+          return (T) getTimestampValue(value);
         case FLOAT:
           return (T) Float.valueOf((float) getDoubleValue(value));
         case DOUBLE:
@@ -355,6 +356,18 @@ public class ConvertPredicateToFilterVisitor
 
   public static byte[] getBlobValue(Expression expression) {
     return ((BinaryLiteral) expression).getValue();
+  }
+
+  public static Integer getDateValue(Expression expression) {
+    return Integer.valueOf(((GenericLiteral) expression).getValue());
+  }
+
+  public static Long getTimestampValue(Expression expression) {
+    if (expression instanceof LongLiteral) {
+      return ((LongLiteral) expression).getParsedValue();
+    } else {
+      return Long.valueOf(((GenericLiteral) expression).getValue());
+    }
   }
 
   public static class Context {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
-import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -39,7 +39,7 @@ public class ActiveLoadPendingQueue {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
       pendingFileQueue.offer(new Pair<>(file, isGeneratedByPipe));
 
-      ActiveLoadingFilesMetricsSet.getInstance().recordQueuingFileCounter(1);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(1);
       return true;
     }
     return false;
@@ -51,8 +51,8 @@ public class ActiveLoadPendingQueue {
       pendingFileSet.remove(pair.left);
       loadingFileSet.add(pair.left);
 
-      ActiveLoadingFilesMetricsSet.getInstance().recordLoadingFileCounter(1);
-      ActiveLoadingFilesMetricsSet.getInstance().recordQueuingFileCounter(-1);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(1);
+      ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-1);
     }
     return pair;
   }
@@ -60,7 +60,7 @@ public class ActiveLoadPendingQueue {
   public synchronized void removeFromLoading(final String file) {
     loadingFileSet.remove(file);
 
-    ActiveLoadingFilesMetricsSet.getInstance().recordLoadingFileCounter(-1);
+    ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(-1);
   }
 
   public synchronized boolean isFilePendingOrLoading(final String file) {
