@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -38,6 +39,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 
 import javax.annotation.Nullable;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator {
@@ -114,7 +116,10 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
       // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
-        seriesScanInfo.right = new TimeValuePair(time, value);
+        seriesScanInfo.right =
+            Objects.nonNull(value)
+                ? new TimeValuePair(time, value)
+                : TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR;
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {
