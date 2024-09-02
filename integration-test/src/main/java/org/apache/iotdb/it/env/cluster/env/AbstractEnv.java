@@ -41,10 +41,10 @@ import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.*;
+import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
@@ -82,7 +82,7 @@ public abstract class AbstractEnv implements BaseEnv {
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
-  protected List<MLNodeWrapper> aiNodeWrapperList = Collections.emptyList();
+  protected List<AINodeWrapper> aiNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
@@ -151,8 +151,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected void initEnvironment(
-      int configNodesNum, int dataNodesNum, int testWorkingRetryCount, boolean addAINode) {
-    this.testWorkingRetryCount = testWorkingRetryCount;
+      int configNodesNum, int dataNodesNum, int retryCount, boolean addAINode) {
+    this.retryCount = retryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
 
@@ -278,6 +278,7 @@ public abstract class AbstractEnv implements BaseEnv {
             seedConfigNode,
             testClassName,
             testMethodName,
+            index,
             EnvUtils.searchAvailablePorts(),
             startTime);
     aiNodeWrapperList.add(aiNodeWrapper);
@@ -400,7 +401,9 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void cleanClusterEnvironment() {
     List<AbstractNodeWrapper> allNodeWrappers =
-        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream(), this.aiNodeWrapperList.strea())
+        Stream.concat(
+                dataNodeWrapperList.stream(),
+                Stream.concat(configNodeWrapperList.stream(), aiNodeWrapperList.stream()))
             .collect(Collectors.toList());
     allNodeWrappers.stream()
         .findAny()

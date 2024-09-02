@@ -125,11 +125,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final MppJVMConfig jvmConfig;
   protected final int clusterIndex;
   protected final boolean isMultiCluster;
-  private Process instance;
+  protected Process instance;
   private final String nodeAddress;
   private int nodePort;
-  private int metricPort;
-  private long startTime;
+  private final int metricPort;
+  private final long startTime;
   private List<String> killPoints = new ArrayList<>();
 
   /**
@@ -523,7 +523,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
-  public final int getMetricPort() {
+  public int getMetricPort() {
     return this.metricPort;
   }
 
