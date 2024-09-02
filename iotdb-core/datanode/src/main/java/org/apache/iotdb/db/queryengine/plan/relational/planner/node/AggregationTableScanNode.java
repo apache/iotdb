@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Map;
@@ -143,8 +142,7 @@ public class AggregationTableScanNode extends TableScanNode {
   }
 
   public boolean isStreamable() {
-    return ImmutableSet.copyOf(preGroupedSymbols)
-            .equals(ImmutableSet.copyOf(groupingSets.getGroupingKeys()))
+    return !preGroupedSymbols.isEmpty()
         && groupingSets.getGroupingSetCount() == 1
         && groupingSets.getGlobalGroupingSets().isEmpty();
   }

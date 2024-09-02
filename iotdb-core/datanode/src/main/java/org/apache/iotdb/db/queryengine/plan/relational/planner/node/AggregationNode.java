@@ -49,6 +49,7 @@ import static java.util.Objects.requireNonNull;
 public class AggregationNode extends SingleChildProcessNode {
   private final Map<Symbol, Aggregation> aggregations;
   private final GroupingSetDescriptor groupingSets;
+  // indicate the pre sorted columns of GroupingKeys
   private List<Symbol> preGroupedSymbols;
   private final Step step;
   private final Optional<Symbol> hashSymbol;
@@ -264,8 +265,7 @@ public class AggregationNode extends SingleChildProcessNode {
   }
 
   public boolean isStreamable() {
-    return ImmutableSet.copyOf(preGroupedSymbols)
-            .equals(ImmutableSet.copyOf(groupingSets.getGroupingKeys()))
+    return !preGroupedSymbols.isEmpty()
         && groupingSets.getGroupingSetCount() == 1
         && groupingSets.getGlobalGroupingSets().isEmpty();
   }

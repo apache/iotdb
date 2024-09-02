@@ -70,7 +70,30 @@ public class AggregationTableScanMatcher extends TableScanMatcher {
         shapeMatches(node),
         "Plan testing framework error: shapeMatches returned false in detailMatches in %s",
         this.getClass().getName());
-    AggregationTableScanNode aggregationNode = (AggregationTableScanNode) node;
+    AggregationTableScanNode aggregationTableScanNode = (AggregationTableScanNode) node;
+
+    String actualTableName = aggregationTableScanNode.getQualifiedObjectName().toString();
+
+    // TODO (https://github.com/trinodb/trino/issues/17) change to equals()
+    if (!expectedTableName.equalsIgnoreCase(actualTableName)) {
+      return NO_MATCH;
+    }
+
+    if (!outputSymbols.isEmpty()
+        && !outputSymbols.equals(
+            aggregationTableScanNode.getOutputSymbols().stream()
+                .map(Symbol::getName)
+                .collect(Collectors.toList()))) {
+      return NO_MATCH;
+    }
+
+    if (!assignmentsKeys.isEmpty()
+        && !assignmentsKeys.equals(
+            aggregationTableScanNode.getAssignments().keySet().stream()
+                .map(Symbol::getName)
+                .collect(Collectors.toSet()))) {
+      return NO_MATCH;
+    }
 
     /*if (groupId.isPresent() != aggregationNode.getGroupIdSymbol().isPresent()) {
       return NO_MATCH;
@@ -79,22 +102,24 @@ public class AggregationTableScanMatcher extends TableScanMatcher {
     if (!groupingSets
         .getGroupingKeys()
         .equals(
-            aggregationNode.getGroupingKeys().stream()
+            aggregationTableScanNode.getGroupingKeys().stream()
                 .map(Symbol::getName)
                 .collect(Collectors.toList()))) {
       return NO_MATCH;
     }
 
-    if (groupingSets.getGroupingSetCount() != aggregationNode.getGroupingSetCount()) {
+    if (groupingSets.getGroupingSetCount() != aggregationTableScanNode.getGroupingSetCount()) {
       return NO_MATCH;
     }
 
-    if (!groupingSets.getGlobalGroupingSets().equals(aggregationNode.getGlobalGroupingSets())) {
+    if (!groupingSets
+        .getGlobalGroupingSets()
+        .equals(aggregationTableScanNode.getGlobalGroupingSets())) {
       return NO_MATCH;
     }
 
     Set<Symbol> actualMasks =
-        aggregationNode.getAggregations().values().stream()
+        aggregationTableScanNode.getAggregations().values().stream()
             .filter(aggregation -> aggregation.getMask().isPresent())
             .map(aggregation -> aggregation.getMask().get())
             .collect(toImmutableSet());
@@ -105,18 +130,18 @@ public class AggregationTableScanMatcher extends TableScanMatcher {
       return NO_MATCH;
     }
 
-    if (step != aggregationNode.getStep()) {
+    if (step != aggregationTableScanNode.getStep()) {
       return NO_MATCH;
     }
 
     if (!preGroupedSymbols.equals(
-        aggregationNode.getPreGroupedSymbols().stream()
+        aggregationTableScanNode.getPreGroupedSymbols().stream()
             .map(Symbol::getName)
             .collect(Collectors.toList()))) {
       return NO_MATCH;
     }
 
-    if (!preGroupedSymbols.isEmpty() && !aggregationNode.isStreamable()) {
+    if (!preGroupedSymbols.isEmpty() && !aggregationTableScanNode.isStreamable()) {
       return NO_MATCH;
     }
 

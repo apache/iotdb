@@ -40,7 +40,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -189,22 +188,6 @@ public class TableScanNode extends SourceNode {
         .filter(columnSchema -> columnSchema.getColumnCategory() == TsTableColumnCategory.ID)
         .map(columnSchema -> Symbol.of(columnSchema.getName()))
         .collect(Collectors.toList());
-  }
-
-  public List<Symbol> getIdAndTimeColumnsInTableStore(Metadata metadata, SessionInfo session) {
-    List<Symbol> result =
-        Objects.requireNonNull(metadata.getTableSchema(session, qualifiedObjectName).orElse(null))
-            .getColumns()
-            .stream()
-            .filter(
-                columnSchema ->
-                    columnSchema.getColumnCategory() == TsTableColumnCategory.ID
-                        || columnSchema.getColumnCategory() == TsTableColumnCategory.TIME)
-            .map(columnSchema -> Symbol.of(columnSchema.getName()))
-            .collect(Collectors.toList());
-    // We need to put Time to the end
-    Collections.rotate(result, -1);
-    return result;
   }
 
   public boolean isMeasurementColumn(Symbol symbol) {

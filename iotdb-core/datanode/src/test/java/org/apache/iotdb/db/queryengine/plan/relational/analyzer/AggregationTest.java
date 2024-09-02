@@ -80,7 +80,7 @@ public class AggregationTest {
                     singleGroupingSet("s1", "tag1", "tag2", "tag3", "time"),
                     ImmutableMap.of(
                         Optional.empty(), aggregationFunction("count", ImmutableList.of("s2"))),
-                    ImmutableList.of("s1", "tag1", "tag2", "tag3", "time"), // Streamable
+                    ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     tableScan(
@@ -211,7 +211,7 @@ public class AggregationTest {
                         PARTIAL,
                         "testdb.table1",
                         ImmutableList.of("tag1", "count_0"),
-                        ImmutableSet.of("tag1", "count_0"))))));
+                        ImmutableSet.of("tag1", "s2"))))));
 
     // Only Attribute columns appear in GroupingKeys
     // Output - Project - Aggregation - AggTableScan
@@ -225,17 +225,17 @@ public class AggregationTest {
                     ImmutableMap.of(
                         Optional.empty(),
                         aggregationFunction("count", ImmutableList.of("count_0"))),
-                    ImmutableList.of(), // UnStreamable
+                    ImmutableList.of("attr1"), // Streamable
                     Optional.empty(),
                     FINAL,
                     aggregationTableScan(
                         singleGroupingSet("attr1"),
-                        ImmutableList.of(), // UnStreamable
+                        ImmutableList.of("attr1"), // Streamable
                         Optional.empty(),
                         PARTIAL,
                         "testdb.table1",
                         ImmutableList.of("attr1", "count_0"),
-                        ImmutableSet.of("attr1", "count_0"))))));
+                        ImmutableSet.of("attr1", "s2"))))));
 
     // Only partial ID columns, Attribute columns, time or date_bin(time) appear in GroupingKeys
     // Output - Project - Aggregation - AggTableScan
@@ -251,17 +251,17 @@ public class AggregationTest {
                     ImmutableMap.of(
                         Optional.empty(),
                         aggregationFunction("count", ImmutableList.of("count_0"))),
-                    ImmutableList.of(), // UnStreamable
+                    ImmutableList.of("attr1", "tag1"), // Streamable
                     Optional.empty(),
                     FINAL,
                     aggregationTableScan(
                         singleGroupingSet("attr1", "tag1", "date_bin"),
-                        ImmutableList.of(), // UnStreamable
+                        ImmutableList.of("attr1", "tag1"), // Streamable
                         Optional.empty(),
                         PARTIAL,
                         "testdb.table1",
                         ImmutableList.of("attr1", "tag1", "date_bin", "count_0"),
-                        ImmutableSet.of("attr1", "tag1", "date_bin", "count_0"))))));
+                        ImmutableSet.of("attr1", "tag1", "time", "s2"))))));
   }
 
   @Test
@@ -282,8 +282,8 @@ public class AggregationTest {
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
-                    ImmutableList.of("tag1", "tag2", "tag3", "count_0"),
-                    ImmutableSet.of("tag1", "tag2", "tag3", "count_0")))));
+                    ImmutableList.of("tag1", "tag2", "tag3", "count"),
+                    ImmutableSet.of("tag1", "tag2", "tag3", "s2")))));
 
     // All ID columns appear in GroupingKeys, and Attribute columns , time or date_bin(time) also
     // appear
@@ -296,12 +296,12 @@ public class AggregationTest {
             project(
                 aggregationTableScan(
                     singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin"),
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin"), // Streamable
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin", "count_0"),
-                    ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "date_bin", "count_0")))));
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin", "count"),
+                    ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")))));
     logicalQueryPlan =
         planTester.createPlan(
             "SELECT count(s2) FROM table1 group by tag1, tag2, tag3, attr1, time");
@@ -311,12 +311,12 @@ public class AggregationTest {
             project(
                 aggregationTableScan(
                     singleGroupingSet("tag1", "tag2", "tag3", "attr1", "time"),
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time"), // Streamable
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time", "count_0"),
-                    ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "count_0")))));
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "time", "count"),
+                    ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")))));
 
     // GlobalAggregation
     assertPlan(
@@ -328,7 +328,7 @@ public class AggregationTest {
                 Optional.empty(),
                 SINGLE,
                 "testdb.table1",
-                ImmutableList.of("count_0"),
-                ImmutableSet.of("count_0"))));
+                ImmutableList.of("count"),
+                ImmutableSet.of("s2"))));
   }
 }
