@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -37,6 +38,8 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -47,6 +50,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 /**
@@ -70,6 +74,7 @@ import java.util.function.ToIntFunction;
 public class TableDeviceSchemaCache {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final Logger logger = LoggerFactory.getLogger(TableDeviceSchemaCache.class);
 
   /**
    * In table model: {@literal <}QualifiedObjectName, IDeviceID, lastCache / attributes{@literal >}
@@ -367,16 +372,36 @@ public class TableDeviceSchemaCache {
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
             : entry -> -entry.invalidateLastCache(measurement);
+    final String[] nodes = devicePath.getNodes();
+    final IDeviceID deviceID =
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
 
     if (!devicePath.hasWildcard()) {
-      final String[] nodes = devicePath.getNodes();
-      final IDeviceID deviceID =
-          IDeviceID.Factory.DEFAULT_FACTORY.create(
-              StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
       dualKeyCache.update(
           new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
     } else {
-
+      // This may take quite a long time to perform, yet it has avoided that
+      // the un-related paths being cleared, like "root.*.b.c.**" affects
+      // "root.*.d.c.**", thereby lower the query performance.
+      final Predicate<TableId> firstKeyChecker =
+          PathPatternUtil.hasWildcard(nodes[1])
+              ? tableId -> true
+              : tableId -> tableId.belongTo(nodes[1]);
+      dualKeyCache.update(
+          firstKeyChecker,
+          cachedDeviceID -> {
+            try {
+              return new PartialPath(cachedDeviceID).matchFullPath(deviceID, measurement);
+            } catch (final IllegalPathException e) {
+              logger.warn(
+                  "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  cachedDeviceID,
+                  devicePath);
+              return true;
+            }
+          },
+          updateFunction);
     }
   }
 
