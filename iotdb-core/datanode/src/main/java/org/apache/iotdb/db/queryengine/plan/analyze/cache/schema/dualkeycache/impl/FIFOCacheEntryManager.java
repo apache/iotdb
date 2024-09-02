@@ -128,7 +128,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
     private FIFOCacheEntry<SK, V> pre = null;
     private FIFOCacheEntry<SK, V> next = null;
 
-    private AtomicBoolean isInvalidated = new AtomicBoolean(false);
+    private final AtomicBoolean isInvalidated = new AtomicBoolean(false);
 
     private FIFOCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * This class implements the cache entry manager with LRU policy.
@@ -58,6 +59,10 @@ class LRUCacheEntryManager<FK, SK, V>
 
   @Override
   public boolean invalid(final LRUCacheEntry<SK, V> cacheEntry) {
+    if (cacheEntry.isInvalidated.getAndSet(true)) {
+      return false;
+    }
+
     cacheEntry.next.pre = cacheEntry.pre;
     cacheEntry.pre.next = cacheEntry.next;
     cacheEntry.next = null;
@@ -122,6 +127,7 @@ class LRUCacheEntryManager<FK, SK, V>
 
     private LRUCacheEntry<SK, V> pre;
     private LRUCacheEntry<SK, V> next;
+    private final AtomicBoolean isInvalidated = new AtomicBoolean(false);
 
     private LRUCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;
@@ -183,6 +189,12 @@ class LRUCacheEntryManager<FK, SK, V>
     }
 
     synchronized void add(final LRUCacheEntry<SK, V> cacheEntry) {
+      LRUCacheEntry<SK, V> nextEntry;
+
+      do {
+        nextEntry = head.next;
+      } while (nextEntry.isInvalidated.get());
+
       cacheEntry.next = head.next;
       cacheEntry.pre = head;
       head.next.pre = cacheEntry;
@@ -190,10 +202,16 @@ class LRUCacheEntryManager<FK, SK, V>
     }
 
     synchronized LRUCacheEntry<SK, V> evict() {
-      if (tail.pre == head) {
-        return null;
-      }
-      final LRUCacheEntry<SK, V> cacheEntry = tail.pre;
+      LRUCacheEntry<SK, V> cacheEntry;
+
+      do {
+        cacheEntry = tail.pre;
+        if (cacheEntry == head) {
+          return null;
+        }
+
+      } while (cacheEntry.isInvalidated.compareAndSet(false, true));
+
       cacheEntry.pre.next = cacheEntry.next;
       cacheEntry.next.pre = cacheEntry.pre;
       cacheEntry.next = null;
@@ -202,7 +220,7 @@ class LRUCacheEntryManager<FK, SK, V>
     }
 
     synchronized void moveToHead(final LRUCacheEntry<SK, V> cacheEntry) {
-      if (cacheEntry.next == null || cacheEntry.pre == null) {
+      if (cacheEntry.isInvalidated.get()) {
         // this cache entry has been evicted
         return;
       }
