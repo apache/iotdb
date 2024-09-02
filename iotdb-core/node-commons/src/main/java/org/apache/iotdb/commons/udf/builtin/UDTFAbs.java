@@ -97,8 +97,6 @@ public class UDTFAbs extends UDTFMath {
         return Math.abs(row.getFloat(0));
       case DOUBLE:
         return Math.abs(row.getDouble(0));
-      case VECTOR:
-      case UNKNOWN:
       case DATE:
       case BOOLEAN:
       case TEXT:
