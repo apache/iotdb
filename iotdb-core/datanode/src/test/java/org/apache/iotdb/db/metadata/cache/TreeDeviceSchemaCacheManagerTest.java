@@ -68,8 +68,8 @@ public class TreeDeviceSchemaCacheManagerTest {
 
   @Test
   public void testGetSchemaEntity() throws IllegalPathException {
-    PartialPath device1 = new PartialPath("root.sg1.d1");
-    String[] measurements = new String[3];
+    final PartialPath device1 = new PartialPath("root.sg1.d1");
+    final String[] measurements = new String[3];
     measurements[0] = "s1";
     measurements[1] = "s2";
     measurements[2] = "s3";
@@ -97,7 +97,7 @@ public class TreeDeviceSchemaCacheManagerTest {
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
     Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
 
-    String[] otherMeasurements = new String[3];
+    final String[] otherMeasurements = new String[3];
     otherMeasurements[0] = "s3";
     otherMeasurements[1] = "s4";
     otherMeasurements[2] = "s5";
@@ -126,8 +126,8 @@ public class TreeDeviceSchemaCacheManagerTest {
   }
 
   private ISchemaTree generateSchemaTree1() throws IllegalPathException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    Map<String, String> s1TagMap = new HashMap<>();
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    final Map<String, String> s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s1"),
@@ -155,7 +155,7 @@ public class TreeDeviceSchemaCacheManagerTest {
   }
 
   private ISchemaTree generateSchemaTree2() throws IllegalPathException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
@@ -184,11 +184,11 @@ public class TreeDeviceSchemaCacheManagerTest {
 
   @Test
   public void testUpdateLastCache() throws IllegalPathException {
-    String database = "root.db";
-    PartialPath device = new PartialPath("root.db.d");
+    final String database = "root.db";
+    final PartialPath device = new PartialPath("root.db.d");
 
-    String[] measurements = new String[] {"s1", "s2", "s3"};
-    MeasurementSchema[] measurementSchemas =
+    final String[] measurements = new String[] {"s1", "s2", "s3"};
+    final MeasurementSchema[] measurementSchemas =
         new MeasurementSchema[] {
           new MeasurementSchema("s1", TSDataType.INT32),
           new MeasurementSchema("s2", TSDataType.INT32),
@@ -237,8 +237,8 @@ public class TreeDeviceSchemaCacheManagerTest {
 
   @Test
   public void testPut() throws Exception {
-    ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
-    Template template1 =
+    final ClusterSchemaTree clusterSchemaTree = new ClusterSchemaTree();
+    final Template template1 =
         new Template(
             "t1",
             Arrays.asList("s1", "s2"),
@@ -262,23 +262,23 @@ public class TreeDeviceSchemaCacheManagerTest {
     clusterSchemaTree.appendSingleMeasurementPath(
         new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
     treeDeviceSchemaCacheManager.put(clusterSchemaTree);
-    ClusterSchemaTree d1Tree =
+    final ClusterSchemaTree d1Tree =
         treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d1"));
-    ClusterSchemaTree d2Tree =
+    final ClusterSchemaTree d2Tree =
         treeDeviceSchemaCacheManager.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
-    ClusterSchemaTree d3Tree =
+    final ClusterSchemaTree d3Tree =
         treeDeviceSchemaCacheManager.getMatchedSchemaWithoutTemplate(
             new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
-    for (MeasurementPath measurementPath : measurementPaths) {
+    for (final MeasurementPath measurementPath : measurementPaths) {
       Assert.assertEquals(
           template1.getSchema(measurementPath.getMeasurement()),
           measurementPath.getMeasurementSchema());
     }
     measurementPaths = d2Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(3, measurementPaths.size());
-    for (MeasurementPath measurementPath : measurementPaths) {
+    for (final MeasurementPath measurementPath : measurementPaths) {
       Assert.assertEquals(
           template2.getSchema(measurementPath.getMeasurement()),
           measurementPath.getMeasurementSchema());
