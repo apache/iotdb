@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheComputation;
@@ -38,7 +36,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -55,22 +52,22 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   private final CacheStats cacheStats;
 
   DualKeyCacheImpl(
-      ICacheEntryManager<FK, SK, V, T> cacheEntryManager,
-      ICacheSizeComputer<FK, SK, V> sizeComputer,
-      long memoryCapacity) {
+      final ICacheEntryManager<FK, SK, V, T> cacheEntryManager,
+      final ICacheSizeComputer<FK, SK, V> sizeComputer,
+      final long memoryCapacity) {
     this.cacheEntryManager = cacheEntryManager;
     this.sizeComputer = sizeComputer;
     this.cacheStats = new CacheStats(memoryCapacity);
   }
 
   @Override
-  public V get(FK firstKey, SK secondKey) {
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+  public V get(final FK firstKey, final SK secondKey) {
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     if (cacheEntryGroup == null) {
       cacheStats.recordMiss(1);
       return null;
     } else {
-      T cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
+      final T cacheEntry = cacheEntryGroup.getCacheEntry(secondKey);
       if (cacheEntry == null) {
         cacheStats.recordMiss(1);
         return null;
@@ -83,10 +80,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void compute(IDualKeyCacheComputation<FK, SK, V> computation) {
-    FK firstKey = computation.getFirstKey();
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    SK[] secondKeyList = computation.getSecondKeyList();
+  public void compute(final IDualKeyCacheComputation<FK, SK, V> computation) {
+    final FK firstKey = computation.getFirstKey();
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    final SK[] secondKeyList = computation.getSecondKeyList();
     if (cacheEntryGroup == null) {
       for (int i = 0; i < secondKeyList.length; i++) {
         computation.computeValue(i, null);
@@ -111,10 +108,10 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void updateWithLock(IDualKeyCacheUpdating<FK, SK, V> updating) {
-    FK firstKey = updating.getFirstKey();
-    ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
-    SK[] secondKeyList = updating.getSecondKeyList();
+  public void updateWithLock(final IDualKeyCacheUpdating<FK, SK, V> updating) {
+    final FK firstKey = updating.getFirstKey();
+    final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
+    final SK[] secondKeyList = updating.getSecondKeyList();
     if (cacheEntryGroup == null) {
       for (int i = 0; i < secondKeyList.length; i++) {
         updating.updateValue(i, null);
@@ -122,7 +119,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       cacheStats.recordMiss(secondKeyList.length);
     } else {
       T cacheEntry;
-      int hitCount = 0;
       for (int i = 0; i < secondKeyList.length; i++) {
         cacheEntry = cacheEntryGroup.getCacheEntry(secondKeyList[i]);
         if (cacheEntry == null) {
@@ -144,11 +140,8 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
           if (changeSize > 0) {
             increaseMemoryUsageAndMayEvict(changeSize);
           }
-          hitCount++;
         }
       }
-      cacheStats.recordHit(hitCount);
-      cacheStats.recordMiss(secondKeyList.length - hitCount);
     }
   }
 
@@ -339,46 +332,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void invalidateAll() {
     executeInvalidateAll();
-  }
-
-  @Override
-  public void invalidate(List<? extends PartialPath> partialPathList) {
-    int estimateSize = 0;
-    for (PartialPath path : partialPathList) {
-      String measurement = path.getMeasurement();
-      Function<FK, Boolean> deviceFilter;
-      Function<SK, Boolean> measurementFilter;
-      if (PathPatternUtil.isMultiLevelMatchWildcard(measurement)) {
-        deviceFilter = d -> d.toString().startsWith(path.getDevicePath().getFullPath());
-        measurementFilter = m -> true;
-      } else {
-        deviceFilter = d -> d.toString().equals(path.getDevicePath().getFullPath());
-        measurementFilter = m -> PathPatternUtil.isNodeMatch(measurement, m.toString());
-      }
-      for (FK device : firstKeyMap.getAllKeys()) {
-        if (Boolean.TRUE.equals(deviceFilter.apply(device))) {
-          boolean allSKInvalid = true;
-          ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(device);
-          for (Iterator<Map.Entry<SK, T>> it = entryGroup.getAllCacheEntries(); it.hasNext(); ) {
-            Map.Entry<SK, T> entry = it.next();
-            if (Boolean.TRUE.equals(measurementFilter.apply(entry.getKey()))) {
-              estimateSize += sizeComputer.computeSecondKeySize(entry.getKey());
-              estimateSize += sizeComputer.computeValueSize(entry.getValue().getValue());
-              cacheEntryManager.invalid(entry.getValue());
-              it.remove();
-            } else {
-              allSKInvalid = false;
-            }
-          }
-          if (allSKInvalid) {
-            firstKeyMap.remove(device);
-            estimateSize += sizeComputer.computeFirstKeySize(device);
-          }
-        }
-      }
-    }
-
-    cacheStats.decreaseMemoryUsage(estimateSize);
   }
 
   private void executeInvalidateAll() {

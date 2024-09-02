@@ -19,12 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.List;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -103,13 +101,6 @@ public interface IDualKeyCache<FK, SK, V> {
    */
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
-
-  /**
-   * Invalidate cache values in the cache and clear related cache keys. The cache status and
-   * statistics won't be clear and they can still be accessed via cache.stats().
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(List<? extends PartialPath> partialPathList);
 
   /**
    * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
