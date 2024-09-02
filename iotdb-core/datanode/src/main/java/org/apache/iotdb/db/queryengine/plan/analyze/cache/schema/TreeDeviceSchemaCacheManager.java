@@ -452,12 +452,18 @@ public class TreeDeviceSchemaCacheManager {
    * aligned sensor without only one sub sensor
    */
   public void updateLastCache(
-      String storageGroup,
-      MeasurementPath measurementPath,
-      TimeValuePair timeValuePair,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    // Deprecated
+      final String database,
+      final MeasurementPath measurementPath,
+      final TimeValuePair timeValuePair) {
+    tableDeviceSchemaCache.updateLastCache(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(measurementPath.getDevicePath().getNodes())),
+        new String[] {measurementPath.getMeasurement()},
+        new TimeValuePair[] {timeValuePair},
+        measurementPath.isUnderAlignedEntity(),
+        new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
+        true);
   }
 
   public void invalidate(final List<MeasurementPath> partialPathList) {

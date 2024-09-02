@@ -37,7 +37,7 @@ import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -330,7 +330,7 @@ public class TableDeviceSchemaCache {
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       final boolean isAligned,
-      final MeasurementSchema[] measurementSchemas,
+      final IMeasurementSchema[] measurementSchemas,
       final boolean isQuery) {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;

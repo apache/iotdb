@@ -25,7 +25,7 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
@@ -126,7 +126,7 @@ public class TableDeviceCacheEntry {
       final String database,
       final boolean isAligned,
       final String[] measurements,
-      final MeasurementSchema[] schemas) {
+      final IMeasurementSchema[] schemas) {
     // Safe here because tree schema is invalidated by the whole entry
     final int result =
         (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, isAligned))

@@ -118,8 +118,7 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {
-        lastCache.updateLastCache(
-            getDatabaseName(), fullPath, seriesScanInfo.right, false, Long.MIN_VALUE);
+        lastCache.updateLastCache(getDatabaseName(), fullPath, seriesScanInfo.right);
       }
     } finally {
       dataNodeQueryContext.unLock();
