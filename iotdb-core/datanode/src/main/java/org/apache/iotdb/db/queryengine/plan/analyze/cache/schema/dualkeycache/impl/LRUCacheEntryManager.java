@@ -68,7 +68,7 @@ class LRUCacheEntryManager<FK, SK, V>
   @Override
   public LRUCacheEntry<SK, V> evict() {
     int startIndex = idxGenerator.nextInt(SLOT_NUM);
-    LRULinkedList lruLinkedList;
+    LRULinkedList<SK, V> lruLinkedList;
     LRUCacheEntry<SK, V> cacheEntry;
     for (int i = 0; i < SLOT_NUM; i++) {
       if (startIndex == SLOT_NUM) {

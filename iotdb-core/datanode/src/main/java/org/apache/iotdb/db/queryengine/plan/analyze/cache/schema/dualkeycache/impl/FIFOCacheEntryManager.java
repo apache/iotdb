@@ -46,7 +46,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
   }
 
   @Override
-  public void put(FIFOCacheEntry<SK, V> cacheEntry) {
+  public void put(final FIFOCacheEntry<SK, V> cacheEntry) {
     getNextList(cachePutRoundRobinIndex).add(cacheEntry);
   }
 
