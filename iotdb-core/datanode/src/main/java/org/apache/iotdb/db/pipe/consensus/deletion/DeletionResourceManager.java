@@ -116,9 +116,11 @@ public class DeletionResourceManager implements AutoCloseable {
 
   @Override
   public void close() {
+    LOGGER.info("Closing deletion resource manager for {}...", dataRegionId);
     this.deletionResources.clear();
     this.deletionBuffer.close();
     waitUntilFlushAllDeletions();
+    LOGGER.info("Deletion resource manager for {} has been successfully closed!", dataRegionId);
   }
 
   private void waitUntilFlushAllDeletions() {
