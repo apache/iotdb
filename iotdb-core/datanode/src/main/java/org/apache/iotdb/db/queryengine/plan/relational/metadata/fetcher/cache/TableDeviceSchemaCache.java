@@ -412,8 +412,7 @@ public class TableDeviceSchemaCache {
       final IDeviceID deviceID =
           IDeviceID.Factory.DEFAULT_FACTORY.create(
               StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
-      dualKeyCache.invalidate(
-          new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
+      dualKeyCache.invalidate(new TableId(nodes[1], deviceID.getTableName()), deviceID);
     } else {
       // This may take quite a long time to perform, yet it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
