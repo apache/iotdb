@@ -196,9 +196,9 @@ public class FIFOCacheEntryManager<FK, SK, V>
         nextEntry = head.next;
       } while (nextEntry.isInvalidated.get());
 
-      cacheEntry.next = head.next;
+      cacheEntry.next = nextEntry;
       cacheEntry.pre = head;
-      head.next.pre = cacheEntry;
+      nextEntry.pre = cacheEntry;
       head.next = cacheEntry;
     }
 

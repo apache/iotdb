@@ -30,13 +30,14 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
  */
 interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
-  T createCacheEntry(SK secondKey, V value, ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup);
+  T createCacheEntry(
+      final SK secondKey, final V value, final ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup);
 
-  void access(T cacheEntry);
+  void access(final T cacheEntry);
 
-  void put(T cacheEntry);
+  void put(final T cacheEntry);
 
-  boolean invalid(T cacheEntry);
+  boolean invalid(final T cacheEntry);
 
   T evict();
 

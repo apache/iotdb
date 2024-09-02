@@ -40,17 +40,19 @@ class LRUCacheEntryManager<FK, SK, V>
 
   @Override
   public LRUCacheEntry<SK, V> createCacheEntry(
-      SK secondKey, V value, ICacheEntryGroup<FK, SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
+      final SK secondKey,
+      final V value,
+      final ICacheEntryGroup<FK, SK, V, LRUCacheEntry<SK, V>> cacheEntryGroup) {
     return new LRUCacheEntry<>(secondKey, value, cacheEntryGroup);
   }
 
   @Override
-  public void access(LRUCacheEntry<SK, V> cacheEntry) {
+  public void access(final LRUCacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).moveToHead(cacheEntry);
   }
 
   @Override
-  public void put(LRUCacheEntry<SK, V> cacheEntry) {
+  public void put(final LRUCacheEntry<SK, V> cacheEntry) {
     getBelongedList(cacheEntry).add(cacheEntry);
   }
 
@@ -167,31 +169,31 @@ class LRUCacheEntryManager<FK, SK, V>
     }
   }
 
-  private static class LRULinkedList {
+  private static class LRULinkedList<SK, V> {
 
     // head.next is the most recently used entry
-    private final LRUCacheEntry head;
-    private final LRUCacheEntry tail;
+    private final LRUCacheEntry<SK, V> head;
+    private final LRUCacheEntry<SK, V> tail;
 
     public LRULinkedList() {
-      head = new LRUCacheEntry(null, null, null);
-      tail = new LRUCacheEntry(null, null, null);
+      head = new LRUCacheEntry<>(null, null, null);
+      tail = new LRUCacheEntry<>(null, null, null);
       head.next = tail;
       tail.pre = head;
     }
 
-    synchronized void add(LRUCacheEntry cacheEntry) {
+    synchronized void add(final LRUCacheEntry<SK, V> cacheEntry) {
       cacheEntry.next = head.next;
       cacheEntry.pre = head;
       head.next.pre = cacheEntry;
       head.next = cacheEntry;
     }
 
-    synchronized LRUCacheEntry evict() {
+    synchronized LRUCacheEntry<SK, V> evict() {
       if (tail.pre == head) {
         return null;
       }
-      LRUCacheEntry cacheEntry = tail.pre;
+      final LRUCacheEntry<SK, V> cacheEntry = tail.pre;
       cacheEntry.pre.next = cacheEntry.next;
       cacheEntry.next.pre = cacheEntry.pre;
       cacheEntry.next = null;
@@ -199,7 +201,7 @@ class LRUCacheEntryManager<FK, SK, V>
       return cacheEntry;
     }
 
-    synchronized void moveToHead(LRUCacheEntry cacheEntry) {
+    synchronized void moveToHead(final LRUCacheEntry<SK, V> cacheEntry) {
       if (cacheEntry.next == null || cacheEntry.pre == null) {
         // this cache entry has been evicted
         return;
