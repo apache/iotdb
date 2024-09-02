@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 
 public class TreeDeviceSchemaCacheManagerTest {
-  TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager;
+  private TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager;
   private Map<String, String> s1TagMap;
 
   @Before
@@ -246,7 +246,7 @@ public class TreeDeviceSchemaCacheManagerTest {
             Arrays.asList(TSEncoding.RLE, TSEncoding.RLE),
             Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
     template1.setId(1);
-    Template template2 =
+    final Template template2 =
         new Template(
             "t2",
             Arrays.asList("t1", "t2", "t3"),
