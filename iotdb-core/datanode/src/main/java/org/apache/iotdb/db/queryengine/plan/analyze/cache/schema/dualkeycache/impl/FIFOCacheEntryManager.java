@@ -49,6 +49,12 @@ public class FIFOCacheEntryManager<FK, SK, V>
     getNextList(cachePutRoundRobinIndex).add(cacheEntry);
   }
 
+  // WARNING: This method is non-atomic thus needs outer locks to ensure that
+  // the "invalidate" is called within write lock.
+  // cacheEntry.next = head.next;
+  // cacheEntry.pre = head;
+  // head.next.pre = cacheEntry;
+  // head.next = cacheEntry;
   @Override
   public void invalid(FIFOCacheEntry<SK, V> cacheEntry) {
     cacheEntry.next.pre = cacheEntry.pre;
