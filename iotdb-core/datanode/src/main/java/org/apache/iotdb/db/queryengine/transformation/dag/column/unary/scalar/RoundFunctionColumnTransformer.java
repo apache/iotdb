@@ -59,12 +59,8 @@ public class RoundFunctionColumnTransformer extends UnaryColumnTransformer {
             columnBuilder.writeDouble(
                 Math.rint(column.getDouble(i) * Math.pow(10, places)) / Math.pow(10, places));
             break;
-          case TIMESTAMP:
-          case STRING:
+          case BINARY:
           case BOOLEAN:
-          case BLOB:
-          case TEXT:
-          case DATE:
           default:
             throw new UnsupportedOperationException(
                 String.format(
