@@ -505,7 +505,7 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
 
   @Test
   public void testCompactionByFlushPage() throws Exception {
-    // chunk1: [[1000,7000]] chunk2: [[8000:15000]]
+    // chunk1: [[1000,7000]] chunk2: [[8000,15000]]
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(
             "d0",
