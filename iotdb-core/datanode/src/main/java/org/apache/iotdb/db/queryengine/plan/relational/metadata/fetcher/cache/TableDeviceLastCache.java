@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.lastcache.LastCacheContainer;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -106,8 +105,7 @@ public class TableDeviceLastCache {
                 || tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
               diff.addAndGet(
                   Objects.nonNull(tvPair)
-                      ? LastCacheContainer.getDiffSize(
-                          tvPair.getValue(), timeValuePairs[finalI].getValue())
+                      ? getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue())
                       : (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                           + timeValuePairs[finalI].getSize());
               return timeValuePairs[finalI];
@@ -136,9 +134,7 @@ public class TableDeviceLastCache {
           (measurement, tvPair) -> {
             if (Objects.nonNull(tvPair)
                 && tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
-              diff.addAndGet(
-                  LastCacheContainer.getDiffSize(
-                      tvPair.getValue(), timeValuePairs[finalI].getValue()));
+              diff.addAndGet(getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue()));
               return timeValuePairs[finalI];
             }
             return tvPair;
@@ -206,5 +202,15 @@ public class TableDeviceLastCache {
         + measurement2CachedLastMap.values().stream()
             .mapToInt(TimeValuePair::getSize)
             .reduce(0, Integer::sum);
+  }
+
+  private static int getDiffSize(final TsPrimitiveType oldValue, final TsPrimitiveType newValue) {
+    if (oldValue == null) {
+      return newValue == null ? 0 : newValue.getSize();
+    } else if (oldValue instanceof TsPrimitiveType.TsBinary) {
+      return (newValue == null ? 0 : newValue.getSize()) - oldValue.getSize();
+    } else {
+      return newValue == null ? -oldValue.getSize() : 0;
+    }
   }
 }
