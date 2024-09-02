@@ -103,8 +103,7 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
-   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be incremented
-   *     regardless of the circumstances
+   *     {@code false} otherwise
    */
   public synchronized boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
@@ -156,8 +155,7 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
-   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be decremented
-   *     regardless of the circumstances
+   *     {@code false} otherwise
    */
   public synchronized boolean decreaseReferenceCount(
       final String holderMessage, final boolean shouldReport) {
@@ -222,10 +220,6 @@ public abstract class EnrichedEvent implements Event {
    */
   public synchronized boolean clearReferenceCount(final String holderMessage) {
     if (isReleased.get()) {
-      LOGGER.warn(
-          "clear reference count to event that has already been released: {}, stack trace: {}",
-          coreReportMessage(),
-          Thread.currentThread().getStackTrace());
       return false;
     }
 
