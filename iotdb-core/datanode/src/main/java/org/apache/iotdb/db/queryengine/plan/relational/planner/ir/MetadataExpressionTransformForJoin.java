@@ -21,15 +21,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import java.util.Map;
 
 public class MetadataExpressionTransformForJoin {
+  private MetadataExpressionTransformForJoin() {}
 
   public static Expression transform(
       Expression expression, Map<Symbol, ColumnSchema> tableAssignments) {
-    return new Visitor().process(expression, new Context(tableAssignments));
+    return ExpressionTreeRewriter.rewriteWith(
+        new Visitor(), expression, new Context(tableAssignments));
   }
 
-  private static class Visitor extends RewritingVisitor<Context> {
+  private static class Visitor extends ExpressionRewriter<Context> {
     @Override
-    protected Expression visitSymbolReference(SymbolReference node, Context context) {
+    public Expression rewriteSymbolReference(
+        SymbolReference node, Context context, ExpressionTreeRewriter<Context> treeRewriter) {
       return new SymbolReference(context.tableAssignments.get(Symbol.of(node.getName())).getName());
     }
   }
