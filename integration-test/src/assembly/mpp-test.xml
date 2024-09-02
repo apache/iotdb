@@ -58,7 +58,12 @@
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${{project.basedir}/../iotdb-core/ainode/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-core/ainode/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>venv</outputDirectory>
+            <directory>${project.basedir}/../iotdb-core/ainode/venv</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>

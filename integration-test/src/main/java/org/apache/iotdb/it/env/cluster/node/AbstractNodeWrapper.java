@@ -540,7 +540,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return getNodePath() + File.separator + dirName + File.separator + fileName;
   }
 
-  private String getLogPath() {
+  protected String getLogPath() {
     return getLogDirPath() + File.separator + getId() + ".log";
   }
 
@@ -645,7 +645,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     output.print(sb);
   }
 
-  private String getTestLogDirName() {
+  protected String getTestLogDirName() {
     if (testMethodName == null) {
       return testClassName;
     }

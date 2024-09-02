@@ -24,21 +24,23 @@ import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
 import org.slf4j.Logger;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.*;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.AI_NODE_NAME;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.PYTHON_PATH;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
 import static org.apache.iotdb.it.env.cluster.EnvUtils.getTimeForLogDirectory;
 
 public class AINodeWrapper extends AbstractNodeWrapper {
 
   private static final Logger logger = IoTDBTestLogger.logger;
-  private final String testClassName;
-  private final String testMethodName;
   private final long startTime;
   private final String seedConfigNode;
 
@@ -49,21 +51,18 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private static final String PROPERTIES_FILE = "iotdb-ainode.properties";
   public static final String CONFIG_PATH = "conf";
   public static final String SCRIPT_PATH = "sbin";
-  private static final String INTERPRETER_PATH = "/root/.venv/bin/python3";
 
-  private String[] getReplaceCmd(String key, String value, String filePath) {
-    String s = String.format("sed -i s/^%s=.*/%s=%s/ %s", key, key, value, filePath);
-    return s.split("\\s+");
-  }
-
-  private void replaceAttribute(String key, String value, String filePath, File stdoutFile)
-      throws IOException, InterruptedException {
-    ProcessBuilder prepareProcessBuilder =
-        new ProcessBuilder(getReplaceCmd(key, value, filePath))
-            .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
-            .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
-    Process prepareProcess = prepareProcessBuilder.start();
-    prepareProcess.waitFor();
+  private void replaceAttribute(String[] keys, String[] values, String filePath) {
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
+      for (int i = 0; i < keys.length; i++) {
+        String line = keys[i] + "=" + values[i];
+        writer.newLine();
+        writer.write(line);
+      }
+    } catch (IOException e) {
+      logger.error(
+          "Failed to set attribute for AINode in file: {} because {}", filePath, e.getMessage());
+    }
   }
 
   public AINodeWrapper(
@@ -75,15 +74,10 @@ public class AINodeWrapper extends AbstractNodeWrapper {
       long startTime) {
     super(testClassName, testMethodName, port, clusterIndex, false, startTime);
     this.seedConfigNode = seedConfigNode;
-    this.testClassName = testClassName;
-    this.testMethodName = testMethodName;
     this.startTime = startTime;
   }
 
-  private String getLogPath() {
-    return getLogDirPath() + File.separator + getId() + ".log";
-  }
-
+  @Override
   public String getLogDirPath() {
     return System.getProperty(USER_DIR)
         + File.separator
@@ -94,13 +88,6 @@ public class AINodeWrapper extends AbstractNodeWrapper {
         + getTestLogDirName()
         + File.separator
         + getTimeForLogDirectory(startTime);
-  }
-
-  private String getTestLogDirName() {
-    if (testMethodName == null) {
-      return testClassName;
-    }
-    return testClassName + "_" + testMethodName;
   }
 
   @Override
@@ -119,25 +106,25 @@ public class AINodeWrapper extends AbstractNodeWrapper {
 
       // set attribute
       replaceAttribute(
-          "ain_target_config_node_list", this.seedConfigNode, propertiesFile, stdoutFile);
-      replaceAttribute(
-          "ain_inference_rpc_port", Integer.toString(getPort()), propertiesFile, stdoutFile);
+          new String[] {"ain_seed_config_node", "ain_inference_rpc_port"},
+          new String[] {this.seedConfigNode, Integer.toString(getPort())},
+          propertiesFile);
 
       // start AINode
-      List<String> start_command = new ArrayList<>();
-      start_command.add(SHELL_COMMAND);
-      start_command.add(filePrefix + File.separator + SCRIPT_PATH + File.separator + SCRIPT_FILE);
-      start_command.add("-i");
-      start_command.add(INTERPRETER_PATH);
-      start_command.add("-r");
-      start_command.add("-n");
+      List<String> startCommand = new ArrayList<>();
+      startCommand.add(SHELL_COMMAND);
+      startCommand.add(filePrefix + File.separator + SCRIPT_PATH + File.separator + SCRIPT_FILE);
+      startCommand.add("-i");
+      startCommand.add(filePrefix + File.separator + PYTHON_PATH);
+      startCommand.add("-r");
+
       ProcessBuilder processBuilder =
-          new ProcessBuilder(start_command)
+          new ProcessBuilder(startCommand)
               .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
               .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
       this.instance = processBuilder.start();
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
-    } catch (IOException | InterruptedException e) {
+    } catch (Exception e) {
       throw new AssertionError("Start AI Node failed. " + e + Paths.get(""));
     }
   }
@@ -186,7 +173,7 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   ;
 
   public MppJVMConfig initVMConfig() {
-    throw new UnsupportedOperationException("AINode doesn't have JVM Config");
+    return null;
   }
   ;
 }
