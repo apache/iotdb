@@ -59,7 +59,6 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
    *
    * <ul>
    *   <li>SchemaCacheEntry Object header, 8B
-   *   <li>isAligned, 1B
    *   <li>MeasurementSchema
    *       <ul>
    *         <li>Reference, 8B

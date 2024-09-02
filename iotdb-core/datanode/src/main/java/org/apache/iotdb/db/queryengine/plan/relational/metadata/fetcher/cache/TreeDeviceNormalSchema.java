@@ -60,7 +60,7 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {
-      final SchemaCacheEntry putEntry = new SchemaCacheEntry(schemas[i], null, false);
+      final SchemaCacheEntry putEntry = new SchemaCacheEntry(schemas[i], null);
       final SchemaCacheEntry cachedEntry = measurementMap.put(measurements[i], putEntry);
       diff +=
           Objects.isNull(cachedEntry)
