@@ -111,7 +111,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   }
 
   @Override
-  public void update(IDualKeyCacheUpdating<FK, SK, V> updating) {
+  public void updateWithLock(IDualKeyCacheUpdating<FK, SK, V> updating) {
     FK firstKey = updating.getFirstKey();
     ICacheEntryGroup<FK, SK, V, T> cacheEntryGroup = firstKeyMap.get(firstKey);
     SK[] secondKeyList = updating.getSecondKeyList();

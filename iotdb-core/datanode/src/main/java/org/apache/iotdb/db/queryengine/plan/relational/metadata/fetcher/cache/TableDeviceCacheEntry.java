@@ -130,7 +130,7 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Last Cache ///////////////////////////////
 
-  int updateLastCache(
+  public int updateLastCache(
       final String database,
       final String tableName,
       final String[] measurements,
@@ -187,7 +187,7 @@ public class TableDeviceCacheEntry {
 
   /////////////////////////////// Management ///////////////////////////////
 
-  int estimateSize() {
+  public int estimateSize() {
     final IDeviceSchema schema = deviceSchema.get();
     final TableDeviceLastCache cache = lastCache.get();
     return (int)
