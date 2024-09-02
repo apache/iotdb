@@ -437,7 +437,12 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
         if (!secondKeyChecker.test(entry.getKey())) {
           continue;
         }
-        cacheEntryManager.invalid(entry.getValue());
+        try {
+          cacheEntryManager.invalid(entry.getValue());
+        } catch (final Exception e) {
+          // This entry may have already been invalidated
+          continue;
+        }
         entryGroup.removeCacheEntry(entry.getKey());
         estimateSize +=
             sizeComputer.computeSecondKeySize(entry.getKey())
