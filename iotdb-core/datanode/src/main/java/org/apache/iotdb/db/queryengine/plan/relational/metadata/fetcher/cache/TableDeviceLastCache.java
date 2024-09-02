@@ -106,9 +106,8 @@ public class TableDeviceLastCache {
           measurementSize = (int) RamUsageEstimator.sizeOf(measurements[i]);
         }
       } else {
-          measurementSize = 0;
+        measurementSize = 0;
       }
-
 
       measurement2CachedLastMap.compute(
           measurements[i],
