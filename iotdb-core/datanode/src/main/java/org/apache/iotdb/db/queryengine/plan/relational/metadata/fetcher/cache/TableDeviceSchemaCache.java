@@ -405,6 +405,39 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  public void invalidateCache(final PartialPath devicePath, final String measurement) {
+    final String[] nodes = devicePath.getNodes();
+
+    if (!devicePath.hasWildcard()) {
+      final IDeviceID deviceID =
+          IDeviceID.Factory.DEFAULT_FACTORY.create(
+              StringArrayDeviceID.splitDeviceIdString(devicePath.getNodes()));
+      dualKeyCache.invalidate(
+          new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
+    } else {
+      // This may take quite a long time to perform, yet it has avoided that
+      // the un-related paths being cleared, like "root.*.b.c.**" affects
+      // "root.*.d.c.**", thereby lower the query performance.
+      final Predicate<TableId> firstKeyChecker =
+          PathPatternUtil.hasWildcard(nodes[1])
+              ? tableId -> true
+              : tableId -> tableId.belongTo(nodes[1]);
+      dualKeyCache.invalidate(
+          firstKeyChecker,
+          cachedDeviceID -> {
+            try {
+              return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
+            } catch (final IllegalPathException e) {
+              logger.warn(
+                  "Illegal deviceID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  cachedDeviceID,
+                  devicePath);
+              return true;
+            }
+          });
+    }
+  }
+
   /////////////////////////////// Management  ///////////////////////////////
 
   public long getHitCount() {

@@ -125,7 +125,11 @@ public interface IDualKeyCache<FK, SK, V> {
 
   /** remove all entries for firstKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")
-  void invalidate(FK firstKey);
+  void invalidate(final FK firstKey);
+
+  /** remove matched entry */
+  @GuardedBy("DataNodeSchemaCache#writeLock")
+  void invalidate(final FK firstKey, final SK secondKey);
 
   /** remove all entries matching the firstKey and the secondKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")

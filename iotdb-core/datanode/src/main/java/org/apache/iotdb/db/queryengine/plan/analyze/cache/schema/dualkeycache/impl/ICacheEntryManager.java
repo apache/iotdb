@@ -37,6 +37,8 @@ interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   void put(final T cacheEntry);
 
+  // A cacheEntry is removed iff the caller has called "invalid" and it returns "true"
+  // Shall never remove a cacheEntry directly or when the "invalid" returns false
   boolean invalid(final T cacheEntry);
 
   T evict();
