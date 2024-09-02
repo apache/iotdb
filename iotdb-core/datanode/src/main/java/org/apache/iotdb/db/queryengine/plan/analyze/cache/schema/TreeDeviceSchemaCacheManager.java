@@ -43,6 +43,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -449,7 +451,7 @@ public class TreeDeviceSchemaCacheManager {
   public void updateLastCache(
       final String database,
       final MeasurementPath measurementPath,
-      final TimeValuePair timeValuePair) {
+      final @Nonnull TimeValuePair timeValuePair) {
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getNodes()[1],
