@@ -36,12 +36,14 @@ public class FIFOCacheEntryManager<FK, SK, V>
 
   @Override
   public FIFOCacheEntry<SK, V> createCacheEntry(
-      SK secondKey, V value, ICacheEntryGroup<FK, SK, V, FIFOCacheEntry<SK, V>> cacheEntryGroup) {
+      final SK secondKey,
+      final V value,
+      final ICacheEntryGroup<FK, SK, V, FIFOCacheEntry<SK, V>> cacheEntryGroup) {
     return new FIFOCacheEntry<>(secondKey, value, cacheEntryGroup);
   }
 
   @Override
-  public void access(FIFOCacheEntry<SK, V> cacheEntry) {
+  public void access(final FIFOCacheEntry<SK, V> cacheEntry) {
     // do nothing
   }
 
@@ -93,7 +95,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
     }
   }
 
-  private FIFOLinkedList getNextList(AtomicInteger roundRobinIndex) {
+  private FIFOLinkedList getNextList(final AtomicInteger roundRobinIndex) {
     int listIndex = getNextIndex(roundRobinIndex);
     FIFOLinkedList fifoLinkedList = fifoLinkedLists[listIndex];
     if (fifoLinkedList == null) {
@@ -108,7 +110,7 @@ public class FIFOCacheEntryManager<FK, SK, V>
     return fifoLinkedList;
   }
 
-  private int getNextIndex(AtomicInteger roundRobinIndex) {
+  private int getNextIndex(final AtomicInteger roundRobinIndex) {
     return roundRobinIndex.getAndUpdate(
         currentValue -> {
           currentValue = currentValue + 1;
@@ -130,7 +132,8 @@ public class FIFOCacheEntryManager<FK, SK, V>
 
     private final AtomicBoolean isInvalidated = new AtomicBoolean(false);
 
-    private FIFOCacheEntry(SK secondKey, V value, ICacheEntryGroup cacheEntryGroup) {
+    private FIFOCacheEntry(
+        final SK secondKey, final V value, final ICacheEntryGroup cacheEntryGroup) {
       this.secondKey = secondKey;
       this.value = value;
       this.cacheEntryGroup = cacheEntryGroup;
@@ -152,20 +155,24 @@ public class FIFOCacheEntryManager<FK, SK, V>
     }
 
     @Override
-    public void setBelongedGroup(ICacheEntryGroup belongedGroup) {
+    public void setBelongedGroup(final ICacheEntryGroup belongedGroup) {
       this.cacheEntryGroup = belongedGroup;
     }
 
     @Override
-    public void replaceValue(V newValue) {
+    public void replaceValue(final V newValue) {
       this.value = newValue;
     }
 
     @Override
-    public boolean equals(Object o) {
-      if (this == o) return true;
-      if (o == null || getClass() != o.getClass()) return false;
-      FIFOCacheEntry<?, ?> that = (FIFOCacheEntry<?, ?>) o;
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      final FIFOCacheEntry<?, ?> that = (FIFOCacheEntry<?, ?>) o;
       return Objects.equals(secondKey, that.secondKey)
           && Objects.equals(cacheEntryGroup, that.cacheEntryGroup);
     }
