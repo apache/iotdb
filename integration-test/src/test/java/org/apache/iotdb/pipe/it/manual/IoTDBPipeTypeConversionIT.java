@@ -52,6 +52,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting BOOLEAN to OtherType
   @Test
   public void testBooleanToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.INT32);
     executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.INT64);
     executeAndVerifyTypeConversion(TSDataType.BOOLEAN, TSDataType.FLOAT);
@@ -66,6 +67,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting INT32 to OtherType
   @Test
   public void testInt32ToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.BOOLEAN);
     executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.INT64);
     executeAndVerifyTypeConversion(TSDataType.INT32, TSDataType.FLOAT);
@@ -80,6 +82,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting INT64 to OtherType
   @Test
   public void testInt64ToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.BOOLEAN);
     executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.INT32);
     executeAndVerifyTypeConversion(TSDataType.INT64, TSDataType.FLOAT);
@@ -94,6 +97,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting FLOAT to OtherType
   @Test
   public void testFloatToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.BOOLEAN);
     executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.INT32);
     executeAndVerifyTypeConversion(TSDataType.FLOAT, TSDataType.INT64);
@@ -108,6 +112,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting DOUBLE to OtherType
   @Test
   public void testDoubleToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.BOOLEAN);
     executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.INT32);
     executeAndVerifyTypeConversion(TSDataType.DOUBLE, TSDataType.INT64);
@@ -122,6 +127,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting TEXT to OtherType
   @Test
   public void testTextToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.BLOB);
     executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.STRING);
     executeAndVerifyTypeConversion(TSDataType.TEXT, TSDataType.BOOLEAN);
@@ -136,6 +142,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting TIMESTAMP to OtherType
   @Test
   public void testTimestampToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.BOOLEAN);
     executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.INT32);
     executeAndVerifyTypeConversion(TSDataType.TIMESTAMP, TSDataType.INT64);
@@ -150,6 +157,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting DATE to OtherType
   @Test
   public void testDateToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.BOOLEAN);
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT32);
     executeAndVerifyTypeConversion(TSDataType.DATE, TSDataType.INT64);
@@ -163,6 +171,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting BLOB to OtherType
   @Test
   public void testBlobToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.TEXT);
     executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.STRING);
     executeAndVerifyTypeConversion(TSDataType.BLOB, TSDataType.BOOLEAN);
@@ -177,6 +186,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
   // Test for converting STRING to OtherType
   @Test
   public void testStringToOtherTypeConversion() {
+    createDataPipe();
     executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.TEXT);
     executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.BLOB);
     executeAndVerifyTypeConversion(TSDataType.STRING, TSDataType.BOOLEAN);
@@ -191,8 +201,8 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     List<Pair> pairs = prepareTypeConversionTest(source, target);
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        String.format("select * from root.%s2%s.**", source.name(), target.name()),
-        String.format("Time,root.%s2%s.test.status,", source.name(), target.name()),
+        String.format("select status from root.test.%s2%s", source.name(), target.name()),
+        String.format("Time,root.test.%s2%s.status,", source.name(), target.name()),
         createExpectedResultSet(pairs, source, target),
         30);
   }
@@ -204,16 +214,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     createTimeSeries(sourceTypeName, targetTypeName, sourceTypeName, senderEnv);
     createTimeSeries(sourceTypeName, targetTypeName, targetTypeName, receiverEnv);
 
-    createDataPipe(sourceTypeName, targetTypeName);
-
     List<Pair> pairs = createTestDataForType(sourceTypeName);
-
-    // wait pipe start
-    try {
-      Thread.sleep(2000);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
 
     executeDataInsertions(pairs, sourceType, targetType);
     return pairs;
@@ -223,25 +224,20 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
       String sourceTypeName, String targetTypeName, String dataType, BaseEnv env) {
     String timeSeriesCreationQuery =
         String.format(
-            "create timeseries root.%s2%s.test.status with datatype=%s,encoding=PLAIN",
+            "create timeseries root.test.%s2%s.status with datatype=%s,encoding=PLAIN",
             sourceTypeName, targetTypeName, dataType);
     TestUtils.tryExecuteNonQueriesWithRetry(
         env, Collections.singletonList(timeSeriesCreationQuery));
   }
 
-  private void createDataPipe(String sourceTypeName, String targetTypeName) {
+  private void createDataPipe() {
     String sql =
         String.format(
-            "create pipe %s2%s"
-                + " with source ('source'='iotdb-source','source.path'='root.%s2%s.**','realtime.mode'='forced-log','realtime.enable'='true','history.enable'='false')"
+            "create pipe test"
+                + " with source ('source'='iotdb-source','source.path'='root.test.**','realtime.mode'='forced-log','realtime.enable'='true','history.enable'='false')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
-            sourceTypeName,
-            targetTypeName,
-            sourceTypeName,
-            targetTypeName,
-            receiverEnv.getIP(),
-            receiverEnv.getPort());
+            receiverEnv.getIP(), receiverEnv.getPort());
     TestUtils.tryExecuteNonQueriesWithRetry(senderEnv, Collections.singletonList(sql));
   }
 
@@ -309,7 +305,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     for (Pair pair : testData) {
       executes.add(
           String.format(
-              "insert into root.%s2%s.test(timestamp,status) values (%s,'%s');",
+              "insert into root.test.%s2%s(timestamp,status) values (%s,'%s');",
               sourceType,
               targetType,
               pair.left,
@@ -325,7 +321,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     for (Pair pair : testData) {
       executes.add(
           String.format(
-              "insert into root.%s2%s.test(timestamp,status) values (%s,%s);",
+              "insert into root.test.%s2%s(timestamp,status) values (%s,%s);",
               sourceType, targetType, pair.left, pair.right));
     }
     executes.add("flush");
@@ -338,7 +334,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     for (Pair pair : testData) {
       executes.add(
           String.format(
-              "insert into root.%s2%s.test(timestamp,status) values (%s,%s);",
+              "insert into root.test.%s2%s(timestamp,status) values (%s,%s);",
               sourceType, targetType, pair.left, pair.right));
     }
     executes.add("flush");
@@ -351,7 +347,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
     for (Pair pair : testData) {
       executes.add(
           String.format(
-              "insert into root.%s2%s.test(timestamp,status) values (%s,'%s');",
+              "insert into root.test.%s2%s(timestamp,status) values (%s,'%s');",
               sourceType, targetType, pair.left, DateUtils.formatDate((Integer) pair.right)));
     }
     executes.add("flush");
@@ -365,7 +361,7 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeDualManualIT {
       String value = BytesUtils.parseBlobByteArrayToString(((Binary) pair.right).getValues());
       executes.add(
           String.format(
-              "insert into root.%s2%s.test(timestamp,status) values (%s,X'%s');",
+              "insert into root.test.%s2%s(timestamp,status) values (%s,X'%s');",
               sourceType, targetType, pair.left, value.substring(2)));
     }
     executes.add("flush");
