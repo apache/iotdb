@@ -107,7 +107,7 @@ public class DeletionResourceManager implements AutoCloseable {
             deletionResources.addAll(deletionReader.readAllDeletions());
           }
         }
-        this.hasCompletedRecovery = true;
+        hasCompletedRecovery = true;
         recoveryReadyCondition.signalAll();
       }
     } finally {
