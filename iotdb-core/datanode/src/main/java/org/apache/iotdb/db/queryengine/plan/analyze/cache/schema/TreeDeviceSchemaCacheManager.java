@@ -63,18 +63,12 @@ public class TreeDeviceSchemaCacheManager {
 
   private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
-  private final DeviceUsingTemplateSchemaCache deviceUsingTemplateSchemaCache;
-
-  private final TimeSeriesSchemaCache timeSeriesSchemaCache;
-
   private final TableDeviceSchemaCache tableDeviceSchemaCache;
 
   // cache update or clean have higher priority than cache read
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private TreeDeviceSchemaCacheManager() {
-    deviceUsingTemplateSchemaCache = new DeviceUsingTemplateSchemaCache(templateManager);
-    timeSeriesSchemaCache = new TimeSeriesSchemaCache();
     tableDeviceSchemaCache = TableDeviceSchemaFetcher.getInstance().getTableDeviceCache();
   }
 
