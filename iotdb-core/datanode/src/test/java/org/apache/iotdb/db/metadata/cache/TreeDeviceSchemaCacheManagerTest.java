@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
@@ -30,6 +31,8 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -52,9 +55,15 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 public class TreeDeviceSchemaCacheManagerTest {
   private TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager;
   private Map<String, String> s1TagMap;
+  private int previousId;
 
   @Before
   public void setUp() throws Exception {
+    previousId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    if (previousId == -1) {
+      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+    }
+
     treeDeviceSchemaCacheManager = TreeDeviceSchemaCacheManager.getInstance();
     s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
@@ -63,6 +72,7 @@ public class TreeDeviceSchemaCacheManagerTest {
   @After
   public void tearDown() throws Exception {
     treeDeviceSchemaCacheManager.cleanUp();
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousId);
     ClusterTemplateManager.getInstance().clear();
   }
 
@@ -197,14 +207,16 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.updateLastCache(
         database,
-        device,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         measurements,
-        measurementSchemas,
-        true,
-        index -> new TimeValuePair(1, new TsPrimitiveType.TsInt(1)),
-        index -> index != 1,
-        true,
-        1L);
+        new TimeValuePair[] {
+          new TimeValuePair(1, new TsPrimitiveType.TsInt(1)),
+          new TimeValuePair(1, new TsPrimitiveType.TsInt(1)),
+          new TimeValuePair(1, new TsPrimitiveType.TsInt(1))
+        },
+        false,
+        measurementSchemas);
 
     Assert.assertNotNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
@@ -215,14 +227,16 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.updateLastCache(
         database,
-        device,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         measurements,
-        measurementSchemas,
-        true,
-        index -> new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        index -> true,
-        true,
-        1L);
+        new TimeValuePair[] {
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2))
+        },
+        false,
+        measurementSchemas);
 
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
