@@ -94,32 +94,26 @@ public class TableDeviceLastCache {
 
     for (int i = 0; i < measurements.length; ++i) {
       final int finalI = i;
-      final int measurementSize;
 
-      if (!measurement2CachedLastMap.containsKey(measurements[i])) {
-        if (isTableModel) {
-          measurements[i] =
-              DataNodeTableCache.getInstance()
-                  .tryGetInternColumnName(database, tableName, measurements[i]);
-          measurementSize = 0;
-        } else {
-          measurementSize = (int) RamUsageEstimator.sizeOf(measurements[i]);
-        }
-      } else {
-        measurementSize = 0;
-      }
+      final String measurement =
+          !measurement2CachedLastMap.containsKey(measurements[i]) && isTableModel
+              ? DataNodeTableCache.getInstance()
+                  .tryGetInternColumnName(database, tableName, measurements[i])
+              : measurements[i];
 
       measurement2CachedLastMap.compute(
-          measurements[i],
-          (measurement, tvPair) -> {
+          measurement,
+          (measurementKey, tvPair) -> {
             if (Objects.isNull(tvPair)
                 || tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
-              diff.addAndGet(
-                  Objects.nonNull(tvPair)
-                      ? getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue())
-                      : measurementSize
-                          + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                          + timeValuePairs[finalI].getSize());
+              if (Objects.nonNull(tvPair)) {
+                diff.addAndGet(getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue()));
+              } else {
+                diff.addAndGet(
+                    (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
+                        + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                        + timeValuePairs[finalI].getSize());
+              }
               return timeValuePairs[finalI];
             }
             return tvPair;

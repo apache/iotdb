@@ -336,7 +336,10 @@ public class TableDeviceSchemaCache {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
-    final ToIntFunction<TableDeviceCacheEntry> updater =
+    dualKeyCache.update(
+        new TableId(database, deviceID.getTableName()),
+        deviceID,
+        new TableDeviceCacheEntry(),
         isQuery
             ? entry ->
                 entry.setMeasurementSchema(
@@ -346,13 +349,7 @@ public class TableDeviceSchemaCache {
             : entry ->
                 entry.setMeasurementSchema(
                         database2Use, isAligned, measurements, measurementSchemas)
-                    + entry.tryUpdateLastCache(measurements, timeValuePairs);
-
-    dualKeyCache.update(
-        new TableId(database, deviceID.getTableName()),
-        deviceID,
-        new TableDeviceCacheEntry(),
-        updater,
+                    + entry.tryUpdateLastCache(measurements, timeValuePairs),
         true);
   }
 
@@ -373,12 +370,10 @@ public class TableDeviceSchemaCache {
       // This may take quite a long time to perform, yet it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
-      final Predicate<TableId> firstKeyChecker =
-          PathPatternUtil.hasWildcard(nodes[1])
-              ? tableId -> true
-              : tableId -> tableId.belongTo(nodes[1]);
       dualKeyCache.update(
-          firstKeyChecker,
+          PathPatternUtil.hasWildcard(nodes[1])
+              ? tableId -> PathPatternUtil.isNodeMatch(nodes[1], tableId.getPrefix())
+              : tableId -> tableId.belongTo(nodes[1]),
           cachedDeviceID -> {
             try {
               return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
