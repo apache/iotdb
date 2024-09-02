@@ -122,7 +122,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -143,7 +143,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -164,7 +164,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertAlignedRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -185,7 +185,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
           List<List<Object>> values = generateTabletInsertRecordForTable(tablet);
           for (int i = 0; i < values.size(); i++) {
             senderSession.insertAlignedRecord(
-                tablet.getDeviceId(),
+                tablet.deviceId,
                 timestamps.get(i),
                 pair.left.get(i),
                 pair.right.get(i),
@@ -250,7 +250,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         false);
   }
@@ -265,7 +265,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         true);
   }
@@ -280,7 +280,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertAlignedStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         false);
   }
@@ -295,7 +295,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
               getMeasurementSchemasAndType(tablet);
           List<List<String>> values = generateTabletInsertStrRecordForTable(tablet);
           senderSession.insertAlignedStringRecordsOfOneDevice(
-              tablet.getDeviceId(), timestamps, pair.left, values);
+              tablet.deviceId, timestamps, pair.left, values);
         },
         true);
   }
@@ -386,7 +386,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
     objects[0] = temperature;
     objects[1] = status;
 
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>(2);
+    List<MeasurementSchema> measurementSchemas = new ArrayList<>(2);
     measurementSchemas.add(new MeasurementSchema("temperature", TSDataType.INT32));
     measurementSchemas.add(new MeasurementSchema("status", TSDataType.INT32));
 
@@ -430,14 +430,14 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
   private List<String> getDeviceID(Tablet tablet) {
     List<String> data = new ArrayList<>(tablet.rowSize);
     for (int i = 0; i < tablet.rowSize; i++) {
-      data.add(tablet.getDeviceId());
+      data.add(tablet.deviceId);
     }
     return data;
   }
 
   private List<List<Object>> generateTabletInsertRecordForTable(final Tablet tablet) {
     List<List<Object>> insertRecords = new ArrayList<>(tablet.rowSize);
-    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    final List<MeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
     for (int i = 0; i < tablet.rowSize; i++) {
       List<Object> insertRecord = new ArrayList<>();
@@ -460,7 +460,7 @@ public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualManualIT {
 
   private List<List<String>> generateTabletInsertStrRecordForTable(Tablet tablet) {
     List<List<String>> insertRecords = new ArrayList<>(tablet.rowSize);
-    final List<IMeasurementSchema> schemas = tablet.getSchemas();
+    final List<MeasurementSchema> schemas = tablet.getSchemas();
     final Object[] values = tablet.values;
     for (int i = 0; i < tablet.rowSize; i++) {
       List<String> insertRecord = new ArrayList<>();
