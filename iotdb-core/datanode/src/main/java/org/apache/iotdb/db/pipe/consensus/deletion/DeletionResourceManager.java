@@ -66,7 +66,6 @@ public class DeletionResourceManager implements AutoCloseable {
   private final File storageDir;
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
   private final Lock recoverLock = new ReentrantLock();
-  // condition to guarantee correctness of switching buffers
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
   private boolean hasCompletedRecovery = false;
 
