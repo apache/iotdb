@@ -132,9 +132,6 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
               // Synchronized is to guarantee the cache entry is not evicted during the update.
               changeSize = updating.updateValue(i, cacheEntry.getValue());
               cacheEntryManager.access(cacheEntry);
-              if (changeSize != 0) {
-                cacheStats.increaseMemoryUsage(changeSize);
-              }
             }
           }
           if (changeSize > 0) {
