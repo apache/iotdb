@@ -23,19 +23,41 @@ import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.Map;
 
 public class SchemaCacheEntry implements IMeasurementSchemaInfo {
+
+  /**
+   * MeasurementSchema takes 75B
+   *
+   * <ul>
+   *   <li>MeasurementSchema
+   *       <ul>
+   *         <li>Object header, 8B
+   *         <li>String measurementId basic, 8 + 8 + 4 + 8 + 4 = 32B
+   *         <li>type, encoding, compressor, 3 B
+   *         <li>encodingConverter, 8 + 8 + 8 = 24B
+   *         <li>props, 8B
+   *       </ul>
+   * </ul>
+   */
+  private static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(SchemaCacheEntry.class) + 75;
 
   private final IMeasurementSchema iMeasurementSchema;
 
   private final Map<String, String> tagMap;
 
   public SchemaCacheEntry(
-      final IMeasurementSchema iMeasurementSchema, final Map<String, String> tagMap) {
+      final @Nonnull IMeasurementSchema iMeasurementSchema,
+      final @Nullable Map<String, String> tagMap) {
     this.iMeasurementSchema = iMeasurementSchema;
     this.tagMap = tagMap;
   }
@@ -54,24 +76,10 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
     return iMeasurementSchema.getType();
   }
 
-  /**
-   * Total basic 91B
-   *
-   * <ul>
-   *   <li>SchemaCacheEntry Object header, 8B
-   *   <li>MeasurementSchema
-   *       <ul>
-   *         <li>Reference, 8B
-   *         <li>Object header, 8B
-   *         <li>String measurementId basic, 8 + 8 + 4 + 8 + 4 = 32B
-   *         <li>type, encoding, compressor, 3 B
-   *         <li>encodingConverter, 8 + 8 + 8 = 24B
-   *         <li>props, 8B
-   *       </ul>
-   * </ul>
-   */
   public static int estimateSize(final SchemaCacheEntry schemaCacheEntry) {
-    return 91 + 2 * schemaCacheEntry.getSchema().getMeasurementId().length();
+    return INSTANCE_SIZE
+        + 2 * schemaCacheEntry.getSchema().getMeasurementId().length()
+        + (int) RamUsageEstimator.sizeOfMap(schemaCacheEntry.getTagMap());
   }
 
   @Override

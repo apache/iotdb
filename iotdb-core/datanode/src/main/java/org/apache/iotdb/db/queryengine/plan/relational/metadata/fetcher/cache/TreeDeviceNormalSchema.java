@@ -26,6 +26,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -62,19 +63,22 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {
-      diff += putEntry(measurements[i], schemas[i]);
+      diff += putEntry(measurements[i], schemas[i], null);
     }
     return diff;
   }
 
   public int update(final List<IMeasurementSchemaInfo> schemaInfoList) {
     return schemaInfoList.stream()
-        .mapToInt(schemaInfo -> putEntry(schemaInfo.getName(), schemaInfo.getSchema()))
+        .mapToInt(
+            schemaInfo ->
+                putEntry(schemaInfo.getName(), schemaInfo.getSchema(), schemaInfo.getTagMap()))
         .reduce(0, Integer::sum);
   }
 
-  private int putEntry(final String measurement, final IMeasurementSchema schema) {
-    final SchemaCacheEntry putEntry = new SchemaCacheEntry(schema, null);
+  private int putEntry(
+      final String measurement, final IMeasurementSchema schema, final Map<String, String> tagMap) {
+    final SchemaCacheEntry putEntry = new SchemaCacheEntry(schema, tagMap);
     final SchemaCacheEntry cachedEntry = measurementMap.put(measurement, putEntry);
     return Objects.isNull(cachedEntry)
         ? (int) (RamUsageEstimator.sizeOf(measurement) + SchemaCacheEntry.estimateSize(putEntry))
