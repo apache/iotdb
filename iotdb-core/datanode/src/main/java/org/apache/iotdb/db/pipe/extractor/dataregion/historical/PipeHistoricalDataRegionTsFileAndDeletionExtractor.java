@@ -498,11 +498,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void start() {
-
     if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       return;
     }
-
     if (!shouldExtractInsertion) {
       return;
     }
