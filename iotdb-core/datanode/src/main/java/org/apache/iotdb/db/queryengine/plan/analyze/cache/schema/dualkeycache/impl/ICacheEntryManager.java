@@ -41,6 +41,8 @@ interface ICacheEntryManager<FK, SK, V, T extends ICacheEntry<SK, V>> {
   // Shall never remove a cacheEntry directly or when the "invalid" returns false
   boolean invalid(final T cacheEntry);
 
+  // The "evict" is allowed to be synchronized called
+  // Inner implementation guarantees that an entry won't be concurrently evicted
   T evict();
 
   void cleanUp();
