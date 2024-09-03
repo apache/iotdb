@@ -656,6 +656,12 @@ public class UDTFEqualSizeBucketOutlierSample extends UDTFEqualSizeBucketSample 
       case DOUBLE:
         outlierSampler.outlierSampleDouble(rowWindow, collector);
         break;
+      case TEXT:
+      case BLOB:
+      case DATE:
+      case STRING:
+      case BOOLEAN:
+      case TIMESTAMP:
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
