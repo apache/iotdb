@@ -51,7 +51,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class DeletionBuffer implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  // TODO: make it deletion own
+  // Buffer config keep consistent with WAL.
   private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
@@ -210,9 +210,9 @@ public class DeletionBuffer implements AutoCloseable {
       while (totalSize < ONE_THIRD_WAL_BUFFER_SIZE * FSYNC_BUFFER_RATIO) {
         DeletionResource deletionResource = null;
         try {
-          // TODO: add deletion timeout to config
+          // Timeout config keep consistent with WAL async mode.
           deletionResource =
-              deletionResources.poll(config.getWalSyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
+              deletionResources.poll(config.getWalAsyncModeFsyncDelayInMs(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
           LOGGER.warn(
               "Interrupted when waiting for taking WALEntry from blocking queue to serialize.");
