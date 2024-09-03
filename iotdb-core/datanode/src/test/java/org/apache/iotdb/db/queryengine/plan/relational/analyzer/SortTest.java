@@ -31,7 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -100,7 +100,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -176,7 +176,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output-Offset-Limit-StreamSort-TableScan`
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof StreamSortNode);
@@ -202,7 +202,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -280,7 +280,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Project-StreamSort-Project-Filter-TableScan`
@@ -348,7 +348,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -428,7 +428,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -506,7 +506,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     assertTopKNoFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 15, 0, true);
@@ -518,7 +518,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
 
@@ -529,7 +529,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
 
@@ -540,7 +540,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
@@ -555,7 +555,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKNoFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
 
@@ -566,7 +566,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
 
@@ -577,7 +577,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
 
@@ -588,7 +588,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
   }
@@ -600,7 +600,7 @@ public class SortTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
