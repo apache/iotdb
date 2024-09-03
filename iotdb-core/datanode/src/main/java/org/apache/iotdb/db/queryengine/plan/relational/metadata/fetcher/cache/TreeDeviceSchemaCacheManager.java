@@ -406,16 +406,16 @@ public class TreeDeviceSchemaCacheManager {
    *
    * <p>Note: The query shall put the cache twice:
    *
-   * <p>- First time put the {@link TimeValuePair} as {@code null}. It does not indicate that the
-   * measurements are all {@code null}s, just to allow the writing to update the cache, then avoid
-   * that the query put a stale value to cache and break the consistency. WARNING: The writing may
-   * temporarily put a stale value in cache if a stale value is written, but it won't affect the
-   * eventual consistency.
+   * <p>- First time put the {@link TimeValuePair} as {@code null} before the query accesses data.
+   * It does not indicate that the measurements are all {@code null}s, just to allow the writing to
+   * update the cache, then avoid that the query put a stale value to cache and break the
+   * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
+   * is written, but it won't affect the eventual consistency.
    *
-   * <p>- Second time put the fetched {@link TimeValuePair}. The input {@link TimeValuePair} shall
-   * never be or contain {@code null}, if the measurement is with all {@code null}s, its {@link
-   * TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not
-   * supposed to update time column.
+   * <p>- Second time put the calculated {@link TimeValuePair}. The input {@link TimeValuePair}
+   * shall never be or contain {@code null}, if the measurement is with all {@code null}s, its
+   * {@link TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method
+   * is not supposed to update time column.
    *
    * @param database the device's database, without "root"
    * @param measurementPath the fetched {@link MeasurementPath}
