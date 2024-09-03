@@ -109,7 +109,7 @@ public class TableDeviceLastCache {
             if (Objects.isNull(tvPair)
                 || tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
               if (Objects.nonNull(tvPair)) {
-                diff.addAndGet(getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue()));
+                diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
               } else {
                 diff.addAndGet(
                     (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
@@ -142,7 +142,7 @@ public class TableDeviceLastCache {
           (measurement, tvPair) -> {
             if (Objects.nonNull(tvPair)
                 && tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
-              diff.addAndGet(getDiffSize(tvPair.getValue(), timeValuePairs[finalI].getValue()));
+              diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
               return timeValuePairs[finalI];
             }
             return tvPair;
@@ -213,7 +213,14 @@ public class TableDeviceLastCache {
             .reduce(0, Integer::sum);
   }
 
-  private static int getDiffSize(final TsPrimitiveType oldValue, final TsPrimitiveType newValue) {
+  private static int getDiffSize(
+      final TimeValuePair oldTimeValuePair, final TimeValuePair newTimeValuePair) {
+    if (oldTimeValuePair == EMPTY_TIME_VALUE_PAIR
+        || oldTimeValuePair == PLACEHOLDER_TIME_VALUE_PAIR) {
+      return newTimeValuePair.getSize();
+    }
+    final TsPrimitiveType oldValue = oldTimeValuePair.getValue();
+    final TsPrimitiveType newValue = newTimeValuePair.getValue();
     if (oldValue == null) {
       return newValue == null ? 0 : newValue.getSize();
     } else if (oldValue instanceof TsPrimitiveType.TsBinary) {
