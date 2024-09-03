@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -271,8 +271,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       for (int i = 0; i < rawMeasurements.length; i++) {
         timeValuePairs[i] = composeLastTimeValuePair(i, startOffset, endOffset);
       }
-      TableDeviceSchemaFetcher.getInstance()
-          .getTableDeviceCache()
+      TableDeviceSchemaCache.getInstance()
           .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
 
       startOffset = endOffset;

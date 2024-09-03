@@ -90,7 +90,7 @@ public class TableDeviceSchemaCache {
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
-  public TableDeviceSchemaCache() {
+  private TableDeviceSchemaCache() {
     dualKeyCache =
         new DualKeyCacheBuilder<TableId, IDeviceID, TableDeviceCacheEntry>()
             .cacheEvictionPolicy(
@@ -102,6 +102,14 @@ public class TableDeviceSchemaCache {
             .build();
 
     MetricService.getInstance().addMetricSet(new TableDeviceSchemaCacheMetrics(this));
+  }
+
+  public static TableDeviceSchemaCache getInstance() {
+    return TableDeviceSchemaCacheHolder.INSTANCE;
+  }
+
+  private static class TableDeviceSchemaCacheHolder {
+    private static final TableDeviceSchemaCache INSTANCE = new TableDeviceSchemaCache();
   }
 
   /////////////////////////////// Attribute ///////////////////////////////

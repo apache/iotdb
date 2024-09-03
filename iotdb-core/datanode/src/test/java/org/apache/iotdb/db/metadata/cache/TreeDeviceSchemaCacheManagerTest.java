@@ -22,7 +22,6 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
@@ -55,15 +54,9 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 public class TreeDeviceSchemaCacheManagerTest {
   private TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager;
   private Map<String, String> s1TagMap;
-  private int previousId;
 
   @Before
   public void setUp() throws Exception {
-    previousId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-    if (previousId == -1) {
-      IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
-    }
-
     treeDeviceSchemaCacheManager = TreeDeviceSchemaCacheManager.getInstance();
     s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
@@ -72,7 +65,6 @@ public class TreeDeviceSchemaCacheManagerTest {
   @After
   public void tearDown() throws Exception {
     treeDeviceSchemaCacheManager.cleanUp();
-    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousId);
     ClusterTemplateManager.getInstance().clear();
   }
 

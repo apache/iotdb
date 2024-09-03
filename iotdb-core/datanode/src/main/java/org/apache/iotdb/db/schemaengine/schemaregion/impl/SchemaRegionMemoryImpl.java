@@ -49,7 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -1367,9 +1367,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final Object[] attributeValueList) {
     final Map<String, String> resultMap =
         deviceAttributeStore.alterAttribute(pointer, attributeNameList, attributeValueList);
-    if (!isRecovering && IoTDBDescriptor.getInstance().getConfig().getDataNodeId() != -1) {
-      TableDeviceSchemaFetcher.getInstance()
-          .getTableDeviceCache()
+    if (!isRecovering) {
+      TableDeviceSchemaCache.getInstance()
           .updateAttributes(
               databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
     }

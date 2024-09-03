@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ITableDeviceSchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -92,8 +93,7 @@ public class TableDeviceSchemaValidator {
 
     for (int i = 0, size = deviceIdList.size(); i < size; i++) {
       final Map<String, String> attributeMap =
-          fetcher
-              .getTableDeviceCache()
+          TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
                   convertIdValuesToDeviceID(
@@ -129,8 +129,7 @@ public class TableDeviceSchemaValidator {
 
     fetchedDeviceSchema.forEach(
         (key, value) ->
-            fetcher
-                .getTableDeviceCache()
+            TableDeviceSchemaCache.getInstance()
                 .putAttributes(schemaValidation.getDatabase(), key, value));
 
     final List<String> attributeKeyList = schemaValidation.getAttributeColumnNameList();

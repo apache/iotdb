@@ -71,7 +71,7 @@ public class TableDeviceSchemaCacheTest {
 
   @Test
   public void testDeviceCache() {
-    final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
     final String database = "db";
     final String table1 = "t1";
@@ -151,7 +151,7 @@ public class TableDeviceSchemaCacheTest {
 
   @Test
   public void testLastCache() {
-    final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
     final String database = "db";
     final String table1 = "t1";
@@ -421,7 +421,7 @@ public class TableDeviceSchemaCacheTest {
     final TimeValuePair[] testTimeValuePairs = new TimeValuePair[] {tv3, tv3, tv3, tv3};
 
     // Test disable put cache by writing
-    final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+    final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
     cache.updateLastCacheIfExists(
         database, convertIdValuesToDeviceID(table2, device0), testMeasurements, testTimeValuePairs);

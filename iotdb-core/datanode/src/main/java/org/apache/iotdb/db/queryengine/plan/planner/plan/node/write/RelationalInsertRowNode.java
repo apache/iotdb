@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -240,8 +240,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
     for (int i = 0; i < rawMeasurements.length; i++) {
       timeValuePairs[i] = composeTimeValuePair(i);
     }
-    TableDeviceSchemaFetcher.getInstance()
-        .getTableDeviceCache()
+    TableDeviceSchemaCache.getInstance()
         .updateLastCacheIfExists(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
   }
 }

@@ -136,7 +136,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
@@ -520,7 +520,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // clear table related cache
       String database = req.getFullPath().substring(5);
       DataNodeTableCache.getInstance().invalid(database);
-      TableDeviceSchemaFetcher.getInstance().getTableDeviceCache().invalidate(database);
+      TableDeviceSchemaCache.getInstance().invalidate(database);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       TreeDeviceSchemaCacheManager.getInstance().releaseWriteLock();

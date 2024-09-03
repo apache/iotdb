@@ -71,7 +71,7 @@ public class TableDeviceSchemaFetcher {
 
   private final Coordinator coordinator = Coordinator.getInstance();
 
-  private final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
+  private final TableDeviceSchemaCache cache = TableDeviceSchemaCache.getInstance();
 
   private TableDeviceSchemaFetcher() {
     // do nothing
@@ -85,7 +85,7 @@ public class TableDeviceSchemaFetcher {
     return TableDeviceSchemaFetcherHolder.INSTANCE;
   }
 
-  public TableDeviceSchemaCache getTableDeviceCache() {
+  private TableDeviceSchemaCache getTableDeviceCache() {
     return cache;
   }
 

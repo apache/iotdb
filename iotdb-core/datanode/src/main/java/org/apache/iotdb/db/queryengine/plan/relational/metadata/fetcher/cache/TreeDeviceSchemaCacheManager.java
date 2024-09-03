@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.view.InsertNonWritableViewExceptio
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -64,7 +63,7 @@ public class TreeDeviceSchemaCacheManager {
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(false);
 
   private TreeDeviceSchemaCacheManager() {
-    tableDeviceSchemaCache = TableDeviceSchemaFetcher.getInstance().getTableDeviceCache();
+    tableDeviceSchemaCache = TableDeviceSchemaCache.getInstance();
   }
 
   public static TreeDeviceSchemaCacheManager getInstance() {
