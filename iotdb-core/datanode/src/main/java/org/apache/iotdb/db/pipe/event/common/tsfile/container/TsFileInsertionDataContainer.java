@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -42,6 +44,8 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
   protected final PipeTaskMeta pipeTaskMeta; // used to report progress
   protected final EnrichedEvent sourceEvent; // used to report progress
 
+  protected final PipeMemoryBlock allocatedMemoryBlockForTablet;
+
   protected TsFileSequenceReader tsFileSequenceReader;
 
   protected TsFileInsertionDataContainer(
@@ -58,6 +62,10 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
 
     this.pipeTaskMeta = pipeTaskMeta;
     this.sourceEvent = sourceEvent;
+
+    // Allocate empty memory block, will be resized later.
+    this.allocatedMemoryBlockForTablet =
+        PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
   }
 
   /**
@@ -73,6 +81,10 @@ public abstract class TsFileInsertionDataContainer implements AutoCloseable {
       }
     } catch (final IOException e) {
       LOGGER.warn("Failed to close TsFileSequenceReader", e);
+    }
+
+    if (allocatedMemoryBlockForTablet != null) {
+      allocatedMemoryBlockForTablet.close();
     }
   }
 }

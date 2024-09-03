@@ -275,6 +275,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+    config.setPipeDataStructureTabletSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_data_structure_tablet_size_in_bytes",
+                String.valueOf(config.getPipeDataStructureTabletSizeInBytes()))));
     config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
         Double.parseDouble(
             properties.getProperty(
@@ -318,6 +323,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
                 String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
+    config.setPipeSubtaskExecutorForcedRestartIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_subtask_executor_forced_restart_interval_ms",
+                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalMs()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(

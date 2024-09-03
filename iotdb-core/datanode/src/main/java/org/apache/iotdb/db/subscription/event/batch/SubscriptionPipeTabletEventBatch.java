@@ -141,13 +141,11 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
       currentTablets.add(tablet);
       currentTotalBufferSize += bufferSize;
     }
-    if (!currentTablets.isEmpty()) {
-      responses.add(
-          new SubscriptionPollResponse(
-              SubscriptionPollResponseType.TABLETS.getType(),
-              new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
-              commitContext));
-    }
+    responses.add(
+        new SubscriptionPollResponse(
+            SubscriptionPollResponseType.TABLETS.getType(),
+            new TabletsPayload(new ArrayList<>(currentTablets), -tablets.size()),
+            commitContext));
     return Collections.singletonList(
         new SubscriptionEvent(new SubscriptionPipeTabletBatchEvents(this), responses));
   }

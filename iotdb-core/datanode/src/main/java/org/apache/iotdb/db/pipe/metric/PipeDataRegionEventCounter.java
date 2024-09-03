@@ -36,17 +36,17 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
   private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
 
   @Override
-  public Integer getTsFileInsertionEventCount() {
+  public int getTsFileInsertionEventCount() {
     return tsFileInsertionEventCount.get();
   }
 
   @Override
-  public Integer getTabletInsertionEventCount() {
+  public int getTabletInsertionEventCount() {
     return tabletInsertionEventCount.get();
   }
 
   @Override
-  public Integer getPipeHeartbeatEventCount() {
+  public int getPipeHeartbeatEventCount() {
     return pipeHeartbeatEventCount.get();
   }
 
@@ -76,11 +76,11 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
       return;
     }
     if (event instanceof PipeHeartbeatEvent) {
-      pipeHeartbeatEventCount.decrementAndGet();
+      pipeHeartbeatEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
     } else if (event instanceof TabletInsertionEvent) {
-      tabletInsertionEventCount.decrementAndGet();
+      tabletInsertionEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
     } else if (event instanceof TsFileInsertionEvent) {
-      tsFileInsertionEventCount.decrementAndGet();
+      tsFileInsertionEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
     }
   }
 

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -59,7 +59,7 @@ public class LimitOffsetPushDownTest {
   String sql;
   Analysis actualAnalysis;
   MPPQueryContext context;
-  LogicalPlanner logicalPlanner;
+  TableLogicalPlanner logicalPlanner;
   LogicalQueryPlan logicalQueryPlan;
   PlanNode rootNode;
   TableDistributedPlanner distributionPlanner;
@@ -73,7 +73,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Project - Offset - Limit - TableScan`
@@ -113,7 +113,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Offset - Limit - Project - StreamSort -  Project - TableScan`
@@ -147,7 +147,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Limit - StreamSort - TableScan`
@@ -186,7 +186,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Offset - Limit - Project - StreamSort - Project - TableScan`
@@ -227,7 +227,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     // LogicalPlan: `Output - Offset - Project - TopK - Project - TableScan`
     rootNode = logicalQueryPlan.getRootNode();
@@ -267,7 +267,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     // LogicalPlan: `Output - Offset - Project - TopK - Project - TableScan`
     rootNode = logicalQueryPlan.getRootNode();
@@ -304,7 +304,7 @@ public class LimitOffsetPushDownTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     actualAnalysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
             .plan(actualAnalysis);
     // LogicalPlan: `Output - Project - Limit - TableScan`
     rootNode = logicalQueryPlan.getRootNode();

@@ -60,6 +60,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeDataStructureTabletRowSize();
   }
 
+  public int getPipeDataStructureTabletSizeInBytes() {
+    return COMMON_CONFIG.getPipeDataStructureTabletSizeInBytes();
+  }
+
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
     return COMMON_CONFIG.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold();
   }
@@ -90,6 +94,10 @@ public class PipeConfig {
 
   public long getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds() {
     return COMMON_CONFIG.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds();
+  }
+
+  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
+    return COMMON_CONFIG.getPipeSubtaskExecutorForcedRestartIntervalMs();
   }
 
   /////////////////////////////// Extractor ///////////////////////////////
@@ -321,6 +329,7 @@ public class PipeConfig {
     LOGGER.info("PipeHardLinkWALEnabled: {}", getPipeHardLinkWALEnabled());
 
     LOGGER.info("PipeDataStructureTabletRowSize: {}", getPipeDataStructureTabletRowSize());
+    LOGGER.info("PipeDataStructureTabletSizeInBytes: {}", getPipeDataStructureTabletSizeInBytes());
     LOGGER.info(
         "PipeDataStructureTabletMemoryBlockAllocationRejectThreshold: {}",
         getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold());
@@ -341,6 +350,9 @@ public class PipeConfig {
     LOGGER.info(
         "PipeSubtaskExecutorCronHeartbeatEventIntervalSeconds: {}",
         getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds());
+    LOGGER.info(
+        "PipeSubtaskExecutorForcedRestartIntervalMs: {}",
+        getPipeSubtaskExecutorForcedRestartIntervalMs());
 
     LOGGER.info(
         "PipeExtractorAssignerDisruptorRingBufferSize: {}",

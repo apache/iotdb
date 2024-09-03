@@ -120,7 +120,7 @@ public class StorageEngine implements IService {
    * a folder (system/databases/ by default) that persist system info. Each database will have a
    * subfolder under the systemDir.
    */
-  private final String systemDir =
+  private static final String systemDir =
       FilePathUtils.regularizePath(CONFIG.getSystemDir()) + "databases";
 
   /** DataRegionId -> DataRegion */
@@ -134,19 +134,21 @@ public class StorageEngine implements IService {
   /** number of ready data region */
   private AtomicInteger readyDataRegionNum;
 
-  private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
+  private final AtomicBoolean isReadyForReadAndWrite = new AtomicBoolean();
+
+  private final AtomicBoolean isReadyForNonReadWriteFunctions = new AtomicBoolean();
 
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
 
-  private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
+  private final TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
 
   /** used to do short-lived asynchronous tasks */
   private ExecutorService cachedThreadPool;
 
   // add customized listeners here for flush and close events
-  private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
-  private List<FlushListener> customFlushListeners = new ArrayList<>();
+  private final List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
+  private final List<FlushListener> customFlushListeners = new ArrayList<>();
   private int recoverDataRegionNum = 0;
 
   private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
@@ -178,17 +180,19 @@ public class StorageEngine implements IService {
     }
   }
 
-  public boolean isAllSgReady() {
-    return isAllSgReady.get();
+  public boolean isReadyForReadAndWrite() {
+    return isReadyForReadAndWrite.get();
   }
 
-  public void setAllSgReady(boolean allSgReady) {
-    isAllSgReady.set(allSgReady);
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+  public boolean isReadyForNonReadWriteFunctions() {
+    return isReadyForNonReadWriteFunctions.get();
   }
 
-  public void asyncRecover() throws StartupException {
+  private void asyncRecoverDataRegion() throws StartupException {
     long startRecoverTime = System.currentTimeMillis();
-    setAllSgReady(false);
+    isReadyForNonReadWriteFunctions.set(false);
+    isReadyForReadAndWrite.set(false);
     cachedThreadPool =
         IoTDBThreadPoolFactory.newCachedThreadPool(ThreadName.STORAGE_ENGINE_CACHED_POOL.getName());
 
@@ -209,8 +213,7 @@ public class StorageEngine implements IService {
         new Thread(
             () -> {
               checkResults(futures, "StorageEngine failed to recover.");
-              recoverRepairData();
-              setAllSgReady(true);
+              isReadyForReadAndWrite.set(true);
               LOGGER.info(
                   "Storage Engine recover cost: {}s.",
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
@@ -287,11 +290,22 @@ public class StorageEngine implements IService {
       throw new StorageEngineFailureException(e);
     }
 
-    asyncRecover();
-
-    LOGGER.info("start ttl check thread successfully.");
+    asyncRecoverDataRegion();
 
     startTimedService();
+
+    // wait here for dataRegionMap recovered
+    while (!isReadyForReadAndWrite.get()) {
+      try {
+        TimeUnit.MILLISECONDS.sleep(100);
+      } catch (InterruptedException e) {
+        LOGGER.warn("Storage engine failed to set up.", e);
+        Thread.currentThread().interrupt();
+        return;
+      }
+    }
+
+    asyncRecoverTsFileResource();
   }
 
   private void startTimedService() {
@@ -337,6 +351,40 @@ public class StorageEngine implements IService {
         dataRegion.timedFlushUnseqMemTable();
       }
     }
+  }
+
+  private void asyncRecoverTsFileResource() {
+    List<Future<Void>> futures = new LinkedList<>();
+    long startRecoverTime = System.currentTimeMillis();
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion != null) {
+        List<Callable<Void>> asyncTsFileResourceRecoverTasks =
+            dataRegion.getAsyncTsFileResourceRecoverTaskList();
+        if (asyncTsFileResourceRecoverTasks != null) {
+          Callable<Void> taskOfRegion =
+              () -> {
+                for (Callable<Void> task : asyncTsFileResourceRecoverTasks) {
+                  task.call();
+                }
+                dataRegion.initCompactionSchedule();
+                return null;
+              };
+          futures.add(cachedThreadPool.submit(taskOfRegion));
+        }
+      }
+    }
+    Thread recoverEndTrigger =
+        new Thread(
+            () -> {
+              checkResults(futures, "async recover tsfile resource meets error.");
+              recoverRepairData();
+              isReadyForNonReadWriteFunctions.set(true);
+              LOGGER.info(
+                  "TsFile Resource recover cost: {}s.",
+                  (System.currentTimeMillis() - startRecoverTime) / 1000);
+            },
+            ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
+    recoverEndTrigger.start();
   }
 
   @Override
@@ -649,8 +697,6 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen flush start/end events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
-   *
-   * @param listener
    */
   public void registerFlushListener(FlushListener listener) {
     customFlushListeners.add(listener);
@@ -659,8 +705,6 @@ public class StorageEngine implements IService {
   /**
    * Add a listener to listen file close events. Notice that this addition only applies to
    * TsFileProcessors created afterwards.
-   *
-   * @param listener
    */
   public void registerCloseFileListener(CloseFileListener listener) {
     customCloseFileListeners.add(listener);
@@ -676,7 +720,7 @@ public class StorageEngine implements IService {
   }
 
   // When registering a new region, the coordinator needs to register the corresponding region with
-  // the local storageengine before adding the corresponding consensusGroup to the consensus layer
+  // the local storage before adding the corresponding consensusGroup to the consensus layer
   public DataRegion createDataRegion(DataRegionId regionId, String sg) throws DataRegionException {
     makeSureNoOldRegion(regionId);
     AtomicReference<DataRegionException> exceptionAtomicReference = new AtomicReference<>(null);
@@ -951,6 +995,24 @@ public class StorageEngine implements IService {
             dataRegionDisk.put(dataRegionId.getId(), dataRegion.countRegionDiskSize());
           }
         });
+  }
+
+  public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {
+    return SystemFileFactory.INSTANCE.getFile(
+        systemDir + File.separator + dataBaseName, dataRegionId);
+  }
+
+  public Runnable executeCompactFileTimeIndexCache() {
+    return () -> {
+      if (!isReadyForNonReadWriteFunctions()) {
+        return;
+      }
+      for (DataRegion dataRegion : dataRegionMap.values()) {
+        if (dataRegion != null) {
+          dataRegion.compactFileTimeIndexCache();
+        }
+      }
+    };
   }
 
   static class InstanceHolder {

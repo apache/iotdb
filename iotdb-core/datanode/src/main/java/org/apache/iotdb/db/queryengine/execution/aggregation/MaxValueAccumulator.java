@@ -63,6 +63,7 @@ public class MaxValueAccumulator implements Accumulator {
         addBinaryInput(columns, bitMap);
         return;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -96,6 +97,7 @@ public class MaxValueAccumulator implements Accumulator {
         updateBinaryResult(partialResult[0].getBinary(0));
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -127,6 +129,7 @@ public class MaxValueAccumulator implements Accumulator {
         updateBinaryResult((Binary) statistics.getMaxValue());
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -160,6 +163,7 @@ public class MaxValueAccumulator implements Accumulator {
         maxResult.setBinary(finalResult.getBinary(0));
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -194,6 +198,7 @@ public class MaxValueAccumulator implements Accumulator {
         columnBuilders[0].writeBinary(maxResult.getBinary());
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(
@@ -226,6 +231,7 @@ public class MaxValueAccumulator implements Accumulator {
         columnBuilder.writeBinary(maxResult.getBinary());
         break;
       case TEXT:
+      case BLOB:
       case BOOLEAN:
       default:
         throw new UnSupportedDataTypeException(

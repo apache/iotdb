@@ -62,6 +62,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -292,6 +293,26 @@ public class TsFileResource {
         }
       }
     }
+  }
+
+  public static int getFileTimeIndexSerializedSize() {
+    // 6 * 8 Byte means 6 long numbers of
+    // tsFileID.timePartitionId,
+    // tsFileID.timestamp,
+    // tsFileID.fileVersion,
+    // tsFileID.compactionVersion,
+    // timeIndex.getMinStartTime(),
+    // timeIndex.getMaxStartTime()
+    return 6 * Long.BYTES;
+  }
+
+  public void serializeFileTimeIndexToByteBuffer(ByteBuffer buffer) {
+    buffer.putLong(tsFileID.timePartitionId);
+    buffer.putLong(tsFileID.timestamp);
+    buffer.putLong(tsFileID.fileVersion);
+    buffer.putLong(tsFileID.compactionVersion);
+    buffer.putLong(timeIndex.getMinStartTime());
+    buffer.putLong(timeIndex.getMaxEndTime());
   }
 
   public void updateStartTime(IDeviceID device, long time) {
