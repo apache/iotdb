@@ -66,7 +66,8 @@ public class SubtractionResolver {
   }
 
   public static Optional<Type> checkConditions(List<? extends Type> argumentTypes) {
-    return Optional.ofNullable(CONDITION_MAP
+    return Optional.ofNullable(
+        CONDITION_MAP
             .getOrDefault(argumentTypes.get(0), Collections.emptyMap())
             .getOrDefault(argumentTypes.get(1), null));
   }

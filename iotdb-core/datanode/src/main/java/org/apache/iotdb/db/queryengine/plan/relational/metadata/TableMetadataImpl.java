@@ -111,7 +111,7 @@ public class TableMetadataImpl implements Metadata {
     switch (operatorType) {
       case ADD:
         if (!isTwoTypeCalculable(argumentTypes)
-            || AdditionResolver.checkConditions(argumentTypes).isPresent()) {
+            || !AdditionResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
