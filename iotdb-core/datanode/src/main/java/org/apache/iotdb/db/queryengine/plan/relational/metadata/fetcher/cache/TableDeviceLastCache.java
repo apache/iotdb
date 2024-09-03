@@ -107,17 +107,20 @@ public class TableDeviceLastCache {
       measurement2CachedLastMap.compute(
           measurement,
           (measurementKey, tvPair) -> {
-            if (Objects.isNull(tvPair) || tvPair.getTimestamp() < newPair.getTimestamp()) {
-              if (Objects.nonNull(tvPair)) {
-                diff.addAndGet(getDiffSize(tvPair, newPair));
-              } else {
+            if (Objects.isNull(tvPair)) {
+              if (newPair == PLACEHOLDER_TIME_VALUE_PAIR) {
                 diff.addAndGet(
                     (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
                         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
                         + newPair.getSize());
+                return newPair;
               }
+            } else if (tvPair.getTimestamp() < newPair.getTimestamp()
+                || tvPair == PLACEHOLDER_TIME_VALUE_PAIR) {
+              diff.addAndGet(getDiffSize(tvPair, newPair));
               return newPair;
             }
+
             return tvPair;
           });
     }
