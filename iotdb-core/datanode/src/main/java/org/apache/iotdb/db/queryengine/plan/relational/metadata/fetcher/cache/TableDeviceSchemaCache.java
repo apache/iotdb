@@ -324,7 +324,6 @@ public class TableDeviceSchemaCache {
 
   public void updateLastCache(
       final String database,
-      final String prefix,
       final IDeviceID deviceID,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
@@ -335,7 +334,7 @@ public class TableDeviceSchemaCache {
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
     dualKeyCache.update(
-        new TableId(prefix, deviceID.getTableName()),
+        new TableId("", deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
         isQuery

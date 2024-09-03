@@ -393,28 +393,19 @@ public class TreeDeviceSchemaCacheManager {
    * put the cache lazily and only update the existing last caches of measurements.
    *
    * @param database the device's database, WITH "root"
-   * @param prefix node[1] of the device's partialPath
    * @param deviceID IDeviceID
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
   public void updateLastCache(
       final String database,
-      final String prefix,
       final IDeviceID deviceID,
       final String[] measurements,
       final TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final MeasurementSchema[] measurementSchemas) {
     tableDeviceSchemaCache.updateLastCache(
-        database,
-        prefix,
-        deviceID,
-        measurements,
-        timeValuePairs,
-        isAligned,
-        measurementSchemas,
-        false);
+        database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
   public void updateLastCache(
@@ -453,7 +444,6 @@ public class TreeDeviceSchemaCacheManager {
       final @Nonnull TimeValuePair timeValuePair) {
     tableDeviceSchemaCache.updateLastCache(
         database,
-        measurementPath.getNodes()[1],
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
         new TimeValuePair[] {timeValuePair},

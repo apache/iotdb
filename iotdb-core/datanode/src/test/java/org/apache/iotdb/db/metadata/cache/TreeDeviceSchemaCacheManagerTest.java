@@ -220,7 +220,6 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     treeDeviceSchemaCacheManager.updateLastCache(
         database,
-        "db",
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
         measurements,
