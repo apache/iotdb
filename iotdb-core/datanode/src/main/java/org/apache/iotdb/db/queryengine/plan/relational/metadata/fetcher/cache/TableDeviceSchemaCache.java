@@ -238,14 +238,14 @@ public class TableDeviceSchemaCache {
   /**
    * Get the last entry of a measurement, the measurement shall never be "time".
    *
-   * @param database the device's database, without "root"
+   * @param database the device's database, without "root", {@code null} for tree model
    * @param deviceId IDeviceID
    * @param measurement the measurement to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
    *     cache hit but result is {@code null}, and the result value otherwise.
    */
   public TimeValuePair getLastEntry(
-      final String database, final IDeviceID deviceId, final String measurement) {
+      final @Nullable String database, final IDeviceID deviceId, final String measurement) {
     final TableDeviceCacheEntry entry =
         dualKeyCache.get(new TableId(database, deviceId.getTableName()), deviceId);
     return Objects.nonNull(entry) ? entry.getTimeValuePair(measurement) : null;
