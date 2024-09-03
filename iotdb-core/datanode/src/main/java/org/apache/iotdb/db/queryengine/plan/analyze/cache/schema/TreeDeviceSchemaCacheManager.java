@@ -208,7 +208,7 @@ public class TreeDeviceSchemaCacheManager {
    * @return The indexes of missed views and full paths of their source paths will be returned.
    */
   public Pair<List<Integer>, List<String>> computeSourceOfLogicalView(
-      ISchemaComputation schemaComputation) {
+      final ISchemaComputation schemaComputation) {
     if (!schemaComputation.hasLogicalViewNeedProcess()) {
       return new Pair<>(new ArrayList<>(), new ArrayList<>());
     }
