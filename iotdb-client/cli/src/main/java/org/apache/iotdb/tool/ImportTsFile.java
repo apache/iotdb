@@ -33,19 +33,12 @@ import org.apache.commons.cli.ParseException;
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.LongAdder;
 
 public class ImportTsFile extends AbstractTsFileTool {
 
@@ -71,11 +64,7 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
 
-  private static final String RESOURCE = ".resource";
-  private static final String MODS = ".mods";
-
   private static String source;
-  private static String sourceFullPath;
 
   private static String successDir = "success/";
   private static String failDir = "fail/";
@@ -86,18 +75,6 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static int threadNum = 8;
 
   private static boolean isRemoteLoad = false;
-
-  private static final LongAdder loadFileSuccessfulNum = new LongAdder();
-  private static final LongAdder loadFileFailedNum = new LongAdder();
-  private static final LongAdder processingLoadSuccessfulFileSuccessfulNum = new LongAdder();
-  private static final LongAdder processingLoadFailedFileSuccessfulNum = new LongAdder();
-
-  private static final LongAdder transferFileSuccessfulNum = new LongAdder();
-  private static final LongAdder transferFileFailedNum = new LongAdder();
-
-  private static final LinkedBlockingQueue<String> tsfileQueue = new LinkedBlockingQueue<>();
-  private static final Set<String> tsfileSet = new HashSet<>();
-  private static final Set<String> resourceOrModsSet = new HashSet<>();
 
   private static SessionPool sessionPool;
 
@@ -212,44 +189,11 @@ public class ImportTsFile extends AbstractTsFileTool {
       System.exit(CODE_ERROR);
     }
 
-    ioTPrinter.println(isRemoteLoad ? "load locally" : "load remotely");
+    ioTPrinter.println(isRemoteLoad ? "load remotely" : "load locally");
 
     final int resultCode = importFromTargetPath();
 
-    if (isRemoteLoad) {
-      ioTPrinter.println(
-          "Successfully transfer "
-              + transferFileSuccessfulNum.sum()
-              + " tsfile(s) "
-              + transferFileFailedNum.sum()
-              + " failed");
-      ioTPrinter.println("For more details, please check the log.");
-      ioTPrinter.println(
-          "Total operation time: " + (System.currentTimeMillis() - startTime) + " ms.");
-      ioTPrinter.println("Work has been completed!");
-      System.exit(resultCode);
-    }
-
-    ioTPrinter.println(
-        "Successfully load "
-            + loadFileSuccessfulNum.sum()
-            + " tsfile(s) (--on_success operation(s): "
-            + processingLoadSuccessfulFileSuccessfulNum.sum()
-            + " succeed, "
-            + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
-            + " failed)");
-    ioTPrinter.println(
-        "Failed to load "
-            + loadFileFailedNum.sum()
-            + " file(s) (--on_fail operation(s): "
-            + processingLoadFailedFileSuccessfulNum.sum()
-            + " succeed, "
-            + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
-            + " failed)");
-    ioTPrinter.println("For more details, please check the log.");
-    ioTPrinter.println(
-        "Total operation time: " + (System.currentTimeMillis() - startTime) + " ms.");
-    ioTPrinter.println("Work has been completed!");
+    AbstractTsFileProcessTool.printResult(startTime);
     System.exit(resultCode);
   }
 
@@ -335,13 +279,6 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   public static int importFromTargetPath() {
     try {
-      final File file = new File(source);
-      sourceFullPath = file.getAbsolutePath();
-      if (!file.isFile() && !file.isDirectory()) {
-        ioTPrinter.println(String.format("source file or directory %s does not exist", source));
-        return CODE_ERROR;
-      }
-
       sessionPool =
           new SessionPool.Builder()
               .host(host)
@@ -355,9 +292,14 @@ public class ImportTsFile extends AbstractTsFileTool {
               .build();
       sessionPool.setEnableQueryRedirection(false);
 
-      traverseAndCollectFiles(file);
-      addNoResourceOrModsToQueue();
-      ioTPrinter.println("Load file total number : " + tsfileQueue.size());
+      // set params
+      processSetParams();
+
+      IoTDBTsFileScanAndProcessTool.traverseAndCollectFiles();
+      IoTDBTsFileScanAndProcessTool.addNoResourceOrModsToQueue();
+
+      ioTPrinter.println(
+          "Load file total number : " + IoTDBTsFileScanAndProcessTool.getTsFileQueueSize());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
@@ -371,96 +313,32 @@ public class ImportTsFile extends AbstractTsFileTool {
     }
   }
 
-  public static void traverseAndCollectFiles(File file) throws InterruptedException {
-    if (file.isFile()) {
-      if (file.getName().endsWith(RESOURCE) || file.getName().endsWith(MODS)) {
-        resourceOrModsSet.add(file.getAbsolutePath());
-      } else {
-        tsfileSet.add(file.getAbsolutePath());
-        tsfileQueue.put(file.getAbsolutePath());
-      }
-    } else if (file.isDirectory()) {
-      final File[] files = file.listFiles();
-      if (files != null) {
-        for (File f : files) {
-          traverseAndCollectFiles(f);
-        }
-      }
+  // process other classes need param
+  private static void processSetParams() {
+    // ImportTsFileLocally
+    final File file = new File(source);
+    IoTDBTsFileScanAndProcessTool.setSourceFullPath(file.getAbsolutePath());
+    if (!file.isFile() && !file.isDirectory()) {
+      ioTPrinter.println(String.format("source file or directory %s does not exist", source));
+      System.exit(CODE_ERROR);
     }
-  }
 
-  public static void addNoResourceOrModsToQueue() throws InterruptedException {
-    for (final String filePath : resourceOrModsSet) {
-      final String tsfilePath =
-          filePath.endsWith(RESOURCE)
-              ? filePath.substring(0, filePath.length() - RESOURCE.length())
-              : filePath.substring(0, filePath.length() - MODS.length());
-      if (!tsfileSet.contains(tsfilePath)) {
-        tsfileQueue.put(filePath);
-      }
-    }
+    ImportTsFileLocally.setSessionPool(sessionPool);
+
+    // ImportTsFileRemotely
+    ImportTsFileRemotely.setHost(host);
+    ImportTsFileRemotely.setPort(port);
+
+    // ImportOperator
+    IoTDBTsFileScanAndProcessTool.setSuccessAndFailDirAndOperation(
+        successDir, successOperation, failDir, failOperation);
   }
 
   public static void asyncImportTsFiles() {
-    if (isRemoteLoad) {
-      loadRemotely();
-    } else {
-      loadLocally();
-    }
-  }
-
-  public static void loadRemotely() {
     final List<Thread> list = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
-      final Thread thread = new Thread(() -> importTsFileRemotely(getRemoteLoadTsFile()));
-      thread.start();
-      list.add(thread);
-    }
-    list.forEach(
-        thread -> {
-          try {
-            thread.join();
-          } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
-          }
-        });
-  }
-
-  private static ImportTsFileRemotely getRemoteLoadTsFile() {
-    final ImportTsFileRemotely remoteLoadTsFile = new ImportTsFileRemotely(host, port);
-    remoteLoadTsFile.sendHandshake();
-
-    return remoteLoadTsFile;
-  }
-
-  private static void importTsFileRemotely(final ImportTsFileRemotely remote) {
-    String filePath;
-    try {
-      while ((filePath = tsfileQueue.poll()) != null) {
-        final File tsFile = new File(filePath);
-
-        if (resourceOrModsSet.contains(filePath + MODS)) {
-          remote.doTransfer(tsFile, new File(filePath + MODS));
-        } else {
-          remote.doTransfer(tsFile, null);
-        }
-
-        transferFileSuccessfulNum.increment();
-      }
-    } catch (final Exception e) {
-      transferFileFailedNum.increment();
-
-      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
-    } finally {
-      remote.close();
-    }
-  }
-
-  public static void loadLocally() {
-    final List<Thread> list = new ArrayList<>(threadNum);
-    for (int i = 0; i < threadNum; i++) {
-      final Thread thread = new Thread(ImportTsFile::importTsFileLocally);
+      final Thread thread =
+          new Thread(isRemoteLoad ? new ImportTsFileRemotely() : new ImportTsFileLocally());
       thread.start();
       list.add(thread);
     }
@@ -473,159 +351,6 @@ public class ImportTsFile extends AbstractTsFileTool {
             ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
           }
         });
-  }
-
-  public static void importTsFileLocally() {
-    String filePath;
-    try {
-      while ((filePath = tsfileQueue.poll()) != null) {
-        final String sql = "load '" + filePath + "' onSuccess=none ";
-
-        try {
-          sessionPool.executeNonQueryStatement(sql);
-
-          loadFileSuccessfulNum.increment();
-          ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
-
-          try {
-            processingFile(filePath, successDir, successOperation);
-            processingLoadSuccessfulFileSuccessfulNum.increment();
-            ioTPrinter.println("Processed success file [ " + filePath + " ] successfully!");
-          } catch (Exception processSuccessException) {
-            ioTPrinter.println(
-                "Failed to process success file [ "
-                    + filePath
-                    + " ]: "
-                    + processSuccessException.getMessage());
-          }
-        } catch (Exception e) {
-          // Reject because of memory controls, do retry later
-          if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
-            ioTPrinter.println(
-                "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
-            tsfileQueue.put(filePath);
-            continue;
-          }
-
-          loadFileFailedNum.increment();
-          ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
-
-          try {
-            processingFile(filePath, failDir, failOperation);
-            processingLoadFailedFileSuccessfulNum.increment();
-            ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
-          } catch (Exception processFailException) {
-            ioTPrinter.println(
-                "Failed to process fail file [ "
-                    + filePath
-                    + " ]: "
-                    + processFailException.getMessage());
-          }
-        }
-      }
-    } catch (InterruptedException e) {
-      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
-      Thread.currentThread().interrupt();
-    } catch (Exception e) {
-      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
-    }
-  }
-
-  public static void processingFile(String filePath, String dir, Operation operation) {
-    String relativePath = filePath.substring(sourceFullPath.length() + 1);
-    Path sourcePath = Paths.get(filePath);
-
-    String target = dir + File.separator + relativePath.replace(File.separator, "_");
-    Path targetPath = Paths.get(target);
-
-    Path sourceResourcePath = Paths.get(sourcePath + RESOURCE);
-    sourceResourcePath = Files.exists(sourceResourcePath) ? sourceResourcePath : null;
-    Path targetResourcePath = Paths.get(target + RESOURCE);
-
-    Path sourceModsPath = Paths.get(sourcePath + MODS);
-    sourceModsPath = Files.exists(sourceModsPath) ? sourceModsPath : null;
-    Path targetModsPath = Paths.get(target + MODS);
-
-    switch (operation) {
-      case DELETE:
-        {
-          try {
-            Files.deleteIfExists(sourcePath);
-            if (null != sourceResourcePath) {
-              Files.deleteIfExists(sourceResourcePath);
-            }
-            if (null != sourceModsPath) {
-              Files.deleteIfExists(sourceModsPath);
-            }
-          } catch (Exception e) {
-            ioTPrinter.println(String.format("Failed to delete file: %s", e.getMessage()));
-          }
-          break;
-        }
-      case CP:
-        {
-          try {
-            Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            if (null != sourceResourcePath) {
-              Files.copy(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            if (null != sourceModsPath) {
-              Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-          } catch (Exception e) {
-            ioTPrinter.println(String.format("Failed to copy file: %s", e.getMessage()));
-          }
-          break;
-        }
-      case HARDLINK:
-        {
-          try {
-            Files.createLink(targetPath, sourcePath);
-          } catch (FileAlreadyExistsException e) {
-            ioTPrinter.println("Hardlink already exists: " + e.getMessage());
-          } catch (Exception e) {
-            try {
-              Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            } catch (Exception copyException) {
-              ioTPrinter.println(
-                  String.format("Failed to copy file: %s", copyException.getMessage()));
-            }
-          }
-
-          try {
-            if (null != sourceResourcePath) {
-              Files.copy(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            if (null != sourceModsPath) {
-              Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-          } catch (Exception e) {
-            ioTPrinter.println(
-                String.format("Failed to copy resource or mods file: %s", e.getMessage()));
-          }
-          break;
-        }
-      case MV:
-        {
-          try {
-            Files.move(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            if (null != sourceResourcePath) {
-              Files.move(
-                  sourceResourcePath, targetResourcePath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            if (null != sourceModsPath) {
-              Files.move(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-          } catch (Exception e) {
-            ioTPrinter.println(String.format("Failed to move file: %s", e.getMessage()));
-          }
-          break;
-        }
-      default:
-        break;
-    }
   }
 
   public enum Operation {
