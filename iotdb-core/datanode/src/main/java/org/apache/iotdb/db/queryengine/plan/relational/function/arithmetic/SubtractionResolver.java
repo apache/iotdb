@@ -16,9 +16,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic;
 
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -63,9 +65,9 @@ public class SubtractionResolver {
     CONDITION_MAP.computeIfAbsent(condition1, k -> new HashMap<>()).put(condition2, result);
   }
 
-  public static Type checkConditions(List<? extends Type> argumentTypes) {
-    return CONDITION_MAP
-        .getOrDefault(argumentTypes.get(0), new HashMap<>())
-        .getOrDefault(argumentTypes.get(1), null);
+  public static Optional<Type> checkConditions(List<? extends Type> argumentTypes) {
+    return Optional.ofNullable(CONDITION_MAP
+            .getOrDefault(argumentTypes.get(0), Collections.emptyMap())
+            .getOrDefault(argumentTypes.get(1), null));
   }
 }

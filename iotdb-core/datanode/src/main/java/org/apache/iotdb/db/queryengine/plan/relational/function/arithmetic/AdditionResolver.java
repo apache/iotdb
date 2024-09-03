@@ -16,9 +16,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic;
 
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -68,8 +70,8 @@ public class AdditionResolver {
   }
 
   public static Optional<Type> checkConditions(List<? extends Type> argumentTypes) {
-    return CONDITION_MAP
-        .getOrDefault(argumentTypes.get(0), Collections.empty_map())
-        .getOrDefault(argumentTypes.get(1), null);
+    return Optional.ofNullable(CONDITION_MAP
+            .getOrDefault(argumentTypes.get(0), Collections.emptyMap())
+            .getOrDefault(argumentTypes.get(1), null));
   }
 }

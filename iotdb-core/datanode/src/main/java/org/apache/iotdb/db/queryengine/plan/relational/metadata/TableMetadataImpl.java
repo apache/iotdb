@@ -111,49 +111,49 @@ public class TableMetadataImpl implements Metadata {
     switch (operatorType) {
       case ADD:
         if (!isTwoTypeCalculable(argumentTypes)
-            || !AdditionResolver.checkConditions(argumentTypes).isPresent()) {
+            || AdditionResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return AdditionResolver.checkConditions(argumentTypes);
+        return AdditionResolver.checkConditions(argumentTypes).get();
       case SUBTRACT:
         if (!isTwoTypeCalculable(argumentTypes)
-            || SubtractionResolver.checkConditions(argumentTypes) == null) {
+            || !SubtractionResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return SubtractionResolver.checkConditions(argumentTypes);
+        return SubtractionResolver.checkConditions(argumentTypes).get();
       case MULTIPLY:
         if (!isTwoTypeCalculable(argumentTypes)
-            || MultiplicationResolver.checkConditions(argumentTypes) == null) {
+            || !MultiplicationResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return MultiplicationResolver.checkConditions(argumentTypes);
+        return MultiplicationResolver.checkConditions(argumentTypes).get();
       case DIVIDE:
         if (!isTwoTypeCalculable(argumentTypes)
-            || DivisionResolver.checkConditions(argumentTypes) == null) {
+            || !DivisionResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return DivisionResolver.checkConditions(argumentTypes);
+        return DivisionResolver.checkConditions(argumentTypes).get();
       case MODULUS:
         if (!isTwoTypeCalculable(argumentTypes)
-            || ModulusResolver.checkConditions(argumentTypes) == null) {
+            || !ModulusResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return ModulusResolver.checkConditions(argumentTypes);
+        return ModulusResolver.checkConditions(argumentTypes).get();
       case NEGATION:
         if (!isOneNumericType(argumentTypes) && !isTimestampType(argumentTypes.get(0))) {
           throw new OperatorNotFoundException(
