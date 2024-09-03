@@ -55,8 +55,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.ToIntFunction;
 
 /**
- * The {@link TableDeviceSchemaCache} caches some of the devices and their attributes of tables.
- * Here are its semantics:
+ * The {@link TableDeviceSchemaCache} caches some of the devices and their: attributes of tables /
+ * measurement info / template info. The last value of one device is also cached here. Here are the
+ * semantics of attributes, other semantics are omitted:
  *
  * <p>1. If a deviceId misses cache, it does not necessarily mean that the device does not exist,
  * Since the cache records only part of the devices.
