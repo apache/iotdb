@@ -418,6 +418,46 @@ public class IoTDBScalarFunctionTableIT {
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"s3", "s7"};
+    expectedAns =
+        new String[] {
+          "1,2021-10-01,",
+        };
+
+    tableResultSetEqualTest(
+        "select s3, s7 from absTable where s7 in (CAST('2021-10-01' AS DATE), CAST('2021-10-02' AS DATE))",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTimestampCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s2", "s8"};
+    String[] expectedAns =
+        new String[] {
+          "1,2021-10-01T00:00:00.000Z,",
+        };
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8 IN (CAST('2021-10-01T08:00:00.000+08:00' AS TIMESTAMP), CAST('2021-10-01T00:00:00.000Z' AS TIMESTAMP))",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8=CAST('2021-10-01T08:00:00.000+08:00' AS TIMESTAMP)",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8=2021-10-01T08:00:00.000+08:00",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
   }
 
   @Test

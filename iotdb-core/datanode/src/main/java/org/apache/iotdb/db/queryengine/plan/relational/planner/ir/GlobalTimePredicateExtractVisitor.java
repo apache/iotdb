@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.expression.UnknownExpressionTypeException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -50,7 +51,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExp
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression.Operator.OR;
 
 public class GlobalTimePredicateExtractVisitor
-    extends IrVisitor<Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {
+    extends AstVisitor<Pair<Expression, Boolean>, GlobalTimePredicateExtractVisitor.Context> {
 
   private static final String NOT_SUPPORTED =
       "visit() not implemented for %s in GlobalTimePredicateExtract.";
