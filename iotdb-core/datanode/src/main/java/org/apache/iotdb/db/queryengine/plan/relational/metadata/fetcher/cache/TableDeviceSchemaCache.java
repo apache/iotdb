@@ -171,19 +171,19 @@ public class TableDeviceSchemaCache {
    *
    * <p>Note: The query shall put the cache twice:
    *
-   * <p>- First time put the {@code null} {@link TimeValuePair}s, and set the "createIfNotExists" to
-   * {@code true}. It does not indicate that the measurements are all {@code null}s, just allow the
-   * writing to update the cache, to avoid that the query put a stale value to cache and break the
-   * consistency. WARNING: The writing may temporarily put a stale value in cache if a stale value
-   * is written, but it won't affect the eventual consistency.
+   * <p>- First time put the {@link TimeValuePair} array as {@code null} . It does not indicate that
+   * the measurements are all {@code null}s, just to allow the writing to update the cache, then
+   * avoid that the query put a stale value to cache and break the consistency. WARNING: The writing
+   * may temporarily put a stale value in cache if a stale value is written, but it won't affect the
+   * eventual consistency.
    *
-   * <p>- Second time put the fetched {@link TimeValuePair}s, and set the "createIfNotExists" to
-   * {@code false}. The input {@link TimeValuePair}s shall never be or contain {@code null}, if a
-   * measurement is with all {@code null}s, its timeValuePair shall be {@link
-   * TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. For time column, the input measurement shall be
-   * "", and the value shall be {@link TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time
-   * column is not explicitly specified, the device's last time won't be updated because we cannot
-   * guarantee the completeness of the existing measurements in cache.
+   * <p>- Second time put the fetched {@link TimeValuePair}s. The input {@link TimeValuePair}s shall
+   * never be or contain {@code null}, if a measurement is with all {@code null}s, its timeValuePair
+   * shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. For time column, the input
+   * measurement shall be "", and the value shall be {@link
+   * TableDeviceLastCache#EMPTY_PRIMITIVE_TYPE}. If the time column is not explicitly specified, the
+   * device's last time won't be updated because we cannot guarantee the completeness of the
+   * existing measurements in cache.
    *
    * @param database the device's database, without "root"
    * @param deviceId IDeviceID
@@ -194,8 +194,7 @@ public class TableDeviceSchemaCache {
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
-      final boolean createIfNotExists) {
+      final TimeValuePair[] timeValuePairs) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
@@ -205,7 +204,7 @@ public class TableDeviceSchemaCache {
           entry ->
               entry.updateLastCache(
                   database, deviceId.getTableName(), measurements, timeValuePairs, true),
-          createIfNotExists);
+          Objects.isNull(timeValuePairs));
     } finally {
       readWriteLock.readLock().unlock();
     }
