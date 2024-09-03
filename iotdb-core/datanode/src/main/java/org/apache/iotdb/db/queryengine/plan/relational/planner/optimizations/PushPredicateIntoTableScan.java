@@ -20,6 +20,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MultiChildProcessNode;
@@ -56,6 +57,9 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.MEASUREMENT;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 
@@ -274,10 +278,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getIdAndAttributeIndexMap().put(columnName, attributeIndex++);
         }
       }
+
+      long startTime = System.nanoTime();
       List<DeviceEntry> deviceEntries =
           metadata.indexScan(
               node.getQualifiedObjectName(), metadataExpressions, attributeColumns, queryContext);
       node.setDeviceEntries(deviceEntries);
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TABLE_TYPE, SCHEMA_FETCHER, System.nanoTime() - startTime);
 
       if (deviceEntries.isEmpty()) {
         analysis.setFinishQueryAfterAnalyze();
@@ -289,6 +297,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 .orElse(null);
         node.setTimeFilter(timeFilter);
         String treeModelDatabase = "root." + node.getQualifiedObjectName().getDatabaseName();
+
+        startTime = System.nanoTime();
         DataPartition dataPartition =
             fetchDataPartitionByDevices(treeModelDatabase, deviceEntries, timeFilter);
 
@@ -303,6 +313,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         } else {
           analysis.upsertDataPartition(dataPartition);
         }
+
+        QueryPlanCostMetricSet.getInstance()
+            .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
       }
     }
 

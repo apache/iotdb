@@ -46,7 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.RelationalModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -291,8 +291,8 @@ public class Coordinator {
     queryContext.setTableQuery(true);
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
-    RelationalModelPlanner relationalModelPlanner =
-        new RelationalModelPlanner(
+    TableModelPlanner tableModelPlanner =
+        new TableModelPlanner(
             statement.toRelationalStatement(queryContext),
             sqlParser,
             metadata,
@@ -301,7 +301,7 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
-    return new QueryExecution(relationalModelPlanner, queryContext, executor);
+    return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
@@ -340,8 +340,8 @@ public class Coordinator {
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    RelationalModelPlanner relationalModelPlanner =
-        new RelationalModelPlanner(
+    TableModelPlanner tableModelPlanner =
+        new TableModelPlanner(
             statement,
             sqlParser,
             metadata,
@@ -350,7 +350,7 @@ public class Coordinator {
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
-    return new QueryExecution(relationalModelPlanner, queryContext, executor);
+    return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {
