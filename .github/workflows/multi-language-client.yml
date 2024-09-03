@@ -99,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cpp-IT-${{ runner.os }}
-          path: iotdb-client/client-cpp/target/build/test/Testing
+          path: distribution/target/apache-iotdb-1.4.0-SNAPSHOT-all-bin/apache-iotdb-1.4.0-SNAPSHOT-all-bin/logs
           retention-days: 1
 
   go:
