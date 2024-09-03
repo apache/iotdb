@@ -408,32 +408,6 @@ public class TreeDeviceSchemaCacheManager {
         database, deviceID, measurements, timeValuePairs, isAligned, measurementSchemas, false);
   }
 
-  public void updateLastCache(
-      String database,
-      PartialPath devicePath,
-      String[] measurements,
-      MeasurementSchema[] measurementSchemas,
-      boolean isAligned,
-      IntFunction<TimeValuePair> timeValuePairProvider,
-      IntPredicate shouldUpdateProvider,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    // Deprecated
-  }
-
-  public void updateLastCacheWithoutLock(
-      String database,
-      PartialPath devicePath,
-      String[] measurements,
-      MeasurementSchema[] measurementSchemas,
-      boolean isAligned,
-      IntFunction<TimeValuePair> timeValuePairProvider,
-      IntPredicate shouldUpdateProvider,
-      boolean highPriorityUpdate,
-      Long latestFlushedTime) {
-    // Deprecated
-  }
-
   /**
    * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
    * aligned sensor without only one sub sensor
