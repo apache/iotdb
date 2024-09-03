@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
@@ -110,7 +111,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocateWithRetry(tablet);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
     return true;
   }
 

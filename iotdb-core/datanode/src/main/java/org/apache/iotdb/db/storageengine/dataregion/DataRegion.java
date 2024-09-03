@@ -544,12 +544,24 @@ public class DataRegion implements IDataRegionForQuery {
                   latestPartitionId,
                   ((TreeMap<Long, List<TsFileResource>>) partitionTmpUnseqTsFiles).lastKey());
         }
+        File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, "FileTimeIndexCache_0");
+        Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
+        if (logFile.exists()) {
+          try {
+            FileTimeIndexCacheReader logReader =
+                new FileTimeIndexCacheReader(logFile, dataRegionId);
+            logReader.read(fileTimeIndexMap);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        }
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           Callable<Void> asyncRecoverTask =
               recoverFilesInPartition(
                   partitionFiles.getKey(),
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
+                  fileTimeIndexMap,
                   true);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
@@ -562,6 +574,7 @@ public class DataRegion implements IDataRegionForQuery {
                   partitionFiles.getKey(),
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
+                  fileTimeIndexMap,
                   false);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
@@ -868,45 +881,29 @@ public class DataRegion implements IDataRegionForQuery {
       long partitionId,
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
+      Map<TsFileID, FileTimeIndex> fileTimeIndexMap,
       boolean isSeq) {
-
-    File partitionSysDir =
-        SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
-    File logFile = SystemFileFactory.INSTANCE.getFile(partitionSysDir, "FileTimeIndexCache_0");
-    if (logFile.exists()) {
-      Map<TsFileID, FileTimeIndex> fileTimeIndexMap;
-      try {
-        FileTimeIndexCacheReader logReader =
-            new FileTimeIndexCacheReader(logFile, dataRegionId, partitionId);
-        fileTimeIndexMap = logReader.read();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+    List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
+    List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
+    Callable<Void> asyncRecoverTask = null;
+    for (TsFileResource tsFileResource : resourceList) {
+      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
+        tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
+        tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+        tsFileManager.add(tsFileResource, isSeq);
+        resourceListForAsyncRecover.add(tsFileResource);
+      } else {
+        resourceListForSyncRecover.add(tsFileResource);
       }
-      List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
-      List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
-      Callable<Void> asyncRecoverTask = null;
-      for (TsFileResource tsFileResource : resourceList) {
-        if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
-          tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
-          tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-          tsFileManager.add(tsFileResource, isSeq);
-          resourceListForAsyncRecover.add(tsFileResource);
-        } else {
-          resourceListForSyncRecover.add(tsFileResource);
-        }
-      }
-      if (!resourceListForAsyncRecover.isEmpty()) {
-        asyncRecoverTask =
-            asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover, isSeq);
-      }
-      if (!resourceListForSyncRecover.isEmpty()) {
-        syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);
-      }
-      return asyncRecoverTask;
-    } else {
-      syncRecoverFilesInPartition(partitionId, context, resourceList, isSeq);
-      return null;
     }
+    if (!resourceListForAsyncRecover.isEmpty()) {
+      asyncRecoverTask =
+          asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover, isSeq);
+    }
+    if (!resourceListForSyncRecover.isEmpty()) {
+      syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);
+    }
+    return asyncRecoverTask;
   }
 
   private Callable<Void> asyncRecoverFilesInPartition(
@@ -3842,9 +3839,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void compactFileTimeIndexCache() {
-    for (long timePartition : partitionMaxFileVersions.keySet()) {
-      tsFileManager.compactFileTimeIndexCache(timePartition);
-    }
+    tsFileManager.compactFileTimeIndexCache();
   }
 
   @TestOnly

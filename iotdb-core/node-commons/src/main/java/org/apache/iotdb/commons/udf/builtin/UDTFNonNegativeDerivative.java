@@ -55,6 +55,12 @@ public class UDTFNonNegativeDerivative extends UDTFDerivative {
         collector.putDouble(currentTime, Math.abs(currentDouble - previousDouble) / timeDelta);
         previousDouble = currentDouble;
         break;
+      case DATE:
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case BOOLEAN:
+      case TEXT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
