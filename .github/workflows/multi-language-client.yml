@@ -4,7 +4,6 @@ on:
     branches:
       - master
       - "rc/*"
-      - HTHou-patch-2
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'
@@ -57,6 +56,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install libboost-all-dev
       - name: Install CPP Dependencies (Mac)
+        # remove some xcode to release disk space
         if: runner.os == 'macOS'
         shell: bash
         run: |
