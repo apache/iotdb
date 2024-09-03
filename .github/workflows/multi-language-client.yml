@@ -4,6 +4,7 @@ on:
     branches:
       - master
       - "rc/*"
+      - HTHou-patch-2
     paths:
       - 'pom.xml'
       - 'iotdb-client/pom.xml'
