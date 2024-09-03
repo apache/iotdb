@@ -893,7 +893,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     TreeDeviceSchemaCacheManager.getInstance()
         .updateLastCache(
             databaseName,
-            devicePath.getNodes()[1],
             getDeviceID(),
             rawMeasurements,
             timeValuePairs,
