@@ -204,10 +204,20 @@ public class TreeDeviceSchemaCacheManagerTest {
     final MeasurementSchema s3 = new MeasurementSchema("s3", TSDataType.INT32);
 
     final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
+
+    treeDeviceSchemaCacheManager.updateLastCache(
+        database, new MeasurementPath(device.concatNode("s1"), s1), null);
+    treeDeviceSchemaCacheManager.updateLastCache(
+        database, new MeasurementPath(device.concatNode("s3"), s3), null);
+
     treeDeviceSchemaCacheManager.updateLastCache(
         database, new MeasurementPath(device.concatNode("s1"), s1), tv1);
     treeDeviceSchemaCacheManager.updateLastCache(
         database, new MeasurementPath(device.concatNode("s3"), s3), tv1);
+
+    // "s2" shall be null since the "null" timeValuePair has not been put
+    treeDeviceSchemaCacheManager.updateLastCache(
+        database, new MeasurementPath(device.concatNode("s2"), s1), tv1);
 
     Assert.assertNotNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));

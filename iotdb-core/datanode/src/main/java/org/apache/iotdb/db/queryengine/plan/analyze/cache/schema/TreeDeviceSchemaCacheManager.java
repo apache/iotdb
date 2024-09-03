@@ -369,7 +369,7 @@ public class TreeDeviceSchemaCacheManager {
 
   public TimeValuePair getLastCache(final MeasurementPath seriesPath) {
     return tableDeviceSchemaCache.getLastEntry(
-        seriesPath.getNodes()[1], seriesPath.getIDeviceID(), seriesPath.getMeasurement());
+        null, seriesPath.getIDeviceID(), seriesPath.getMeasurement());
   }
 
   public void invalidateLastCache(final MeasurementPath path) {
