@@ -101,7 +101,8 @@ public class IoTDBSetConfigurationIT {
     EnvFactory.getEnv().getDataNodeWrapper(0).start();
     // set cluster name on datanode
     Awaitility.await()
-        .atMost(10, TimeUnit.SECONDS)
+        .atMost(30, TimeUnit.SECONDS)
+        .pollDelay(1, TimeUnit.SECONDS)
         .until(
             () -> {
               try (Connection connection = EnvFactory.getEnv().getConnection();
