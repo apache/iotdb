@@ -72,6 +72,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // May be updated after it is flushed. Should be negative if not set.
   private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
+  // This variable is used to track resource upon the first increase in reference count.
+  // This variable is not thread-safe.
+  private boolean refTracked = false;
+
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
       final boolean isLoaded,
@@ -153,12 +157,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     // If the status is "closed", then the resource status is "closed", the tsFile won't be altered
     // and can be sent.
     isClosed.set(resource.isClosed());
-
-    PipeDataNodeResourceManager.ref()
-        .trackPipeTsFileInsertionEventResources(
-            this,
-            new PipeTsFileInsertionEventResource(
-                this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile));
   }
 
   /**
@@ -243,6 +241,20 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
+
+      if (!refTracked) {
+        PipeDataNodeResourceManager.ref()
+            .trackPipeTsFileInsertionEventResource(
+                this,
+                new PipeTsFileInsertionEventResource(
+                    this.isReleased,
+                    this.referenceCount,
+                    this.tsFile,
+                    this.isWithMod,
+                    this.modFile));
+        refTracked = true;
+      }
+
       return true;
     } catch (final Exception e) {
       LOGGER.warn(

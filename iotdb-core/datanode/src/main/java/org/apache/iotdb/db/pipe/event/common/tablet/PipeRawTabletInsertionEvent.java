@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeRawTabletInsertionEventResource;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -51,6 +52,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private TabletInsertionDataContainer dataContainer;
 
   private ProgressIndex overridingProgressIndex;
+
+  // This variable is used to track resource upon the first increase in reference count.
+  // This variable is not thread-safe.
+  private boolean refTracked = false;
 
   private PipeRawTabletInsertionEvent(
       final Tablet tablet,
@@ -111,6 +116,16 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocateWithRetry(tablet);
+
+    if (!refTracked) {
+      PipeDataNodeResourceManager.ref()
+          .trackPipeRawTabletInsertionEventResource(
+              this,
+              new PipeRawTabletInsertionEventResource(
+                  this.isReleased, this.referenceCount, this.allocatedMemoryBlock));
+      refTracked = true;
+    }
+
     return true;
   }
 

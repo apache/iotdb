@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeInsertNodeTabletInsertionEventResource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -65,6 +66,10 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final PartialPath devicePath;
 
   private ProgressIndex progressIndex;
+
+  // This variable is used to track resource upon the first increase in reference count.
+  // This variable is not thread-safe.
+  private boolean refTracked = false;
 
   public PipeInsertNodeTabletInsertionEvent(
       final WALEntryHandler walEntryHandler,
@@ -133,6 +138,16 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
+
+      if (!refTracked) {
+        PipeDataNodeResourceManager.ref()
+            .trackPipeInsertNodeTabletInsertionEventResource(
+                this,
+                new PipeInsertNodeTabletInsertionEventResource(
+                    this.isReleased, this.referenceCount, this.walEntryHandler));
+        refTracked = true;
+      }
+
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
