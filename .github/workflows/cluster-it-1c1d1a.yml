@@ -39,6 +39,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
+      - uses: actions/checkout@v4
       - name: build AINode
         shell: bash
         run: mvn clean package -DskipTests -P with-ainode
