@@ -21,38 +21,41 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import java.util.Objects;
 
 public class TableId {
 
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(TableId.class);
 
-  // In tree model: node[1], like root.db.device.measurement -> db
+  // In tree model: null
   // In table model: real database
-  private final String prefix;
+  private final String database;
 
   private final String tableName;
 
-  public TableId(final String prefix, final String tableName) {
-    this.prefix = prefix;
+  public TableId(final @Nullable String database, final @Nonnull String tableName) {
+    this.database = database;
     this.tableName = tableName;
   }
 
-  public String getPrefix() {
-    return prefix;
+  public String getDatabase() {
+    return database;
   }
 
   public String getTableName() {
     return tableName;
   }
 
-  public boolean belongTo(final String prefix) {
-    return Objects.equals(this.prefix, prefix);
+  public boolean belongTo(final String database) {
+    return Objects.equals(this.database, database);
   }
 
   public int estimateSize() {
     // The size of table name has been computed in deviceID
-    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(prefix));
+    return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(database));
   }
 
   @Override
@@ -64,11 +67,12 @@ public class TableId {
       return false;
     }
     final TableId tableId = (TableId) o;
-    return Objects.equals(prefix, tableId.prefix) && Objects.equals(tableName, tableId.tableName);
+    return Objects.equals(database, tableId.database)
+        && Objects.equals(tableName, tableId.tableName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(prefix, tableName);
+    return Objects.hash(database, tableName);
   }
 }
