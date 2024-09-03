@@ -335,7 +335,7 @@ public class TableDeviceSchemaCache {
       final String database,
       final IDeviceID deviceID,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
+      final @Nullable TimeValuePair[] timeValuePairs,
       final boolean isAligned,
       final IMeasurementSchema[] measurementSchemas,
       final boolean isQuery) {
