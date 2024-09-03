@@ -242,6 +242,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
     }
     TableDeviceSchemaFetcher.getInstance()
         .getTableDeviceCache()
-        .updateLastCache(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
+        .mayUpdateLastCacheWithoutLock(
+            databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
   }
 }
