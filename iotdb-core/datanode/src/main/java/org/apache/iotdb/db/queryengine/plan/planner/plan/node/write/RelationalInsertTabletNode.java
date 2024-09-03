@@ -273,7 +273,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       }
       TableDeviceSchemaFetcher.getInstance()
           .getTableDeviceCache()
-          .mayUpdateLastCacheWithoutLock(databaseName, deviceID, rawMeasurements, timeValuePairs);
+          .updateLastCacheIfExists(databaseName, deviceID, rawMeasurements, timeValuePairs);
 
       startOffset = endOffset;
     }

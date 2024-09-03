@@ -1278,7 +1278,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
       timeValuePairs[i] = composeLastTimeValuePair(i);
     }
     TreeDeviceSchemaCacheManager.getInstance()
-        .updateLastCache(
+        .updateLastCacheIfExists(
             databaseName,
             getDeviceID(),
             rawMeasurements,

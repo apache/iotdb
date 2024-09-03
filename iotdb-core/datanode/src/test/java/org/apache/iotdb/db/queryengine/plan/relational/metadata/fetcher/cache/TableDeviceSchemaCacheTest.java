@@ -199,7 +199,7 @@ public class TableDeviceSchemaCacheTest {
     // Write update existing
     final TimeValuePair tv3 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(3));
 
-    cache.mayUpdateLastCacheWithoutLock(
+    cache.updateLastCacheIfExists(
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0", "s1", "s2", "s3"},
@@ -390,9 +390,9 @@ public class TableDeviceSchemaCacheTest {
     // Test disable put cache by writing
     final TableDeviceSchemaCache cache = new TableDeviceSchemaCache();
 
-    cache.mayUpdateLastCacheWithoutLock(
+    cache.updateLastCacheIfExists(
         database, convertIdValuesToDeviceID(table2, device0), testMeasurements, testTimeValuePairs);
-    cache.mayUpdateLastCacheWithoutLock(
+    cache.updateLastCacheIfExists(
         database2,
         convertIdValuesToDeviceID(table1, device0),
         testMeasurements,
@@ -408,7 +408,7 @@ public class TableDeviceSchemaCacheTest {
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0"},
         new TimeValuePair[] {new TimeValuePair(0L, new TsPrimitiveType.TsInt(2))});
-    cache.mayUpdateLastCacheWithoutLock(
+    cache.updateLastCacheIfExists(
         database, convertIdValuesToDeviceID(table1, device0), testMeasurements, testTimeValuePairs);
 
     Assert.assertEquals(

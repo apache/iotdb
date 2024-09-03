@@ -891,7 +891,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
       timeValuePairs[i] = composeTimeValuePair(i);
     }
     TreeDeviceSchemaCacheManager.getInstance()
-        .updateLastCache(
+        .updateLastCacheIfExists(
             databaseName,
             getDeviceID(),
             rawMeasurements,

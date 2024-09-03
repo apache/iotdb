@@ -51,8 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.IntFunction;
-import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -397,7 +395,7 @@ public class TreeDeviceSchemaCacheManager {
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
-  public void updateLastCache(
+  public void updateLastCacheIfExists(
       final String database,
       final IDeviceID deviceID,
       final String[] measurements,

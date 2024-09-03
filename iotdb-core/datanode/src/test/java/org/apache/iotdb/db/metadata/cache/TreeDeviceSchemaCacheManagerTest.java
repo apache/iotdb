@@ -218,7 +218,7 @@ public class TreeDeviceSchemaCacheManagerTest {
 
     final MeasurementSchema[] measurementSchemas = new MeasurementSchema[] {s1, s2, s3};
 
-    treeDeviceSchemaCacheManager.updateLastCache(
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
         database,
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),

@@ -214,7 +214,7 @@ public class TableDeviceSchemaCache {
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
-  public void mayUpdateLastCacheWithoutLock(
+  public void updateLastCacheIfExists(
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
