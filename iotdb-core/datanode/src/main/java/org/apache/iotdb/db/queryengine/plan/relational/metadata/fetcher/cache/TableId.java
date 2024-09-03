@@ -26,7 +26,7 @@ import javax.annotation.Nullable;
 
 import java.util.Objects;
 
-public class TableId {
+class TableId {
 
   private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(TableId.class);
 
@@ -36,24 +36,24 @@ public class TableId {
 
   private final String tableName;
 
-  public TableId(final @Nullable String database, final @Nonnull String tableName) {
+  TableId(final @Nullable String database, final @Nonnull String tableName) {
     this.database = database;
     this.tableName = tableName;
   }
 
-  public String getDatabase() {
+  String getDatabase() {
     return database;
   }
 
-  public String getTableName() {
+  String getTableName() {
     return tableName;
   }
 
-  public boolean belongTo(final String database) {
+  boolean belongTo(final String database) {
     return Objects.equals(this.database, database);
   }
 
-  public int estimateSize() {
+  int estimateSize() {
     // The size of table name has been computed in deviceID
     return (int) (INSTANCE_SIZE + RamUsageEstimator.sizeOf(database));
   }

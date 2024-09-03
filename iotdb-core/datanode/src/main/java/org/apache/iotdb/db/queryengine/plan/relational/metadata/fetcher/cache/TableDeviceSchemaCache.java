@@ -80,7 +80,7 @@ public class TableDeviceSchemaCache {
   /**
    * In table model: {@literal <}QualifiedObjectName, IDeviceID, lastCache / attributes{@literal >}
    *
-   * <p>In tree model: {@literal <}Pair{@literal <}node[1], tableName(translated){@literal >},
+   * <p>In tree model: {@literal <}Pair{@literal <}null, tableName(translated){@literal >},
    * IDeviceID(translated), Map{@literal <}Measurement, Schema{@literal >}/templateInfo{@literal >}
    */
   private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
