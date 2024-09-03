@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -1130,23 +1131,24 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return visitor.visitInsertTablet(this, context);
   }
 
-  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+  public TimeValuePair composeLastTimeValuePair(
+      int measurementIndex, int startOffset, int endOffset) {
     if (measurementIndex >= columns.length) {
       return null;
     }
 
     // get non-null value
-    int lastIdx = rowCount - 1;
+    int lastIdx = Math.min(endOffset - 1, rowCount - 1);
     if (bitMaps != null && bitMaps[measurementIndex] != null) {
       BitMap bitMap = bitMaps[measurementIndex];
-      while (lastIdx >= 0) {
+      while (lastIdx >= startOffset) {
         if (!bitMap.isMarked(lastIdx)) {
           break;
         }
         lastIdx--;
       }
     }
-    if (lastIdx < 0) {
+    if (lastIdx < startOffset) {
       return null;
     }
 
@@ -1185,6 +1187,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
     return new TimeValuePair(times[lastIdx], value);
+  }
+
+  public TimeValuePair composeLastTimeValuePair(int measurementIndex) {
+    return composeLastTimeValuePair(measurementIndex, 0, rowCount);
   }
 
   public IDeviceID getDeviceID(int rowIdx) {
@@ -1263,5 +1269,22 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           getTimes()[getTimes().length - 1], (CommonDateTimeUtils.currentTime() - ttl));
     }
     return firstAliveLoc;
+  }
+
+  public void updateLastCache(String databaseName) {
+    String[] rawMeasurements = getRawMeasurements();
+    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+    for (int i = 0; i < rawMeasurements.length; i++) {
+      timeValuePairs[i] = composeLastTimeValuePair(i);
+    }
+    TreeDeviceSchemaCacheManager.getInstance()
+        .updateLastCache(
+            databaseName,
+            devicePath.getNodes()[1],
+            getDeviceID(),
+            rawMeasurements,
+            timeValuePairs,
+            isAligned,
+            measurementSchemas);
   }
 }

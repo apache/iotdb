@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -135,7 +134,6 @@ import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.FSUtils;
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1349,32 +1347,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertTabletLastCache(InsertTabletNode node) {
-    long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
-        // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
-      }
-    }
-    TreeDeviceSchemaCacheManager.getInstance()
-        .updateLastCache(
-            getDatabaseName(),
-            node.getDevicePath(),
-            rawMeasurements,
-            node.getMeasurementSchemas(),
-            node.isAligned(),
-            node::composeLastTimeValuePair,
-            index ->
-                node.getColumns()[index] != null
-                    && (node.getColumnCategories() == null
-                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
-            true,
-            latestFlushedTime);
+    node.updateLastCache(getDatabaseName());
   }
 
   private TsFileProcessor insertToTsFileProcessor(
@@ -1394,32 +1367,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowLastCache(InsertRowNode node) {
-    long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-    String[] measurements = node.getMeasurements();
-    MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-    String[] rawMeasurements = new String[measurements.length];
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurementSchemas[i] != null) {
-        // get raw measurement rather than alias
-        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-      } else {
-        rawMeasurements[i] = measurements[i];
-      }
-    }
-    TreeDeviceSchemaCacheManager.getInstance()
-        .updateLastCache(
-            getDatabaseName(),
-            node.getDevicePath(),
-            rawMeasurements,
-            node.getMeasurementSchemas(),
-            node.isAligned(),
-            node::composeTimeValuePair,
-            index ->
-                node.getValues()[index] != null
-                    && (node.getColumnCategories() == null
-                        || node.getColumnCategories()[index] == TsTableColumnCategory.MEASUREMENT),
-            true,
-            latestFlushedTime);
+    node.updateLastCache(databaseName);
   }
 
   private List<InsertRowNode> insertToTsFileProcessors(
@@ -1486,35 +1434,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void tryToUpdateInsertRowsLastCache(List<InsertRowNode> nodeList) {
-    TreeDeviceSchemaCacheManager.getInstance().takeReadLock();
-    try {
-      for (InsertRowNode node : nodeList) {
-        long latestFlushedTime = lastFlushTimeMap.getGlobalFlushedTime(node.getDeviceID());
-        String[] measurements = node.getMeasurements();
-        MeasurementSchema[] measurementSchemas = node.getMeasurementSchemas();
-        String[] rawMeasurements = new String[measurements.length];
-        for (int i = 0; i < measurements.length; i++) {
-          if (measurementSchemas[i] != null) {
-            // get raw measurement rather than alias
-            rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
-          } else {
-            rawMeasurements[i] = measurements[i];
-          }
-        }
-        TreeDeviceSchemaCacheManager.getInstance()
-            .updateLastCacheWithoutLock(
-                getDatabaseName(),
-                node.getDevicePath(),
-                rawMeasurements,
-                node.getMeasurementSchemas(),
-                node.isAligned(),
-                node::composeTimeValuePair,
-                index -> node.getValues()[index] != null,
-                true,
-                latestFlushedTime);
-      }
-    } finally {
-      TreeDeviceSchemaCacheManager.getInstance().releaseReadLock();
+    for (InsertRowNode node : nodeList) {
+      node.updateLastCache(databaseName);
     }
   }
 

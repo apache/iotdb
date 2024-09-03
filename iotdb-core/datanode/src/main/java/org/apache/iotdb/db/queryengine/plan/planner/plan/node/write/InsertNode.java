@@ -388,4 +388,19 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
   public List<PlanNode> getChildren() {
     return Collections.emptyList();
   }
+
+  public String[] getRawMeasurements() {
+    String[] measurements = getMeasurements();
+    MeasurementSchema[] measurementSchemas = getMeasurementSchemas();
+    String[] rawMeasurements = new String[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurementSchemas[i] != null) {
+        // get raw measurement rather than alias
+        rawMeasurements[i] = measurementSchemas[i].getMeasurementId();
+      } else {
+        rawMeasurements[i] = measurements[i];
+      }
+    }
+    return rawMeasurements;
+  }
 }

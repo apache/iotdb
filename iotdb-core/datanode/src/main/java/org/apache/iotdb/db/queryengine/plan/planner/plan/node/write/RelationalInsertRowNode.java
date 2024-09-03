@@ -26,11 +26,13 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDeviceP
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -229,5 +231,17 @@ public class RelationalInsertRowNode extends InsertRowNode {
 
   public String getTableName() {
     return devicePath.getFullPath();
+  }
+
+  @Override
+  public void updateLastCache(String databaseName) {
+    String[] rawMeasurements = getRawMeasurements();
+    TimeValuePair[] timeValuePairs = new TimeValuePair[rawMeasurements.length];
+    for (int i = 0; i < rawMeasurements.length; i++) {
+      timeValuePairs[i] = composeTimeValuePair(i);
+    }
+    TableDeviceSchemaFetcher.getInstance()
+        .getTableDeviceCache()
+        .updateLastCache(databaseName, getDeviceID(), rawMeasurements, timeValuePairs);
   }
 }
