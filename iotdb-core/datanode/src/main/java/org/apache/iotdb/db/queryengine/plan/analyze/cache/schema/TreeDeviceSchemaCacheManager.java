@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.IDeviceSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceNormalSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceTemplateSchema;
@@ -42,7 +43,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
-import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -407,18 +408,35 @@ public class TreeDeviceSchemaCacheManager {
   }
 
   /**
-   * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
-   * aligned sensor without only one sub sensor
+   * Update the last cache on query in tree model.
+   *
+   * <p>Note: The query shall put the cache twice:
+   *
+   * <p>- First time put the {@link TimeValuePair} as {@code null}. It does not indicate that the
+   * measurements are all {@code null}s, just to allow the writing to update the cache, then avoid
+   * that the query put a stale value to cache and break the consistency. WARNING: The writing may
+   * temporarily put a stale value in cache if a stale value is written, but it won't affect the
+   * eventual consistency.
+   *
+   * <p>- Second time put the fetched {@link TimeValuePair}. The input {@link TimeValuePair} shall
+   * never be or contain {@code null}, if the measurement is with all {@code null}s, its {@link
+   * TimeValuePair} shall be {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR}. This method is not
+   * supposed to update time column.
+   *
+   * @param database the device's database, without "root"
+   * @param measurementPath the fetched {@link MeasurementPath}
+   * @param timeValuePair {@code null} for the first fetch, the {@link TimeValuePair} with indexes
+   *     corresponding to the measurements for the second fetch.
    */
   public void updateLastCache(
       final String database,
       final MeasurementPath measurementPath,
-      final @Nonnull TimeValuePair timeValuePair) {
+      final @Nullable TimeValuePair timeValuePair) {
     tableDeviceSchemaCache.updateLastCache(
         database,
         measurementPath.getIDeviceID(),
         new String[] {measurementPath.getMeasurement()},
-        new TimeValuePair[] {timeValuePair},
+        Objects.nonNull(timeValuePair) ? new TimeValuePair[] {timeValuePair} : null,
         measurementPath.isUnderAlignedEntity(),
         new IMeasurementSchema[] {measurementPath.getMeasurementSchema()},
         true);
