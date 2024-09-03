@@ -28,6 +28,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.Collections;
@@ -147,7 +148,7 @@ public class TableDeviceCacheEntry {
       final String database,
       final String tableName,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
+      final @Nullable TimeValuePair[] timeValuePairs,
       final boolean isTableModel) {
     int result =
         lastCache.compareAndSet(null, new TableDeviceLastCache())

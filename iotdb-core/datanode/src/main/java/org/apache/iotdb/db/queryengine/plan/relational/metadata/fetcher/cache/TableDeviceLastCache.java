@@ -87,10 +87,10 @@ public class TableDeviceLastCache {
   private final Map<String, TimeValuePair> measurement2CachedLastMap = new ConcurrentHashMap<>();
 
   int update(
-      final @Nonnull String database,
-      final @Nonnull String tableName,
+      final String database,
+      final String tableName,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs,
+      final @Nullable TimeValuePair[] timeValuePairs,
       final boolean isTableModel) {
     final AtomicInteger diff = new AtomicInteger(0);
 
@@ -125,7 +125,8 @@ public class TableDeviceLastCache {
   }
 
   @GuardedBy("DataRegionInsertLock#writeLock")
-  int tryUpdate(final @Nonnull String[] measurements, final TimeValuePair[] timeValuePairs) {
+  int tryUpdate(
+      final @Nonnull String[] measurements, final @Nonnull TimeValuePair[] timeValuePairs) {
     final AtomicInteger diff = new AtomicInteger(0);
     long lastTime = Long.MIN_VALUE;
 

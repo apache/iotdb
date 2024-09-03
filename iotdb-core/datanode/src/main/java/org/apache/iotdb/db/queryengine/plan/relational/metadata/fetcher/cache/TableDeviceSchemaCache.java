@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.List;
@@ -194,7 +195,7 @@ public class TableDeviceSchemaCache {
       final String database,
       final IDeviceID deviceId,
       final String[] measurements,
-      final TimeValuePair[] timeValuePairs) {
+      final @Nullable TimeValuePair[] timeValuePairs) {
     readWriteLock.readLock().lock();
     try {
       dualKeyCache.update(
