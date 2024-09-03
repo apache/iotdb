@@ -21,6 +21,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import java.util.Objects;
 
 public class TableId {
@@ -33,7 +36,7 @@ public class TableId {
 
   private final String tableName;
 
-  public TableId(final String database, final String tableName) {
+  public TableId(final @Nullable String database, final @Nonnull String tableName) {
     this.database = database;
     this.tableName = tableName;
   }
