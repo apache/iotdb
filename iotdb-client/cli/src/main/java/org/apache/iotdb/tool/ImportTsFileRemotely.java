@@ -57,24 +57,60 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ImportTsFileRemotely {
+public class ImportTsFileRemotely extends AbstractTsFileProcessTool implements Runnable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ImportTsFileRemotely.class);
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+
+  private static final String MODS = ".mods";
+  private static final String LOAD_STRATEGY = "sync";
 
   private static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
   private IoTDBSyncClient client;
 
-  private static final String loadStrategy = "sync";
-  private final String host;
-  private final String port;
+  private static String host;
+  private static String port;
 
-  public ImportTsFileRemotely(final String host, final String port) {
-    this.host = host;
-    this.port = port;
+  public ImportTsFileRemotely() {
     initClientAndStatus();
+  }
+
+  @Override
+  public void run() {
+    try {
+      sendHandshake();
+      loadTsFile();
+    } catch (final Exception e) {
+      LOGGER.warn("Error occurred during transfer tsfile.", e);
+    }
+  }
+
+  @Override
+  public void loadTsFile() {
+    String filePath;
+    try {
+      while ((filePath = IoTDBTsFileScanAndProcessTool.getFilePath()) != null) {
+        final File tsFile = new File(filePath);
+
+        try {
+          if (IoTDBTsFileScanAndProcessTool.isContainModsFile(filePath + MODS)) {
+            doTransfer(tsFile, new File(filePath + MODS));
+          } else {
+            doTransfer(tsFile, null);
+          }
+
+          processSuccessFile(filePath);
+        } catch (final Exception e) {
+          processFailFile(filePath, e);
+        }
+      }
+    } catch (final Exception e) {
+      ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
+    } finally {
+      close();
+    }
   }
 
   public void sendHandshake() {
@@ -87,7 +123,7 @@ public class ImportTsFileRemotely {
       params.put(
           PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
           Boolean.toString(true));
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadStrategy);
+      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
 
       TPipeTransferResp resp =
           client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params));
@@ -128,35 +164,26 @@ public class ImportTsFileRemotely {
 
   public void doTransfer(final File tsFile, final File modFile) throws PipeException, IOException {
     final TPipeTransferResp resp;
+    final TPipeTransferReq req;
 
     if (Objects.nonNull(modFile)) {
       transferFilePieces(modFile, true);
       transferFilePieces(tsFile, true);
 
-      try {
-        final TPipeTransferReq req =
-            PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length());
-
-        resp = client.pipeTransfer(req);
-      } catch (final Exception e) {
-        throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
-            e);
-      }
+      req =
+          PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+              modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length());
     } else {
       transferFilePieces(tsFile, false);
 
-      try {
-        final TPipeTransferReq req =
-            PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+      req = PipeTransferTsFileSealReq.toTPipeTransferReq(tsFile.getName(), tsFile.length());
+    }
 
-        resp = client.pipeTransfer(req);
-      } catch (final Exception e) {
-        throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
-            e);
-      }
+    try {
+      resp = client.pipeTransfer(req);
+    } catch (final Exception e) {
+      throw new PipeConnectionException(
+          String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
     }
 
     final TSStatus status = resp.getStatus();
@@ -166,8 +193,8 @@ public class ImportTsFileRemotely {
         connector
             .statusHandler()
             .handle(
-                resp.getStatus(),
-                String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+                status,
+                String.format("Seal file %s error, result status %s.", tsFile, status),
                 tsFile.getName());
       }
     }
@@ -226,9 +253,8 @@ public class ImportTsFileRemotely {
             connector
                 .statusHandler()
                 .handle(
-                    resp.getStatus(),
-                    String.format(
-                        "Transfer file %s error, result status %s.", file, resp.getStatus()),
+                    status,
+                    String.format("Transfer file %s error, result status %s.", file, status),
                     file.getName());
           }
         }
@@ -271,8 +297,8 @@ public class ImportTsFileRemotely {
   }
 
   private String getClusterId() {
-    SecureRandom random = new SecureRandom();
-    byte[] bytes = new byte[32]; // 32 bytes = 256 bits
+    final SecureRandom random = new SecureRandom();
+    final byte[] bytes = new byte[32]; // 32 bytes = 256 bits
     random.nextBytes(bytes);
     return UUID.nameUUIDFromBytes(bytes).toString();
   }
@@ -283,5 +309,13 @@ public class ImportTsFileRemotely {
     } catch (final Exception e) {
       ioTPrinter.println("failed to close client because " + e.getMessage());
     }
+  }
+
+  public static void setHost(final String host) {
+    ImportTsFileRemotely.host = host;
+  }
+
+  public static void setPort(final String port) {
+    ImportTsFileRemotely.port = port;
   }
 }
