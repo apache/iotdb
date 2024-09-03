@@ -54,6 +54,12 @@ public class UDTFCommonValueDifference extends UDTFValueDifference {
         collector.putDouble(time, currentDouble - previousDouble);
         previousDouble = currentDouble;
         break;
+      case STRING:
+      case BLOB:
+      case TIMESTAMP:
+      case TEXT:
+      case BOOLEAN:
+      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
