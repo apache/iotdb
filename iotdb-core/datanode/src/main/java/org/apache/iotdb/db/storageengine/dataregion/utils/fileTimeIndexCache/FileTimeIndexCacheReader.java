@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.HashMap;
 import java.util.Map;
 
 import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.getFileTimeIndexSerializedSize;
@@ -44,21 +43,19 @@ public class FileTimeIndexCacheReader {
   private final File logFile;
   private final long fileLength;
   private final int dataRegionId;
-  private final long partitionId;
 
-  public FileTimeIndexCacheReader(File logFile, String dataRegionId, long partitionId) {
+  public FileTimeIndexCacheReader(File logFile, String dataRegionId) {
     this.logFile = logFile;
     this.fileLength = logFile.length();
     this.dataRegionId = Integer.parseInt(dataRegionId);
-    this.partitionId = partitionId;
   }
 
-  public Map<TsFileID, FileTimeIndex> read() throws IOException {
-    Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
+  public void read(Map<TsFileID, FileTimeIndex> fileTimeIndexMap) throws IOException {
     long readLength = 0L;
     try (DataInputStream logStream =
         new DataInputStream(new BufferedInputStream(Files.newInputStream(logFile.toPath())))) {
       while (readLength < fileLength) {
+        long partitionId = logStream.readLong();
         long timestamp = logStream.readLong();
         long fileVersion = logStream.readLong();
         long compactionVersion = logStream.readLong();
@@ -79,6 +76,5 @@ public class FileTimeIndexCacheReader {
         channel.truncate(readLength);
       }
     }
-    return fileTimeIndexMap;
   }
 }

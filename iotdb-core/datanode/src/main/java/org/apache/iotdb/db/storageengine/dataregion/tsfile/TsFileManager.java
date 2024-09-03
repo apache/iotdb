@@ -392,16 +392,17 @@ public class TsFileManager {
         && unsequenceFiles.higherKey(timePartitionId) == null);
   }
 
-  public void compactFileTimeIndexCache(long timePartition) {
+  public void compactFileTimeIndexCache() {
+    int currentResourceSize = size(true) + size(false);
     readLock();
     try {
       FileTimeIndexCacheRecorder.getInstance()
           .compactFileTimeIndexIfNeeded(
               storageGroupName,
               Integer.parseInt(dataRegionId),
-              timePartition,
-              sequenceFiles.get(timePartition),
-              unsequenceFiles.get(timePartition));
+              currentResourceSize,
+              sequenceFiles,
+              unsequenceFiles);
     } finally {
       readUnlock();
     }
