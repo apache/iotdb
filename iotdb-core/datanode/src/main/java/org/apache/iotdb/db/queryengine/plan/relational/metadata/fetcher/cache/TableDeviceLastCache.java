@@ -168,7 +168,8 @@ public class TableDeviceLastCache {
 
   @Nullable
   TimeValuePair getTimeValuePair(final @Nonnull String measurement) {
-    return measurement2CachedLastMap.get(measurement);
+    final TimeValuePair result = measurement2CachedLastMap.get(measurement);
+    return result != PLACEHOLDER_TIME_VALUE_PAIR ? result : null;
   }
 
   // Shall pass in "" if last by time

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -183,7 +184,8 @@ public class TableDeviceSchemaCacheTest {
     final TimeValuePair tv1 = new TimeValuePair(1L, new TsPrimitiveType.TsInt(1));
     final TimeValuePair tv2 = new TimeValuePair(2L, new TsPrimitiveType.TsInt(2));
 
-    cache.updateLastCache(
+    updateLastCache4Query(
+        cache,
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0", "s1", "s2"},
@@ -220,6 +222,20 @@ public class TableDeviceSchemaCacheTest {
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s4"},
         new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
+
+    // Miss if the "null" time value pair is not in cache, meaning that the
+    // entry is evicted
+    Assert.assertNull(
+        cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s4"));
+
+    // Common query
+    updateLastCache4Query(
+        cache,
+        database,
+        convertIdValuesToDeviceID(table1, device0),
+        new String[] {"s4"},
+        new TimeValuePair[] {TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR});
+
     Assert.assertSame(
         TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR,
         cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s4"));
@@ -237,7 +253,8 @@ public class TableDeviceSchemaCacheTest {
             Collections.singletonList("s2"));
     Assert.assertFalse(result.isPresent());
 
-    cache.updateLastCache(
+    updateLastCache4Query(
+        cache,
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {""},
@@ -305,12 +322,25 @@ public class TableDeviceSchemaCacheTest {
 
     final String[] tempMeasurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
     final TimeValuePair[] tempTimeValuePairs = new TimeValuePair[] {tv0, tv0, tv0, tv0, tv0};
-    cache.updateLastCache(
-        database, convertIdValuesToDeviceID(table2, device0), tempMeasurements, tempTimeValuePairs);
-    cache.updateLastCache(
-        database, convertIdValuesToDeviceID(table2, device1), tempMeasurements, tempTimeValuePairs);
-    cache.updateLastCache(
-        database, convertIdValuesToDeviceID(table2, device2), tempMeasurements, tempTimeValuePairs);
+
+    updateLastCache4Query(
+        cache,
+        database,
+        convertIdValuesToDeviceID(table2, device0),
+        tempMeasurements,
+        tempTimeValuePairs);
+    updateLastCache4Query(
+        cache,
+        database,
+        convertIdValuesToDeviceID(table2, device1),
+        tempMeasurements,
+        tempTimeValuePairs);
+    updateLastCache4Query(
+        cache,
+        database,
+        convertIdValuesToDeviceID(table2, device2),
+        tempMeasurements,
+        tempTimeValuePairs);
 
     // Test cache eviction
     Assert.assertNull(
@@ -324,7 +354,8 @@ public class TableDeviceSchemaCacheTest {
         cache.getLastEntry(database, convertIdValuesToDeviceID(table2, device2), "s2"));
 
     // Test Long.MIN_VALUE
-    cache.updateLastCache(
+    updateLastCache4Query(
+        cache,
         database,
         convertIdValuesToDeviceID(table2, device0),
         new String[] {"", "s2"},
@@ -332,6 +363,7 @@ public class TableDeviceSchemaCacheTest {
           new TimeValuePair(Long.MIN_VALUE, TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE),
           TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR
         });
+
     result =
         cache.getLastRow(
             database, convertIdValuesToDeviceID(table2, device0), "", Arrays.asList("s2", "s3"));
@@ -342,7 +374,8 @@ public class TableDeviceSchemaCacheTest {
         new TsPrimitiveType[] {TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE, null},
         result.get().getRight());
 
-    cache.updateLastCache(
+    updateLastCache4Query(
+        cache,
         database,
         convertIdValuesToDeviceID(table2, device0),
         new String[] {"s3"},
@@ -375,7 +408,7 @@ public class TableDeviceSchemaCacheTest {
 
   @Test
   public void testUpdateNonExistWhenWriting() {
-    final String database = "db";
+    final String database = "db1";
     final String database2 = "db2";
 
     final String table1 = "t1";
@@ -403,7 +436,8 @@ public class TableDeviceSchemaCacheTest {
     Assert.assertNull(
         cache.getLastEntry(database2, convertIdValuesToDeviceID(table1, device0), "s2"));
 
-    cache.updateLastCache(
+    updateLastCache4Query(
+        cache,
         database,
         convertIdValuesToDeviceID(table1, device0),
         new String[] {"s0"},
@@ -415,6 +449,16 @@ public class TableDeviceSchemaCacheTest {
         tv3, cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s0"));
     Assert.assertNull(
         cache.getLastEntry(database, convertIdValuesToDeviceID(table1, device0), "s2"));
+  }
+
+  private void updateLastCache4Query(
+      final TableDeviceSchemaCache cache,
+      final String database,
+      final IDeviceID deviceID,
+      final String[] measurement,
+      final TimeValuePair[] data) {
+    cache.updateLastCache(database, deviceID, measurement, null);
+    cache.updateLastCache(database, deviceID, measurement, data);
   }
 
   @Test
