@@ -95,28 +95,30 @@ public class TableDeviceLastCache {
     final AtomicInteger diff = new AtomicInteger(0);
 
     for (int i = 0; i < measurements.length; ++i) {
-      final int finalI = i;
-
       final String measurement =
           !measurement2CachedLastMap.containsKey(measurements[i]) && isTableModel
               ? DataNodeTableCache.getInstance()
                   .tryGetInternColumnName(database, tableName, measurements[i])
               : measurements[i];
 
+      final TimeValuePair newPair =
+          Objects.nonNull(timeValuePairs) ? timeValuePairs[i] : PLACEHOLDER_TIME_VALUE_PAIR;
+
       measurement2CachedLastMap.compute(
           measurement,
           (measurementKey, tvPair) -> {
             if (Objects.isNull(tvPair)
-                || tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
+                || tvPair.getTimestamp() <= newPair.getTimestamp()
+                    && newPair != PLACEHOLDER_TIME_VALUE_PAIR) {
               if (Objects.nonNull(tvPair)) {
-                diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
+                diff.addAndGet(getDiffSize(tvPair, newPair));
               } else {
                 diff.addAndGet(
                     (isTableModel ? 0 : (int) RamUsageEstimator.sizeOf(measurement))
                         + (int) RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                        + timeValuePairs[finalI].getSize());
+                        + newPair.getSize());
               }
-              return timeValuePairs[finalI];
+              return newPair;
             }
             return tvPair;
           });
