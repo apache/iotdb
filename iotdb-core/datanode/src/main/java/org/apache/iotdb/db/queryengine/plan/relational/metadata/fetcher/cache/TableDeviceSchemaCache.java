@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.TableDeviceSchemaCacheMetrics;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
@@ -308,7 +307,7 @@ public class TableDeviceSchemaCache {
 
   // Shall be accessed through "TreeDeviceSchemaCacheManager"
 
-  public void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
+  void putDeviceSchema(final String database, final DeviceSchemaInfo deviceSchemaInfo) {
     final PartialPath devicePath = deviceSchemaInfo.getDevicePath();
     final IDeviceID deviceID = devicePath.getIDeviceID();
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
@@ -323,7 +322,7 @@ public class TableDeviceSchemaCache {
         true);
   }
 
-  public IDeviceSchema getDeviceSchema(final String[] devicePath) {
+  IDeviceSchema getDeviceSchema(final String[] devicePath) {
     final IDeviceID deviceID =
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(devicePath));
@@ -332,7 +331,7 @@ public class TableDeviceSchemaCache {
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
-  public void updateLastCache(
+  void updateLastCache(
       final String database,
       final IDeviceID deviceID,
       final String[] measurements,
@@ -361,7 +360,7 @@ public class TableDeviceSchemaCache {
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
-  public void invalidateLastCache(final PartialPath devicePath, final String measurement) {
+  void invalidateLastCache(final PartialPath devicePath, final String measurement) {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
@@ -404,7 +403,7 @@ public class TableDeviceSchemaCache {
   }
 
   // WARNING: This is not guaranteed to affect table model's cache
-  public void invalidateCache(final PartialPath devicePath) {
+  void invalidateCache(final PartialPath devicePath) {
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
       dualKeyCache.invalidate(new TableId(null, deviceID.getTableName()), deviceID);
@@ -441,11 +440,11 @@ public class TableDeviceSchemaCache {
 
   /////////////////////////////// Management  ///////////////////////////////
 
-  public long getHitCount() {
+  long getHitCount() {
     return dualKeyCache.stats().hitCount();
   }
 
-  public long getRequestCount() {
+  long getRequestCount() {
     return dualKeyCache.stats().requestCount();
   }
 

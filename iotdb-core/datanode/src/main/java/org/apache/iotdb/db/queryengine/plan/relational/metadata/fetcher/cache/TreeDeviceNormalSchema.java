@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.SchemaCacheEntry;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
