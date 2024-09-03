@@ -80,7 +80,7 @@ public class TableDeviceLastCache {
       Optional.of(new Pair<>(OptionalLong.empty(), null));
   public static final TimeValuePair EMPTY_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
-  public static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
+  private static final TimeValuePair PLACEHOLDER_TIME_VALUE_PAIR =
       new TimeValuePair(Long.MIN_VALUE, EMPTY_PRIMITIVE_TYPE);
 
   // Time is seen as "" as a measurement
