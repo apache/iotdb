@@ -521,16 +521,6 @@ public class Analysis implements IAnalysis {
     return columnReferences.containsKey(NodeRef.of(expression));
   }
 
-  public boolean hasFieldReference(QualifiedObjectName tableName, String fieldName) {
-    for (Map<QualifiedObjectName, Set<String>> map : tableColumnReferences.values()) {
-      Set<String> fields = map.get(tableName);
-      if (fields != null && fields.contains(fieldName)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   public Set<String> getUsedColumns(QualifiedObjectName tableName) {
     for (Map<QualifiedObjectName, Set<String>> map : tableColumnReferences.values()) {
       Set<String> fields = map.get(tableName);
