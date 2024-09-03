@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
@@ -41,6 +42,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.util.List;
@@ -304,7 +306,7 @@ public class TableDeviceSchemaCache {
     final String previousDatabase = treeModelDatabasePool.putIfAbsent(database, database);
 
     dualKeyCache.update(
-        new TableId(devicePath.getNodes()[1], deviceID.getTableName()),
+        new TableId(null, deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
         entry ->
@@ -318,7 +320,7 @@ public class TableDeviceSchemaCache {
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(devicePath));
     final TableDeviceCacheEntry entry =
-        dualKeyCache.get(new TableId(devicePath[1], deviceID.getTableName()), deviceID);
+        dualKeyCache.get(new TableId(null, deviceID.getTableName()), deviceID);
     return Objects.nonNull(entry) ? entry.getDeviceSchema() : null;
   }
 
@@ -334,7 +336,7 @@ public class TableDeviceSchemaCache {
     final String database2Use = Objects.nonNull(previousDatabase) ? previousDatabase : database;
 
     dualKeyCache.update(
-        new TableId("", deviceID.getTableName()),
+        new TableId(null, deviceID.getTableName()),
         deviceID,
         new TableDeviceCacheEntry(),
         isQuery
@@ -350,25 +352,34 @@ public class TableDeviceSchemaCache {
         true);
   }
 
+  // WARNING: This is not guaranteed to affect table model's cache
   public void invalidateLastCache(final PartialPath devicePath, final String measurement) {
     final ToIntFunction<TableDeviceCacheEntry> updateFunction =
         PathPatternUtil.hasWildcard(measurement)
             ? entry -> -entry.invalidateLastCache()
             : entry -> -entry.invalidateLastCache(measurement);
-    final String[] nodes = devicePath.getNodes();
 
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
       dualKeyCache.update(
-          new TableId(nodes[1], deviceID.getTableName()), deviceID, null, updateFunction, false);
+          new TableId(null, deviceID.getTableName()), deviceID, null, updateFunction, false);
     } else {
-      // This may take quite a long time to perform, yet it has avoided that
+      // This may take quite a long time to perform, yet we assume that the "invalidateLastCache" is
+      // only called by deletions, which has a low frequency; and it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.update(
-          PathPatternUtil.hasWildcard(nodes[1])
-              ? tableId -> PathPatternUtil.isNodeMatch(nodes[1], tableId.getPrefix())
-              : tableId -> tableId.belongTo(nodes[1]),
+          tableId -> {
+            try {
+              return devicePath.matchPrefixPath(new PartialPath(tableId.getTableName()));
+            } catch (final IllegalPathException e) {
+              logger.warn(
+                  "Illegal tableID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  tableId.getTableName(),
+                  devicePath);
+              return true;
+            }
+          },
           cachedDeviceID -> {
             try {
               return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
@@ -384,20 +395,28 @@ public class TableDeviceSchemaCache {
     }
   }
 
+  // WARNING: This is not guaranteed to affect table model's cache
   public void invalidateCache(final PartialPath devicePath) {
-    final String[] nodes = devicePath.getNodes();
-
     if (!devicePath.hasWildcard()) {
       final IDeviceID deviceID = devicePath.getIDeviceID();
-      dualKeyCache.invalidate(new TableId(nodes[1], deviceID.getTableName()), deviceID);
+      dualKeyCache.invalidate(new TableId(null, deviceID.getTableName()), deviceID);
     } else {
-      // This may take quite a long time to perform, yet it has avoided that
+      // This may take quite a long time to perform, yet we assume that the "invalidateLastCache" is
+      // only called by deletions, which has a low frequency; and it has avoided that
       // the un-related paths being cleared, like "root.*.b.c.**" affects
       // "root.*.d.c.**", thereby lower the query performance.
       dualKeyCache.invalidate(
-          PathPatternUtil.hasWildcard(nodes[1])
-              ? tableId -> PathPatternUtil.isNodeMatch(nodes[1], tableId.getPrefix())
-              : tableId -> tableId.belongTo(nodes[1]),
+          tableId -> {
+            try {
+              return devicePath.matchPrefixPath(new PartialPath(tableId.getTableName()));
+            } catch (final IllegalPathException e) {
+              logger.warn(
+                  "Illegal tableID {} found in cache when invalidating by path {}, invalidate it anyway",
+                  tableId.getTableName(),
+                  devicePath);
+              return true;
+            }
+          },
           cachedDeviceID -> {
             try {
               return new PartialPath(cachedDeviceID).matchFullPath(devicePath);
@@ -422,22 +441,27 @@ public class TableDeviceSchemaCache {
     return dualKeyCache.stats().requestCount();
   }
 
-  public void invalidate(final String database) {
+  public void invalidate(final @Nonnull String database) {
+    final String qualifiedDatabase = PathUtils.qualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      if (!database.contains(".")) {
-        dualKeyCache.invalidate(tableId -> tableId.belongTo(database), deviceID -> true);
-      } else {
-        // Multi-layered database in tree model
-        final String prefix = database.substring(0, database.indexOf("."));
-        dualKeyCache.invalidate(
-            tableId -> tableId.belongTo(prefix), deviceID -> deviceID.matchDatabaseName(database));
-      }
+      dualKeyCache.invalidate(
+          tableId ->
+              tableId.belongTo(database)
+                  || Objects.isNull(tableId.getDatabase())
+                      && tableId.getTableName().startsWith(qualifiedDatabase),
+          deviceID -> true);
+      dualKeyCache.invalidate(
+          tableId ->
+              Objects.isNull(tableId.getDatabase())
+                  && qualifiedDatabase.startsWith(tableId.getTableName()),
+          deviceID -> deviceID.matchDatabaseName(database));
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
+  // Only used by table model
   public void invalidate(final String database, final String tableName) {
     readWriteLock.writeLock().lock();
     try {
