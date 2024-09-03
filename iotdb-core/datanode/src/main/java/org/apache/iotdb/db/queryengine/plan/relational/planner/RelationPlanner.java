@@ -150,7 +150,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       // only keep used columns and all ID columns
       if (category != TsTableColumnCategory.ID
           && field.getOriginColumnName().isPresent()
-          && usedColumns.contains(field.getOriginColumnName().get())) {
+          && !usedColumns.contains(field.getOriginColumnName().get())) {
         continue;
       }
       Symbol symbol = symbolAllocator.newSymbol(field);
