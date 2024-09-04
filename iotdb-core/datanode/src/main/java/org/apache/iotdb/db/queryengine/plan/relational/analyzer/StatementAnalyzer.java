@@ -1961,13 +1961,7 @@ public class StatementAnalyzer {
             || !right.getField().get().equals(new Identifier(TIME_COLUMN_NAME))) {
           throw new SemanticException(ONLY_SUPPORT_TIME_COLUMN_EQUI_JOIN);
         }
-
-        //        if (comparisonExpression instanceof DereferenceExpression.getLeft().equals()) {
-        //
-        //        }
-      }
-
-      if (criteria instanceof JoinUsing) {
+      } else if (criteria instanceof JoinUsing) {
         List<Identifier> identifiers = ((JoinUsing) criteria).getColumns();
         if (identifiers.size() != 1
             || !identifiers.get(0).equals(new Identifier(TIME_COLUMN_NAME))) {

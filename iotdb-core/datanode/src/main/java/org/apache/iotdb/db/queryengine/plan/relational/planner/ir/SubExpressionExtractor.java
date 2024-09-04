@@ -19,8 +19,15 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.ir;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+
+import com.google.common.graph.SuccessorsFunction;
+import com.google.common.graph.Traverser;
 
 import java.util.stream.Stream;
+
+import static com.google.common.collect.Streams.stream;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Extracts and returns the stream of all expression subtrees within an Expression, including
@@ -30,8 +37,12 @@ public final class SubExpressionExtractor {
   private SubExpressionExtractor() {}
 
   public static Stream<Expression> extract(Expression expression) {
-    return AstUtils.preOrder(expression)
-        .filter(Expression.class::isInstance)
-        .map(Expression.class::cast);
+    return preOrder(expression).filter(Expression.class::isInstance).map(Expression.class::cast);
+  }
+
+  public static Stream<Node> preOrder(Node node) {
+    return stream(
+        Traverser.forTree((SuccessorsFunction<Node>) Node::getChildren)
+            .depthFirstPreOrder(requireNonNull(node, "node is null")));
   }
 }

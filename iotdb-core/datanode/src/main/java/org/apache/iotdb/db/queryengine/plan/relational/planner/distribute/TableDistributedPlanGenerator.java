@@ -328,12 +328,6 @@ public class TableDistributedPlanGenerator
         leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
     node.setLeftChild(leftChildrenNodes.get(0));
 
-    OrderingScheme leftChildOrdering =
-        nodeOrderingMap.get(leftChildrenNodes.get(0).getPlanNodeId());
-    if (leftChildOrdering != null) {
-      nodeOrderingMap.put(node.getPlanNodeId(), leftChildOrdering);
-    }
-
     List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
     checkArgument(
         rightChildrenNodes.size() == 1, "The size of right children node of JoinNode should be 1");

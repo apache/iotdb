@@ -208,6 +208,7 @@ public class JoinTest {
   // has filter which can be push down, filter can in subquery or outer query
   @Test
   public void innerJoinTest2() {
+    // join on
     assertInnerJoinTest2(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
@@ -237,6 +238,7 @@ public class JoinTest {
             + "WHERE t1.time = t2.time AND t1.tag1='beijing' AND t1.s1>1 AND t2.tag1='shenzhen' ORDER BY t1.tag1 OFFSET 3 LIMIT 6",
         false);
 
+    // join using
     assertInnerJoinTest2(
         "SELECT time, t1.tag1, t1.tag2, t1.attr2, t1.s1+1 as add_s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "

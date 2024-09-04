@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import java.util.Map;
 
 public class MetadataExpressionTransformForJoin {
+
   private MetadataExpressionTransformForJoin() {}
 
   public static Expression transform(

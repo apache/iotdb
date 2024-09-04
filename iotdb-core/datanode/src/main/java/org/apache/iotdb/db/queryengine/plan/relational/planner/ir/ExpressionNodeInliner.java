@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import java.util.Map;
 
 public class ExpressionNodeInliner extends ExpressionRewriter<Void> {
+
   public static Expression replaceExpression(
       Expression expression, Map<? extends Expression, ? extends Expression> mappings) {
     return ExpressionTreeRewriter.rewriteWith(new ExpressionNodeInliner(mappings), expression);
