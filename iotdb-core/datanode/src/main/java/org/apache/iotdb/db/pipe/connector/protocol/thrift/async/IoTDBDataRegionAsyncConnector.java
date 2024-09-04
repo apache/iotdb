@@ -549,6 +549,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     if (clientManager.getAttributesCount() == 0) {
       clientManager.removeAttributesCount();
+      clientManager.closeAndRemoveClientManager();
     }
   }
 
