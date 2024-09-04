@@ -43,7 +43,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 import static java.lang.String.format;
@@ -131,11 +130,11 @@ public class TranslationMap {
     requireNonNull(astToSymbols, "astToSymbols is null");
     this.astToSymbols = ImmutableMap.copyOf(astToSymbols);
 
-    checkArgument(
-        scope.getLocalScopeFieldCount() == fieldSymbols.length,
-        "scope: %s, fields mappings: %s",
-        scope.getRelationType().getAllFieldCount(),
-        fieldSymbols.length);
+    //    checkArgument(
+    //        scope.getLocalScopeFieldCount() == fieldSymbols.length,
+    //        "scope: %s, fields mappings: %s",
+    //        scope.getRelationType().getAllFieldCount(),
+    //        fieldSymbols.length);
 
     astToSymbols.keySet().stream()
         .map(ScopeAware::getNode)
@@ -383,7 +382,11 @@ public class TranslationMap {
     ResolvedField field = analysis.getColumnReferenceFields().get(NodeRef.of(expression));
 
     if (scope.isLocalScope(field.getScope())) {
-      return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
+      if (field.getField().getOriginColumnName().isPresent()) {
+        return Optional.of(Symbol.of(field.getField().getOriginColumnName().get()));
+      } else {
+        return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
+      }
     }
 
     if (outerContext.isPresent()) {

@@ -60,6 +60,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
@@ -128,14 +129,32 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     ImmutableList.Builder<Symbol> outputSymbolsBuilder = ImmutableList.builder();
     ImmutableMap.Builder<Symbol, ColumnSchema> symbolToColumnSchema = ImmutableMap.builder();
     Collection<Field> fields = scope.getRelationType().getAllFields();
+    QualifiedName qualifiedName = analysis.getRelationName(table);
+    if (!qualifiedName.getPrefix().isPresent()) {
+      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
+    }
+
+    QualifiedObjectName qualifiedObjectName =
+        new QualifiedObjectName(
+            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
+            qualifiedName.getSuffix());
+
+    Set<String> usedColumns = analysis.getUsedColumns(qualifiedObjectName);
+
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
     int idIndex = 0;
     for (Field field : fields) {
+      TsTableColumnCategory category = field.getColumnCategory();
+      // only keep used columns and all ID columns
+      if (category != TsTableColumnCategory.ID
+          && field.getOriginColumnName().isPresent()
+          && !usedColumns.contains(field.getOriginColumnName().get())) {
+        continue;
+      }
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
-      TsTableColumnCategory category = field.getColumnCategory();
       symbolToColumnSchema.put(
           symbol,
           new ColumnSchema(
@@ -146,15 +165,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     }
 
     List<Symbol> outputSymbols = outputSymbolsBuilder.build();
-    QualifiedName qualifiedName = analysis.getRelationName(table);
-    if (!qualifiedName.getPrefix().isPresent()) {
-      throw new IllegalStateException("Table " + table.getName() + " has no prefix!");
-    }
 
-    QualifiedObjectName qualifiedObjectName =
-        new QualifiedObjectName(
-            qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
-            qualifiedName.getSuffix());
     Map<Symbol, ColumnSchema> tableColumnSchema = symbolToColumnSchema.build();
     analysis.addTableSchema(qualifiedObjectName, tableColumnSchema);
     TableScanNode tableScanNode =
