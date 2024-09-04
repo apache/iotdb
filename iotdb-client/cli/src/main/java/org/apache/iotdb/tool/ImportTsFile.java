@@ -298,8 +298,7 @@ public class ImportTsFile extends AbstractTsFileTool {
       IoTDBTsFileScanTool.traverseAndCollectFiles();
       IoTDBTsFileScanTool.addNoResourceOrModsToQueue();
 
-      ioTPrinter.println(
-          "Load file total number : " + IoTDBTsFileScanTool.getTsFileQueueSize());
+      ioTPrinter.println("Load file total number : " + IoTDBTsFileScanTool.getTsFileQueueSize());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
