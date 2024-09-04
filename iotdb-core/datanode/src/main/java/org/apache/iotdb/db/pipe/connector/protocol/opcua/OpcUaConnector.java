@@ -153,7 +153,7 @@ public class OpcUaConnector implements PipeConnector {
                                       Arrays.asList(
                                           CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
                                       CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
-                                  .equals(CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
+                                  .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE));
                       nameSpace.startup();
                       newServer.startup().get();
                       return new Pair<>(new AtomicInteger(0), nameSpace);
@@ -204,12 +204,12 @@ public class OpcUaConnector implements PipeConnector {
   private void transferTabletWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws UaException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        OpcUaConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          OpcUaConnector.class.getName())) {
-        return;
-      }
       for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
         nameSpace.transfer(tablet);
       }
@@ -221,11 +221,11 @@ public class OpcUaConnector implements PipeConnector {
 
   private void transferTabletWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws UaException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
-        return;
-      }
       nameSpace.transfer(pipeRawTabletInsertionEvent.convertToTablet());
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);

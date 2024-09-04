@@ -202,12 +202,14 @@ public class CommonConfig {
   private int pipeNonForwardingEventsProgressReportInterval = 100;
 
   private int pipeDataStructureTabletRowSize = 2048;
+  private int pipeDataStructureTabletSizeInBytes = 2097152;
   private double pipeDataStructureTabletMemoryBlockAllocationRejectThreshold = 0.4;
 
   private int pipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount = 10_000;
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 1000;
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
+  private long pipeSubtaskExecutorForcedRestartIntervalMs = Long.MAX_VALUE;
 
   private int pipeExtractorAssignerDisruptorRingBufferSize = 65536;
   private long pipeExtractorAssignerDisruptorRingBufferEntrySizeInBytes = 50; // 50B
@@ -673,6 +675,14 @@ public class CommonConfig {
     this.pipeDataStructureTabletRowSize = pipeDataStructureTabletRowSize;
   }
 
+  public int getPipeDataStructureTabletSizeInBytes() {
+    return pipeDataStructureTabletSizeInBytes;
+  }
+
+  public void setPipeDataStructureTabletSizeInBytes(int pipeDataStructureTabletSizeInBytes) {
+    this.pipeDataStructureTabletSizeInBytes = pipeDataStructureTabletSizeInBytes;
+  }
+
   public double getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold() {
     return pipeDataStructureTabletMemoryBlockAllocationRejectThreshold;
   }
@@ -881,6 +891,15 @@ public class CommonConfig {
       long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds) {
     this.pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds =
         pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds;
+  }
+
+  public long getPipeSubtaskExecutorForcedRestartIntervalMs() {
+    return pipeSubtaskExecutorForcedRestartIntervalMs;
+  }
+
+  public void setPipeSubtaskExecutorForcedRestartIntervalMs(
+      long pipeSubtaskExecutorForcedRestartIntervalMs) {
+    this.pipeSubtaskExecutorForcedRestartIntervalMs = pipeSubtaskExecutorForcedRestartIntervalMs;
   }
 
   public int getPipeRealTimeQueuePollHistoryThreshold() {

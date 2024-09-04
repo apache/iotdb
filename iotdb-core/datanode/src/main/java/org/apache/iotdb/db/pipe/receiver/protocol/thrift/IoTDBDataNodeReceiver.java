@@ -614,10 +614,12 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     final TSStatus status = executeStatement(statement);
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || !shouldConvertDataTypeOnTypeMismatch
-        ? status
-        : statement.accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, status).orElse(status);
+    return shouldConvertDataTypeOnTypeMismatch
+            && ((statement instanceof InsertBaseStatement
+                    && ((InsertBaseStatement) statement).hasFailedMeasurements())
+                || status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        ? statement.accept(STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR, status).orElse(status)
+        : status;
   }
 
   private static TSStatus executeStatement(final Statement statement) {

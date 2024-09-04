@@ -98,6 +98,12 @@ public class UDTFValueFill implements UDTF {
           collector.putLong(time[i], Math.round(repaired[i]));
         }
         break;
+      case TEXT:
+      case STRING:
+      case BOOLEAN:
+      case BLOB:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new UDFException("");
     }

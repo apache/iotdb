@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.type;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.rpc.TSStatusCode.TYPE_NOT_FOUND;
 
-public class TypeNotFoundException extends IoTDBException {
+public class TypeNotFoundException extends IoTDBRuntimeException {
 
   private final TypeSignature type;
 

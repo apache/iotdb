@@ -55,6 +55,12 @@ public class BinaryLiteral extends Literal {
     this.value = BaseEncoding.base16().decode(hexString);
   }
 
+  public BinaryLiteral(byte[] value) {
+    super(null);
+    requireNonNull(value, "value is null");
+    this.value = value;
+  }
+
   public BinaryLiteral(NodeLocation location, String value) {
     super(requireNonNull(location, "location is null"));
     requireNonNull(value, "value is null");

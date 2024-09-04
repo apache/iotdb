@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -152,10 +153,11 @@ import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.DateType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -425,6 +427,39 @@ public class ColumnTransformerBuilder
   @Override
   protected ColumnTransformer visitDecimalLiteral(DecimalLiteral node, Context context) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected ColumnTransformer visitGenericLiteral(GenericLiteral node, Context context) {
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            node,
+            e -> {
+              ConstantColumnTransformer columnTransformer =
+                  getColumnTransformerForGenericLiteral(node);
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
+  }
+
+  // currently, we only support Date and Timestamp
+  // for Date, GenericLiteral.value is an int value
+  // for Timestamp, GenericLiteral.value is a long value
+  private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(
+      GenericLiteral literal) {
+    if (DateType.DATE.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          DateType.DATE,
+          new IntColumn(1, Optional.empty(), new int[] {Integer.parseInt(literal.getValue())}));
+    } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          TimestampType.TIMESTAMP,
+          new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
+    } else {
+      throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
+    }
   }
 
   @Override
@@ -963,7 +998,7 @@ public class ColumnTransformerBuilder
     return res;
   }
 
-  private InMultiColumnTransformer constructInColumnTransformer(
+  private static InMultiColumnTransformer constructInColumnTransformer(
       TypeEnum childType,
       List<ColumnTransformer> valueColumnTransformerList,
       List<Literal> values) {
@@ -985,7 +1020,7 @@ public class ColumnTransformerBuilder
       case DATE:
         Set<Integer> dateSet = new HashSet<>();
         for (Literal value : values) {
-          dateSet.add(DateUtils.parseDateExpressionToInt(((StringLiteral) value).getValue()));
+          dateSet.add(Integer.parseInt(((GenericLiteral) value).getValue()));
         }
         return new InInt32MultiColumnTransformer(dateSet, valueColumnTransformerList);
       case INT64:
@@ -993,7 +1028,7 @@ public class ColumnTransformerBuilder
         Set<Long> longSet = new HashSet<>();
         for (Literal value : values) {
           try {
-            longSet.add((((LongLiteral) value).getParsedValue()));
+            longSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }

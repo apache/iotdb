@@ -61,6 +61,12 @@ public class DiffFunctionTransformer extends UnaryTransformer {
       case DOUBLE:
         transformDouble(columns, builder);
         return;
+      case BLOB:
+      case TEXT:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
+      case BOOLEAN:
       default:
         throw new QueryProcessException("Unsupported data type: " + layerReaderDataType);
     }
