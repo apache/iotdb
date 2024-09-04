@@ -19,8 +19,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -102,7 +102,7 @@ public class JoinTest {
   private void assertInnerJoinTest1(String sql, boolean joinUsing) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
 
     // LogicalPlan: `Output-Offset-Limit-Join-(Left + Right)-Sort-(Project)-TableScan`
@@ -248,7 +248,7 @@ public class JoinTest {
   private void assertInnerJoinTest2(String sql, boolean joinUsing) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
 
     // LogicalPlan: `Output-Offset-TopK-Join-(Left + Right)-Sort-(Project)-TableScan`

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -75,7 +75,7 @@ public class SubQueryTest {
             + "ORDER BY tag2 OFFSET 3 LIMIT 6";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -162,7 +162,7 @@ public class SubQueryTest {
             + "ORDER BY tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -260,7 +260,7 @@ public class SubQueryTest {
             + "ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -377,7 +377,7 @@ public class SubQueryTest {
             + "WHERE s1>1 ORDER BY s1,tag2 ASC OFFSET 5 LIMIT 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
@@ -487,7 +487,7 @@ public class SubQueryTest {
     sql = "SELECT * FROM (SELECT * FROM table1 WHERE s1>1) WHERE s2>2";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalPlanNode =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
     assertNodeMatches(logicalPlanNode, OutputNode.class, TableScanNode.class);
@@ -502,7 +502,7 @@ public class SubQueryTest {
     sql = "SELECT * FROM (SELECT * FROM table1 limit 10) limit 5";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalPlanNode =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
     assertNodeMatches(logicalPlanNode, OutputNode.class, LimitNode.class, TableScanNode.class);

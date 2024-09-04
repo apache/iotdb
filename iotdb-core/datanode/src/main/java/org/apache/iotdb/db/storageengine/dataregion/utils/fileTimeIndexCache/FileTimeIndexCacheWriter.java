@@ -53,6 +53,10 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
   public void write(ByteBuffer logBuffer) throws IOException {
 
     try {
+      if (!this.logFile.exists()) {
+        // For UT env, logFile may not be created
+        return;
+      }
       channel.write(logBuffer);
       if (this.forceEachWrite) {
         channel.force(true);

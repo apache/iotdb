@@ -51,8 +51,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -127,7 +127,7 @@ public class AnalyzerTest {
   String sql;
   Analysis analysis;
   MPPQueryContext context;
-  LogicalPlanner logicalPlanner;
+  TableLogicalPlanner logicalPlanner;
   LogicalQueryPlan logicalQueryPlan;
   PlanNode rootNode;
   TableDistributedPlanner distributionPlanner;
@@ -183,7 +183,7 @@ public class AnalyzerTest {
     sql = "SELECT * FROM testdb.table1";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     assertEquals(1, analysis.getTables().size());
 
@@ -222,7 +222,7 @@ public class AnalyzerTest {
     sql = "SELECT * FROM table1 where time > 1";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -271,7 +271,7 @@ public class AnalyzerTest {
     sql = "SELECT tag1, attr2, s2 FROM table1 where s1 > 1";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -330,7 +330,7 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     assertNotNull(analysis);
     assertEquals(1, analysis.getTables().size());
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -360,7 +360,7 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     assertNotNull(analysis);
     assertEquals(1, analysis.getTables().size());
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -389,7 +389,7 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     assertNotNull(analysis);
     assertEquals(1, analysis.getTables().size());
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -430,7 +430,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     assertEquals(1, analysis.getTables().size());
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -478,7 +478,7 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     assertEquals(1, analysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -511,7 +511,7 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     assertNotNull(analysis);
     assertEquals(1, analysis.getTables().size());
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -526,7 +526,7 @@ public class AnalyzerTest {
     assertNotNull(analysis);
     assertEquals(1, analysis.getTables().size());
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -548,7 +548,8 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(rootNode.getChildren().get(0).getChildren().get(0) instanceof FilterNode);
@@ -568,7 +569,8 @@ public class AnalyzerTest {
     analysis = analyzeSQL(sql, metadata, context);
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
@@ -584,7 +586,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof FilterNode);
     FilterNode filterNode = (FilterNode) rootNode.getChildren().get(0);
@@ -602,7 +605,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
     // Like is pushed to schema region
@@ -618,7 +622,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
 
@@ -634,7 +639,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
     // 5. String literal comparisons
@@ -642,7 +648,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
     assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
@@ -656,7 +663,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
     assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
@@ -672,7 +680,7 @@ public class AnalyzerTest {
     sql = "SELECT CAST(s2 AS DOUBLE) FROM table1 WHERE CAST(s1 AS DOUBLE) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -681,7 +689,7 @@ public class AnalyzerTest {
         "SELECT SUBSTRING(tag1, 2), SUBSTRING(tag2, s1) FROM table1 WHERE SUBSTRING(tag2, 1) = 'A'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -689,7 +697,7 @@ public class AnalyzerTest {
     sql = "SELECT ROUND(s1, 1) FROM table1 WHERE ROUND(s2, 2) > 1.0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
 
@@ -697,7 +705,7 @@ public class AnalyzerTest {
     sql = "SELECT REPLACE(tag1, 'A', 'B') FROM table1 WHERE REPLACE(attr1, 'C', 'D') = 'D'";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
   }
@@ -708,7 +716,7 @@ public class AnalyzerTest {
     sql = "SELECT DIFF(s1) FROM table1 WHERE DIFF(s2) > 0";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
@@ -750,7 +758,7 @@ public class AnalyzerTest {
     sql = "SELECT s1 FROM table1 WHERE DIFF(s2) > 0 and time > 5 and tag1 = 'A' and s1 = 1";
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
-    logicalPlanner = new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+    logicalPlanner = new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
     logicalQueryPlan = logicalPlanner.plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
@@ -769,7 +777,8 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
@@ -794,7 +803,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof OffsetNode);
     OffsetNode offsetNode = (OffsetNode) rootNode.getChildren().get(0);
@@ -808,7 +817,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(getChildrenNode(rootNode, 2) instanceof OffsetNode);
@@ -824,7 +833,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
     assertTrue(getChildrenNode(rootNode, 1) instanceof TableScanNode);
@@ -841,7 +850,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -874,7 +883,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
     rootNode = logicalQueryPlan.getRootNode();
     assertTrue(rootNode instanceof OutputNode);
@@ -897,7 +906,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     // logical plan: `OutputNode - ProjectNode - LimitNode - TableScanNode`
     rootNode = logicalQueryPlan.getRootNode();
     // distributed plan: `IdentitySink - OutputNode - ProjectNode - LimitNode - TableScanNode`
@@ -917,7 +926,7 @@ public class AnalyzerTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
@@ -1024,7 +1033,7 @@ public class AnalyzerTest {
     assertEquals(3, partitionSlotMapMap.size());
 
     logicalQueryPlan =
-        new LogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
             .plan(analysis);
 
     RelationalInsertTabletNode insertTabletNode =
@@ -1070,9 +1079,8 @@ public class AnalyzerTest {
     assertEquals(1, partitionSlotMapMap.size());
 
     logicalQueryPlan =
-        new LogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
+        new TableLogicalPlanner(context, mockMetadata, sessionInfo, WarningCollector.NOOP)
             .plan(analysis);
-
     RelationalInsertRowNode insertNode = (RelationalInsertRowNode) logicalQueryPlan.getRootNode();
 
     assertEquals(insertNode.getTableName(), StatementTestUtils.tableName());

@@ -23,7 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -73,7 +73,7 @@ public class LimitOffsetPushDownTest {
     sql = "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 offset 5 limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Project - Offset - Limit - TableScan`
@@ -112,7 +112,7 @@ public class LimitOffsetPushDownTest {
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by tag2 desc, tag1 asc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Offset - Limit - Project - StreamSort -  Project - TableScan`
@@ -145,7 +145,7 @@ public class LimitOffsetPushDownTest {
     sql = "SELECT * FROM table1 order by tag2 desc, tag1 asc, attr1 desc, tag3 desc limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Limit - StreamSort - TableScan`
@@ -183,7 +183,7 @@ public class LimitOffsetPushDownTest {
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by tag2 desc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     rootNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output - Offset - Limit - Project - StreamSort - Project - TableScan`
@@ -223,7 +223,7 @@ public class LimitOffsetPushDownTest {
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by time desc, tag2 asc, s1+s3 asc offset 5 limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     // LogicalPlan: `Output - Offset - Project - TopK - Project - TableScan`
     rootNode = logicalQueryPlan.getRootNode();
@@ -262,7 +262,7 @@ public class LimitOffsetPushDownTest {
         "SELECT time, tag3, cast(s2 AS double) FROM table1 where s1>1 order by s1 desc, tag2 desc, attr1 desc, tag3 desc, time desc, s1+s3 asc offset 5 limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     // LogicalPlan: `Output - Offset - Project - TopK - Project - TableScan`
     rootNode = logicalQueryPlan.getRootNode();
@@ -298,7 +298,7 @@ public class LimitOffsetPushDownTest {
     sql = "SELECT time, diff(s1) FROM table1 limit 10";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis);
     // LogicalPlan: `Output - Project - Limit - TableScan`
     rootNode = logicalQueryPlan.getRootNode();

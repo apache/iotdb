@@ -85,6 +85,12 @@ public abstract class UDTFMath implements UDTF {
       case DOUBLE:
         collector.putDouble(time, transformer.transform(row.getDouble(0)));
         break;
+      case BOOLEAN:
+      case TEXT:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
+      case BLOB:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -111,6 +117,12 @@ public abstract class UDTFMath implements UDTF {
         return transformer.transform(row.getFloat(0));
       case DOUBLE:
         return transformer.transform(row.getDouble(0));
+      case DATE:
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case TEXT:
+      case BOOLEAN:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -138,6 +150,12 @@ public abstract class UDTFMath implements UDTF {
       case DOUBLE:
         transformDouble(columns, builder);
         return;
+      case TEXT:
+      case BOOLEAN:
+      case STRING:
+      case TIMESTAMP:
+      case BLOB:
+      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
