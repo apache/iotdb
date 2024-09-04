@@ -16,13 +16,37 @@
 * limitations under the License.
 -->
 
-data: {
-    allDataTypes: tdd(../dataModel/AllDataType.tdd),
-    decimalDataTypes: tdd(../dataModel/DecimalDataType.tdd),
-    compareTypes: tdd(../dataModel/CompareType.tdd),
-    mathematicalOperator: tdd(../dataModel/MathematicalOperator.tdd),
-    mathematicalDataType: tdd(../dataModel/MathematicalDataType.tdd)
-}
-freemarkerLinks: {
-    includes: includes/
+{
+  "binaryOperators": [
+    {
+      "name": "Addition",
+      "operator": "ADD",
+      "symbol": "+"
+    },
+    {
+      "name": "Subtraction",
+      "operator": "SUBTRACT",
+      "symbol": "-"
+    },
+    {
+      "name": "Multiplication",
+      "operator": "MULTIPLY",
+      "symbol": "*"
+    },
+    {
+      "name": "Division",
+      "operator": "DIVIDE",
+      "symbol": "/"
+    },
+    {
+      "name": "Modulus",
+      "operator": "MODULUS",
+      "symbol": "%"
+    }
+  ],
+  "unaryOperators": [
+    {
+      "operator": "NEGATION"
+    }
+  ]
 }
