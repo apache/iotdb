@@ -17,18 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.env.cluster.env;
 
-public enum EnvType {
-  Remote,
-  Simple,
-  Cluster1,
-  MultiCluster,
-  AI
-  ;
+public class AIEnv extends AbstractEnv {
+  @Override
+  public void initClusterEnvironment() {
+    initClusterEnvironment(1, 1);
+  }
 
-  public static EnvType getSystemEnvType() {
-    String envValue = System.getProperty("TestEnv", Simple.name());
-    return EnvType.valueOf(envValue);
+  @Override
+  public void initClusterEnvironment(int configNodesNum, int dataNodesNum) {
+    super.initEnvironment(configNodesNum, dataNodesNum, 10000, true);
+  }
+
+  @Override
+  public void initClusterEnvironment(
+      int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, true);
   }
 }
