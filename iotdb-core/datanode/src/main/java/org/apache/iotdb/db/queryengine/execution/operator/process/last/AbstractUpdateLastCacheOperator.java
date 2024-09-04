@@ -100,13 +100,13 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
   }
 
   protected void mayUpdateLastCache(
-      long time, @Nullable TsPrimitiveType value, MeasurementPath fullPath) {
+      final long time, final @Nullable TsPrimitiveType value, final MeasurementPath fullPath) {
     if (!needUpdateCache) {
       return;
     }
     try {
       dataNodeQueryContext.lock();
-      Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
+      final Pair<AtomicInteger, TimeValuePair> seriesScanInfo =
           dataNodeQueryContext.getSeriesScanInfo(fullPath);
 
       // may enter this case when use TTL
@@ -116,14 +116,16 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
       // update cache in DataNodeQueryContext
       if (seriesScanInfo.right == null || time > seriesScanInfo.right.getTimestamp()) {
-        seriesScanInfo.right =
-            Objects.nonNull(value)
-                ? new TimeValuePair(time, value)
-                : TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR;
+        if (Objects.nonNull(value)) {
+          seriesScanInfo.right = new TimeValuePair(time, value);
+        } else {
+          seriesScanInfo.right =
+              needUpdateNullEntry ? TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR : null;
+        }
       }
 
       if (seriesScanInfo.left.decrementAndGet() == 0) {
-        lastCache.updateLastCache(getDatabaseName(), fullPath, seriesScanInfo.right);
+        lastCache.updateLastCache(getDatabaseName(), fullPath, seriesScanInfo.right, true);
       }
     } finally {
       dataNodeQueryContext.unLock();

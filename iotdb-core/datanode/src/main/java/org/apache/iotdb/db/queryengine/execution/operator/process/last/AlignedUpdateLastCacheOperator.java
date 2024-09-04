@@ -87,9 +87,7 @@ public class AlignedUpdateLastCacheOperator extends AbstractUpdateLastCacheOpera
       } else {
         // we still need to update last cache if there is no data for this time series to avoid
         // scanning all files each time
-        if (needUpdateNullEntry) {
-          mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
-        }
+        mayUpdateLastCache(Long.MIN_VALUE, null, measurementPath);
       }
     }
     return !tsBlockBuilder.isEmpty() ? tsBlockBuilder.build() : LAST_QUERY_EMPTY_TSBLOCK;
