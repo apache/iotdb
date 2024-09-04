@@ -148,26 +148,47 @@ public abstract class PipeSubtask
 
   @Override
   public void close() {
-    clearReferenceCountAndReleaseLastEvent();
+    clearReferenceCountAndReleaseLastEvent(null);
   }
 
   protected synchronized void decreaseReferenceCountAndReleaseLastEvent(
-      final boolean shouldReport) {
+      final Event actualLastEvent, final boolean shouldReport) {
+    // lastEvent may be set to null due to PipeConnectorSubtask#discardEventsOfPipe
     if (lastEvent != null) {
-      if (lastEvent instanceof EnrichedEvent) {
+      if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent)
             .decreaseReferenceCount(PipeSubtask.class.getName(), shouldReport);
       }
       lastEvent = null;
+      return;
+    }
+
+    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
+    // and finally exception occurs, we need to release the actual last event from the connector
+    // given by the parameter
+    if (actualLastEvent instanceof EnrichedEvent
+        && !((EnrichedEvent) actualLastEvent).isReleased()) {
+      ((EnrichedEvent) actualLastEvent)
+          .decreaseReferenceCount(PipeSubtask.class.getName(), shouldReport);
     }
   }
 
-  protected synchronized void clearReferenceCountAndReleaseLastEvent() {
+  protected synchronized void clearReferenceCountAndReleaseLastEvent(final Event actualLastEvent) {
+    // lastEvent may be set to null due to PipeConnectorSubtask#discardEventsOfPipe
     if (lastEvent != null) {
-      if (lastEvent instanceof EnrichedEvent) {
+      if (lastEvent instanceof EnrichedEvent && !((EnrichedEvent) lastEvent).isReleased()) {
         ((EnrichedEvent) lastEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastEvent = null;
+      return;
+    }
+
+    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
+    // and finally exception occurs, we need to release the actual last event from the connector
+    // given by the parameter
+    if (actualLastEvent instanceof EnrichedEvent
+        && !((EnrichedEvent) actualLastEvent).isReleased()) {
+      ((EnrichedEvent) actualLastEvent).clearReferenceCount(PipeSubtask.class.getName());
     }
   }
 

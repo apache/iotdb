@@ -772,9 +772,11 @@ public class QueryDataSetUtils {
         case BOOLEAN:
           parseBooleanColumn(size, stream, values, i);
           break;
+        case DATE:
         case INT32:
           parseInt32Column(size, stream, values, i);
           break;
+        case TIMESTAMP:
         case INT64:
           parseInt64Column(size, stream, values, i);
           break;
@@ -785,6 +787,8 @@ public class QueryDataSetUtils {
           parseDoubleColumn(size, stream, values, i);
           break;
         case TEXT:
+        case BLOB:
+        case STRING:
           parseTextColumn(size, stream, values, i);
           break;
         default:

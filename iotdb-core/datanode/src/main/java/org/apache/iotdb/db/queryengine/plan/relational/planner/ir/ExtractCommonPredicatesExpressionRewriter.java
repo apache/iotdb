@@ -42,20 +42,35 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExp
 public final class ExtractCommonPredicatesExpressionRewriter {
 
   public static Expression extractCommonPredicates(Expression expression) {
-    return new Visitor().process(expression, NodeContext.ROOT_NODE);
+    return ExpressionTreeRewriter.rewriteWith(new Visitor(), expression, NodeContext.ROOT_NODE);
   }
 
   private ExtractCommonPredicatesExpressionRewriter() {}
 
-  private static class Visitor extends RewritingVisitor<NodeContext> {
+  private static class Visitor extends ExpressionRewriter<NodeContext> {
 
     @Override
-    public Expression visitLogicalExpression(LogicalExpression node, NodeContext context) {
+    protected Expression rewriteExpression(
+        Expression node, NodeContext context, ExpressionTreeRewriter<NodeContext> treeRewriter) {
+      if (context.isRootNode()) {
+        return treeRewriter.rewrite(node, NodeContext.NOT_ROOT_NODE);
+      }
+
+      return null;
+    }
+
+    @Override
+    public Expression rewriteLogicalExpression(
+        LogicalExpression node,
+        NodeContext context,
+        ExpressionTreeRewriter<NodeContext> treeRewriter) {
       Expression expression =
           combinePredicates(
               node.getOperator(),
               extractPredicates(node.getOperator(), node).stream()
-                  .map(subExpression -> process(subExpression, NodeContext.NOT_ROOT_NODE))
+                  .map(
+                      subExpression ->
+                          treeRewriter.rewrite(subExpression, NodeContext.NOT_ROOT_NODE))
                   .collect(toImmutableList()));
 
       if (!(expression instanceof LogicalExpression)) {

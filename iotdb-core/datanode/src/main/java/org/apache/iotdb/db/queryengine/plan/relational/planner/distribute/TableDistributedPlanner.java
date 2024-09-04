@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.distribute;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannelLocation;
+import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.distribution.WriteFragmentParallelPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -43,6 +44,8 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector.NOOP;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 
 public class TableDistributedPlanner {
 
@@ -62,6 +65,7 @@ public class TableDistributedPlanner {
   }
 
   public DistributedQueryPlan plan() {
+    long startTime = System.nanoTime();
     TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     PlanNode outputNodeWithExchange = generateDistributedPlanWithOptimize(planContext);
@@ -71,9 +75,15 @@ public class TableDistributedPlanner {
           .getRespDatasetHeader()
           .setTableColumnToTsBlockIndexMap((OutputNode) outputNodeWithExchange);
     }
-    adjustUpStream(outputNodeWithExchange, planContext);
 
-    return generateDistributedPlan(outputNodeWithExchange);
+    adjustUpStream(outputNodeWithExchange, planContext);
+    DistributedQueryPlan resultDistributedPlan = generateDistributedPlan(outputNodeWithExchange);
+
+    if (analysis.getStatement() instanceof Query) {
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TABLE_TYPE, DISTRIBUTION_PLANNER, System.nanoTime() - startTime);
+    }
+    return resultDistributedPlan;
   }
 
   public PlanNode generateDistributedPlanWithOptimize(

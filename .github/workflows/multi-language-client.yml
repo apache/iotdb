@@ -56,11 +56,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install libboost-all-dev
       - name: Install CPP Dependencies (Mac)
+        # remove some xcode to release disk space
         if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost
-          brew install bison
+          sudo rm -rf /Applications/Xcode_14.3.1.app
+          sudo rm -rf /Applications/Xcode_15.0.1.app
+          sudo rm -rf /Applications/Xcode_15.1.app
+          sudo rm -rf /Applications/Xcode_15.2.app
+          sudo rm -rf /Applications/Xcode_15.3.app
       - name: Install CPP Dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -76,7 +81,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2
-          key: client-${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Build IoTDB server
         shell: bash
@@ -99,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cpp-IT-${{ runner.os }}
-          path: iotdb-client/client-cpp/target/build/test/Testing
+          path: distribution/target/apache-iotdb-*-all-bin/apache-iotdb-*-all-bin/logs
           retention-days: 1
 
   go:

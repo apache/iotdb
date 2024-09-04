@@ -65,6 +65,12 @@ public abstract class UDTFValueTrend implements UDTF {
       case DOUBLE:
         previousDouble = row.getDouble(0);
         break;
+      case TEXT:
+      case BOOLEAN:
+      case TIMESTAMP:
+      case STRING:
+      case DATE:
+      case BLOB:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
