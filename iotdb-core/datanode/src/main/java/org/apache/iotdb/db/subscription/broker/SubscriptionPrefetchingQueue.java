@@ -263,6 +263,7 @@ public abstract class SubscriptionPrefetchingQueue {
                   "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
                   this,
                   ev);
+              return null; // remove this entry
             }
 
             // prefetch and serialize remaining subscription events
