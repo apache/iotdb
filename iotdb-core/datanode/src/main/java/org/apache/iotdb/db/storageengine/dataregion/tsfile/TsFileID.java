@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import java.util.Objects;
+
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.utils.FilePathUtils.splitTsFilePath;
 
@@ -102,6 +104,27 @@ public class TsFileID {
     versionArray[2] =
         (Long.parseLong(names[2]) << 32) | Long.parseLong(names[3].substring(0, dotIndex));
     return versionArray;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TsFileID that = (TsFileID) o;
+    return regionId == that.regionId
+        && timePartitionId == that.timePartitionId
+        && timestamp == that.timestamp
+        && fileVersion == that.fileVersion
+        && compactionVersion == that.compactionVersion;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(regionId, timePartitionId, timestamp, fileVersion, compactionVersion);
   }
 
   public long getTimestamp() {

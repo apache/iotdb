@@ -285,7 +285,8 @@ public class TsFileInsertionQueryDataContainer extends TsFileInsertionDataContai
                         measurementDataTypeMap,
                         ((PlainDeviceID) entry.getKey()).toStringID(),
                         entry.getValue(),
-                        timeFilterExpression);
+                        timeFilterExpression,
+                        allocatedMemoryBlockForTablet);
               } catch (final Exception e) {
                 close();
                 throw new PipeException("failed to create TsFileInsertionDataTabletIterator", e);
