@@ -295,11 +295,11 @@ public class ImportTsFile extends AbstractTsFileTool {
       // set params
       processSetParams();
 
-      IoTDBTsFileScanAndProcessTool.traverseAndCollectFiles();
-      IoTDBTsFileScanAndProcessTool.addNoResourceOrModsToQueue();
+      IoTDBTsFileScanTool.traverseAndCollectFiles();
+      IoTDBTsFileScanTool.addNoResourceOrModsToQueue();
 
       ioTPrinter.println(
-          "Load file total number : " + IoTDBTsFileScanAndProcessTool.getTsFileQueueSize());
+          "Load file total number : " + IoTDBTsFileScanTool.getTsFileQueueSize());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
@@ -317,7 +317,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static void processSetParams() {
     // ImportTsFileLocally
     final File file = new File(source);
-    IoTDBTsFileScanAndProcessTool.setSourceFullPath(file.getAbsolutePath());
+    IoTDBTsFileScanTool.setSourceFullPath(file.getAbsolutePath());
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("source file or directory %s does not exist", source));
       System.exit(CODE_ERROR);
@@ -329,8 +329,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     ImportTsFileRemotely.setHost(host);
     ImportTsFileRemotely.setPort(port);
 
-    // ImportOperator
-    IoTDBTsFileScanAndProcessTool.setSuccessAndFailDirAndOperation(
+    // AbstractTsFileProcessTool
+    AbstractTsFileProcessTool.setSuccessAndFailDirAndOperation(
         successDir, successOperation, failDir, failOperation);
   }
 

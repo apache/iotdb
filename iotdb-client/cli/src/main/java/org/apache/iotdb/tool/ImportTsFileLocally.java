@@ -29,15 +29,10 @@ public class ImportTsFileLocally extends AbstractTsFileProcessTool implements Ru
   private static SessionPool sessionPool;
 
   @Override
-  public void run() {
-    loadTsFile();
-  }
-
-  @Override
   public void loadTsFile() {
     String filePath;
     try {
-      while ((filePath = IoTDBTsFileScanAndProcessTool.getFilePath()) != null) {
+      while ((filePath = IoTDBTsFileScanTool.getFilePath()) != null) {
         final String sql = "load '" + filePath + "' onSuccess=none ";
         try {
           sessionPool.executeNonQueryStatement(sql);
@@ -47,7 +42,7 @@ public class ImportTsFileLocally extends AbstractTsFileProcessTool implements Ru
           processFailFile(filePath, e);
         }
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       ioTPrinter.println("Unexpected error occurred: " + e.getMessage());
     }
   }
