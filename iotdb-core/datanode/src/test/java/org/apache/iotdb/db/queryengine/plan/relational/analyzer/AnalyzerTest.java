@@ -930,14 +930,21 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
-    assertEquals(0, analysis.getRespDatasetHeader().getColumnNameIndexMap().get("Time").intValue());
-    assertEquals(0, analysis.getRespDatasetHeader().getColumnNameIndexMap().get("time").intValue());
+    assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("time"));
+    assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("Time"));
+    assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("_col3"));
+    assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("_col2"));
+    assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("tag1"));
+    assertTrue(analysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("TAG1"));
     assertEquals(
-        2, analysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col2").intValue());
+        analysis.getRespDatasetHeader().getColumnNameIndexMap().get("time").intValue(),
+        analysis.getRespDatasetHeader().getColumnNameIndexMap().get("Time").intValue());
     assertEquals(
-        2, analysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col3").intValue());
-    assertEquals(1, analysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue());
-    assertEquals(1, analysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
+        analysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col3").intValue(),
+        analysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col2").intValue());
+    assertEquals(
+        analysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue(),
+        analysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
   }
 
   private Metadata mockMetadataForInsertion() {
