@@ -57,7 +57,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ImportTsFileRemotely extends AbstractTsFileProcessTool implements Runnable {
+public class ImportTsFileRemotely extends AbstractTsFileProcessTool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ImportTsFileRemotely.class);
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -78,24 +78,15 @@ public class ImportTsFileRemotely extends AbstractTsFileProcessTool implements R
   }
 
   @Override
-  public void run() {
-    try {
-      sendHandshake();
-      loadTsFile();
-    } catch (final Exception e) {
-      LOGGER.warn("Error occurred during transfer tsfile.", e);
-    }
-  }
-
-  @Override
   public void loadTsFile() {
+    sendHandshake();
     String filePath;
     try {
-      while ((filePath = IoTDBTsFileScanAndProcessTool.getFilePath()) != null) {
+      while ((filePath = IoTDBTsFileScanTool.getFilePath()) != null) {
         final File tsFile = new File(filePath);
 
         try {
-          if (IoTDBTsFileScanAndProcessTool.isContainModsFile(filePath + MODS)) {
+          if (IoTDBTsFileScanTool.isContainModsFile(filePath + MODS)) {
             doTransfer(tsFile, new File(filePath + MODS));
           } else {
             doTransfer(tsFile, null);
