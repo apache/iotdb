@@ -58,5 +58,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cluster-log-ainode-${{ matrix.os }}
-          path: integration-test/target/cluster-logs
+          path: integration-test/target/ainode-logs
           retention-days: 30
