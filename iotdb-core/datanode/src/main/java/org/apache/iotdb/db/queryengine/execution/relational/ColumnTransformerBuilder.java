@@ -23,6 +23,11 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -59,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
@@ -156,6 +162,7 @@ import org.apache.tsfile.utils.Binary;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -191,14 +198,39 @@ public class ColumnTransformerBuilder
       ArithmeticBinaryExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer left = process(node.getLeft(), context);
+        ColumnTransformer right = process(node.getRight(), context);
+        List<Type> types = Arrays.asList(left.getType(), right.getType());
+        Type type;
+        switch (node.getOperator()) {
+          case ADD:
+            type = AdditionResolver.checkConditions(types).get();
+            break;
+          case SUBTRACT:
+            type = SubtractionResolver.checkConditions(types).get();
+            break;
+          case MULTIPLY:
+            type = MultiplicationResolver.checkConditions(types).get();
+            break;
+          case DIVIDE:
+            type = DivisionResolver.checkConditions(types).get();
+            break;
+          case MODULUS:
+            type = ModulusResolver.checkConditions(types).get();
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
+        }
+        TSDataType tsDataType = InternalTypeManager.getTSDataType(type);
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
-                DOUBLE, context.originSize + context.commonTransformerList.size());
+                type, context.originSize + context.commonTransformerList.size());
         ColumnTransformer columnTransformer = context.hasSeen.get(node);
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
         context.leafList.add(identity);
-        context.inputDataTypes.add(TSDataType.DOUBLE);
+        context.inputDataTypes.add(tsDataType);
         context.cache.put(node, identity);
       } else {
         ZoneId zoneId = context.sessionInfo.getZoneId();
