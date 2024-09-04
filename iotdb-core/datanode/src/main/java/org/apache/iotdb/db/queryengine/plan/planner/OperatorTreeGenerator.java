@@ -2893,6 +2893,28 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
                 node.getPlanNodeId(),
                 AlignedUpdateLastCacheOperator.class.getSimpleName());
 
+    final boolean isNeedUpdateLastCache = context.isNeedUpdateLastCache();
+    if (isNeedUpdateLastCache) {
+      final int size = unCachedPath.getColumnNum();
+      final PartialPath devicePath = unCachedPath.getDevicePath();
+      final String databaseName =
+          ((DataDriverContext) operatorContext.getDriverContext())
+              .getDataRegion()
+              .getDatabaseName();
+
+      for (int i = 0; i < size; ++i) {
+        TreeDeviceSchemaCacheManager.getInstance()
+            .updateLastCache(
+                databaseName,
+                new MeasurementPath(
+                    devicePath.concatNode(unCachedPath.getMeasurementList().get(i)),
+                    unCachedPath.getSchemaList().get(i),
+                    true),
+                null,
+                false);
+      }
+    }
+
     return Objects.isNull(node.getOutputViewPath())
         ? new AlignedUpdateLastCacheOperator(
             operatorContext,
