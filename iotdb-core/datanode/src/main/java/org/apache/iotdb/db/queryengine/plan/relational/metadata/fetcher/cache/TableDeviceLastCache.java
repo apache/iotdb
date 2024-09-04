@@ -144,11 +144,10 @@ public class TableDeviceLastCache {
       if (lastTime < timeValuePairs[i].getTimestamp()) {
         lastTime = timeValuePairs[i].getTimestamp();
       }
-      measurement2CachedLastMap.compute(
+      measurement2CachedLastMap.computeIfPresent(
           measurements[i],
           (measurement, tvPair) -> {
-            if (Objects.nonNull(tvPair)
-                && tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
+            if (tvPair.getTimestamp() <= timeValuePairs[finalI].getTimestamp()) {
               diff.addAndGet(getDiffSize(tvPair, timeValuePairs[finalI]));
               return timeValuePairs[finalI];
             }
