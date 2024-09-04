@@ -1,4 +1,4 @@
-name: Cluster AINode IT - 1C1D1A
+name: Cluster IT - 1C1D1A
 
 on:
   push:
@@ -30,7 +30,7 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
-  AINodeTest:
+  AINode:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -40,10 +40,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: build AINode
+      - name: Build AINode
         shell: bash
         run: mvn clean package -DskipTests -P with-ainode
-      - name: IT/UT Test
+      - name: IT Test
         shell: bash
         run: |
           mvn clean verify \
@@ -53,4 +53,10 @@ jobs:
           -pl integration-test \
           -am \
           -PAIClusterIT
-
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-ainode-${{ matrix.os }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
