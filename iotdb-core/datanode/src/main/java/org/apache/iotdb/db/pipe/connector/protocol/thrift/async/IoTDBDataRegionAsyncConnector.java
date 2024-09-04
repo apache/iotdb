@@ -539,7 +539,17 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       tabletBatchBuilder.close();
     }
 
+    decreaseOrRemoveAsyncClient();
+
     super.close();
+  }
+
+  private void decreaseOrRemoveAsyncClient() {
+    clientManager.decreaseAttributesCount();
+
+    if (clientManager.getAttributesCount() == 0) {
+      clientManager.removeAttributesCount();
+    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
