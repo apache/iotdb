@@ -18,16 +18,19 @@
 import pandas as pd
 from torch import tensor
 
-from iotdb.ainode.constant import BuiltInModelType
+from iotdb.ainode.constant import BuiltInModelType, TSStatusCode
 from iotdb.ainode.exception import InvalidWindowArgumentError, InferenceModelInternalError, \
     BuiltInModelNotSupportError
 from iotdb.ainode.factory import create_built_in_model
 from iotdb.ainode.log import logger
-from iotdb.ainode.parser import runtime_error_extractor
-from iotdb.ainode.storage import model_storage
+from iotdb.ainode.manager.model_manager import ModelManager
+from iotdb.ainode.parser import runtime_error_extractor, parse_inference_request
+from iotdb.ainode.serde import convert_to_binary
+from iotdb.ainode.util import get_status
+from iotdb.thrift.ainode.ttypes import TInferenceResp, TInferenceReq
 
 
-def inference_with_registered_model(model_id, full_data, window_interval, window_step, inference_attributes):
+def inference_with_registered_model(model, full_data, window_interval, window_step, inference_attributes):
     """
     Args:
         model_id: the unique id of the model
@@ -50,18 +53,7 @@ def inference_with_registered_model(model_id, full_data, window_interval, window
         of variables in the output DataFrame. Then the inference module will concatenate all the output DataFrames into
         a list.
     """
-    logger.info(f"start inference registered model {model_id}")
 
-    # parse the inference attributes
-    acceleration = False
-    if inference_attributes is None or 'acceleration' not in inference_attributes:
-        # if the acceleration is not specified, then the acceleration will be set to default value False
-        acceleration = False
-    else:
-        # if the acceleration is specified, then the acceleration will be set to the specified value
-        acceleration = (inference_attributes['acceleration'].lower() == 'true')
-
-    model = model_storage.load_model_from_id(model_id, acceleration)
     dataset, dataset_length = process_data(full_data)
 
     # check the validity of window_interval and window_step, the two arguments must be positive integers, and the
@@ -97,6 +89,76 @@ def inference_with_registered_model(model_id, full_data, window_interval, window
 
     return outputs
 
+def inference_with_built_in_model(model, full_data, inference_attributes):
+    """
+    Args:
+        model_id: the unique id of the model
+        full_data: a tuple of (data, time_stamp, type_list, column_name_list), where the data is a DataFrame with shape
+            (L, C), time_stamp is a DataFrame with shape(L, 1), type_list is a list of data types with length C,
+            column_name_list is a list of column names with length C, where L is the number of data points, C is the
+            number of variables, the data and time_stamp are aligned by index
+        inference_attributes: a list of attributes to be inferred, in this function, the attributes will include some
+            parameters of the built-in model. Some parameters are optional, and if the parameters are not
+            specified, the default value will be used.
+    Returns:
+        outputs: a list of output DataFrames, where each DataFrame has shape (H', C'), where H' is the output window
+            interval, C' is the number of variables in the output DataFrame
+    Description:
+        the inference_with_built_in_model function will inference with built-in model from sktime, which does not
+        require user registration. This module will parse the inference attributes and create the built-in model, then
+        feed the input data into the model to get the output, the output is a DataFrame with shape (H', C'), where H'
+        is the output window interval, C' is the number of variables in the output DataFrame. Then the inference module
+        will concatenate all the output DataFrames into a list.
+    """
+    # model_id = model_id.lower()
+    # if model_id not in BuiltInModelType.values():
+    #     raise BuiltInModelNotSupportError(model_id)
+
+    logger.info(f"start inference built-in model {model_id}")
+
+    # parse the inference attributes and create the built-in model
+    model, attributes = create_built_in_model(model_id, inference_attributes)
+
+    data, _, _, _ = full_data
+
+    output = model.inference(data)
+
+    # output: DataFrame, shape: (H', C')
+    output = pd.DataFrame(output)
+    outputs = [output]
+    return outputs
+
+def inference(req: TInferenceReq, model_manager: ModelManager):
+    logger.info(f"start inference registered model {req.modelId}")
+    try:
+        model_id, full_data, window_interval, window_step, inference_attributes = parse_inference_request(req)
+
+        if inference_attributes is None or 'acceleration' not in inference_attributes:
+            # if the acceleration is not specified, then the acceleration will be set to default value False
+            acceleration = False
+        else:
+            # if the acceleration is specified, then the acceleration will be set to the specified value
+            acceleration = (inference_attributes['acceleration'].lower() == 'true')
+        model = model_manager.load_model(model_id, acceleration)
+        if model_id.startswith('_'):
+            # built-in models
+            inference_results = inference_with_built_in_model(
+                model, full_data, inference_attributes)
+        else:
+            # user-registered models
+            inference_results = inference_with_registered_model(
+                model, full_data, window_interval, window_step, inference_attributes)
+        for i in range(len(inference_results)):
+            inference_results[i] = convert_to_binary(inference_results[i])
+        return TInferenceResp(
+            get_status(
+                TSStatusCode.SUCCESS_STATUS),
+            inference_results)
+    except Exception as e:
+        logger.warning(e)
+        inference_results = []
+        return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
+
 
 def process_data(full_data):
     """
@@ -124,42 +186,3 @@ def process_data(full_data):
     data = tensor(data.values).unsqueeze(0)
     return data, data_length
 
-
-def inference_with_built_in_model(model_id, full_data, inference_attributes):
-    """
-    Args:
-        model_id: the unique id of the model
-        full_data: a tuple of (data, time_stamp, type_list, column_name_list), where the data is a DataFrame with shape
-            (L, C), time_stamp is a DataFrame with shape(L, 1), type_list is a list of data types with length C,
-            column_name_list is a list of column names with length C, where L is the number of data points, C is the
-            number of variables, the data and time_stamp are aligned by index
-        inference_attributes: a list of attributes to be inferred, in this function, the attributes will include some
-            parameters of the built-in model. Some parameters are optional, and if the parameters are not
-            specified, the default value will be used.
-    Returns:
-        outputs: a list of output DataFrames, where each DataFrame has shape (H', C'), where H' is the output window
-            interval, C' is the number of variables in the output DataFrame
-    Description:
-        the inference_with_built_in_model function will inference with built-in model from sktime, which does not
-        require user registration. This module will parse the inference attributes and create the built-in model, then
-        feed the input data into the model to get the output, the output is a DataFrame with shape (H', C'), where H'
-        is the output window interval, C' is the number of variables in the output DataFrame. Then the inference module
-        will concatenate all the output DataFrames into a list.
-    """
-    model_id = model_id.lower()
-    if model_id not in BuiltInModelType.values():
-        raise BuiltInModelNotSupportError(model_id)
-
-    logger.info(f"start inference built-in model {model_id}")
-
-    # parse the inference attributes and create the built-in model
-    model, attributes = create_built_in_model(model_id, inference_attributes)
-
-    data, _, _, _ = full_data
-
-    output = model.inference(data)
-
-    # output: DataFrame, shape: (H', C')
-    output = pd.DataFrame(output)
-    outputs = [output]
-    return outputs
