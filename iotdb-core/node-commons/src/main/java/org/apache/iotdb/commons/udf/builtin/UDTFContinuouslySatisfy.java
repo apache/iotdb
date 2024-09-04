@@ -100,6 +100,11 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
       case BOOLEAN:
         needAddNewRecord = transformBoolean(row.getTime(), row.getBoolean(0));
         break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case TIMESTAMP:
+      case DATE:
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -221,6 +226,11 @@ public abstract class UDTFContinuouslySatisfy implements UDTF {
           }
         }
         break;
+      case TIMESTAMP:
+      case DATE:
+      case STRING:
+      case BLOB:
+      case TEXT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
