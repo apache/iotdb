@@ -62,6 +62,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final Set<TEndPoint> endPointSet;
 
+  private static final Map<String, Integer> attributesCount = new ConcurrentHashMap<>();
+
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
@@ -71,6 +73,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
   private final boolean shouldReceiverConvertOnTypeMismatch;
 
   private final String loadTsFileStrategy;
+
+  private final String receiverAttributes;
 
   public IoTDBDataNodeAsyncClientManager(
       List<TEndPoint> endPoints,
@@ -82,7 +86,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     endPointSet = new HashSet<>(endPoints);
 
-    final String receiverAttributes =
+    this.receiverAttributes =
         String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
     if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
       synchronized (IoTDBDataRegionAsyncConnector.class) {
@@ -94,6 +98,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       }
     }
     endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+    attributesCount.compute(receiverAttributes, (k, v) -> v == null ? 1 : v + 1);
 
     switch (loadBalanceStrategy) {
       case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
@@ -286,6 +291,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
+  }
+
+  public Integer getAttributesCount() {
+    return attributesCount.getOrDefault(receiverAttributes, 1);
+  }
+
+  public void decreaseAttributesCount() {
+    attributesCount.computeIfPresent(receiverAttributes, (k, v) -> v - 1);
+  }
+
+  public void removeAttributesCount() {
+    attributesCount.remove(receiverAttributes);
   }
 
   /////////////////////// Strategies for load balance //////////////////////////
