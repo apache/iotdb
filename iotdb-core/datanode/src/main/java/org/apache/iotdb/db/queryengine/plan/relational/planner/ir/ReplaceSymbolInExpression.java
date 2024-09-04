@@ -20,9 +20,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import java.util.Map;
 
-public class MetadataExpressionTransformForJoin {
+public class ReplaceSymbolInExpression {
 
-  private MetadataExpressionTransformForJoin() {}
+  private ReplaceSymbolInExpression() {}
 
   public static Expression transform(
       Expression expression, Map<Symbol, ColumnSchema> tableAssignments) {
@@ -31,6 +31,7 @@ public class MetadataExpressionTransformForJoin {
   }
 
   private static class Visitor extends ExpressionRewriter<Context> {
+
     @Override
     public Expression rewriteSymbolReference(
         SymbolReference node, Context context, ExpressionTreeRewriter<Context> treeRewriter) {

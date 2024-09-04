@@ -37,7 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.MetadataExpressionTransformForJoin;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -90,8 +90,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLit
 /**
  * <b>Optimization phase:</b> Logical plan planning.
  *
- * <p>After the optimized rule {@link SimplifyExpressions} finished, predicate expression in
- * FilterNode has been transformed to conjunctive normal forms(CNF).
+ * <p>After the optimized rule {@link
+ * org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions}
+ * finished, predicate expression in FilterNode has been transformed to conjunctive normal
+ * forms(CNF).
  *
  * <p>In this class, we examine each expression in CNFs, determine how to use it, in metadata query,
  * or pushed down into ScanOperators, or it can only be used in FilterNode above with TableScanNode.
@@ -164,15 +166,18 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     public PlanNode visitProject(ProjectNode node, RewriteContext context) {
       for (Expression expression : node.getAssignments().getMap().values()) {
         if (containsDiffFunction(expression)) {
+          node.setChild(node.getChild().accept(this, new RewriteContext()));
           if (!TRUE_LITERAL.equals(context.inheritedPredicate)) {
             FilterNode filterNode =
-                new FilterNode(
-                    queryId.genPlanNodeId(), node.getChild(), context.inheritedPredicate);
+                new FilterNode(queryId.genPlanNodeId(), node, context.inheritedPredicate);
             context.inheritedPredicate = TRUE_LITERAL;
             return filterNode;
+          } else {
+            return node;
           }
         }
       }
+
       // TODO(beyyes) in some situation, predicate can not be pushed down below ProjectNode
       node.setChild(node.getChild().accept(this, context));
       return node;
@@ -186,36 +191,30 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       // when exist diff function, predicate can not be pushed down into TableScanNode
       if (containsDiffFunction(predicate)) {
-        node.setChild(node.getChild().accept(this, context));
+        node.setChild(node.getChild().accept(this, new RewriteContext()));
+        node.setPredicate(predicate);
+        context.inheritedPredicate = TRUE_LITERAL;
         return node;
       }
-
-      //      if (node.getChild() instanceof TableScanNode) {
-      //        context.inheritedPredicate = TRUE_LITERAL;
-      //        return combineFilterAndScan((TableScanNode) node.getChild(), predicate);
-      //      }
 
       // FilterNode may get from having, subquery or join
       PlanNode rewrittenPlan = node.getChild().accept(this, new RewriteContext(predicate));
       if (!(rewrittenPlan instanceof FilterNode)) {
         return rewrittenPlan;
       }
+
       FilterNode rewrittenFilterNode = (FilterNode) rewrittenPlan;
-      if (
-      //              !areExpressionsEquivalent(rewrittenFilterNode.getPredicate(),
-      // node.getPredicate())
-      !rewrittenFilterNode.getPredicate().equals(node.getPredicate())
+      // TODO(beyyes) use areExpressionsEquivalent method
+      if (!rewrittenFilterNode.getPredicate().equals(node.getPredicate())
           || node.getChild() != rewrittenFilterNode.getChild()) {
         return rewrittenPlan;
       }
       return node;
     }
 
-    //    private boolean areExpressionsEquivalent(Expression leftExpression, Expression
-    // rightExpression)
-    //    {
-    //      return expressionEquivalence.areExpressionsEquivalent(queryContext.getSession(),
-    // leftExpression, rightExpression, types);
+    //    private boolean areExpressionsEquivalent(
+    //        Expression leftExpression, Expression rightExpression) {
+    //      return false;
     //    }
 
     @Override
@@ -325,53 +324,71 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     /** Get deviceEntries and DataPartition used in TableScan. */
     private PlanNode tableMetadataIndexScan(
         TableScanNode tableScanNode, List<Expression> metadataExpressions) {
-      // for join operator, columnSymbols in TableScanNode may be renamed, which adds suffix for
-      // origin
-      // column name,
-      // thus we add a new ProjectNode above TableScanNode.
-      boolean tableScanNodeColumnsRenamed = false;
+
+      ProjectNode newProjectNode =
+          addProjectNodeIfColumnRenamed(tableScanNode, metadataExpressions);
+
+      getDeviceEntriesWithDataPartitions(tableScanNode, metadataExpressions);
+
+      return newProjectNode != null ? newProjectNode : tableScanNode;
+    }
+
+    private ProjectNode addProjectNodeIfColumnRenamed(
+        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
+
+      // for join operator, columnSymbols in TableScanNode may be renamed in Join situation,
+      // in this situation we need add a new ProjectNode above TableScanNode.
+      boolean hasColumnRenamed = false;
       for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
         Symbol columnSymbol = entry.getKey();
         ColumnSchema columnSchema = entry.getValue();
         if (!columnSymbol.getName().equals(columnSchema.getName())) {
-          tableScanNodeColumnsRenamed = true;
+          hasColumnRenamed = true;
           break;
         }
       }
-      ProjectNode newProjectNode = null;
-      if (tableScanNodeColumnsRenamed) {
-        metadataExpressions.replaceAll(
-            expression1 ->
-                MetadataExpressionTransformForJoin.transform(
-                    expression1, tableScanNode.getAssignments()));
 
-        List<Symbol> newTableScanSymbols = new ArrayList<>(tableScanNode.getOutputSymbols().size());
-        Map<Symbol, ColumnSchema> newTableScanAssignments =
-            new LinkedHashMap<>(tableScanNode.getOutputSymbols().size());
-        Map<Symbol, Expression> projectAssignments =
-            new LinkedHashMap<>(tableScanNode.getOutputSymbols().size());
-        for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-          Symbol originalSymbol = entry.getKey();
-          ColumnSchema columnSchema = entry.getValue();
-
-          Symbol realSymbol = Symbol.of(columnSchema.getName());
-          newTableScanSymbols.add(realSymbol);
-          newTableScanAssignments.put(realSymbol, columnSchema);
-          projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
-          queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
-          if (tableScanNode.getIdAndAttributeIndexMap().containsKey(originalSymbol)) {
-            Integer idx = tableScanNode.getIdAndAttributeIndexMap().get(originalSymbol);
-            tableScanNode.getIdAndAttributeIndexMap().remove(originalSymbol);
-            tableScanNode.getIdAndAttributeIndexMap().put(realSymbol, idx);
-          }
-        }
-
-        tableScanNode.setOutputSymbols(newTableScanSymbols);
-        tableScanNode.setAssignments(newTableScanAssignments);
-        newProjectNode =
-            new ProjectNode(
-                queryId.genPlanNodeId(), tableScanNode, new Assignments(projectAssignments));
+      if (!hasColumnRenamed) {
+        return null;
       }
+
+      metadataExpressions.replaceAll(
+          expression ->
+              ReplaceSymbolInExpression.transform(expression, tableScanNode.getAssignments()));
+      if (tableScanNode.getPushDownPredicate() != null) {
+        ReplaceSymbolInExpression.transform(
+            tableScanNode.getPushDownPredicate(), tableScanNode.getAssignments());
+      }
+
+      int size = tableScanNode.getOutputSymbols().size();
+      List<Symbol> newTableScanSymbols = new ArrayList<>(size);
+      Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
+      Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+        Symbol originalSymbol = entry.getKey();
+        ColumnSchema columnSchema = entry.getValue();
+
+        Symbol realSymbol = Symbol.of(columnSchema.getName());
+        newTableScanSymbols.add(realSymbol);
+        newTableScanAssignments.put(realSymbol, columnSchema);
+        projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
+        queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
+        Map<Symbol, Integer> idAndAttributeIndexMap = tableScanNode.getIdAndAttributeIndexMap();
+        if (idAndAttributeIndexMap.containsKey(originalSymbol)) {
+          Integer idx = idAndAttributeIndexMap.get(originalSymbol);
+          idAndAttributeIndexMap.remove(originalSymbol);
+          idAndAttributeIndexMap.put(realSymbol, idx);
+        }
+      }
+
+      tableScanNode.setOutputSymbols(newTableScanSymbols);
+      tableScanNode.setAssignments(newTableScanAssignments);
+      return new ProjectNode(
+          queryId.genPlanNodeId(), tableScanNode, new Assignments(projectAssignments));
+    }
+
+    private void getDeviceEntriesWithDataPartitions(
+        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
 
       List<String> attributeColumns = new ArrayList<>();
       int attributeIndex = 0;
@@ -427,12 +444,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
         QueryPlanCostMetricSet.getInstance()
             .recordPlanCost(TABLE_TYPE, PARTITION_FETCHER, System.nanoTime() - startTime);
-      }
-
-      if (tableScanNodeColumnsRenamed) {
-        return newProjectNode;
-      } else {
-        return tableScanNode;
       }
     }
 
