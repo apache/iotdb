@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
@@ -85,6 +86,14 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     List<TsFileResource> sourceFiles = new ArrayList<>(seqResources.size() + unseqResources.size());
     sourceFiles.addAll(seqResources);
     sourceFiles.addAll(unseqResources);
+
+    long metadataCost =
+        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
+            sourceFiles, CompactionType.CROSS_COMPACTION);
+    if (metadataCost < 0) {
+      return metadataCost;
+    }
+
     int maxConcurrentSeriesNum =
         Math.max(
             config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
@@ -94,6 +103,7 @@ public class FastCrossSpaceCompactionEstimator extends AbstractCrossSpaceEstimat
     // source files (chunk + uncompressed page) * overlap file num
     // target files (chunk + unsealed page writer)
     return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
-        + memoryBudgetForFileWriter;
+        + memoryBudgetForFileWriter
+        + metadataCost;
   }
 }
