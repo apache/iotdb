@@ -198,20 +198,33 @@ public class TreeDeviceSchemaCacheManagerTest {
     final TimeValuePair tv1 = new TimeValuePair(1, new TsPrimitiveType.TsInt(1));
 
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), null);
+        database, new MeasurementPath(device.concatNode("s1"), s1), null, false);
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), null);
+        database, new MeasurementPath(device.concatNode("s3"), s3), null, false);
 
+    // Simulate "s1" revert when the query has failed in calculation
+    treeDeviceSchemaCacheManager.updateLastCacheIfExists(
+        database,
+        IDeviceID.Factory.DEFAULT_FACTORY.create(
+            StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
+        measurements,
+        new TimeValuePair[] {
+          new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+        },
+        false,
+        new MeasurementSchema[] {s1});
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s1"), s1), tv1);
-    treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s3"), s3), tv1);
+        database, new MeasurementPath(device.concatNode("s1"), s1), null, true);
 
     // "s2" shall be null since the "null" timeValuePair has not been put
     treeDeviceSchemaCacheManager.updateLastCache(
-        database, new MeasurementPath(device.concatNode("s2"), s1), tv1);
+        database, new MeasurementPath(device.concatNode("s2"), s1), tv1, true);
 
-    Assert.assertNotNull(
+    // Normal update
+    treeDeviceSchemaCacheManager.updateLastCache(
+        database, new MeasurementPath(device.concatNode("s3"), s3), tv1, true);
+
+    Assert.assertNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
     Assert.assertNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s2")));
@@ -233,8 +246,7 @@ public class TreeDeviceSchemaCacheManagerTest {
         false,
         measurementSchemas);
 
-    Assert.assertEquals(
-        new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
+    Assert.assertNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s1")));
     Assert.assertNull(
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s2")));
