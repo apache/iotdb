@@ -339,4 +339,10 @@ public class RemoteCommonConfig implements CommonConfig {
   public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
     return this;
   }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    return this;
+  }
 }

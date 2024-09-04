@@ -104,6 +104,12 @@ public class MasterRepairUtil {
         case DOUBLE:
           ans = row.getDouble(index);
           break;
+        case DATE:
+        case BLOB:
+        case STRING:
+        case TIMESTAMP:
+        case BOOLEAN:
+        case TEXT:
         default:
           throw new Exception("The value of the input time series is not numeric.\n");
       }

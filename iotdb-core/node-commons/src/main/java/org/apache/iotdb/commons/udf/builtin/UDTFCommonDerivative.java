@@ -55,6 +55,12 @@ public class UDTFCommonDerivative extends UDTFDerivative {
         collector.putDouble(currentTime, (currentDouble - previousDouble) / timeDelta);
         previousDouble = currentDouble;
         break;
+      case DATE:
+      case BOOLEAN:
+      case TIMESTAMP:
+      case TEXT:
+      case STRING:
+      case BLOB:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
