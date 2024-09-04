@@ -47,7 +47,7 @@ import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
-public class RelationalModelPlanner implements IPlanner {
+public class TableModelPlanner implements IPlanner {
 
   private final Statement statement;
 
@@ -69,7 +69,7 @@ public class RelationalModelPlanner implements IPlanner {
   private final IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
       asyncInternalServiceClientManager;
 
-  public RelationalModelPlanner(
+  public TableModelPlanner(
       Statement statement,
       SqlParser sqlParser,
       Metadata metadata,
@@ -107,7 +107,7 @@ public class RelationalModelPlanner implements IPlanner {
 
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
-    return new LogicalPlanner(context, metadata, context.getSession(), warningCollector)
+    return new TableLogicalPlanner(context, metadata, context.getSession(), warningCollector)
         .plan((Analysis) analysis);
   }
 

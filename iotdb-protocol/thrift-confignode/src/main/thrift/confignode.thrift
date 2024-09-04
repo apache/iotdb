@@ -127,6 +127,7 @@ struct TDataNodeRestartReq {
   1: required string clusterName
   2: required common.TDataNodeConfiguration dataNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
 }
 
 struct TDataNodeRestartResp {
@@ -1006,6 +1007,7 @@ struct TAINodeRestartReq{
   1: required string clusterName
   2: required common.TAINodeConfiguration aiNodeConfiguration
   3: optional TNodeVersionInfo versionInfo
+  4: optional string clusterId
 }
 
 struct TAINodeRestartResp{

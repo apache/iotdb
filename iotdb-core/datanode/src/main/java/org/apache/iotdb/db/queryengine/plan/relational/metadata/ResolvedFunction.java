@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import java.util.Objects;
 
@@ -33,15 +34,20 @@ public class ResolvedFunction {
   private final FunctionKind functionKind;
   private final boolean deterministic;
 
+  private final FunctionNullability functionNullability;
+
   public ResolvedFunction(
       BoundSignature signature,
       FunctionId functionId,
       FunctionKind functionKind,
-      boolean deterministic) {
+      boolean deterministic,
+      FunctionNullability functionNullability) {
     this.signature = requireNonNull(signature, "signature is null");
     this.functionId = requireNonNull(functionId, "functionId is null");
     this.functionKind = requireNonNull(functionKind, "functionKind is null");
     this.deterministic = deterministic;
+    this.functionNullability = requireNonNull(functionNullability, "functionNullability is null");
+    ;
   }
 
   public BoundSignature getSignature() {
@@ -60,15 +66,18 @@ public class ResolvedFunction {
     return deterministic;
   }
 
+  public FunctionNullability getFunctionNullability() {
+    return functionNullability;
+  }
+
   //  public static boolean isResolved(QualifiedName name) {
   //    return SerializedResolvedFunction.isSerializedResolvedFunction(name);
   //  }
   //
-  //  public QualifiedName toQualifiedName() {
-  //    CatalogSchemaFunctionName name = toCatalogSchemaFunctionName();
-  //    return QualifiedName.of(name.getCatalogName(), name.getSchemaName(),
-  // name.getFunctionName());
-  //  }
+  public QualifiedName toQualifiedName() {
+    return QualifiedName.of(signature.getName());
+  }
+
   //
   //  public CatalogSchemaFunctionName toCatalogSchemaFunctionName() {
   //    return ResolvedFunctionDecoder.toCatalogSchemaFunctionName(this);

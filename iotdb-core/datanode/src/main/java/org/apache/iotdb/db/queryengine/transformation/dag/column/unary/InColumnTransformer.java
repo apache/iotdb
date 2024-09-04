@@ -20,12 +20,6 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 
 import org.apache.tsfile.block.column.Column;
@@ -34,10 +28,8 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -163,84 +155,8 @@ public class InColumnTransformer extends UnaryColumnTransformer {
                 .map(v -> new Binary(v, TSFileConfig.STRING_CHARSET))
                 .collect(Collectors.toSet());
         break;
-      default:
-        throw new UnsupportedOperationException("unsupported data type: " + childType);
-    }
-  }
-
-  private void initTypedSet(List<Literal> values) {
-    if (childType == null) {
-      return;
-    }
-    String errorMsg = "\"%s\" cannot be cast to [%s]";
-    switch (childType) {
-      case INT32:
-        intSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            intSet.add((int) ((LongLiteral) value).getParsedValue());
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case DATE:
-        intSet = new HashSet<>();
-        for (Literal value : values) {
-          intSet.add(DateUtils.parseDateExpressionToInt(((StringLiteral) value).getValue()));
-        }
-        break;
-      case INT64:
-      case TIMESTAMP:
-        longSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            longSet.add((((LongLiteral) value).getParsedValue()));
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case FLOAT:
-        floatSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            floatSet.add((float) ((DoubleLiteral) value).getValue());
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case DOUBLE:
-        doubleSet = new HashSet<>();
-        for (Literal value : values) {
-          try {
-            doubleSet.add(((DoubleLiteral) value).getValue());
-          } catch (IllegalArgumentException e) {
-            throw new SemanticException(String.format(errorMsg, value, childType));
-          }
-        }
-        break;
-      case BOOLEAN:
-        booleanSet = new HashSet<>();
-        for (Literal value : values) {
-          booleanSet.add(((BooleanLiteral) value).getValue());
-        }
-        break;
-      case TEXT:
-      case STRING:
-        stringSet = new HashSet<>();
-        for (Literal value : values) {
-          stringSet.add(
-              new Binary(((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET));
-        }
-        break;
       case BLOB:
-        stringSet = new HashSet<>();
-        for (Literal value : values) {
-          stringSet.add(new Binary(((BinaryLiteral) value).getValue()));
-        }
-        break;
+      case DATE:
       default:
         throw new UnsupportedOperationException("unsupported data type: " + childType);
     }

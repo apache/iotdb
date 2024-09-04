@@ -23,15 +23,15 @@ import org.apache.iotdb.pipe.api.event.Event;
 
 public abstract class PipeEventCounter {
 
-  public Integer getTsFileInsertionEventCount() {
+  public int getTsFileInsertionEventCount() {
     return 0;
   }
 
-  public Integer getTabletInsertionEventCount() {
+  public int getTabletInsertionEventCount() {
     return 0;
   }
 
-  public Integer getPipeHeartbeatEventCount() {
+  public int getPipeHeartbeatEventCount() {
     return 0;
   }
 

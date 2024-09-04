@@ -55,6 +55,12 @@ public class ExactOrderStatistics {
       case DOUBLE:
         doubleArrayList = new DoubleArrayList();
         break;
+      case STRING:
+      case TEXT:
+      case BOOLEAN:
+      case BLOB:
+      case DATE:
+      case TIMESTAMP:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -82,6 +88,12 @@ public class ExactOrderStatistics {
           doubleArrayList.add(vd);
         }
         break;
+      case DATE:
+      case TIMESTAMP:
+      case BLOB:
+      case BOOLEAN:
+      case TEXT:
+      case STRING:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -99,6 +111,12 @@ public class ExactOrderStatistics {
         return getMedian(floatArrayList);
       case DOUBLE:
         return getMedian(doubleArrayList);
+      case TEXT:
+      case STRING:
+      case BOOLEAN:
+      case BLOB:
+      case TIMESTAMP:
+      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -181,6 +199,12 @@ public class ExactOrderStatistics {
         return getMad(floatArrayList);
       case DOUBLE:
         return getMad(doubleArrayList);
+      case TIMESTAMP:
+      case DATE:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -255,6 +279,12 @@ public class ExactOrderStatistics {
         return Float.toString(getPercentile(floatArrayList, phi));
       case DOUBLE:
         return Double.toString(getPercentile(doubleArrayList, phi));
+      case STRING:
+      case TEXT:
+      case BOOLEAN:
+      case BLOB:
+      case DATE:
+      case TIMESTAMP:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

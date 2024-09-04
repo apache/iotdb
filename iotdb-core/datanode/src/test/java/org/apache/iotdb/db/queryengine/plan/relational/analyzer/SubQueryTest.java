@@ -26,7 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.LogicalPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
@@ -94,7 +94,7 @@ public class SubQueryTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - Limit - StreamSort - Project - TableScan`
@@ -179,7 +179,7 @@ public class SubQueryTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - TopK - Project - Limit - Project - StreamSort - Project -
@@ -275,7 +275,7 @@ public class SubQueryTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - ProjectNode - TopK - Project - Limit - Project - StreamSort -
@@ -390,7 +390,7 @@ public class SubQueryTest {
     context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new LogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output - Offset - ProjectNode - TopK - Project - Filter - Limit - Project -
@@ -487,7 +487,7 @@ public class SubQueryTest {
     sql = "SELECT * FROM (SELECT * FROM table1 WHERE s1>1) WHERE s2>2";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalPlanNode =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
     assertNodeMatches(logicalPlanNode, OutputNode.class, TableScanNode.class);
@@ -502,7 +502,7 @@ public class SubQueryTest {
     sql = "SELECT * FROM (SELECT * FROM table1 limit 10) limit 5";
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalPlanNode =
-        new LogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
             .plan(analysis)
             .getRootNode();
     assertNodeMatches(logicalPlanNode, OutputNode.class, LimitNode.class, TableScanNode.class);
