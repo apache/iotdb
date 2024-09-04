@@ -17,19 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.itbase.category;
 
-public enum EnvType {
-  Remote,
-  Simple,
-  Cluster1,
-  MultiCluster,
-  AI,
-  TABLE_SIMPLE,
-  TABLE_CLUSTER1;
-
-  public static EnvType getSystemEnvType() {
-    String envValue = System.getProperty("TestEnv", Simple.name());
-    return EnvType.valueOf(envValue);
-  }
-}
+public interface AIClusterIT {}
