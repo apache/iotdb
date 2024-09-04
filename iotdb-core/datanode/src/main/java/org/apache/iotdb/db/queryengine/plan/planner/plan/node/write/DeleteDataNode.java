@@ -218,6 +218,9 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    // DeleteDataNode has no child
+    int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
     return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
   }
 
