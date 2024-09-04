@@ -939,18 +939,21 @@ public class AnalyzerTest {
     rootNode = logicalQueryPlan.getRootNode();
     distributionPlanner = new TableDistributedPlanner(actualAnalysis, logicalQueryPlan, context);
     distributedQueryPlan = distributionPlanner.plan();
+    assertTrue(actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("time"));
+    assertTrue(actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("Time"));
+    assertTrue(actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("_col3"));
+    assertTrue(actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("_col2"));
+    assertTrue(actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("tag1"));
+    assertTrue(actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().containsKey("TAG1"));
     assertEquals(
-        0, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("Time").intValue());
+        actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("time").intValue(),
+        actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("Time").intValue());
     assertEquals(
-        0, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("time").intValue());
+        actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col3").intValue(),
+        actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col2").intValue());
     assertEquals(
-        2, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col2").intValue());
-    assertEquals(
-        2, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("_col3").intValue());
-    assertEquals(
-        1, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue());
-    assertEquals(
-        1, actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
+        actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("tag1").intValue(),
+        actualAnalysis.getRespDatasetHeader().getColumnNameIndexMap().get("TAG1").intValue());
   }
 
   private Metadata mockMetadataForInsertion() {

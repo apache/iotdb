@@ -17,35 +17,6 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.relational.security;
+package org.apache.iotdb.itbase.category;
 
-import java.util.Objects;
-
-public class Identity {
-  private final String user;
-
-  public Identity(String user) {
-    this.user = user;
-  }
-
-  public String getUser() {
-    return user;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Identity identity = (Identity) o;
-    return Objects.equals(user, identity.user);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(user);
-  }
-}
+public interface AIClusterIT {}
