@@ -305,6 +305,10 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     attributesCount.remove(receiverAttributes);
   }
 
+  public void closeAndRemoveClientManager() {
+    ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes).close();
+  }
+
   /////////////////////// Strategies for load balance //////////////////////////
 
   private interface LoadBalancer {
