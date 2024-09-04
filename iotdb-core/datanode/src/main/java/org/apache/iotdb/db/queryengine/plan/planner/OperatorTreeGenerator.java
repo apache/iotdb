@@ -2921,14 +2921,14 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             lastQueryScan,
             unCachedPath,
             DATA_NODE_SCHEMA_CACHE,
-            context.isNeedUpdateLastCache(),
+            isNeedUpdateLastCache,
             context.isNeedUpdateNullEntry())
         : new AlignedUpdateViewPathLastCacheOperator(
             operatorContext,
             lastQueryScan,
             unCachedPath,
             DATA_NODE_SCHEMA_CACHE,
-            context.isNeedUpdateLastCache(),
+            isNeedUpdateLastCache,
             context.isNeedUpdateNullEntry(),
             node.getOutputViewPath());
   }
