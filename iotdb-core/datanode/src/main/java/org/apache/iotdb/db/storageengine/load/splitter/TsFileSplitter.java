@@ -389,8 +389,20 @@ public class TsFileSplitter {
     }
 
     byte versionNumber = reader.readVersionNumber();
-    if (versionNumber != TSFileConfig.VERSION_NUMBER) {
-      logger.error("the file's Version Number is incorrect, file path: {}", reader.getFileName());
+    if (versionNumber < TSFileConfig.VERSION_NUMBER) {
+      if (versionNumber < TSFileConfig.VERSION_NUMBER - 1) {
+        logger.error("the file's Version Number is too old, file path: {}", reader.getFileName());
+        return false;
+      } else {
+        logger.warn(
+            "the file's Version Number {} is older than current {}, file path: {}, will try to load...",
+            versionNumber,
+            TSFileConfig.VERSION_NUMBER,
+            reader.getFileName());
+      }
+    } else if (versionNumber > TSFileConfig.VERSION_NUMBER) {
+      logger.error(
+          "the file's Version Number is higher than current, file path: {}", reader.getFileName());
       return false;
     }
 
