@@ -162,20 +162,12 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             qualifiedName.getPrefix().map(QualifiedName::toString).orElse(null),
             qualifiedName.getSuffix());
 
-    Set<String> usedColumns = analysis.getUsedColumns(qualifiedObjectName);
-
     // on the basis of that the order of fields is same with the column category order of segments
     // in DeviceEntry
     Map<Symbol, Integer> idAndAttributeIndexMap = new HashMap<>();
     int idIndex = 0;
     for (Field field : fields) {
       TsTableColumnCategory category = field.getColumnCategory();
-      // only keep used columns and all ID columns
-      if (category != TsTableColumnCategory.ID
-          && field.getOriginColumnName().isPresent()
-          && !usedColumns.contains(field.getOriginColumnName().get())) {
-        continue;
-      }
       Symbol symbol = symbolAllocator.newSymbol(field);
       outputSymbolsBuilder.add(symbol);
       symbolToColumnSchema.put(
