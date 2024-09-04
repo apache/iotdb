@@ -53,22 +53,22 @@ public abstract class AbstractUpdateLastCacheOperator implements ProcessOperator
 
   protected Operator child;
 
-  protected TreeDeviceSchemaCacheManager lastCache;
+  private final TreeDeviceSchemaCacheManager lastCache;
 
-  protected final boolean needUpdateCache;
+  private final boolean needUpdateCache;
 
-  protected final boolean needUpdateNullEntry;
+  private final boolean needUpdateNullEntry;
 
   protected TsBlockBuilder tsBlockBuilder;
 
   protected String databaseName;
 
   protected AbstractUpdateLastCacheOperator(
-      OperatorContext operatorContext,
-      Operator child,
-      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
-      boolean needUpdateCache,
-      boolean needUpdateNullEntry) {
+      final OperatorContext operatorContext,
+      final Operator child,
+      final TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
+      final boolean needUpdateCache,
+      final boolean needUpdateNullEntry) {
     this.operatorContext = operatorContext;
     this.child = child;
     this.lastCache = treeDeviceSchemaCacheManager;

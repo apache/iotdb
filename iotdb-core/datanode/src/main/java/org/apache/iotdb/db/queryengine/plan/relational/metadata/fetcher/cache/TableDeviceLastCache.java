@@ -107,6 +107,9 @@ public class TableDeviceLastCache {
       measurement2CachedLastMap.compute(
           measurement,
           (measurementKey, tvPair) -> {
+            if (Objects.isNull(newPair)) {
+              return null;
+            }
             if (Objects.isNull(tvPair)) {
               if (newPair == PLACEHOLDER_TIME_VALUE_PAIR) {
                 diff.addAndGet(

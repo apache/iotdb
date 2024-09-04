@@ -194,11 +194,16 @@ public class TableDeviceSchemaCache {
    * device's last time won't be updated because we cannot guarantee the completeness of the
    * existing measurements in cache.
    *
+   * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
+   * in the first time, to avoid the stale writing damaging the eventual consistency. The input
+   * {@link TimeValuePair}s shall be all {@code null}s in this case.
+   *
    * @param database the device's database, without "root"
    * @param deviceId IDeviceID
    * @param measurements the fetched measurements
    * @param timeValuePairs {@code null} for the first fetch, the {@link TimeValuePair} with indexes
-   *     corresponding to the measurements for the second fetch.
+   *     corresponding to the measurements for the second fetch, all {@code null}s if the query has
+   *     ended abnormally before the second push and need to invalidate the entry.
    */
   public void updateLastCache(
       final String database,
