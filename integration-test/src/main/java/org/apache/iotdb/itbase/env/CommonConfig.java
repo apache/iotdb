@@ -150,4 +150,7 @@ public interface CommonConfig {
   CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(long pipeMetaSyncerInitialSyncDelayMinutes);
 
   CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes);
+
+  CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes);
 }

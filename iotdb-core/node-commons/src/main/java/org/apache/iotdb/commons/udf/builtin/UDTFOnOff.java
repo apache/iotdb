@@ -79,6 +79,12 @@ public class UDTFOnOff implements UDTF {
       case DOUBLE:
         collector.putBoolean(time, (row.getDouble(0) >= threshold));
         break;
+      case DATE:
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case TEXT:
+      case BOOLEAN:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -105,6 +111,12 @@ public class UDTFOnOff implements UDTF {
         return row.getFloat(0) >= threshold;
       case DOUBLE:
         return row.getDouble(0) >= threshold;
+      case TEXT:
+      case BOOLEAN:
+      case STRING:
+      case TIMESTAMP:
+      case BLOB:
+      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -132,6 +144,12 @@ public class UDTFOnOff implements UDTF {
       case DOUBLE:
         transformDouble(columns, builder);
         return;
+      case BLOB:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
+      case BOOLEAN:
+      case TEXT:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
