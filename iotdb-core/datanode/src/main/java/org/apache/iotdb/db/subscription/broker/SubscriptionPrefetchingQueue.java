@@ -251,14 +251,18 @@ public abstract class SubscriptionPrefetchingQueue {
             }
 
             // nack pollable event and re-enqueue it to prefetchingQueue
-            if (ev.pollable()) {
+            if (ev.eagerlyPollable()) {
+              ev.nack(); // now pollable (the nack operation here is actually unnecessary)
+              enqueueEventToPrefetchingQueue(ev);
+              // no need to log warn for eagerly pollable event
+              return null; // remove this entry
+            } else if (ev.pollable()) {
               ev.nack(); // now pollable
               enqueueEventToPrefetchingQueue(ev);
               LOGGER.warn(
                   "Subscription: SubscriptionPrefetchingQueue {} recycle event {} from in flight events, nack and enqueue it to prefetching queue",
                   this,
                   ev);
-              return null; // remove this entry
             }
 
             // prefetch and serialize remaining subscription events
