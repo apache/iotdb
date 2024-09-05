@@ -481,9 +481,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void dealWithException(Throwable t) throws IoTDBException {
-    LOGGER.warn("just test ", t);
     t = getRootCause(t);
-    LOGGER.warn("just test ", t);
     stateMachine.transitionToFailed(t);
     if (stateMachine.getFailureStatus() != null) {
       throw new IoTDBException(
