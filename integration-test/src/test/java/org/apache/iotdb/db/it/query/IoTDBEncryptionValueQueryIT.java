@@ -117,6 +117,7 @@ public class IoTDBEncryptionValueQueryIT {
         "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466020000,21.451046)",
         "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466080000,22.57987)",
         "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466140000,20.98177)",
+        "flush",
       };
 
   @BeforeClass

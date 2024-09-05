@@ -121,8 +121,8 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
       return buffer;
     }
     return ByteBuffer.wrap(
-            decryptor.decrypt(
-                    buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining()));
+        decryptor.decrypt(
+            buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining()));
   }
 
   public static ByteBuffer decryptAndUncompressPageData(
@@ -132,7 +132,7 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
       IDecryptor decryptor)
       throws IOException {
     ByteBuffer finalBuffer = decrypt(decryptor, compressedPageData);
-    finalBuffer = uncompressPageData(pageHeader,unCompressor, finalBuffer);
+    finalBuffer = uncompressPageData(pageHeader, unCompressor, finalBuffer);
     return finalBuffer;
   }
 
