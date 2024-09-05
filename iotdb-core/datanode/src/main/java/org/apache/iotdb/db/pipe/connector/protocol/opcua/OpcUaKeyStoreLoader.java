@@ -50,7 +50,7 @@ class OpcUaKeyStoreLoader {
   private X509Certificate serverCertificate;
   private KeyPair serverKeyPair;
 
-  OpcUaKeyStoreLoader load(Path baseDir, char[] password) throws Exception {
+  OpcUaKeyStoreLoader load(final Path baseDir, final char[] password) throws Exception {
     final KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
     final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
