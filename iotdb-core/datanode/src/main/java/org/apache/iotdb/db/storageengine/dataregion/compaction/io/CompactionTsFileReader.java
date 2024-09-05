@@ -175,18 +175,14 @@ public class CompactionTsFileReader extends TsFileSequenceReader {
           i == childrenEntryList.size() - 1
               ? measurementNode.getEndOffset()
               : childrenEntryList.get(i + 1).getOffset();
-      ByteBuffer nextBuffer = readData(startOffset, endOffset);
       if (measurementNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
         // leaf measurement node
-        while (nextBuffer.hasRemaining()) {
-          int metadataStartOffset = nextBuffer.position();
-          timeseriesMetadataOffsetMap.put(
-              childrenEntryList.get(i).getCompareKey().toString(),
-              new Pair<>(startOffset + metadataStartOffset, startOffset + nextBuffer.position()));
-        }
-
+        timeseriesMetadataOffsetMap.put(
+            childrenEntryList.get(i).getCompareKey().toString(),
+            new Pair<>(startOffset, endOffset));
       } else {
         // internal measurement node
+        ByteBuffer nextBuffer = readData(startOffset, endOffset);
         MetadataIndexNode nextLayerMeasurementNode =
             getDeserializeContext().deserializeMetadataIndexNode(nextBuffer, false);
         timeseriesMetadataOffsetMap.putAll(
