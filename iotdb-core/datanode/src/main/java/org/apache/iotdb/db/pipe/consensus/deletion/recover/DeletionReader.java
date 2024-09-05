@@ -58,14 +58,18 @@ public class DeletionReader implements Closeable {
     fileChannel.read(magicStringBuffer);
     magicStringBuffer.flip();
     String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
-    LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
+    }
 
     // Read metaData
     ByteBuffer intBuffer = ByteBuffer.allocate(4);
     fileChannel.read(intBuffer);
     intBuffer.flip();
     int deletionNum = intBuffer.getInt();
-    LOGGER.debug("Read deletion file-{} contains {} deletions", logFile, deletionNum);
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("Read deletion file-{} contains {} deletions", logFile, deletionNum);
+    }
 
     // Read deletions
     long remainingBytes = fileChannel.size() - fileChannel.position();
@@ -77,7 +81,9 @@ public class DeletionReader implements Closeable {
     for (int i = 0; i < deletionNum; i++) {
       DeletionResource deletionResource = DeletionResource.deserialize(byteBuffer, removeHook);
       deletions.add(deletionResource);
-      LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+      }
     }
     return deletions;
   }

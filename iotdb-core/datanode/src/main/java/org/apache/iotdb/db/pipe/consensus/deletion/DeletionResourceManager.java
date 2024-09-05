@@ -67,7 +67,7 @@ public class DeletionResourceManager implements AutoCloseable {
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
   private final Lock recoverLock = new ReentrantLock();
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
-  private boolean hasCompletedRecovery = false;
+  private volatile boolean hasCompletedRecovery = false;
 
   private DeletionResourceManager(String dataRegionId) throws IOException {
     this.dataRegionId = dataRegionId;
