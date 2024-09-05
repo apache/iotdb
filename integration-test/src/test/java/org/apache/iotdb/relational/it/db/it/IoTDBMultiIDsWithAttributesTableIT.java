@@ -395,12 +395,12 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     String[] expectedHeader = new String[] {"time", "level", "device", "add_num"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.100Z,l5,d1,9.0,",
-          "1971-01-01T00:00:01.000Z,l4,d1,6.0,",
-          "1971-01-01T00:00:10.000Z,l5,d1,8.0,",
-          "1971-04-26T18:01:40.000Z,l4,d1,14.0,",
-          "1971-08-20T11:33:20.000Z,l5,d1,16.0,",
-          "1970-01-01T00:00:00.080Z,l4,d2,10.0,",
+          "1970-01-01T00:00:00.100Z,l5,d1,9,",
+          "1971-01-01T00:00:01.000Z,l4,d1,6,",
+          "1971-01-01T00:00:10.000Z,l5,d1,8,",
+          "1971-04-26T18:01:40.000Z,l4,d1,14,",
+          "1971-08-20T11:33:20.000Z,l5,d1,16,",
+          "1970-01-01T00:00:00.080Z,l4,d2,10,",
         };
 
     expectedHeader = new String[] {"time", "level", "device", "add_num"};

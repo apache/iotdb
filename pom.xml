@@ -779,6 +779,7 @@
                             <exclude>**/.gitignore</exclude>
                             <exclude>**/.gitmodules</exclude>
                             <exclude>**/.git-blame-ignore-revs</exclude>
+                            <exclude>**/git.properties</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->
@@ -821,11 +822,9 @@
                             <exclude>client-go/rpc/*</exclude>
                             <!-- python -->
                             <exclude>.pytest_cache/**</exclude>
-                            <exclude>venv/**</exclude>
+                            <exclude>**/venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
-                            <exclude>**/iotdb/thrift/__init__.py</exclude>
-                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
-                            <exclude>**/iotdb/thrift/common/__init__.py</exclude>
+                            <exclude>**/thrift/**/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- site-->
