@@ -34,6 +34,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
+import static org.apache.tsfile.file.metadata.enums.CompressionType.UNCOMPRESSED;
+
 public class SinglePageWholeChunkReader extends AbstractChunkReader {
   private final ChunkHeader chunkHeader;
   private final ByteBuffer chunkDataBuffer;
@@ -91,11 +93,14 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
   public static ByteBuffer uncompressPageData(
       PageHeader pageHeader, IUnCompressor unCompressor, ByteBuffer compressedPageData)
       throws IOException {
+    if (unCompressor.getCodecName() == UNCOMPRESSED) {
+      return compressedPageData;
+    }
     int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
+    ByteBuffer uncompressedPageData = ByteBuffer.allocate(pageHeader.getUncompressedSize());
     try {
       unCompressor.uncompress(
-          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData, 0);
+          compressedPageData.array(), 0, compressedPageBodyLength, uncompressedPageData.array(), 0);
     } catch (Exception e) {
       throw new IOException(
           "Uncompress error! uncompress size: "
@@ -104,10 +109,20 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
               + pageHeader.getCompressedSize()
               + "page header: "
               + pageHeader
-              + e.getMessage());
+              + e.getMessage(),
+          e);
     }
 
-    return ByteBuffer.wrap(uncompressedPageData);
+    return uncompressedPageData;
+  }
+
+  public static ByteBuffer decrypt(IDecryptor decryptor, ByteBuffer buffer) {
+    if (decryptor == null || decryptor.getEncryptionType() == EncryptionType.UNENCRYPTED) {
+      return buffer;
+    }
+    return ByteBuffer.wrap(
+            decryptor.decrypt(
+                    buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining()));
   }
 
   public static ByteBuffer decryptAndUncompressPageData(
@@ -116,25 +131,9 @@ public class SinglePageWholeChunkReader extends AbstractChunkReader {
       ByteBuffer compressedPageData,
       IDecryptor decryptor)
       throws IOException {
-    int compressedPageBodyLength = pageHeader.getCompressedSize();
-    byte[] uncompressedPageData = new byte[pageHeader.getUncompressedSize()];
-    try {
-      byte[] decryptedPageData =
-          decryptor.decrypt(compressedPageData.array(), 0, compressedPageBodyLength);
-      unCompressor.uncompress(
-          decryptedPageData, 0, compressedPageBodyLength, uncompressedPageData, 0);
-    } catch (Exception e) {
-      throw new IOException(
-          "Decrypt and Uncompress error! uncompress size: "
-              + pageHeader.getUncompressedSize()
-              + "compressed size: "
-              + pageHeader.getCompressedSize()
-              + "page header: "
-              + pageHeader
-              + e.getMessage());
-    }
-
-    return ByteBuffer.wrap(uncompressedPageData);
+    ByteBuffer finalBuffer = decrypt(decryptor, compressedPageData);
+    finalBuffer = uncompressPageData(pageHeader,unCompressor, finalBuffer);
+    return finalBuffer;
   }
 
   public static ByteBuffer deserializePageData(
