@@ -25,8 +25,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeInsertNodeTabletInsertionEventResource;
+import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -48,11 +49,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
-    implements TabletInsertionEvent {
+    implements TabletInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeInsertNodeTabletInsertionEvent.class);
@@ -66,10 +69,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   private final PartialPath devicePath;
 
   private ProgressIndex progressIndex;
-
-  // This variable is used to track resource upon the first increase in reference count.
-  // This variable is not thread-safe.
-  private boolean refTracked = false;
 
   public PipeInsertNodeTabletInsertionEvent(
       final WALEntryHandler walEntryHandler,
@@ -138,16 +137,6 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.wal().pin(walEntryHandler);
-
-      if (!refTracked) {
-        PipeDataNodeResourceManager.ref()
-            .trackPipeInsertNodeTabletInsertionEventResource(
-                this,
-                new PipeInsertNodeTabletInsertionEventResource(
-                    this.isReleased, this.referenceCount, this.walEntryHandler));
-        refTracked = true;
-      }
-
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -418,5 +407,44 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             walEntryHandler, progressIndex, isAligned, isGeneratedByPipe)
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  protected void trackResource() {
+    trackResource(this);
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeInsertNodeTabletInsertionEventResource(
+        this.isReleased, this.referenceCount, this.walEntryHandler);
+  }
+
+  private static class PipeInsertNodeTabletInsertionEventResource extends PipeEventResource {
+
+    private final WALEntryHandler walEntryHandler;
+
+    private PipeInsertNodeTabletInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final WALEntryHandler walEntryHandler) {
+      super(isReleased, referenceCount);
+      this.walEntryHandler = walEntryHandler;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      try {
+        PipeDataNodeResourceManager.wal().unpin(walEntryHandler);
+        // no need to release the containers' memory because it has already been GCed
+      } catch (final Exception e) {
+        LOGGER.warn(
+            String.format(
+                "Decrease reference count for memTable %d error.", walEntryHandler.getMemTableId()),
+            e);
+      }
+    }
   }
 }

@@ -24,11 +24,12 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeTsFileInsertionEventResource;
+import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -48,8 +49,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileInsertionEvent {
+public class PipeTsFileInsertionEvent extends EnrichedEvent
+    implements TsFileInsertionEvent, ReferenceTrackableEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTsFileInsertionEvent.class);
 
@@ -71,10 +74,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
   private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
-
-  // This variable is used to track resource upon the first increase in reference count.
-  // This variable is not thread-safe.
-  private boolean refTracked = false;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
@@ -241,20 +240,6 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       if (isWithMod) {
         modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
       }
-
-      if (!refTracked) {
-        PipeDataNodeResourceManager.ref()
-            .trackPipeTsFileInsertionEventResource(
-                this,
-                new PipeTsFileInsertionEventResource(
-                    this.isReleased,
-                    this.referenceCount,
-                    this.tsFile,
-                    this.isWithMod,
-                    this.modFile));
-        refTracked = true;
-      }
-
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
@@ -465,5 +450,50 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
             resource, tsFile, isLoaded, isGeneratedByPipe, isClosed.get())
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  public void trackResource() {
+    trackResource(this);
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeTsFileInsertionEventResource(
+        this.isReleased, this.referenceCount, this.tsFile, this.isWithMod, this.modFile);
+  }
+
+  private static class PipeTsFileInsertionEventResource extends PipeEventResource {
+
+    private final File tsFile;
+    private final boolean isWithMod;
+    private final File modFile;
+
+    private PipeTsFileInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final File tsFile,
+        final boolean isWithMod,
+        final File modFile) {
+      super(isReleased, referenceCount);
+      this.tsFile = tsFile;
+      this.isWithMod = isWithMod;
+      this.modFile = modFile;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      try {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
+        if (isWithMod) {
+          PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+        }
+      } catch (final Exception e) {
+        LOGGER.warn(
+            String.format("Decrease reference count for TsFile %s error.", tsFile.getPath()), e);
+      }
+    }
   }
 }

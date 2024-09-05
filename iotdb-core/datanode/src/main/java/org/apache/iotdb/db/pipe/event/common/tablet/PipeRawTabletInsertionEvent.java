@@ -25,10 +25,11 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
-import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeRawTabletInsertionEventResource;
+import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -37,9 +38,12 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
-public class PipeRawTabletInsertionEvent extends EnrichedEvent implements TabletInsertionEvent {
+public class PipeRawTabletInsertionEvent extends EnrichedEvent
+    implements TabletInsertionEvent, ReferenceTrackableEvent {
 
   private Tablet tablet;
   private String deviceId; // Only used when the tablet is released.
@@ -53,10 +57,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private TabletInsertionDataContainer dataContainer;
 
   private ProgressIndex overridingProgressIndex;
-
-  // This variable is used to track resource upon the first increase in reference count.
-  // This variable is not thread-safe.
-  private boolean refTracked = false;
 
   private PipeRawTabletInsertionEvent(
       final Tablet tablet,
@@ -120,16 +120,6 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
         PipeDataNodeResourceManager.memory()
             .forceAllocateForTabletWithRetry(
                 PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
-
-    if (!refTracked) {
-      PipeDataNodeResourceManager.ref()
-          .trackPipeRawTabletInsertionEventResource(
-              this,
-              new PipeRawTabletInsertionEventResource(
-                  this.isReleased, this.referenceCount, this.allocatedMemoryBlock));
-      refTracked = true;
-    }
-
     return true;
   }
 
@@ -317,5 +307,36 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
             allocatedMemoryBlock)
         + " - "
         + super.coreReportMessage();
+  }
+
+  /////////////////////////// ReferenceTrackableEvent ///////////////////////////
+
+  @Override
+  protected void trackResource() {
+    trackResource(this);
+  }
+
+  @Override
+  public PipeEventResource eventResourceBuilder() {
+    return new PipeRawTabletInsertionEventResource(
+        this.isReleased, this.referenceCount, this.allocatedMemoryBlock);
+  }
+
+  private static class PipeRawTabletInsertionEventResource extends PipeEventResource {
+
+    private final PipeTabletMemoryBlock allocatedMemoryBlock;
+
+    private PipeRawTabletInsertionEventResource(
+        final AtomicBoolean isReleased,
+        final AtomicInteger referenceCount,
+        final PipeTabletMemoryBlock allocatedMemoryBlock) {
+      super(isReleased, referenceCount);
+      this.allocatedMemoryBlock = allocatedMemoryBlock;
+    }
+
+    @Override
+    protected void finalizeResource() {
+      allocatedMemoryBlock.close();
+    }
   }
 }

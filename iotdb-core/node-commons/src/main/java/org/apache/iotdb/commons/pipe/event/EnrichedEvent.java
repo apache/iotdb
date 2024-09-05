@@ -96,6 +96,10 @@ public abstract class EnrichedEvent implements Event {
         });
   }
 
+  protected void trackResource() {
+    // do nothing by default
+  }
+
   /**
    * Increase the {@link EnrichedEvent#referenceCount} of this event. When the {@link
    * EnrichedEvent#referenceCount} is positive, the data in the resource of this {@link
@@ -123,7 +127,9 @@ public abstract class EnrichedEvent implements Event {
     }
 
     if (isSuccessful) {
-      referenceCount.incrementAndGet();
+      if (referenceCount.incrementAndGet() == 1) {
+        trackResource();
+      }
     } else {
       LOGGER.warn(
           "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
