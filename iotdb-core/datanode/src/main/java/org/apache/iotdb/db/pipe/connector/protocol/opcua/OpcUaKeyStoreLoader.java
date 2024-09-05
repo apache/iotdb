@@ -27,8 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Key;
 import java.security.KeyPair;
@@ -81,21 +80,22 @@ class OpcUaKeyStoreLoader {
               Sets.newHashSet(HostnameUtil.getHostname()),
               HostnameUtil.getHostnames("0.0.0.0", false));
 
-      for (String hostname : hostnames) {
-        if (IP_ADDR_PATTERN.matcher(hostname).matches()) {
-          builder.addIpAddress(hostname);
-        } else {
-          builder.addDnsName(hostname);
-        }
-      }
+      hostnames.forEach(
+          hostname -> {
+            if (IP_ADDR_PATTERN.matcher(hostname).matches()) {
+              builder.addIpAddress(hostname);
+            } else {
+              builder.addDnsName(hostname);
+            }
+          });
 
       final X509Certificate certificate = builder.build();
 
       keyStore.setKeyEntry(
           SERVER_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
-      keyStore.store(new FileOutputStream(serverKeyStore), password);
+      keyStore.store(Files.newOutputStream(serverKeyStore.toPath()), password);
     } else {
-      keyStore.load(new FileInputStream(serverKeyStore), password);
+      keyStore.load(Files.newInputStream(serverKeyStore.toPath()), password);
     }
 
     final Key serverPrivateKey = keyStore.getKey(SERVER_ALIAS, password);
