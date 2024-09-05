@@ -210,11 +210,14 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
 
   private static String formatEnrichedEvents(
       final List<EnrichedEvent> enrichedEvents, final int threshold) {
-    List<String> eventMessageList =
-        enrichedEvents.stream().map(EnrichedEvent::coreReportMessage).collect(Collectors.toList());
+    final List<String> eventMessageList =
+        enrichedEvents.stream()
+            .limit(threshold)
+            .map(EnrichedEvent::coreReportMessage)
+            .collect(Collectors.toList());
     if (eventMessageList.size() > threshold) {
-      eventMessageList = eventMessageList.subList(0, threshold);
-      eventMessageList.add("...");
+      eventMessageList.add(
+          String.format("... (omit remaining %s event)", eventMessageList.size() - threshold));
     }
     return eventMessageList.toString();
   }
