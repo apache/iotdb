@@ -77,6 +77,11 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
 
   private int putEntry(
       final String measurement, final IMeasurementSchema schema, final Map<String, String> tagMap) {
+    // TODO: Handle the case that measurement schema has changed
+    // Now we just return 0 to avoid instance creation/gc for performance
+    if (measurementMap.containsKey(measurement)) {
+      return 0;
+    }
     final SchemaCacheEntry putEntry = new SchemaCacheEntry(schema, tagMap);
     final SchemaCacheEntry cachedEntry = measurementMap.put(measurement, putEntry);
     return Objects.isNull(cachedEntry)
