@@ -39,8 +39,8 @@ public class PipeEventCommitter {
   private final long creationTime;
   private final int regionId;
 
-  private final AtomicLong commitIdGenerator = new AtomicLong(0);
-  private final AtomicLong lastCommitId = new AtomicLong(0);
+  private final AtomicLong commitIdGenerator;
+  private final AtomicLong lastCommitId;
 
   private final PriorityBlockingQueue<EnrichedEvent> commitQueue =
       new PriorityBlockingQueue<>(
@@ -49,11 +49,15 @@ public class PipeEventCommitter {
               event ->
                   Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
 
-  PipeEventCommitter(final String pipeName, final long creationTime, final int regionId) {
+  PipeEventCommitter(
+      final String pipeName, final long creationTime, final int regionId, final long currentCommitId, final long lastCommitId) {
     // make it package-private
     this.pipeName = pipeName;
     this.creationTime = creationTime;
     this.regionId = regionId;
+
+    this.commitIdGenerator = new AtomicLong(currentCommitId);
+    this.lastCommitId = new AtomicLong(lastCommitId);
   }
 
   public synchronized long generateCommitId() {
@@ -140,5 +144,9 @@ public class PipeEventCommitter {
 
   public long getCurrentCommitId() {
     return commitIdGenerator.get();
+  }
+
+  public long getLastCommitId() {
+    return lastCommitId.get();
   }
 }

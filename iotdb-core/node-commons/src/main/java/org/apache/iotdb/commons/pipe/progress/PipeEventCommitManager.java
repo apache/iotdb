@@ -37,6 +37,9 @@ public class PipeEventCommitManager {
   // key: pipeName_regionId
   private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
 
+  private final Map<String, Long> eventCommitterCurrentCommitIdMap = new ConcurrentHashMap<>();
+  private final Map<String, Long> eventCommitterLastCommitIdMap = new ConcurrentHashMap<>();
+
   private BiConsumer<String, Boolean> commitRateMarker;
 
   public void register(
@@ -54,8 +57,12 @@ public class PipeEventCommitManager {
           "Pipe with same name is already registered on this region, overwriting: {}",
           committerKey);
     }
+
+    final long currentCommitId = eventCommitterCurrentCommitIdMap.computeIfAbsent(committerKey, k -> 0L);
+    final long lastCommitId = eventCommitterLastCommitIdMap.computeIfAbsent(committerKey, k -> 0L);
     final PipeEventCommitter eventCommitter =
-        new PipeEventCommitter(pipeName, creationTime, regionId);
+        new PipeEventCommitter(pipeName, creationTime, regionId, currentCommitId, lastCommitId);
+
     eventCommitterMap.put(committerKey, eventCommitter);
     PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey);
     LOGGER.info("Pipe committer registered for pipe on region: {}", committerKey);
@@ -63,7 +70,13 @@ public class PipeEventCommitManager {
 
   public void deregister(final String pipeName, final long creationTime, final int regionId) {
     final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
-    eventCommitterMap.remove(committerKey);
+
+    final PipeEventCommitter eventCommitter = eventCommitterMap.remove(committerKey);
+    eventCommitterCurrentCommitIdMap.compute(
+        committerKey, (k, v) -> eventCommitter.getCurrentCommitId());
+    eventCommitterLastCommitIdMap.compute(
+        committerKey, (k, v) -> eventCommitter.getLastCommitId());
+
     PipeEventCommitMetrics.getInstance().deregister(committerKey);
     LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
   }
