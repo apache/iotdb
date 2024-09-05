@@ -193,7 +193,7 @@ public class FileTimeIndexCacheRecorder {
   }
 
   public void removeFileTimeIndexCache(int dataRegionId) {
-    FileTimeIndexCacheWriter writer = writerMap.get(dataRegionId);
+    FileTimeIndexCacheWriter writer = writerMap.remove(dataRegionId);
     if (writer != null) {
       try {
         writer.close();
