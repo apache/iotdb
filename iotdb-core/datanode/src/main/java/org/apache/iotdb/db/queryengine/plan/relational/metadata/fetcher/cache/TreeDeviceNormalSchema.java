@@ -62,7 +62,7 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {
-      // Return 0 to avoid instance creation/gc for writing performance
+      // Skip this to avoid instance creation/gc for writing performance
       if (measurementMap.containsKey(measurements[i])) {
         continue;
       }
