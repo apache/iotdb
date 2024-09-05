@@ -71,7 +71,7 @@ public class LogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
   private final MPPQueryContext queryContext;
   private final SessionInfo sessionInfo;
-  private final SymbolAllocator symbolAllocator = new SymbolAllocator();
+  private final SymbolAllocator symbolAllocator;
   private final List<PlanOptimizer> planOptimizers;
   private final Metadata metadata;
   private final WarningCollector warningCollector;
@@ -80,10 +80,12 @@ public class LogicalPlanner {
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
+      SymbolAllocator symbolAllocator,
       WarningCollector warningCollector) {
     this.queryContext = queryContext;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers =
         new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
@@ -95,11 +97,29 @@ public class LogicalPlanner {
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
+      WarningCollector warningCollector) {
+    this.queryContext = queryContext;
+    this.metadata = metadata;
+    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.symbolAllocator = new SymbolAllocator();
+    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.planOptimizers =
+        new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers();
+  }
+
+  @TestOnly
+  public LogicalPlanner(
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      SessionInfo sessionInfo,
+      SymbolAllocator symbolAllocator,
       WarningCollector warningCollector,
       List<PlanOptimizer> planOptimizers) {
     this.queryContext = queryContext;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers = planOptimizers;
   }

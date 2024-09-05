@@ -47,7 +47,7 @@ public class AggregationTableScanNode extends TableScanNode {
   private final Map<Symbol, AggregationNode.Aggregation> aggregations;
   private final AggregationNode.GroupingSetDescriptor groupingSets;
   private final List<Symbol> preGroupedSymbols;
-  private final AggregationNode.Step step;
+  private AggregationNode.Step step;
   private final Optional<Symbol> groupIdSymbol;
 
   public AggregationTableScanNode(
@@ -151,12 +151,43 @@ public class AggregationTableScanNode extends TableScanNode {
     return step;
   }
 
+  public void setStep(AggregationNode.Step step) {
+    this.step = step;
+  }
+
   public int getGroupingSetCount() {
     return groupingSets.getGroupingSetCount();
   }
 
   public Set<Integer> getGlobalGroupingSets() {
     return groupingSets.getGlobalGroupingSets();
+  }
+
+  public Optional<Symbol> getGroupIdSymbol() {
+    return groupIdSymbol;
+  }
+
+  @Override
+  public AggregationTableScanNode clone() {
+    return new AggregationTableScanNode(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        deviceEntries,
+        idAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        pushLimitToEachDevice,
+        projection,
+        aggregations,
+        groupingSets,
+        preGroupedSymbols,
+        step,
+        groupIdSymbol);
   }
 
   @Override

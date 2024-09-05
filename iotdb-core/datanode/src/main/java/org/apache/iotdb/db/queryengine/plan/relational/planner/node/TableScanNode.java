@@ -52,53 +52,53 @@ import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory
 
 public class TableScanNode extends SourceNode {
 
-  private final QualifiedObjectName qualifiedObjectName;
+  protected final QualifiedObjectName qualifiedObjectName;
   // Indicate the column this node need to output
-  private List<Symbol> outputSymbols;
+  protected List<Symbol> outputSymbols;
   // Indicate the column this node need to fetch from StorageEngine,
   // the number of fetched columns may be more than output columns when there are predicates push
   // down.
-  private Map<Symbol, ColumnSchema> assignments;
+  protected Map<Symbol, ColumnSchema> assignments;
 
-  private List<DeviceEntry> deviceEntries;
+  protected List<DeviceEntry> deviceEntries;
 
   // Indicates the respective index order of ID and Attribute columns in DeviceEntry.
   // For example, for DeviceEntry `table1.tag1.tag2.attribute1.attribute2.s1.s2`, the content of
   // `idAndAttributeIndexMap` will
   // be `tag1: 0, tag2: 1, attribute1: 0, attribute2: 1`.
-  private final Map<Symbol, Integer> idAndAttributeIndexMap;
+  protected final Map<Symbol, Integer> idAndAttributeIndexMap;
 
   // The order to traverse the data.
   // Currently, we only support TIMESTAMP_ASC and TIMESTAMP_DESC here.
   // The default order is TIMESTAMP_ASC, which means "order by timestamp asc"
-  private Ordering scanOrder = Ordering.ASC;
+  protected Ordering scanOrder = Ordering.ASC;
 
   // extracted time filter expression in where clause
   // case 1: where s1 > 1 and time >= 0 and time <= 10, time predicate will be time >= 0 and time <=
   // 10, pushDownPredicate will be s1 > 1
   // case 2: where s1 > 1 or time < 10, time predicate will be null, pushDownPredicate will be s1 >
   // 1 or time < 10
-  @Nullable private Expression timePredicate;
+  @Nullable protected Expression timePredicate;
 
-  private Filter timeFilter;
+  protected Filter timeFilter;
 
   // push down predicate for current series, could be null if it doesn't exist
-  @Nullable private Expression pushDownPredicate;
+  @Nullable protected Expression pushDownPredicate;
 
   // push down limit for result set. The default value is -1, which means no limit
-  private long pushDownLimit;
+  protected long pushDownLimit;
 
   // push down offset for result set. The default value is 0
-  private long pushDownOffset;
+  protected long pushDownOffset;
 
   // pushLimitToEachDevice == true means that each device in TableScanNode need to return
   // `pushDownLimit` row number
   // pushLimitToEachDevice == false means that all devices in TableScanNode totally need to return
   // `pushDownLimit` row number
-  private boolean pushLimitToEachDevice = false;
+  protected boolean pushLimitToEachDevice = false;
 
   // The id of DataRegion where the node will run
-  private TRegionReplicaSet regionReplicaSet;
+  protected TRegionReplicaSet regionReplicaSet;
 
   public TableScanNode(
       PlanNodeId id,

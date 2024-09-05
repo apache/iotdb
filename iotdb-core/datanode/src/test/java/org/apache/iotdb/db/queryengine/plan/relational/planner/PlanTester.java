@@ -58,13 +58,23 @@ public class PlanTester {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  private final Metadata metadata = new TestMatadata();
+  private final Metadata metadata;
 
   private DistributedQueryPlan distributedQueryPlan;
 
   private Analysis analysis;
 
+  private SymbolAllocator symbolAllocator;
+
   private LogicalQueryPlan plan;
+
+  public PlanTester() {
+    this(new TestMatadata());
+  }
+
+  public PlanTester(Metadata metadata) {
+    this.metadata = metadata;
+  }
 
   public LogicalQueryPlan createPlan(String sql) {
     return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
@@ -83,9 +93,10 @@ public class PlanTester {
 
     Analysis analysis = analyze(sql, metadata);
     this.analysis = analysis;
+    this.symbolAllocator = new SymbolAllocator();
 
     LogicalPlanner logicalPlanner =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+        new LogicalPlanner(context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
 
     plan = logicalPlanner.plan(analysis);
 
@@ -103,7 +114,8 @@ public class PlanTester {
     Analysis analysis = analyze(sql, metadata);
 
     LogicalPlanner logicalPlanner =
-        new LogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP, optimizers);
+        new LogicalPlanner(
+            context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP, optimizers);
 
     return logicalPlanner.plan(analysis);
   }
@@ -148,7 +160,8 @@ public class PlanTester {
 
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
-      distributedQueryPlan = new TableDistributedPlanner(analysis, plan, plan.getContext()).plan();
+      distributedQueryPlan =
+          new TableDistributedPlanner(analysis, symbolAllocator, plan, plan.getContext()).plan();
     }
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree();
   }

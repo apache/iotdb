@@ -20,8 +20,6 @@ import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableBuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
@@ -34,22 +32,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import org.apache.tsfile.read.common.type.RowType;
-import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode.combineAggregationAndTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
 
 /**
  * <b>Optimization phase:</b> Logical plan planning.
@@ -117,15 +109,13 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       if (pushDownLevel == PushDownLevel.NOOP) { // no push-down
         return node;
       } else if (pushDownLevel == PushDownLevel.PARTIAL) { // partial push-down
-        node = split(node, context);
+        Pair<AggregationNode, AggregationNode> result =
+            split(node, context.symbolAllocator, context.queryId);
         AggregationTableScanNode aggregationTableScanNode =
             combineAggregationAndTableScan(
-                context.queryId.genPlanNodeId(),
-                (AggregationNode) node.getChild(),
-                projectNode,
-                tableScanNode);
-        node.setChild(aggregationTableScanNode);
-        return node;
+                context.queryId.genPlanNodeId(), result.right, projectNode, tableScanNode);
+        result.left.setChild(aggregationTableScanNode);
+        return result.left;
       } else { // complete push-down
         return combineAggregationAndTableScan(
             context.queryId.genPlanNodeId(), node, projectNode, tableScanNode);
@@ -209,80 +199,6 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       }
       return false;
     }
-  }
-
-  private static AggregationNode split(AggregationNode node, Context context) {
-    // otherwise, add a partial and final with an exchange in between
-    Map<Symbol, AggregationNode.Aggregation> intermediateAggregation = new HashMap<>();
-    Map<Symbol, AggregationNode.Aggregation> finalAggregation = new HashMap<>();
-    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      AggregationNode.Aggregation originalAggregation = entry.getValue();
-      ResolvedFunction resolvedFunction = originalAggregation.getResolvedFunction();
-      List<Type> intermediateTypes =
-          TableBuiltinAggregationFunction.getIntermediateTypes(
-              resolvedFunction.getSignature().getName(),
-              resolvedFunction.getSignature().getReturnType());
-      Type intermediateType =
-          intermediateTypes.size() == 1
-              ? intermediateTypes.get(0)
-              : RowType.anonymous(intermediateTypes);
-      Symbol intermediateSymbol =
-          context.symbolAllocator.newSymbol(
-              resolvedFunction.getSignature().getName(), intermediateType);
-
-      checkState(
-          !originalAggregation.getOrderingScheme().isPresent(),
-          "Aggregate with ORDER BY does not support partial aggregation");
-      intermediateAggregation.put(
-          intermediateSymbol,
-          new AggregationNode.Aggregation(
-              resolvedFunction,
-              originalAggregation.getArguments(),
-              originalAggregation.isDistinct(),
-              originalAggregation.getFilter(),
-              originalAggregation.getOrderingScheme(),
-              originalAggregation.getMask()));
-
-      // rewrite final aggregation in terms of intermediate function
-      finalAggregation.put(
-          entry.getKey(),
-          new AggregationNode.Aggregation(
-              resolvedFunction,
-              ImmutableList.of(intermediateSymbol.toSymbolReference()),
-              false,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.empty()));
-    }
-
-    AggregationNode partial =
-        new AggregationNode(
-            context.queryId.genPlanNodeId(),
-            node.getChild(),
-            intermediateAggregation,
-            node.getGroupingSets(),
-            // preGroupedSymbols reflect properties of the input. Splitting the aggregation and
-            // pushing partial aggregation
-            // through the exchange may or may not preserve these properties. Hence, it is safest to
-            // drop preGroupedSymbols here.
-            node.getPreGroupedSymbols(),
-            PARTIAL,
-            node.getHashSymbol(),
-            node.getGroupIdSymbol());
-
-    return new AggregationNode(
-        node.getPlanNodeId(),
-        partial,
-        finalAggregation,
-        node.getGroupingSets(),
-        // preGroupedSymbols reflect properties of the input. Splitting the aggregation and pushing
-        // partial aggregation
-        // through the exchange may or may not preserve these properties. Hence, it is safest to
-        // drop preGroupedSymbols here.
-        node.getPreGroupedSymbols(),
-        FINAL,
-        node.getHashSymbol(),
-        node.getGroupIdSymbol());
   }
 
   private enum PushDownLevel {
