@@ -19,15 +19,12 @@
 
 package org.apache.iotdb.tool.tsfile;
 
-import org.apache.iotdb.cli.utils.IoTPrinter;
-
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
 public class ImportTsFileScanTool {
-  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
   private static final String RESOURCE = ".resource";
   private static final String MODS = ".mods";
@@ -72,20 +69,16 @@ public class ImportTsFileScanTool {
     }
   }
 
-  public static boolean isContainModsFile(final String filePath) {
-    return ImportTsFileScanTool.resourceOrModsSet.contains(filePath);
+  public static boolean isContainModsFile(final String modsFilePath) {
+    return ImportTsFileScanTool.resourceOrModsSet.contains(modsFilePath);
   }
 
-  public static String getFilePath() {
+  public static String pollFromQueue() {
     return ImportTsFileScanTool.tsfileQueue.poll();
   }
 
-  public static void put(final String filePath) {
-    try {
-      ImportTsFileScanTool.tsfileQueue.put(filePath);
-    } catch (final InterruptedException e) {
-      ioTPrinter.println("add file error");
-    }
+  public static void putToQueue(final String filePath) throws InterruptedException {
+    ImportTsFileScanTool.tsfileQueue.put(filePath);
   }
 
   public static void setSourceFullPath(final String sourceFullPath) {
