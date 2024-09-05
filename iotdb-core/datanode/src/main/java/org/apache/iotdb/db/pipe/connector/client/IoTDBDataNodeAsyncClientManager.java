@@ -300,8 +300,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       if (attributesCount.getOrDefault(receiverAttributes, 1) == 0) {
         attributesCount.remove(receiverAttributes);
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes).close();
-        System.out.println(attributesCount);
-        System.out.println(ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER);
       }
     }
   }
