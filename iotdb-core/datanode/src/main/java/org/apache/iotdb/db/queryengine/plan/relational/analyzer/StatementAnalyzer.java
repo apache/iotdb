@@ -1381,10 +1381,18 @@ public class StatementAnalyzer {
           }
 
           if (name != null) {
-            List<Field> matchingFields = sourceScope.getRelationType().resolveFields(name);
-            if (!matchingFields.isEmpty()) {
-              originTable = matchingFields.get(0).getOriginTable();
-              originColumn = matchingFields.get(0).getOriginColumnName();
+            Field matchingField = null;
+            try {
+              matchingField = analysis.getResolvedField(expression).getField();
+            } catch (IllegalArgumentException e) {
+              List<Field> matchingFields = sourceScope.getRelationType().resolveFields(name);
+              if (!matchingFields.isEmpty()) {
+                matchingField = matchingFields.get(0);
+              }
+            }
+            if (matchingField != null) {
+              originTable = matchingField.getOriginTable();
+              originColumn = matchingField.getOriginColumnName();
             }
           }
 
@@ -1582,15 +1590,14 @@ public class StatementAnalyzer {
 
       List<Field> outputFields = fields.build();
 
+      RelationType relationType = new RelationType(outputFields);
       Scope accessControlScope =
-          Scope.builder()
-              .withRelationType(RelationId.anonymous(), new RelationType(outputFields))
-              .build();
+          Scope.builder().withRelationType(RelationId.anonymous(), relationType).build();
       //      analyzeFiltersAndMasks(table, name, new RelationType(outputFields),
       // accessControlScope);
       analysis.registerTable(table, tableSchema, name);
 
-      Scope tableScope = createAndAssignScope(table, scope, outputFields);
+      Scope tableScope = createAndAssignScope(table, scope, relationType);
 
       //      if (addRowIdColumn) {
       //        FieldReference reference = new FieldReference(outputFields.size() - 1);

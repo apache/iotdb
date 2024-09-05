@@ -57,8 +57,7 @@ public class FileTimeIndexCacheRecorder {
 
   private final BlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
-  private final Map<Integer, Map<Long, FileTimeIndexCacheWriter>> writerMap =
-      new ConcurrentHashMap<>();
+  private final Map<Integer, FileTimeIndexCacheWriter> writerMap = new ConcurrentHashMap<>();
 
   private FileTimeIndexCacheRecorder() {
     recordFileIndexThread =
@@ -86,11 +85,10 @@ public class FileTimeIndexCacheRecorder {
       TsFileResource firstResource = tsFileResources[0];
       TsFileID tsFileID = firstResource.getTsFileID();
       int dataRegionId = tsFileID.regionId;
-      long partitionId = tsFileID.timePartitionId;
       File dataRegionSysDir =
           StorageEngine.getDataRegionSystemDir(
               firstResource.getDatabaseName(), firstResource.getDataRegionId());
-      FileTimeIndexCacheWriter writer = getWriter(dataRegionId, partitionId, dataRegionSysDir);
+      FileTimeIndexCacheWriter writer = getWriter(dataRegionId, dataRegionSysDir);
       boolean result =
           taskQueue.offer(
               () -> {
@@ -116,18 +114,14 @@ public class FileTimeIndexCacheRecorder {
   public void compactFileTimeIndexIfNeeded(
       String dataBaseName,
       int dataRegionId,
-      long partitionId,
-      TsFileResourceList sequenceFiles,
-      TsFileResourceList unsequenceFiles) {
+      int currentResourceCount,
+      Map<Long, TsFileResourceList> sequenceFiles,
+      Map<Long, TsFileResourceList> unsequenceFiles) {
     FileTimeIndexCacheWriter writer =
         getWriter(
             dataRegionId,
-            partitionId,
             StorageEngine.getDataRegionSystemDir(dataBaseName, String.valueOf(dataRegionId)));
 
-    int currentResourceCount =
-        (sequenceFiles == null ? 0 : sequenceFiles.size())
-            + (unsequenceFiles == null ? 0 : unsequenceFiles.size());
     if (writer.getLogFile().length()
         > currentResourceCount * getFileTimeIndexSerializedSize() * 100L) {
 
@@ -136,25 +130,29 @@ public class FileTimeIndexCacheRecorder {
               () -> {
                 try {
                   writer.clearFile();
-                  if (sequenceFiles != null && !sequenceFiles.isEmpty()) {
-                    ByteBuffer buffer =
-                        ByteBuffer.allocate(
-                            getFileTimeIndexSerializedSize() * sequenceFiles.size());
-                    for (TsFileResource tsFileResource : sequenceFiles) {
-                      tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
+                  for (TsFileResourceList sequenceList : sequenceFiles.values()) {
+                    if (sequenceList != null && !sequenceList.isEmpty()) {
+                      ByteBuffer buffer =
+                          ByteBuffer.allocate(
+                              getFileTimeIndexSerializedSize() * sequenceList.size());
+                      for (TsFileResource tsFileResource : sequenceList) {
+                        tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
+                      }
+                      buffer.flip();
+                      writer.write(buffer);
                     }
-                    buffer.flip();
-                    writer.write(buffer);
                   }
-                  if (unsequenceFiles != null && !unsequenceFiles.isEmpty()) {
-                    ByteBuffer buffer =
-                        ByteBuffer.allocate(
-                            getFileTimeIndexSerializedSize() * unsequenceFiles.size());
-                    for (TsFileResource tsFileResource : unsequenceFiles) {
-                      tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
+                  for (TsFileResourceList unsequenceList : unsequenceFiles.values()) {
+                    if (unsequenceList != null && !unsequenceList.isEmpty()) {
+                      ByteBuffer buffer =
+                          ByteBuffer.allocate(
+                              getFileTimeIndexSerializedSize() * unsequenceList.size());
+                      for (TsFileResource tsFileResource : unsequenceList) {
+                        tsFileResource.serializeFileTimeIndexToByteBuffer(buffer);
+                      }
+                      buffer.flip();
+                      writer.write(buffer);
                     }
-                    buffer.flip();
-                    writer.write(buffer);
                   }
                 } catch (IOException e) {
                   LOGGER.warn("Meet error when compact FileTimeIndexCache: {}", e.getMessage());
@@ -166,51 +164,41 @@ public class FileTimeIndexCacheRecorder {
     }
   }
 
-  private FileTimeIndexCacheWriter getWriter(
-      int dataRegionId, long partitionId, File dataRegionSysDir) {
-    return writerMap
-        .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(
-            partitionId,
-            k -> {
-              File partitionDir =
-                  SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
-              File logFile = SystemFileFactory.INSTANCE.getFile(partitionDir, FILE_NAME);
-              try {
-                if (!partitionDir.exists() && !partitionDir.mkdirs()) {
-                  LOGGER.debug(
-                      "Partition directory has existed，filePath:{}",
-                      partitionDir.getAbsolutePath());
-                }
-                if (!logFile.createNewFile()) {
-                  LOGGER.debug(
-                      "Partition log file has existed，filePath:{}", logFile.getAbsolutePath());
-                }
-                return new FileTimeIndexCacheWriter(logFile, true);
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
-            });
+  private FileTimeIndexCacheWriter getWriter(int dataRegionId, File dataRegionSysDir) {
+    return writerMap.computeIfAbsent(
+        dataRegionId,
+        k -> {
+          File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, FILE_NAME);
+          try {
+            if (!dataRegionSysDir.exists() && !dataRegionSysDir.mkdirs()) {
+              LOGGER.debug(
+                  "DataRegionSysDir has existed，filePath:{}", dataRegionSysDir.getAbsolutePath());
+            }
+            if (!logFile.createNewFile()) {
+              LOGGER.debug("FileTimeIndex file has existed，filePath:{}", logFile.getAbsolutePath());
+            }
+            return new FileTimeIndexCacheWriter(logFile, true);
+          } catch (IOException e) {
+            LOGGER.error(
+                "FileTimeIndex log file create filed，filePath:{}", logFile.getAbsolutePath(), e);
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   public void close() throws IOException {
-    for (Map<Long, FileTimeIndexCacheWriter> partitionWriterMap : writerMap.values()) {
-      for (FileTimeIndexCacheWriter writer : partitionWriterMap.values()) {
-        writer.close();
-      }
+    for (FileTimeIndexCacheWriter writer : writerMap.values()) {
+      writer.close();
     }
   }
 
   public void removeFileTimeIndexCache(int dataRegionId) {
-    Map<Long, FileTimeIndexCacheWriter> partitionWriterMap = writerMap.get(dataRegionId);
-    if (partitionWriterMap != null) {
-      for (FileTimeIndexCacheWriter writer : partitionWriterMap.values()) {
-        try {
-          writer.close();
-          deleteDirectoryAndEmptyParent(writer.getLogFile());
-        } catch (IOException e) {
-          LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage());
-        }
+    for (FileTimeIndexCacheWriter writer : writerMap.values()) {
+      try {
+        writer.close();
+        deleteDirectoryAndEmptyParent(writer.getLogFile());
+      } catch (IOException e) {
+        LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage());
       }
     }
   }

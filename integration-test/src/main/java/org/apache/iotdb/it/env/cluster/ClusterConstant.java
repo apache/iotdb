@@ -182,8 +182,11 @@ public class ClusterConstant {
   // Paths
   public static final String USER_DIR = "user.dir";
   public static final String TARGET = "target";
+  public static final String PYTHON_PATH = "venv/bin/python3";
 
   public static final String DATA_NODE_NAME = "DataNode";
+
+  public static final String AI_NODE_NAME = "AINode";
 
   public static final String LOCK_FILE_PATH =
       System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + "lock-";

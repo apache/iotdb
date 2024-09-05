@@ -70,6 +70,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -479,6 +480,9 @@ public class Analysis implements IAnalysis {
   }
 
   private <T extends Node> List<T> dereference(Collection<NodeRef<T>> nodeRefs) {
+    if (nodeRefs.isEmpty()) {
+      return Collections.emptyList();
+    }
     return nodeRefs.stream().map(NodeRef::getNode).collect(toImmutableList());
   }
 
@@ -515,6 +519,16 @@ public class Analysis implements IAnalysis {
   public boolean isColumnReference(Expression expression) {
     requireNonNull(expression, "expression is null");
     return columnReferences.containsKey(NodeRef.of(expression));
+  }
+
+  public Set<String> getUsedColumns(QualifiedObjectName tableName) {
+    for (Map<QualifiedObjectName, Set<String>> map : tableColumnReferences.values()) {
+      Set<String> fields = map.get(tableName);
+      if (fields != null) {
+        return fields;
+      }
+    }
+    return Collections.emptySet();
   }
 
   public void addTableColumnReferences(

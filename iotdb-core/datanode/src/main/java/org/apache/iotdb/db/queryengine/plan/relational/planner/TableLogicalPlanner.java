@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
+import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
@@ -64,11 +65,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLANNER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.LOGICAL_PLAN_OPTIMIZE;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABLE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice.getDeviceColumnHeaderList;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
-public class LogicalPlanner {
-  private static final Logger LOG = LoggerFactory.getLogger(LogicalPlanner.class);
+public class TableLogicalPlanner {
+  private static final Logger LOG = LoggerFactory.getLogger(TableLogicalPlanner.class);
   private final MPPQueryContext queryContext;
   private final SessionInfo sessionInfo;
   private final SymbolAllocator symbolAllocator = new SymbolAllocator();
@@ -76,7 +80,7 @@ public class LogicalPlanner {
   private final Metadata metadata;
   private final WarningCollector warningCollector;
 
-  public LogicalPlanner(
+  public TableLogicalPlanner(
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
@@ -91,7 +95,7 @@ public class LogicalPlanner {
   }
 
   @TestOnly
-  public LogicalPlanner(
+  public TableLogicalPlanner(
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
@@ -105,9 +109,14 @@ public class LogicalPlanner {
   }
 
   public LogicalQueryPlan plan(Analysis analysis) {
+    long startTime = System.nanoTime();
     PlanNode planNode = planStatement(analysis, analysis.getStatement());
 
     if (analysis.getStatement() instanceof Query) {
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TABLE_TYPE, LOGICAL_PLANNER, System.nanoTime() - startTime);
+      startTime = System.nanoTime();
+
       for (PlanOptimizer optimizer : planOptimizers) {
         planNode =
             optimizer.optimize(
@@ -123,6 +132,8 @@ public class LogicalPlanner {
                     warningCollector,
                     PlanOptimizersStatsCollector.createPlanOptimizersStatsCollector()));
       }
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TABLE_TYPE, LOGICAL_PLAN_OPTIMIZE, System.nanoTime() - startTime);
     }
 
     return new LogicalQueryPlan(queryContext, planNode);

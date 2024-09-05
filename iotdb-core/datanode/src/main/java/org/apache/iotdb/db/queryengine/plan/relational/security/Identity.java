@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.security;
 
+import java.util.Objects;
+
 public class Identity {
   private final String user;
 
@@ -28,5 +30,22 @@ public class Identity {
 
   public String getUser() {
     return user;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Identity identity = (Identity) o;
+    return Objects.equals(user, identity.user);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(user);
   }
 }

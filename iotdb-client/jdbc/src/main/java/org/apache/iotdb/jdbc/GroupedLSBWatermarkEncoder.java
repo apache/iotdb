@@ -134,6 +134,10 @@ public class GroupedLSBWatermarkEncoder implements WatermarkEncoder {
           double originDoubleValue = field.getDoubleV();
           field.setDoubleV(encodeDouble(originDoubleValue, timestamp));
           break;
+        case BLOB:
+        case STRING:
+        case BOOLEAN:
+        case TEXT:
         default:
       }
     }

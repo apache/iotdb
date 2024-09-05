@@ -67,23 +67,27 @@ public class WALReader implements Closeable {
       return true;
     }
     // read WALEntries from log stream
+    if (fileCorrupted) {
+      return false;
+    }
     try {
-      if (fileCorrupted) {
-        return false;
-      }
       nextEntry = WALEntry.deserialize(logStream);
       if (nextEntry.getType() == WALEntryType.WAL_FILE_INFO_END_MARKER) {
         nextEntry = null;
         return false;
       }
     } catch (EOFException e) {
+      fileCorrupted = true;
       return false;
-    } catch (Exception e) {
+    } catch (IOException e) {
       fileCorrupted = true;
       // log only when file should be complete
       if (!fileMayCorrupt) {
         logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
       }
+    } catch (Exception e) {
+      fileCorrupted = true;
+      logger.warn("Fail to read WALEntry from wal file {}, skip broken WALEntries.", logFile, e);
     }
 
     return nextEntry != null;
