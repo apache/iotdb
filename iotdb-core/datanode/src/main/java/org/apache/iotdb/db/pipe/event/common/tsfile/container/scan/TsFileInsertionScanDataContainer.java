@@ -43,6 +43,7 @@ import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
@@ -205,7 +206,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           final int rowIndex = tablet.rowSize;
 
           tablet.addTimestamp(rowIndex, data.currentTime());
-          putValueToColumns(data, tablet, rowIndex);
+          putValueToColumns(data, tablet.values, tablet.bitMaps, rowIndex);
 
           tablet.rowSize++;
         }
@@ -255,17 +256,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     } while (!data.hasCurrent());
   }
 
-  private void putValueToColumns(final BatchData data, final Tablet tablet, final int rowIndex) {
-    final Object[] columns = tablet.values;
-
-    if (data.getDataType() == TSDataType.VECTOR) {
+  private void putValueToColumns(
+      final BatchData data, final Object[] columns, final BitMap[] bitMaps, final int rowIndex) {
+    final TSDataType type = data.getDataType();
+    if (type == TSDataType.VECTOR) {
       for (int i = 0; i < columns.length; ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
         if (Objects.isNull(primitiveType)) {
-          tablet.bitMaps[i].mark(rowIndex);
+          bitMaps[i].mark(rowIndex);
           continue;
         }
-        switch (tablet.getSchemas().get(i).getType()) {
+        switch (primitiveType.getDataType()) {
           case BOOLEAN:
             ((boolean[]) columns[i])[rowIndex] = primitiveType.getBoolean();
             break;
@@ -296,7 +297,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         }
       }
     } else {
-      switch (tablet.getSchemas().get(0).getType()) {
+      switch (type) {
         case BOOLEAN:
           ((boolean[]) columns[0])[rowIndex] = data.getBoolean();
           break;
