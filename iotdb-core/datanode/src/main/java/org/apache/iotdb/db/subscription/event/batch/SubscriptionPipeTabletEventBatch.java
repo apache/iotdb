@@ -217,7 +217,7 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
             .collect(Collectors.toList());
     if (eventMessageList.size() > threshold) {
       eventMessageList.add(
-          String.format("... (omit remaining %s event)", eventMessageList.size() - threshold));
+          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
     }
     return eventMessageList.toString();
   }
