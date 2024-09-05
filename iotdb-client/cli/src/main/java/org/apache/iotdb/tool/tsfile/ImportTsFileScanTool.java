@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 
@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class IoTDBTsFileScanTool {
+public class ImportTsFileScanTool {
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
   private static final String RESOURCE = ".resource";
@@ -73,30 +73,30 @@ public class IoTDBTsFileScanTool {
   }
 
   public static boolean isContainModsFile(final String filePath) {
-    return IoTDBTsFileScanTool.resourceOrModsSet.contains(filePath);
+    return ImportTsFileScanTool.resourceOrModsSet.contains(filePath);
   }
 
   public static String getFilePath() {
-    return IoTDBTsFileScanTool.tsfileQueue.poll();
+    return ImportTsFileScanTool.tsfileQueue.poll();
   }
 
   public static void put(final String filePath) {
     try {
-      IoTDBTsFileScanTool.tsfileQueue.put(filePath);
+      ImportTsFileScanTool.tsfileQueue.put(filePath);
     } catch (final InterruptedException e) {
       ioTPrinter.println("add file error");
     }
   }
 
   public static void setSourceFullPath(final String sourceFullPath) {
-    IoTDBTsFileScanTool.sourceFullPath = sourceFullPath;
+    ImportTsFileScanTool.sourceFullPath = sourceFullPath;
   }
 
   public static int getSourceFullPathLength() {
-    return IoTDBTsFileScanTool.sourceFullPath.length();
+    return ImportTsFileScanTool.sourceFullPath.length();
   }
 
   public static int getTsFileQueueSize() {
-    return IoTDBTsFileScanTool.tsfileQueue.size();
+    return ImportTsFileScanTool.tsfileQueue.size();
   }
 }

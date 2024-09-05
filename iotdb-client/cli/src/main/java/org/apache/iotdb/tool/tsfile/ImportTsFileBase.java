@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 
@@ -30,7 +30,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import java.util.concurrent.atomic.LongAdder;
 
-public abstract class AbstractTsFileProcessTool implements Runnable {
+public abstract class ImportTsFileBase implements Runnable {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
@@ -56,7 +56,7 @@ public abstract class AbstractTsFileProcessTool implements Runnable {
     if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
       ioTPrinter.println(
           "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
-      IoTDBTsFileScanTool.put(filePath);
+      ImportTsFileScanTool.put(filePath);
       return;
     }
 
@@ -92,7 +92,7 @@ public abstract class AbstractTsFileProcessTool implements Runnable {
 
   public static void processingFile(final String filePath, final boolean isSuccess) {
     final String relativePath =
-        filePath.substring(IoTDBTsFileScanTool.getSourceFullPathLength() + 1);
+        filePath.substring(ImportTsFileScanTool.getSourceFullPathLength() + 1);
     final Path sourcePath = Paths.get(filePath);
 
     final String target =
@@ -221,9 +221,9 @@ public abstract class AbstractTsFileProcessTool implements Runnable {
       final ImportTsFile.Operation successOperation,
       final String failDir,
       final ImportTsFile.Operation failOperation) {
-    AbstractTsFileProcessTool.successDir = successDir;
-    AbstractTsFileProcessTool.successOperation = successOperation;
-    AbstractTsFileProcessTool.failDir = failDir;
-    AbstractTsFileProcessTool.failOperation = failOperation;
+    ImportTsFileBase.successDir = successDir;
+    ImportTsFileBase.successOperation = successOperation;
+    ImportTsFileBase.failDir = failDir;
+    ImportTsFileBase.failOperation = failOperation;
   }
 }

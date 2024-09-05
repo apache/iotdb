@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
@@ -193,7 +193,7 @@ public class ImportTsFile extends AbstractTsFileTool {
 
     final int resultCode = importFromTargetPath();
 
-    AbstractTsFileProcessTool.printResult(startTime);
+    ImportTsFileBase.printResult(startTime);
     System.exit(resultCode);
   }
 
@@ -295,10 +295,10 @@ public class ImportTsFile extends AbstractTsFileTool {
       // set params
       processSetParams();
 
-      IoTDBTsFileScanTool.traverseAndCollectFiles();
-      IoTDBTsFileScanTool.addNoResourceOrModsToQueue();
+      ImportTsFileScanTool.traverseAndCollectFiles();
+      ImportTsFileScanTool.addNoResourceOrModsToQueue();
 
-      ioTPrinter.println("Load file total number : " + IoTDBTsFileScanTool.getTsFileQueueSize());
+      ioTPrinter.println("Load file total number : " + ImportTsFileScanTool.getTsFileQueueSize());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
@@ -316,7 +316,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static void processSetParams() {
     // ImportTsFileLocally
     final File file = new File(source);
-    IoTDBTsFileScanTool.setSourceFullPath(file.getAbsolutePath());
+    ImportTsFileScanTool.setSourceFullPath(file.getAbsolutePath());
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("source file or directory %s does not exist", source));
       System.exit(CODE_ERROR);
@@ -329,7 +329,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     ImportTsFileRemotely.setPort(port);
 
     // AbstractTsFileProcessTool
-    AbstractTsFileProcessTool.setSuccessAndFailDirAndOperation(
+    ImportTsFileBase.setSuccessAndFailDirAndOperation(
         successDir, successOperation, failDir, failOperation);
   }
 
