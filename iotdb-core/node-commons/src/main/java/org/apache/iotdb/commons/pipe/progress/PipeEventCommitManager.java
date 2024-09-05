@@ -58,7 +58,8 @@ public class PipeEventCommitManager {
           committerKey);
     }
 
-    final long currentCommitId = eventCommitterCurrentCommitIdMap.computeIfAbsent(committerKey, k -> 0L);
+    final long currentCommitId =
+        eventCommitterCurrentCommitIdMap.computeIfAbsent(committerKey, k -> 0L);
     final long lastCommitId = eventCommitterLastCommitIdMap.computeIfAbsent(committerKey, k -> 0L);
     final PipeEventCommitter eventCommitter =
         new PipeEventCommitter(pipeName, creationTime, regionId, currentCommitId, lastCommitId);
@@ -74,8 +75,7 @@ public class PipeEventCommitManager {
     final PipeEventCommitter eventCommitter = eventCommitterMap.remove(committerKey);
     eventCommitterCurrentCommitIdMap.compute(
         committerKey, (k, v) -> eventCommitter.getCurrentCommitId());
-    eventCommitterLastCommitIdMap.compute(
-        committerKey, (k, v) -> eventCommitter.getLastCommitId());
+    eventCommitterLastCommitIdMap.compute(committerKey, (k, v) -> eventCommitter.getLastCommitId());
 
     PipeEventCommitMetrics.getInstance().deregister(committerKey);
     LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);

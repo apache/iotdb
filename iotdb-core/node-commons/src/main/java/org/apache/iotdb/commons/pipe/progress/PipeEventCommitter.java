@@ -50,7 +50,11 @@ public class PipeEventCommitter {
                   Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
 
   PipeEventCommitter(
-      final String pipeName, final long creationTime, final int regionId, final long currentCommitId, final long lastCommitId) {
+      final String pipeName,
+      final long creationTime,
+      final int regionId,
+      final long currentCommitId,
+      final long lastCommitId) {
     // make it package-private
     this.pipeName = pipeName;
     this.creationTime = creationTime;
