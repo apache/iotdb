@@ -62,7 +62,11 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     final int length = measurements.length;
 
     for (int i = 0; i < length; ++i) {
-      diff += putEntry(measurements[i], schemas[i], null, false);
+      // Return 0 to avoid instance creation/gc for writing performance
+      if (measurementMap.containsKey(measurements[i])) {
+        continue;
+      }
+      diff += putEntry(measurements[i], schemas[i], null);
     }
     return diff;
   }
@@ -71,20 +75,12 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
     return schemaInfoList.stream()
         .mapToInt(
             schemaInfo ->
-                putEntry(
-                    schemaInfo.getName(), schemaInfo.getSchema(), schemaInfo.getTagMap(), true))
+                putEntry(schemaInfo.getName(), schemaInfo.getSchema(), schemaInfo.getTagMap()))
         .reduce(0, Integer::sum);
   }
 
   private int putEntry(
-      final String measurement,
-      final IMeasurementSchema schema,
-      final Map<String, String> tagMap,
-      final boolean isFetched) {
-    // Return 0 to avoid instance creation/gc for writing performance
-    if (!isFetched && measurementMap.containsKey(measurement)) {
-      return 0;
-    }
+      final String measurement, final IMeasurementSchema schema, final Map<String, String> tagMap) {
     final SchemaCacheEntry putEntry = new SchemaCacheEntry(schema, tagMap);
     final SchemaCacheEntry cachedEntry = measurementMap.put(measurement, putEntry);
     return Objects.isNull(cachedEntry)
