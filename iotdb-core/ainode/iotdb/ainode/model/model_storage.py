@@ -27,13 +27,12 @@ import torch._dynamo
 import torch.nn as nn
 from pylru import lrucache
 
-from iotdb.ainode.config import descriptor
+from iotdb.ainode.config import AINodeDescriptor
 from iotdb.ainode.constant import (OptionsKey, DEFAULT_MODEL_FILE_NAME,
-                                   DEFAULT_CONFIG_FILE_NAME)
+                                   DEFAULT_CONFIG_FILE_NAME, ModelInputName)
 from iotdb.ainode.exception import ModelNotExistError
-from iotdb.ainode.log import logger
-from iotdb.ainode.model.model_fetcher import fetch_model_by_uri
-from iotdb.ainode.util import pack_input_dict
+from iotdb.ainode.log import Logger
+from iotdb.ainode.model.model_factory import fetch_model_by_uri
 
 
 class ModelStorage(object):
@@ -47,15 +46,15 @@ class ModelStorage(object):
 
     def __init__(self):
         if not self._first_init:
-            self.__model_dir = os.path.join(os.getcwd(), descriptor.get_config().get_ain_models_dir())
+            self.__model_dir = os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir())
             if not os.path.exists(self.__model_dir):
                 try:
                     os.makedirs(self.__model_dir)
                 except PermissionError as e:
-                    logger.error(e)
+                    Logger().error(e)
                     raise e
             self.lock = threading.RLock()
-            self.__model_cache = lrucache(descriptor.get_config().get_mn_model_storage_cache_size())
+            self.__model_cache = lrucache(AINodeDescriptor().get_config().get_ain_model_storage_cache_size())
             self._first_init = True
 
     def register_model(self, model_id: str, uri: str):
@@ -75,7 +74,7 @@ class ModelStorage(object):
                 os.makedirs(storage_path)
         model_storage_path = os.path.join(storage_path, DEFAULT_MODEL_FILE_NAME)
         config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
-        fetch_model_by_uri(uri, model_storage_path, config_storage_path)
+        return fetch_model_by_uri(uri, model_storage_path, config_storage_path)
 
     def save_model(self,
                    model: nn.Module,
@@ -90,7 +89,7 @@ class ModelStorage(object):
 
         # Note: model config for time series should contain 'input_len' and 'input_vars'
         sample_input = (
-            pack_input_dict(
+            _pack_input_dict(
                 torch.randn(1, model_config[OptionsKey.INPUT_LENGTH.name()], model_config[OptionsKey.INPUT_VARS.name()])
             )
         )
@@ -124,7 +123,7 @@ class ModelStorage(object):
                     try:
                         model = torch.compile(model)
                     except Exception as e:
-                        logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
+                        Logger().warning(f"acceleration failed, fallback to normal mode: {str(e)}")
                 self.__model_cache[model_path] = model
                 return model
 
@@ -145,3 +144,22 @@ class ModelStorage(object):
     def _remove_from_cache(self, file_path: str) -> None:
         if file_path in self.__model_cache:
             del self.__model_cache[file_path]
+
+
+def _pack_input_dict(batch_x: torch.Tensor,
+                     batch_x_mark: torch.Tensor = None,
+                     dec_inp: torch.Tensor = None,
+                     batch_y_mark: torch.Tensor = None):
+    """
+    pack up inputs as a dict to adapt for different models
+    """
+    input_dict = {}
+    if batch_x is not None:
+        input_dict[ModelInputName.DATA_X.value] = batch_x
+    if batch_x_mark is not None:
+        input_dict[ModelInputName.TIME_STAMP_X] = batch_x_mark
+    if dec_inp is not None:
+        input_dict[ModelInputName.DEC_INP] = dec_inp
+    if batch_y_mark is not None:
+        input_dict[ModelInputName.TIME_STAMP_Y.value] = batch_y_mark
+    return input_dict

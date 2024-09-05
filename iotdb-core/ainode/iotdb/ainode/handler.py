@@ -16,17 +16,12 @@
 # under the License.
 #
 
-from iotdb.ainode.constant import TSStatusCode
-from iotdb.ainode.inference import inference_with_registered_model, inference_with_built_in_model, inference
-from iotdb.ainode.log import logger
 from iotdb.ainode.manager.cluster_manager import ClusterManager
+from iotdb.ainode.manager.inference_manager import InferenceManager
 from iotdb.ainode.manager.model_manager import ModelManager
-from iotdb.ainode.parser import (parse_inference_request)
-from iotdb.ainode.serde import convert_to_binary
-from iotdb.ainode.util import get_status
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
-                                        TAIHeartbeatReq, TInferenceReq, TInferenceResp)
+                                        TAIHeartbeatReq, TInferenceReq)
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
@@ -34,14 +29,13 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         self._model_manager = ModelManager()
 
     def registerModel(self, req: TRegisterModelReq):
-        self._model_manager.register_model(req)
+        return self._model_manager.register_model(req)
 
     def deleteModel(self, req: TDeleteModelReq):
-        self._model_manager.delete_model(req)
+        return self._model_manager.delete_model(req)
 
     def inference(self, req: TInferenceReq):
-        return inference(req, self._model_manager)
-
+        return InferenceManager.inference(req, self._model_manager)
 
     def getAIHeartbeat(self, req: TAIHeartbeatReq):
         return ClusterManager.get_heart_beat(req)
