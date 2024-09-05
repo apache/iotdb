@@ -293,20 +293,17 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
   }
 
-  public Integer getAttributesCount() {
-    return attributesCount.getOrDefault(receiverAttributes, 1);
-  }
+  public void decreaseOrRemoveAsyncClient() {
+    synchronized (IoTDBDataNodeAsyncClientManager.class) {
+      attributesCount.computeIfPresent(receiverAttributes, (k, v) -> v - 1);
 
-  public void decreaseAttributesCount() {
-    attributesCount.computeIfPresent(receiverAttributes, (k, v) -> v - 1);
-  }
-
-  public void removeAttributesCount() {
-    attributesCount.remove(receiverAttributes);
-  }
-
-  public void closeAndRemoveClientManager() {
-    ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes).close();
+      if (attributesCount.getOrDefault(receiverAttributes, 1) == 0) {
+        attributesCount.remove(receiverAttributes);
+        ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes).close();
+        System.out.println(attributesCount);
+        System.out.println(ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER);
+      }
+    }
   }
 
   /////////////////////// Strategies for load balance //////////////////////////
