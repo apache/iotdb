@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -57,7 +57,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ImportTsFileRemotely extends AbstractTsFileProcessTool {
+public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ImportTsFileRemotely.class);
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
@@ -82,11 +82,11 @@ public class ImportTsFileRemotely extends AbstractTsFileProcessTool {
     sendHandshake();
     String filePath;
     try {
-      while ((filePath = IoTDBTsFileScanTool.getFilePath()) != null) {
+      while ((filePath = ImportTsFileScanTool.getFilePath()) != null) {
         final File tsFile = new File(filePath);
 
         try {
-          if (IoTDBTsFileScanTool.isContainModsFile(filePath + MODS)) {
+          if (ImportTsFileScanTool.isContainModsFile(filePath + MODS)) {
             doTransfer(tsFile, new File(filePath + MODS));
           } else {
             doTransfer(tsFile, null);

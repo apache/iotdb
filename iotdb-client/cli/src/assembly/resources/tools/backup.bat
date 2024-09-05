@@ -102,7 +102,7 @@ echo Starting IoTDB Client Data Back Script
 echo ------------------------------------------
 
 set CLASSPATH="%IOTDB_HOME%\lib\*"
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.backup.IoTDBDataBackTool
 
 set logsDir="%IOTDB_HOME%\logs"
 if not exist "%logsDir%" (

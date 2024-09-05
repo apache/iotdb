@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool;
+package org.apache.iotdb.tool.tsfile;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.session.pool.SessionPool;
 
-public class ImportTsFileLocally extends AbstractTsFileProcessTool implements Runnable {
+public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
 
   private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
 
@@ -32,7 +32,7 @@ public class ImportTsFileLocally extends AbstractTsFileProcessTool implements Ru
   public void loadTsFile() {
     String filePath;
     try {
-      while ((filePath = IoTDBTsFileScanTool.getFilePath()) != null) {
+      while ((filePath = ImportTsFileScanTool.getFilePath()) != null) {
         final String sql = "load '" + filePath + "' onSuccess=none ";
         try {
           sessionPool.executeNonQueryStatement(sql);
