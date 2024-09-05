@@ -308,10 +308,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getTwoStageAggregateSenderEndPointsCacheInMs();
   }
 
-  /////////////////////////////// Subscription ///////////////////////////////
+  /////////////////////////////// Ref ///////////////////////////////
 
-  public float getSubscriptionCacheMemoryUsagePercentage() {
-    return COMMON_CONFIG.getSubscriptionCacheMemoryUsagePercentage();
+  public boolean getPipeEventReferenceTrackingEnabled() {
+    return COMMON_CONFIG.getPipeEventReferenceTrackingEnabled();
   }
 
   /////////////////////////////// Utils ///////////////////////////////
@@ -450,8 +450,7 @@ public class PipeConfig {
         "TwoStageAggregateSenderEndPointsCacheInMs: {}",
         getTwoStageAggregateSenderEndPointsCacheInMs());
 
-    LOGGER.info(
-        "SubscriptionCacheMemoryUsagePercentage: {}", getSubscriptionCacheMemoryUsagePercentage());
+    LOGGER.info("PipeEventReferenceTrackingEnabled: {}", getPipeEventReferenceTrackingEnabled());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

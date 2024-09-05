@@ -274,6 +274,8 @@ public class CommonConfig {
 
   private float subscriptionCacheMemoryUsagePercentage = 0.2F;
 
+  private boolean pipeEventReferenceTrackingEnabled = true;
+
   private int subscriptionSubtaskExecutorMaxThreadNum =
       Math.min(5, Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
   private int subscriptionPrefetchTabletBatchMaxDelayInMs = 1000; // 1s
@@ -1180,6 +1182,14 @@ public class CommonConfig {
   public void setTwoStageAggregateSenderEndPointsCacheInMs(
       long twoStageAggregateSenderEndPointsCacheInMs) {
     this.twoStageAggregateSenderEndPointsCacheInMs = twoStageAggregateSenderEndPointsCacheInMs;
+  }
+
+  public boolean getPipeEventReferenceTrackingEnabled() {
+    return pipeEventReferenceTrackingEnabled;
+  }
+
+  public void setPipeEventReferenceTrackingEnabled(boolean pipeEventReferenceTrackingEnabled) {
+    this.pipeEventReferenceTrackingEnabled = pipeEventReferenceTrackingEnabled;
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
