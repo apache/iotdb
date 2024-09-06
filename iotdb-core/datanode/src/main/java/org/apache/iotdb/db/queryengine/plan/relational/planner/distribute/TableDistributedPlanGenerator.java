@@ -67,7 +67,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
@@ -426,8 +425,8 @@ public class TableDistributedPlanGenerator
                         intermediate.getHashSymbol(),
                         intermediate.getGroupIdSymbol()))
             .collect(Collectors.toList());
-    node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
-    return Collections.singletonList(node);
+    splitResult.left.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    return Collections.singletonList(splitResult.left);
   }
 
   @Override
@@ -516,7 +515,7 @@ public class TableDistributedPlanGenerator
                             node.getAggregations(),
                             node.getGroupingSets(),
                             node.getPreGroupedSymbols(),
-                            SINGLE,
+                            node.getStep(),
                             node.getGroupIdSymbol());
                     scanNode.setRegionReplicaSet(regionReplicaSet);
                     return scanNode;

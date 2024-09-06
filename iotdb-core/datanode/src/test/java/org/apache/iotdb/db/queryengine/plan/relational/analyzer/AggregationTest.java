@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
@@ -39,6 +40,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.expression;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.singleGroupingSet;
@@ -47,6 +49,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Aggre
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.ADD;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression.Operator.MULTIPLY;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
 
 public class AggregationTest {
   @Test
@@ -117,10 +121,10 @@ public class AggregationTest {
                             ImmutableList.of("tag1", "s2"),
                             ImmutableSet.of("tag1", "s2")))))));
 
-    // Value filter exists
+    // Value filter exists and cannot be push-down
     // Output - Project - Aggregation - Project - TableScan (The value filter has been push-down)
     logicalQueryPlan =
-        planTester.createPlan("SELECT count(s2) FROM table1 where s1 < 1 group by tag1");
+        planTester.createPlan("SELECT count(s2) FROM table1 where s1*s2 < 1 group by tag1");
     assertPlan(
         logicalQueryPlan,
         output(
@@ -132,12 +136,17 @@ public class AggregationTest {
                     ImmutableList.of("tag1"), // Streamable
                     Optional.empty(),
                     SINGLE,
-                    tableScan(
-                        "testdb.table1",
-                        ImmutableList.of("tag1", "s2"),
-                        ImmutableSet.of(
-                            "tag1", "s2",
-                            "s1")))))); // We need to fetch data of column s1 to filter value
+                    project(
+                        filter(
+                            new ComparisonExpression(
+                                LESS_THAN,
+                                new ArithmeticBinaryExpression(
+                                    MULTIPLY, new SymbolReference("s1"), new SymbolReference("s2")),
+                                new LongLiteral("1")),
+                            tableScan(
+                                "testdb.table1",
+                                ImmutableList.of("tag1", "s1", "s2"),
+                                ImmutableSet.of("tag1", "s2", "s1"))))))));
 
     // AggFunction cannot be push down
     // Output - Project - Aggregation - TableScan

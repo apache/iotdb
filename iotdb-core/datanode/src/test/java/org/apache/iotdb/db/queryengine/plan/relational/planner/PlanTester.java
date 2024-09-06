@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TSBSMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -89,6 +90,7 @@ public class PlanTester {
       String sql,
       WarningCollector warningCollector,
       PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+    distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
     Analysis analysis = analyze(sql, metadata);
@@ -109,6 +111,7 @@ public class PlanTester {
       List<PlanOptimizer> optimizers,
       WarningCollector warningCollector,
       PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+    distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
     Analysis analysis = analyze(sql, metadata);
@@ -116,6 +119,7 @@ public class PlanTester {
     LogicalPlanner logicalPlanner =
         new LogicalPlanner(
             context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP, optimizers);
+    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(analysis);
 
     return logicalPlanner.plan(analysis);
   }
@@ -123,9 +127,15 @@ public class PlanTester {
   public static Analysis analyze(String sql, Metadata metadata) {
     SqlParser sqlParser = new SqlParser();
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+    String databaseName;
+    if (metadata instanceof TSBSMetadata) {
+      databaseName = "tsbs";
+    } else {
+      databaseName = "testdb";
+    }
     SessionInfo session =
         new SessionInfo(
-            0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+            0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
     final MPPQueryContext context =
         new MPPQueryContext(sql, new QueryId("test_query"), session, null, null);
     return analyzeStatement(statement, metadata, context, sqlParser, session);
@@ -163,7 +173,7 @@ public class PlanTester {
       distributedQueryPlan =
           new TableDistributedPlanner(analysis, symbolAllocator, plan, plan.getContext()).plan();
     }
-    return distributedQueryPlan.getFragments().get(index).getPlanNodeTree();
+    return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }
 
   private static class NopAccessControl implements AccessControl {}

@@ -440,6 +440,10 @@ public final class PlanMatchPattern {
     return node(FilterNode.class, source).with(new FilterMatcher(expectedPredicate));
   }
 
+  public static PlanMatchPattern filter(PlanMatchPattern source) {
+    return node(FilterNode.class, source);
+  }
+
   /*public static PlanMatchPattern groupId(List<List<String>> groupingSets, String groupIdSymbol, PlanMatchPattern source)
       {
           return groupId(groupingSets, ImmutableList.of(), groupIdSymbol, source);

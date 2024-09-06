@@ -87,12 +87,12 @@ public class TableModelTypeProviderExtractor {
 
     @Override
     public Void visitAggregation(AggregationNode node, Void context) {
-      Map<Symbol, AggregationNode.Aggregation> aggregations = node.getAggregations();
-      node.getOutputSymbols()
+      node.getChild().accept(this, context);
+      node.getAggregations()
           .forEach(
-              k ->
+              (k, v) ->
                   beTypeProvider.putTableModelType(
-                      k, aggregations.get(k).getResolvedFunction().getSignature().getReturnType()));
+                      k, v.getResolvedFunction().getSignature().getReturnType()));
       return null;
     }
 
