@@ -391,6 +391,10 @@ public class DataRegion implements IDataRegionForQuery {
     return asyncTsFileResourceRecoverTaskList;
   }
 
+  public void clearAsyncTsFileResourceRecoverTaskList() {
+    asyncTsFileResourceRecoverTaskList.clear();
+  }
+
   /** this class is used to store recovering context. */
   private class DataRegionRecoveryContext {
     /** number of files to be recovered. */
