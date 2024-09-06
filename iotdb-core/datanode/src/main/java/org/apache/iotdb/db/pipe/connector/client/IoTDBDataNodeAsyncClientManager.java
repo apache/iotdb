@@ -88,17 +88,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     this.receiverAttributes =
         String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
-    if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
-      synchronized (IoTDBDataRegionAsyncConnector.class) {
+    synchronized (IoTDBDataRegionAsyncConnector.class) {
+      if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
         ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
             receiverAttributes,
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
       }
+
+      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+      attributesCount.compute(receiverAttributes, (k, v) -> v == null ? 1 : v + 1);
     }
-    endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
-    attributesCount.compute(receiverAttributes, (k, v) -> v == null ? 1 : v + 1);
 
     switch (loadBalanceStrategy) {
       case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
