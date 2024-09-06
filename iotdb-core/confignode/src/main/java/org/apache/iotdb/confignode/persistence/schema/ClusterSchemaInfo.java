@@ -554,12 +554,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
    * @param consensusGroupType SchemaRegion or DataRegion
    * @return maxSchemaRegionGroupNum or maxDataRegionGroupNum
    */
-  public int getMinRegionGroupNum(String database, TConsensusGroupType consensusGroupType) {
+  public int getMinRegionGroupNum(
+      final String database, final TConsensusGroupType consensusGroupType) {
     databaseReadWriteLock.readLock().lock();
     try {
-      PartialPath path = new PartialPath(database);
-      TDatabaseSchema storageGroupSchema =
-          mTree.getDatabaseNodeByDatabasePath(path).getAsMNode().getDatabaseSchema();
+      final TDatabaseSchema storageGroupSchema =
+          mTree
+              .getDatabaseNodeByDatabasePath(PartialPath.getDatabasePath(database))
+              .getAsMNode()
+              .getDatabaseSchema();
       switch (consensusGroupType) {
         case SchemaRegion:
           return storageGroupSchema.getMinSchemaRegionGroupNum();
@@ -567,7 +570,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
         default:
           return storageGroupSchema.getMinDataRegionGroupNum();
       }
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn(ERROR_NAME, e);
       return -1;
     } finally {
