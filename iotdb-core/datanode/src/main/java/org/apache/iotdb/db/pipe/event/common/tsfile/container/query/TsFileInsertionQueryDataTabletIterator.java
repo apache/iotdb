@@ -168,7 +168,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
         tablet.addValue(
             measurements.get(i),
             rowIndex,
-            field == null ? null : field.getObjectValue(field.getDataType()));
+            field == null ? null : field.getObjectValue(schemas.get(i).getType()));
       }
 
       tablet.rowSize++;

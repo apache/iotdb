@@ -276,28 +276,41 @@ public class DataPartition extends Partition {
     return new ArrayList<>(distributionMap.values());
   }
 
+  // TODO(beyyes) if join queries more than one table, may trigger the unmodication error in
+  // Collections.singletonMap
   public void upsertDataPartition(DataPartition targetDataPartition) {
     requireNonNull(this.dataPartitionMap, "dataPartitionMap is null");
 
     for (Map.Entry<
             String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-        dbEntry : targetDataPartition.getDataPartitionMap().entrySet()) {
-      String database = dbEntry.getKey();
+        targetDbEntry : targetDataPartition.getDataPartitionMap().entrySet()) {
+      String database = targetDbEntry.getKey();
       if (dataPartitionMap.containsKey(database)) {
-        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> innerMap1 =
-            dataPartitionMap.get(database);
+        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+            sourceSeriesPartitionMap = dataPartitionMap.get(database);
+
         for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            seriesSlotEntry : dbEntry.getValue().entrySet()) {
-          TSeriesPartitionSlot seriesSlot = seriesSlotEntry.getKey();
-          if (innerMap1.containsKey(seriesSlot)) {
-            Map<TTimePartitionSlot, List<TRegionReplicaSet>> innerMap2 = innerMap1.get(seriesSlot);
-            innerMap2.putAll(seriesSlotEntry.getValue());
+            targetSeriesSlotEntry : targetDbEntry.getValue().entrySet()) {
+
+          TSeriesPartitionSlot targetSeriesSlot = targetSeriesSlotEntry.getKey();
+          if (sourceSeriesPartitionMap.containsKey(targetSeriesSlot)) {
+            Map<TTimePartitionSlot, List<TRegionReplicaSet>> sourceTimePartitionMap =
+                sourceSeriesPartitionMap.get(targetSeriesSlot);
+            Map<TTimePartitionSlot, List<TRegionReplicaSet>> targetTimePartionMap =
+                targetSeriesSlotEntry.getValue();
+            for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> targetEntry :
+                targetTimePartionMap.entrySet()) {
+              if (!sourceTimePartitionMap.containsKey(targetEntry.getKey())) {
+                sourceTimePartitionMap.put(targetEntry.getKey(), targetEntry.getValue());
+              }
+            }
           } else {
-            innerMap1.put(seriesSlot, seriesSlotEntry.getValue());
+            sourceSeriesPartitionMap.put(targetSeriesSlot, targetSeriesSlotEntry.getValue());
           }
         }
+
       } else {
-        dataPartitionMap.put(database, dbEntry.getValue());
+        dataPartitionMap.put(database, targetDbEntry.getValue());
       }
     }
   }
