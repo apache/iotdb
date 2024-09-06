@@ -90,7 +90,8 @@ public class TSBSTest {
                         "name", "driver", "max_time_1", "last_value_3", "last_value_2"),
                     ImmutableSet.of("driver", "latitude", "name", "longitude")))));
 
-    // Output - Aggregation(FINAL) -MergeSortNode - Aggregation(INTERMEDIATE) - AggregationTableScan
+    // Output - Aggregation(FINAL) - MergeSortNode - Aggregation(INTERMEDIATE) -
+    // AggregationTableScan
     //                                            - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
@@ -275,7 +276,7 @@ public class TSBSTest {
                     GREATER_THAN_OR_EQUAL,
                     new SymbolReference("last_value"),
                     new ArithmeticBinaryExpression(
-                        MULTIPLY, new DoubleLiteral("0.9"), new SymbolReference("load_capacity"))),
+                        MULTIPLY, new SymbolReference("load_capacity"), new DoubleLiteral("0.9"))),
                 aggregation(
                     singleGroupingSet("name", "driver", "load_capacity"),
                     ImmutableMap.of(
@@ -307,7 +308,7 @@ public class TSBSTest {
                     GREATER_THAN_OR_EQUAL,
                     new SymbolReference("last_value_final"),
                     new ArithmeticBinaryExpression(
-                        MULTIPLY, new DoubleLiteral("0.9"), new SymbolReference("load_capacity"))),
+                        MULTIPLY, new SymbolReference("load_capacity"), new DoubleLiteral("0.9"))),
                 aggregation(
                     singleGroupingSet("name", "driver", "load_capacity"),
                     ImmutableMap.of(
@@ -380,7 +381,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -405,8 +405,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,
@@ -496,7 +497,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -521,8 +521,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,
@@ -612,7 +613,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -637,8 +637,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,
@@ -728,7 +729,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -753,8 +753,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,
@@ -844,7 +845,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -869,8 +869,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,
@@ -965,7 +966,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -990,8 +990,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,
@@ -1081,7 +1082,6 @@ public class TSBSTest {
                 + "  GROUP BY name, driver\n"
                 + "  HAVING avg(velocity) < 1");
     // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
-    //                                                                        - Exchange
     assertPlan(
         plan,
         output(
@@ -1106,8 +1106,9 @@ public class TSBSTest {
                             ImmutableList.of("name", "driver", "avg_0"),
                             ImmutableSet.of("name", "driver", "velocity", "time")))))));
 
-    // Output - Agg(FINAL) - MergeSort - Agg(PARTIAL) - AggTableScan
-    //                                                - Exchange
+    // Output - P - F - Aggregation(FINAL) - MergeSort - Aggregation(PARTIAL) - AggTableScan
+    //                                                                        - Exchange
+    //                                                                        - Exchange
     PlanNode f0 = planTester.getFragmentPlan(0);
     assertPlan(
         f0,

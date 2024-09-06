@@ -288,7 +288,7 @@ public class TSBSMetadata implements Metadata {
       MPPQueryContext context) {
     if (expressionList.size() == 2
         && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
-        && expressionList.get(1).toString().equals("(\"name\" IS NOT NULL)")
+        && expressionList.get(1).toString().equals("(NOT (\"name\" IS NULL))")
         && attributeColumns.isEmpty()) {
       // r01, r02
       return ImmutableList.of(
