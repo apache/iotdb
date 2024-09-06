@@ -42,7 +42,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent;
+import static org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory;
 import static org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.getFileTimeIndexSerializedSize;
 
 public class FileTimeIndexCacheRecorder {
@@ -193,10 +193,11 @@ public class FileTimeIndexCacheRecorder {
   }
 
   public void removeFileTimeIndexCache(int dataRegionId) {
-    for (FileTimeIndexCacheWriter writer : writerMap.values()) {
+    FileTimeIndexCacheWriter writer = writerMap.remove(dataRegionId);
+    if (writer != null) {
       try {
         writer.close();
-        deleteDirectoryAndEmptyParent(writer.getLogFile());
+        deleteFileOrDirectory(writer.getLogFile(), true);
       } catch (IOException e) {
         LOGGER.warn("Meet error when close FileTimeIndexCache: {}", e.getMessage());
       }
