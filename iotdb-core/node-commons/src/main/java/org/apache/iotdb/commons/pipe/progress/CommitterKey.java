@@ -52,6 +52,10 @@ public class CommitterKey {
     return regionId;
   }
 
+  public int getRestartTimes() {
+    return restartTimes;
+  }
+
   public String stringify() {
     return String.format("%s_%s_%s_%s", pipeName, regionId, creationTime, restartTimes);
   }
