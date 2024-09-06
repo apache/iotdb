@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -316,6 +317,23 @@ public class TableDistributedPlanGenerator
       }
     }
     return resultNodeList;
+  }
+
+  @Override
+  public List<PlanNode> visitJoin(JoinNode node, PlanContext context) {
+    // child of JoinNode must be SortNode, so after rewritten, the child must be MergeSortNode or
+    // SortNode
+    List<PlanNode> leftChildrenNodes = node.getLeftChild().accept(this, context);
+    checkArgument(
+        leftChildrenNodes.size() == 1, "The size of left children node of JoinNode should be 1");
+    node.setLeftChild(leftChildrenNodes.get(0));
+
+    List<PlanNode> rightChildrenNodes = node.getRightChild().accept(this, context);
+    checkArgument(
+        rightChildrenNodes.size() == 1, "The size of right children node of JoinNode should be 1");
+    node.setRightChild(rightChildrenNodes.get(0));
+
+    return Collections.singletonList(node);
   }
 
   @Override

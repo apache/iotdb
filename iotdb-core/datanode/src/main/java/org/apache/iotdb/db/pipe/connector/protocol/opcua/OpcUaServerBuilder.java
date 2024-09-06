@@ -160,12 +160,9 @@ public class OpcUaServerBuilder {
       final UsernameIdentityValidator identityValidator =
           new UsernameIdentityValidator(
               enableAnonymousAccess,
-              authChallenge -> {
-                String inputUsername = authChallenge.getUsername();
-                String inputPassword = authChallenge.getPassword();
-
-                return inputUsername.equals(user) && inputPassword.equals(password);
-              });
+              authChallenge ->
+                  authChallenge.getUsername().equals(user)
+                      && authChallenge.getPassword().equals(password));
 
       final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
 
