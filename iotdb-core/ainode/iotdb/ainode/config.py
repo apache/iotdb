@@ -29,6 +29,8 @@ from iotdb.ainode.log import Logger
 from iotdb.ainode.util.decorator import singleton
 from iotdb.thrift.common.ttypes import TEndPoint
 
+logger = Logger()
+
 
 class AINodeConfig(object):
     def __init__(self):
@@ -136,7 +138,7 @@ class AINodeDescriptor(object):
     def __init__(self):
         self._config = AINodeConfig()
         self._load_config_from_file()
-        Logger().info("AINodeDescriptor is init successfully.")
+        logger.info("AINodeDescriptor is init successfully.")
 
     def _load_config_from_file(self) -> None:
         system_properties_file = os.path.join(self._config.get_ain_system_dir(), AINODE_SYSTEM_FILE_NAME)
@@ -163,7 +165,7 @@ class AINodeDescriptor(object):
 
         conf_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_FILE_NAME)
         if not os.path.exists(conf_file):
-            Logger().info("Cannot find AINode config file '{}', use default configuration.".format(conf_file))
+            logger.info("Cannot find AINode config file '{}', use default configuration.".format(conf_file))
             return
 
         # noinspection PyBroadException
@@ -199,10 +201,10 @@ class AINodeDescriptor(object):
                 Logger(log_dir=log_dir).info(f"Successfully load config from {conf_file}.")
 
         except BadNodeUrlError:
-            Logger().warning("Cannot load AINode conf file, use default configuration.")
+            logger.warning("Cannot load AINode conf file, use default configuration.")
 
         except Exception as e:
-            Logger().warning("Cannot load AINode conf file caused by: {}, use default configuration. ".format(e))
+            logger.warning("Cannot load AINode conf file caused by: {}, use default configuration. ".format(e))
 
     def get_config(self) -> AINodeConfig:
         return self._config

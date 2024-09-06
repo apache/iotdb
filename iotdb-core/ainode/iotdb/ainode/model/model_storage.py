@@ -20,6 +20,7 @@ import json
 import os
 import shutil
 import threading
+from collections.abc import Callable
 from typing import Dict
 
 import torch
@@ -34,28 +35,20 @@ from iotdb.ainode.exception import ModelNotExistError
 from iotdb.ainode.log import Logger
 from iotdb.ainode.model.model_factory import fetch_model_by_uri
 
+logger = Logger()
+
 
 class ModelStorage(object):
-    _instance = None
-    _first_init = False
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self):
-        if not self._first_init:
-            self.__model_dir = os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir())
-            if not os.path.exists(self.__model_dir):
-                try:
-                    os.makedirs(self.__model_dir)
-                except PermissionError as e:
-                    Logger().error(e)
-                    raise e
-            self.lock = threading.RLock()
-            self.__model_cache = lrucache(AINodeDescriptor().get_config().get_ain_model_storage_cache_size())
-            self._first_init = True
+        self._model_dir = os.path.join(os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir())
+        if not os.path.exists(self._model_dir):
+            try:
+                os.makedirs(self._model_dir)
+            except PermissionError as e:
+                logger.error(e)
+                raise e
+        self.lock = threading.RLock()
+        self._model_cache = lrucache(AINodeDescriptor().get_config().get_ain_model_storage_cache_size())
 
     def register_model(self, model_id: str, uri: str):
         """
@@ -67,7 +60,7 @@ class ModelStorage(object):
             configs: TConfigs
             attributes: str
         """
-        storage_path = os.path.join(self.__model_dir, f'{model_id}')
+        storage_path = os.path.join(self._model_dir, f'{model_id}')
         # create storage dir if not exist
         with self.lock:
             if not os.path.exists(storage_path):
@@ -81,7 +74,7 @@ class ModelStorage(object):
                    model_config: Dict,
                    model_id: str,
                    trial_id: str) -> str:
-        model_dir_path = os.path.join(self.__model_dir, f'{model_id}')
+        model_dir_path = os.path.join(self._model_dir, f'{model_id}')
         with self.lock:
             if not os.path.exists(model_dir_path):
                 os.makedirs(model_dir_path)
@@ -99,20 +92,20 @@ class ModelStorage(object):
                            _extra_files={'model_config': json.dumps(model_config)})
         return os.path.abspath(model_file_path)
 
-    def load_model(self, model_id: str, acceleration: bool):
+    def load_model(self, model_id: str, acceleration: bool) -> Callable:
         """
         Returns:
             model: a ScriptModule contains model architecture and parameters, which can be deployed cross-platform
         """
-        ain_models_dir = os.path.join(self.__model_dir, f'{model_id}')
+        ain_models_dir = os.path.join(self._model_dir, f'{model_id}')
         model_path = os.path.join(ain_models_dir, DEFAULT_MODEL_FILE_NAME)
-        if model_path in self.__model_cache:
-            model = self.__model_cache[model_path]
+        if model_path in self._model_cache:
+            model = self._model_cache[model_path]
             if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
                 return model
             else:
                 model = torch.compile(model)
-                self.__model_cache[model_path] = model
+                self._model_cache[model_path] = model
                 return model
         else:
             if not os.path.exists(model_path):
@@ -123,8 +116,8 @@ class ModelStorage(object):
                     try:
                         model = torch.compile(model)
                     except Exception as e:
-                        Logger().warning(f"acceleration failed, fallback to normal mode: {str(e)}")
-                self.__model_cache[model_path] = model
+                        logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
+                self._model_cache[model_path] = model
                 return model
 
     def delete_model(self, model_id: str) -> None:
@@ -134,7 +127,7 @@ class ModelStorage(object):
         Returns:
             None
         """
-        storage_path = os.path.join(self.__model_dir, f'{model_id}')
+        storage_path = os.path.join(self._model_dir, f'{model_id}')
 
         if os.path.exists(storage_path):
             for file_name in os.listdir(storage_path):
@@ -142,14 +135,14 @@ class ModelStorage(object):
             shutil.rmtree(storage_path)
 
     def _remove_from_cache(self, file_path: str) -> None:
-        if file_path in self.__model_cache:
-            del self.__model_cache[file_path]
+        if file_path in self._model_cache:
+            del self._model_cache[file_path]
 
 
 def _pack_input_dict(batch_x: torch.Tensor,
                      batch_x_mark: torch.Tensor = None,
                      dec_inp: torch.Tensor = None,
-                     batch_y_mark: torch.Tensor = None):
+                     batch_y_mark: torch.Tensor = None) -> Dict:
     """
     pack up inputs as a dict to adapt for different models
     """

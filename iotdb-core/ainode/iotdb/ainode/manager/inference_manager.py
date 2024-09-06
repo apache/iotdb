@@ -26,17 +26,19 @@ from iotdb.ainode.util.serde import convert_to_binary, convert_to_df
 from iotdb.ainode.util.status import get_status
 from iotdb.thrift.ainode.ttypes import TInferenceReq, TInferenceResp
 
+logger = Logger()
+
 
 class InferenceManager:
     @staticmethod
     def inference(req: TInferenceReq, model_manager: ModelManager):
-        Logger().info(f"start inference registered model {req.modelId}")
+        logger.info(f"start inference registered model {req.modelId}")
         try:
             model_id, full_data, window_interval, window_step, inference_attributes = _parse_inference_request(req)
 
             if model_id.startswith('_'):
                 # built-in models
-                Logger().info(f"start inference built-in model {model_id}")
+                logger.info(f"start inference built-in model {model_id}")
                 # parse the inference attributes and create the built-in model
                 model = _get_built_in_model(model_id, model_manager, inference_attributes)
                 inference_results = _inference_with_built_in_model(
@@ -53,7 +55,7 @@ class InferenceManager:
                     TSStatusCode.SUCCESS_STATUS),
                 inference_results)
         except Exception as e:
-            Logger().warning(e)
+            logger.warning(e)
             inference_results = []
             return TInferenceResp(get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e)), inference_results)
 

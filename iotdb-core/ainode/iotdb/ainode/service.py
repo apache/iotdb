@@ -26,6 +26,8 @@ from iotdb.ainode.handler import AINodeRPCServiceHandler
 from iotdb.ainode.log import Logger
 from iotdb.thrift.ainode import IAINodeRPCService
 
+logger = Logger()
+
 
 class RPCService(threading.Thread):
     def __init__(self):
@@ -43,9 +45,9 @@ class RPCService(threading.Thread):
         self.__pool_server = TServer.TThreadPoolServer(processor, transport, transport_factory, protocol_factory)
 
     def run(self) -> None:
-        Logger().info("The RPC service thread begin to run...")
+        logger.info("The RPC service thread begin to run...")
         try:
             self.__pool_server.serve()
         except Exception as e:
             self.exit_code = 1
-            Logger().error(e)
+            logger.error(e)

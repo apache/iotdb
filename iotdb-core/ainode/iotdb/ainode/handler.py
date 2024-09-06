@@ -21,21 +21,23 @@ from iotdb.ainode.manager.inference_manager import InferenceManager
 from iotdb.ainode.manager.model_manager import ModelManager
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import (TDeleteModelReq, TRegisterModelReq,
-                                        TAIHeartbeatReq, TInferenceReq)
+                                        TAIHeartbeatReq, TInferenceReq, TRegisterModelResp, TInferenceResp,
+                                        TAIHeartbeatResp)
+from iotdb.thrift.common.ttypes import TSStatus
 
 
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self):
         self._model_manager = ModelManager()
 
-    def registerModel(self, req: TRegisterModelReq):
+    def registerModel(self, req: TRegisterModelReq) -> TRegisterModelResp:
         return self._model_manager.register_model(req)
 
-    def deleteModel(self, req: TDeleteModelReq):
+    def deleteModel(self, req: TDeleteModelReq) -> TSStatus:
         return self._model_manager.delete_model(req)
 
-    def inference(self, req: TInferenceReq):
+    def inference(self, req: TInferenceReq) -> TInferenceResp:
         return InferenceManager.inference(req, self._model_manager)
 
-    def getAIHeartbeat(self, req: TAIHeartbeatReq):
+    def getAIHeartbeat(self, req: TAIHeartbeatReq) -> TAIHeartbeatResp:
         return ClusterManager.get_heart_beat(req)

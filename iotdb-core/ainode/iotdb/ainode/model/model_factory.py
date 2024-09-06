@@ -33,6 +33,8 @@ from iotdb.thrift.ainode.ttypes import TConfigs
 HTTP_PREFIX = "http://"
 HTTPS_PREFIX = "https://"
 
+logger = Logger()
+
 
 def _parse_uri(uri):
     """
@@ -67,7 +69,7 @@ def _download_file(url: str, storage_path: str) -> None:
     Returns:
         None
     """
-    Logger().debug(f"download file from {url} to {storage_path}")
+    logger.debug(f"download file from {url} to {storage_path}")
 
     session = Session()
     adapter = HTTPAdapter(max_retries=DEFAULT_RECONNECT_TIMES)
@@ -82,7 +84,7 @@ def _download_file(url: str, storage_path: str) -> None:
             if chunk:
                 file.write(chunk)
 
-    Logger().debug(f"download file from {url} to {storage_path} success")
+    logger.debug(f"download file from {url} to {storage_path} success")
 
 
 def _register_model_from_network(uri: str, model_storage_path: str,
@@ -139,9 +141,9 @@ def _register_model_from_local(uri: str, model_storage_path: str,
     attributes = None
     if exist_model_file and exist_config_file:
         # copy config.yaml
-        Logger().debug(f"copy file from {target_config_path} to {config_storage_path}")
+        logger.debug(f"copy file from {target_config_path} to {config_storage_path}")
         shutil.copy(target_config_path, config_storage_path)
-        Logger().debug(f"copy file from {target_config_path} to {config_storage_path} success")
+        logger.debug(f"copy file from {target_config_path} to {config_storage_path} success")
 
         # read and parse config dict from config.yaml
         with open(config_storage_path, 'r', encoding='utf-8') as file:
@@ -149,9 +151,9 @@ def _register_model_from_local(uri: str, model_storage_path: str,
         configs, attributes = _parse_inference_config(config_dict)
 
         # if config.yaml is correct, copy model file
-        Logger().debug(f"copy file from {target_model_path} to {model_storage_path}")
+        logger.debug(f"copy file from {target_model_path} to {model_storage_path}")
         shutil.copy(target_model_path, model_storage_path)
-        Logger().debug(f"copy file from {target_model_path} to {model_storage_path} success")
+        logger.debug(f"copy file from {target_model_path} to {model_storage_path} success")
 
     elif not exist_model_file or not exist_config_file:
         raise InvalidUriError(uri)

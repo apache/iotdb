@@ -31,6 +31,8 @@ from iotdb.ainode.service import RPCService
 from iotdb.thrift.common.ttypes import TAINodeLocation, TEndPoint, TAINodeConfiguration, TNodeResource
 from iotdb.thrift.confignode.ttypes import TNodeVersionInfo
 
+logger = Logger()
+
 
 def _generate_configuration() -> TAINodeConfiguration:
     location = TAINodeLocation(AINodeDescriptor().get_config().get_ainode_id(),
@@ -56,7 +58,7 @@ def _check_path_permission():
             os.makedirs(system_path)
             os.chmod(system_path, 0o777)
         except PermissionError as e:
-            Logger().error(e)
+            logger.error(e)
             raise e
 
 
@@ -66,7 +68,7 @@ def start_ainode():
     if not os.path.exists(system_properties_file):
         # If the system.properties file does not exist, the AINode will register to ConfigNode.
         try:
-            Logger().info('IoTDB-AINode is registering to ConfigNode...')
+            logger.info('IoTDB-AINode is registering to ConfigNode...')
             ainode_id = client_manager.borrow_config_node_client().node_register(
                 AINodeDescriptor().get_config().get_cluster_name(),
                 _generate_configuration(),
@@ -87,19 +89,19 @@ def start_ainode():
                     f.write(key + '=' + str(value) + '\n')
 
         except Exception as e:
-            Logger().error('IoTDB-AINode failed to register to ConfigNode: {}'.format(e))
+            logger.error('IoTDB-AINode failed to register to ConfigNode: {}'.format(e))
             raise e
     else:
         # If the system.properties file does exist, the AINode will just restart.
         try:
-            Logger().info('IoTDB-AINode is restarting...')
+            logger.info('IoTDB-AINode is restarting...')
             client_manager.borrow_config_node_client().node_restart(
                 AINodeDescriptor().get_config().get_cluster_name(),
                 _generate_configuration(),
                 _generate_version_info())
 
         except Exception as e:
-            Logger().error('IoTDB-AINode failed to restart: {}'.format(e))
+            logger.error('IoTDB-AINode failed to restart: {}'.format(e))
             raise e
 
     rpc_service = RPCService()
@@ -108,7 +110,7 @@ def start_ainode():
     if rpc_service.exit_code != 0:
         return
 
-    Logger().info('IoTDB-AINode has successfully started.')
+    logger.info('IoTDB-AINode has successfully started.')
 
 
 def remove_ainode(arguments):
@@ -131,7 +133,7 @@ def remove_ainode(arguments):
         if not end_point:
             raise MissingConfigError("NodeId: {} not found in cluster ".format(target_ainode_id))
 
-        Logger().info('Got target AINode id: {}'.format(target_ainode_id))
+        logger.info('Got target AINode id: {}'.format(target_ainode_id))
 
     else:
         raise MissingConfigError("Invalid command")
@@ -140,7 +142,7 @@ def remove_ainode(arguments):
     status = client_manager.borrow_config_node_client().node_remove(location)
 
     if status.code == TSStatusCode.SUCCESS_STATUS.get_status_code():
-        Logger().info('IoTDB-AINode has successfully removed.')
+        logger.info('IoTDB-AINode has successfully removed.')
         if os.path.exists(AINodeDescriptor().get_config().get_ain_models_dir()):
             shutil.rmtree(AINodeDescriptor().get_config().get_ain_models_dir())
 
@@ -150,25 +152,25 @@ def main():
     # load config
     AINodeDescriptor()
     if len(arguments) == 1:
-        Logger().info("Command line argument must be specified.")
+        logger.info("Command line argument must be specified.")
         return
     command = arguments[1]
     if command == 'start':
         try:
-            Logger().info('IoTDB-AINode is starting...')
+            logger.info('IoTDB-AINode is starting...')
             start_ainode()
         except Exception as e:
-            Logger().error("Start AINode failed, because of: {}".format(e))
+            logger.error("Start AINode failed, because of: {}".format(e))
             sys.exit(1)
     elif command == 'remove':
         try:
-            Logger().info("Removing AINode...")
+            logger.info("Removing AINode...")
             remove_ainode(arguments)
         except Exception as e:
-            Logger().error("Remove AINode failed, because of: {}".format(e))
+            logger.error("Remove AINode failed, because of: {}".format(e))
             sys.exit(1)
     else:
-        Logger().warning("Unknown argument: {}.".format(command))
+        logger.warning("Unknown argument: {}.".format(command))
 
 
 if __name__ == '__main__':

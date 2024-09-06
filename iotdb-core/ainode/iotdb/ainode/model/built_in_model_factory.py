@@ -33,6 +33,8 @@ from iotdb.ainode.exception import WrongAttributeTypeError, NumericalRangeExcept
     ListRangeException, BuiltInModelNotSupportError
 from iotdb.ainode.log import Logger
 
+logger = Logger()
+
 
 def get_model_attributes(model_id: str):
     if model_id == BuiltInModelType.ARIMA.value:
@@ -312,7 +314,7 @@ def parse_attribute(input_attributes: Dict[str, str], attribute_map: Dict[str, A
             try:
                 attributes[attribute_name] = attribute_map[attribute_name].get_default_value()
             except NotImplementedError as e:
-                Logger().error(f"attribute {attribute_name} is not implemented.")
+                logger.error(f"attribute {attribute_name} is not implemented.")
                 raise e
     return attributes
 
