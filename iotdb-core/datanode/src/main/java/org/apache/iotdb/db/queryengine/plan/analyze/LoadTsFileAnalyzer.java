@@ -80,6 +80,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
@@ -101,6 +102,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
@@ -110,12 +112,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
   private static final int BATCH_FLUSH_TIME_SERIES_NUMBER;
+  private static final int MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX;
   private static final long ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
   private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
 
   static {
     final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
     BATCH_FLUSH_TIME_SERIES_NUMBER = CONFIG.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber();
+    MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX =
+        CONFIG.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex();
     ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES =
         CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInBytes() <= 0
             ? ((long) BATCH_FLUSH_TIME_SERIES_NUMBER) << 10
@@ -250,7 +255,16 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         tsFileResource.deserialize();
       }
 
-      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
+      final TsFileDeviceIterator tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      final AtomicInteger deviceCount = new AtomicInteger();
+      tsFileDeviceIterator.forEachRemaining(o -> deviceCount.getAndIncrement());
+
+      // Use device time index if the device count is less than the threshold, avoiding too much
+      // memory usage
+      final boolean useDeviceTimeIndex =
+          deviceCount.get() < MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX;
+      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(
+          tsFileResource, useDeviceTimeIndex);
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
@@ -317,8 +331,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.schemaCache = new LoadTsFileAnalyzeSchemaCache();
     }
 
-    public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
-      schemaCache.setCurrentModificationsAndTimeIndex(resource);
+    public void setCurrentModificationsAndTimeIndex(
+        TsFileResource resource, boolean useDeviceTimeIndex) throws IOException {
+      schemaCache.setCurrentModificationsAndTimeIndex(resource, useDeviceTimeIndex);
     }
 
     public void autoCreateAndVerify(
@@ -790,16 +805,29 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
-    public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
+    public void setCurrentModificationsAndTimeIndex(
+        TsFileResource resource, boolean useDeviceTimeIndex) throws IOException {
       clearModificationsAndTimeIndex();
 
       currentModifications = resource.getModFile().getModifications();
+      LOGGER.error("currentModifications size: {}", currentModifications.size());
       for (final Modification modification : currentModifications) {
         currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
       }
+      LOGGER.error(
+          "currentModificationsMemoryUsageSizeInBytes: {}",
+          currentModificationsMemoryUsageSizeInBytes);
+
+      // If there are too many modifications, a larger memory block is needed to avoid frequent
+      // flush.
+      long newMemorySize =
+          currentModificationsMemoryUsageSizeInBytes > ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES / 2
+              ? currentModificationsMemoryUsageSizeInBytes + ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES
+              : ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
+      block.forceResize(newMemorySize);
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 
-      if (resource.resourceFileExists()) {
+      if (useDeviceTimeIndex && resource.resourceFileExists()) {
         currentTimeIndex = resource.getTimeIndex();
         if (currentTimeIndex instanceof FileTimeIndex) {
           currentTimeIndex = resource.buildDeviceTimeIndex();
