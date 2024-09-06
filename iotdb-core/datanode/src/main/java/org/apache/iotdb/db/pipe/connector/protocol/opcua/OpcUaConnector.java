@@ -36,6 +36,7 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -119,7 +120,11 @@ public class OpcUaConnector implements PipeConnector {
     final String securityDir =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
-            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
+                + File.separatorChar
+                + httpsBindPort
+                + "_"
+                + tcpBindPort);
     final boolean enableAnonymousAccess =
         parameters.getBooleanOrDefault(
             Arrays.asList(
