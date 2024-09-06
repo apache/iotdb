@@ -62,7 +62,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private static final String MODS = ".mods";
   private static final String LOAD_STRATEGY = "sync";
-  private static final Integer MAX_RETRY_COUNT = 5;
+  private static final Integer MAX_RETRY_COUNT = 3;
 
   private static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
@@ -97,7 +97,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
           boolean isReconnectAndLoadSuccessFul = false;
 
-          for (int i = 1; i < MAX_RETRY_COUNT; i++) {
+          for (int i = 1; i <= MAX_RETRY_COUNT; i++) {
             try {
               IOT_PRINTER.println(String.format("The %sth retry will after %s seconds.", i, i * 2));
               LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(i * 2L));
