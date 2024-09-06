@@ -206,31 +206,31 @@ public class IoTDBDatabaseIT {
 
       statement.execute("use \"````x\"");
 
-      statement.execute("create table \"`table0\"(a id, b attribute, c int32)");
+      statement.execute("create table table0 (a id, b attribute, c int32)");
 
-      statement.execute("desc \"`table0\"");
-      statement.execute("desc \"````x\".\"`table0\"");
+      statement.execute("desc table0");
+      statement.execute("desc \"````x\".table0");
 
       statement.execute("show tables");
       statement.execute("show tables from \"````x\"");
 
-      statement.execute("insert into \"`table0\" (time, a, b, c) values(0, '1', '2', 3)");
-      statement.execute("insert into \"````x\".\"`table0\" (time, a, b, c) values(1, '1', '2', 3)");
+      statement.execute("insert into table0 (time, a, b, c) values(0, '1', '2', 3)");
+      statement.execute("insert into \"````x\".table0 (time, a, b, c) values(1, '1', '2', 3)");
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("select a, b, c from \"````x\".\"`table0\" where time = 0"),
+          statement.executeQuery("select a, b, c from \"````x\".table0 where time = 0"),
           "a,b,c,",
           Collections.singleton("1,2,3,"));
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from \"`table0\""),
+          statement.executeQuery("show devices from table0"),
           "a,b,",
           Collections.singleton("1,2,"));
 
-      statement.execute("update \"````x\".\"`table0\" set b = '4'");
+      statement.execute("update \"````x\".table0 set b = '4'");
 
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from \"`table0\""),
+          statement.executeQuery("show devices from table0"),
           "a,b,",
           Collections.singleton("1,4,"));
     }
