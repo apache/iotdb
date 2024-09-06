@@ -253,7 +253,7 @@ public class IoTDBCountIfIT {
   public void testContIfWithSlidingWindow() {
     assertTestFail(
         "select count_if(s1>1,1) from root.db.d1 group by time([1,10),3ms,2ms)",
-        TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": COUNT_IF with slidingWindow is not supported now");
   }
 }

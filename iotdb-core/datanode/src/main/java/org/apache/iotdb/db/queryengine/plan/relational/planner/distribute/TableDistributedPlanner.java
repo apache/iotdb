@@ -54,11 +54,10 @@ public class TableDistributedPlanner {
   private final MPPQueryContext mppQueryContext;
   private final List<PlanOptimizer> optimizers;
 
-  public TableDistributedPlanner(
-      Analysis analysis, LogicalQueryPlan logicalQueryPlan, MPPQueryContext mppQueryContext) {
+  public TableDistributedPlanner(Analysis analysis, LogicalQueryPlan logicalQueryPlan) {
     this.analysis = analysis;
     this.logicalQueryPlan = logicalQueryPlan;
-    this.mppQueryContext = mppQueryContext;
+    this.mppQueryContext = logicalQueryPlan.getContext();
     this.optimizers =
         new DistributedOptimizeFactory(new PlannerContext(null, new InternalTypeManager()))
             .getPlanOptimizers();
