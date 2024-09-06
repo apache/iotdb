@@ -73,6 +73,10 @@ public abstract class AbstractDataTool {
       new String[] {"default", "long", "number", "timestamp"};
   protected static final String[] STRING_TIME_FORMAT =
       new String[] {
+        "HH:mm:ss",
+        "HH:mm:ss.SSS",
+        "yyyy-MM-dd",
+        "yyyy/MM/dd",
         "yyyy-MM-dd HH:mm:ss.SSSX",
         "yyyy/MM/dd HH:mm:ss.SSSX",
         "yyyy.MM.dd HH:mm:ss.SSSX",
