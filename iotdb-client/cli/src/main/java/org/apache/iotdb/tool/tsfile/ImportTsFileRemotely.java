@@ -83,7 +83,6 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       String filePath;
       while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
         final File tsFile = new File(filePath);
-        LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(5L));
         try {
           if (ImportTsFileScanTool.isContainModsFile(filePath + MODS)) {
             doTransfer(tsFile, new File(filePath + MODS));
@@ -96,15 +95,25 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
           IOT_PRINTER.println(
               "Connect is abort, try to reconnect, max retry count: " + MAX_RETRY_COUNT);
 
+          boolean isReconnectAndLoadSuccessFul = false;
+
           for (int i = 1; i < MAX_RETRY_COUNT; i++) {
             try {
               IOT_PRINTER.println(String.format("The %sth retry will after %s seconds.", i, i * 2));
               LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(i * 2L));
 
               close();
-              LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(i * 2L));
               initClient();
               sendHandshake();
+
+              if (ImportTsFileScanTool.isContainModsFile(filePath + MODS)) {
+                doTransfer(tsFile, new File(filePath + MODS));
+              } else {
+                doTransfer(tsFile, null);
+              }
+
+              processSuccessFile(filePath);
+              isReconnectAndLoadSuccessFul = true;
 
               IOT_PRINTER.println("Reconnect successful.");
               break;
@@ -113,7 +122,9 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
             }
           }
 
-          processFailFile(filePath, e);
+          if (!isReconnectAndLoadSuccessFul) {
+            processFailFile(filePath, e);
+          }
         }
       }
     } catch (final Exception e) {
