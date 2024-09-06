@@ -24,6 +24,7 @@ from thrift.transport import TSocket, TTransport
 from iotdb.ainode.config import AINodeDescriptor
 from iotdb.ainode.constant import TSStatusCode
 from iotdb.ainode.log import Logger
+from iotdb.ainode.util.decorator import singleton
 from iotdb.ainode.util.status import verify_success
 from iotdb.thrift.common.ttypes import TEndPoint, TSStatus, TAINodeLocation, TAINodeConfiguration
 from iotdb.thrift.confignode import IConfigNodeRPCService
@@ -33,6 +34,7 @@ from iotdb.thrift.confignode.ttypes import (TAINodeRemoveReq, TNodeVersionInfo,
 logger = Logger()
 
 
+@singleton
 class ClientManager(object):
     def __init__(self):
         self._config_node_endpoint = AINodeDescriptor().get_config().get_ain_target_config_node_list()
@@ -200,6 +202,3 @@ class ConfigNodeClient(object):
                 self._config_leader = None
             self._wait_and_reconnect()
         raise TException(self._MSG_RECONNECTION_FAIL)
-
-
-client_manager = ClientManager()

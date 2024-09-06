@@ -22,7 +22,7 @@ from datetime import datetime
 
 import psutil
 
-from iotdb.ainode.client import client_manager
+from iotdb.ainode.client import ClientManager
 from iotdb.ainode.config import AINodeDescriptor
 from iotdb.ainode.constant import TSStatusCode, AINODE_SYSTEM_FILE_NAME
 from iotdb.ainode.exception import MissingConfigError
@@ -69,7 +69,7 @@ def start_ainode():
         # If the system.properties file does not exist, the AINode will register to ConfigNode.
         try:
             logger.info('IoTDB-AINode is registering to ConfigNode...')
-            ainode_id = client_manager.borrow_config_node_client().node_register(
+            ainode_id = ClientManager().borrow_config_node_client().node_register(
                 AINodeDescriptor().get_config().get_cluster_name(),
                 _generate_configuration(),
                 _generate_version_info())
@@ -95,7 +95,7 @@ def start_ainode():
         # If the system.properties file does exist, the AINode will just restart.
         try:
             logger.info('IoTDB-AINode is restarting...')
-            client_manager.borrow_config_node_client().node_restart(
+            ClientManager().borrow_config_node_client().node_restart(
                 AINodeDescriptor().get_config().get_cluster_name(),
                 _generate_configuration(),
                 _generate_version_info())
@@ -123,7 +123,7 @@ def remove_ainode(arguments):
     # Delete the node with a given id
     elif len(arguments) == 3:
         target_ainode_id = int(arguments[2])
-        ainode_configuration_map = client_manager.borrow_config_node_client().get_ainode_configuration(
+        ainode_configuration_map = ClientManager().borrow_config_node_client().get_ainode_configuration(
             target_ainode_id)
 
         end_point = ainode_configuration_map[target_ainode_id].location.internalEndPoint
@@ -139,7 +139,7 @@ def remove_ainode(arguments):
         raise MissingConfigError("Invalid command")
 
     location = TAINodeLocation(target_ainode_id, TEndPoint(target_rpc_address, target_rpc_port))
-    status = client_manager.borrow_config_node_client().node_remove(location)
+    status = ClientManager().borrow_config_node_client().node_remove(location)
 
     if status.code == TSStatusCode.SUCCESS_STATUS.get_status_code():
         logger.info('IoTDB-AINode has successfully removed.')
