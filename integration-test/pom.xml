@@ -535,6 +535,20 @@
             </properties>
         </profile>
         <profile>
+            <id>AIClusterIT</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <integrationTest.excludedGroups/>
+                <integrationTest.includedGroups>org.apache.iotdb.itbase.category.AIClusterIT</integrationTest.includedGroups>
+                <integrationTest.launchNodeInSameJVM>false</integrationTest.launchNodeInSameJVM>
+                <integrationTest.randomSelectWriteNode>false</integrationTest.randomSelectWriteNode>
+                <integrationTest.readAndVerifyWithMultiNode>false</integrationTest.readAndVerifyWithMultiNode>
+                <integrationTest.testEnv>AI</integrationTest.testEnv>
+            </properties>
+        </profile>
+        <profile>
             <id>DailyIT</id>
             <activation>
                 <activeByDefault>false</activeByDefault>
