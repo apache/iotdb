@@ -33,6 +33,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+
 public class PathUtils {
 
   /**
@@ -206,7 +208,7 @@ public class PathUtils {
   }
 
   public static String qualifyDatabaseName(String databaseName) {
-    if (databaseName != null && !databaseName.startsWith("root.")) {
+    if (databaseName != null && !databaseName.startsWith(PATH_ROOT)) {
       databaseName = "root." + databaseName;
     }
     return databaseName;
