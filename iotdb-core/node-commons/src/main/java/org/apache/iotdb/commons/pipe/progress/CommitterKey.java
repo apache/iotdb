@@ -28,11 +28,11 @@ public class CommitterKey {
   private final int regionId;
   private final int restartTimes;
 
-  public CommitterKey(final String pipeName, final long creationTime, final int regionId) {
+  CommitterKey(final String pipeName, final long creationTime, final int regionId) {
     this(pipeName, creationTime, regionId, -1);
   }
 
-  public CommitterKey(
+  CommitterKey(
       final String pipeName, final long creationTime, final int regionId, final int restartTimes) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
