@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.tool;
 
-import org.apache.iotdb.tool.data.AbstractDataTool;
-
 import org.junit.Before;
 import org.junit.Test;
 

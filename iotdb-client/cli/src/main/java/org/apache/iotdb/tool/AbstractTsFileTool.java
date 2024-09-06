@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool.tsfile;
+package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.utils.IoTPrinter;
 import org.apache.iotdb.exception.ArgsErrorException;

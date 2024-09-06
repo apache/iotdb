@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool.data;
+package org.apache.iotdb.tool;
 
 import org.apache.iotdb.cli.type.ExitType;
 import org.apache.iotdb.cli.utils.CliContext;

@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.tool.backup;
+package org.apache.iotdb.tool;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.tool.data.AbstractDataTool;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
