@@ -1397,10 +1397,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showDataNodes(
-      ShowDataNodesStatement showDataNodesStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final ShowDataNodesStatement showDataNodesStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showDataNodesResp = client.showDataNodes();
       if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1409,7 +1409,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 showDataNodesResp.getStatus().message, showDataNodesResp.getStatus().code));
         return future;
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock
@@ -1419,9 +1419,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showConfigNodes() {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowConfigNodesResp showConfigNodesResp = new TShowConfigNodesResp();
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showConfigNodesResp = client.showConfigNodes();
       if (showConfigNodesResp.getStatus().getCode()
@@ -1431,7 +1431,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 showConfigNodesResp.getStatus().message, showConfigNodesResp.getStatus().code));
         return future;
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     // build TSBlock
@@ -1441,12 +1441,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> createSchemaTemplate(
-      CreateSchemaTemplateStatement createSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     try {
       // Send request to some API server
-      TSStatus tsStatus =
+      final TSStatus tsStatus =
           ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
@@ -1458,7 +1458,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e.getCause());
     }
     return future;
@@ -1466,14 +1466,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showSchemaTemplate(
-      ShowSchemaTemplateStatement showSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final ShowSchemaTemplateStatement showSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // Send request to some API server
-      List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
+      final List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
       // build TSBlock
       ShowSchemaTemplateTask.buildTSBlock(templateList, future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -1481,15 +1481,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
-      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String req = showNodesInSchemaTemplateStatement.getTemplateName();
+      final ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final String req = showNodesInSchemaTemplateStatement.getTemplateName();
     try {
       // Send request to some API server
-      Template template = ClusterTemplateManager.getInstance().getTemplate(req);
+      final Template template = ClusterTemplateManager.getInstance().getTemplate(req);
       // Build TSBlock
       ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -1497,16 +1497,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> setSchemaTemplate(
-      String queryId, SetSchemaTemplateStatement setSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    String templateName = setSchemaTemplateStatement.getTemplateName();
-    PartialPath path = setSchemaTemplateStatement.getPath();
+      final String queryId, final SetSchemaTemplateStatement setSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final String templateName = setSchemaTemplateStatement.getTemplateName();
+    final PartialPath path = setSchemaTemplateStatement.getPath();
     try {
       // Send request to some API server
       ClusterTemplateManager.getInstance().setSchemaTemplate(queryId, templateName, path);
       // build TSBlock
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    } catch (Throwable e) {
+    } catch (final Throwable e) {
       if (e.getCause() instanceof IoTDBException) {
         future.setException(e.getCause());
       } else {
@@ -1518,18 +1518,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showPathSetTemplate(
-      ShowPathSetTemplateStatement showPathSetTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final ShowPathSetTemplateStatement showPathSetTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     try {
       // Send request to some API server
-      List<PartialPath> listPath =
+      final List<PartialPath> listPath =
           ClusterTemplateManager.getInstance()
               .getPathsSetTemplate(
                   showPathSetTemplateStatement.getTemplateName(),
                   showPathSetTemplateStatement.getAuthorityScope());
       // Build TSBlock
       ShowPathSetTemplateTask.buildTSBlock(listPath, future);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
@@ -1537,20 +1537,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> deactivateSchemaTemplate(
-      String queryId, DeactivateTemplateStatement deactivateTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TDeactivateSchemaTemplateReq req = new TDeactivateSchemaTemplateReq();
+      final String queryId, final DeactivateTemplateStatement deactivateTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TDeactivateSchemaTemplateReq req = new TDeactivateSchemaTemplateReq();
     req.setQueryId(queryId);
     req.setTemplateName(deactivateTemplateStatement.getTemplateName());
     req.setPathPatternTree(
         serializePatternListToByteBuffer(deactivateTemplateStatement.getPathPatternList()));
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
           tsStatus = client.deactivateSchemaTemplate(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // Time out mainly caused by slow execution, just wait
@@ -1572,7 +1572,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1580,12 +1580,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> dropSchemaTemplate(
-      DropSchemaTemplateStatement dropSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient configNodeClient =
+      final DropSchemaTemplateStatement dropSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TSStatus tsStatus =
+      final TSStatus tsStatus =
           configNodeClient.dropSchemaTemplate(dropSchemaTemplateStatement.getTemplateName());
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
@@ -1597,7 +1597,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1605,16 +1605,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> alterSchemaTemplate(
-      String queryId, AlterSchemaTemplateStatement alterSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final String queryId, final AlterSchemaTemplateStatement alterSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     if (alterSchemaTemplateStatement
         .getOperationType()
         .equals(TemplateAlterOperationType.EXTEND_TEMPLATE)) {
       // check duplicate measurement
-      TemplateExtendInfo templateExtendInfo =
+      final TemplateExtendInfo templateExtendInfo =
           (TemplateExtendInfo) alterSchemaTemplateStatement.getTemplateAlterInfo();
-      String duplicateMeasurement = templateExtendInfo.getFirstDuplicateMeasurement();
+      final String duplicateMeasurement = templateExtendInfo.getFirstDuplicateMeasurement();
       if (duplicateMeasurement != null) {
         future.setException(
             new MetadataException(
@@ -1624,35 +1624,34 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       // check schema quota
-      long localNeedQuota =
+      final long localNeedQuota =
           (long) templateExtendInfo.getMeasurements().size()
               * SchemaEngine.getInstance()
                   .getSchemaEngineStatistics()
                   .getTemplateUsingNumber(templateExtendInfo.getTemplateName());
       if (localNeedQuota != 0) {
         try {
-
           DataNodeSchemaQuotaManager.getInstance().check(localNeedQuota, 0);
-        } catch (SchemaQuotaExceededException e) {
+        } catch (final SchemaQuotaExceededException e) {
           future.setException(e);
           return future;
         }
       }
     }
 
-    TAlterSchemaTemplateReq req = new TAlterSchemaTemplateReq();
+    final TAlterSchemaTemplateReq req = new TAlterSchemaTemplateReq();
     req.setQueryId(queryId);
     req.setTemplateAlterInfo(
         TemplateAlterOperationUtil.generateExtendTemplateReqInfo(
             alterSchemaTemplateStatement.getOperationType(),
             alterSchemaTemplateStatement.getTemplateAlterInfo()));
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
         try {
           tsStatus = client.alterSchemaTemplate(req);
-        } catch (TTransportException e) {
+        } catch (final TTransportException e) {
           if (e.getType() == TTransportException.TIMED_OUT
               || e.getCause() instanceof SocketTimeoutException) {
             // Time out mainly caused by slow execution, just wait
@@ -1673,20 +1672,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
   }
 
-  private ByteBuffer serializePatternListToByteBuffer(List<PartialPath> patternList) {
-    PathPatternTree patternTree = new PathPatternTree();
-    for (PartialPath pathPattern : patternList) {
-      patternTree.appendPathPattern(pathPattern);
-    }
+  private ByteBuffer serializePatternListToByteBuffer(final List<PartialPath> patternList) {
+    final PathPatternTree patternTree = new PathPatternTree();
+    patternList.forEach(patternTree::appendPathPattern);
     patternTree.constructTree();
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     try {
       patternTree.serialize(dataOutputStream);
     } catch (IOException ignored) {
@@ -1697,13 +1694,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> unsetSchemaTemplate(
-      String queryId, UnsetSchemaTemplateStatement unsetSchemaTemplateStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TUnsetSchemaTemplateReq req = new TUnsetSchemaTemplateReq();
+      final String queryId, final UnsetSchemaTemplateStatement unsetSchemaTemplateStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    final TUnsetSchemaTemplateReq req = new TUnsetSchemaTemplateReq();
     req.setQueryId(queryId);
     req.setTemplateName(unsetSchemaTemplateStatement.getTemplateName());
     req.setPath(unsetSchemaTemplateStatement.getPath().getFullPath());
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CLUSTER_DELETION_CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       TSStatus tsStatus;
       do {
@@ -1731,7 +1728,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
     return future;
@@ -1761,7 +1758,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createPipeStatement.getExtractorAttributes(),
               createPipeStatement.getProcessorAttributes(),
               createPipeStatement.getConnectorAttributes());
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.info("Failed to validate create pipe statement, because {}", e.getMessage(), e);
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -1787,7 +1784,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       future.setException(e);
     }
     return future;
