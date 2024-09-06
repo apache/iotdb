@@ -22,7 +22,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
@@ -265,6 +267,53 @@ public class QueryPlanner {
     } else {
       throw new RuntimeException("Coercion result in analysis only can be empty");
     }
+  }
+
+  /**
+   * Creates a projection with any additional coercions by identity of the provided expressions.
+   *
+   * @return the new subplan and a mapping of each expression to the symbol representing the
+   *     coercion or an existing symbol if a coercion wasn't needed
+   */
+  public static PlanAndMappings coerce(
+      PlanBuilder subPlan,
+      List<Expression> expressions,
+      Analysis analysis,
+      QueryId idAllocator,
+      SymbolAllocator symbolAllocator) {
+    Assignments.Builder assignments = Assignments.builder();
+    assignments.putIdentities(subPlan.getRoot().getOutputSymbols());
+
+    Map<NodeRef<Expression>, Symbol> mappings = new HashMap<>();
+    for (Expression expression : expressions) {
+      Type coercion = analysis.getCoercion(expression);
+
+      // expressions may be repeated, for example, when resolving ordinal references in a GROUP BY
+      // clause
+      if (!mappings.containsKey(NodeRef.of(expression))) {
+        if (coercion != null) {
+          Symbol symbol = symbolAllocator.newSymbol(expression, coercion);
+
+          assignments.put(
+              symbol,
+              new Cast(
+                  subPlan.rewrite(expression),
+                  // TODO(beyyes) transfer toSqlType(coercion) method,
+                  null,
+                  false));
+
+          mappings.put(NodeRef.of(expression), symbol);
+        } else {
+          mappings.put(NodeRef.of(expression), subPlan.translate(expression));
+        }
+      }
+    }
+
+    subPlan =
+        subPlan.withNewRoot(
+            new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
+
+    return new PlanAndMappings(subPlan, mappings);
   }
 
   private Optional<OrderingScheme> orderingScheme(

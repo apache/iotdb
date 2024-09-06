@@ -113,8 +113,7 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
-    return new TableDistributedPlanner((Analysis) analysis, logicalPlan, logicalPlan.getContext())
-        .plan();
+    return new TableDistributedPlanner((Analysis) analysis, logicalPlan).plan();
   }
 
   @Override
