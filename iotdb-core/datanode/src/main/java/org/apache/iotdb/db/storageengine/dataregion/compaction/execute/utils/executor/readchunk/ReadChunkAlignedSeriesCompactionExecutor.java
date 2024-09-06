@@ -561,6 +561,11 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
           throw new IllegalArgumentException(
               "Unsupported data type: " + pageLoader.getDataType().toString());
       }
+      // Due to the fact that the page writer in memory includes some other objects
+      // and has a special calculation method, the estimated size will actually be
+      // larger. So we simply adopt the method of multiplying by 1.05 times. If this
+      // is not done, the result here might be close to the target page size but
+      // slightly smaller.
       return (long) (size * 1.05);
     }
   }
