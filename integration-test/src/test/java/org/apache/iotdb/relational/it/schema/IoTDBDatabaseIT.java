@@ -26,8 +26,8 @@ import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,12 +49,12 @@ import static org.junit.Assert.fail;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBDatabaseIT {
 
-  @BeforeClass
+  @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
-  @AfterClass
+  @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
@@ -208,7 +208,7 @@ public class IoTDBDatabaseIT {
 
       statement.execute("create table \"`table0\"(a id, b attribute, c int32)");
 
-      statement.execute("desc tab");
+      statement.execute("desc \"`table0\"");
       statement.execute("desc \"````x\".\"`table0\"");
 
       statement.execute("show tables");
