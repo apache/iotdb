@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 public abstract class ImportTsFileBase implements Runnable {
 
-  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+  private static final IoTPrinter IOT_PRINTER = new IoTPrinter(System.out);
 
   private static final LongAdder loadFileSuccessfulNum = new LongAdder();
   private static final LongAdder loadFileFailedNum = new LongAdder();
@@ -53,36 +53,46 @@ public abstract class ImportTsFileBase implements Runnable {
 
   protected void processFailFile(final String filePath, final Exception e) {
     // Reject because of memory controls, do retry later
-    if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
-      ioTPrinter.println(
-          "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
-      ImportTsFileScanTool.put(filePath);
-      return;
-    }
-
-    loadFileFailedNum.increment();
-    ioTPrinter.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
-
     try {
-      processingFile(filePath, false);
-      processingLoadFailedFileSuccessfulNum.increment();
-      ioTPrinter.println("Processed fail file [ " + filePath + " ] successfully!");
-    } catch (final Exception processFailException) {
-      ioTPrinter.println(
-          "Failed to process fail file [ " + filePath + " ]: " + processFailException.getMessage());
+      if (Objects.nonNull(e.getMessage()) && e.getMessage().contains("memory")) {
+        IOT_PRINTER.println(
+            "Rejecting file [ " + filePath + " ] due to memory constraints, will retry later.");
+        ImportTsFileScanTool.putToQueue(filePath);
+        return;
+      }
+
+      loadFileFailedNum.increment();
+      IOT_PRINTER.println("Failed to import [ " + filePath + " ] file: " + e.getMessage());
+
+      try {
+        processingFile(filePath, false);
+        processingLoadFailedFileSuccessfulNum.increment();
+        IOT_PRINTER.println("Processed fail file [ " + filePath + " ] successfully!");
+      } catch (final Exception processFailException) {
+        IOT_PRINTER.println(
+            "Failed to process fail file [ "
+                + filePath
+                + " ]: "
+                + processFailException.getMessage());
+      }
+    } catch (final InterruptedException e1) {
+      IOT_PRINTER.println("Unexpected error occurred: " + e1.getMessage());
+      Thread.currentThread().interrupt();
+    } catch (final Exception e1) {
+      IOT_PRINTER.println("Unexpected error occurred: " + e1.getMessage());
     }
   }
 
   protected static void processSuccessFile(final String filePath) {
     loadFileSuccessfulNum.increment();
-    ioTPrinter.println("Imported [ " + filePath + " ] file successfully!");
+    IOT_PRINTER.println("Imported [ " + filePath + " ] file successfully!");
 
     try {
       processingFile(filePath, true);
       processingLoadSuccessfulFileSuccessfulNum.increment();
-      ioTPrinter.println("Processed success file [ " + filePath + " ] successfully!");
+      IOT_PRINTER.println("Processed success file [ " + filePath + " ] successfully!");
     } catch (final Exception processSuccessException) {
-      ioTPrinter.println(
+      IOT_PRINTER.println(
           "Failed to process success file [ "
               + filePath
               + " ]: "
@@ -123,7 +133,7 @@ public abstract class ImportTsFileBase implements Runnable {
               Files.deleteIfExists(sourceModsPath);
             }
           } catch (final Exception e) {
-            ioTPrinter.println(String.format("Failed to delete file: %s", e.getMessage()));
+            IOT_PRINTER.println(String.format("Failed to delete file: %s", e.getMessage()));
           }
           break;
         }
@@ -139,7 +149,7 @@ public abstract class ImportTsFileBase implements Runnable {
               Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
             }
           } catch (final Exception e) {
-            ioTPrinter.println(String.format("Failed to copy file: %s", e.getMessage()));
+            IOT_PRINTER.println(String.format("Failed to copy file: %s", e.getMessage()));
           }
           break;
         }
@@ -148,12 +158,12 @@ public abstract class ImportTsFileBase implements Runnable {
           try {
             Files.createLink(targetPath, sourcePath);
           } catch (FileAlreadyExistsException e) {
-            ioTPrinter.println("Hardlink already exists: " + e.getMessage());
+            IOT_PRINTER.println("Hardlink already exists: " + e.getMessage());
           } catch (final Exception e) {
             try {
               Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
             } catch (final Exception copyException) {
-              ioTPrinter.println(
+              IOT_PRINTER.println(
                   String.format("Failed to copy file: %s", copyException.getMessage()));
             }
           }
@@ -167,7 +177,7 @@ public abstract class ImportTsFileBase implements Runnable {
               Files.copy(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
             }
           } catch (final Exception e) {
-            ioTPrinter.println(
+            IOT_PRINTER.println(
                 String.format("Failed to copy resource or mods file: %s", e.getMessage()));
           }
           break;
@@ -184,7 +194,7 @@ public abstract class ImportTsFileBase implements Runnable {
               Files.move(sourceModsPath, targetModsPath, StandardCopyOption.REPLACE_EXISTING);
             }
           } catch (final Exception e) {
-            ioTPrinter.println(String.format("Failed to move file: %s", e.getMessage()));
+            IOT_PRINTER.println(String.format("Failed to move file: %s", e.getMessage()));
           }
           break;
         }
@@ -194,7 +204,7 @@ public abstract class ImportTsFileBase implements Runnable {
   }
 
   protected static void printResult(final long startTime) {
-    ioTPrinter.println(
+    IOT_PRINTER.println(
         "Successfully load "
             + loadFileSuccessfulNum.sum()
             + " tsfile(s) (--on_success operation(s): "
@@ -202,7 +212,7 @@ public abstract class ImportTsFileBase implements Runnable {
             + " succeed, "
             + (loadFileSuccessfulNum.sum() - processingLoadSuccessfulFileSuccessfulNum.sum())
             + " failed)");
-    ioTPrinter.println(
+    IOT_PRINTER.println(
         "Failed to load "
             + loadFileFailedNum.sum()
             + " file(s) (--on_fail operation(s): "
@@ -210,10 +220,14 @@ public abstract class ImportTsFileBase implements Runnable {
             + " succeed, "
             + (loadFileFailedNum.sum() - processingLoadFailedFileSuccessfulNum.sum())
             + " failed)");
-    ioTPrinter.println("For more details, please check the log.");
-    ioTPrinter.println(
+    IOT_PRINTER.println(
+        "Unprocessed "
+            + ImportTsFileScanTool.getTsFileQueueSize()
+            + " file(s), due to unexpected exceptions");
+    IOT_PRINTER.println("For more details, please check the log.");
+    IOT_PRINTER.println(
         "Total operation time: " + (System.currentTimeMillis() - startTime) + " ms.");
-    ioTPrinter.println("Work has been completed!");
+    IOT_PRINTER.println("Work has been completed!");
   }
 
   public static void setSuccessAndFailDirAndOperation(

@@ -60,7 +60,7 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static final String THREAD_NUM_ARGS = "tn";
   private static final String THREAD_NUM_NAME = "thread_num";
 
-  private static final IoTPrinter ioTPrinter = new IoTPrinter(System.out);
+  private static final IoTPrinter IOT_PRINTER = new IoTPrinter(System.out);
 
   private static final String TS_FILE_CLI_PREFIX = "ImportTsFile";
 
@@ -74,7 +74,7 @@ public class ImportTsFile extends AbstractTsFileTool {
 
   private static int threadNum = 8;
 
-  private static boolean isRemoteLoad = false;
+  private static boolean isRemoteLoad = true;
 
   private static SessionPool sessionPool;
 
@@ -156,7 +156,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     helpFormatter.setWidth(MAX_HELP_CONSOLE_WIDTH);
 
     if (args == null || args.length == 0) {
-      ioTPrinter.println("Too few arguments, please check the following hint.");
+      IOT_PRINTER.println("Too few arguments, please check the following hint.");
       helpFormatter.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -167,7 +167,7 @@ public class ImportTsFile extends AbstractTsFileTool {
         System.exit(CODE_OK);
       }
     } catch (ParseException e) {
-      ioTPrinter.println("Failed to parse the provided options: " + e.getMessage());
+      IOT_PRINTER.println("Failed to parse the provided options: " + e.getMessage());
       helpFormatter.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -176,7 +176,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     try {
       commandLine = parser.parse(options, args, true);
     } catch (ParseException e) {
-      ioTPrinter.println("Failed to parse the provided options: " + e.getMessage());
+      IOT_PRINTER.println("Failed to parse the provided options: " + e.getMessage());
       helpFormatter.printHelp(TS_FILE_CLI_PREFIX, options, true);
       System.exit(CODE_ERROR);
     }
@@ -185,11 +185,12 @@ public class ImportTsFile extends AbstractTsFileTool {
       parseBasicParams(commandLine);
       parseSpecialParams(commandLine);
     } catch (Exception e) {
-      ioTPrinter.println("Encounter an error when parsing the provided options: " + e.getMessage());
+      IOT_PRINTER.println(
+          "Encounter an error when parsing the provided options: " + e.getMessage());
       System.exit(CODE_ERROR);
     }
 
-    ioTPrinter.println(isRemoteLoad ? "load remotely" : "load locally");
+    IOT_PRINTER.println(isRemoteLoad ? "Load remotely." : "Load locally.");
 
     final int resultCode = importFromTargetPath();
 
@@ -200,14 +201,14 @@ public class ImportTsFile extends AbstractTsFileTool {
   private static void parseSpecialParams(CommandLine commandLine) {
     source = commandLine.getOptionValue(SOURCE_ARGS);
     if (!Files.exists(Paths.get(source))) {
-      ioTPrinter.println(String.format("Source file or directory %s does not exist", source));
+      IOT_PRINTER.println(String.format("Source file or directory %s does not exist", source));
       System.exit(CODE_ERROR);
     }
 
     final String onSuccess = commandLine.getOptionValue(ON_SUCCESS_ARGS).trim().toLowerCase();
     final String onFail = commandLine.getOptionValue(ON_FAIL_ARGS).trim().toLowerCase();
     if (!Operation.isValidOperation(onSuccess) || !Operation.isValidOperation(onFail)) {
-      ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
+      IOT_PRINTER.println("Args error: os/of must be one of none, mv, cp, delete");
       System.exit(CODE_ERROR);
     }
 
@@ -235,7 +236,8 @@ public class ImportTsFile extends AbstractTsFileTool {
     try {
       isRemoteLoad = !NodeUrlUtils.containsLocalAddress(Collections.singletonList(host));
     } catch (UnknownHostException e) {
-      ioTPrinter.println("unknown host: " + e.getMessage());
+      IOT_PRINTER.println(
+          "Unknown host: " + host + ". Exception: " + e.getMessage() + ". Will use remote load.");
     }
   }
 
@@ -244,7 +246,7 @@ public class ImportTsFile extends AbstractTsFileTool {
       return Objects.equals(
           Files.getFileStore(Paths.get(pathString)), Files.getFileStore(dir.toPath()));
     } catch (IOException e) {
-      ioTPrinter.println("IOException when checking file store: " + e.getMessage());
+      IOT_PRINTER.println("IOException when checking file store: " + e.getMessage());
       return false;
     }
   }
@@ -256,7 +258,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     File file = new File(successDir);
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
-        ioTPrinter.println(String.format("Failed to create %s %s", SUCCESS_DIR_NAME, successDir));
+        IOT_PRINTER.println(String.format("Failed to create %s %s", SUCCESS_DIR_NAME, successDir));
         System.exit(CODE_ERROR);
       }
     }
@@ -270,7 +272,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     File file = new File(failDir);
     if (!file.isDirectory()) {
       if (!file.mkdirs()) {
-        ioTPrinter.println(String.format("Failed to create %s %s", FAIL_DIR_NAME, failDir));
+        IOT_PRINTER.println(String.format("Failed to create %s %s", FAIL_DIR_NAME, failDir));
         System.exit(CODE_ERROR);
       }
     }
@@ -298,12 +300,15 @@ public class ImportTsFile extends AbstractTsFileTool {
       ImportTsFileScanTool.traverseAndCollectFiles();
       ImportTsFileScanTool.addNoResourceOrModsToQueue();
 
-      ioTPrinter.println("Load file total number : " + ImportTsFileScanTool.getTsFileQueueSize());
+      IOT_PRINTER.println("Load file total number : " + ImportTsFileScanTool.getTsFileQueueSize());
       asyncImportTsFiles();
       return CODE_OK;
     } catch (InterruptedException e) {
-      ioTPrinter.println(String.format("Import tsfile fail: %s", e.getMessage()));
+      IOT_PRINTER.println(String.format("Import tsfile fail: %s", e.getMessage()));
       Thread.currentThread().interrupt();
+      return CODE_ERROR;
+    } catch (Exception e) {
+      IOT_PRINTER.println(String.format("Import tsfile fail: %s", e.getMessage()));
       return CODE_ERROR;
     } finally {
       if (sessionPool != null) {
@@ -318,7 +323,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     final File file = new File(source);
     ImportTsFileScanTool.setSourceFullPath(file.getAbsolutePath());
     if (!file.isFile() && !file.isDirectory()) {
-      ioTPrinter.println(String.format("source file or directory %s does not exist", source));
+      IOT_PRINTER.println(String.format("Source file or directory %s does not exist", source));
       System.exit(CODE_ERROR);
     }
 
@@ -328,7 +333,7 @@ public class ImportTsFile extends AbstractTsFileTool {
     ImportTsFileRemotely.setHost(host);
     ImportTsFileRemotely.setPort(port);
 
-    // AbstractTsFileProcessTool
+    // ImportTsFileBase
     ImportTsFileBase.setSuccessAndFailDirAndOperation(
         successDir, successOperation, failDir, failOperation);
   }
@@ -347,7 +352,7 @@ public class ImportTsFile extends AbstractTsFileTool {
             thread.join();
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            ioTPrinter.println("importTsFile thread join interrupted: " + e.getMessage());
+            IOT_PRINTER.println("ImportTsFile thread join interrupted: " + e.getMessage());
           }
         });
   }
@@ -382,7 +387,7 @@ public class ImportTsFile extends AbstractTsFileTool {
         case "delete":
           return Operation.DELETE;
         default:
-          ioTPrinter.println("Args error: os/of must be one of none, mv, cp, delete");
+          IOT_PRINTER.println("Args error: os/of must be one of none, mv, cp, delete");
           System.exit(CODE_ERROR);
           return null;
       }
