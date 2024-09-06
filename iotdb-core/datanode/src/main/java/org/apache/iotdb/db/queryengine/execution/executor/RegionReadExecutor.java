@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -113,7 +114,7 @@ public class RegionReadExecutor {
       RegionExecutionResult resp =
           RegionExecutionResult.create(
               false, String.format(ERROR_MSG_FORMAT, e.getMessage()), null);
-      Throwable t = e.getCause();
+      Throwable t = ErrorHandlingUtils.getRootCause(e);
       if (t instanceof ReadException
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException

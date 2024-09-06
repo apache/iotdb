@@ -25,8 +25,10 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -789,8 +791,12 @@ public class ExpressionAnalyzer {
       ResolvedFunction resolvedFunction =
           new ResolvedFunction(
               new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
+              new FunctionId("noop"),
               isAggregation ? FunctionKind.AGGREGATE : FunctionKind.SCALAR,
-              true);
+              true,
+              isAggregation
+                  ? FunctionNullability.getAggregationFunctionNullability(argumentTypes.size())
+                  : FunctionNullability.getScalarFunctionNullability(argumentTypes.size()));
       resolvedFunctions.put(NodeRef.of(node), resolvedFunction);
       return setExpressionType(node, type);
     }

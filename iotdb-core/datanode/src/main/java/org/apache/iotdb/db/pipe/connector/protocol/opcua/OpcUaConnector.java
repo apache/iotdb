@@ -36,6 +36,7 @@ import org.eclipse.milo.opcua.stack.core.UaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -119,7 +120,11 @@ public class OpcUaConnector implements PipeConnector {
     final String securityDir =
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
-            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
+                + File.separatorChar
+                + httpsBindPort
+                + "_"
+                + tcpBindPort);
     final boolean enableAnonymousAccess =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -153,7 +158,7 @@ public class OpcUaConnector implements PipeConnector {
                                       Arrays.asList(
                                           CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
                                       CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
-                                  .equals(CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE));
+                                  .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE));
                       nameSpace.startup();
                       newServer.startup().get();
                       return new Pair<>(new AtomicInteger(0), nameSpace);
@@ -204,12 +209,12 @@ public class OpcUaConnector implements PipeConnector {
   private void transferTabletWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws UaException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        OpcUaConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          OpcUaConnector.class.getName())) {
-        return;
-      }
       for (final Tablet tablet : pipeInsertNodeTabletInsertionEvent.convertToTablets()) {
         nameSpace.transfer(tablet);
       }
@@ -221,11 +226,11 @@ public class OpcUaConnector implements PipeConnector {
 
   private void transferTabletWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws UaException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(OpcUaConnector.class.getName())) {
-        return;
-      }
       nameSpace.transfer(pipeRawTabletInsertionEvent.convertToTablet());
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(OpcUaConnector.class.getName(), false);

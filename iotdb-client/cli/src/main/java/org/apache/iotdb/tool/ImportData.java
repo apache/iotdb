@@ -1040,6 +1040,9 @@ public class ImportData extends AbstractDataTool {
           return Float.parseFloat(value);
         case DOUBLE:
           return Double.parseDouble(value);
+        case TIMESTAMP:
+        case DATE:
+        case BLOB:
         default:
           return null;
       }

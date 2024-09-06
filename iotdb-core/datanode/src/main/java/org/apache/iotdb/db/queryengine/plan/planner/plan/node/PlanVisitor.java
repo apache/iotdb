@@ -641,6 +641,11 @@ public abstract class PlanVisitor<R, C> {
     return visitMultiChildProcess(node, context);
   }
 
+  public R visitJoin(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode node, C context) {
+    return visitTwoChildProcess(node, context);
+  }
+
   public R visitGroupReference(GroupReference node, C context) {
     return visitPlan(node, context);
   }

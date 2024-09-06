@@ -83,6 +83,10 @@ public final class Patterns {
     return typeOf(FilterNode.class);
   }
 
+  public static Pattern<JoinNode> join() {
+    return typeOf(JoinNode.class);
+  }
+
   /*public static Pattern<IndexJoinNode> indexJoin()
   {
       return typeOf(IndexJoinNode.class);
@@ -91,11 +95,6 @@ public final class Patterns {
   public static Pattern<IndexSourceNode> indexSource()
   {
       return typeOf(IndexSourceNode.class);
-  }
-
-  public static Pattern<JoinNode> join()
-  {
-      return typeOf(JoinNode.class);
   }
 
   public static Pattern<DynamicFilterSourceNode> dynamicFilterSource()

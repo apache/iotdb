@@ -97,8 +97,9 @@ public class PlanTester {
     this.analysis = analysis;
     this.symbolAllocator = new SymbolAllocator();
 
-    LogicalPlanner logicalPlanner =
-        new LogicalPlanner(context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
+    TableLogicalPlanner logicalPlanner =
+        new TableLogicalPlanner(
+            context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
 
     plan = logicalPlanner.plan(analysis);
 
@@ -116,10 +117,9 @@ public class PlanTester {
 
     Analysis analysis = analyze(sql, metadata);
 
-    LogicalPlanner logicalPlanner =
-        new LogicalPlanner(
+    TableLogicalPlanner logicalPlanner =
+        new TableLogicalPlanner(
             context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP, optimizers);
-    LogicalQueryPlan logicalQueryPlan = logicalPlanner.plan(analysis);
 
     return logicalPlanner.plan(analysis);
   }
@@ -170,8 +170,7 @@ public class PlanTester {
 
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
-      distributedQueryPlan =
-          new TableDistributedPlanner(analysis, symbolAllocator, plan, plan.getContext()).plan();
+      distributedQueryPlan = new TableDistributedPlanner(analysis, symbolAllocator, plan).plan();
     }
     return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }

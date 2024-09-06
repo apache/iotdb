@@ -256,7 +256,7 @@ public class AggregationTest {
         output(
             project(
                 aggregation(
-                    singleGroupingSet("attr1", "tag1", "date_bin"),
+                    singleGroupingSet("attr1", "tag1", "date_bin$gid"),
                     ImmutableMap.of(
                         Optional.empty(),
                         aggregationFunction("count", ImmutableList.of("count_0"))),
@@ -264,12 +264,12 @@ public class AggregationTest {
                     Optional.empty(),
                     FINAL,
                     aggregationTableScan(
-                        singleGroupingSet("attr1", "tag1", "date_bin"),
+                        singleGroupingSet("attr1", "tag1", "date_bin$gid"),
                         ImmutableList.of("attr1", "tag1"), // Streamable
                         Optional.empty(),
                         PARTIAL,
                         "testdb.table1",
-                        ImmutableList.of("attr1", "tag1", "date_bin", "count_0"),
+                        ImmutableList.of("attr1", "tag1", "date_bin$gid", "count_0"),
                         ImmutableSet.of("attr1", "tag1", "time", "s2"))))));
   }
 
@@ -304,12 +304,12 @@ public class AggregationTest {
         output(
             project(
                 aggregationTableScan(
-                    singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin"),
+                    singleGroupingSet("tag1", "tag2", "tag3", "attr1", "date_bin$gid"),
                     ImmutableList.of("tag1", "tag2", "tag3", "attr1"), // Streamable
                     Optional.empty(),
                     SINGLE,
                     "testdb.table1",
-                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin", "count"),
+                    ImmutableList.of("tag1", "tag2", "tag3", "attr1", "date_bin$gid", "count"),
                     ImmutableSet.of("tag1", "tag2", "tag3", "attr1", "time", "s2")))));
     logicalQueryPlan =
         planTester.createPlan(

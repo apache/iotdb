@@ -66,6 +66,10 @@ public class CustomizedReadableIntermediateResults {
         return (int) (float) value;
       case DOUBLE:
         return (int) (double) value;
+      case TEXT:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
       default:
         throw new UnsupportedOperationException(
             String.format("The type %s cannot be casted to int.", typeResultPair.getLeft()));
@@ -89,6 +93,10 @@ public class CustomizedReadableIntermediateResults {
         return (long) (float) value;
       case DOUBLE:
         return (long) (double) value;
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+      case BLOB:
       default:
         throw new UnsupportedOperationException(
             String.format("The type %s cannot be casted to long.", typeResultPair.getLeft()));
@@ -112,6 +120,10 @@ public class CustomizedReadableIntermediateResults {
         return (float) value;
       case DOUBLE:
         return (float) (double) value;
+      case TEXT:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
       default:
         throw new UnsupportedOperationException(
             String.format("The type %s cannot be casted to float.", typeResultPair.getLeft()));
@@ -135,6 +147,10 @@ public class CustomizedReadableIntermediateResults {
         return (float) value;
       case DOUBLE:
         return (double) value;
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+      case BLOB:
       default:
         throw new UnsupportedOperationException(
             String.format("The type %s cannot be casted to double.", typeResultPair.getLeft()));

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -203,6 +204,13 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitExchange(ExchangeNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitJoin(JoinNode node, Void context) {
+      node.getLeftChild().accept(this, context);
+      node.getRightChild().accept(this, context);
       return null;
     }
 

@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
 import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 
 import java.util.Objects;
 
@@ -28,18 +30,32 @@ import static java.util.Objects.requireNonNull;
 
 public class ResolvedFunction {
   private final BoundSignature signature;
+  private final FunctionId functionId;
   private final FunctionKind functionKind;
   private final boolean deterministic;
 
+  private final FunctionNullability functionNullability;
+
   public ResolvedFunction(
-      BoundSignature signature, FunctionKind functionKind, boolean deterministic) {
+      BoundSignature signature,
+      FunctionId functionId,
+      FunctionKind functionKind,
+      boolean deterministic,
+      FunctionNullability functionNullability) {
     this.signature = requireNonNull(signature, "signature is null");
+    this.functionId = requireNonNull(functionId, "functionId is null");
     this.functionKind = requireNonNull(functionKind, "functionKind is null");
     this.deterministic = deterministic;
+    this.functionNullability = requireNonNull(functionNullability, "functionNullability is null");
+    ;
   }
 
   public BoundSignature getSignature() {
     return signature;
+  }
+
+  public FunctionId getFunctionId() {
+    return functionId;
   }
 
   public FunctionKind getFunctionKind() {
@@ -50,15 +66,18 @@ public class ResolvedFunction {
     return deterministic;
   }
 
+  public FunctionNullability getFunctionNullability() {
+    return functionNullability;
+  }
+
   //  public static boolean isResolved(QualifiedName name) {
   //    return SerializedResolvedFunction.isSerializedResolvedFunction(name);
   //  }
   //
-  //  public QualifiedName toQualifiedName() {
-  //    CatalogSchemaFunctionName name = toCatalogSchemaFunctionName();
-  //    return QualifiedName.of(name.getCatalogName(), name.getSchemaName(),
-  // name.getFunctionName());
-  //  }
+  public QualifiedName toQualifiedName() {
+    return QualifiedName.of(signature.getName());
+  }
+
   //
   //  public CatalogSchemaFunctionName toCatalogSchemaFunctionName() {
   //    return ResolvedFunctionDecoder.toCatalogSchemaFunctionName(this);
@@ -80,13 +99,14 @@ public class ResolvedFunction {
     }
     ResolvedFunction that = (ResolvedFunction) o;
     return Objects.equals(signature, that.signature)
+        && Objects.equals(functionId, that.functionId)
         && functionKind == that.functionKind
         && deterministic == that.deterministic;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(signature, functionKind, deterministic);
+    return Objects.hash(signature, functionId, functionKind, deterministic);
   }
 
   @Override

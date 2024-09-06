@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
@@ -175,12 +176,19 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         stateMachine.transitionToFailed(instanceInfo.getFailureInfoList().get(0).toException());
       }
     }
-    boolean queryFinished =
+    boolean queryFinished = false;
+    List<InstanceStateMetrics> rootInstanceStateMetricsList =
         instanceStateMap.values().stream()
             .filter(instanceStateMetrics -> instanceStateMetrics.isRootInstance)
-            .allMatch(
-                instanceStateMetrics ->
-                    instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
+            .collect(Collectors.toList());
+    if (!rootInstanceStateMetricsList.isEmpty()) {
+      queryFinished =
+          rootInstanceStateMetricsList.stream()
+              .allMatch(
+                  instanceStateMetrics ->
+                      instanceStateMetrics.lastState == FragmentInstanceState.FINISHED);
+    }
+
     if (queryFinished) {
       stateMachine.transitionToFinished();
     }

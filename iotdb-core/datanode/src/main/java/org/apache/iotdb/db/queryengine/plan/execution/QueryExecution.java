@@ -72,6 +72,8 @@ import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -153,7 +155,7 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public void start() {
-    final long startTime = System.nanoTime();
+    long startTime = System.nanoTime();
     if (skipExecute()) {
       LOGGER.debug("[SkipExecute]");
       if (analysis.isFailed()) {
@@ -184,8 +186,7 @@ public class QueryExecution implements IQueryExecution {
     doDistributedPlan();
 
     // update timeout after finishing plan stage
-    context.setTimeOut(
-        context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime()));
+    context.setTimeOut(context.getTimeOut() - (System.nanoTime() - context.getStartTime()));
 
     stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
@@ -302,7 +303,8 @@ public class QueryExecution implements IQueryExecution {
     if (analysis.isQuery()) {
       long distributionPlanCost = System.nanoTime() - startTime;
       context.setDistributionPlanCost(distributionPlanCost);
-      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(DISTRIBUTION_PLANNER, distributionPlanCost);
+      QUERY_PLAN_COST_METRIC_SET.recordPlanCost(
+          TREE_TYPE, DISTRIBUTION_PLANNER, distributionPlanCost);
     }
 
     // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
@@ -479,6 +481,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void dealWithException(Throwable t) throws IoTDBException {
+    t = getRootCause(t);
     stateMachine.transitionToFailed(t);
     if (stateMachine.getFailureStatus() != null) {
       throw new IoTDBException(

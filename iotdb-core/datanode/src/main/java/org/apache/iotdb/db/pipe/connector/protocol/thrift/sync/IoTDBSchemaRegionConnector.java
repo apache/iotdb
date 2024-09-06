@@ -74,12 +74,12 @@ public class IoTDBSchemaRegionConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBSchemaRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeSchemaRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBSchemaRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeSchemaRegionSnapshotEvent);
     } finally {
       pipeSchemaRegionSnapshotEvent.decreaseReferenceCount(

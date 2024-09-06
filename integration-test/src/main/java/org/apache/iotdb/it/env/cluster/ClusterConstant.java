@@ -171,12 +171,22 @@ public class ClusterConstant {
       "dn_join_cluster_retry_interval_ms";
   public static final String DN_CONNECTION_TIMEOUT_MS = "dn_connection_timeout_ms";
   public static final String DN_METRIC_INTERNAL_REPORTER_TYPE = "dn_metric_internal_reporter_type";
+  public static final String CONFIG_NODE_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX =
+      "config_node_ratis_log_appender_buffer_size_max";
+  public static final String WAL_BUFFER_SIZE_IN_BYTE = "wal_buffer_size_in_byte";
+  public static final String SCHEMA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX =
+      "schema_region_ratis_log_appender_buffer_size_max";
+  public static final String DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX =
+      "data_region_ratis_log_appender_buffer_size_max";
 
   // Paths
   public static final String USER_DIR = "user.dir";
   public static final String TARGET = "target";
+  public static final String PYTHON_PATH = "venv/bin/python3";
 
   public static final String DATA_NODE_NAME = "DataNode";
+
+  public static final String AI_NODE_NAME = "AINode";
 
   public static final String LOCK_FILE_PATH =
       System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + "lock-";

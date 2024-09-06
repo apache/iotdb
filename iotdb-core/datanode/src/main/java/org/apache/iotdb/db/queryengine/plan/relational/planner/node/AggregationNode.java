@@ -30,7 +30,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.errorprone.annotations.Immutable;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,7 +44,6 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-@Immutable
 public class AggregationNode extends SingleChildProcessNode {
   private final Map<Symbol, Aggregation> aggregations;
   private final GroupingSetDescriptor groupingSets;

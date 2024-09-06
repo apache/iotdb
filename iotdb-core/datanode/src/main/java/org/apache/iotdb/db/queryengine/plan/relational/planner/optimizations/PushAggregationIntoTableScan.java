@@ -66,7 +66,7 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
             context.getQueryContext().getQueryId(),
             context.getMetadata(),
             context.sessionInfo(),
-            context.symbolAllocator()));
+            context.getSymbolAllocator()));
   }
 
   private static class Rewriter extends PlanVisitor<PlanNode, Context> {

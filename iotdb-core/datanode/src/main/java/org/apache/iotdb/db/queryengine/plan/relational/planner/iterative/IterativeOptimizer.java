@@ -106,7 +106,7 @@ public class IterativeOptimizer implements AdaptivePlanOptimizer {
             memo,
             lookup,
             context.idAllocator(),
-            context.symbolAllocator(),
+            context.getSymbolAllocator(),
             nanoTime(),
             timeout.toMillis(),
             context.sessionInfo(),

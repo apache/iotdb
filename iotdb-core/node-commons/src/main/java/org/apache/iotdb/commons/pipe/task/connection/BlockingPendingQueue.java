@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -29,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 public abstract class BlockingPendingQueue<E extends Event> {
 
@@ -40,7 +40,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   protected final BlockingQueue<E> pendingQueue;
 
-  private final PipeEventCounter eventCounter;
+  protected final PipeEventCounter eventCounter;
 
   protected BlockingPendingQueue(
       final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
@@ -106,12 +106,36 @@ public abstract class BlockingPendingQueue<E extends Event> {
     eventCounter.reset();
   }
 
+  /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
   public void forEach(final Consumer<? super E> action) {
     pendingQueue.forEach(action);
   }
 
-  public void removeIf(final Predicate<? super E> filter) {
-    pendingQueue.removeIf(filter);
+  public void discardAllEvents() {
+    pendingQueue.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+          }
+          return true;
+        });
+    eventCounter.reset();
+  }
+
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
+    pendingQueue.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+            return true;
+          }
+          return false;
+        });
   }
 
   public boolean isEmpty() {

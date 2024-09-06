@@ -72,6 +72,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -737,6 +738,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             sortItemIndexList.subList(0, node.getStreamCompareKeyEndIndex() + 1),
             sortItemDataTypeList.subList(0, node.getStreamCompareKeyEndIndex() + 1)),
         TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber());
+  }
+
+  @Override
+  public Operator visitJoin(JoinNode node, LocalExecutionPlanContext context) {
+    throw new IllegalStateException("JoinOperator is not implemented currently.");
   }
 
   @Override

@@ -23,6 +23,11 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -41,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -58,13 +64,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticSubtractionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
@@ -86,7 +89,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InMultiCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
@@ -152,12 +154,15 @@ import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.DateType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.DateUtils;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -193,34 +198,61 @@ public class ColumnTransformerBuilder
       ArithmeticBinaryExpression node, Context context) {
     if (!context.cache.containsKey(node)) {
       if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer left = process(node.getLeft(), context);
+        ColumnTransformer right = process(node.getRight(), context);
+        List<Type> types = Arrays.asList(left.getType(), right.getType());
+        Type type;
+        switch (node.getOperator()) {
+          case ADD:
+            type = AdditionResolver.checkConditions(types).get();
+            break;
+          case SUBTRACT:
+            type = SubtractionResolver.checkConditions(types).get();
+            break;
+          case MULTIPLY:
+            type = MultiplicationResolver.checkConditions(types).get();
+            break;
+          case DIVIDE:
+            type = DivisionResolver.checkConditions(types).get();
+            break;
+          case MODULUS:
+            type = ModulusResolver.checkConditions(types).get();
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                String.format(UNSUPPORTED_EXPRESSION, node.getOperator()));
+        }
+        TSDataType tsDataType = InternalTypeManager.getTSDataType(type);
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
-                DOUBLE, context.originSize + context.commonTransformerList.size());
+                type, context.originSize + context.commonTransformerList.size());
         ColumnTransformer columnTransformer = context.hasSeen.get(node);
         columnTransformer.addReferenceCount();
         context.commonTransformerList.add(columnTransformer);
         context.leafList.add(identity);
-        context.inputDataTypes.add(TSDataType.DOUBLE);
+        context.inputDataTypes.add(tsDataType);
         context.cache.put(node, identity);
       } else {
+        ZoneId zoneId = context.sessionInfo.getZoneId();
         ColumnTransformer left = process(node.getLeft(), context);
         ColumnTransformer right = process(node.getRight(), context);
         ColumnTransformer child;
         switch (node.getOperator()) {
           case ADD:
-            child = new ArithmeticAdditionColumnTransformer(DOUBLE, left, right);
+            child = ArithmeticColumnTransformerApi.getAdditionTransformer(left, right, zoneId);
             break;
           case SUBTRACT:
-            child = new ArithmeticSubtractionColumnTransformer(DOUBLE, left, right);
+            child = ArithmeticColumnTransformerApi.getSubtractionTransformer(left, right, zoneId);
             break;
           case MULTIPLY:
-            child = new ArithmeticMultiplicationColumnTransformer(DOUBLE, left, right);
+            child =
+                ArithmeticColumnTransformerApi.getMultiplicationTransformer(left, right, zoneId);
             break;
           case DIVIDE:
-            child = new ArithmeticDivisionColumnTransformer(DOUBLE, left, right);
+            child = ArithmeticColumnTransformerApi.getDivisionTransformer(left, right, zoneId);
             break;
           case MODULUS:
-            child = new ArithmeticModuloColumnTransformer(DOUBLE, left, right);
+            child = ArithmeticColumnTransformerApi.getModulusTransformer(left, right, zoneId);
             break;
           default:
             throw new UnsupportedOperationException(
@@ -255,7 +287,8 @@ public class ColumnTransformerBuilder
           } else {
             ColumnTransformer childColumnTransformer = process(node.getValue(), context);
             context.cache.put(
-                node, new ArithmeticNegationColumnTransformer(DOUBLE, childColumnTransformer));
+                node,
+                ArithmeticColumnTransformerApi.getNegationTransformer(childColumnTransformer));
           }
         }
         ColumnTransformer res = context.cache.get(node);
@@ -425,6 +458,39 @@ public class ColumnTransformerBuilder
   @Override
   protected ColumnTransformer visitDecimalLiteral(DecimalLiteral node, Context context) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  protected ColumnTransformer visitGenericLiteral(GenericLiteral node, Context context) {
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            node,
+            e -> {
+              ConstantColumnTransformer columnTransformer =
+                  getColumnTransformerForGenericLiteral(node);
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
+  }
+
+  // currently, we only support Date and Timestamp
+  // for Date, GenericLiteral.value is an int value
+  // for Timestamp, GenericLiteral.value is a long value
+  private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(
+      GenericLiteral literal) {
+    if (DateType.DATE.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          DateType.DATE,
+          new IntColumn(1, Optional.empty(), new int[] {Integer.parseInt(literal.getValue())}));
+    } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          TimestampType.TIMESTAMP,
+          new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
+    } else {
+      throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
+    }
   }
 
   @Override
@@ -963,7 +1029,7 @@ public class ColumnTransformerBuilder
     return res;
   }
 
-  private InMultiColumnTransformer constructInColumnTransformer(
+  private static InMultiColumnTransformer constructInColumnTransformer(
       TypeEnum childType,
       List<ColumnTransformer> valueColumnTransformerList,
       List<Literal> values) {
@@ -985,7 +1051,7 @@ public class ColumnTransformerBuilder
       case DATE:
         Set<Integer> dateSet = new HashSet<>();
         for (Literal value : values) {
-          dateSet.add(DateUtils.parseDateExpressionToInt(((StringLiteral) value).getValue()));
+          dateSet.add(Integer.parseInt(((GenericLiteral) value).getValue()));
         }
         return new InInt32MultiColumnTransformer(dateSet, valueColumnTransformerList);
       case INT64:
@@ -993,7 +1059,7 @@ public class ColumnTransformerBuilder
         Set<Long> longSet = new HashSet<>();
         for (Literal value : values) {
           try {
-            longSet.add((((LongLiteral) value).getParsedValue()));
+            longSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }

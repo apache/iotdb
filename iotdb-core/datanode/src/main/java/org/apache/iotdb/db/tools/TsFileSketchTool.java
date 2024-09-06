@@ -150,6 +150,7 @@ public class TsFileSketchTool {
           value2 = (ite2.hasNext() ? ite2.next() : null);
         }
       }
+      metadataIndexNodeMap.clear();
     }
     // print TsFile Metadata
     printTsFileMetadata(tsFileMetaData);
