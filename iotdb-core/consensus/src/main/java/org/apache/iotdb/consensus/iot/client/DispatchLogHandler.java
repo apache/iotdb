@@ -74,6 +74,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           messages);
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
+      if (logger.isDebugEnabled()) {
+        boolean containsError =
+            response.getStatuses().stream()
+                .anyMatch(
+                    status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        if (containsError) {
+          logger.debug(
+              "Send {} to peer {} complete but contains unsuccessful status: {}",
+              batch,
+              thread.getPeer(),
+              response.getStatuses());
+        }
+      }
       completeBatch(batch);
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
