@@ -361,6 +361,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     for (int i = 0; i < filesView.skippedSourceFiles.size(); i++) {
       TsFileResource resource = filesView.sortedAllSourceFilesInTask.get(i);
       File file = resource.getTsFile();
+      File skippedSourceFile = filesView.skippedSourceFiles.get(i).getTsFile();
       TsFileNameGenerator.TsFileName tsFileName = TsFileNameGenerator.getTsFileName(file.getName());
       String newFileName =
           String.format(
@@ -371,7 +372,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               tsFileName.getCrossCompactionCnt() + 1);
       TsFileResource renamedTargetFile =
           new TsFileResource(
-              new File(file.getParentFile().getPath() + File.separator + newFileName),
+              new File(skippedSourceFile.getParentFile().getPath() + File.separator + newFileName),
               TsFileResourceStatus.COMPACTING);
       filesView.renamedTargetFiles.add(renamedTargetFile);
     }

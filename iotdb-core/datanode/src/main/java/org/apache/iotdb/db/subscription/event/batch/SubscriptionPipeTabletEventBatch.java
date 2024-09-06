@@ -201,15 +201,24 @@ public class SubscriptionPipeTabletEventBatch extends SubscriptionPipeEventBatch
   @Override
   protected Map<String, String> coreReportMessage() {
     final Map<String, String> coreReportMessage = super.coreReportMessage();
-    coreReportMessage.put(
-        "enrichedEvents",
-        enrichedEvents.stream()
-            .map(EnrichedEvent::coreReportMessage)
-            .collect(Collectors.toList())
-            .toString());
+    coreReportMessage.put("enrichedEvents", formatEnrichedEvents(enrichedEvents, 4));
     coreReportMessage.put("size of tablets", String.valueOf(tablets.size()));
     coreReportMessage.put("firstEventProcessingTime", String.valueOf(firstEventProcessingTime));
     coreReportMessage.put("totalBufferSize", String.valueOf(totalBufferSize));
     return coreReportMessage;
+  }
+
+  private static String formatEnrichedEvents(
+      final List<EnrichedEvent> enrichedEvents, final int threshold) {
+    final List<String> eventMessageList =
+        enrichedEvents.stream()
+            .limit(threshold)
+            .map(EnrichedEvent::coreReportMessage)
+            .collect(Collectors.toList());
+    if (eventMessageList.size() > threshold) {
+      eventMessageList.add(
+          String.format("omit the remaining %s event(s)...", eventMessageList.size() - threshold));
+    }
+    return eventMessageList.toString();
   }
 }

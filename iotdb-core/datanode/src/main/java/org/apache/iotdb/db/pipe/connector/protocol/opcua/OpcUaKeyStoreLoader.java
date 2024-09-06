@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+
 import com.google.common.collect.Sets;
 import org.eclipse.milo.opcua.sdk.server.util.HostnameUtil;
 import org.eclipse.milo.opcua.stack.core.util.SelfSignedCertificateBuilder;
@@ -27,8 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Key;
 import java.security.KeyPair;
@@ -51,12 +53,21 @@ class OpcUaKeyStoreLoader {
   private X509Certificate serverCertificate;
   private KeyPair serverKeyPair;
 
-  OpcUaKeyStoreLoader load(Path baseDir, char[] password) throws Exception {
+  OpcUaKeyStoreLoader load(final Path baseDir, final char[] password) throws Exception {
     final KeyStore keyStore = KeyStore.getInstance("PKCS12");
 
     final File serverKeyStore = baseDir.resolve("iotdb-server.pfx").toFile();
 
     LOGGER.info("Loading KeyStore at {}", serverKeyStore);
+
+    if (serverKeyStore.exists()) {
+      try {
+        keyStore.load(Files.newInputStream(serverKeyStore.toPath()), password);
+      } catch (final IOException e) {
+        LOGGER.warn("Load keyStore failed, the existing keyStore may be stale, re-constructing...");
+        FileUtils.deleteFileOrDirectory(serverKeyStore);
+      }
+    }
 
     if (!serverKeyStore.exists()) {
       keyStore.load(null, password);
@@ -81,21 +92,20 @@ class OpcUaKeyStoreLoader {
               Sets.newHashSet(HostnameUtil.getHostname()),
               HostnameUtil.getHostnames("0.0.0.0", false));
 
-      for (String hostname : hostnames) {
-        if (IP_ADDR_PATTERN.matcher(hostname).matches()) {
-          builder.addIpAddress(hostname);
-        } else {
-          builder.addDnsName(hostname);
-        }
-      }
+      hostnames.forEach(
+          hostname -> {
+            if (IP_ADDR_PATTERN.matcher(hostname).matches()) {
+              builder.addIpAddress(hostname);
+            } else {
+              builder.addDnsName(hostname);
+            }
+          });
 
       final X509Certificate certificate = builder.build();
 
       keyStore.setKeyEntry(
           SERVER_ALIAS, keyPair.getPrivate(), password, new X509Certificate[] {certificate});
-      keyStore.store(new FileOutputStream(serverKeyStore), password);
-    } else {
-      keyStore.load(new FileInputStream(serverKeyStore), password);
+      keyStore.store(Files.newOutputStream(serverKeyStore.toPath()), password);
     }
 
     final Key serverPrivateKey = keyStore.getKey(SERVER_ALIAS, password);

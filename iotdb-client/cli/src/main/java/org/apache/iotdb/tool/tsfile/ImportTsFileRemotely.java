@@ -62,7 +62,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private static final String MODS = ".mods";
   private static final String LOAD_STRATEGY = "sync";
-  private static final Integer MAX_RETRY_COUNT = 5;
+  private static final Integer MAX_RETRY_COUNT = 3;
 
   private static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
@@ -97,7 +97,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
           boolean isReconnectAndLoadSuccessFul = false;
 
-          for (int i = 1; i < MAX_RETRY_COUNT; i++) {
+          for (int i = 1; i <= MAX_RETRY_COUNT; i++) {
             try {
               IOT_PRINTER.println(String.format("The %sth retry will after %s seconds.", i, i * 2));
               LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(i * 2L));
@@ -124,6 +124,10 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
           if (!isReconnectAndLoadSuccessFul) {
             processFailFile(filePath, e);
+
+            close();
+            initClient();
+            sendHandshake();
           }
         }
       }
@@ -136,16 +140,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   public void sendHandshake() {
     try {
-      final Map<String, String> params = new HashMap<>();
-      params.put(
-          PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
-          CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
-      params.put(
-          PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
-          Boolean.toString(true));
-      params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
-
+      final Map<String, String> params = constructParamsMap();
       TPipeTransferResp resp =
           client.pipeTransfer(PipeTransferDataNodeHandshakeV2Req.toTPipeTransferReq(params));
 
@@ -179,6 +174,19 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               "Handshake error with target server ip: %s, port: %s, because: %s.",
               client.getIpAddress(), client.getPort(), e.getMessage()));
     }
+  }
+
+  private Map<String, String> constructParamsMap() {
+    final Map<String, String> params = new HashMap<>();
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
+        CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLUSTER_ID, getClusterId());
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
+        Boolean.toString(true));
+    params.put(PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, LOAD_STRATEGY);
+    return params;
   }
 
   public void doTransfer(final File tsFile, final File modFile) throws PipeException, IOException {

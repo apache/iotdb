@@ -34,7 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -208,20 +211,62 @@ public class TestMatadata implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns,
       MPPQueryContext context) {
-    if (expressionList.size() == 2
-        && expressionList.get(0).toString().equals("(\"tag1\" = 'beijing')")
-        && expressionList.get(1).toString().equals("(\"tag2\" = 'A1')")) {
-      return Collections.singletonList(
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES));
-    } else {
-      return Arrays.asList(
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+
+    if (expressionList.size() == 2) {
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")
+              && compareEqualsMatch(expressionList.get(1), "tag2", "A1")
+          || compareEqualsMatch(expressionList.get(1), "tag1", "beijing")
+              && compareEqualsMatch(expressionList.get(0), "tag2", "A1")) {
+        return Collections.singletonList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")
+              && compareEqualsMatch(expressionList.get(1), "tag2", "B3")
+          || compareEqualsMatch(expressionList.get(1), "tag1", "shanghai")
+              && compareEqualsMatch(expressionList.get(0), "tag2", "B3")) {
+        return Collections.singletonList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_1_ATTRIBUTES));
+      }
+
+    } else if (expressionList.size() == 1) {
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")) {
+        return Arrays.asList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
+        return Arrays.asList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
+      }
     }
+
+    return Arrays.asList(
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+  }
+
+  private boolean compareEqualsMatch(Expression expression, String idOrAttr, String value) {
+    if (expression instanceof ComparisonExpression
+        && ((ComparisonExpression) expression).getOperator()
+            == ComparisonExpression.Operator.EQUAL) {
+      Expression leftExpression = ((ComparisonExpression) expression).getLeft();
+      Expression rightExpression = ((ComparisonExpression) expression).getRight();
+      if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
+        return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
+            && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
+      } else if (leftExpression instanceof StringLiteral
+          && rightExpression instanceof SymbolReference) {
+        return ((SymbolReference) rightExpression).getName().equalsIgnoreCase(idOrAttr)
+            && ((StringLiteral) leftExpression).getValue().equalsIgnoreCase(value);
+      }
+    }
+
+    return false;
   }
 
   @Override
