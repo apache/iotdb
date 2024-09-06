@@ -50,12 +50,12 @@ import static org.junit.Assert.fail;
 public class IoTDBDatabaseIT {
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
