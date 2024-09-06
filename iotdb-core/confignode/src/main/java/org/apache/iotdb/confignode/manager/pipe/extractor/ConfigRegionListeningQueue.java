@@ -155,8 +155,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
   /////////////////////////////// Snapshot ///////////////////////////////
 
   @Override
-  public synchronized boolean processTakeSnapshot(final File snapshotDir)
-      throws IOException {
+  public synchronized boolean processTakeSnapshot(final File snapshotDir) throws IOException {
     try {
       return super.serializeToFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
     } catch (final IOException e) {
@@ -171,7 +170,7 @@ public class ConfigRegionListeningQueue extends AbstractPipeListeningQueue
       throws TException, IOException {
     try {
       super.deserializeFromFile(new File(snapshotDir, SNAPSHOT_FILE_NAME));
-    }catch (final IOException e) {
+    } catch (final IOException e) {
       throw e;
     } catch (final Exception e) {
       throw new IOException(e);
