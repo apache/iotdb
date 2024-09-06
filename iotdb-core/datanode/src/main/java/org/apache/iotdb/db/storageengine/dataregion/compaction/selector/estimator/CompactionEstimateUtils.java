@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
@@ -95,6 +98,48 @@ public class CompactionEstimateUtils {
         maxAlignedSeriesNumInDevice,
         maxDeviceChunkNum,
         averageChunkMetadataSize);
+  }
+
+  public static long roughEstimateMetadataCostInCompaction(
+      List<TsFileResource> resources, CompactionType taskType) throws IOException {
+    if (!CompactionEstimateUtils.addReadLock(resources)) {
+      return -1L;
+    }
+    long cost = -1L;
+    long modsFileSize = 0L;
+    try {
+      for (TsFileResource resource : resources) {
+        if (resource.modFileExists()) {
+          modsFileSize += resource.getModFile().getSize();
+        }
+        try (CompactionTsFileReader reader =
+            new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
+          cost = Math.max(cost, getMaxTimeseriesMetadataOfOneDeviceSize(reader));
+        }
+      }
+      return cost + modsFileSize;
+    } finally {
+      CompactionEstimateUtils.releaseReadLock(resources);
+    }
+  }
+
+  public static long getMaxTimeseriesMetadataOfOneDeviceSize(CompactionTsFileReader reader)
+      throws IOException {
+    TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+    long maxSize = 0;
+    while (deviceIterator.hasNext()) {
+      deviceIterator.next();
+      MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
+          deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
+      long totalTimeseriesMetadataSizeOfCurrentDevice = 0;
+      Map<String, Pair<Long, Long>> timeseriesMetadataOffsetByDevice =
+          reader.getTimeseriesMetadataOffsetByDevice(firstMeasurementNodeOfCurrentDevice);
+      for (Pair<Long, Long> offsetPair : timeseriesMetadataOffsetByDevice.values()) {
+        totalTimeseriesMetadataSizeOfCurrentDevice += (offsetPair.right - offsetPair.left);
+      }
+      maxSize = Math.max(maxSize, totalTimeseriesMetadataSizeOfCurrentDevice);
+    }
+    return maxSize;
   }
 
   public static boolean shouldAccurateEstimate(long roughEstimatedMemCost) {
