@@ -80,27 +80,27 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   }
 
   public static boolean needRetry(int statusCode) {
-    return statusCode != TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    return statusCode == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()
+        || statusCode == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || statusCode == TSStatusCode.WRITE_PROCESS_REJECT.getStatusCode();
   }
 
   @Override
   public void onError(Exception exception) {
     ++retryCount;
-    if (logger.isWarnEnabled()) {
-      Throwable rootCause = ExceptionUtils.getRootCause(exception);
-      logger.warn(
-          "Can not send {} to peer for {} times {} because {}",
-          batch,
-          thread.getPeer(),
-          retryCount,
-          rootCause.toString());
-      // skip TApplicationException caused by follower
-      if (rootCause instanceof TApplicationException) {
-        completeBatch(batch);
-        logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
-        logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
-        return;
-      }
+    Throwable rootCause = ExceptionUtils.getRootCause(exception);
+    logger.warn(
+        "Can not send {} to peer for {} times {} because {}",
+        batch,
+        thread.getPeer(),
+        retryCount,
+        rootCause.toString());
+    // skip TApplicationException caused by follower
+    if (rootCause instanceof TApplicationException) {
+      completeBatch(batch);
+      logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
+      logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
+      return;
     }
     sleepCorrespondingTimeAndRetryAsynchronous();
   }
