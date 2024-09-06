@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -204,7 +204,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       throw new IllegalArgumentException(
           "DeleteDataNodes which start time or end time are not same cannot be merged");
     }
-    List<MeasurementPath> pathList =
+    List<PartialPath> pathList =
         deleteDataNodes.stream()
             .flatMap(deleteDataNode -> deleteDataNode.getPathList().stream())
             // Some time the deleteDataNode list contains a path for multiple times, so use
