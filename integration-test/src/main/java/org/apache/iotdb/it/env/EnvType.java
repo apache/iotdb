@@ -24,8 +24,7 @@ public enum EnvType {
   Simple,
   Cluster1,
   MultiCluster,
-  AI
-  ;
+  AI;
 
   public static EnvType getSystemEnvType() {
     String envValue = System.getProperty("TestEnv", Simple.name());
