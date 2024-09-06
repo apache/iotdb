@@ -202,7 +202,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
                 firstOne.getDeleteStartTime() == deleteDataNode.getDeleteStartTime()
                     && firstOne.getDeleteEndTime() == deleteDataNode.getDeleteEndTime())) {
       throw new IllegalArgumentException(
-          "DeleteDataNodes which start time or end time are not same cannot be merged");
+          "DeleteDataNodes which start time or end time are not same cannot be merged.");
     }
     List<PartialPath> pathList =
         deleteDataNodes.stream()
