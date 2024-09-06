@@ -40,7 +40,7 @@ import java.util.Optional;
 
 public interface Metadata {
 
-  boolean tableExists(QualifiedObjectName name);
+  boolean tableExists(final QualifiedObjectName name);
 
   /**
    * Return table schema definition for the specified table handle. Table schema definition is a set
@@ -48,19 +48,20 @@ public interface Metadata {
    *
    * @throws RuntimeException if table handle is no longer valid
    */
-  Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name);
+  Optional<TableSchema> getTableSchema(final SessionInfo session, final QualifiedObjectName name);
 
-  Type getOperatorReturnType(OperatorType operatorType, List<? extends Type> argumentTypes)
+  Type getOperatorReturnType(
+      final OperatorType operatorType, final List<? extends Type> argumentTypes)
       throws OperatorNotFoundException;
 
-  Type getFunctionReturnType(String functionName, List<? extends Type> argumentTypes);
+  Type getFunctionReturnType(final String functionName, final List<? extends Type> argumentTypes);
 
   boolean isAggregationFunction(
-      SessionInfo session, String functionName, AccessControl accessControl);
+      final SessionInfo session, final String functionName, final AccessControl accessControl);
 
-  Type getType(TypeSignature signature) throws TypeNotFoundException;
+  Type getType(final TypeSignature signature) throws TypeNotFoundException;
 
-  boolean canCoerce(Type from, Type to);
+  boolean canCoerce(final Type from, final Type to);
 
   IPartitionFetcher getPartitionFetcher();
 
@@ -103,7 +104,10 @@ public interface Metadata {
    *     are not STRING or Category, Type of any missing ColumnSchema is null
    */
   Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable);
+      final String database,
+      final TableSchema tableSchema,
+      final MPPQueryContext context,
+      final boolean allowCreateTable);
 
   /**
    * This method is used for table device validation and should be invoked after column validation.
@@ -115,7 +119,8 @@ public interface Metadata {
    *
    * <p>If validation failed, a SemanticException will be thrown.
    */
-  void validateDeviceSchema(ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context);
+  void validateDeviceSchema(
+      final ITableDeviceSchemaValidation schemaValidation, final MPPQueryContext context);
 
   /**
    * Get or create data partition, used in cluster write scenarios. if enableAutoCreateSchema is
@@ -125,7 +130,7 @@ public interface Metadata {
    * @param userName
    */
   default DataPartition getOrCreateDataPartition(
-      List<DataPartitionQueryParam> dataPartitionQueryParams, String userName) {
+      final List<DataPartitionQueryParam> dataPartitionQueryParams, final String userName) {
     throw new UnsupportedOperationException();
   }
 
@@ -139,7 +144,7 @@ public interface Metadata {
    * <p>The device id shall be [table, seg1, ....]
    */
   SchemaPartition getOrCreateSchemaPartition(
-      String database, List<IDeviceID> deviceIDList, String userName);
+      final String database, final List<IDeviceID> deviceIDList, final String userName);
 
   /**
    * For data query with completed id.
@@ -148,7 +153,7 @@ public interface Metadata {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(String database, List<IDeviceID> deviceIDList);
+  SchemaPartition getSchemaPartition(final String database, final List<IDeviceID> deviceIDList);
 
   /**
    * For data query with partial device id conditions.
@@ -157,7 +162,7 @@ public interface Metadata {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  SchemaPartition getSchemaPartition(String database);
+  SchemaPartition getSchemaPartition(final String database);
 
   // ======================== Table Model Data Partition Interface ========================
   /**
@@ -167,7 +172,7 @@ public interface Metadata {
    * @param sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartition(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 
   /**
    * Get data partition, used in query scenarios which contains time filter like: time < XX or time
@@ -177,5 +182,5 @@ public interface Metadata {
    * @return sgNameToQueryParamsMap database name -> the list of DataPartitionQueryParams
    */
   DataPartition getDataPartitionWithUnclosedTimeRange(
-      String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap);
+      final String database, final List<DataPartitionQueryParam> sgNameToQueryParamsMap);
 }
