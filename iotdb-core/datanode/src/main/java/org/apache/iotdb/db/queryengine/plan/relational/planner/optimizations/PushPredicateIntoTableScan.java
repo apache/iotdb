@@ -597,23 +597,28 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 newJoinFilter,
                 node.isSpillable());
       }
-      Symbol timeSymbol = Symbol.of("time");
-      OrderingScheme orderingScheme =
+
+      JoinNode.EquiJoinClause joinCriteria = node.getCriteria().get(0);
+      OrderingScheme leftOrderingScheme =
           new OrderingScheme(
-              Collections.singletonList(timeSymbol),
-              Collections.singletonMap(timeSymbol, ASC_NULLS_LAST));
+              Collections.singletonList(joinCriteria.getLeft()),
+              Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
+      OrderingScheme rightOrderingScheme =
+          new OrderingScheme(
+              Collections.singletonList(joinCriteria.getRight()),
+              Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
       SortNode leftSortNode =
           new SortNode(
               queryId.genPlanNodeId(),
               ((JoinNode) output).getLeftChild(),
-              orderingScheme,
+              leftOrderingScheme,
               false,
               false);
       SortNode rightSortNode =
           new SortNode(
               queryId.genPlanNodeId(),
               ((JoinNode) output).getRightChild(),
-              orderingScheme,
+              rightOrderingScheme,
               false,
               false);
       ((JoinNode) output).setLeftChild(leftSortNode);
