@@ -810,13 +810,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       clearModificationsAndTimeIndex();
 
       currentModifications = resource.getModFile().getModifications();
-      LOGGER.error("currentModifications size: {}", currentModifications.size());
       for (final Modification modification : currentModifications) {
         currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
       }
-      LOGGER.error(
-          "currentModificationsMemoryUsageSizeInBytes: {}",
-          currentModificationsMemoryUsageSizeInBytes);
 
       // If there are too many modifications, a larger memory block is needed to avoid frequent
       // flush.
