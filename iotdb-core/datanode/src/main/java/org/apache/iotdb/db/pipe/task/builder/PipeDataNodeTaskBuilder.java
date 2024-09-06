@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -34,6 +35,9 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskConnectorStage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -43,8 +47,13 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 
 public class PipeDataNodeTaskBuilder {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskBuilder.class);
 
   private final PipeStaticMeta pipeStaticMeta;
   private final int regionId;
@@ -77,23 +86,31 @@ public class PipeDataNodeTaskBuilder {
   public PipeDataNodeTask build() {
     // Event flow: extractor -> processor -> connector
 
+    // Analyzes the PipeParameters to identify potential conflicts.
+    final PipeParameters extractorParameters =
+        blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters());
+    final PipeParameters connectorParameters =
+        blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters());
+    checkConflict(extractorParameters, connectorParameters);
+
     // We first build the extractor and connector, then build the processor.
     final PipeTaskExtractorStage extractorStage =
         new PipeTaskExtractorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters()),
+            extractorParameters,
             regionId,
             pipeTaskMeta);
 
     final PipeTaskConnectorStage connectorStage;
     final PipeType pipeType = pipeStaticMeta.getPipeType();
+
     if (PipeType.SUBSCRIPTION.equals(pipeType)) {
       connectorStage =
           new SubscriptionTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
-              blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
+              connectorParameters,
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
     } else { // user pipe or consensus pipe
@@ -101,7 +118,7 @@ public class PipeDataNodeTaskBuilder {
           new PipeTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
-              blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
+              connectorParameters,
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
     }
@@ -140,5 +157,28 @@ public class PipeDataNodeTaskBuilder {
     final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
     blendedParameters.putAll(systemParameters);
     return new PipeParameters(blendedParameters);
+  }
+
+  private void checkConflict(
+      final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
+    //
+    final String inclusion =
+        extractorParameters.getStringOrDefault(
+            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
+            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
+
+    if (!"data.delete".equals(inclusion)) {
+      return;
+    }
+
+    final Boolean isRealtime =
+        connectorParameters.getBooleanByKeys(
+            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+            PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
+
+    if (isRealtime == null || isRealtime) {
+      LOGGER.warn(
+          "PipeDataNodeTaskBuilder: 'inclusion.exclusion' = 'data.delete' and 'realtime.first'=true may cause sync issues after deletion.");
+    }
   }
 }
