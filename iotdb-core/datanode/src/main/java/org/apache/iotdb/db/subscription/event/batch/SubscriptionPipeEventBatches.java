@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.subscription.event.batch;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTabletQueue;
 import org.apache.iotdb.db.subscription.broker.SubscriptionPrefetchingTsFileQueue;
@@ -98,8 +97,7 @@ public class SubscriptionPipeEventBatches {
    */
   public boolean onEvent(
       final @NonNull EnrichedEvent event, final Consumer<SubscriptionEvent> consumer) {
-    final int regionId =
-        PipeEventCommitManager.parseRegionIdFromCommitterKey(event.getCommitterKey());
+    final int regionId = event.getCommitterKey().getRegionId();
 
     final AtomicBoolean hasNew = new AtomicBoolean(false);
     regionIdToBatch.compute(
