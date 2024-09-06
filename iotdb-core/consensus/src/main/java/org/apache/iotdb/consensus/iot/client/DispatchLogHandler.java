@@ -74,6 +74,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
           messages);
       sleepCorrespondingTimeAndRetryAsynchronous();
     } else {
+      if (logger.isDebugEnabled()) {
+        boolean containsError =
+            response.getStatuses().stream()
+                .anyMatch(
+                    status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        if (containsError) {
+          logger.debug(
+              "Send {} to peer {} complete but contains unsuccessful status: {}",
+              batch,
+              thread.getPeer(),
+              response.getStatuses());
+        }
+      }
       completeBatch(batch);
     }
     logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
@@ -88,21 +101,19 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogEntriesRe
   @Override
   public void onError(Exception exception) {
     ++retryCount;
-    if (logger.isWarnEnabled()) {
-      Throwable rootCause = ExceptionUtils.getRootCause(exception);
-      logger.warn(
-          "Can not send {} to peer for {} times {} because {}",
-          batch,
-          thread.getPeer(),
-          retryCount,
-          rootCause.toString());
-      // skip TApplicationException caused by follower
-      if (rootCause instanceof TApplicationException) {
-        completeBatch(batch);
-        logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
-        logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
-        return;
-      }
+    Throwable rootCause = ExceptionUtils.getRootCause(exception);
+    logger.warn(
+        "Can not send {} to peer for {} times {} because {}",
+        batch,
+        thread.getPeer(),
+        retryCount,
+        rootCause.toString());
+    // skip TApplicationException caused by follower
+    if (rootCause instanceof TApplicationException) {
+      completeBatch(batch);
+      logger.warn("Skip retrying this Batch {} because of TApplicationException.", batch);
+      logDispatcherThreadMetrics.recordSyncLogTimePerRequest(System.nanoTime() - createTime);
+      return;
     }
     sleepCorrespondingTimeAndRetryAsynchronous();
   }
