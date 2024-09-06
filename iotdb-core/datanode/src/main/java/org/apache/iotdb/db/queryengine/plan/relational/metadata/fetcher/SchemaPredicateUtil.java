@@ -125,10 +125,7 @@ public class SchemaPredicateUtil {
             .map(IrUtils::extractOrPredicatesWithInExpanded)
             .collect(Collectors.toList());
     final int orSize = orConcatList.size();
-    int remainingCaseNum = 1;
-    for (final List<Expression> filterList : orConcatList) {
-      remainingCaseNum *= filterList.size();
-    }
+    int remainingCaseNum = orConcatList.stream().map(List::size).reduce(1, (a, b) -> a * b);
     final List<Map<Integer, List<SchemaFilter>>> result = new ArrayList<>();
     final int[] indexes = new int[orSize]; // index count, each case represents one possible result
     boolean hasConflictFilter;
