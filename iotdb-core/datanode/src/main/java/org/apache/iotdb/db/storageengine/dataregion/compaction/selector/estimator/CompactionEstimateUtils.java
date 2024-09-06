@@ -106,18 +106,17 @@ public class CompactionEstimateUtils {
       return -1L;
     }
     long cost = -1L;
-    long modsFileSize = 0L;
     try {
       for (TsFileResource resource : resources) {
         if (resource.modFileExists()) {
-          modsFileSize += resource.getModFile().getSize();
+          cost += resource.getModFile().getSize();
         }
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
-          cost = Math.max(cost, getMaxTimeseriesMetadataOfOneDeviceSize(reader));
+          cost += getMaxTimeseriesMetadataOfOneDeviceSize(reader);
         }
       }
-      return cost + modsFileSize;
+      return cost;
     } finally {
       CompactionEstimateUtils.releaseReadLock(resources);
     }
