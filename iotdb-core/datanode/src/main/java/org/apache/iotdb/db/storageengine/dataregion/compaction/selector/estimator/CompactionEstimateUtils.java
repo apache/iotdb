@@ -106,7 +106,7 @@ public class CompactionEstimateUtils {
     if (!CompactionEstimateUtils.addReadLock(resources)) {
       return -1L;
     }
-    long cost = -1L;
+    long cost = 0L;
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
       for (TsFileResource resource : resources) {
