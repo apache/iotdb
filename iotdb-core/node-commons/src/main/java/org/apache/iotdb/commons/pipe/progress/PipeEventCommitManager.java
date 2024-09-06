@@ -121,7 +121,16 @@ public class PipeEventCommitManager {
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
     if (committer == null) {
-      if (LOGGER.isDebugEnabled()) {
+      final int currentRestartTimes =
+          eventCommitterRestartTimesMap.computeIfAbsent(
+              generateCommitterRestartTimesKey(committerKey), k -> 0);
+      if (committerKey.getRestartTimes() < currentRestartTimes) {
+        LOGGER.warn(
+            "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
+            committerKey,
+            event.coreReportMessage(),
+            currentRestartTimes);
+      } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
             committerKey,
@@ -147,6 +156,11 @@ public class PipeEventCommitManager {
   private static CommitterKey generateCommitterRestartTimesKey(
       final String pipeName, final long creationTime, final int regionId) {
     return new CommitterKey(pipeName, creationTime, regionId);
+  }
+
+  private static CommitterKey generateCommitterRestartTimesKey(final CommitterKey committerKey) {
+    return new CommitterKey(
+        committerKey.getPipeName(), committerKey.getCreationTime(), committerKey.getRegionId());
   }
 
   public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
