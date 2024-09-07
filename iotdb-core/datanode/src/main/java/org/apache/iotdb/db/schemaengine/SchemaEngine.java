@@ -139,49 +139,49 @@ public class SchemaEngine {
    */
   @SuppressWarnings("java:S2142")
   private void initSchemaRegion() {
-    File schemaDir = new File(config.getSchemaDir());
-    File[] sgDirList = schemaDir.listFiles();
+    final File schemaDir = new File(config.getSchemaDir());
+    final File[] sgDirList = schemaDir.listFiles();
 
     if (sgDirList == null) {
       return;
     }
 
     // recover SchemaRegion concurrently
-    ExecutorService schemaRegionRecoverPools =
+    final ExecutorService schemaRegionRecoverPools =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             Runtime.getRuntime().availableProcessors(),
             ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
-    List<Future<ISchemaRegion>> futures = new ArrayList<>();
+    final List<Future<ISchemaRegion>> futures = new ArrayList<>();
 
     for (File file : sgDirList) {
       if (!file.isDirectory()) {
         continue;
       }
 
-      PartialPath storageGroup;
+      final PartialPath storageGroup;
       try {
-        storageGroup = new PartialPath(file.getName());
+        storageGroup = PartialPath.getDatabasePath(file.getName());
       } catch (IllegalPathException illegalPathException) {
         // not a legal sg dir
         continue;
       }
 
-      File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
+      final File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
 
       if (!sgDir.exists()) {
         continue;
       }
 
-      File[] schemaRegionDirs = sgDir.listFiles();
+      final File[] schemaRegionDirs = sgDir.listFiles();
       if (schemaRegionDirs == null) {
         continue;
       }
 
-      for (File schemaRegionDir : schemaRegionDirs) {
-        SchemaRegionId schemaRegionId;
+      for (final File schemaRegionDir : schemaRegionDirs) {
+        final SchemaRegionId schemaRegionId;
         try {
           schemaRegionId = new SchemaRegionId(Integer.parseInt(schemaRegionDir.getName()));
-        } catch (NumberFormatException e) {
+        } catch (final NumberFormatException e) {
           // the dir/file is not schemaRegionDir, ignore this.
           continue;
         }
@@ -190,11 +190,11 @@ public class SchemaEngine {
       }
     }
 
-    for (Future<ISchemaRegion> future : futures) {
+    for (final Future<ISchemaRegion> future : futures) {
       try {
-        ISchemaRegion schemaRegion = future.get();
+        final ISchemaRegion schemaRegion = future.get();
         schemaRegionMap.put(schemaRegion.getSchemaRegionId(), schemaRegion);
-      } catch (ExecutionException | InterruptedException | RuntimeException e) {
+      } catch (final ExecutionException | InterruptedException | RuntimeException e) {
         logger.error("Something wrong happened during SchemaRegion recovery", e);
       }
     }
