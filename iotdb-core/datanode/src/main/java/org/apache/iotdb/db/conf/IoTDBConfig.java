@@ -936,6 +936,13 @@ public class IoTDBConfig {
   private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /**
+   * The mode of iotConsensusV2 protocol. The Datanode should communicate with ConfigNode on startup
+   * and set this variable so that the correct class name can be obtained later when the data region
+   * consensus layer singleton is initialized
+   */
+  private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
+
+  /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * schema region consensus layer singleton is initialized
@@ -3186,6 +3193,14 @@ public class IoTDBConfig {
 
   public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getIotConsensusV2Mode() {
+    return iotConsensusV2Mode;
+  }
+
+  public void setIotConsensusV2Mode(String iotConsensusV2Mode) {
+    this.iotConsensusV2Mode = iotConsensusV2Mode;
   }
 
   public String getSchemaRegionConsensusProtocolClass() {

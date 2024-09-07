@@ -154,9 +154,19 @@ data_replication_factor=1
 # 1. org.apache.iotdb.consensus.simple.SimpleConsensus   (The data_replication_factor can only be set to 1)
 # 2. org.apache.iotdb.consensus.iot.IoTConsensus
 # 3. org.apache.iotdb.consensus.ratis.RatisConsensus
+# 4. org.apache.iotdb.consensus.ratis.IoTConsensusV2
 # effectiveMode: first_start
 # Datatype: string
 data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
+
+# IoTConsensusV2 mode.
+# This parameter is unmodifiable after ConfigNode starts for the first time.
+# These consensus protocol modes are currently supported:
+# 1. batch
+# 2. stream
+# effectiveMode: first_start
+# Datatype: string
+iot_consensus_v2_mode=batch
 
 ####################
 ### Directory configuration
@@ -1804,12 +1814,12 @@ schema_region_ratis_periodic_snapshot_interval=86400
 data_region_ratis_periodic_snapshot_interval=86400
 
 ####################
-### Fast IoTConsensus Configuration
+### IoTConsensusV2 Configuration
 ####################
 # Default event buffer size for connector and receiver in pipe consensus
 # effectiveMode: hot_reload
 # DataType: int
-fast_iot_consensus_pipeline_size=5
+iot_consensus_v2_pipeline_size=5
 
 ####################
 ### Procedure Configuration

@@ -398,6 +398,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
       config.setDataRegionConsensusProtocolClass(
           configurationResp.globalConfig.getDataRegionConsensusProtocolClass());
+      config.setIotConsensusV2Mode(configurationResp.globalConfig.getIotConsensusV2Mode());
     }
 
     if (!IoTDBStartCheck.getInstance()
@@ -839,8 +840,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private boolean isUsingPipeConsensus() {
-    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS);
+    return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2);
   }
 
   private void registerUdfServices() throws StartupException {

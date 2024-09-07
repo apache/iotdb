@@ -1130,9 +1130,9 @@ public class IoTDBDescriptor {
     conf.setPipeConsensusPipelineSize(
         Integer.parseInt(
             properties.getProperty(
-                "fast_iot_consensus_pipeline_size",
+                "iot_consensus_v2_pipeline_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "fast_iot_consensus_pipeline_size"))));
+                    "iot_consensus_v2_pipeline_size"))));
     if (conf.getPipeConsensusPipelineSize() <= 0) {
       conf.setPipeConsensusPipelineSize(5);
     }

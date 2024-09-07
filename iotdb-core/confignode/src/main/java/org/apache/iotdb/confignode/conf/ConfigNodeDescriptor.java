@@ -216,6 +216,9 @@ public class ConfigNodeDescriptor {
                 "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass())
             .trim());
 
+    conf.setIotConsensusV2Mode(
+        properties.getProperty("iot_consensus_v2_mode", conf.getIotConsensusV2Mode()).trim());
+
     conf.setDataReplicationFactor(
         Integer.parseInt(
             properties

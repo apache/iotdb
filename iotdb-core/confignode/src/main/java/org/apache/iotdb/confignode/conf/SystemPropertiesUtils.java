@@ -53,6 +53,7 @@ public class SystemPropertiesUtils {
   private static final String TIMESTAMP_PRECISION = "timestamp_precision";
   private static final String CN_CONSENSUS_PROTOCOL = "config_node_consensus_protocol_class";
   private static final String DATA_CONSENSUS_PROTOCOL = "data_region_consensus_protocol_class";
+  private static final String IOT_CONSENSUS_V2_MODE = "iot_consensus_v2_mode";
   private static final String SCHEMA_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol_class";
   private static final String SERIES_PARTITION_SLOT_NUM = "series_partition_slot_num";
   private static final String SERIES_PARTITION_EXECUTOR_CLASS = "series_partition_executor_class";
@@ -144,6 +145,12 @@ public class SystemPropertiesUtils {
           conf.getDataRegionConsensusProtocolClass(),
           dataRegionConsensusProtocolClass);
       conf.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
+    }
+
+    String iotConsensusV2Mode = systemProperties.getProperty(IOT_CONSENSUS_V2_MODE, null);
+    if (!iotConsensusV2Mode.equals(conf.getIotConsensusV2Mode())) {
+      LOGGER.warn(format, IOT_CONSENSUS_V2_MODE, conf.getIotConsensusV2Mode(), iotConsensusV2Mode);
+      conf.setIotConsensusV2Mode(iotConsensusV2Mode);
     }
 
     String schemaRegionConsensusProtocolClass =

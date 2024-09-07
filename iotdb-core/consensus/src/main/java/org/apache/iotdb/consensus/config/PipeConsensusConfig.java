@@ -34,9 +34,10 @@ public class PipeConsensusConfig {
   // Use stream mode by default. User can configure it
   private ReplicateMode replicateMode = ReplicateMode.STREAM;
 
-  public PipeConsensusConfig(RPC rpc, Pipe pipe) {
+  public PipeConsensusConfig(RPC rpc, Pipe pipe, ReplicateMode replicateMode) {
     this.rpc = rpc;
     this.pipe = pipe;
+    this.replicateMode = replicateMode;
   }
 
   public void setReplicateMode(ReplicateMode replicateMode) {
@@ -62,6 +63,7 @@ public class PipeConsensusConfig {
   public static class Builder {
     private RPC rpc;
     private Pipe pipe;
+    private ReplicateMode replicateMode;
 
     public Builder setPipe(Pipe pipe) {
       this.pipe = pipe;
@@ -73,8 +75,13 @@ public class PipeConsensusConfig {
       return this;
     }
 
+    public Builder setReplicateMode(ReplicateMode replicateMode) {
+      this.replicateMode = replicateMode;
+      return this;
+    }
+
     public PipeConsensusConfig build() {
-      return new PipeConsensusConfig(rpc, pipe);
+      return new PipeConsensusConfig(rpc, pipe, replicateMode);
     }
   }
 
