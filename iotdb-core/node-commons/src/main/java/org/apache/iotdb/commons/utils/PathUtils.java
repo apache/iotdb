@@ -205,8 +205,8 @@ public class PathUtils {
     return src.length() == (src.replace("``", "").length() + num);
   }
 
-  // Shall never pass in "root" because we can not imply whether
-  // The "root" is in table model or tree mode
+  // In tree model, the "root" shall not be a database name
+  // Thus we imply that "root" is a db name in table model
   public static String qualifyDatabaseName(String databaseName) {
     if (databaseName != null && !databaseName.startsWith("root.")) {
       databaseName = "root." + databaseName;
