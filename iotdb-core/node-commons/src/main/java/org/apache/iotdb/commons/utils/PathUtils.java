@@ -33,8 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
-
 public class PathUtils {
 
   /**
@@ -199,7 +197,7 @@ public class PathUtils {
     }
   }
 
-  private static boolean checkBackQuotes(String src) {
+  private static boolean checkBackQuotes(final String src) {
     int num = src.length() - src.replace("`", "").length();
     if (num % 2 == 1) {
       return false;
@@ -207,8 +205,10 @@ public class PathUtils {
     return src.length() == (src.replace("``", "").length() + num);
   }
 
+  // Shall never pass in "root" because we can not imply whether
+  // The "root" is in table model or tree mode
   public static String qualifyDatabaseName(String databaseName) {
-    if (databaseName != null && !databaseName.startsWith(PATH_ROOT)) {
+    if (databaseName != null && !databaseName.startsWith("root.")) {
       databaseName = "root." + databaseName;
     }
     return databaseName;
