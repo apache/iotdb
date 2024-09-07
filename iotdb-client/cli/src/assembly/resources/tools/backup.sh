@@ -126,7 +126,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
     CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.tool.IoTDBDataBackTool
+MAIN_CLASS=org.apache.iotdb.tool.backup.IoTDBDataBackTool
 
 logs_dir="${IOTDB_HOME}/logs"
 

@@ -30,7 +30,7 @@ pushd %~dp0..
 if NOT DEFINED IOTDB_HOME set IOTDB_HOME=%CD%
 popd
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.ImportTsFile
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.tool.tsfile.ImportTsFile
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
