@@ -62,7 +62,7 @@ public class TransformAggregationToStreamable implements PlanOptimizer {
     @Override
     public PlanNode visitPlan(PlanNode node, Void context) {
       for (PlanNode child : node.getChildren()) {
-        node.addChild(child.accept(this, context));
+        child.accept(this, context);
       }
       return node;
     }
