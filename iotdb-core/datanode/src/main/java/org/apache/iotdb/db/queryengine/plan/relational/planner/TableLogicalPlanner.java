@@ -96,6 +96,8 @@ public class TableLogicalPlanner {
             .getPlanOptimizers();
   }
 
+  // TODO Remove this in later PR because the SymbolAllocator are not transmit
+  @Deprecated
   @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,

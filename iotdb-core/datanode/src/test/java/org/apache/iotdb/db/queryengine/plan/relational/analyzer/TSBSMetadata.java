@@ -305,15 +305,21 @@ public class TSBSMetadata implements Metadata {
           new DeviceEntry(
               new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("1000")));
     } else {
-      // r04 (The return result maybe not correct in actual, but it is convenient for test of
+      // others (The return result maybe not correct in actual, but it is convenient for test of
       // DistributionPlan)
       return Arrays.asList(
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_3.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T2_DEVICE_1.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T2_DEVICE_2.split("\\.")), ImmutableList.of()),
-          new DeviceEntry(new StringArrayDeviceID(T2_DEVICE_3.split("\\.")), ImmutableList.of()));
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_3.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T2_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T2_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T2_DEVICE_3.split("\\.")), ImmutableList.of("", "")));
     }
   }
 

@@ -82,13 +82,16 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
+      PlanNode child = node.getChild().accept(this, context);
+      node = (AggregationNode) node.clone();
+      node.setChild(child);
       TableScanNode tableScanNode = null;
       ProjectNode projectNode = null;
-      if (node.getChild() instanceof TableScanNode) {
-        tableScanNode = (TableScanNode) node.getChild();
+      if (child instanceof TableScanNode) {
+        tableScanNode = (TableScanNode) child;
       }
-      if (node.getChild() instanceof ProjectNode) {
-        projectNode = (ProjectNode) node.getChild();
+      if (child instanceof ProjectNode) {
+        projectNode = (ProjectNode) child;
         if (projectNode.getChild() instanceof TableScanNode) {
           tableScanNode = (TableScanNode) projectNode.getChild();
         }

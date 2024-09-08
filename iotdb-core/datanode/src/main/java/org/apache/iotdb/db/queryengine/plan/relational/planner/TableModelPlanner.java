@@ -108,7 +108,8 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
-    return new TableLogicalPlanner(context, metadata, context.getSession(), warningCollector)
+    return new TableLogicalPlanner(
+            context, metadata, context.getSession(), symbolAllocator, warningCollector)
         .plan((Analysis) analysis);
   }
 

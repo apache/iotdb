@@ -68,6 +68,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PushPredicateIntoTableScan.containsDiffFunction;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Util.split;
 import static org.apache.iotdb.db.utils.constant.TestConstant.TIMESTAMP_STR;
@@ -469,7 +470,7 @@ public class TableDistributedPlanGenerator
     }
     // Step is SINGLE, has date_bin(time) and device data in more than one region, we need to split
     // this node into two-stage Aggregation
-    needSplit = needSplit && node.getProjection() != null;
+    needSplit = needSplit && node.getProjection() != null && node.getStep() == SINGLE;
     AggregationNode finalAggregation = null;
     if (needSplit) {
       Pair<AggregationNode, AggregationTableScanNode> splitResult =
