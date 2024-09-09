@@ -51,6 +51,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
+import javax.annotation.Nullable;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +66,7 @@ public class ConvertSchemaPredicateToFilterVisitor
     extends PredicateVisitor<SchemaFilter, ConvertSchemaPredicateToFilterVisitor.Context> {
 
   @Override
-  protected SchemaFilter visitInPredicate(final InPredicate node, final Context context) {
+  protected @Nullable SchemaFilter visitInPredicate(final InPredicate node, final Context context) {
     final Expression valueList = node.getValueList();
     checkArgument(valueList instanceof InListExpression);
     final List<Expression> values = ((InListExpression) valueList).getValues();
@@ -97,7 +99,8 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitLikePredicate(final LikePredicate node, final Context context) {
+  protected @Nullable SchemaFilter visitLikePredicate(
+      final LikePredicate node, final Context context) {
     return wrapIdOrAttributeFilter(
         new LikeFilter(parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue())),
         ((SymbolReference) node.getValue()).getName(),
@@ -122,7 +125,7 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitComparisonExpression(
+  protected @Nullable SchemaFilter visitComparisonExpression(
       final ComparisonExpression node, final Context context) {
     final String columnName;
     final String value;
@@ -195,21 +198,19 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitBetweenPredicate(BetweenPredicate node, Context context) {
+  protected @Nullable SchemaFilter visitBetweenPredicate(BetweenPredicate node, Context context) {
     return visitExpression(node, context);
   }
 
   private SchemaFilter wrapIdOrAttributeFilter(
       final SchemaFilter filter, final String columnName, final Context context) {
-    if (context
-        .table
-        .getColumnSchema(columnName)
-        .getColumnCategory()
-        .equals(TsTableColumnCategory.ID)) {
-      return new IdFilter(filter, context.idColumnIndexMap.get(columnName));
-    } else {
-      return new AttributeFilter(filter, columnName);
-    }
+    return context
+            .table
+            .getColumnSchema(columnName)
+            .getColumnCategory()
+            .equals(TsTableColumnCategory.ID)
+        ? new IdFilter(filter, context.idColumnIndexMap.get(columnName))
+        : new AttributeFilter(filter, columnName);
   }
 
   public static class Context {
@@ -217,12 +218,12 @@ public class ConvertSchemaPredicateToFilterVisitor
     private final TsTable table;
     private final Map<String, Integer> idColumnIndexMap;
 
-    public Context(TsTable table) {
+    public Context(final TsTable table) {
       this.table = table;
       this.idColumnIndexMap = getIdColumnIndex(table);
     }
 
-    private Map<String, Integer> getIdColumnIndex(TsTable table) {
+    private Map<String, Integer> getIdColumnIndex(final TsTable table) {
       Map<String, Integer> map = new HashMap<>();
       List<TsTableColumnSchema> columnSchemaList = table.getColumnList();
       int idIndex = 0;
