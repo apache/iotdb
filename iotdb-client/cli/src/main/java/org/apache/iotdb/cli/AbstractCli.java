@@ -734,7 +734,7 @@ public abstract class AbstractCli {
 
   private static String getStringByColumnIndex(
       IoTDBJDBCResultSet resultSet, int columnIndex, ZoneId zoneId) throws SQLException {
-    TSDataType type = TSDataType.valueOf(resultSet.getColumnTypeByIndex(columnIndex));
+    TSDataType type = resultSet.getColumnTypeByIndex(columnIndex);
     switch (type) {
       case BOOLEAN:
       case INT32:
