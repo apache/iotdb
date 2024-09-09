@@ -46,6 +46,7 @@ public class DatasetHeader {
 
   // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
+  private List<Integer> columnIndex2TsBlockColumnIndexList;
 
   // cached field for create response
   private List<String> respColumns;
@@ -68,25 +69,31 @@ public class DatasetHeader {
     return isIgnoreTimestamp;
   }
 
-  public void setColumnToTsBlockIndexMap(List<String> outputColumnNames) {
-    this.columnToTsBlockIndexMap = new HashMap<>();
+  public void setTreeColumnToTsBlockIndexMap(List<String> outputColumnNames) {
+    this.columnToTsBlockIndexMap = new HashMap<>(outputColumnNames.size());
     for (int i = 0; i < outputColumnNames.size(); i++) {
       columnToTsBlockIndexMap.put(outputColumnNames.get(i), i);
+    }
+
+    this.columnIndex2TsBlockColumnIndexList = new ArrayList<>(columnHeaders.size());
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnIndex2TsBlockColumnIndexList.add(
+          columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
     }
   }
 
   public void setTableColumnToTsBlockIndexMap(OutputNode outputNode) {
-    List<Symbol> outputSymbols = outputNode.getChild().getOutputSymbols();
-    Map<Symbol, Integer> outputSymbolsIndexMap = new HashMap<>(outputSymbols.size());
-    for (int i = 0; i < outputSymbols.size(); i++) {
-      outputSymbolsIndexMap.put(outputSymbols.get(i), i);
+    List<Symbol> childOutputSymbols = outputNode.getChild().getOutputSymbols();
+    Map<Symbol, Integer> outputSymbolsIndexMap = new HashMap<>(childOutputSymbols.size());
+    for (int i = 0; i < childOutputSymbols.size(); i++) {
+      outputSymbolsIndexMap.put(childOutputSymbols.get(i), i);
     }
 
     this.columnToTsBlockIndexMap = new HashMap<>();
     for (int i = 0; i < outputNode.getOutputColumnNames().size(); i++) {
-      columnToTsBlockIndexMap.put(
-          outputNode.getOutputColumnNames().get(i),
-          outputSymbolsIndexMap.get(outputNode.getOutputSymbols().get(i)));
+      int index = outputSymbolsIndexMap.get(outputNode.getOutputSymbols().get(i));
+      columnToTsBlockIndexMap.put(outputNode.getOutputColumnNames().get(i), index);
+      columnIndex2TsBlockColumnIndexList.add(index);
     }
   }
 

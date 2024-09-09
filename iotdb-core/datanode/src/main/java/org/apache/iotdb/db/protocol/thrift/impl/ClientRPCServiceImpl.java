@@ -1123,7 +1123,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       List<ColumnHeader> columnHeaders =
           Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
       DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+      header.setTreeColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
 
       TSExecuteStatementResp resp = createResponse(header, 1);
       TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);

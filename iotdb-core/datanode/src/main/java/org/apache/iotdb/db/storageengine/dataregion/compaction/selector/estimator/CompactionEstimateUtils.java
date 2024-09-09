@@ -33,6 +33,7 @@ import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -105,30 +106,32 @@ public class CompactionEstimateUtils {
     if (!CompactionEstimateUtils.addReadLock(resources)) {
       return -1L;
     }
-    long cost = -1L;
-    long modsFileSize = 0L;
+    long cost = 0L;
+    Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
       for (TsFileResource resource : resources) {
         if (resource.modFileExists()) {
-          modsFileSize += resource.getModFile().getSize();
+          cost += resource.getModFile().getSize();
         }
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
-          cost = Math.max(cost, getMaxTimeseriesMetadataOfOneDeviceSize(reader));
+          for (Map.Entry<IDeviceID, Long> entry : getDeviceMetadataSizeMap(reader).entrySet()) {
+            deviceMetadataSizeMap.merge(entry.getKey(), entry.getValue(), Long::sum);
+          }
         }
       }
-      return cost + modsFileSize;
+      return cost + deviceMetadataSizeMap.values().stream().max(Long::compareTo).orElse(0L);
     } finally {
       CompactionEstimateUtils.releaseReadLock(resources);
     }
   }
 
-  public static long getMaxTimeseriesMetadataOfOneDeviceSize(CompactionTsFileReader reader)
+  public static Map<IDeviceID, Long> getDeviceMetadataSizeMap(CompactionTsFileReader reader)
       throws IOException {
+    Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
-    long maxSize = 0;
     while (deviceIterator.hasNext()) {
-      deviceIterator.next();
+      IDeviceID deviceID = deviceIterator.next().getLeft();
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           deviceIterator.getFirstMeasurementNodeOfCurrentDevice();
       long totalTimeseriesMetadataSizeOfCurrentDevice = 0;
@@ -137,9 +140,9 @@ public class CompactionEstimateUtils {
       for (Pair<Long, Long> offsetPair : timeseriesMetadataOffsetByDevice.values()) {
         totalTimeseriesMetadataSizeOfCurrentDevice += (offsetPair.right - offsetPair.left);
       }
-      maxSize = Math.max(maxSize, totalTimeseriesMetadataSizeOfCurrentDevice);
+      deviceMetadataSizeMap.put(deviceID, totalTimeseriesMetadataSizeOfCurrentDevice);
     }
-    return maxSize;
+    return deviceMetadataSizeMap;
   }
 
   public static boolean shouldAccurateEstimate(long roughEstimatedMemCost) {
