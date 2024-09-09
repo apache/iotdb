@@ -33,6 +33,8 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -47,9 +49,15 @@ public class RecoverProgressIndex extends ProgressIndex {
   }
 
   public RecoverProgressIndex(int dataNodeId, SimpleProgressIndex simpleProgressIndex) {
-    this.dataNodeId2LocalIndex = new HashMap<>();
+    this(ImmutableMap.of(dataNodeId, simpleProgressIndex));
+  }
 
-    dataNodeId2LocalIndex.put(dataNodeId, simpleProgressIndex);
+  public RecoverProgressIndex(Map<Integer, SimpleProgressIndex> dataNodeId2LocalIndex) {
+    this.dataNodeId2LocalIndex = new HashMap<>();
+    for (Entry<Integer, SimpleProgressIndex> entry : dataNodeId2LocalIndex.entrySet()) {
+      this.dataNodeId2LocalIndex.put(
+          entry.getKey(), (SimpleProgressIndex) entry.getValue().deepCopy());
+    }
   }
 
   public Map<Integer, SimpleProgressIndex> getDataNodeId2LocalIndex() {
@@ -162,7 +170,12 @@ public class RecoverProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(dataNodeId2LocalIndex);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new RecoverProgressIndex(dataNodeId2LocalIndex);
   }
 
   @Override

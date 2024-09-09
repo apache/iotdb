@@ -48,7 +48,7 @@ public class StateProgressIndex extends ProgressIndex {
       long version, Map<String, Binary> state, ProgressIndex innerProgressIndex) {
     this.version = version;
     this.state = state;
-    this.innerProgressIndex = innerProgressIndex;
+    this.innerProgressIndex = innerProgressIndex.deepCopy();
   }
 
   public long getVersion() {
@@ -156,6 +156,11 @@ public class StateProgressIndex extends ProgressIndex {
   @Override
   public int hashCode() {
     return Objects.hash(innerProgressIndex, version);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new StateProgressIndex(version, state, innerProgressIndex);
   }
 
   @Override

@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MetaProgressIndex extends ProgressIndex {
@@ -130,7 +131,12 @@ public class MetaProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(index);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new MetaProgressIndex(index);
   }
 
   @Override

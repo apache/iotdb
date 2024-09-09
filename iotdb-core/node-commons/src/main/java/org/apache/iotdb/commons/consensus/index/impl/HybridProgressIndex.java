@@ -32,6 +32,8 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -47,11 +49,14 @@ public class HybridProgressIndex extends ProgressIndex {
 
   public HybridProgressIndex(ProgressIndex progressIndex) {
     short type = progressIndex.getType().getType();
+    this.type2Index = new HashMap<>();
     if (ProgressIndexType.HYBRID_PROGRESS_INDEX.getType() != type) {
-      this.type2Index = new HashMap<>();
-      type2Index.put(type, progressIndex);
+      type2Index.put(type, progressIndex.deepCopy());
     } else {
-      this.type2Index = ((HybridProgressIndex) progressIndex).type2Index;
+      for (Entry<Short, ProgressIndex> entry :
+          ((HybridProgressIndex) progressIndex).type2Index.entrySet()) {
+        this.type2Index.put(entry.getKey(), entry.getValue().deepCopy());
+      }
     }
   }
 
@@ -166,7 +171,12 @@ public class HybridProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(type2Index);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new HybridProgressIndex(this);
   }
 
   @Override

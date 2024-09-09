@@ -187,6 +187,11 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   }
 
   @Override
+  public ProgressIndex deepCopy() {
+    return new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap);
+  }
+
+  @Override
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {

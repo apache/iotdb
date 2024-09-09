@@ -95,6 +95,8 @@ public abstract class ProgressIndex {
     return super.hashCode();
   }
 
+  public abstract ProgressIndex deepCopy();
+
   /**
    * Define the isEqualOrAfter relation, A.isEqualOrAfter(B) if and only if each tuple member in A
    * is greater than or equal to B in the corresponding total order relation.
