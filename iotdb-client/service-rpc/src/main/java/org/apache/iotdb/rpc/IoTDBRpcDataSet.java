@@ -606,7 +606,7 @@ public class IoTDBRpcDataSet {
   private int getTsBlockColumnIndexForColumnName(String columnName) {
     Integer index = columnName2TsBlockColumnIndexMap.get(columnName);
     if (index == null) {
-      throw new IllegalArgumentException("Unknown column name :" + columnName);
+      throw new IllegalArgumentException("Unknown column name: " + columnName);
     }
     return index;
   }
