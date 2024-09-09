@@ -121,7 +121,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
       return;
     }
 
-    devicePath = insertRowNodeList.get(0).getDevicePath();
+    targetPath = insertRowNodeList.get(0).getTargetPath();
     isAligned = insertRowNodeList.get(0).isAligned;
     storeMeasurementsAndDataType();
   }
@@ -165,7 +165,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  devicePath.getIDeviceIDAsFullDevice(),
+                  targetPath.getIDeviceIDAsFullDevice(),
                   timePartitionSlot,
                   analysis.getDatabaseName());
       Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =
@@ -237,7 +237,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; i++) {
       InsertRowNode insertRowNode = new InsertRowNode(new PlanNodeId(""));
-      insertRowNode.setDevicePath(devicePath);
+      insertRowNode.setTargetPath(devicePath);
       insertRowNode.setTime(byteBuffer.getLong());
       insertRowNode.deserializeMeasurementsAndValues(byteBuffer);
       insertRowNodeList.add(insertRowNode);
@@ -254,14 +254,14 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode = new InsertRowsOfOneDeviceNode(planNodeId);
     insertRowsOfOneDeviceNode.setInsertRowNodeList(insertRowNodeList);
     insertRowsOfOneDeviceNode.setInsertRowNodeIndexList(insertRowNodeIndex);
-    insertRowsOfOneDeviceNode.setDevicePath(devicePath);
+    insertRowsOfOneDeviceNode.setTargetPath(devicePath);
     return insertRowsOfOneDeviceNode;
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), byteBuffer);
+    ReadWriteIOUtils.write(targetPath.getFullPath(), byteBuffer);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
@@ -277,7 +277,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.INSERT_ROWS_OF_ONE_DEVICE.serialize(stream);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    ReadWriteIOUtils.write(targetPath.getFullPath(), stream);
 
     ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
 

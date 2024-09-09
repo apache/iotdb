@@ -197,7 +197,7 @@ public class PathUtils {
     }
   }
 
-  private static boolean checkBackQuotes(String src) {
+  private static boolean checkBackQuotes(final String src) {
     int num = src.length() - src.replace("`", "").length();
     if (num % 2 == 1) {
       return false;
@@ -205,6 +205,8 @@ public class PathUtils {
     return src.length() == (src.replace("``", "").length() + num);
   }
 
+  // In tree model, the "root" shall not be a database name
+  // Thus we imply that "root" is a db name in table model
   public static String qualifyDatabaseName(String databaseName) {
     if (databaseName != null && !databaseName.startsWith("root.")) {
       databaseName = "root." + databaseName;

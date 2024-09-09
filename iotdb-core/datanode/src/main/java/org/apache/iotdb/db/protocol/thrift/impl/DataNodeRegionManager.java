@@ -104,16 +104,18 @@ public class DataNodeRegionManager {
         : schemaRegionLockMap.get((SchemaRegionId) consensusGroupId);
   }
 
-  public TSStatus createSchemaRegion(TRegionReplicaSet regionReplicaSet, String storageGroup) {
+  public TSStatus createSchemaRegion(
+      final TRegionReplicaSet regionReplicaSet, final String storageGroup) {
     TSStatus tsStatus;
-    SchemaRegionId schemaRegionId = new SchemaRegionId(regionReplicaSet.getRegionId().getId());
+    final SchemaRegionId schemaRegionId =
+        new SchemaRegionId(regionReplicaSet.getRegionId().getId());
     try {
-      PartialPath storageGroupPartitionPath = new PartialPath(storageGroup);
+      final PartialPath storageGroupPartitionPath = PartialPath.getDatabasePath(storageGroup);
       schemaEngine.createSchemaRegion(storageGroupPartitionPath, schemaRegionId);
       schemaRegionLockMap.put(schemaRegionId, new ReentrantReadWriteLock(false));
-      List<Peer> peers = new ArrayList<>();
-      for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-        TEndPoint endpoint =
+      final List<Peer> peers = new ArrayList<>();
+      for (final TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+        final TEndPoint endpoint =
             new TEndPoint(
                 dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
                 dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
@@ -121,19 +123,19 @@ public class DataNodeRegionManager {
       }
       SchemaRegionConsensusImpl.getInstance().createLocalPeer(schemaRegionId, peers);
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (IllegalPathException e1) {
+    } catch (final IllegalPathException e1) {
       LOGGER.error("Create Schema Region {} failed because path is illegal.", storageGroup);
       tsStatus = new TSStatus(TSStatusCode.ILLEGAL_PATH.getStatusCode());
       tsStatus.setMessage("Create Schema Region failed because storageGroup path is illegal.");
-    } catch (MetadataException e2) {
+    } catch (final MetadataException e2) {
       LOGGER.error("Create Schema Region {} failed because {}", storageGroup, e2.getMessage());
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(
           String.format("Create Schema Region failed because of %s", e2.getMessage()));
-    } catch (ConsensusGroupAlreadyExistException e) {
+    } catch (final ConsensusGroupAlreadyExistException e) {
       tsStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tsStatus.setMessage(String.format("SchemaRegion %d already exists.", schemaRegionId.getId()));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       tsStatus = new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
       tsStatus.setMessage(e.getMessage());
     }

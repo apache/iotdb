@@ -144,11 +144,11 @@ public class MTreeBelowSGMemoryImpl {
 
   // region MTree initialization, clear and serialization
   public MTreeBelowSGMemoryImpl(
-      PartialPath storageGroupPath,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
-      MemSchemaRegionStatistics regionStatistics,
-      SchemaRegionMemMetric metric) {
+      final PartialPath storageGroupPath,
+      final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
+      final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric) {
     store = new MemMTreeStore(storageGroupPath, regionStatistics, metric);
     this.regionStatistics = regionStatistics;
     this.storageGroupMNode = store.getRoot();
@@ -159,11 +159,11 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   private MTreeBelowSGMemoryImpl(
-      PartialPath storageGroupPath,
-      MemMTreeStore store,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
-      MemSchemaRegionStatistics regionStatistics) {
+      final PartialPath storageGroupPath,
+      final MemMTreeStore store,
+      final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
+      final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
+      final MemSchemaRegionStatistics regionStatistics) {
     this.store = store;
     this.regionStatistics = regionStatistics;
     this.storageGroupMNode = store.getRoot();
@@ -178,22 +178,22 @@ public class MTreeBelowSGMemoryImpl {
     storageGroupMNode = null;
   }
 
-  public synchronized boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(final File snapshotDir) {
     return store.createSnapshot(snapshotDir);
   }
 
   public static MTreeBelowSGMemoryImpl loadFromSnapshot(
-      File snapshotDir,
-      String storageGroupFullPath,
-      MemSchemaRegionStatistics regionStatistics,
-      SchemaRegionMemMetric metric,
-      Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
-      Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
-      Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
+      final File snapshotDir,
+      final String storageGroupFullPath,
+      final MemSchemaRegionStatistics regionStatistics,
+      final SchemaRegionMemMetric metric,
+      final Consumer<IMeasurementMNode<IMemMNode>> measurementProcess,
+      final Consumer<IDeviceMNode<IMemMNode>> deviceProcess,
+      final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
+      final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
     return new MTreeBelowSGMemoryImpl(
-        new PartialPath(storageGroupFullPath),
+        PartialPath.getDatabasePath(storageGroupFullPath),
         MemMTreeStore.loadFromSnapshot(
             snapshotDir, measurementProcess, deviceProcess, regionStatistics, metric),
         tagGetter,
@@ -403,9 +403,9 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  private IMemMNode checkAndAutoCreateInternalPath(PartialPath devicePath)
+  private IMemMNode checkAndAutoCreateInternalPath(final PartialPath devicePath)
       throws MetadataException {
-    String[] nodeNames = devicePath.getNodes();
+    final String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
     if (nodeNames.length == levelOfSG + 1) {
       return null;
@@ -429,7 +429,8 @@ public class MTreeBelowSGMemoryImpl {
     return cur;
   }
 
-  private IMemMNode checkAndAutoCreateDeviceNode(String deviceName, IMemMNode deviceParent)
+  private IMemMNode checkAndAutoCreateDeviceNode(
+      final String deviceName, final IMemMNode deviceParent)
       throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
       // device is sg
@@ -457,21 +458,23 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public Map<Integer, MetadataException> checkMeasurementExistence(
-      PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    IMemMNode device;
+      final PartialPath devicePath,
+      final List<String> measurementList,
+      final List<String> aliasList) {
+    final IMemMNode device;
     try {
       device = getNodeByPath(devicePath);
-    } catch (PathNotExistException e) {
+    } catch (final PathNotExistException e) {
       return Collections.emptyMap();
     }
 
     if (!device.isDevice()) {
       return Collections.emptyMap();
     }
-    Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
+    final Map<Integer, MetadataException> failingMeasurementMap = new HashMap<>();
     for (int i = 0; i < measurementList.size(); i++) {
       if (device.hasChild(measurementList.get(i))) {
-        IMemMNode node = device.getChild(measurementList.get(i));
+        final IMemMNode node = device.getChild(measurementList.get(i));
         if (node.isMeasurement()) {
           if (node.getAsMeasurementMNode().isPreDeleted()) {
             failingMeasurementMap.put(
@@ -512,13 +515,14 @@ public class MTreeBelowSGMemoryImpl {
     return failingMeasurementMap;
   }
 
-  public boolean changeAlias(String alias, PartialPath fullPath) throws MetadataException {
-    IMeasurementMNode<IMemMNode> measurementMNode = getMeasurementMNode(fullPath);
+  public boolean changeAlias(final String alias, final PartialPath fullPath)
+      throws MetadataException {
+    final IMeasurementMNode<IMemMNode> measurementMNode = getMeasurementMNode(fullPath);
     // upsert alias
     if (alias != null && !alias.equals(measurementMNode.getAlias())) {
       synchronized (this) {
-        IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
-        IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
+        final IDeviceMNode<IMemMNode> device = measurementMNode.getParent().getAsDeviceMNode();
+        final IMemMNode memMNode = store.getChild(device.getAsMNode(), alias);
         if (memMNode != null) {
           throw new MetadataException(
               "The alias is duplicated with the name or alias of other measurement.");
@@ -539,14 +543,15 @@ public class MTreeBelowSGMemoryImpl {
    *
    * @param path Format: root.node(.node)+
    */
-  public IMeasurementMNode<IMemMNode> deleteTimeseries(PartialPath path) throws MetadataException {
-    String[] nodes = path.getNodes();
+  public IMeasurementMNode<IMemMNode> deleteTimeSeries(final PartialPath path)
+      throws MetadataException {
+    final String[] nodes = path.getNodes();
     if (nodes.length == 0) {
       throw new IllegalPathException(path.getFullPath());
     }
 
-    IMeasurementMNode<IMemMNode> deletedNode = getMeasurementMNode(path);
-    IMemMNode parent = deletedNode.getParent();
+    final IMeasurementMNode<IMemMNode> deletedNode = getMeasurementMNode(path);
+    final IMemMNode parent = deletedNode.getParent();
     // delete the last node of path
     synchronized (this) {
       store.deleteChild(parent, path.getMeasurement());
@@ -559,7 +564,7 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   /** Used when delete timeseries or deactivate template */
-  public void deleteEmptyInternalMNode(IDeviceMNode<IMemMNode> entityMNode) {
+  public void deleteEmptyInternalMNode(final IDeviceMNode<IMemMNode> entityMNode) {
     IMemMNode curNode = entityMNode.getAsMNode();
     if (!entityMNode.isUseTemplate()) {
       boolean hasMeasurement = false;
@@ -604,7 +609,7 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  private boolean isEmptyInternalMNode(IMemMNode node) {
+  private boolean isEmptyInternalMNode(final IMemMNode node) {
     return !IoTDBConstant.PATH_ROOT.equals(node.getName())
         && !node.isMeasurement()
         && !(node.isDevice() && node.getAsDeviceMNode().isUseTemplate())
@@ -632,14 +637,14 @@ public class MTreeBelowSGMemoryImpl {
     return result;
   }
 
-  public List<PartialPath> rollbackSchemaBlackList(PartialPath pathPattern)
+  public List<PartialPath> rollbackSchemaBlackList(final PartialPath pathPattern)
       throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    try (MeasurementUpdater<IMemMNode> updater =
+    final List<PartialPath> result = new ArrayList<>();
+    try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             node.setPreDeleted(false);
             result.add(getPartialPathFromRootToNode(node.getAsMNode()));
           }
@@ -649,14 +654,14 @@ public class MTreeBelowSGMemoryImpl {
     return result;
   }
 
-  public List<PartialPath> getPreDeletedTimeseries(PartialPath pathPattern)
+  public List<PartialPath> getPreDeletedTimeSeries(final PartialPath pathPattern)
       throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
-    try (MeasurementCollector<Void, IMemMNode> collector =
+    final List<PartialPath> result = new LinkedList<>();
+    try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
             }
@@ -669,14 +674,14 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   // TODO: seems useless
-  public Set<PartialPath> getDevicesOfPreDeletedTimeseries(PartialPath pathPattern)
+  public Set<PartialPath> getDevicesOfPreDeletedTimeSeries(final PartialPath pathPattern)
       throws MetadataException {
-    Set<PartialPath> result = new HashSet<>();
-    try (MeasurementCollector<Void, IMemMNode> collector =
+    final Set<PartialPath> result = new HashSet<>();
+    try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()).getDevicePath());
             }
@@ -688,7 +693,7 @@ public class MTreeBelowSGMemoryImpl {
     return result;
   }
 
-  public void setAlias(IMeasurementMNode<IMemMNode> measurementMNode, String alias)
+  public void setAlias(final IMeasurementMNode<IMemMNode> measurementMNode, final String alias)
       throws MetadataException {
     store.setAlias(measurementMNode, alias);
   }
@@ -702,9 +707,10 @@ public class MTreeBelowSGMemoryImpl {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  public IMemMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
+  public IMemMNode getDeviceNodeWithAutoCreating(final PartialPath deviceId)
+      throws MetadataException {
     MetaFormatUtils.checkTimeseries(deviceId);
-    String[] nodeNames = deviceId.getNodes();
+    final String[] nodeNames = deviceId.getNodes();
     IMemMNode cur = storageGroupMNode;
     IMemMNode child;
     for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
@@ -724,12 +730,12 @@ public class MTreeBelowSGMemoryImpl {
    * @param deviceId full path of device
    * @return true if the device node exists
    */
-  public boolean checkDeviceNodeExists(PartialPath deviceId) {
-    IMemMNode deviceMNode;
+  public boolean checkDeviceNodeExists(final PartialPath deviceId) {
+    final IMemMNode deviceMNode;
     try {
       deviceMNode = getNodeByPath(deviceId);
       return deviceMNode.isDevice();
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       return false;
     }
   }
@@ -738,26 +744,27 @@ public class MTreeBelowSGMemoryImpl {
 
   // region Interfaces and Implementation for metadata info Query
   public ClusterSchemaTree fetchSchema(
-      PartialPath pathPattern,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean withAttributes,
-      boolean withTemplate,
-      boolean withAliasForce)
+      final PartialPath pathPattern,
+      final Map<Integer, Template> templateMap,
+      final boolean withTags,
+      final boolean withAttributes,
+      final boolean withTemplate,
+      final boolean withAliasForce)
       throws MetadataException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    try (MeasurementCollector<Void, IMemMNode> collector =
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
-            IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
-            int templateId = deviceMNode.getSchemaTemplateIdWithState();
+            final IDeviceMNode<IMemMNode> deviceMNode =
+                getParentOfNextMatchedNode().getAsDeviceMNode();
+            final int templateId = deviceMNode.getSchemaTemplateIdWithState();
             if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
             } else {
-              MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+              final MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               schemaTree.appendSingleMeasurement(
                   path,
                   path.getMeasurementSchema(),
@@ -779,25 +786,26 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public ClusterSchemaTree fetchSchemaWithoutWildcard(
-      PathPatternTree patternTree,
-      Map<Integer, Template> templateMap,
-      boolean withTags,
-      boolean withAttributes,
-      boolean withTemplate)
+      final PathPatternTree patternTree,
+      final Map<Integer, Template> templateMap,
+      final boolean withTags,
+      final boolean withAttributes,
+      final boolean withTemplate)
       throws MetadataException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    try (MeasurementCollector<Void, IMemMNode> collector =
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, patternTree, store, SchemaConstant.ALL_MATCH_SCOPE) {
           protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
-            IDeviceMNode<IMemMNode> deviceMNode = getParentOfNextMatchedNode().getAsDeviceMNode();
-            int templateId = deviceMNode.getSchemaTemplateIdWithState();
+            final IDeviceMNode<IMemMNode> deviceMNode =
+                getParentOfNextMatchedNode().getAsDeviceMNode();
+            final int templateId = deviceMNode.getSchemaTemplateIdWithState();
             if (withTemplate && templateId >= 0) {
               schemaTree.appendTemplateDevice(
                   deviceMNode.getPartialPath(), deviceMNode.isAligned(), templateId, null);
               skipTemplateChildren(deviceMNode);
             } else {
-              MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+              final MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
               schemaTree.appendSingleMeasurement(
                   path,
                   path.getMeasurementSchema(),
@@ -817,13 +825,14 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public ClusterSchemaTree fetchDeviceSchema(
-      PathPatternTree patternTree, PathPatternTree authorityScope) throws MetadataException {
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    for (PartialPath pattern : patternTree.getAllPathPatterns()) {
-      try (EntityCollector<Void, IMemMNode> collector =
+      final PathPatternTree patternTree, final PathPatternTree authorityScope)
+      throws MetadataException {
+    final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    for (final PartialPath pattern : patternTree.getAllPathPatterns()) {
+      try (final EntityCollector<Void, IMemMNode> collector =
           new EntityCollector<Void, IMemMNode>(rootNode, pattern, store, false, authorityScope) {
             @Override
-            protected Void collectEntity(IDeviceMNode<IMemMNode> node) {
+            protected Void collectEntity(final IDeviceMNode<IMemMNode> node) {
               if (node.isAlignedNullable() != null) {
                 schemaTree.appendTemplateDevice(
                     node.getPartialPath(), node.isAligned(), node.getSchemaTemplateId(), null);
@@ -845,8 +854,8 @@ public class MTreeBelowSGMemoryImpl {
    *
    * @return last node in given seriesPath
    */
-  public IMemMNode getNodeByPath(PartialPath path) throws PathNotExistException {
-    String[] nodes = path.getNodes();
+  public IMemMNode getNodeByPath(final PartialPath path) throws PathNotExistException {
+    final String[] nodes = path.getNodes();
     IMemMNode cur = storageGroupMNode;
     IMemMNode next;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
@@ -865,9 +874,9 @@ public class MTreeBelowSGMemoryImpl {
     return cur;
   }
 
-  public IMeasurementMNode<IMemMNode> getMeasurementMNode(PartialPath path)
+  public IMeasurementMNode<IMemMNode> getMeasurementMNode(final PartialPath path)
       throws MetadataException {
-    IMemMNode node = getNodeByPath(path);
+    final IMemMNode node = getNodeByPath(path);
     if (node.isMeasurement()) {
       return node.getAsMeasurementMNode();
     } else {
@@ -880,15 +889,15 @@ public class MTreeBelowSGMemoryImpl {
 
   // region Interfaces and Implementation for Template check and query
 
-  public void activateTemplate(PartialPath activatePath, Template template)
+  public void activateTemplate(final PartialPath activatePath, final Template template)
       throws MetadataException {
-    String[] nodes = activatePath.getNodes();
+    final String[] nodes = activatePath.getNodes();
     IMemMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
 
-    IDeviceMNode<IMemMNode> entityMNode;
+    final IDeviceMNode<IMemMNode> entityMNode;
 
     synchronized (this) {
       if (cur.isDevice()) {
@@ -915,14 +924,14 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public Map<PartialPath, List<Integer>> constructSchemaBlackListWithTemplate(
-      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
-    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
-      try (EntityUpdater<?> updater =
+      final Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
+    final Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
+    for (final Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      try (final EntityUpdater<?> updater =
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-            protected void updateEntity(IDeviceMNode<IMemMNode> node) {
+            protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())) {
                 resultTemplateSetInfo.put(
                     node.getPartialPath(), Collections.singletonList(node.getSchemaTemplateId()));
@@ -937,14 +946,14 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public Map<PartialPath, List<Integer>> rollbackSchemaBlackListWithTemplate(
-      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
-    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
-      try (EntityUpdater<IMemMNode> updater =
+      final Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
+    final Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
+    for (final Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      try (final EntityUpdater<IMemMNode> updater =
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-            protected void updateEntity(IDeviceMNode<IMemMNode> node) {
+            protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
@@ -960,14 +969,14 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public Map<PartialPath, List<Integer>> deactivateTemplateInBlackList(
-      Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
-    Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
-    for (Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
-      try (EntityUpdater<?> collector =
+      final Map<PartialPath, List<Integer>> templateSetInfo) throws MetadataException {
+    final Map<PartialPath, List<Integer>> resultTemplateSetInfo = new HashMap<>();
+    for (final Map.Entry<PartialPath, List<Integer>> entry : templateSetInfo.entrySet()) {
+      try (final EntityUpdater<?> collector =
           new EntityUpdater<IMemMNode>(
               rootNode, entry.getKey(), store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-            protected void updateEntity(IDeviceMNode<IMemMNode> node) {
+            protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
               if (entry.getValue().contains(node.getSchemaTemplateId())
                   && node.isPreDeactivateTemplate()) {
                 resultTemplateSetInfo.put(
@@ -985,14 +994,14 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public void activateTemplateWithoutCheck(
-      PartialPath activatePath, int templateId, boolean isAligned) {
-    String[] nodes = activatePath.getNodes();
+      final PartialPath activatePath, final int templateId, final boolean isAligned) {
+    final String[] nodes = activatePath.getNodes();
     IMemMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {
       cur = cur.getChild(nodes[i]);
     }
 
-    IDeviceMNode<IMemMNode> entityMNode;
+    final IDeviceMNode<IMemMNode> entityMNode;
     if (cur.isDevice()) {
       entityMNode = cur.getAsDeviceMNode();
     } else {
@@ -1007,9 +1016,9 @@ public class MTreeBelowSGMemoryImpl {
     regionStatistics.activateTemplate(templateId);
   }
 
-  public long countPathsUsingTemplate(PartialPath pathPattern, int templateId)
+  public long countPathsUsingTemplate(final PartialPath pathPattern, final int templateId)
       throws MetadataException {
-    try (EntityCounter<IMemMNode> counter =
+    try (final EntityCounter<IMemMNode> counter =
         new EntityCounter<>(rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE)) {
       counter.setSchemaTemplateFilter(templateId);
       return counter.count();
@@ -1022,9 +1031,10 @@ public class MTreeBelowSGMemoryImpl {
 
   @SuppressWarnings("java:S2095")
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(
-      IShowDevicesPlan showDevicesPlan, BiFunction<Integer, String, String> attributeProvider)
+      final IShowDevicesPlan showDevicesPlan,
+      final BiFunction<Integer, String, String> attributeProvider)
       throws MetadataException {
-    EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
+    final EntityCollector<IDeviceSchemaInfo, IMemMNode> collector =
         new EntityCollector<IDeviceSchemaInfo, IMemMNode>(
             rootNode,
             showDevicesPlan.getPath(),
@@ -1032,9 +1042,9 @@ public class MTreeBelowSGMemoryImpl {
             showDevicesPlan.isPrefixMatch(),
             showDevicesPlan.getScope()) {
 
-          protected IDeviceSchemaInfo collectEntity(IDeviceMNode<IMemMNode> node) {
-            PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
-            ShowDevicesResult result =
+          protected IDeviceSchemaInfo collectEntity(final IDeviceMNode<IMemMNode> node) {
+            final PartialPath device = getPartialPathFromRootToNode(node.getAsMNode());
+            final ShowDevicesResult result =
                 new ShowDevicesResult(
                     device.getFullPath(), node.isAlignedNullable(), node.getSchemaTemplateId());
             result.setAttributeProvider(
@@ -1048,7 +1058,7 @@ public class MTreeBelowSGMemoryImpl {
     if (showDevicesPlan.usingSchemaTemplate()) {
       collector.setSchemaTemplateFilter(showDevicesPlan.getSchemaTemplateId());
     }
-    ISchemaReader<IDeviceSchemaInfo> reader =
+    final ISchemaReader<IDeviceSchemaInfo> reader =
         new ISchemaReader<IDeviceSchemaInfo>() {
 
           private final DeviceFilterVisitor filterVisitor = new DeviceFilterVisitor();
@@ -1271,10 +1281,10 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReader(
-      IShowTimeSeriesPlan showTimeSeriesPlan,
-      Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeProvider)
+      final IShowTimeSeriesPlan showTimeSeriesPlan,
+      final Function<Long, Pair<Map<String, String>, Map<String, String>>> tagAndAttributeProvider)
       throws MetadataException {
-    MeasurementCollector<ITimeSeriesSchemaInfo, IMemMNode> collector =
+    final MeasurementCollector<ITimeSeriesSchemaInfo, IMemMNode> collector =
         new MeasurementCollector<ITimeSeriesSchemaInfo, IMemMNode>(
             rootNode,
             showTimeSeriesPlan.getPath(),
@@ -1282,7 +1292,8 @@ public class MTreeBelowSGMemoryImpl {
             showTimeSeriesPlan.isPrefixMatch(),
             showTimeSeriesPlan.getScope()) {
 
-          protected ITimeSeriesSchemaInfo collectMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected ITimeSeriesSchemaInfo collectMeasurement(
+              final IMeasurementMNode<IMemMNode> node) {
             return new ITimeSeriesSchemaInfo() {
 
               private Pair<Map<String, String>, Map<String, String>> tagAndAttribute = null;
@@ -1336,7 +1347,7 @@ public class MTreeBelowSGMemoryImpl {
         };
 
     collector.setTemplateMap(showTimeSeriesPlan.getRelatedTemplate(), nodeFactory);
-    ISchemaReader<ITimeSeriesSchemaInfo> reader =
+    final ISchemaReader<ITimeSeriesSchemaInfo> reader =
         new TimeseriesReaderWithViewFetch(
             collector, showTimeSeriesPlan.getSchemaFilter(), showTimeSeriesPlan.needViewDetail());
     if (showTimeSeriesPlan.getLimit() > 0 || showTimeSeriesPlan.getOffset() > 0) {
@@ -1348,9 +1359,9 @@ public class MTreeBelowSGMemoryImpl {
   }
 
   @SuppressWarnings("java:S2095")
-  public ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
+  public ISchemaReader<INodeSchemaInfo> getNodeReader(final IShowNodesPlan showNodesPlan)
       throws MetadataException {
-    MNodeCollector<INodeSchemaInfo, IMemMNode> collector =
+    final MNodeCollector<INodeSchemaInfo, IMemMNode> collector =
         new MNodeCollector<INodeSchemaInfo, IMemMNode>(
             rootNode,
             showNodesPlan.getPath(),
@@ -1358,7 +1369,7 @@ public class MTreeBelowSGMemoryImpl {
             showNodesPlan.isPrefixMatch(),
             showNodesPlan.getScope()) {
 
-          protected INodeSchemaInfo collectMNode(IMemMNode node) {
+          protected INodeSchemaInfo collectMNode(final IMemMNode node) {
             return new ShowNodesResult(
                 getPartialPathFromRootToNode(node).getFullPath(), node.getMNodeType());
           }
@@ -1400,27 +1411,27 @@ public class MTreeBelowSGMemoryImpl {
 
   // region interfaces for logical view
   public IMeasurementMNode<IMemMNode> createLogicalView(
-      PartialPath path, ViewExpression viewExpression) throws MetadataException {
+      final PartialPath path, final ViewExpression viewExpression) throws MetadataException {
     // check path
-    String[] nodeNames = path.getNodes();
+    final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    PartialPath devicePath = path.getDevicePath();
-    IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
+    final PartialPath devicePath = path.getDevicePath();
+    final IMemMNode deviceParent = checkAndAutoCreateInternalPath(devicePath);
 
     synchronized (this) {
-      String leafName = path.getMeasurement();
-      IMeasurementMNode<IMemMNode> measurementMNode =
+      final String leafName = path.getMeasurement();
+      final IMeasurementMNode<IMemMNode> measurementMNode =
           nodeFactory.createLogicalViewMNode(
               null, leafName, new LogicalViewSchema(leafName, viewExpression));
-      IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+      final IMemMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
 
       // no need to check alias, because logical view has no alias
 
       if (device.hasChild(leafName)) {
-        IMemMNode node = device.getChild(leafName);
+        final IMemMNode node = device.getChild(leafName);
         if (node.isMeasurement()) {
           if (node.getAsMeasurementMNode().isPreDeleted()) {
             throw new MeasurementInBlackListException(path);
@@ -1433,7 +1444,7 @@ public class MTreeBelowSGMemoryImpl {
         }
       }
 
-      IDeviceMNode<IMemMNode> entityMNode;
+      final IDeviceMNode<IMemMNode> entityMNode;
       if (device.isDevice()) {
         entityMNode = device.getAsDeviceMNode();
       } else {
@@ -1450,14 +1461,14 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  public List<PartialPath> constructLogicalViewBlackList(PartialPath pathPattern)
+  public List<PartialPath> constructLogicalViewBlackList(final PartialPath pathPattern)
       throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    try (MeasurementUpdater<IMemMNode> updater =
+    final List<PartialPath> result = new ArrayList<>();
+    try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView()) {
               node.setPreDeleted(true);
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -1469,14 +1480,14 @@ public class MTreeBelowSGMemoryImpl {
     return result;
   }
 
-  public List<PartialPath> rollbackLogicalViewBlackList(PartialPath pathPattern)
+  public List<PartialPath> rollbackLogicalViewBlackList(final PartialPath pathPattern)
       throws MetadataException {
-    List<PartialPath> result = new ArrayList<>();
-    try (MeasurementUpdater<IMemMNode> updater =
+    final List<PartialPath> result = new ArrayList<>();
+    try (final MeasurementUpdater<IMemMNode> updater =
         new MeasurementUpdater<IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected void updateMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView()) {
               node.setPreDeleted(false);
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
@@ -1488,14 +1499,14 @@ public class MTreeBelowSGMemoryImpl {
     return result;
   }
 
-  public List<PartialPath> getPreDeletedLogicalView(PartialPath pathPattern)
+  public List<PartialPath> getPreDeletedLogicalView(final PartialPath pathPattern)
       throws MetadataException {
-    List<PartialPath> result = new LinkedList<>();
-    try (MeasurementCollector<Void, IMemMNode> collector =
+    final List<PartialPath> result = new LinkedList<>();
+    try (final MeasurementCollector<Void, IMemMNode> collector =
         new MeasurementCollector<Void, IMemMNode>(
             rootNode, pathPattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
 
-          protected Void collectMeasurement(IMeasurementMNode<IMemMNode> node) {
+          protected Void collectMeasurement(final IMeasurementMNode<IMemMNode> node) {
             if (node.isLogicalView() && node.isPreDeleted()) {
               result.add(getPartialPathFromRootToNode(node.getAsMNode()));
             }
@@ -1571,7 +1582,7 @@ public class MTreeBelowSGMemoryImpl {
     }
   }
 
-  public void deleteTableDevice(String tableName) {
+  public void deleteTableDevice(final String tableName) {
     storageGroupMNode.deleteChild(tableName);
   }
 

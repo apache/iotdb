@@ -120,7 +120,6 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       channel.read(metadataSizeBuf, position);
       metadataSizeBuf.flip();
       int metadataSize = metadataSizeBuf.getInt();
-      // -1 is for the endmarker
       endOffset = channel.size() - version.getVersionBytes().length - Integer.BYTES - metadataSize;
     } finally {
       if (version == WALFileVersion.V2) {
