@@ -46,14 +46,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class IoTDBShutdownHook extends Thread {
+public class DataNodeShutdownHook extends Thread {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeShutdownHook.class);
 
   private final TDataNodeLocation nodeLocation;
 
-  public IoTDBShutdownHook(TDataNodeLocation nodeLocation) {
-    super(ThreadName.IOTDB_SHUTDOWN_HOOK.getName());
+  public DataNodeShutdownHook(TDataNodeLocation nodeLocation) {
+    super(ThreadName.DATANODE_SHUTDOWN_HOOK.getName());
     this.nodeLocation = nodeLocation;
   }
 
@@ -115,9 +115,6 @@ public class IoTDBShutdownHook extends Thread {
       logger.error("Stop ConsensusImpl error in IoTDBShutdownHook", e);
     }
 
-    // Clear lock file
-    DirectoryChecker.getInstance().deregisterAll();
-
     // Set and report shutdown to cluster ConfigNode-leader
     CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Unknown);
     boolean isReportSuccess = false;
@@ -140,6 +137,9 @@ public class IoTDBShutdownHook extends Thread {
       logger.error(
           "Reporting DataNode shutdown failed. The cluster will still take the current DataNode as Running for a few seconds.");
     }
+
+    // Clear lock file. All services should be shutdown before this line.
+    DirectoryChecker.getInstance().deregisterAll();
 
     if (logger.isInfoEnabled()) {
       logger.info(

@@ -506,6 +506,36 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
+  public void testCompactionByFlushPage() throws Exception {
+    // chunk1: [[1000,7000]] chunk2: [[8000,15000]]
+    TsFileResource seqResource1 =
+        generateSingleAlignedSeriesFile(
+            "d0",
+            Arrays.asList("s0", "s1", "s2"),
+            new TimeRange[] {new TimeRange(1000, 7000), new TimeRange(8000, 15000)},
+            TSEncoding.RLE,
+            CompressionType.LZ4,
+            Arrays.asList(false, false, false),
+            true);
+    seqResources.add(seqResource1);
+    CompactionTaskSummary summary = new CompactionTaskSummary();
+    TsFileResource targetResource = performCompaction(summary);
+    seqResources.clear();
+    Assert.assertEquals(8, summary.getDeserializeChunkCount());
+    Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
+    seqResources.add(targetResource);
+    summary = new CompactionTaskSummary();
+    // the point num of first page is less than 10000 because the page writer of it reach the page
+    // size limit
+    // chunk1: [[1000,10053], [10054,15000]]
+    performCompaction(summary);
+    Assert.assertEquals(4, summary.getDeserializeChunkCount());
+    // the first aligned page can be flushed directly
+    Assert.assertEquals(4, summary.getDirectlyFlushPageCount());
+    Assert.assertEquals(4, summary.getDeserializePageCount());
+  }
+
+  @Test
   public void testSimpleCompactionByWritePoint() throws Exception {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(

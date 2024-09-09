@@ -672,6 +672,21 @@ public class AnalyzerTest {
     tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
     assertNull(tableScanNode.getPushDownPredicate());
     assertFalse(tableScanNode.getTimePredicate().isPresent());
+
+    // 7. Between
+    sql = "SELECT * FROM table1 WHERE tag1 Between attr1 and '2'";
+    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    analysis = analyzeSQL(sql, metadata, context);
+    logicalQueryPlan =
+        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP)
+            .plan(analysis);
+    rootNode = logicalQueryPlan.getRootNode();
+
+    assertFalse(rootNode.getChildren().get(0) instanceof FilterNode);
+    assertTrue(rootNode.getChildren().get(0) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) rootNode.getChildren().get(0);
+    assertNull(tableScanNode.getPushDownPredicate());
+    assertFalse(tableScanNode.getTimePredicate().isPresent());
   }
 
   @Test
