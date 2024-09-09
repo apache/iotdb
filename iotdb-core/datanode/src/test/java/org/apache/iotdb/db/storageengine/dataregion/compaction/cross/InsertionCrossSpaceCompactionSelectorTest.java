@@ -161,17 +161,10 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     unseqResource2.updateStartTime(d2, 10);
     unseqResource2.updateEndTime(d2, 20);
     unseqResource2.serialize();
-
-    TsFileResource seqResource4 = createTsFileResource("9-9-1-0.tsfile", true);
-    seqResource4.updateStartTime(d2, 30);
-    seqResource4.updateEndTime(d2, 40);
-    seqResource4.setStatusForTest(TsFileResourceStatus.NORMAL);
-    tsFileManager.keepOrderInsert(seqResource4, true);
     tsFileManager.keepOrderInsert(unseqResource2, false);
     // Should not select unseq resource2
     // The unclosed resource should not be cached. Otherwise, the results here will be incorrect.
     // seq resource3: d1[70, 80] d2[10, 20]
-    // seq resource4: d2[30, 40]
     // unseq resource2 d2[10, 20]
 
     submitTaskNum =
