@@ -51,7 +51,7 @@ public class HybridProgressIndex extends ProgressIndex {
     short type = progressIndex.getType().getType();
     this.type2Index = new HashMap<>();
     if (ProgressIndexType.HYBRID_PROGRESS_INDEX.getType() != type) {
-      type2Index.put(type, progressIndex.deepCopy());
+      this.type2Index.put(type, progressIndex.deepCopy());
     } else {
       for (Entry<Short, ProgressIndex> entry :
           ((HybridProgressIndex) progressIndex).type2Index.entrySet()) {
