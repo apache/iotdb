@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeType;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskConnectorStage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +50,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_FORMAT_TABLET_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_EXCLUSION_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.SOURCE_EXCLUSION_KEY;
 
 public class PipeDataNodeTaskBuilder {
 
@@ -161,13 +161,15 @@ public class PipeDataNodeTaskBuilder {
 
   private void checkConflict(
       final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
-    //
-    final String inclusion =
-        extractorParameters.getStringOrDefault(
-            Arrays.asList(EXTRACTOR_EXCLUSION_KEY, SOURCE_EXCLUSION_KEY),
-            EXTRACTOR_EXCLUSION_DEFAULT_VALUE);
 
-    if (!"data.delete".equals(inclusion)) {
+    try {
+      final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
+          DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(extractorParameters);
+      if (!insertionDeletionListeningOptionPair.left) {
+        return;
+      }
+    } catch (IllegalPathException e) {
+      LOGGER.warn("Parameter parsing failed: {}", e.getMessage());
       return;
     }
 
@@ -175,10 +177,16 @@ public class PipeDataNodeTaskBuilder {
         connectorParameters.getBooleanByKeys(
             PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
             PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
-
-    if (isRealtime == null || isRealtime) {
+    if (isRealtime == null) {
+      connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
       LOGGER.warn(
-          "PipeDataNodeTaskBuilder: 'inclusion.exclusion' = 'data.delete' and 'realtime.first'=true may cause sync issues after deletion.");
+          "PipeDataNodeTaskBuilder: Sync issues may occur when 'inclusion' is 'data.delete' and 'realtime-first' is 'true'. Defaulting 'realtime-first' to 'false'.");
+      return;
+    }
+
+    if (isRealtime) {
+      LOGGER.warn(
+          "PipeDataNodeTaskBuilder: 'inclusion' = 'data.delete' and 'realtime-first'= 'true' may cause sync issues after deletion.");
     }
   }
 }
