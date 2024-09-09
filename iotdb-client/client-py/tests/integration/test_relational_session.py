@@ -135,8 +135,9 @@ def session_test(use_session_pool=False):
             "select * from table5 order by time"
         ) as dataset:
             df = dataset.todf()
-            assert len(df) == 4
-            assert len(df.shape[1]) == 30
+            rows, columns = df.shape
+            assert rows == 30
+            assert columns == 4
 
         # close session connection.
         session.close()
