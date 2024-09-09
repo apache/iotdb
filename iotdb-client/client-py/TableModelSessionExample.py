@@ -15,8 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import numpy as np
 
 from iotdb.Session import Session
+from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.utils.NumpyTablet import NumpyTablet
+from iotdb.utils.Tablet import ColumnType, Tablet
 
 # creating session connection.
 ip = "127.0.0.1"
@@ -25,8 +29,9 @@ username_ = "root"
 password_ = "root"
 
 # don't specify database in constructor
-session = Session(ip, port_, username_, password_, sql_dialect="table")
+session = Session(ip, port_, username_, password_, sql_dialect="table", database="db1")
 session.open(False)
+
 session.execute_non_query_statement("CREATE DATABASE test1")
 session.execute_non_query_statement("CREATE DATABASE test2")
 session.execute_non_query_statement("use test2")
@@ -76,4 +81,66 @@ with session.execute_query_statement("SHOW TABLES") as session_data_set:
     while session_data_set.has_next():
         print(session_data_set.next())
 
+session.close()
+
+# insert tablet by insert_relational_tablet
+session = Session(ip, port_, username_, password_, sql_dialect="table")
+session.open(False)
+session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
+session.execute_non_query_statement('USE "db1"')
+session.execute_non_query_statement(
+    "CREATE TABLE table5 (id1 string id, attr1 string attribute, "
+    + "m1 double "
+    + "measurement)"
+)
+
+column_names = [
+    "id1",
+    "attr1",
+    "m1",
+]
+data_types = [
+    TSDataType.STRING,
+    TSDataType.STRING,
+    TSDataType.DOUBLE,
+]
+column_types = [ColumnType.ID, ColumnType.ATTRIBUTE, ColumnType.MEASUREMENT]
+timestamps = []
+values = []
+for row in range(15):
+    timestamps.append(row)
+    values.append(["id:" + str(row), "attr1:" + str(row), row * 1.0])
+tablet = Tablet("table5", column_names, data_types, values, timestamps, column_types)
+session.insert_relational_tablet(tablet)
+
+session.execute_non_query_statement("FLush")
+
+np_timestamps = np.arange(15, 30, dtype=np.dtype(">i8"))
+np_values = [
+    np.array(["id:{}".format(i) for i in range(15, 30)]),
+    np.array(["attr1:{}".format(i) for i in range(15, 30)]),
+    np.linspace(15.0, 29.0, num=30, dtype=TSDataType.DOUBLE.np_dtype()),
+]
+
+np_tablet = NumpyTablet(
+    "table5",
+    column_names,
+    data_types,
+    np_values,
+    np_timestamps,
+    column_types=column_types,
+)
+session.insert_relational_tablet(np_tablet)
+
+with session.execute_query_statement("select * from table5 order by time") as dataset:
+    print(dataset.get_column_names())
+    while dataset.has_next():
+        row_record = dataset.next()
+        print(row_record)
+
+with session.execute_query_statement("select * from table5 order by time") as dataset:
+    df = dataset.todf()
+    print(df)
+
+# close session connection.
 session.close()

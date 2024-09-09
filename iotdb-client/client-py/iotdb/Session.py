@@ -1066,6 +1066,35 @@ class Session(object):
                         self.connection_error_msg()
                     ) from None
 
+    def insert_relational_tablet(self, tablet):
+        """
+        insert one tablet, in a tablet, for each timestamp, the number of measurements is same
+            for example three records in the same device can form a tablet:
+                timestamps,     m1,    m2,     m3
+                         1,  125.3,  True,  text1
+                         2,  111.6, False,  text2
+                         3,  688.6,  True,  text3
+        :param tablet: a tablet specified above
+        """
+        request = self.gen_insert_relational_tablet_req(tablet)
+        try:
+            connection = self.get_connection(tablet.get_device_id())
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertTablet(request)
+            )
+        except RedirectException as e:
+            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablet(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
+
     def insert_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
     ):
@@ -1289,6 +1318,20 @@ class Session(object):
             tablet.get_data_types(),
             tablet.get_row_number(),
             is_aligned,
+        )
+
+    def gen_insert_relational_tablet_req(self, tablet, is_aligned=False):
+        return TSInsertTabletReq(
+            self.__session_id,
+            tablet.get_device_id(),
+            tablet.get_measurements(),
+            tablet.get_binary_values(),
+            tablet.get_binary_timestamps(),
+            tablet.get_data_types(),
+            tablet.get_row_number(),
+            is_aligned,
+            True,
+            tablet.get_column_categories(),
         )
 
     def gen_insert_tablets_req(self, tablet_lst, is_aligned=False):

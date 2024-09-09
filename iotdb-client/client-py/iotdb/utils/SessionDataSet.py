@@ -124,7 +124,7 @@ class SessionDataSet(object):
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
 
-    def todf(self):
+    def todf(self) -> pd.DataFrame:
         return resultset_to_pandas(self)
 
 

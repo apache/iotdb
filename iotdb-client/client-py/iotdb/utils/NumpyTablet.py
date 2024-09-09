@@ -17,13 +17,24 @@
 #
 
 import struct
+
+from numpy import ndarray
+
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
+from iotdb.utils.Tablet import ColumnType
 
 
 class NumpyTablet(object):
     def __init__(
-        self, device_id, measurements, data_types, values, timestamps, bitmaps=None
+        self,
+        insert_target_name: str,
+        column_names: list[str],
+        data_types: list[TSDataType],
+        values: list[ndarray],
+        timestamps: ndarray,
+        bitmaps: list[BitMap] = None,
+        column_types: list[ColumnType] = None,
     ):
         """
         creating a numpy tablet for insertion
@@ -32,13 +43,13 @@ class NumpyTablet(object):
                      1,  125.3,  True,  text1
                      2,  111.6, False,  text2
                      3,  688.6,  True,  text3
-        Notice: From 0.13.0, the tablet can contain empty cell
-                The tablet will be sorted at the initialization by timestamps
-        :param device_id: String, IoTDB time series path to device layer (without sensor)
-        :param measurements: List, sensors
-        :param data_types: TSDataType List, specify value types for sensors
-        :param values: List of numpy array, the values of each column should be the inner numpy array
-        :param timestamps: Numpy array, the timestamps
+        Notice: The tablet will be sorted at the initialization by timestamps
+        :param insert_target_name: String, DeviceId if using tree-view interfaces or TableName when using table-view interfaces.
+        :param column_names: String List, names of columns
+        :param data_types: TSDataType List, specify value types for columns
+        :param values: 2-D List, the values of each row should be the outer list element
+        :param timestamps: List,
+        :param column_types: List of ColumnType
         """
         if len(values) > 0 and len(values[0]) != len(timestamps):
             raise RuntimeError(
@@ -63,12 +74,18 @@ class NumpyTablet(object):
 
         self.__values = values
         self.__timestamps = timestamps
-        self.__device_id = device_id
-        self.__measurements = measurements
+        self.__insert_target_name = insert_target_name
+        self.__measurements = column_names
         self.__data_types = data_types
         self.__row_number = len(timestamps)
-        self.__column_number = len(measurements)
+        self.__column_number = len(column_names)
         self.bitmaps = bitmaps
+        if column_types is None:
+            self.__column_types = ColumnType.n_copy(
+                ColumnType.MEASUREMENT, self.__column_number
+            )
+        else:
+            self.__column_types = column_types
 
     @staticmethod
     def check_sorted(timestamps):
@@ -83,11 +100,14 @@ class NumpyTablet(object):
     def get_data_types(self):
         return self.__data_types
 
+    def get_column_categories(self):
+        return self.__column_types
+
     def get_row_number(self):
         return self.__row_number
 
     def get_device_id(self):
-        return self.__device_id
+        return self.__insert_target_name
 
     def get_timestamps(self):
         return self.__timestamps
@@ -102,8 +122,8 @@ class NumpyTablet(object):
         bs_len = 0
         bs_list = []
         for data_type, value in zip(self.__data_types, self.__values):
-            # TEXT
-            if data_type == 5:
+            # TEXT, STRING
+            if data_type == 5 or data_type == 11:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:
