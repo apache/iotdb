@@ -122,7 +122,7 @@ session.execute_non_query_statement("FLush")
 np_timestamps = np.arange(15, 30, dtype=np.dtype(">i8"))
 np_values = [
     np.array(["id:{}".format(i) for i in range(15, 30)]),
-    np.array(["attr1:{}".format(i) for i in range(15, 30)]),
+    np.array(["attr:{}".format(i) for i in range(15, 30)]),
     np.linspace(15.0, 29.0, num=15, dtype=TSDataType.DOUBLE.np_dtype()),
 ]
 
