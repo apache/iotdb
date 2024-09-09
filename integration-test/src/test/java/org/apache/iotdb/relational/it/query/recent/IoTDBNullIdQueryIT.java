@@ -187,7 +187,7 @@ public class IoTDBNullIdQueryIT {
 
       // Test same column name
       resultSet = statement.executeQuery("select time, s1 as a, s2 as a from testNullId");
-      result = defaultFormatDataTime(1) + "0,false";
+      result = defaultFormatDataTime(1) + ",0,false";
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       assertEquals(3, resultSetMetaData.getColumnCount());
       assertEquals("time", resultSetMetaData.getColumnName(1));
@@ -198,8 +198,7 @@ public class IoTDBNullIdQueryIT {
       assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(3));
 
       assertTrue(resultSet.next());
-      ans =
-          resultSet.getString("time") + "," + resultSet.getString(1) + "," + resultSet.getString(2);
+      ans = resultSet.getString(1) + "," + resultSet.getString(2) + "," + resultSet.getString(3);
 
       assertEquals(result, ans);
       assertFalse(resultSet.next());

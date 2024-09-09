@@ -126,6 +126,12 @@ public class IoTDBRpcDataSet {
     this.columnName2TsBlockColumnIndexMap = new HashMap<>();
     int columnStartIndex = 1;
     int resultSetColumnSize = columnNameList.size();
+
+    // newly generated or updated columnIndex2TsBlockColumnIndexList.size() may not be equal to
+    // columnNameList.size()
+    // so we need startIndexForColumnIndex2TsBlockColumnIndexList to adjust the mapping relation
+    int startIndexForColumnIndex2TsBlockColumnIndexList = 0;
+
     // for Time Column in tree model which should always be the first column and its index for
     // TsBlockColumn is -1
     if (!ignoreTimeStamp) {
@@ -133,14 +139,14 @@ public class IoTDBRpcDataSet {
       this.columnTypeList.add(String.valueOf(TSDataType.INT64));
       this.columnName2TsBlockColumnIndexMap.put(TIMESTAMP_STR, -1);
       this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
+      if (columnIndex2TsBlockColumnIndexList != null) {
+        columnIndex2TsBlockColumnIndexList.add(0, -1);
+        startIndexForColumnIndex2TsBlockColumnIndexList = 1;
+      }
       columnStartIndex++;
       resultSetColumnSize++;
     }
 
-    // newly generated columnIndex2TsBlockColumnIndexList.size() may not be equal to
-    // columnNameList.size()
-    // so we need startIndexForColumnIndex2TsBlockColumnIndexList to adjust the mapping relation
-    int startIndexForColumnIndex2TsBlockColumnIndexList = 0;
     if (columnIndex2TsBlockColumnIndexList == null) {
       columnIndex2TsBlockColumnIndexList = new ArrayList<>(resultSetColumnSize);
       if (!ignoreTimeStamp) {
@@ -166,8 +172,10 @@ public class IoTDBRpcDataSet {
       int tsBlockColumnIndex =
           columnIndex2TsBlockColumnIndexList.get(
               startIndexForColumnIndex2TsBlockColumnIndexList + i);
-      TSDataType columnType = TSDataType.valueOf(columnTypeList.get(i));
-      dataTypeForTsBlockColumn.set(tsBlockColumnIndex, columnType);
+      if (tsBlockColumnIndex != -1) {
+        TSDataType columnType = TSDataType.valueOf(columnTypeList.get(i));
+        dataTypeForTsBlockColumn.set(tsBlockColumnIndex, columnType);
+      }
       if (!columnName2TsBlockColumnIndexMap.containsKey(name)) {
         columnOrdinalMap.put(name, i + columnStartIndex);
         columnName2TsBlockColumnIndexMap.put(name, tsBlockColumnIndex);

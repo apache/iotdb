@@ -1476,7 +1476,7 @@ public class SessionPoolTest {
     dataTypeList.add("INT32");
     dataTypeList.add("FLOAT");
 
-    List<Integer> columnIndex2TsBlockColumnIndexList = Arrays.asList(-1, 0, 1, 2, 3);
+    List<Integer> columnIndex2TsBlockColumnIndexList = Arrays.asList(0, 1, 2, 3);
 
     Mockito.when(execResp.isSetColumns()).thenReturn(true);
     Mockito.when(execResp.getColumns()).thenReturn(columns);

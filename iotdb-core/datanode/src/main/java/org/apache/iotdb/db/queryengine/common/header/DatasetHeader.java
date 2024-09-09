@@ -60,6 +60,11 @@ public class DatasetHeader {
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
     this.columnHeaders = columnHeaders;
     this.isIgnoreTimestamp = isIgnoreTimestamp;
+    int size = columnHeaders.size();
+    this.columnIndex2TsBlockColumnIndexList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      columnIndex2TsBlockColumnIndexList.add(i);
+    }
   }
 
   public List<ColumnHeader> getColumnHeaders() {
