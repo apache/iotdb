@@ -333,7 +333,7 @@ class IoTDBRpcDataSet(object):
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
                     elif data_type == 0:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                    elif data_type == 5 or data_type == 11:
+                    elif data_type == 5 or data_type == 11 or data_type == 10:
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]

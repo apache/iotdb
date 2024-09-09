@@ -20,7 +20,7 @@ import threading
 import numpy as np
 
 from iotdb.SessionPool import PoolConfig, SessionPool
-from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
+from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import ColumnType, Tablet
 

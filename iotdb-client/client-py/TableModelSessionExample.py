@@ -38,10 +38,14 @@ session.execute_non_query_statement("use test2")
 
 # or use full qualified table name
 session.execute_non_query_statement(
-    "create table test1.table1(region_id STRING ID, plant_id STRING ID, device_id STRING ID, model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)"
+    "create table test1.table1("
+    "region_id STRING ID, plant_id STRING ID, device_id STRING ID, "
+    "model STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, humidity DOUBLE MEASUREMENT) with (TTL=3600000)"
 )
 session.execute_non_query_statement(
-    "create table table2(region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT, speed DOUBLE MEASUREMENT) with (TTL=6600000)"
+    "create table table2("
+    "region_id STRING ID, plant_id STRING ID, color STRING ATTRIBUTE, temperature FLOAT MEASUREMENT,"
+    " speed DOUBLE MEASUREMENT) with (TTL=6600000)"
 )
 
 # show tables from current database
@@ -109,7 +113,7 @@ timestamps = []
 values = []
 for row in range(15):
     timestamps.append(row)
-    values.append(["id:" + str(row), "attr1:" + str(row), row * 1.0])
+    values.append(["id:" + str(row), "attr:" + str(row), row * 1.0])
 tablet = Tablet("table5", column_names, data_types, values, timestamps, column_types)
 session.insert_relational_tablet(tablet)
 

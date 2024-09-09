@@ -38,7 +38,10 @@ class Field(object):
                 output.set_bool_value(field.get_bool_value())
             elif output.get_data_type() == TSDataType.INT32:
                 output.set_int_value(field.get_int_value())
-            elif output.get_data_type() == TSDataType.INT64:
+            elif (
+                output.get_data_type() == TSDataType.INT64
+                or output.get_data_type() == TSDataType.TIMESTAMP
+            ):
                 output.set_long_value(field.get_long_value())
             elif output.get_data_type() == TSDataType.FLOAT:
                 output.set_float_value(field.get_float_value())
@@ -141,6 +144,7 @@ class Field(object):
         if (
             self.__data_type != TSDataType.TEXT
             and self.__data_type != TSDataType.STRING
+            and self.__data_type != TSDataType.BLOB
             or self.value is None
             or self.value is pd.NA
         ):

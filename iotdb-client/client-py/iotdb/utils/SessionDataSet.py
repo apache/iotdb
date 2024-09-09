@@ -147,6 +147,8 @@ def get_typed_point(field: Field, none_value=None):
         TSDataType.INT32: lambda field: field.get_int_value(),
         TSDataType.DOUBLE: lambda field: field.get_double_value(),
         TSDataType.INT64: lambda field: field.get_long_value(),
+        TSDataType.TIMESTAMP: lambda field: field.get_long_value(),
+        TSDataType.STRING: lambda field: field.get_string_value(),
     }
 
     result_next_type: TSDataType = field.get_data_type()

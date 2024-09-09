@@ -87,7 +87,7 @@ def session_test(use_session_pool=False):
         values = []
         for row in range(15):
             timestamps.append(row)
-            values.append(["id:" + str(row), "attr1:" + str(row), row * 1.0])
+            values.append(["id:" + str(row), "attr:" + str(row), row * 1.0])
         tablet = Tablet(
             "table5", column_names, data_types, values, timestamps, column_types
         )
