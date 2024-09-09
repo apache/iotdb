@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -305,7 +304,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
     return new InsertTabletNode(
         getPlanNodeId(),
-        devicePath,
+        targetPath,
         isAligned,
         measurements,
         dataTypes,
@@ -438,7 +437,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(ByteBuffer buffer) {
-    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
+    ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     writeMeasurementsOrSchemas(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);
@@ -448,7 +447,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    ReadWriteIOUtils.write(targetPath.getFullPath(), stream);
     writeMeasurementsOrSchemas(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -705,9 +704,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   public void subDeserialize(ByteBuffer buffer) {
     try {
-      devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
+      targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -763,7 +760,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   int subSerializeSize(int start, int end) {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
+    size += ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
     // measurements size
     size += Integer.BYTES;
     size += serializeMeasurementSchemasSize();
@@ -849,7 +846,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
 
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
     buffer.putLong(searchIndex);
-    WALWriteUtils.write(devicePath.getFullPath(), buffer);
+    WALWriteUtils.write(targetPath.getFullPath(), buffer);
     // data types are serialized in measurement schemas
     writeMeasurementSchemas(buffer);
     writeTimes(buffer, start, end);
@@ -969,8 +966,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected void subDeserializeFromWAL(DataInputStream stream) throws IOException {
     searchIndex = stream.readLong();
     try {
-      devicePath =
-          DataNodeDevicePathCache.getInstance().getPartialPath(ReadWriteIOUtils.readString(stream));
+      targetPath = readTargetPath(stream);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -1005,9 +1001,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   protected void subDeserializeFromWAL(ByteBuffer buffer) {
     searchIndex = buffer.getLong();
     try {
-      devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath((ReadWriteIOUtils.readString(buffer)));
+      targetPath = readTargetPath(buffer);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
     }
@@ -1191,7 +1185,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     if (deviceID != null) {
       return deviceID;
     }
-    deviceID = DeviceIDFactory.getInstance().getDeviceID(devicePath);
+    deviceID = DeviceIDFactory.getInstance().getDeviceID(targetPath);
     return deviceID;
   }
 
