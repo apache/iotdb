@@ -53,15 +53,22 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import javax.annotation.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
+/**
+ * The {@link ConvertSchemaPredicateToFilterVisitor} will convert a predicate to {@link
+ * SchemaFilter}. For the predicates which can not be converted, this will return {@code null}.
+ * However, for IdDeterminedPredicate, this visitor shall never return {@code null}.
+ */
 public class ConvertSchemaPredicateToFilterVisitor
     extends PredicateVisitor<SchemaFilter, ConvertSchemaPredicateToFilterVisitor.Context> {
 
@@ -71,7 +78,9 @@ public class ConvertSchemaPredicateToFilterVisitor
     checkArgument(valueList instanceof InListExpression);
     final List<Expression> values = ((InListExpression) valueList).getValues();
     for (final Expression value : values) {
-      checkArgument(value instanceof Literal);
+      if (!(value instanceof Literal)) {
+        return null;
+      }
     }
 
     return wrapIdOrAttributeFilter(
@@ -101,6 +110,11 @@ public class ConvertSchemaPredicateToFilterVisitor
   @Override
   protected @Nullable SchemaFilter visitLikePredicate(
       final LikePredicate node, final Context context) {
+    // TODO: Support stringLiteral like id/attr?
+    if (!(node.getValue() instanceof SymbolReference)
+        || !(node.getPattern() instanceof StringLiteral)) {
+      return null;
+    }
     return wrapIdOrAttributeFilter(
         new LikeFilter(parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue())),
         ((SymbolReference) node.getValue()).getName(),
@@ -108,20 +122,27 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitLogicalExpression(
+  protected @Nullable SchemaFilter visitLogicalExpression(
       final LogicalExpression node, final Context context) {
-    final List<SchemaFilter> children =
-        node.getTerms().stream()
-            .map(expression -> expression.accept(this, context))
-            .collect(Collectors.toList());
+    final List<SchemaFilter> children = new ArrayList<>();
+    for (final Expression term : node.getTerms()) {
+      final SchemaFilter childResult = term.accept(this, context);
+      if (Objects.nonNull(childResult)) {
+        children.add(childResult);
+      } else {
+        return null;
+      }
+    }
     return node.getOperator() == LogicalExpression.Operator.OR
         ? new OrFilter(children)
         : new AndFilter(children);
   }
 
   @Override
-  protected SchemaFilter visitNotExpression(final NotExpression node, final Context context) {
-    return new NotFilter(node.getValue().accept(this, context));
+  protected @Nullable SchemaFilter visitNotExpression(
+      final NotExpression node, final Context context) {
+    final SchemaFilter result = node.getValue().accept(this, context);
+    return Objects.nonNull(result) ? new NotFilter(result) : null;
   }
 
   @Override
@@ -135,11 +156,13 @@ public class ConvertSchemaPredicateToFilterVisitor
       checkArgument(isSymbolReference(node.getRight()));
       columnName = ((SymbolReference) (node.getRight())).getName();
       isOrdered = false;
-    } else {
+    } else if (node.getRight() instanceof Literal) {
       value = ((StringLiteral) (node.getRight())).getValue();
       checkArgument(isSymbolReference(node.getLeft()));
       columnName = ((SymbolReference) (node.getLeft())).getName();
       isOrdered = true;
+    } else {
+      return null;
     }
 
     return wrapIdOrAttributeFilter(
@@ -178,27 +201,29 @@ public class ConvertSchemaPredicateToFilterVisitor
   }
 
   @Override
-  protected SchemaFilter visitSimpleCaseExpression(SimpleCaseExpression node, Context context) {
+  protected SchemaFilter visitSimpleCaseExpression(
+      final SimpleCaseExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitSearchedCaseExpression(SearchedCaseExpression node, Context context) {
+  protected SchemaFilter visitSearchedCaseExpression(
+      final SearchedCaseExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitIfExpression(IfExpression node, Context context) {
+  protected SchemaFilter visitIfExpression(final IfExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected SchemaFilter visitNullIfExpression(NullIfExpression node, Context context) {
+  protected SchemaFilter visitNullIfExpression(final NullIfExpression node, final Context context) {
     return visitExpression(node, context);
   }
 
   @Override
-  protected @Nullable SchemaFilter visitBetweenPredicate(BetweenPredicate node, Context context) {
+  protected SchemaFilter visitBetweenPredicate(final BetweenPredicate node, final Context context) {
     return visitExpression(node, context);
   }
 
