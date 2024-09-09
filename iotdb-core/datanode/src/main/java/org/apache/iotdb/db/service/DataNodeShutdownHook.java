@@ -138,7 +138,7 @@ public class DataNodeShutdownHook extends Thread {
           "Reporting DataNode shutdown failed. The cluster will still take the current DataNode as Running for a few seconds.");
     }
 
-    // Clear lock file
+    // Clear lock file. All services should be shutdown before this line.
     DirectoryChecker.getInstance().deregisterAll();
 
     if (logger.isInfoEnabled()) {
