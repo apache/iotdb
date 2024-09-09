@@ -21,6 +21,7 @@ import multiprocessing
 import os
 import random
 import sys
+import threading
 
 from iotdb.ainode.constant import STD_LEVEL, AINODE_LOG_FILE_NAMES, AINODE_LOG_FILE_LEVELS
 from iotdb.ainode.util.decorator import singleton
@@ -108,7 +109,7 @@ class Logger:
             log_dir = "default path"
 
         self.logger.addFilter(LoggerFilter())
-        self._lock = multiprocessing.Lock()
+        self._lock = threading.Lock()
         self.info(f"Logger init successfully. Log will be written to {log_dir}")
 
     def debug(self, *args) -> None:

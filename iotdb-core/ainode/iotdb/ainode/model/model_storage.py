@@ -16,24 +16,21 @@
 # under the License.
 #
 
-import json
 import os
 import shutil
-import threading
 from collections.abc import Callable
-from typing import Dict
 
 import torch
 import torch._dynamo
-import torch.nn as nn
 from pylru import lrucache
 
 from iotdb.ainode.config import AINodeDescriptor
-from iotdb.ainode.constant import (OptionsKey, DEFAULT_MODEL_FILE_NAME,
-                                   DEFAULT_CONFIG_FILE_NAME, ModelInputName)
+from iotdb.ainode.constant import (DEFAULT_MODEL_FILE_NAME,
+                                   DEFAULT_CONFIG_FILE_NAME)
 from iotdb.ainode.exception import ModelNotExistError
 from iotdb.ainode.log import Logger
 from iotdb.ainode.model.model_factory import fetch_model_by_uri
+from iotdb.ainode.util.lock import ModelLockPool
 
 logger = Logger()
 
@@ -47,7 +44,7 @@ class ModelStorage(object):
             except PermissionError as e:
                 logger.error(e)
                 raise e
-        self.lock = threading.RLock()
+        self._lock_pool = ModelLockPool()
         self._model_cache = lrucache(AINodeDescriptor().get_config().get_ain_model_storage_cache_size())
 
     def register_model(self, model_id: str, uri: str):
@@ -62,35 +59,11 @@ class ModelStorage(object):
         """
         storage_path = os.path.join(self._model_dir, f'{model_id}')
         # create storage dir if not exist
-        with self.lock:
-            if not os.path.exists(storage_path):
-                os.makedirs(storage_path)
+        if not os.path.exists(storage_path):
+            os.makedirs(storage_path)
         model_storage_path = os.path.join(storage_path, DEFAULT_MODEL_FILE_NAME)
         config_storage_path = os.path.join(storage_path, DEFAULT_CONFIG_FILE_NAME)
         return fetch_model_by_uri(uri, model_storage_path, config_storage_path)
-
-    def save_model(self,
-                   model: nn.Module,
-                   model_config: Dict,
-                   model_id: str,
-                   trial_id: str) -> str:
-        model_dir_path = os.path.join(self._model_dir, f'{model_id}')
-        with self.lock:
-            if not os.path.exists(model_dir_path):
-                os.makedirs(model_dir_path)
-        model_file_path = os.path.join(model_dir_path, f'{trial_id}.pt')
-
-        # Note: model config for time series should contain 'input_len' and 'input_vars'
-        sample_input = (
-            _pack_input_dict(
-                torch.randn(1, model_config[OptionsKey.INPUT_LENGTH.name()], model_config[OptionsKey.INPUT_VARS.name()])
-            )
-        )
-        with self.lock:
-            torch.jit.save(torch.jit.trace(model, sample_input),
-                           model_file_path,
-                           _extra_files={'model_config': json.dumps(model_config)})
-        return os.path.abspath(model_file_path)
 
     def load_model(self, model_id: str, acceleration: bool) -> Callable:
         """
@@ -99,26 +72,27 @@ class ModelStorage(object):
         """
         ain_models_dir = os.path.join(self._model_dir, f'{model_id}')
         model_path = os.path.join(ain_models_dir, DEFAULT_MODEL_FILE_NAME)
-        if model_path in self._model_cache:
-            model = self._model_cache[model_path]
-            if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
-                return model
+        with self._lock_pool.get_lock(model_id).read_lock():
+            if model_path in self._model_cache:
+                model = self._model_cache[model_path]
+                if isinstance(model, torch._dynamo.eval_frame.OptimizedModule) or not acceleration:
+                    return model
+                else:
+                    model = torch.compile(model)
+                    self._model_cache[model_path] = model
+                    return model
             else:
-                model = torch.compile(model)
-                self._model_cache[model_path] = model
-                return model
-        else:
-            if not os.path.exists(model_path):
-                raise ModelNotExistError(model_path)
-            else:
-                model = torch.jit.load(model_path)
-                if acceleration:
-                    try:
-                        model = torch.compile(model)
-                    except Exception as e:
-                        logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
-                self._model_cache[model_path] = model
-                return model
+                if not os.path.exists(model_path):
+                    raise ModelNotExistError(model_path)
+                else:
+                    model = torch.jit.load(model_path)
+                    if acceleration:
+                        try:
+                            model = torch.compile(model)
+                        except Exception as e:
+                            logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
+                    self._model_cache[model_path] = model
+                    return model
 
     def delete_model(self, model_id: str) -> None:
         """
@@ -128,31 +102,12 @@ class ModelStorage(object):
             None
         """
         storage_path = os.path.join(self._model_dir, f'{model_id}')
-
-        if os.path.exists(storage_path):
-            for file_name in os.listdir(storage_path):
-                self._remove_from_cache(os.path.join(storage_path, file_name))
-            shutil.rmtree(storage_path)
+        with self._lock_pool.get_lock(model_id).write_lock():
+            if os.path.exists(storage_path):
+                for file_name in os.listdir(storage_path):
+                    self._remove_from_cache(os.path.join(storage_path, file_name))
+                shutil.rmtree(storage_path)
 
     def _remove_from_cache(self, file_path: str) -> None:
         if file_path in self._model_cache:
             del self._model_cache[file_path]
-
-
-def _pack_input_dict(batch_x: torch.Tensor,
-                     batch_x_mark: torch.Tensor = None,
-                     dec_inp: torch.Tensor = None,
-                     batch_y_mark: torch.Tensor = None) -> Dict:
-    """
-    pack up inputs as a dict to adapt for different models
-    """
-    input_dict = {}
-    if batch_x is not None:
-        input_dict[ModelInputName.DATA_X.value] = batch_x
-    if batch_x_mark is not None:
-        input_dict[ModelInputName.TIME_STAMP_X] = batch_x_mark
-    if dec_inp is not None:
-        input_dict[ModelInputName.DEC_INP] = dec_inp
-    if batch_y_mark is not None:
-        input_dict[ModelInputName.TIME_STAMP_Y.value] = batch_y_mark
-    return input_dict

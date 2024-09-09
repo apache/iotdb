@@ -88,7 +88,7 @@ def _download_file(url: str, storage_path: str) -> None:
 
 
 def _register_model_from_network(uri: str, model_storage_path: str,
-                                 config_storage_path: str):
+                                 config_storage_path: str) -> [TConfigs, str]:
     """
     Args:
         uri: network dir path of model to register, where model.pt and config.yaml are required,
@@ -118,7 +118,7 @@ def _register_model_from_network(uri: str, model_storage_path: str,
 
 
 def _register_model_from_local(uri: str, model_storage_path: str,
-                               config_storage_path: str):
+                               config_storage_path: str) -> [TConfigs, str]:
     """
     Args:
         uri: local dir path of model to register, where model.pt and config.yaml are required,
