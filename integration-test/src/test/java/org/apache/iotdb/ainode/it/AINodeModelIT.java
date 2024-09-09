@@ -43,8 +43,7 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
 public class AINodeModelIT {
-
-  static final String path =
+  static final String MODEL_PATH =
       System.getProperty("user.dir")
           + File.separator
           + "src"
@@ -69,7 +68,7 @@ public class AINodeModelIT {
         "insert into root.AI.data(timestamp,s0,s1,s2,s3) values(5,5.0,6.0,7.0,8.0)",
         "insert into root.AI.data(timestamp,s0,s1,s2,s3) values(6,6.0,7.0,8.0,9.0)",
         "insert into root.AI.data(timestamp,s0,s1,s2,s3) values(7,7.0,8.0,9.0,10.0)",
-        "create model identity using uri \"" + path + "\"",
+        "create model identity using uri \"" + MODEL_PATH + "\"",
       };
 
   @Before
@@ -105,12 +104,14 @@ public class AINodeModelIT {
   }
 
   @Test
-  public void createModelTest() {
-    String sql = "SHOW MODELS identity";
+  public void ModelOperationTest() {
+    String registerSql = "create model operationTest using uri \"" + MODEL_PATH + "\"";
+    String showSql = "SHOW MODELS operationTest";
+    String dropSql = "DROP MODEL operationTest";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
+      statement.execute(registerSql);
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
         int count = 0;
@@ -125,6 +126,16 @@ public class AINodeModelIT {
           count++;
         }
         assertEquals(1, count);
+      }
+      statement.execute(dropSql);
+      try (ResultSet resultSet = statement.executeQuery(showSql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, "ModelId,ModelType,State,Configs,Notes");
+        int count = 0;
+        while (resultSet.next()) {
+          count++;
+        }
+        assertEquals(0, count);
       }
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -186,25 +197,6 @@ public class AINodeModelIT {
   }
 
   @Test
-  public void dropModelTest() {
-    String dropSql = "DROP MODEL identity";
-    String showSql = "SHOW MODELS identity";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(dropSql);
-      try (ResultSet resultSet = statement.executeQuery(showSql)) {
-        int count = 0;
-        while (resultSet.next()) {
-          count++;
-        }
-        assertEquals(0, count);
-      }
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void errorTest1() {
     String sql =
         "CALL INFERENCE(notFound404, \"select s0,s1,s2 from root.AI.data\", window=head(5))";
@@ -227,7 +219,7 @@ public class AINodeModelIT {
 
   @Test
   public void errorTest4() {
-    String sql = "CREATE MODEL 中文 USING URI \"" + path + "\"";
+    String sql = "CREATE MODEL 中文 USING URI \"" + MODEL_PATH + "\"";
     errorTest(sql, "701: ModelName can only contain letters, numbers, and underscores");
   }
 }
