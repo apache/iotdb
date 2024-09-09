@@ -36,53 +36,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.NoSuchElementException;
 
 public class AlignedSeriesBatchCompactionUtils {
 
   private AlignedSeriesBatchCompactionUtils() {}
-
-  public static List<IMeasurementSchema> selectColumnBatchToCompact(
-      List<IMeasurementSchema> schemaList, Set<String> compactedMeasurements, int batchSize) {
-    // TODO: select batch by allocated memory and chunk size to perform more strict memory control
-    List<IMeasurementSchema> selectedColumnBatch = new ArrayList<>(batchSize);
-    for (IMeasurementSchema schema : schemaList) {
-      if (!isLargeDataType(schema.getType())) {
-        continue;
-      }
-      if (compactedMeasurements.contains(schema.getMeasurementId())) {
-        continue;
-      }
-      compactedMeasurements.add(schema.getMeasurementId());
-      selectedColumnBatch.add(schema);
-      if (selectedColumnBatch.size() >= batchSize) {
-        return selectedColumnBatch;
-      }
-      if (compactedMeasurements.size() == schemaList.size()) {
-        return selectedColumnBatch;
-      }
-    }
-    for (IMeasurementSchema schema : schemaList) {
-      if (compactedMeasurements.contains(schema.getMeasurementId())) {
-        continue;
-      }
-      selectedColumnBatch.add(schema);
-      compactedMeasurements.add(schema.getMeasurementId());
-      if (selectedColumnBatch.size() >= batchSize) {
-        break;
-      }
-      if (compactedMeasurements.size() == schemaList.size()) {
-        break;
-      }
-    }
-    return selectedColumnBatch;
-  }
-
-  private static boolean isLargeDataType(TSDataType dataType) {
-    return dataType.equals(TSDataType.BLOB)
-        || dataType.equals(TSDataType.TEXT)
-        || dataType.equals(TSDataType.STRING);
-  }
 
   public static void markAlignedChunkHasDeletion(
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
@@ -106,6 +64,19 @@ public class AlignedSeriesBatchCompactionUtils {
     }
   }
 
+  public static AlignedChunkMetadata filterAlignedChunkMetadataByIndex(
+      AlignedChunkMetadata alignedChunkMetadata, List<Integer> selectedMeasurements) {
+    IChunkMetadata[] valueChunkMetadataArr = new IChunkMetadata[selectedMeasurements.size()];
+    List<IChunkMetadata> originValueChunkMetadataList =
+        alignedChunkMetadata.getValueChunkMetadataList();
+    for (int i = 0; i < selectedMeasurements.size(); i++) {
+      int columnIndex = selectedMeasurements.get(i);
+      valueChunkMetadataArr[i] = originValueChunkMetadataList.get(columnIndex);
+    }
+    return new AlignedChunkMetadata(
+        alignedChunkMetadata.getTimeChunkMetadata(), Arrays.asList(valueChunkMetadataArr));
+  }
+
   public static AlignedChunkMetadata filterAlignedChunkMetadata(
       AlignedChunkMetadata alignedChunkMetadata, List<String> selectedMeasurements) {
     List<IChunkMetadata> valueChunkMetadataList =
@@ -127,6 +98,34 @@ public class AlignedSeriesBatchCompactionUtils {
     }
     return new AlignedChunkMetadata(
         alignedChunkMetadata.getTimeChunkMetadata(), valueChunkMetadataList);
+  }
+
+  public static AlignedChunkMetadata fillAlignedChunkMetadataBySchemaList(
+      AlignedChunkMetadata originAlignedChunkMetadata, List<IMeasurementSchema> schemaList) {
+    List<IChunkMetadata> originValueChunkMetadataList =
+        originAlignedChunkMetadata.getValueChunkMetadataList();
+    if (originValueChunkMetadataList.size() == schemaList.size()) {
+      return originAlignedChunkMetadata;
+    }
+    IChunkMetadata[] newValueChunkMetadataArr = new IChunkMetadata[schemaList.size()];
+    int currentValueChunkMetadataIndex = 0;
+    for (int i = 0; i < schemaList.size(); i++) {
+      IMeasurementSchema currentSchema = schemaList.get(i);
+      if (currentValueChunkMetadataIndex >= originValueChunkMetadataList.size()) {
+        break;
+      }
+      IChunkMetadata currentValueChunkMetadata =
+          originValueChunkMetadataList.get(currentValueChunkMetadataIndex);
+      if (currentValueChunkMetadata != null
+          && currentSchema
+              .getMeasurementId()
+              .equals(currentValueChunkMetadata.getMeasurementUid())) {
+        newValueChunkMetadataArr[i] = originAlignedChunkMetadata;
+        currentValueChunkMetadataIndex++;
+      }
+    }
+    return new AlignedChunkMetadata(
+        originAlignedChunkMetadata.getTimeChunkMetadata(), Arrays.asList(newValueChunkMetadataArr));
   }
 
   public static ModifiedStatus calculateAlignedPageModifiedStatus(
@@ -172,5 +171,76 @@ public class AlignedSeriesBatchCompactionUtils {
       }
     }
     return status;
+  }
+
+  public static class BatchColumnSelection {
+    private final List<IMeasurementSchema> schemaList;
+    private final LinkedList<Integer> typeSortedColumnIndexList;
+    private final LinkedList<Integer> largeTypeSortedColumnIndexList;
+    private final int batchSize;
+    private int selectedColumnNum;
+
+    private List<Integer> columnIndexList;
+    private List<IMeasurementSchema> currentSelectedColumnSchemaList;
+
+    public BatchColumnSelection(List<IMeasurementSchema> valueSchemas, int batchSize) {
+      this.schemaList = valueSchemas;
+      this.typeSortedColumnIndexList = new LinkedList<>();
+      this.largeTypeSortedColumnIndexList = new LinkedList<>();
+      for (int i = 0; i < valueSchemas.size(); i++) {
+        IMeasurementSchema schema = valueSchemas.get(i);
+        if (isLargeDataType(schema.getTypeInByte())) {
+          this.largeTypeSortedColumnIndexList.addLast(i);
+        } else {
+          this.typeSortedColumnIndexList.addLast(i);
+        }
+      }
+      this.batchSize = batchSize;
+      this.selectedColumnNum = 0;
+    }
+
+    public boolean hasNext() {
+      return selectedColumnNum < schemaList.size();
+    }
+
+    public void next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      selectColumnBatchToCompact();
+    }
+
+    public List<Integer> getSelectedColumnIndexList() {
+      return this.columnIndexList;
+    }
+
+    public List<IMeasurementSchema> getCurrentSelectedColumnSchemaList() {
+      return this.currentSelectedColumnSchemaList;
+    }
+
+    private void selectColumnBatchToCompact() {
+      // TODO: select batch by allocated memory and chunk size to perform more strict memory control
+      this.columnIndexList = new ArrayList<>(batchSize);
+      this.currentSelectedColumnSchemaList = new ArrayList<>(batchSize);
+      while (!typeSortedColumnIndexList.isEmpty() || !largeTypeSortedColumnIndexList.isEmpty()) {
+        LinkedList<Integer> sourceTypeSortedList =
+            largeTypeSortedColumnIndexList.isEmpty()
+                ? typeSortedColumnIndexList
+                : largeTypeSortedColumnIndexList;
+        Integer columnIndex = sourceTypeSortedList.removeFirst();
+        this.columnIndexList.add(columnIndex);
+        this.currentSelectedColumnSchemaList.add(this.schemaList.get(columnIndex));
+        selectedColumnNum++;
+        if (this.columnIndexList.size() >= batchSize) {
+          break;
+        }
+      }
+    }
+
+    private static boolean isLargeDataType(byte dataType) {
+      return dataType == TSDataType.TEXT.getType()
+          || dataType == TSDataType.STRING.getType()
+          || dataType == TSDataType.BLOB.getType();
+    }
   }
 }
