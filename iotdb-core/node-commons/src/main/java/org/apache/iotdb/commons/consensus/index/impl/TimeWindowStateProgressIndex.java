@@ -46,7 +46,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
 
   public TimeWindowStateProgressIndex(
       @Nonnull Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap) {
-    this.timeSeries2TimestampWindowBufferPairMap = timeSeries2TimestampWindowBufferPairMap;
+    this.timeSeries2TimestampWindowBufferPairMap =
+        new HashMap<>(timeSeries2TimestampWindowBufferPairMap);
   }
 
   private TimeWindowStateProgressIndex() {

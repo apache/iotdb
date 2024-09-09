@@ -47,7 +47,7 @@ public class StateProgressIndex extends ProgressIndex {
   public StateProgressIndex(
       long version, Map<String, Binary> state, ProgressIndex innerProgressIndex) {
     this.version = version;
-    this.state = state;
+    this.state = new HashMap<>(state);
     this.innerProgressIndex = innerProgressIndex.deepCopy();
   }
 
