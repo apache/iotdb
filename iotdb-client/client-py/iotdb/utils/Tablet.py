@@ -18,6 +18,7 @@
 
 import struct
 from enum import unique, IntEnum
+from typing import List
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType
 
@@ -39,11 +40,11 @@ class Tablet(object):
     def __init__(
         self,
         insert_target_name: str,
-        column_names: list[str],
-        data_types: list[TSDataType],
-        values: list[list],
-        timestamps: list[int],
-        column_types=None,
+        column_names: List[str],
+        data_types: List[TSDataType],
+        values: List[List],
+        timestamps: List[int],
+        column_types: List[ColumnType] = None,
     ):
         """
         creating a tablet for insertion
