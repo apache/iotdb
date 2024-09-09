@@ -612,8 +612,9 @@ public class ClusterSchemaManager {
    * @param rawPathList List<DatabaseName>
    * @return the matched DatabaseSchemas
    */
-  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(List<String> rawPathList) {
-    Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
+  public Map<String, TDatabaseSchema> getMatchedDatabaseSchemasByName(
+      final List<String> rawPathList) {
+    final Map<String, TDatabaseSchema> result = new ConcurrentHashMap<>();
     clusterSchemaInfo
         .getMatchedDatabaseSchemasByName(rawPathList)
         .forEach(

@@ -26,7 +26,7 @@ import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.tool.ImportData;
+import org.apache.iotdb.tool.data.ImportData;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
