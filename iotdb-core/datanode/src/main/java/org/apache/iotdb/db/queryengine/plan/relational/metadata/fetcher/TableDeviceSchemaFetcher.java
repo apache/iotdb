@@ -238,17 +238,26 @@ public class TableDeviceSchemaFetcher {
           new ConvertSchemaPredicateToFilterVisitor.Context(tableInstance);
       final DeviceInCacheFilterVisitor filterVisitor =
           new DeviceInCacheFilterVisitor(attributeColumns);
-      final SchemaFilter fuzzyFilter =
-          compactedIdFuzzyPredicate == null
-              ? null
-              : compactedIdFuzzyPredicate.accept(visitor, context);
+
+      final Predicate<DeviceEntry> check;
+      if (Objects.isNull(compactedIdFuzzyPredicate)) {
+        check = o -> true;
+      } else {
+        final SchemaFilter fuzzyFilter = compactedIdFuzzyPredicate.accept(visitor, context);
+        // Currently if a predicate cannot be converted to schema filter, we abandon cache
+        // and just fetch remote. Later cache will be a memory source and combine filterNode to
+        // return result.
+        check =
+            Objects.nonNull(fuzzyFilter) ? o -> filterVisitor.process(fuzzyFilter, o) : o -> false;
+      }
+
       for (final int index : idSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
             database,
             tableInstance,
             index2FilterMapList.get(index),
-            o -> fuzzyFilter == null || filterVisitor.process(fuzzyFilter, o),
+            check,
             attributeColumns,
             fetchPaths,
             isDirectDeviceQuery)) {
