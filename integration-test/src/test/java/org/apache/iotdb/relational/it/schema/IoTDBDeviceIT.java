@@ -141,6 +141,12 @@ public class IoTDBDeviceIT {
           statement.executeQuery("count devices from table0 where region_id >= '2'"),
           "count(devices),",
           Collections.singleton("0,"));
+      // Test cache with complicated filter
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery(
+              "show devices from table0 where region_id = '1' and plant_id in ('3', '5') and device_id = '3' and device_id between region_id and plant_id"),
+          "region_id,plant_id,device_id,model,",
+          Collections.singleton("1,5,3,A,"));
 
       try {
         statement.executeQuery("show devices from table2");
