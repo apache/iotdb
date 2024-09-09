@@ -50,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -309,7 +310,10 @@ public class OpcUaServerBuilder {
       final boolean enableAnonymousAccess) {
     checkEquals("user", this.user, user);
     checkEquals("password", this.password, password);
-    checkEquals("security dir", this.securityDir, securityDir);
+    checkEquals(
+        "security dir",
+        FileSystems.getDefault().getPath(this.securityDir.toAbsolutePath().toString()),
+        FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
     checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
   }
 
