@@ -32,7 +32,7 @@ public class ImportTsFileLocally extends ImportTsFileBase implements Runnable {
   public void loadTsFile() {
     String filePath;
     try {
-      while ((filePath = ImportTsFileScanTool.getFilePath()) != null) {
+      while ((filePath = ImportTsFileScanTool.pollFromQueue()) != null) {
         final String sql = "load '" + filePath + "' onSuccess=none ";
         try {
           sessionPool.executeNonQueryStatement(sql);
