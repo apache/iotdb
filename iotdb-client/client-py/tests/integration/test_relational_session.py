@@ -127,7 +127,7 @@ def session_test(use_session_pool=False):
                     "attr:" + str(timestamp)
                     == row_record.get_fields()[2].get_string_value()
                 )
-                assert timestamp * 0.1 == row_record.get_fields()[3].get_double_value()
+                assert timestamp * 1.0 == row_record.get_fields()[3].get_double_value()
                 cnt += 1
             assert 30 == cnt
 
