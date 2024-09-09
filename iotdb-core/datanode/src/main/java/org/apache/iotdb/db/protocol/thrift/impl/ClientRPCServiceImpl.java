@@ -2937,6 +2937,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setDataTypeList(header.getRespDataTypeList());
     resp.setAliasColumns(header.getRespAliasColumns());
     resp.setIgnoreTimeStamp(header.isIgnoreTimestamp());
+    resp.setColumnIndex2TsBlockColumnIndexList(header.getColumnIndex2TsBlockColumnIndexList());
     resp.setQueryId(queryId);
     resp.setTableModel(
         SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()

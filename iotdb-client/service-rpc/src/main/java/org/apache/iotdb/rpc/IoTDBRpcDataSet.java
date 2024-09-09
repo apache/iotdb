@@ -72,7 +72,7 @@ public class IoTDBRpcDataSet {
   private final long queryId;
   private final long statementId;
   private long time;
-  private boolean ignoreTimeStamp;
+  private final boolean ignoreTimeStamp;
   // indicates that there is still more data in server side and we can call fetchResult to get more
   private boolean moreData;
 
@@ -88,9 +88,6 @@ public class IoTDBRpcDataSet {
   private final int timeFactor;
 
   private final String timePrecision;
-
-  // 2 for tree model and 1 for table model
-  private final int startIndex;
 
   @SuppressWarnings({"squid:S3776", "squid:S107"}) // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
@@ -112,9 +109,9 @@ public class IoTDBRpcDataSet {
       int timeFactor,
       boolean tableModel,
       List<Integer> columnIndex2TsBlockColumnIndexList) {
-    this.startIndex = tableModel ? 1 : 2;
     this.sessionId = sessionId;
     this.statementId = statementId;
+    // only used for tree model, table model this field will always be true
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.sql = sql;
     this.queryId = queryId;
@@ -125,16 +122,34 @@ public class IoTDBRpcDataSet {
 
     this.columnNameList = new ArrayList<>();
     this.columnTypeList = new ArrayList<>();
+    this.columnOrdinalMap = new HashMap<>();
+    this.columnName2TsBlockColumnIndexMap = new HashMap<>();
+    int columnStartIndex = 1;
+    int resultSetColumnSize = columnNameList.size();
+    // for Time Column in tree model which should always be the first column and its index for
+    // TsBlockColumn is -1
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
       this.columnTypeList.add(String.valueOf(TSDataType.INT64));
-    }
-    // deduplicate and map
-    this.columnOrdinalMap = new HashMap<>();
-    this.columnName2TsBlockColumnIndexMap = new HashMap<>();
-    if (!ignoreTimeStamp) {
       this.columnName2TsBlockColumnIndexMap.put(TIMESTAMP_STR, -1);
       this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
+      columnStartIndex++;
+      resultSetColumnSize++;
+    }
+
+    // newly generated columnIndex2TsBlockColumnIndexList.size() may not be equal to
+    // columnNameList.size()
+    // so we need startIndexForColumnIndex2TsBlockColumnIndexList to adjust the mapping relation
+    int startIndexForColumnIndex2TsBlockColumnIndexList = 0;
+    if (columnIndex2TsBlockColumnIndexList == null) {
+      columnIndex2TsBlockColumnIndexList = new ArrayList<>(resultSetColumnSize);
+      if (!ignoreTimeStamp) {
+        startIndexForColumnIndex2TsBlockColumnIndexList = 1;
+        columnIndex2TsBlockColumnIndexList.add(-1);
+      }
+      for (int i = 0, size = columnNameList.size(); i < size; i++) {
+        columnIndex2TsBlockColumnIndexList.add(i);
+      }
     }
 
     int tsBlockColumnSize =
@@ -143,15 +158,18 @@ public class IoTDBRpcDataSet {
     for (int i = 0; i < tsBlockColumnSize; i++) {
       dataTypeForTsBlockColumn.add(null);
     }
-    for (int i = 0; i < columnIndex2TsBlockColumnIndexList.size(); i++) {
+
+    for (int i = 0, size = columnNameList.size(); i < size; i++) {
       String name = columnNameList.get(i);
       this.columnNameList.add(name);
       this.columnTypeList.add(columnTypeList.get(i));
-      int tsBlockColumnIndex = columnIndex2TsBlockColumnIndexList.get(i);
+      int tsBlockColumnIndex =
+          columnIndex2TsBlockColumnIndexList.get(
+              startIndexForColumnIndex2TsBlockColumnIndexList + i);
       TSDataType columnType = TSDataType.valueOf(columnTypeList.get(i));
       dataTypeForTsBlockColumn.set(tsBlockColumnIndex, columnType);
       if (!columnName2TsBlockColumnIndexMap.containsKey(name)) {
-        columnOrdinalMap.put(name, i + startIndex);
+        columnOrdinalMap.put(name, i + columnStartIndex);
         columnName2TsBlockColumnIndexMap.put(name, tsBlockColumnIndex);
       }
     }
@@ -173,10 +191,7 @@ public class IoTDBRpcDataSet {
       throw new IllegalArgumentException(
           String.format(
               "Size of columnIndex2TsBlockColumnIndexList %s doesn't equal to size of columnNameList %s.",
-              columnIndex2TsBlockColumnIndexList == null
-                  ? null
-                  : columnIndex2TsBlockColumnIndexList.size(),
-              this.columnNameList.size()));
+              columnIndex2TsBlockColumnIndexList.size(), this.columnNameList.size()));
     }
     this.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList;
   }

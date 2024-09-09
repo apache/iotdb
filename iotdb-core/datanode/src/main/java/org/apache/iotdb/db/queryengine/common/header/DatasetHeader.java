@@ -39,6 +39,7 @@ public class DatasetHeader {
   public static final DatasetHeader EMPTY_HEADER = new DatasetHeader(new ArrayList<>(), false);
 
   // column names, data types and aliases of result dataset
+  // !!attention!! there may exist duplicated column names in table model
   private final List<ColumnHeader> columnHeaders;
 
   // indicate whether the result dataset contain timestamp column
@@ -90,6 +91,8 @@ public class DatasetHeader {
     }
 
     this.columnToTsBlockIndexMap = new HashMap<>();
+    this.columnIndex2TsBlockColumnIndexList =
+        new ArrayList<>(outputNode.getOutputColumnNames().size());
     for (int i = 0; i < outputNode.getOutputColumnNames().size(); i++) {
       int index = outputSymbolsIndexMap.get(outputNode.getOutputSymbols().get(i));
       columnToTsBlockIndexMap.put(outputNode.getOutputColumnNames().get(i), index);
@@ -165,6 +168,10 @@ public class DatasetHeader {
       outputValueColumnCount = columnNameSet.size();
     }
     return outputValueColumnCount;
+  }
+
+  public List<Integer> getColumnIndex2TsBlockColumnIndexList() {
+    return columnIndex2TsBlockColumnIndexList;
   }
 
   @Override
