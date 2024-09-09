@@ -97,6 +97,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.INT64
+            and self.__data_type != TSDataType.TIMESTAMP
             or self.value is None
             or self.value is pd.NA
         ):

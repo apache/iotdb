@@ -136,6 +136,10 @@ with session.execute_query_statement("select * from table5 order by time") as da
     print(dataset.get_column_names())
     while dataset.has_next():
         row_record = dataset.next()
+        # print(row_record.get_fields()[0].get_long_value())
+        # print(row_record.get_fields()[1].get_string_value())
+        # print(row_record.get_fields()[2].get_string_value())
+        # print(row_record.get_fields()[3].get_double_value())
         print(row_record)
 
 with session.execute_query_statement("select * from table5 order by time") as dataset:
