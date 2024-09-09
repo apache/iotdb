@@ -43,7 +43,7 @@ class Tablet(object):
         data_types: list[TSDataType],
         values: list[list],
         timestamps: list[int],
-        column_types: list[int] = None,
+        column_types=None,
     ):
         """
         creating a tablet for insertion

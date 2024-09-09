@@ -33,7 +33,7 @@ class NumpyTablet(object):
         values: list[ndarray],
         timestamps: ndarray,
         bitmaps: list[BitMap] = None,
-        column_types: list[int] = None,
+        column_types=None,
     ):
         """
         creating a numpy tablet for insertion
