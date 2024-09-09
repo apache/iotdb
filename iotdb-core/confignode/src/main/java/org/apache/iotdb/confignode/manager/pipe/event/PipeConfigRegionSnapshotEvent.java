@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeSnapshotEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
-import org.apache.iotdb.db.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -254,7 +254,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   @Override
   protected void trackResource() {
-    trackResource(this);
+    PipeConfigNodeResourceManager.ref().trackPipeEventResource(this, eventResourceBuilder());
   }
 
   @Override

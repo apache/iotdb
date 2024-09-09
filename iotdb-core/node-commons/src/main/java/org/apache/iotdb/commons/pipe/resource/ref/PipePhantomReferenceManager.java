@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.resource.ref;
+package org.apache.iotdb.commons.pipe.resource.ref;
 
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class PipePhantomReferenceManager {
+public abstract class PipePhantomReferenceManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePhantomReferenceManager.class);
 
@@ -43,11 +42,10 @@ public class PipePhantomReferenceManager {
   private static final ReferenceQueue<EnrichedEvent> REFERENCE_QUEUE = new ReferenceQueue<>();
 
   public PipePhantomReferenceManager() {
-    PipeDataNodeAgent.runtime()
-        .registerPeriodicalJob("PipePhantomReferenceManager#gcHook()", this::gcHook, 10);
+    // Do nothing now.
   }
 
-  private void gcHook() {
+  protected void gcHook() {
     Reference<? extends EnrichedEvent> reference;
     try {
       while ((reference = REFERENCE_QUEUE.remove(500)) != null) {

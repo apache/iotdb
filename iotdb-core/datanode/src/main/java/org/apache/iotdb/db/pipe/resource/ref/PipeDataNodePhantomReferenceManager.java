@@ -17,11 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.event;
+package org.apache.iotdb.db.pipe.resource.ref;
 
-import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
+import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
-public interface ReferenceTrackableEvent {
+public class PipeDataNodePhantomReferenceManager extends PipePhantomReferenceManager {
 
-  PipeEventResource eventResourceBuilder();
+  public PipeDataNodePhantomReferenceManager() {
+    super();
+
+    PipeDataNodeAgent.runtime()
+        .registerPeriodicalJob("PipePhantomReferenceManager#gcHook()", super::gcHook, 10);
+  }
 }
