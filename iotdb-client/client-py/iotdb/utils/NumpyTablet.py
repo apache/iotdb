@@ -19,7 +19,7 @@
 import struct
 
 from numpy import ndarray
-
+from typing import List
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.Tablet import ColumnType
@@ -34,7 +34,7 @@ class NumpyTablet(object):
         values: list[ndarray],
         timestamps: ndarray,
         bitmaps: list[BitMap] = None,
-        column_types: list[ColumnType] = None,
+        column_types: List[ColumnType] = None,
     ):
         """
         creating a numpy tablet for insertion

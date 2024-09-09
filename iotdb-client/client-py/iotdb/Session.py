@@ -118,11 +118,21 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
+        sql_dialect=None,
+        database=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
         session = Session(
-            None, None, user, password, fetch_size, zone_id, enable_redirection
+            None,
+            None,
+            user,
+            password,
+            fetch_size,
+            zone_id,
+            enable_redirection,
+            sql_dialect=sql_dialect,
+            database=database,
         )
         session.__hosts = []
         session.__ports = []
@@ -1415,8 +1425,18 @@ class Session(object):
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
+        previous_db = self.__database
         if resp.database is not None:
             self.__database = resp.database
+        if previous_db != self.__database and self.__endpoint_to_connection is not None:
+            iterator = iter(self.__endpoint_to_connection.items())
+            for entry in list(iterator):
+                endpoint, connection = entry
+                if connection != self.__default_connection:
+                    try:
+                        connection.change_database(sql)
+                    except Exception as e:
+                        self.__endpoint_to_connection.pop(endpoint)
         return Session.verify_success(resp.status)
 
     def execute_statement(self, sql: str, timeout=0):
@@ -2274,6 +2294,17 @@ class SessionConnection(object):
         self.transport = transport
         self.session_id = session_id
         self.statement_id = statement_id
+
+    def change_database(self, sql):
+        try:
+            self.client.executeUpdateStatement(
+                TSExecuteStatementReq(self.session_id, sql, self.statement_id)
+            )
+        except TTransport.TException as e:
+            raise IoTDBConnectionException(
+                "failed to change database",
+                e,
+            ) from None
 
     def close_connection(self, req):
         try:
