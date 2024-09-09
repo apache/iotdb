@@ -122,7 +122,7 @@ class NumpyTablet(object):
         bs_len = 0
         bs_list = []
         for data_type, value in zip(self.__data_types, self.__values):
-            # TEXT, STRING
+            # TEXT, STRING, BLOB
             if data_type == 5 or data_type == 11 or data_type == 10:
                 format_str_list = [">"]
                 values_tobe_packed = []
