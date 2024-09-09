@@ -126,38 +126,49 @@ public class ConvertSchemaPredicateToFilterVisitor
       final ComparisonExpression node, final Context context) {
     final String columnName;
     final String value;
+    final boolean isOrdered;
     if (node.getLeft() instanceof Literal) {
       value = ((StringLiteral) (node.getLeft())).getValue();
       checkArgument(isSymbolReference(node.getRight()));
       columnName = ((SymbolReference) (node.getRight())).getName();
+      isOrdered = false;
     } else {
       value = ((StringLiteral) (node.getRight())).getValue();
       checkArgument(isSymbolReference(node.getLeft()));
       columnName = ((SymbolReference) (node.getLeft())).getName();
+      isOrdered = true;
     }
 
     return wrapIdOrAttributeFilter(
         node.getOperator() == ComparisonExpression.Operator.EQUAL
             ? new PreciseFilter(value)
             : new ComparisonFilter(
-                convertExpressionOperator2SchemaOperator(node.getOperator()), value),
+                convertExpressionOperator2SchemaOperator(node.getOperator(), isOrdered), value),
         columnName,
         context);
   }
 
   private ComparisonFilter.Operator convertExpressionOperator2SchemaOperator(
-      final ComparisonExpression.Operator operator) {
+      final ComparisonExpression.Operator operator, final boolean isOrdered) {
     switch (operator) {
       case NOT_EQUAL:
         return ComparisonFilter.Operator.NOT_EQUAL;
       case LESS_THAN:
-        return ComparisonFilter.Operator.LESS_THAN;
+        return isOrdered
+            ? ComparisonFilter.Operator.LESS_THAN
+            : ComparisonFilter.Operator.GREATER_THAN;
       case LESS_THAN_OR_EQUAL:
-        return ComparisonFilter.Operator.LESS_THAN_OR_EQUAL;
+        return isOrdered
+            ? ComparisonFilter.Operator.LESS_THAN_OR_EQUAL
+            : ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL;
       case GREATER_THAN:
-        return ComparisonFilter.Operator.GREATER_THAN;
+        return isOrdered
+            ? ComparisonFilter.Operator.GREATER_THAN
+            : ComparisonFilter.Operator.LESS_THAN;
       case GREATER_THAN_OR_EQUAL:
-        return ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL;
+        return isOrdered
+            ? ComparisonFilter.Operator.GREATER_THAN_OR_EQUAL
+            : ComparisonFilter.Operator.LESS_THAN_OR_EQUAL;
       default:
         throw new UnsupportedOperationException("Unsupported operator " + operator);
     }

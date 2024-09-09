@@ -89,7 +89,8 @@ public class IoTDBDeviceIT {
       // Test show / count with where expression
       // Test AND
       TestUtils.assertResultSetEqual(
-          statement.executeQuery("show devices from table0 where region_id = '1' and model = 'A'"),
+          statement.executeQuery(
+              "show devices from table0 where region_id between '0' and '2' and model = 'A'"),
           "region_id,plant_id,device_id,model,",
           Collections.singleton("1,5,3,A,"));
       // Test OR
@@ -114,7 +115,7 @@ public class IoTDBDeviceIT {
           Collections.singleton("1,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
-              "count devices from table0 where substring(region_id, cast((cast(plant_id as int32) - 4) as int32 ) , 1) < plant_id"),
+              "count devices from table0 where substring(region_id, cast((cast(plant_id as int32) - 4) as int32), 1) < plant_id"),
           "count(devices),",
           Collections.singleton("1,"));
       // Test get from cache
