@@ -62,7 +62,7 @@ import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -577,17 +577,15 @@ public class ProcedureManager {
   }
 
   /**
-   * Generate {@link RemoveDataNodeProcedure}s, and serially execute all the {@link
-   * RemoveDataNodeProcedure}s.
+   * Generate {@link RemoveDataNodesProcedure}s, and serially execute all the {@link
+   * RemoveDataNodesProcedure}s.
    */
   public boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
-    removeDataNodePlan
-        .getDataNodeLocations()
-        .forEach(
-            tDataNodeLocation -> {
-              this.executor.submitProcedure(new RemoveDataNodeProcedure(tDataNodeLocation));
-              LOGGER.info("Submit RemoveDataNodeProcedure successfully, {}", tDataNodeLocation);
-            });
+    this.executor.submitProcedure(
+        new RemoveDataNodesProcedure(removeDataNodePlan.getDataNodeLocations()));
+    LOGGER.info(
+        "Submit RemoveDataNodeProcedure successfully, {}",
+        removeDataNodePlan.getDataNodeLocations());
     return true;
   }
 

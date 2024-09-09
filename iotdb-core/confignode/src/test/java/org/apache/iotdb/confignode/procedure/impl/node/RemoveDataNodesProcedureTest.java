@@ -29,13 +29,15 @@ import org.junit.Test;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
 
-public class RemoveDataNodeProcedureTest {
+public class RemoveDataNodesProcedureTest {
 
   @Test
   public void serDeTest() throws IOException {
-    RemoveDataNodeProcedure procedure0 =
-        new RemoveDataNodeProcedure(
+    List<TDataNodeLocation> removedDataNodes =
+        Collections.singletonList(
             new TDataNodeLocation(
                 10,
                 new TEndPoint("127.0.0.1", 6667),
@@ -43,6 +45,7 @@ public class RemoveDataNodeProcedureTest {
                 new TEndPoint("127.0.0.1", 6669),
                 new TEndPoint("127.0.0.1", 6670),
                 new TEndPoint("127.0.0.1", 6671)));
+    RemoveDataNodesProcedure procedure0 = new RemoveDataNodesProcedure(removedDataNodes);
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {

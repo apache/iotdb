@@ -31,7 +31,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
-import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.testonly.NeverFinishProcedure;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -90,18 +90,27 @@ public class UpgradeFromWALToConsensusLayerTest {
 
     ProcedureInfo procedureInfo = configManager.getProcedureManager().getStore().getProcedureInfo();
     ConfigProcedureStore.createOldProcWalDir();
-
-    // prepare procedures
-    RemoveDataNodeProcedure removeDataNodeProcedure =
-        new RemoveDataNodeProcedure(
+    List<TDataNodeLocation> removedDataNodes =
+        Arrays.asList(
             new TDataNodeLocation(
                 10000,
                 new TEndPoint("127.0.0.1", 6600),
                 new TEndPoint("127.0.0.1", 7700),
                 new TEndPoint("127.0.0.1", 8800),
                 new TEndPoint("127.0.0.1", 9900),
-                new TEndPoint("127.0.0.1", 11000)));
-    removeDataNodeProcedure.setProcId(10086);
+                new TEndPoint("127.0.0.1", 11000)),
+            new TDataNodeLocation(
+                10001,
+                new TEndPoint("127.0.0.1", 6601),
+                new TEndPoint("127.0.0.1", 7701),
+                new TEndPoint("127.0.0.1", 8801),
+                new TEndPoint("127.0.0.1", 9901),
+                new TEndPoint("127.0.0.1", 11001)));
+
+    // prepare procedures
+    RemoveDataNodesProcedure removeDataNodesProcedure =
+        new RemoveDataNodesProcedure(removedDataNodes);
+    removeDataNodesProcedure.setProcId(10086);
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(
             new TConfigNodeLocation(
@@ -111,7 +120,7 @@ public class UpgradeFromWALToConsensusLayerTest {
     List<Procedure> procedureList =
         Arrays.asList(
             new NeverFinishProcedure(0),
-            removeDataNodeProcedure,
+            removeDataNodesProcedure,
             new NeverFinishProcedure(199),
             addConfigNodeProcedure,
             new NeverFinishProcedure(29999));

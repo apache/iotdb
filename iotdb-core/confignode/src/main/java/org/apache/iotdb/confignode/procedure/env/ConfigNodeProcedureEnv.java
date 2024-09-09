@@ -116,12 +116,15 @@ public class ConfigNodeProcedureEnv {
 
   private final RegionMaintainHandler regionMaintainHandler;
 
+  private final RemoveDataNodeManager removeDataNodeManager;
+
   private final ReentrantLock removeConfigNodeLock;
 
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
+    this.removeDataNodeManager = new RemoveDataNodeManager(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -217,18 +220,20 @@ public class ConfigNodeProcedureEnv {
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public boolean checkEnoughDataNodeAfterRemoving(TDataNodeLocation removedDatanode) {
+  public boolean checkEnoughDataNodeAfterRemoving(List<TDataNodeLocation> removedDataNodes) {
     final int existedDataNodeNum =
         getNodeManager()
             .filterDataNodeThroughStatus(
                 NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
             .size();
-    int dataNodeNumAfterRemoving;
-    if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
-      dataNodeNumAfterRemoving = existedDataNodeNum - 1;
-    } else {
-      dataNodeNumAfterRemoving = existedDataNodeNum;
+
+    int dataNodeNumAfterRemoving = existedDataNodeNum;
+    for (TDataNodeLocation removedDatanode : removedDataNodes) {
+      if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
+        dataNodeNumAfterRemoving = existedDataNodeNum - 1;
+      }
     }
+
     return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
@@ -375,6 +380,18 @@ public class ConfigNodeProcedureEnv {
   public void createConfigNodeHeartbeatCache(int nodeId) {
     getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.ConfigNode, nodeId);
     // TODO: invoke a force heartbeat to update new ConfigNode's status immediately
+  }
+
+  /**
+   * Mark the given batch of DataNodes as removing status to avoid read or write request routing to
+   * these nodes.
+   *
+   * @param removedDataNodes the DataNodes to be marked as removing status
+   */
+  public void markDataNodesAsRemovingAndBroadcast(List<TDataNodeLocation> removedDataNodes) {
+    for (TDataNodeLocation removedDataNode : removedDataNodes) {
+      markDataNodeAsRemovingAndBroadcast(removedDataNode);
+    }
   }
 
   /**
@@ -889,6 +906,10 @@ public class ConfigNodeProcedureEnv {
 
   public RegionMaintainHandler getRegionMaintainHandler() {
     return regionMaintainHandler;
+  }
+
+  public RemoveDataNodeManager getRemoveDataNodeManager() {
+    return removeDataNodeManager;
   }
 
   private ConsensusManager getConsensusManager() {
