@@ -20,11 +20,18 @@ import numpy as np
 
 from iotdb.Session import Session
 from iotdb.SessionPool import PoolConfig, create_session_pool
-from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.NumpyTablet import NumpyTablet
 from iotdb.utils.Tablet import Tablet, ColumnType
 from iotdb.IoTDBContainer import IoTDBContainer
+
+
+def test_session():
+    session_test()
+
+
+def test_session_pool():
+    session_test(True)
 
 
 def session_test(use_session_pool=False):
