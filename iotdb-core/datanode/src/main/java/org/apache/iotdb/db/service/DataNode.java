@@ -714,7 +714,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Get resources for trigger,udf,pipe...
     prepareResources();
 
-    Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook(generateDataNodeLocation()));
+    Runtime.getRuntime().addShutdownHook(new DataNodeShutdownHook(generateDataNodeLocation()));
     setUncaughtExceptionHandler();
 
     logger.info("Recover the schema...");
