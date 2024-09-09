@@ -48,6 +48,7 @@ def session_test(use_session_pool=False):
                 1024,
                 "Asia/Shanghai",
                 3,
+                sql_dialect="table",
             )
             session_pool = create_session_pool(pool_config, 1, 3000)
             session = session_pool.get_session()
@@ -63,6 +64,7 @@ def session_test(use_session_pool=False):
             print("can't open session")
             exit(1)
 
+        session.execute_non_query_statement("CREATE DATABASE IF NOT EXISTS db1")
         session.execute_non_query_statement('USE "db1"')
         session.execute_non_query_statement(
             "CREATE TABLE table5 (id1 string id, attr1 string attribute, "
