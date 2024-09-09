@@ -30,12 +30,12 @@ public class CreateDBTask implements IConfigTask {
 
   private final CreateDB node;
 
-  public CreateDBTask(CreateDB node) {
+  public CreateDBTask(final CreateDB node) {
     this.node = node;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.createDatabase(node);
   }
