@@ -37,11 +37,14 @@ import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
+import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
+import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +55,8 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
 import static org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler.getIdWithRpcEndpoint;
+import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
+import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
 import static org.apache.iotdb.db.service.RegionMigrateService.isSucceed;
 
 public class RemoveDataNodeManager {
@@ -73,6 +78,126 @@ public class RemoveDataNodeManager {
   }
 
   /**
+   * check if the remove datanode request illegal
+   *
+   * @param removeDataNodePlan RemoveDataNodeReq
+   * @return SUCCEED_STATUS when request is legal.
+   */
+  public DataNodeToStatusResp checkRemoveDataNodeRequest(RemoveDataNodePlan removeDataNodePlan) {
+    DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+    dataSet.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+
+    TSStatus status = checkClusterProtocol();
+    if (isFailed(status)) {
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+    status = checkRegionReplication(removeDataNodePlan);
+    if (isFailed(status)) {
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+
+    status = checkDataNodeExist(removeDataNodePlan);
+    if (isFailed(status)) {
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+
+    status = checkAllowRemoveDataNode(removeDataNodePlan);
+    if (isFailed(status)) {
+      dataSet.setStatus(status);
+      return dataSet;
+    }
+
+    return dataSet;
+  }
+
+  /**
+   * check if allow to remove the DataNodes from the cluster
+   *
+   * @param removeDataNodePlan RemoveDataNodeReq
+   * @return SUCCEED_STATUS when request is legal.
+   */
+  public TSStatus checkAllowRemoveDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    return configManager
+        .getProcedureManager()
+        .checkRemoveDataNodes(removeDataNodePlan.getDataNodeLocations());
+  }
+
+  /**
+   * Check the protocol of the cluster, standalone is not supported to remove data node currently
+   *
+   * @return SUCCEED_STATUS if the Cluster is not standalone protocol, REMOVE_DATANODE_FAILED
+   *     otherwise
+   */
+  private TSStatus checkClusterProtocol() {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (CONF.getDataRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)
+        || CONF.getSchemaRegionConsensusProtocolClass().equals(SIMPLE_CONSENSUS)) {
+      status.setCode(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+      status.setMessage("SimpleConsensus protocol is not supported to remove data node");
+    }
+    return status;
+  }
+
+  /**
+   * Check whether the cluster has enough DataNodes to maintain RegionReplicas
+   *
+   * @param removeDataNodePlan RemoveDataNodeReq
+   * @return SUCCEED_STATUS if the number of DataNodes is enough, LACK_REPLICATION otherwise
+   */
+  private TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
+
+    int availableDatanodeSize =
+        configManager
+            .getNodeManager()
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
+            .size();
+    // when the configuration is one replication, it will be failed if the data node is not in
+    // running state.
+    if (CONF.getSchemaReplicationFactor() == 1 || CONF.getDataReplicationFactor() == 1) {
+      for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
+        // check whether removed data node is in running state
+        if (!NodeStatus.Running.equals(
+            configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()))) {
+          removedDataNodes.remove(dataNodeLocation);
+          LOGGER.error(
+              "Failed to remove data node {} because it is not in running and the configuration of cluster is one replication",
+              dataNodeLocation);
+        }
+        if (removedDataNodes.isEmpty()) {
+          status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+          status.setMessage("Failed to remove all requested data nodes");
+          return status;
+        }
+      }
+    }
+
+    int removedDataNodeSize =
+        (int)
+            removeDataNodePlan.getDataNodeLocations().stream()
+                .filter(
+                    x ->
+                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
+                            != NodeStatus.Unknown)
+                .count();
+    if (availableDatanodeSize - removedDataNodeSize < NodeInfo.getMinimumDataNode()) {
+      status.setCode(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+      status.setMessage(
+          String.format(
+              "Can't remove datanode due to the limit of replication factor, "
+                  + "availableDataNodeSize: %s, maxReplicaFactor: %s, max allowed removed Data Node size is: %s",
+              availableDatanodeSize,
+              NodeInfo.getMinimumDataNode(),
+              (availableDatanodeSize - NodeInfo.getMinimumDataNode())));
+    }
+    return status;
+  }
+
+  /**
    * Get all region migration plans in removedDataNodes
    *
    * @param removedDataNodes List<TDataNodeLocation>
@@ -89,6 +214,30 @@ public class RemoveDataNodeManager {
               .collect(Collectors.toList()));
     }
     return regionMigrationPlans;
+  }
+
+  /**
+   * Check whether all DataNodes to be deleted exist in the cluster
+   *
+   * @param removeDataNodePlan RemoveDataNodeReq
+   * @return SUCCEED_STATUS if all DataNodes to be deleted exist in the cluster, DATANODE_NOT_EXIST
+   *     otherwise
+   */
+  private TSStatus checkDataNodeExist(RemoveDataNodePlan removeDataNodePlan) {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+
+    List<TDataNodeLocation> allDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes().stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toList());
+    boolean hasNotExistNode =
+        removeDataNodePlan.getDataNodeLocations().stream()
+            .anyMatch(loc -> !allDataNodes.contains(loc));
+    if (hasNotExistNode) {
+      status.setCode(TSStatusCode.DATANODE_NOT_EXIST.getStatusCode());
+      status.setMessage("there exist Data Node in request but not in cluster");
+    }
+    return status;
   }
 
   /**

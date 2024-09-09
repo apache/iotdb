@@ -280,4 +280,8 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
   public int hashCode() {
     return Objects.hash(this.removedDataNodes, this.regionMigrationPlans);
   }
+
+  public List<TDataNodeLocation> getRemovedDataNodes() {
+    return removedDataNodes;
+  }
 }

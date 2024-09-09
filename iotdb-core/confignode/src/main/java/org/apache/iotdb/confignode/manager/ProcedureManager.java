@@ -596,7 +596,41 @@ public class ProcedureManager {
     return true;
   }
 
-  // region region migration
+  public TSStatus checkRemoveDataNodes(List<TDataNodeLocation> dataNodeLocations) {
+    Optional<Procedure<ConfigNodeProcedureEnv>> anotherRemoveProcedure =
+        this.executor.getProcedures().values().stream()
+            .filter(
+                procedure -> {
+                  if (procedure instanceof RemoveDataNodesProcedure) {
+                    return !procedure.isFinished();
+                  }
+                  return false;
+                })
+            .findAny();
+
+    String failMessage = null;
+    if (anotherRemoveProcedure.isPresent()) {
+      List<TDataNodeLocation> anotherRemoveDataNodes =
+          ((RemoveDataNodesProcedure) anotherRemoveProcedure.get()).getRemovedDataNodes();
+      failMessage =
+          String.format(
+              "Submit RemoveDataNodesProcedure failed, "
+                  + "because another RemoveDataNodesProcedure %s is already in processing. "
+                  + "IoTDB is able to have at most 1 RemoveDataNodesProcedure at the same time. "
+                  + "For further information, please search [pid%d] in log. ",
+              anotherRemoveDataNodes, anotherRemoveProcedure.get().getProcId());
+    }
+
+    if (failMessage != null) {
+      LOGGER.warn(failMessage);
+      TSStatus failStatus = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+      failStatus.setMessage(failMessage);
+      return failStatus;
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /** Check if allow to migrate region or not. */
   private TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,

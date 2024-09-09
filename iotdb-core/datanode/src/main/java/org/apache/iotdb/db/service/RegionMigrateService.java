@@ -598,7 +598,7 @@ public class RegionMigrateService implements IService {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
-  private static boolean isFailed(TSStatus status) {
+  public static boolean isFailed(TSStatus status) {
     return !isSucceed(status);
   }
 
