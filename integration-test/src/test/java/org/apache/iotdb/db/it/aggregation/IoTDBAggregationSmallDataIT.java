@@ -397,7 +397,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void sumWithSingleValueFilterTest() {
-    String[] retArray = new String[] {"0,22321.0,55934.0,1029"};
+    String[] retArray = new String[] {"22321.0,55934.0,1029"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
