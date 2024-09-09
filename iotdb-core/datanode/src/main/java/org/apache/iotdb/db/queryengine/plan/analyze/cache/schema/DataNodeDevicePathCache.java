@@ -57,15 +57,19 @@ public class DataNodeDevicePathCache {
     private static final DataNodeDevicePathCache INSTANCE = new DataNodeDevicePathCache();
   }
 
-  public PartialPath getPartialPath(String deviceId) throws IllegalPathException {
+  public PartialPath getPartialPath(final String deviceId) throws IllegalPathException {
     try {
       return devicePathCache.get(
           deviceId,
           path -> {
             try {
               return new PartialPath(path);
-            } catch (IllegalPathException e) {
-              throw new IllegalArgumentException(e);
+            } catch (final IllegalPathException e) {
+              try {
+                return PartialPath.getDatabasePath(path);
+              } catch (final IllegalPathException e1) {
+                throw new IllegalArgumentException(e1);
+              }
             }
           });
     } catch (IllegalArgumentException e) {
@@ -73,7 +77,7 @@ public class DataNodeDevicePathCache {
     }
   }
 
-  public String getDeviceId(String deviceId) {
+  public String getDeviceId(final String deviceId) {
     try {
       return getPartialPath(deviceId).getFullPath();
     } catch (IllegalPathException e) {

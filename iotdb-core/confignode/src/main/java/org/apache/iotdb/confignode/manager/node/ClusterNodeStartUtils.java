@@ -260,6 +260,14 @@ public class ClusterNodeStartUtils {
                   configManager.getNodeManager().getRegisteredConfigNodes());
         }
         break;
+      case AINode:
+        if (nodeLocation instanceof TAINodeLocation) {
+          matchedNodeLocation =
+              matchRegisteredAINode(
+                  (TAINodeLocation) nodeLocation,
+                  configManager.getNodeManager().getRegisteredAINodes());
+        }
+        break;
       case DataNode:
       default:
         if (nodeLocation instanceof TDataNodeLocation) {
@@ -426,6 +434,24 @@ public class ClusterNodeStartUtils {
     for (TConfigNodeLocation registeredConfigNode : registeredConfigNodes) {
       if (registeredConfigNode.getConfigNodeId() == configNodeLocation.getConfigNodeId()) {
         return registeredConfigNode;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if there exists a registered AINode who has the same index of the given one.
+   *
+   * @param aiNodeLocation The given AINode
+   * @param registeredAINodes Registered AINodes
+   * @return The AINodeLocation who has the same index of the given one, null otherwise.
+   */
+  public static TAINodeLocation matchRegisteredAINode(
+      TAINodeLocation aiNodeLocation, List<TAINodeConfiguration> registeredAINodes) {
+    for (TAINodeConfiguration registeredAINode : registeredAINodes) {
+      if (registeredAINode.getLocation().getAiNodeId() == aiNodeLocation.getAiNodeId()) {
+        return registeredAINode.getLocation();
       }
     }
 

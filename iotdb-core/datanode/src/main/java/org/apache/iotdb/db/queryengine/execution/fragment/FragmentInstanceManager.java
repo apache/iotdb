@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -198,6 +199,8 @@ public class FragmentInstanceManager {
                         new IoTDBException(
                             TOO_MANY_CONCURRENT_QUERIES_ERROR_MSG,
                             TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()));
+                  } else if (t instanceof IoTDBRuntimeException) {
+                    stateMachine.failed(t);
                   } else {
                     logger.warn("error when create FragmentInstanceExecution.", t);
                     stateMachine.failed(t);

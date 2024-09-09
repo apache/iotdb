@@ -73,6 +73,7 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
+import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 /**
  * QueryExecution stores all the status of a query which is being prepared or running inside the MPP
@@ -480,6 +481,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void dealWithException(Throwable t) throws IoTDBException {
+    t = getRootCause(t);
     stateMachine.transitionToFailed(t);
     if (stateMachine.getFailureStatus() != null) {
       throw new IoTDBException(

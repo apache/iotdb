@@ -82,7 +82,7 @@ public interface PlanOptimizer {
       return typeProvider;
     }
 
-    public SymbolAllocator symbolAllocator() {
+    public SymbolAllocator getSymbolAllocator() {
       return symbolAllocator;
     }
 

@@ -584,10 +584,11 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
 
   @Override
   public long getConsensusPipeCommitProgress() {
-    long creationTime = PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName);
-    String committerKey =
-        String.format("%s_%s_%s", consensusPipeName, consensusGroupId, creationTime);
-    return PipeEventCommitManager.getInstance().getGivenConsensusPipeCommitId(committerKey);
+    return PipeEventCommitManager.getInstance()
+        .getGivenConsensusPipeCommitId(
+            consensusPipeName,
+            PipeDataNodeAgent.task().getPipeCreationTime(consensusPipeName),
+            consensusGroupId);
   }
 
   @Override
