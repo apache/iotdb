@@ -495,9 +495,13 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
 
     private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {
+      long count = timePage.getHeader().getStatistics().getCount();
       boolean largeEnough =
-          timePage.getHeader().getUncompressedSize() >= targetPageSize
-              || timePage.getHeader().getStatistics().getCount() >= targetPagePointNum;
+          count >= targetPagePointNum
+              || Math.max(
+                      estimateMemorySizeAsPageWriter(timePage),
+                      timePage.getHeader().getUncompressedSize())
+                  >= targetPageSize;
       if (timeSchema.getEncodingType() != timePage.getEncoding()
           || timeSchema.getCompressor() != timePage.getCompressionType()) {
         return false;
@@ -515,11 +519,53 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         if (valuePage.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
           return false;
         }
-        if (valuePage.getHeader().getUncompressedSize() >= targetPageSize) {
+        if (Math.max(
+                valuePage.getHeader().getUncompressedSize(),
+                estimateMemorySizeAsPageWriter(valuePage))
+            >= targetPageSize) {
           largeEnough = true;
         }
       }
       return largeEnough;
+    }
+
+    private long estimateMemorySizeAsPageWriter(PageLoader pageLoader) {
+      long count = pageLoader.getHeader().getStatistics().getCount();
+      long size;
+      switch (pageLoader.getDataType()) {
+        case INT32:
+        case DATE:
+          size = count * Integer.BYTES;
+          break;
+        case TIMESTAMP:
+        case INT64:
+        case VECTOR:
+          size = count * Long.BYTES;
+          break;
+        case FLOAT:
+          size = count * Float.BYTES;
+          break;
+        case DOUBLE:
+          size = count * Double.BYTES;
+          break;
+        case BOOLEAN:
+          size = count * Byte.BYTES;
+          break;
+        case TEXT:
+        case STRING:
+        case BLOB:
+          size = pageLoader.getHeader().getUncompressedSize();
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unsupported data type: " + pageLoader.getDataType().toString());
+      }
+      // Due to the fact that the page writer in memory includes some other objects
+      // and has a special calculation method, the estimated size will actually be
+      // larger. So we simply adopt the method of multiplying by 1.05 times. If this
+      // is not done, the result here might be close to the target page size but
+      // slightly smaller.
+      return (long) (size * 1.05);
     }
   }
 }

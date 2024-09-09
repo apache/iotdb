@@ -114,7 +114,7 @@ public class ConsensusReqReaderTest {
     walNode.log(0, insertRowNode); // 3
     walNode.rollWALFile();
     // _3-3-1.wal
-    insertRowNode.setDevicePath(new PartialPath(devicePath + "test"));
+    insertRowNode.setTargetPath(new PartialPath(devicePath + "test"));
     walNode.log(0, insertRowNode); // 3
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {4});
     insertTabletNode.setSearchIndex(4);

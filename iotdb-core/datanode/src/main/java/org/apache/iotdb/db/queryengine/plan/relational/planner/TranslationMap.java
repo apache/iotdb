@@ -382,11 +382,7 @@ public class TranslationMap {
     ResolvedField field = analysis.getColumnReferenceFields().get(NodeRef.of(expression));
 
     if (scope.isLocalScope(field.getScope())) {
-      if (field.getField().getOriginColumnName().isPresent()) {
-        return Optional.of(Symbol.of(field.getField().getOriginColumnName().get()));
-      } else {
-        return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
-      }
+      return Optional.of(fieldSymbols[field.getHierarchyFieldIndex()]);
     }
 
     if (outerContext.isPresent()) {

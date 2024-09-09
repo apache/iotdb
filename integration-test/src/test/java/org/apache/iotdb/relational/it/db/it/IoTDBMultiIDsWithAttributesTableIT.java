@@ -62,6 +62,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into table0(device,level,attr1,attr2,time,num,bigNum,floatNum,str,bool) values('d2','l1','d','c',0,3,2947483648,231.2121,'coconut',FALSE)",
         "insert into table0(device,level,attr1,time,num,bigNum,floatNum,str,bool) values('d2','l2', 'vv', 31536000100,10,3147483648,231.55,'pumelo',FALSE)",
         "insert into table0(device, level, attr1, attr2, time,num,bigNum,floatNum,str,bool) values('d1', 'l2', 'yy', 'zz', 41536000000,12,2146483648,45.231,'strawberry',FALSE)",
+        "flush",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l3',41536000020,14,2907483648,231.34,'cherry',FALSE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool) values('d1', 'l4',41536900000,13,2107483648,54.12,'lychee',TRUE)",
         "insert into table0(device, level, time,num,bigNum,floatNum,str,bool,date) values('d1', 'l5',51536000000,15,3147483648,235.213,'watermelon',TRUE,'2022-01-01')"
@@ -77,6 +78,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l3',31536000500,4,2147493648,213.1,'peach',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l4',31536001000,5,2149783648,56.32,'orange',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l5',31536010000,7,2147983648,213.112,'lemon',TRUE)",
+        "flush",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l1',31536100000,11,2147468648,54.121,'pitaya',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l2',41536000000,12,2146483648,45.231,'strawberry',FALSE)",
         "insert into table0(device,level,time,num,bigNum,floatNum,str,bool) values('d2','l3',41536000020,14,2907483648,231.34,'cherry',FALSE)",
@@ -91,9 +93,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setEnableSeqSpaceCompaction(false)
-        .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false)
         .setMaxTsBlockLineNumber(1)
         .setMaxNumberOfPointsInPage(1);
     insertData();
@@ -395,15 +394,14 @@ public class IoTDBMultiIDsWithAttributesTableIT {
     String[] expectedHeader = new String[] {"time", "level", "device", "add_num"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.100Z,l5,d1,9.0,",
-          "1971-01-01T00:00:01.000Z,l4,d1,6.0,",
-          "1971-01-01T00:00:10.000Z,l5,d1,8.0,",
-          "1971-04-26T18:01:40.000Z,l4,d1,14.0,",
-          "1971-08-20T11:33:20.000Z,l5,d1,16.0,",
-          "1970-01-01T00:00:00.080Z,l4,d2,10.0,",
+          "1970-01-01T00:00:00.100Z,l5,d1,9,",
+          "1971-01-01T00:00:01.000Z,l4,d1,6,",
+          "1971-01-01T00:00:10.000Z,l5,d1,8,",
+          "1971-04-26T18:01:40.000Z,l4,d1,14,",
+          "1971-08-20T11:33:20.000Z,l5,d1,16,",
+          "1970-01-01T00:00:00.080Z,l4,d2,10,",
         };
 
-    expectedHeader = new String[] {"time", "level", "device", "add_num"};
     tableResultSetEqualTest(
         "SELECT time, level, device, add_num FROM (\n"
             + "SELECT time, level, device, substring(str, 2) as cast_str, attr2, bignum, num+1 as add_num FROM table0 WHERE num>1 ORDER BY level DESC, time, device LIMIT 12\n"

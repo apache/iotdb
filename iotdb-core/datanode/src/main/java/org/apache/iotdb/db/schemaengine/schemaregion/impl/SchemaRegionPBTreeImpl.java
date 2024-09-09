@@ -330,7 +330,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public void writeToMLog(ISchemaRegionPlan schemaRegionPlan) throws IOException {
     if (usingMLog && !isRecovering) {
       logWriter.write(schemaRegionPlan);
-      regionStatistics.setMlogLength(logWriter.position());
+      regionStatistics.setMLogLength(logWriter.position());
     }
   }
 

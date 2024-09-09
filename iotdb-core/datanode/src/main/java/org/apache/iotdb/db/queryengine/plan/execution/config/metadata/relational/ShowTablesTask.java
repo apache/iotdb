@@ -43,7 +43,7 @@ public class ShowTablesTask implements IConfigTask {
 
   private final String database;
 
-  public ShowTablesTask(String database) {
+  public ShowTablesTask(final String database) {
     this.database = database;
   }
 
