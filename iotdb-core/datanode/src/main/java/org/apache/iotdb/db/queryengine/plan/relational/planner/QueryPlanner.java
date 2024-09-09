@@ -475,6 +475,13 @@ public class QueryPlanner {
             AggregationNode.Step.SINGLE,
             Optional.empty(),
             groupIdSymbol);
+    aggregationNode
+        .getAggregations()
+        .forEach(
+            (k, v) ->
+                queryContext
+                    .getTypeProvider()
+                    .putTableModelType(k, v.getResolvedFunction().getSignature().getReturnType()));
 
     return new PlanBuilder(
         subPlan
