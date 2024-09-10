@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.crud;
+package org.apache.iotdb.db.storageengine.load.config;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -32,17 +32,17 @@ import java.util.Set;
 public class LoadTsFileConstant {
 
   // constant Statement
-  public static final String DATABASE_LEVEL_KEY = "database-level";
-  public static final int DATABASE_LEVEL_DEFAULT_VALUE =
+  private static final String DATABASE_LEVEL_KEY = "database-level";
+  private static final int DATABASE_LEVEL_DEFAULT_VALUE =
       IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
-  public static final int DATABASE_LEVEL_MIN_VALUE = 1;
-  public static final int DATABASE_LEVEL_MAX_VALUE = Integer.MAX_VALUE;
+  private static final int DATABASE_LEVEL_MIN_VALUE = 1;
+  private static final int DATABASE_LEVEL_MAX_VALUE = Integer.MAX_VALUE;
 
-  public static final String DELETE_ON_SUCCESS_KEY = "delete-on-success";
-  public static final String DELETE_ONSUCCESS_DELETE_VALUE = "delete";
-  public static final String DELETE_ONSUCCESS_NONE_VALUE = "none";
+  private static final String DELETE_ON_SUCCESS_KEY = "delete-on-success";
+  private static final String DELETE_ONSUCCESS_DELETE_VALUE = "delete";
+  private static final String DELETE_ONSUCCESS_NONE_VALUE = "none";
 
-  public static final Set<String> DELETE_ONSUCCESS_VALUE_SET =
+  private static final Set<String> DELETE_ONSUCCESS_VALUE_SET =
       Collections.unmodifiableSet(
           new HashSet<>(Arrays.asList(DELETE_ONSUCCESS_DELETE_VALUE, DELETE_ONSUCCESS_NONE_VALUE)));
 
@@ -88,5 +88,9 @@ public class LoadTsFileConstant {
   public static boolean getOrDefaultDeleteOnSuccess(final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(DELETE_ON_SUCCESS_KEY);
     return StringUtils.isEmpty(value) || DELETE_ONSUCCESS_DELETE_VALUE.equals(value);
+  }
+
+  private LoadTsFileConstant() {
+    throw new IllegalStateException("Utility class");
   }
 }
