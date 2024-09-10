@@ -171,7 +171,8 @@ public class PipeDataNodeTaskBuilder {
     } catch (IllegalPathException e) {
       LOGGER.warn(
           "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}",
-          e.getMessage());
+          e.getMessage(),
+          e);
       return;
     }
 
