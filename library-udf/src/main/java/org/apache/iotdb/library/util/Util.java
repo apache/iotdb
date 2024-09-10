@@ -60,6 +60,12 @@ public class Util {
         case DOUBLE:
           ans = row.getDouble(index);
           break;
+        case DATE:
+        case BLOB:
+        case BOOLEAN:
+        case STRING:
+        case TEXT:
+        case TIMESTAMP:
         default:
           throw new NoNumberException();
       }
@@ -107,6 +113,10 @@ public class Util {
       case TEXT:
         ans = row.getString(0);
         break;
+      case BLOB:
+      case STRING:
+      case DATE:
+      case TIMESTAMP:
       default:
         break;
     }
@@ -138,6 +148,11 @@ public class Util {
       case BOOLEAN:
         pc.putBoolean(t, (Boolean) o);
         break;
+      case DATE:
+      case TIMESTAMP:
+      case TEXT:
+      case STRING:
+      case BLOB:
       default:
         break;
     }

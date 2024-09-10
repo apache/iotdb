@@ -21,12 +21,14 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -55,8 +58,9 @@ public abstract class InsertNode extends SearchNode {
   /**
    * if use id table, this filed is id form of device path <br>
    * if not, this filed is device path<br>
+   * or table name for table-model insertions.
    */
-  protected PartialPath devicePath;
+  protected PartialPath targetPath;
 
   protected boolean isAligned;
   protected MeasurementSchema[] measurementSchemas;
@@ -105,7 +109,7 @@ public abstract class InsertNode extends SearchNode {
       TSDataType[] dataTypes,
       TsTableColumnCategory[] columnCategories) {
     super(id);
-    this.devicePath = devicePath;
+    this.targetPath = devicePath;
     this.isAligned = isAligned;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
@@ -120,12 +124,12 @@ public abstract class InsertNode extends SearchNode {
     this.dataRegionReplicaSet = dataRegionReplicaSet;
   }
 
-  public PartialPath getDevicePath() {
-    return devicePath;
+  public PartialPath getTargetPath() {
+    return targetPath;
   }
 
-  public void setDevicePath(PartialPath devicePath) {
-    this.devicePath = devicePath;
+  public void setTargetPath(PartialPath targetPath) {
+    this.targetPath = targetPath;
   }
 
   public boolean isAligned() {
@@ -196,7 +200,7 @@ public abstract class InsertNode extends SearchNode {
 
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
-      deviceID = deviceIDFactory.getDeviceID(devicePath);
+      deviceID = deviceIDFactory.getDeviceID(targetPath);
     }
     return deviceID;
   }
@@ -345,7 +349,7 @@ public abstract class InsertNode extends SearchNode {
     }
     InsertNode that = (InsertNode) o;
     return isAligned == that.isAligned
-        && Objects.equals(devicePath, that.devicePath)
+        && Objects.equals(targetPath, that.targetPath)
         && Arrays.equals(measurementSchemas, that.measurementSchemas)
         && Arrays.equals(measurements, that.measurements)
         && Arrays.equals(dataTypes, that.dataTypes)
@@ -356,7 +360,7 @@ public abstract class InsertNode extends SearchNode {
   @Override
   public int hashCode() {
     int result =
-        Objects.hash(super.hashCode(), devicePath, isAligned, deviceID, dataRegionReplicaSet);
+        Objects.hash(super.hashCode(), targetPath, isAligned, deviceID, dataRegionReplicaSet);
     result = 31 * result + Arrays.hashCode(measurementSchemas);
     result = 31 * result + Arrays.hashCode(measurements);
     result = 31 * result + Arrays.hashCode(dataTypes);
@@ -386,5 +390,16 @@ public abstract class InsertNode extends SearchNode {
   @Override
   public List<PlanNode> getChildren() {
     return Collections.emptyList();
+  }
+
+  protected PartialPath readTargetPath(ByteBuffer buffer) throws IllegalPathException {
+    return DataNodeDevicePathCache.getInstance()
+        .getPartialPath(ReadWriteIOUtils.readString(buffer));
+  }
+
+  protected PartialPath readTargetPath(DataInputStream stream)
+      throws IllegalPathException, IOException {
+    return DataNodeDevicePathCache.getInstance()
+        .getPartialPath(ReadWriteIOUtils.readString(stream));
   }
 }

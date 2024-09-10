@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
-import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +65,7 @@ public class PipeMemoryManager {
     PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeMemoryManager#tryExpandAll()",
-            this::tryExpandAll,
+            this::tryExpandAllAndCheckConsistency,
             PipeConfig.getInstance().getPipeMemoryExpanderIntervalSeconds());
   }
 
@@ -75,7 +74,7 @@ public class PipeMemoryManager {
     return forceAllocate(sizeInBytes, false);
   }
 
-  public PipeTabletMemoryBlock forceAllocateWithRetry(Tablet tablet)
+  public PipeTabletMemoryBlock forceAllocateForTabletWithRetry(long tabletSizeInBytes)
       throws PipeRuntimeOutOfMemoryCriticalException {
     if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
       // No need to calculate the tablet size, skip it to save time
@@ -107,8 +106,7 @@ public class PipeMemoryManager {
 
     synchronized (this) {
       final PipeTabletMemoryBlock block =
-          (PipeTabletMemoryBlock)
-              forceAllocate(PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet), true);
+          (PipeTabletMemoryBlock) forceAllocate(tabletSizeInBytes, true);
       usedMemorySizeInBytesOfTablets += block.getMemoryUsageInBytes();
       return block;
     }
@@ -139,6 +137,59 @@ public class PipeMemoryManager {
     throw new PipeRuntimeOutOfMemoryCriticalException(
         String.format(
             "forceAllocate: failed to allocate memory after %d retries, "
+                + "total memory size %d bytes, used memory size %d bytes, "
+                + "requested memory size %d bytes",
+            MEMORY_ALLOCATE_MAX_RETRIES,
+            TOTAL_MEMORY_SIZE_IN_BYTES,
+            usedMemorySizeInBytes,
+            sizeInBytes));
+  }
+
+  public synchronized void forceResize(PipeMemoryBlock block, long targetSize) {
+    if (block == null || block.isReleased()) {
+      LOGGER.warn("forceResize: cannot resize a null or released memory block");
+      return;
+    }
+
+    if (!PIPE_MEMORY_MANAGEMENT_ENABLED) {
+      block.setMemoryUsageInBytes(targetSize);
+      return;
+    }
+
+    final long oldSize = block.getMemoryUsageInBytes();
+
+    if (oldSize >= targetSize) {
+      usedMemorySizeInBytes -= oldSize - targetSize;
+      if (block instanceof PipeTabletMemoryBlock) {
+        usedMemorySizeInBytesOfTablets -= oldSize - targetSize;
+      }
+      block.setMemoryUsageInBytes(targetSize);
+      return;
+    }
+
+    long sizeInBytes = targetSize - oldSize;
+    for (int i = 1; i <= MEMORY_ALLOCATE_MAX_RETRIES; i++) {
+      if (TOTAL_MEMORY_SIZE_IN_BYTES - usedMemorySizeInBytes >= sizeInBytes) {
+        usedMemorySizeInBytes += sizeInBytes;
+        if (block instanceof PipeTabletMemoryBlock) {
+          usedMemorySizeInBytesOfTablets += sizeInBytes;
+        }
+        block.setMemoryUsageInBytes(targetSize);
+        return;
+      }
+
+      try {
+        tryShrink4Allocate(sizeInBytes);
+        this.wait(MEMORY_ALLOCATE_RETRY_INTERVAL_IN_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("forceResize: interrupted while waiting for available memory", e);
+      }
+    }
+
+    throw new PipeRuntimeOutOfMemoryCriticalException(
+        String.format(
+            "forceResize: failed to allocate memory after %d retries, "
                 + "total memory size %d bytes, used memory size %d bytes, "
                 + "requested memory size %d bytes",
             MEMORY_ALLOCATE_MAX_RETRIES,
@@ -290,8 +341,31 @@ public class PipeMemoryManager {
     }
   }
 
-  public synchronized void tryExpandAll() {
+  public synchronized void tryExpandAllAndCheckConsistency() {
     allocatedBlocks.forEach(PipeMemoryBlock::expand);
+
+    long blockSum =
+        allocatedBlocks.stream().mapToLong(PipeMemoryBlock::getMemoryUsageInBytes).sum();
+    if (blockSum != usedMemorySizeInBytes) {
+      LOGGER.warn(
+          "tryExpandAllAndCheckConsistency: memory usage is not consistent with allocated blocks,"
+              + " usedMemorySizeInBytes is {} but sum of all blocks is {}",
+          usedMemorySizeInBytes,
+          blockSum);
+    }
+
+    long tabletBlockSum =
+        allocatedBlocks.stream()
+            .filter(PipeTabletMemoryBlock.class::isInstance)
+            .mapToLong(PipeMemoryBlock::getMemoryUsageInBytes)
+            .sum();
+    if (tabletBlockSum != usedMemorySizeInBytesOfTablets) {
+      LOGGER.warn(
+          "tryExpandAllAndCheckConsistency: memory usage of tablets is not consistent with allocated blocks,"
+              + " usedMemorySizeInBytesOfTablets is {} but sum of all tablet blocks is {}",
+          usedMemorySizeInBytesOfTablets,
+          tabletBlockSum);
+    }
   }
 
   public synchronized void release(PipeMemoryBlock block) {

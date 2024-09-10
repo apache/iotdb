@@ -2582,6 +2582,9 @@ public class IoTDBDescriptor {
         return conf.getDefaultFloatEncoding();
       case DOUBLE:
         return conf.getDefaultDoubleEncoding();
+      case STRING:
+      case BLOB:
+      case TEXT:
       default:
         return conf.getDefaultTextEncoding();
     }

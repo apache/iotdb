@@ -31,11 +31,10 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.CheckSchemaPredicateVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.schema.ConvertSchemaPredicateToFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -44,6 +43,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class SchemaPredicateUtil {
@@ -63,16 +63,50 @@ public class SchemaPredicateUtil {
     final CheckSchemaPredicateVisitor.Context context =
         new CheckSchemaPredicateVisitor.Context(table, queryContext, isDirectDeviceQuery);
     for (final Expression expression : expressionList) {
-      if (expression == null) {
+      if (Objects.isNull(expression)) {
         continue;
       }
-      if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
-        idFuzzyList.add(expression);
-      } else {
-        idDeterminedList.add(expression);
+      if (expression instanceof BetweenPredicate) {
+        final BetweenPredicate predicate = (BetweenPredicate) expression;
+
+        // Separate the between predicate to simply the logic and to handle cases like
+        // '2' between id1 and attr2 / id1 between '2' and attr1
+        separateExpression(
+            new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
+                predicate.getMin(),
+                predicate.getValue()),
+            idDeterminedList,
+            idFuzzyList,
+            visitor,
+            context);
+        separateExpression(
+            new ComparisonExpression(
+                ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
+                predicate.getValue(),
+                predicate.getMax()),
+            idDeterminedList,
+            idFuzzyList,
+            visitor,
+            context);
+        continue;
       }
+      separateExpression(expression, idDeterminedList, idFuzzyList, visitor, context);
     }
     return new Pair<>(idDeterminedList, idFuzzyList);
+  }
+
+  private static void separateExpression(
+      final Expression expression,
+      final List<Expression> idDeterminedList,
+      final List<Expression> idFuzzyList,
+      final CheckSchemaPredicateVisitor visitor,
+      final CheckSchemaPredicateVisitor.Context context) {
+    if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
+      idFuzzyList.add(expression);
+    } else {
+      idDeterminedList.add(expression);
+    }
   }
 
   // input and-concat filter list
@@ -91,10 +125,7 @@ public class SchemaPredicateUtil {
             .map(IrUtils::extractOrPredicatesWithInExpanded)
             .collect(Collectors.toList());
     final int orSize = orConcatList.size();
-    int remainingCaseNum = 1;
-    for (final List<Expression> filterList : orConcatList) {
-      remainingCaseNum *= filterList.size();
-    }
+    int remainingCaseNum = orConcatList.stream().map(List::size).reduce(1, (a, b) -> a * b);
     final List<Map<Integer, List<SchemaFilter>>> result = new ArrayList<>();
     final int[] indexes = new int[orSize]; // index count, each case represents one possible result
     boolean hasConflictFilter;
@@ -180,23 +211,6 @@ public class SchemaPredicateUtil {
       }
     }
     return true;
-  }
-
-  public static String getColumnName(Expression expression) {
-    ComparisonExpression node = (ComparisonExpression) expression;
-    String columnName;
-    if (node.getLeft() instanceof Literal) {
-      if (!(node.getRight() instanceof SymbolReference)) {
-        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getRight());
-      }
-      columnName = ((SymbolReference) (node.getRight())).getName();
-    } else {
-      if (!(node.getLeft() instanceof SymbolReference)) {
-        throw new IllegalStateException("Can only be SymbolReference, now is " + node.getLeft());
-      }
-      columnName = ((SymbolReference) (node.getLeft())).getName();
-    }
-    return columnName;
   }
 
   static List<Integer> extractIdSingleMatchExpressionCases(

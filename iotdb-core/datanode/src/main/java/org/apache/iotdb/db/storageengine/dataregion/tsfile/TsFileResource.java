@@ -297,12 +297,18 @@ public class TsFileResource implements PersistentResource {
   }
 
   public static int getFileTimeIndexSerializedSize() {
-    // 5 * 8 Byte means 5 long numbers of tsFileID.timestamp, tsFileID.fileVersion
-    // tsFileID.compactionVersion, timeIndex.getMinStartTime(), timeIndex.getMaxStartTime()
-    return 5 * Long.BYTES;
+    // 6 * 8 Byte means 6 long numbers of
+    // tsFileID.timePartitionId,
+    // tsFileID.timestamp,
+    // tsFileID.fileVersion,
+    // tsFileID.compactionVersion,
+    // timeIndex.getMinStartTime(),
+    // timeIndex.getMaxStartTime()
+    return 6 * Long.BYTES;
   }
 
   public void serializeFileTimeIndexToByteBuffer(ByteBuffer buffer) {
+    buffer.putLong(tsFileID.timePartitionId);
     buffer.putLong(tsFileID.timestamp);
     buffer.putLong(tsFileID.fileVersion);
     buffer.putLong(tsFileID.compactionVersion);

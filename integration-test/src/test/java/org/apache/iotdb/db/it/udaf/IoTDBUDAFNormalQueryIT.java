@@ -45,7 +45,6 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDAFNormalQueryIT {
   private static final double DELTA = 1E-6;
-  protected static final String TIMESTAMP_STR = "Time";
 
   private static final String[] creationSqls =
       new String[] {
@@ -198,7 +197,7 @@ public class IoTDBUDAFNormalQueryIT {
 
   @Test
   public void singleUDAFTest() {
-    String[] retArray = new String[] {"0,2001,2001,2001,2001", "0,7500,7500,7500,7500"};
+    String[] retArray = new String[] {"2001,2001,2001,2001", "7500,7500,7500,7500"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -210,9 +209,7 @@ public class IoTDBUDAFNormalQueryIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(countUDAF(d0s0))
+              resultSet.getString(countUDAF(d0s0))
                   + ","
                   + resultSet.getString(countUDAF(d0s1))
                   + ","
@@ -231,9 +228,7 @@ public class IoTDBUDAFNormalQueryIT {
                   + "FROM root.vehicle.d0")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(countUDAF(d0s0))
+              resultSet.getString(countUDAF(d0s0))
                   + ","
                   + resultSet.getString(countUDAF(d0s1))
                   + ","
@@ -254,9 +249,7 @@ public class IoTDBUDAFNormalQueryIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(countUDAF(d0s0))
+              resultSet.getString(countUDAF(d0s0))
                   + ","
                   + resultSet.getString(countUDAF(d0s1))
                   + ","
@@ -275,9 +268,7 @@ public class IoTDBUDAFNormalQueryIT {
                   + "FROM root.vehicle.d0 order by time desc")) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(countUDAF(d0s0))
+              resultSet.getString(countUDAF(d0s0))
                   + ","
                   + resultSet.getString(countUDAF(d0s1))
                   + ","
@@ -298,8 +289,8 @@ public class IoTDBUDAFNormalQueryIT {
   @Test
   public void multipleUDAFTest() {
     double[][] retArray = {
-      {0.0, 1.4508E7, 7250.374812593702},
-      {0.0, 626750.0, 1250.9980039920158}
+      {1.4508E7, 7250.374812593702},
+      {626750.0, 1250.9980039920158}
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -311,10 +302,9 @@ public class IoTDBUDAFNormalQueryIT {
               "SELECT sum_udaf(s0),avg_udaf(s2)"
                   + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000")) {
         while (resultSet.next()) {
-          double[] ans = new double[3];
-          ans[0] = Double.parseDouble(resultSet.getString(TIMESTAMP_STR));
-          ans[1] = Double.parseDouble(resultSet.getString(sumUDAF(d0s0)));
-          ans[2] = Double.parseDouble(resultSet.getString(avgUDAF(d0s2)));
+          double[] ans = new double[2];
+          ans[0] = Double.parseDouble(resultSet.getString(sumUDAF(d0s0)));
+          ans[1] = Double.parseDouble(resultSet.getString(avgUDAF(d0s2)));
           assertArrayEquals(retArray[cnt], ans, DELTA);
           cnt++;
         }
@@ -326,10 +316,9 @@ public class IoTDBUDAFNormalQueryIT {
               "SELECT sum_udaf(s0),avg_udaf(s2)"
                   + "FROM root.vehicle.d0 WHERE time >= 1000 AND time <= 2000")) {
         while (resultSet.next()) {
-          double[] ans = new double[3];
-          ans[0] = Double.parseDouble(resultSet.getString(TIMESTAMP_STR));
-          ans[1] = Double.parseDouble(resultSet.getString(sumUDAF(d0s0)));
-          ans[2] = Double.parseDouble(resultSet.getString(avgUDAF(d0s2)));
+          double[] ans = new double[2];
+          ans[0] = Double.parseDouble(resultSet.getString(sumUDAF(d0s0)));
+          ans[1] = Double.parseDouble(resultSet.getString(avgUDAF(d0s2)));
           assertArrayEquals(retArray[cnt], ans, DELTA);
           cnt++;
         }
@@ -343,10 +332,9 @@ public class IoTDBUDAFNormalQueryIT {
               "SELECT sum_udaf(s0),avg_udaf(s2)"
                   + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 order by time desc")) {
         while (resultSet.next()) {
-          double[] ans = new double[3];
-          ans[0] = Double.parseDouble(resultSet.getString(TIMESTAMP_STR));
-          ans[1] = Double.parseDouble(resultSet.getString(sumUDAF(d0s0)));
-          ans[2] = Double.parseDouble(resultSet.getString(avgUDAF(d0s2)));
+          double[] ans = new double[2];
+          ans[0] = Double.parseDouble(resultSet.getString(sumUDAF(d0s0)));
+          ans[1] = Double.parseDouble(resultSet.getString(avgUDAF(d0s2)));
           assertArrayEquals(retArray[cnt], ans, DELTA);
           cnt++;
         }

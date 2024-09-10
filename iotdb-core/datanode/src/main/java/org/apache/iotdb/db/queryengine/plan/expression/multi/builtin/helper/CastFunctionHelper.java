@@ -175,7 +175,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
         return castInt(intV, targetType);
       case DATE:
         int dateV = value instanceof Integer ? (int) value : ((Long) value).intValue();
-        return castDate(dateV, targetType);
+        return castDate(dateV, targetType, session.getZoneId());
       case INT64:
         long longV = (Long) value;
         return castLong(longV, targetType);
@@ -226,7 +226,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
     }
   }
 
-  private static Object castDate(int value, Type targetType) {
+  private static Object castDate(int value, Type targetType, ZoneId zoneId) {
     switch (targetType.getTypeEnum()) {
       case INT32:
       case DATE:
@@ -234,7 +234,7 @@ public class CastFunctionHelper implements BuiltInScalarFunctionHelper {
       case INT64:
         return (long) value;
       case TIMESTAMP:
-        return DateTimeUtils.correctPrecision(DateUtils.parseIntToDate(value).getTime());
+        return DateTimeUtils.correctPrecision(DateUtils.parseIntToTimestamp(value, zoneId));
       case FLOAT:
         return (float) value;
       case DOUBLE:

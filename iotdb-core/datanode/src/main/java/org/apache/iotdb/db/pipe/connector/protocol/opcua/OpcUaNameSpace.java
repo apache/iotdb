@@ -52,6 +52,7 @@ import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
 import org.eclipse.milo.opcua.stack.core.types.builtin.StatusCode;
 import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
 
+import java.nio.file.Paths;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -63,10 +64,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   public static final String NAMESPACE_URI = "urn:apache:iotdb:opc-server";
   private final boolean isClientServerModel;
   private final SubscriptionModel subscriptionModel;
+  private final OpcUaServerBuilder builder;
 
-  OpcUaNameSpace(final OpcUaServer server, final boolean isClientServerModel) {
+  OpcUaNameSpace(
+      final OpcUaServer server,
+      final boolean isClientServerModel,
+      final OpcUaServerBuilder builder) {
     super(server, NAMESPACE_URI);
     this.isClientServerModel = isClientServerModel;
+    this.builder = builder;
 
     subscriptionModel = new SubscriptionModel(server, this);
     getLifecycleManager().addLifecycle(subscriptionModel);
@@ -370,5 +376,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
   @Override
   public void onMonitoringModeChanged(final List<MonitoredItem> monitoredItems) {
     subscriptionModel.onMonitoringModeChanged(monitoredItems);
+  }
+
+  /////////////////////////////// Conflict detection ///////////////////////////////
+
+  void checkEquals(
+      final String user,
+      final String password,
+      final String securityDir,
+      final boolean enableAnonymousAccess) {
+    builder.checkEquals(user, password, Paths.get(securityDir), enableAnonymousAccess);
   }
 }

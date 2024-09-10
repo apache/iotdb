@@ -289,11 +289,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   }
 
   @Override
-  protected IConfigTask visitShowTables(ShowTables node, MPPQueryContext context) {
+  protected IConfigTask visitShowTables(final ShowTables node, final MPPQueryContext context) {
     context.setQueryType(QueryType.READ);
     String database = clientSession.getDatabaseName();
     if (node.getDbName().isPresent()) {
-      database = node.getDbName().get().toString();
+      database = node.getDbName().get().getValue();
     }
     if (database == null) {
       throw new SemanticException(DATABASE_NOT_SPECIFIED);

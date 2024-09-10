@@ -481,6 +481,12 @@ public class UDTFEqualSizeBucketAggSample extends UDTFEqualSizeBucketSample {
       case DOUBLE:
         aggregator.aggregateDouble(rowWindow, collector);
         break;
+      case BLOB:
+      case TEXT:
+      case DATE:
+      case STRING:
+      case TIMESTAMP:
+      case BOOLEAN:
       default:
         // This will not happen
         throw new UDFInputSeriesDataTypeNotValidException(

@@ -149,129 +149,137 @@ public class InsertRowsNodeSerdeTest {
 
   @Test
   public void TestSerializeAndDeserializeRelational() throws IllegalPathException {
-    RelationalInsertRowsNode node = new RelationalInsertRowsNode(new PlanNodeId("plan node 1"));
-    node.addOneInsertRowNode(
-        new RelationalInsertRowNode(
-            new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
-            false,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
-            new TSDataType[] {
-              TSDataType.DOUBLE,
-              TSDataType.FLOAT,
-              TSDataType.INT64,
-              TSDataType.TEXT,
-              TSDataType.STRING
-            },
-            1000L,
-            new Object[] {1.0, 2f, 300L, new Binary("444".getBytes(StandardCharsets.UTF_8)), null},
-            false,
-            new TsTableColumnCategory[] {
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.ATTRIBUTE,
-              TsTableColumnCategory.MEASUREMENT,
-              TsTableColumnCategory.MEASUREMENT,
-              TsTableColumnCategory.MEASUREMENT
-            }),
-        0);
+    for (String tableName : new String[] {"table1", "ta`ble1", "root.table1"}) {
+      RelationalInsertRowsNode node = new RelationalInsertRowsNode(new PlanNodeId("plan node 1"));
+      node.addOneInsertRowNode(
+          new RelationalInsertRowNode(
+              new PlanNodeId("plan node 1"),
+              new PartialPath(tableName, false),
+              false,
+              new String[] {"s1", "s2", "s3", "s4", "s5"},
+              new TSDataType[] {
+                TSDataType.DOUBLE,
+                TSDataType.FLOAT,
+                TSDataType.INT64,
+                TSDataType.TEXT,
+                TSDataType.STRING
+              },
+              1000L,
+              new Object[] {
+                1.0, 2f, 300L, new Binary("444".getBytes(StandardCharsets.UTF_8)), null
+              },
+              false,
+              new TsTableColumnCategory[] {
+                TsTableColumnCategory.ID,
+                TsTableColumnCategory.ATTRIBUTE,
+                TsTableColumnCategory.MEASUREMENT,
+                TsTableColumnCategory.MEASUREMENT,
+                TsTableColumnCategory.MEASUREMENT
+              }),
+          0);
 
-    node.addOneInsertRowNode(
-        new RelationalInsertRowNode(
-            new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d2"),
-            false,
-            new String[] {"s1", "s4"},
-            new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
-            2000L,
-            new Object[] {2.0, false},
-            false,
-            new TsTableColumnCategory[] {
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.ATTRIBUTE,
-              TsTableColumnCategory.MEASUREMENT
-            }),
-        1);
+      node.addOneInsertRowNode(
+          new RelationalInsertRowNode(
+              new PlanNodeId("plan node 1"),
+              new PartialPath(tableName, false),
+              false,
+              new String[] {"s1", "s4"},
+              new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+              2000L,
+              new Object[] {2.0, false},
+              false,
+              new TsTableColumnCategory[] {
+                TsTableColumnCategory.ID,
+                TsTableColumnCategory.ATTRIBUTE,
+                TsTableColumnCategory.MEASUREMENT
+              }),
+          1);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
-    node.serialize(byteBuffer);
-    byteBuffer.flip();
+      ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+      node.serialize(byteBuffer);
+      byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.RELATIONAL_INSERT_ROWS.getNodeType(), byteBuffer.getShort());
+      Assert.assertEquals(PlanNodeType.RELATIONAL_INSERT_ROWS.getNodeType(), byteBuffer.getShort());
 
-    Assert.assertEquals(node, RelationalInsertRowsNode.deserialize(byteBuffer));
+      Assert.assertEquals(node, RelationalInsertRowsNode.deserialize(byteBuffer));
+    }
   }
 
   @Test
-  public void testSerializeAndDeserializeForWALRelational()
-      throws IllegalPathException, IOException {
-    RelationalInsertRowsNode insertRowsNode =
-        new RelationalInsertRowsNode(new PlanNodeId("plan node 1"));
-    insertRowsNode.addOneInsertRowNode(
-        new RelationalInsertRowNode(
-            new PlanNodeId(""),
-            new PartialPath("root.sg.d1"),
-            false,
-            new String[] {"s1", "s2", "s3", "s4", "s5"},
-            new TSDataType[] {
-              TSDataType.DOUBLE,
-              TSDataType.FLOAT,
-              TSDataType.INT64,
-              TSDataType.TEXT,
-              TSDataType.STRING
-            },
-            new MeasurementSchema[] {
-              new MeasurementSchema("s1", TSDataType.DOUBLE),
-              new MeasurementSchema("s2", TSDataType.FLOAT),
-              new MeasurementSchema("s3", TSDataType.INT64),
-              new MeasurementSchema("s4", TSDataType.TEXT),
-              new MeasurementSchema("s5", TSDataType.STRING)
-            },
-            1000L,
-            new Object[] {1.0, 2f, 300L, new Binary("444".getBytes(StandardCharsets.UTF_8)), null},
-            false,
-            new TsTableColumnCategory[] {
-              TsTableColumnCategory.ID,
-              TsTableColumnCategory.ATTRIBUTE,
-              TsTableColumnCategory.MEASUREMENT,
-              TsTableColumnCategory.MEASUREMENT,
-              TsTableColumnCategory.MEASUREMENT
-            }),
-        0);
+  public void testSerializeAndDeserializeForWALRelational() throws IOException {
+    for (String tableName : new String[] {"table1", "ta`ble1", "root.table1"}) {
+      RelationalInsertRowsNode insertRowsNode =
+          new RelationalInsertRowsNode(new PlanNodeId("plan node 1"));
+      insertRowsNode.addOneInsertRowNode(
+          new RelationalInsertRowNode(
+              new PlanNodeId(""),
+              new PartialPath(tableName, false),
+              false,
+              new String[] {"s1", "s2", "s3", "s4", "s5"},
+              new TSDataType[] {
+                TSDataType.DOUBLE,
+                TSDataType.FLOAT,
+                TSDataType.INT64,
+                TSDataType.TEXT,
+                TSDataType.STRING
+              },
+              new MeasurementSchema[] {
+                new MeasurementSchema("s1", TSDataType.DOUBLE),
+                new MeasurementSchema("s2", TSDataType.FLOAT),
+                new MeasurementSchema("s3", TSDataType.INT64),
+                new MeasurementSchema("s4", TSDataType.TEXT),
+                new MeasurementSchema("s5", TSDataType.STRING)
+              },
+              1000L,
+              new Object[] {
+                1.0, 2f, 300L, new Binary("444".getBytes(StandardCharsets.UTF_8)), null
+              },
+              false,
+              new TsTableColumnCategory[] {
+                TsTableColumnCategory.ID,
+                TsTableColumnCategory.ATTRIBUTE,
+                TsTableColumnCategory.MEASUREMENT,
+                TsTableColumnCategory.MEASUREMENT,
+                TsTableColumnCategory.MEASUREMENT
+              }),
+          0);
 
-    insertRowsNode.addOneInsertRowNode(
-        new RelationalInsertRowNode(
-            new PlanNodeId(""),
-            new PartialPath("root.sg.d2"),
-            false,
-            new String[] {"s1", "s4"},
-            new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
-            new MeasurementSchema[] {
-              new MeasurementSchema("s1", TSDataType.DOUBLE),
-              new MeasurementSchema("s4", TSDataType.BOOLEAN),
-            },
-            2000L,
-            new Object[] {2.0, false},
-            false,
-            new TsTableColumnCategory[] {
-              TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE
-            }),
-        1);
+      insertRowsNode.addOneInsertRowNode(
+          new RelationalInsertRowNode(
+              new PlanNodeId(""),
+              new PartialPath(tableName, false),
+              false,
+              new String[] {"s1", "s4"},
+              new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
+              new MeasurementSchema[] {
+                new MeasurementSchema("s1", TSDataType.DOUBLE),
+                new MeasurementSchema("s4", TSDataType.BOOLEAN),
+              },
+              2000L,
+              new Object[] {2.0, false},
+              false,
+              new TsTableColumnCategory[] {
+                TsTableColumnCategory.ID, TsTableColumnCategory.ATTRIBUTE
+              }),
+          1);
 
-    int serializedSize = insertRowsNode.serializedSize();
+      int serializedSize = insertRowsNode.serializedSize();
 
-    byte[] bytes = new byte[serializedSize];
-    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+      byte[] bytes = new byte[serializedSize];
+      WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
 
-    insertRowsNode.serializeToWAL(walBuffer);
-    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+      insertRowsNode.serializeToWAL(walBuffer);
+      Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
 
-    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+      DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
-    Assert.assertEquals(
-        PlanNodeType.RELATIONAL_INSERT_ROWS.getNodeType(), dataInputStream.readShort());
+      Assert.assertEquals(
+          PlanNodeType.RELATIONAL_INSERT_ROWS.getNodeType(), dataInputStream.readShort());
 
-    RelationalInsertRowsNode tmpNode = RelationalInsertRowsNode.deserializeFromWAL(dataInputStream);
-    tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
-    Assert.assertEquals(insertRowsNode, tmpNode);
+      RelationalInsertRowsNode tmpNode =
+          RelationalInsertRowsNode.deserializeFromWAL(dataInputStream);
+      tmpNode.setPlanNodeId(insertRowsNode.getPlanNodeId());
+      Assert.assertEquals(insertRowsNode, tmpNode);
+    }
   }
 }
