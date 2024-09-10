@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -38,12 +39,13 @@ import java.util.function.Consumer;
  * including realtime deletion and historical deletion. In order to be compatible with user pipe
  * framework, PipeConsensus will use {@link PipeSchemaRegionWritePlanEvent}
  */
-public class DeletionResource {
+public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
   private final AtomicLong latestUpdateTime;
   private PipeSchemaRegionWritePlanEvent deletionEvent;
   private volatile Status currentStatus;
+
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile Exception cause;
@@ -97,7 +99,9 @@ public class DeletionResource {
     this.notifyAll();
   }
 
-  /** @return true if this object has been successfully persisted, false if persist failed. */
+  /**
+   * @return true if this object has been successfully persisted, false if persist failed.
+   */
   public synchronized Status waitForResult() {
     while (currentStatus == Status.RUNNING) {
       try {
@@ -112,6 +116,7 @@ public class DeletionResource {
     return currentStatus;
   }
 
+  @Override
   public ProgressIndex getProgressIndex() {
     return ((DeleteDataNode) deletionEvent.getPlanNode()).getProgressIndex();
   }

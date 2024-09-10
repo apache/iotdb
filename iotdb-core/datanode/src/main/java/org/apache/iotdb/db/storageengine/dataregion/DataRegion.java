@@ -2270,7 +2270,9 @@ public class DataRegion implements IDataRegionForQuery {
         .forEach(unsealedResource::add);
   }
 
-  /** @param pattern Must be a pattern start with a precise device path */
+  /**
+   * @param pattern Must be a pattern start with a precise device path
+   */
   public void deleteByDevice(MeasurementPath pattern, DeleteDataNode node) throws IOException {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
@@ -3717,7 +3719,9 @@ public class DataRegion implements IDataRegionForQuery {
     }
   }
 
-  /** @return the disk space occupied by this data region, unit is MB */
+  /**
+   * @return the disk space occupied by this data region, unit is MB
+   */
   public long countRegionDiskSize() {
     AtomicLong diskSize = new AtomicLong(0);
     TierManager.getInstance()

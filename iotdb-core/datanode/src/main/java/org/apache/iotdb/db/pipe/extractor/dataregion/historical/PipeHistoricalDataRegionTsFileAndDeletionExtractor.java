@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
@@ -63,6 +64,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -123,10 +125,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
-  private boolean isTsFileEventAllConsumed = false;
-
-  private Queue<TsFileResource> pendingTsFileQueue;
-  private Queue<DeletionResource> pendingDeletionQueue;
+  private Queue<PersistentResource> pendingQueue;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -373,16 +372,17 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private void extractDeletions(final DeletionResourceManager deletionResourceManager) {
+  private void extractDeletions(
+      final DeletionResourceManager deletionResourceManager,
+      final List<PersistentResource> resourceList) {
     LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
-    List<DeletionResource> resourceList = deletionResourceManager.getAllDeletionResources();
-    final int originalDeletionCount = resourceList.size();
-    resourceList =
-        resourceList.stream()
+    List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
+    final int originalDeletionCount = allDeletionResources.size();
+    allDeletionResources =
+        allDeletionResources.stream()
             .filter(this::mayDeletionUnprocessed)
-            .sorted((o1, o2) -> o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1)
             .collect(Collectors.toList());
-    pendingDeletionQueue = new ArrayDeque<>(resourceList);
+    resourceList.addAll(allDeletionResources);
     LOGGER.info(
         "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}",
         pipeName,
@@ -415,14 +415,14 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   }
 
   private void extractTsFiles(
-      final DataRegion dataRegion, final long startHistoricalExtractionTime) {
+      final DataRegion dataRegion,
+      final long startHistoricalExtractionTime,
+      final List<PersistentResource> resourceList) {
     final TsFileManager tsFileManager = dataRegion.getTsFileManager();
     tsFileManager.readLock();
     try {
       final int originalSequenceTsFileCount = tsFileManager.size(true);
       final int originalUnsequenceTsFileCount = tsFileManager.size(false);
-      final List<TsFileResource> resourceList =
-          new ArrayList<>(originalSequenceTsFileCount + originalUnsequenceTsFileCount);
       LOGGER.info(
           "Pipe {}@{}: start to extract historical TsFile, original sequence file count {}, "
               + "original unsequence file count {}, start progress index {}",
@@ -466,18 +466,13 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
             // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
             try {
               PipeDataNodeResourceManager.tsfile()
-                  .pinTsFileResource(resource, shouldTransferModFile);
+                  .pinTsFileResource((TsFileResource) resource, shouldTransferModFile);
             } catch (final IOException e) {
-              LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
+              LOGGER.warn(
+                  "Pipe: failed to pin TsFileResource {}",
+                  ((TsFileResource) resource).getTsFilePath());
             }
           });
-
-      resourceList.sort(
-          (o1, o2) ->
-              startIndex instanceof TimeWindowStateProgressIndex
-                  ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
-                  : o1.getMaxProgressIndex().topologicalCompareTo(o2.getMaxProgressIndex()));
-      pendingTsFileQueue = new ArrayDeque<>(resourceList);
 
       LOGGER.info(
           "Pipe {}@{}: finish to extract historical TsFile, extracted sequence file count {}/{}, "
@@ -508,28 +503,28 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
-      pendingTsFileQueue = new ArrayDeque<>();
-      pendingDeletionQueue = new ArrayDeque<>();
+      pendingQueue = new ArrayDeque<>();
       return;
     }
 
     dataRegion.writeLock(
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
-    // Extract deletions
-    DeletionResourceManager deletionResourceManager =
-        DeletionResourceManager.getInstance(String.valueOf(dataRegionId));
-    if (deletionResourceManager == null) {
-      // If not uses pipeConsensus
-      pendingDeletionQueue = new ArrayDeque<>();
-    } else {
-      extractDeletions(deletionResourceManager);
-    }
-    // Flush TsFiles
-    final long startHistoricalExtractionTime = System.currentTimeMillis();
     try {
+      List<PersistentResource> resourceList = new ArrayList<>();
+      // Extract deletions
+      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+          .ifPresent(mgr -> extractDeletions(mgr, resourceList));
+
+      // Flush TsFiles
+      final long startHistoricalExtractionTime = System.currentTimeMillis();
       flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
       // Extract TsFiles
-      extractTsFiles(dataRegion, startHistoricalExtractionTime);
+      extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+
+      // Sort tsFileResource and deletionResource
+      resourceList.sort(
+          (o1, o2) -> o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
+      pendingQueue.addAll(resourceList);
     } finally {
       dataRegion.writeUnlock();
     }
@@ -665,45 +660,41 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private Event supplyDeletionEvent() {
-    final DeletionResource deletionResource = pendingDeletionQueue.poll();
-    if (deletionResource == null) {
-      final PipeTerminateEvent terminateEvent =
-          new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
-      if (!terminateEvent.increaseReferenceCount(
-          PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName())) {
-        LOGGER.warn(
-            "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
-            pipeName,
-            dataRegionId);
-        return null;
-      }
-      isTerminateSignalSent = true;
-      return terminateEvent;
-    }
+  private Event supplyDeletionEvent(final DeletionResource deletionResource) {
     PipeSchemaRegionWritePlanEvent event = deletionResource.getDeletionEvent();
     event.increaseReferenceCount(
         PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
     return event;
   }
 
+  private Event supplyTerminateEvent() {
+    final PipeTerminateEvent terminateEvent =
+        new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+    if (!terminateEvent.increaseReferenceCount(
+        PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName())) {
+      LOGGER.warn(
+          "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+          pipeName,
+          dataRegionId);
+      return null;
+    }
+    isTerminateSignalSent = true;
+    return terminateEvent;
+  }
+
   @Override
   public synchronized Event supply() {
-    if (Objects.isNull(pendingTsFileQueue) && Objects.isNull(pendingDeletionQueue)) {
+    if (Objects.isNull(pendingQueue)) {
       return null;
     }
 
-    // Consume tsFile first
-    if (!isTsFileEventAllConsumed) {
-      final TsFileResource resource = pendingTsFileQueue.poll();
-      if (resource == null) {
-        isTsFileEventAllConsumed = true;
-        return supplyDeletionEvent();
-      }
-      return supplyTsFileEvent(resource);
+    final PersistentResource resource = pendingQueue.poll();
+    if (resource == null) {
+      return supplyTerminateEvent();
+    } else if (resource instanceof TsFileResource) {
+      return supplyTsFileEvent((TsFileResource) resource);
     } else {
-      // Consume deletions
-      return supplyDeletionEvent();
+      return supplyDeletionEvent((DeletionResource) resource);
     }
   }
 
@@ -711,34 +702,35 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueues are null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return (Objects.isNull(pendingTsFileQueue) && Objects.isNull(pendingDeletionQueue))
-        || pendingTsFileQueue.isEmpty()
-            && pendingDeletionQueue.isEmpty()
+    return (Objects.isNull(pendingQueue))
+        || pendingQueue.isEmpty()
             && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
   }
 
   @Override
   public int getPendingQueueSize() {
-    return Objects.nonNull(pendingTsFileQueue) ? pendingTsFileQueue.size() : 0;
+    return Objects.nonNull(pendingQueue) ? pendingQueue.size() : 0;
   }
 
   @Override
   public synchronized void close() {
-    if (Objects.nonNull(pendingTsFileQueue)) {
-      pendingTsFileQueue.forEach(
+    if (Objects.nonNull(pendingQueue)) {
+      pendingQueue.forEach(
           resource -> {
             try {
-              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+              if (resource instanceof TsFileResource) {
+                PipeDataNodeResourceManager.tsfile().unpinTsFileResource((TsFileResource) resource);
+              }
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",
                   pipeName,
                   dataRegionId,
-                  resource.getTsFilePath());
+                  ((TsFileResource) resource).getTsFilePath());
             }
           });
-      pendingTsFileQueue.clear();
-      pendingTsFileQueue = null;
+      pendingQueue.clear();
+      pendingQueue = null;
     }
   }
 }
