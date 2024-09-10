@@ -57,11 +57,16 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileAnalyzeSchemaMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -88,6 +93,7 @@ import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -244,6 +250,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         tsFileResource.deserialize();
       }
 
+      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
+
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
         throw new LoadEmptyFileException(tsFile.getAbsolutePath());
@@ -309,6 +317,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.schemaCache = new LoadTsFileAnalyzeSchemaCache();
     }
 
+    public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
+      schemaCache.setCurrentModificationsAndTimeIndex(resource);
+    }
+
     public void autoCreateAndVerify(
         TsFileSequenceReader reader,
         Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadataList)
@@ -317,7 +329,30 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           device2TimeseriesMetadataList.entrySet()) {
         final IDeviceID device = entry.getKey();
 
+        try {
+          if (schemaCache.isDeviceDeletedByMods(device)) {
+            continue;
+          }
+        } catch (IllegalPathException e) {
+          LOGGER.warn(
+              "Failed to check if device {} is deleted by mods. Will see it as not deleted.",
+              device,
+              e);
+        }
+
         for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
+          try {
+            if (schemaCache.isTimeseriesDeletedByMods(device, timeseriesMetadata)) {
+              continue;
+            }
+          } catch (IllegalPathException e) {
+            LOGGER.warn(
+                "Failed to check if device {}, timeseries {} is deleted by mods. Will see it as not deleted.",
+                device,
+                timeseriesMetadata.getMeasurementId(),
+                e);
+          }
+
           final TSDataType dataType = timeseriesMetadata.getTsDataType();
           if (TSDataType.VECTOR.equals(dataType)) {
             schemaCache
@@ -681,9 +716,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
     private Set<PartialPath> alreadySetDatabases;
 
+    private Collection<Modification> currentModifications;
+    private ITimeIndex currentTimeIndex;
+
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
     private long tsFileDevice2IsAlignedMemoryUsageSizeInBytes = 0;
     private long alreadySetDatabasesMemoryUsageSizeInBytes = 0;
+    private long currentModificationsMemoryUsageSizeInBytes = 0;
+    private long currentTimeIndexMemoryUsageSizeInBytes = 0;
 
     private int currentBatchTimeSeriesCount = 0;
 
@@ -694,6 +734,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.currentBatchDevice2TimeSeriesSchemas = new HashMap<>();
       this.tsFileDevice2IsAligned = new HashMap<>();
       this.alreadySetDatabases = new HashSet<>();
+      this.currentModifications = new ArrayList<>();
     }
 
     public Map<IDeviceID, Set<MeasurementSchema>> getDevice2TimeSeries() {
@@ -749,6 +790,44 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
+    public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
+      clearModificationsAndTimeIndex();
+
+      currentModifications = resource.getModFile().getModifications();
+      for (final Modification modification : currentModifications) {
+        currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
+      }
+      block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
+
+      if (resource.resourceFileExists()) {
+        currentTimeIndex = resource.getTimeIndex();
+        if (currentTimeIndex instanceof FileTimeIndex) {
+          currentTimeIndex = resource.buildDeviceTimeIndex();
+        }
+        currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
+        block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
+      }
+    }
+
+    public boolean isDeviceDeletedByMods(IDeviceID device) throws IllegalPathException {
+      return currentTimeIndex != null
+          && ModificationUtils.isDeviceDeletedByMods(
+              currentModifications,
+              device,
+              currentTimeIndex.getStartTime(device),
+              currentTimeIndex.getEndTime(device));
+    }
+
+    public boolean isTimeseriesDeletedByMods(
+        IDeviceID device, TimeseriesMetadata timeseriesMetadata) throws IllegalPathException {
+      return ModificationUtils.isTimeseriesDeletedByMods(
+          currentModifications,
+          device,
+          timeseriesMetadata.getMeasurementId(),
+          timeseriesMetadata.getStatistics().getStartTime(),
+          timeseriesMetadata.getStatistics().getEndTime());
+    }
+
     public void addAlreadySetDatabase(PartialPath database) {
       long memoryUsageSizeInBytes = 0;
       if (alreadySetDatabases.add(database)) {
@@ -776,6 +855,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       block.reduceMemoryUsage(batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes);
       batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
       currentBatchTimeSeriesCount = 0;
+    }
+
+    public void clearModificationsAndTimeIndex() {
+      currentModifications.clear();
+      currentTimeIndex = null;
+      block.reduceMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
+      block.reduceMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
+      currentModificationsMemoryUsageSizeInBytes = 0;
+      currentTimeIndexMemoryUsageSizeInBytes = 0;
     }
 
     public void clearAlignedCache() {
@@ -815,6 +903,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     public void close() {
       clearTimeSeries();
+      clearModificationsAndTimeIndex();
       clearAlignedCache();
       clearDatabasesCache();
 

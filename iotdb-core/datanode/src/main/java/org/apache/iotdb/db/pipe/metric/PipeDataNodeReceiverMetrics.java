@@ -45,6 +45,9 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
   private Timer transferSchemaPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer transferSchemaSnapshotSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferCompressedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+  private Timer transferSliceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
   private static final String RECEIVER = "pipeDataNodeReceiver";
 
@@ -100,6 +103,18 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
 
   public void recordTransferSchemaSnapshotSealTimer(long costTimeInNanos) {
     transferSchemaSnapshotSealTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordTransferConfigPlanTimer(long costTimeInNanos) {
+    transferConfigPlanTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordTransferCompressedTimer(long costTimeInNanos) {
+    transferCompressedTimer.updateNanos(costTimeInNanos);
+  }
+
+  public void recordTransferSliceTimer(long costTimeInNanos) {
+    transferSliceTimer.updateNanos(costTimeInNanos);
   }
 
   @Override
@@ -212,6 +227,30 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
             RECEIVER,
             Tag.TYPE.toString(),
             "transferSchemaSnapshotSeal");
+    transferConfigPlanTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferConfigPlan");
+    transferCompressedTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferCompressed");
+    transferSliceTimer =
+        metricService.getOrCreateTimer(
+            Metric.PIPE_DATANODE_RECEIVER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            RECEIVER,
+            Tag.TYPE.toString(),
+            "transferSlice");
   }
 
   @Override
@@ -233,6 +272,9 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
     transferSchemaPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaSnapshotPieceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     transferSchemaSnapshotSealTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferConfigPlanTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferCompressedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
+    transferSliceTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
 
     metricService.remove(
         MetricType.TIMER,
@@ -325,6 +367,27 @@ public class PipeDataNodeReceiverMetrics implements IMetricSet {
         RECEIVER,
         Tag.TYPE.toString(),
         "transferSchemaSnapshotSeal");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferConfigPlan");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferCompressed");
+    metricService.remove(
+        MetricType.TIMER,
+        Metric.PIPE_DATANODE_RECEIVER.toString(),
+        Tag.NAME.toString(),
+        RECEIVER,
+        Tag.TYPE.toString(),
+        "transferSlice");
   }
 
   public static PipeDataNodeReceiverMetrics getInstance() {

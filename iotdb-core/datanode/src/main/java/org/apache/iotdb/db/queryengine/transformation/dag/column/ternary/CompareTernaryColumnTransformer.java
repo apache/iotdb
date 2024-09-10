@@ -23,8 +23,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransform
 
 import org.apache.tsfile.read.common.type.Type;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
-
 public abstract class CompareTernaryColumnTransformer extends TernaryColumnTransformer {
   protected CompareTernaryColumnTransformer(
       Type returnType,
@@ -36,16 +34,6 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
 
   @Override
   protected final void checkType() {
-    if (firstColumnTransformer.isReturnTypeNumeric()
-            && secondColumnTransformer.isReturnTypeNumeric()
-            && thirdColumnTransformer.isReturnTypeNumeric()
-        || isCharType(firstColumnTransformer.getType())
-            && isCharType(secondColumnTransformer.getType())
-            && isCharType(thirdColumnTransformer.getType())) {
-      return;
-    }
-
-    throw new UnsupportedOperationException(
-        "The Type of three subExpression should be all Numeric or Text");
+    // do nothing, type should be checked in plan stage
   }
 }

@@ -25,8 +25,6 @@ IF "%~1"=="--help" (
     echo Usage:
     echo Remove the DataNode with datanode_id
     echo ./sbin/remove-datanode.bat [datanode_id]
-    echo Remove the DataNode with address:port
-    echo ./sbin/remove-datanode.bat [dn_rpc_address:dn_rpc_port]
     EXIT /B 0
 )
 

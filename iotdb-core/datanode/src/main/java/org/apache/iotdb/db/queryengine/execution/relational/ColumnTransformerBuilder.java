@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
@@ -76,11 +77,17 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBinaryMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBooleanMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InDoubleMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InFloatMultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InInt32MultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InInt64MultiColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAndMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
@@ -131,7 +138,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.St
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.StrposColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubString3ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringFunctionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.SubStringColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.TanhColumnTransformer;
@@ -147,16 +154,20 @@ import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.type.DateType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeEnum;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
@@ -419,6 +430,39 @@ public class ColumnTransformerBuilder
   }
 
   @Override
+  protected ColumnTransformer visitGenericLiteral(GenericLiteral node, Context context) {
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            node,
+            e -> {
+              ConstantColumnTransformer columnTransformer =
+                  getColumnTransformerForGenericLiteral(node);
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
+  }
+
+  // currently, we only support Date and Timestamp
+  // for Date, GenericLiteral.value is an int value
+  // for Timestamp, GenericLiteral.value is a long value
+  private static ConstantColumnTransformer getColumnTransformerForGenericLiteral(
+      GenericLiteral literal) {
+    if (DateType.DATE.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          DateType.DATE,
+          new IntColumn(1, Optional.empty(), new int[] {Integer.parseInt(literal.getValue())}));
+    } else if (TimestampType.TIMESTAMP.getTypeEnum().name().equals(literal.getType())) {
+      return new ConstantColumnTransformer(
+          TimestampType.TIMESTAMP,
+          new LongColumn(1, Optional.empty(), new long[] {Long.parseLong(literal.getValue())}));
+    } else {
+      throw new SemanticException("Unsupported type in GenericLiteral: " + literal.getType());
+    }
+  }
+
+  @Override
   protected ColumnTransformer visitNullLiteral(NullLiteral node, Context context) {
     ColumnTransformer res =
         context.cache.computeIfAbsent(
@@ -603,22 +647,22 @@ public class ColumnTransformerBuilder
       if (children.size() == 2) {
         if (isStringLiteral(children.get(1))) {
           return new ReplaceFunctionColumnTransformer(
-              first.getType(), first, ((StringLiteral) children.get(1)).getValue(), "");
+              STRING, first, ((StringLiteral) children.get(1)).getValue(), "");
         } else {
           return new Replace2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+              STRING, first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isStringLiteral(children.get(1)) && isStringLiteral(children.get(2))) {
           return new ReplaceFunctionColumnTransformer(
-              first.getType(),
+              STRING,
               first,
               ((StringLiteral) children.get(1)).getValue(),
               ((StringLiteral) children.get(2)).getValue());
         } else {
           return new Replace3ColumnTransformer(
-              first.getType(),
+              STRING,
               first,
               this.process(children.get(1), context),
               this.process(children.get(2), context));
@@ -631,29 +675,20 @@ public class ColumnTransformerBuilder
       if (children.size() == 2) {
         if (isLongLiteral(children.get(1))) {
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
-          if (startIndex <= 0) {
-            throw new SemanticException(
-                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
-          }
-          return new SubStringFunctionColumnTransformer(
-              first.getType(), first, startIndex, Integer.MAX_VALUE);
+          return new SubStringColumnTransformer(STRING, first, startIndex, Integer.MAX_VALUE);
         } else {
           return new SubString2ColumnTransformer(
-              first.getType(), first, this.process(children.get(1), context));
+              STRING, first, this.process(children.get(1), context));
         }
       } else {
         // size == 3
         if (isLongLiteral(children.get(1)) && isLongLiteral(children.get(2))) {
           int startIndex = (int) ((LongLiteral) children.get(1)).getParsedValue();
           int length = (int) ((LongLiteral) children.get(2)).getParsedValue();
-          if (startIndex <= 0 || length <= 0) {
-            throw new SemanticException(
-                "Argument exception,the scalar function [SUBSTRING] beginPosition and length must be greater than 0");
-          }
-          return new SubStringFunctionColumnTransformer(first.getType(), first, startIndex, length);
+          return new SubStringColumnTransformer(STRING, first, startIndex, length);
         } else {
           return new SubString3ColumnTransformer(
-              first.getType(),
+              STRING,
               first,
               this.process(children.get(1), context),
               this.process(children.get(2), context));
@@ -898,6 +933,18 @@ public class ColumnTransformerBuilder
       if (children.size() == 1) {
         return new SqrtColumnTransformer(DOUBLE, first);
       }
+    } else if (TableBuiltinScalarFunction.PI.getFunctionName().equalsIgnoreCase(functionName)) {
+      ConstantColumnTransformer piColumnTransformer =
+          new ConstantColumnTransformer(
+              DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {Math.PI}));
+      context.leafList.add(piColumnTransformer);
+      return piColumnTransformer;
+    } else if (TableBuiltinScalarFunction.E.getFunctionName().equalsIgnoreCase(functionName)) {
+      ConstantColumnTransformer eColumnTransformer =
+          new ConstantColumnTransformer(
+              DOUBLE, new DoubleColumn(1, Optional.empty(), new double[] {Math.E}));
+      context.leafList.add(eColumnTransformer);
+      return eColumnTransformer;
     } else if (TableBuiltinScalarFunction.DATE_BIN
         .getFunctionName()
         .equalsIgnoreCase(functionName)) {
@@ -928,20 +975,108 @@ public class ColumnTransformerBuilder
         context.cache.put(node, identity);
       } else {
         ColumnTransformer childColumnTransformer = process(node.getValue(), context);
+        TypeEnum childTypeEnum = childColumnTransformer.getType().getTypeEnum();
         InListExpression inListExpression = (InListExpression) node.getValueList();
         List<Expression> expressionList = inListExpression.getValues();
         List<Literal> values = new ArrayList<>();
+        List<ColumnTransformer> valueColumnTransformerList = new ArrayList<>();
+        valueColumnTransformerList.add(childColumnTransformer);
         for (Expression expression : expressionList) {
-          checkArgument(expression instanceof Literal);
-          values.add((Literal) expression);
+          if (expression instanceof Literal) {
+            values.add((Literal) expression);
+          } else {
+            valueColumnTransformerList.add(process(expression, context));
+          }
         }
-        context.cache.put(node, new InColumnTransformer(BOOLEAN, childColumnTransformer, values));
+        context.cache.put(
+            node, constructInColumnTransformer(childTypeEnum, valueColumnTransformerList, values));
       }
     }
 
     ColumnTransformer res = context.cache.get(node);
     res.addReferenceCount();
     return res;
+  }
+
+  private static InMultiColumnTransformer constructInColumnTransformer(
+      TypeEnum childType,
+      List<ColumnTransformer> valueColumnTransformerList,
+      List<Literal> values) {
+    String errorMsg = "\"%s\" cannot be cast to [%s]";
+    switch (childType) {
+      case INT32:
+        Set<Integer> intSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            long v = ((LongLiteral) value).getParsedValue();
+            if (v <= Integer.MAX_VALUE && v >= Integer.MIN_VALUE) {
+              intSet.add((int) v);
+            }
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InInt32MultiColumnTransformer(intSet, valueColumnTransformerList);
+      case DATE:
+        Set<Integer> dateSet = new HashSet<>();
+        for (Literal value : values) {
+          dateSet.add(Integer.parseInt(((GenericLiteral) value).getValue()));
+        }
+        return new InInt32MultiColumnTransformer(dateSet, valueColumnTransformerList);
+      case INT64:
+      case TIMESTAMP:
+        Set<Long> longSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            longSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InInt64MultiColumnTransformer(longSet, valueColumnTransformerList);
+      case FLOAT:
+        Set<Float> floatSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            floatSet.add((float) ((DoubleLiteral) value).getValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InFloatMultiColumnTransformer(floatSet, valueColumnTransformerList);
+      case DOUBLE:
+        Set<Double> doubleSet = new HashSet<>();
+        for (Literal value : values) {
+          try {
+            doubleSet.add(((DoubleLiteral) value).getValue());
+          } catch (IllegalArgumentException e) {
+            throw new SemanticException(String.format(errorMsg, value, childType));
+          }
+        }
+        return new InDoubleMultiColumnTransformer(doubleSet, valueColumnTransformerList);
+      case BOOLEAN:
+        Set<Boolean> booleanSet = new HashSet<>();
+        for (Literal value : values) {
+          booleanSet.add(((BooleanLiteral) value).getValue());
+        }
+        return new InBooleanMultiColumnTransformer(booleanSet, valueColumnTransformerList);
+      case TEXT:
+      case STRING:
+        Set<Binary> stringSet = new HashSet<>();
+        for (Literal value : values) {
+          stringSet.add(
+              new Binary(((StringLiteral) value).getValue(), TSFileConfig.STRING_CHARSET));
+        }
+        return new InBinaryMultiColumnTransformer(stringSet, valueColumnTransformerList);
+      case BLOB:
+        Set<Binary> binarySet = new HashSet<>();
+        for (Literal value : values) {
+          binarySet.add(new Binary(((BinaryLiteral) value).getValue()));
+        }
+        return new InBinaryMultiColumnTransformer(binarySet, valueColumnTransformerList);
+      default:
+        throw new UnsupportedOperationException("unsupported data type: " + childType);
+    }
   }
 
   @Override

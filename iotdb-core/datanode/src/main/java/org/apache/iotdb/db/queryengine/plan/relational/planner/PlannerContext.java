@@ -41,4 +41,8 @@ public class PlannerContext {
   public Metadata getMetadata() {
     return metadata;
   }
+
+  public TypeManager getTypeManager() {
+    return typeManager;
+  }
 }

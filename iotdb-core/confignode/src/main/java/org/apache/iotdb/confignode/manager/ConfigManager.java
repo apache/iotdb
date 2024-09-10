@@ -451,6 +451,7 @@ public class ConfigManager implements IManager {
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.DataNode,
               req.getClusterName(),
+              req.getClusterId(),
               req.getDataNodeConfiguration().getLocation().getDataNodeId(),
               req.getDataNodeConfiguration().getLocation(),
               this);
@@ -483,6 +484,7 @@ public class ConfigManager implements IManager {
           ClusterNodeStartUtils.confirmNodeRestart(
               NodeType.AINode,
               req.getClusterName(),
+              req.getClusterId(),
               req.getAiNodeConfiguration().getLocation().getAiNodeId(),
               req.getAiNodeConfiguration().getLocation(),
               this);

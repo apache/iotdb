@@ -322,6 +322,9 @@ public class IoTDBScalarFunctionTableIT {
         "INSERT INTO upperTable(Time,device_id,s1) values(3, 'd1', 'Abcdefg')",
         "INSERT INTO upperTable(Time,device_id,s9) values(2, 'd1', 'Test')",
         "INSERT INTO upperTable(Time,device_id,s9) values(3, 'd1', 'Abcdefg')",
+        // no args SQL
+        "create table NoArgTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
+        "INSERT INTO NoArgTable(Time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 'd1', 'abcd', 0, 0, 0, 0, true, '2021-10-01', 1633046400000, 'abcd', X'abcd')",
         // dateBinSQL use s8 to calculate
         "create table dateBinTable(device_id STRING ID, s1 TEXT MEASUREMENT, s2 INT32 MEASUREMENT, s3 INT64 MEASUREMENT, s4 FLOAT MEASUREMENT, s5 DOUBLE MEASUREMENT, s6 BOOLEAN MEASUREMENT, s7 DATE MEASUREMENT, s8 TIMESTAMP MEASUREMENT, s9 STRING MEASUREMENT, s10 BLOB MEASUREMENT)",
         // 2024-01-01T00:00:00.000Z
@@ -415,6 +418,46 @@ public class IoTDBScalarFunctionTableIT {
         expectedHeader,
         expectedAns,
         DATABASE_NAME);
+
+    expectedHeader = new String[] {"s3", "s7"};
+    expectedAns =
+        new String[] {
+          "1,2021-10-01,",
+        };
+
+    tableResultSetEqualTest(
+        "select s3, s7 from absTable where s7 in (CAST('2021-10-01' AS DATE), CAST('2021-10-02' AS DATE))",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testTimestampCompare() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"s2", "s8"};
+    String[] expectedAns =
+        new String[] {
+          "1,2021-10-01T00:00:00.000Z,",
+        };
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8 IN (CAST('2021-10-01T08:00:00.000+08:00' AS TIMESTAMP), CAST('2021-10-01T00:00:00.000Z' AS TIMESTAMP))",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8=CAST('2021-10-01T08:00:00.000+08:00' AS TIMESTAMP)",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select s2, s8 from absTable where s8=2021-10-01T08:00:00.000+08:00",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
   }
 
   @Test
@@ -490,11 +533,6 @@ public class IoTDBScalarFunctionTableIT {
         expectedResultLong,
         expectedResultFloat,
         expectedResultDouble);
-    String[] expectedAns =
-        new String[] {
-          "1970-01-01T00:00:00.001Z,1,0.0,1,0.0,1.0,0.0,1.0,0.0,",
-          "1970-01-01T00:00:00.002Z,2,NaN,2,NaN,0.5,1.0471975511965979,0.5,1.0471975511965979,",
-        };
   }
 
   @Test
@@ -2678,6 +2716,86 @@ public class IoTDBScalarFunctionTableIT {
         "select s10,upper(s10) from upperTable",
         TSStatusCode.SEMANTIC_ERROR.getStatusCode()
             + ": Scalar function upper only accepts one argument and it must be text or string data type.",
+        DATABASE_NAME);
+  }
+
+  private void testOneRowDoubleResult(
+      String sql, String[] expectedHeader, String database, Double[] expectedResult) {
+    try (Connection connection =
+        EnvFactory.getEnv()
+            .getConnection(
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + database);
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+          }
+          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+          resultSet.next();
+          assertEquals(expectedResult[0], Double.parseDouble(resultSet.getString(1)), 0.00001);
+          assertEquals(expectedResult[1], Double.parseDouble(resultSet.getString(2)), 0.00001);
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void piTestNormal() {
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.PI};
+    Double[] expectedResultLong = new Double[] {Math.PI};
+    Double[] expectedResultFloat = new Double[] {Math.PI};
+    Double[] expectedResultDouble = new Double[] {Math.PI};
+    testDoubleResult(
+        "select time, s2 + pi(), s3 + pi(), s4 + pi(), s5 + pi() from NoArgTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
+  }
+
+  @Test
+  public void piTestFail() {
+    // case 1: more than one argument
+    tableAssertTestFail(
+        "select s2,pi(s2) from NoArgTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Scalar function pi accepts no argument.",
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void eTestNormal() {
+    String[] expectedHeader = new String[] {"time", "_col1", "_col2", "_col3", "_col4"};
+    Double[] expectedResultInt = new Double[] {Math.E};
+    Double[] expectedResultLong = new Double[] {Math.E};
+    Double[] expectedResultFloat = new Double[] {Math.E};
+    Double[] expectedResultDouble = new Double[] {Math.E};
+    testDoubleResult(
+        "select time, s2 + e(), s3 + e(), s4 + e(), s5 + e() from NoArgTable",
+        expectedHeader,
+        DATABASE_NAME,
+        expectedResultInt,
+        expectedResultLong,
+        expectedResultFloat,
+        expectedResultDouble);
+  }
+
+  @Test
+  public void eTestFail() {
+    // case 1: more than one argument
+    tableAssertTestFail(
+        "select s1,e(s1) from NoArgTable",
+        TSStatusCode.SEMANTIC_ERROR.getStatusCode() + ": Scalar function e accepts no argument.",
         DATABASE_NAME);
   }
 

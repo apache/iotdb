@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -33,7 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
-import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.commons.io.FileUtils;
@@ -61,6 +63,8 @@ public class ActiveLoadTsFileLoader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadTsFileLoader.class);
 
+  private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private static final int MAX_PENDING_SIZE = 1000;
   private final ActiveLoadPendingQueue pendingQueue = new ActiveLoadPendingQueue();
 
@@ -80,20 +84,22 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void initFailDirIfNecessary() {
-    if (failDir.get() == null) {
+    if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
       synchronized (failDir) {
-        if (failDir.get() == null) {
-          final File failDirFile =
-              new File(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir());
+        if (!Objects.equals(failDir.get(), IOTDB_CONFIG.getLoadActiveListeningFailDir())) {
+          final File failDirFile = new File(IOTDB_CONFIG.getLoadActiveListeningFailDir());
           try {
             FileUtils.forceMkdir(failDirFile);
           } catch (final IOException e) {
             LOGGER.warn(
                 "Error occurred during creating fail directory {} for active load.",
-                failDirFile,
+                failDirFile.getAbsoluteFile(),
                 e);
           }
-          failDir.set(IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningFailDir());
+          failDir.set(IOTDB_CONFIG.getLoadActiveListeningFailDir());
+
+          ActiveLoadingFilesSizeMetricsSet.getInstance().updateFailedDir(failDir.get());
+          ActiveLoadingFilesNumberMetricsSet.getInstance().updateFailedDir(failDir.get());
         }
       }
     }
@@ -105,8 +111,8 @@ public class ActiveLoadTsFileLoader {
         if (activeLoadExecutor.get() == null) {
           activeLoadExecutor.set(
               new WrappedThreadPoolExecutor(
-                  IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningMaxThreadNum(),
-                  IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningMaxThreadNum(),
+                  IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum(),
+                  IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum(),
                   0L,
                   TimeUnit.SECONDS,
                   new LinkedBlockingQueue<>(),
@@ -117,9 +123,7 @@ public class ActiveLoadTsFileLoader {
     }
 
     final int targetCorePoolSize =
-        Math.min(
-            pendingQueue.size(),
-            IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningMaxThreadNum());
+        Math.min(pendingQueue.size(), IOTDB_CONFIG.getLoadActiveListeningMaxThreadNum());
 
     if (activeLoadExecutor.get().getCorePoolSize() != targetCorePoolSize) {
       activeLoadExecutor.get().setCorePoolSize(targetCorePoolSize);
@@ -163,10 +167,7 @@ public class ActiveLoadTsFileLoader {
 
   private Optional<Pair<String, Boolean>> tryGetNextPendingFile() {
     final long maxRetryTimes =
-        Math.max(
-            1,
-            IoTDBDescriptor.getInstance().getConfig().getLoadActiveListeningCheckIntervalSeconds()
-                << 1);
+        Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
     while (true) {
@@ -200,7 +201,7 @@ public class ActiveLoadTsFileLoader {
             "",
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
-            IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold())
+            IOTDB_CONFIG.getQueryTimeoutThreshold())
         .status;
   }
 
@@ -258,9 +259,15 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
+  public boolean isFilePendingOrLoading(final String filePath) {
+    return pendingQueue.isFilePendingOrLoading(filePath);
+  }
+
   // Metrics
   public long countAndReportFailedFileNumber() {
     final long[] fileCount = {0};
+    final long[] fileSize = {0};
+
     try {
       initFailDirIfNecessary();
       Files.walkFileTree(
@@ -269,13 +276,21 @@ public class ActiveLoadTsFileLoader {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
               fileCount[0]++;
+              try {
+                fileSize[0] += file.toFile().length();
+              } catch (Exception e) {
+                LOGGER.debug("Failed to count failed files in fail directory.", e);
+              }
               return FileVisitResult.CONTINUE;
             }
           });
-      ActiveLoadingFilesMetricsSet.getInstance().recordFailedFileCounter(fileCount[0]);
+
+      ActiveLoadingFilesNumberMetricsSet.getInstance().updateTotalFailedFileCounter(fileCount[0]);
+      ActiveLoadingFilesSizeMetricsSet.getInstance().updateTotalFailedFileCounter(fileSize[0]);
     } catch (final IOException e) {
-      LOGGER.warn("Failed to count failed files in fail directory.", e);
+      LOGGER.debug("Failed to count failed files in fail directory.", e);
     }
+
     return fileCount[0];
   }
 }

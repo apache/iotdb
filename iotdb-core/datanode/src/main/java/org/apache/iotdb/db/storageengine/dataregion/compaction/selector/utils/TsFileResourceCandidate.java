@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -87,7 +88,7 @@ public class TsFileResourceCandidate {
           hasDetailedDeviceInfo = false;
           return;
         }
-        ArrayDeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
+        ArrayDeviceTimeIndex timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
         for (IDeviceID deviceId : timeIndex.getDevices()) {
           deviceInfoMap.put(
               deviceId,

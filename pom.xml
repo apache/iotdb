@@ -1355,7 +1355,7 @@
                     <execution>
                         <id>create-source-package</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                         <phase>package</phase>
                     </execution>
@@ -1427,6 +1427,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1442,6 +1444,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1457,6 +1461,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1472,6 +1478,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1487,6 +1495,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-x86_64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -1502,6 +1512,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-aarch64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>

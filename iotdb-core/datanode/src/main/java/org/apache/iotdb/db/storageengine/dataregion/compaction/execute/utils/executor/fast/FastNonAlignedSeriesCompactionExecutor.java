@@ -162,10 +162,7 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
         // add into queue
         chunkMetadataQueue.add(
             new ChunkMetadataElement(
-                chunkMetadata,
-                i == iChunkMetadataList.size() - 1,
-                fileElement,
-                isBatchedCompaction));
+                chunkMetadata, i == iChunkMetadataList.size() - 1, fileElement));
       }
     }
   }
