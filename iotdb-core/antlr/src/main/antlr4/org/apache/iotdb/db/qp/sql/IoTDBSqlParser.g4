@@ -87,7 +87,7 @@ utilityStatement
     : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
-    | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
+    | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile | loadFileWith
     | removeFile | unloadFile
     ;
 
@@ -1139,6 +1139,22 @@ loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
     | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
+    ;
+
+// Load TsFile With
+loadFileWith
+    : LOAD fileName=STRING_LITERAL loadFileWithAttributeClauses
+    ;
+
+loadFileWithAttributeClauses
+    : WITH
+        LR_BRACKET
+        (loadFileWithAttributeClause COMMA)* loadFileWithAttributeClause?
+        RR_BRACKET
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=STRING_LITERAL OPERATOR_SEQ loadFileWithValue=STRING_LITERAL
     ;
 
 // Remove TsFile

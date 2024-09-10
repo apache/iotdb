@@ -118,6 +118,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileConstant;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
@@ -2043,6 +2044,28 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           String.format(
               "Load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
               ctx.getText()));
+    }
+  }
+
+  @Override
+  public Statement visitLoadFileWith(IoTDBSqlParser.LoadFileWithContext ctx) {
+    try {
+      final Map<String, String> loadTsFileAttributes = new HashMap<>();
+      if (ctx.loadFileWithAttributeClauses() != null) {
+        for (IoTDBSqlParser.LoadFileWithAttributeClauseContext attributeContext :
+            ctx.loadFileWithAttributeClauses().loadFileWithAttributeClause()) {
+          final String key = parseStringLiteral(attributeContext.loadFileWithKey.getText());
+          final String value = parseStringLiteral(attributeContext.loadFileWithValue.getText());
+
+          LoadTsFileConstant.validateLoadTsFileParam(key, value);
+          loadTsFileAttributes.put(key, value);
+        }
+      }
+
+      return new LoadTsFileStatement(
+          loadTsFileAttributes, parseStringLiteral(ctx.fileName.getText()));
+    } catch (final FileNotFoundException e) {
+      throw new SemanticException(e.getMessage());
     }
   }
 

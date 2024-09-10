@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -60,6 +61,26 @@ public class LoadTsFileStatement extends Statement {
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
+    processTsFile(filePath);
+  }
+
+  public LoadTsFileStatement(final Map<String, String> loadAttributes, final String filePath)
+      throws FileNotFoundException {
+
+    this.file = new File(filePath);
+    this.databaseLevel = LoadTsFileConstant.getOrDefaultDatabaseLevel(loadAttributes);
+    this.verifySchema = true;
+    this.deleteAfterLoad = LoadTsFileConstant.getOrDefaultDeleteOnSuccess(loadAttributes);
+    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    this.tsFiles = new ArrayList<>();
+    this.resources = new ArrayList<>();
+    this.writePointCountList = new ArrayList<>();
+    this.statementType = StatementType.MULTI_BATCH_INSERT;
+
+    processTsFile(filePath);
+  }
+
+  private void processTsFile(final String filePath) throws FileNotFoundException {
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
