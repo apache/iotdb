@@ -1046,14 +1046,13 @@ public class DataRegion implements IDataRegionForQuery {
       if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertRowNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertRowLastCache(insertRowNode);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && (!insertRowNode.isGeneratedByRemoteConsensusLeader())) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowLastCache(insertRowNode);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
@@ -1066,8 +1065,7 @@ public class DataRegion implements IDataRegionForQuery {
         : Long.MAX_VALUE;
   }
 
-  private boolean splitAndInsert(InsertTabletNode insertTabletNode, int loc, TSStatus[] results)
-      throws BatchProcessException, WriteProcessException {
+  private boolean splitAndInsert(InsertTabletNode insertTabletNode, int loc, TSStatus[] results) {
     boolean noFailure = true;
 
     // before is first start point
@@ -1196,14 +1194,13 @@ public class DataRegion implements IDataRegionForQuery {
       noFailure = loc == 0;
       noFailure = noFailure && splitAndInsert(insertTabletNode, loc, results);
 
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertTabletLastCache(insertTabletNode);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && !insertTabletNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertTabletLastCache(insertTabletNode);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
 
       if (!noFailure) {
@@ -3497,14 +3494,13 @@ public class DataRegion implements IDataRegionForQuery {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemoryBlockCost(costsForMetrics[1]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && (!insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader())) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
     } finally {
       writeUnlock();
@@ -3571,14 +3567,13 @@ public class DataRegion implements IDataRegionForQuery {
       List<InsertRowNode> executedInsertRowNodeList =
           insertToTsFileProcessors(insertRowsNode, areSequence, timePartitionIds);
 
-      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()) {
-        if (!insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
-          // disable updating last cache on follower
-          startTime = System.nanoTime();
-          tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
-          PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
-              System.nanoTime() - startTime);
-        }
+      if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
+          && !insertRowsNode.isGeneratedByRemoteConsensusLeader()) {
+        // disable updating last cache on follower
+        startTime = System.nanoTime();
+        tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
+        PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
+            System.nanoTime() - startTime);
       }
 
       if (!insertRowsNode.getResults().isEmpty()) {
