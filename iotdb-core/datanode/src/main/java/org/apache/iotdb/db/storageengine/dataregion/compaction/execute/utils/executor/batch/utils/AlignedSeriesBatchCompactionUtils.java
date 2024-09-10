@@ -120,7 +120,7 @@ public class AlignedSeriesBatchCompactionUtils {
           && currentSchema
               .getMeasurementId()
               .equals(currentValueChunkMetadata.getMeasurementUid())) {
-        newValueChunkMetadataArr[i] = originAlignedChunkMetadata;
+        newValueChunkMetadataArr[i] = currentValueChunkMetadata;
         currentValueChunkMetadataIndex++;
       }
     }
