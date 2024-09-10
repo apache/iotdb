@@ -23,8 +23,8 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.AIClusterIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -71,14 +71,14 @@ public class AINodeModelIT {
         "create model identity using uri \"" + MODEL_PATH + "\"",
       };
 
-  @Before
+  @BeforeClass
   public void setUp() throws Exception {
     // Init 1C1D1M cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
     prepareData(sqls);
   }
 
-  @After
+  @AfterClass
   public void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
