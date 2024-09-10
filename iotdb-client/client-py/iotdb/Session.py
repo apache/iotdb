@@ -908,13 +908,15 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
-            connection = self.get_connection(tablet.get_device_id())
+            connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
-            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(
+                tablet.get_insert_target_name(), e.redirect_node
+            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -933,14 +935,14 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                connection = self.get_connection(tablet_lst[i].get_device_id())
+                connection = self.get_connection(tablet_lst[i].get_insert_target_name())
                 request = request_group.setdefault(
                     connection.client,
                     TSInsertTabletsReq(
                         connection.session_id, [], [], [], [], [], [], False
                     ),
                 )
-                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.prefixPaths.append(tablet_lst[i].get_insert_target_name())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
@@ -999,13 +1001,15 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet, True)
         try:
-            connection = self.get_connection(tablet.get_device_id())
+            connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
-            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(
+                tablet.get_insert_target_name(), e.redirect_node
+            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1024,14 +1028,14 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                connection = self.get_connection(tablet_lst[i].get_device_id())
+                connection = self.get_connection(tablet_lst[i].get_insert_target_name())
                 request = request_group.setdefault(
                     connection.client,
                     TSInsertTabletsReq(
                         connection.session_id, [], [], [], [], [], [], True
                     ),
                 )
-                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.prefixPaths.append(tablet_lst[i].get_insert_target_name())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
@@ -1088,13 +1092,15 @@ class Session(object):
         """
         request = self.gen_insert_relational_tablet_req(tablet)
         try:
-            connection = self.get_connection(tablet.get_device_id())
+            connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
-            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(
+                tablet.get_insert_target_name(), e.redirect_node
+            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1321,7 +1327,7 @@ class Session(object):
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
         return TSInsertTabletReq(
             self.__session_id,
-            tablet.get_device_id(),
+            tablet.get_insert_target_name(),
             tablet.get_measurements(),
             tablet.get_binary_values(),
             tablet.get_binary_timestamps(),
@@ -1333,7 +1339,7 @@ class Session(object):
     def gen_insert_relational_tablet_req(self, tablet, is_aligned=False):
         return TSInsertTabletReq(
             self.__session_id,
-            tablet.get_device_id(),
+            tablet.get_insert_target_name(),
             tablet.get_measurements(),
             tablet.get_binary_values(),
             tablet.get_binary_timestamps(),
@@ -1352,7 +1358,7 @@ class Session(object):
         type_lst = []
         size_lst = []
         for tablet in tablet_lst:
-            device_id_lst.append(tablet.get_device_id())
+            device_id_lst.append(tablet.get_insert_target_name())
             measurements_lst.append(tablet.get_measurements())
             values_lst.append(tablet.get_binary_values())
             timestamps_lst.append(tablet.get_binary_timestamps())

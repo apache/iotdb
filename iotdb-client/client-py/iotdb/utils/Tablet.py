@@ -48,18 +48,23 @@ class Tablet(object):
     ):
         """
         creating a tablet for insertion
-          for example, considering device: root.sg1.d1
+          for example using tree-model, considering device: root.sg1.d1
             timestamps,     m1,    m2,     m3
                      1,  125.3,  True,  text1
                      2,  111.6, False,  text2
                      3,  688.6,  True,  text3
+          for example using table-model, considering table: table1
+            timestamps,    id1,  attr1,    m1
+                     1,  id:1,  attr:1,   1.0
+                     2,  id:1,  attr:1,   2.0
+                     3,  id:2,  attr:2,   3.0
         Notice: The tablet will be sorted at the initialization by timestamps
-        :param insert_target_name: String, DeviceId if using tree-view interfaces or TableName when using table-view interfaces.
-        :param column_names: String List, names of columns
+        :param insert_target_name: Str, DeviceId if using tree-view interfaces or TableName when using table-view interfaces.
+        :param column_names: Str List, names of columns
         :param data_types: TSDataType List, specify value types for columns
         :param values: 2-D List, the values of each row should be the outer list element
-        :param timestamps: List,
-        :param column_types: List of ColumnType
+        :param timestamps: int List, contains the timestamps
+        :param column_types: ColumnType List, marking the type of each column, can be none for tree-view interfaces.
         """
         if len(timestamps) != len(values):
             raise RuntimeError(
@@ -105,7 +110,7 @@ class Tablet(object):
     def get_row_number(self):
         return self.__row_number
 
-    def get_device_id(self):
+    def get_insert_target_name(self):
         return self.__insert_target_name
 
     def get_binary_timestamps(self):

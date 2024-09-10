@@ -116,7 +116,7 @@ def query_data():
 def delete_data():
     session = session_pool.get_session()
     session.execute_non_query_statement("drop database db1")
-    print("data has been deleted. now the devices are:")
+    print("data has been deleted. now the databases are:")
     res = session.execute_statement("show databases")
     while res.has_next():
         print(res.next())
