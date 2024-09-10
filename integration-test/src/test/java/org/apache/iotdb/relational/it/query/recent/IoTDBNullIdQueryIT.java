@@ -33,7 +33,9 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.Statement;
+import java.sql.Types;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
@@ -181,6 +183,24 @@ public class IoTDBNullIdQueryIT {
       // Test boolean not between
       resultSet =
           statement.executeQuery("select * from testNullId where s2 not between false and true");
+      assertFalse(resultSet.next());
+
+      // Test same column name
+      resultSet = statement.executeQuery("select time, s1 as a, s2 as a from testNullId");
+      result = defaultFormatDataTime(1) + ",0,false";
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      assertEquals(3, resultSetMetaData.getColumnCount());
+      assertEquals("time", resultSetMetaData.getColumnName(1));
+      assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
+      assertEquals("a", resultSetMetaData.getColumnName(2));
+      assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(2));
+      assertEquals("a", resultSetMetaData.getColumnName(3));
+      assertEquals(Types.BOOLEAN, resultSetMetaData.getColumnType(3));
+
+      assertTrue(resultSet.next());
+      ans = resultSet.getString(1) + "," + resultSet.getString(2) + "," + resultSet.getString(3);
+
+      assertEquals(result, ans);
       assertFalse(resultSet.next());
     }
   }

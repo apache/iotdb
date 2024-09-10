@@ -204,7 +204,7 @@ public class DistributionPlanner {
     if (analysis.getTreeStatement() != null && analysis.getTreeStatement().isQuery()) {
       analysis
           .getRespDatasetHeader()
-          .setColumnToTsBlockIndexMap(optimizedRootWithExchange.getOutputColumnNames());
+          .setTreeColumnToTsBlockIndexMap(optimizedRootWithExchange.getOutputColumnNames());
     }
 
     SubPlan subPlan = splitFragment(optimizedRootWithExchange);
