@@ -40,6 +40,7 @@
         <module>distribution</module>
         <module>example</module>
         <module>library-udf</module>
+        <module>integration-test</module>
     </modules>
     <properties>
         <!-- This was the last version to support Java 8 -->
@@ -166,7 +167,7 @@
         <thrift.version>0.14.1</thrift.version>
         <xz.version>1.9</xz.version>
         <zstd-jni.version>1.5.6-3</zstd-jni.version>
-        <tsfile.version>1.2.0-b31fb57c-SNAPSHOT</tsfile.version>
+        <tsfile.version>1.2.0-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
