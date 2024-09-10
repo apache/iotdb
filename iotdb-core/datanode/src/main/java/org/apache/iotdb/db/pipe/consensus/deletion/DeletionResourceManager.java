@@ -181,11 +181,17 @@ public class DeletionResourceManager implements AutoCloseable {
               .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
               .filter(
                   path ->
-                      isCurrentFileCanBeDeleted(
+                      isFileProgressBehindGivenProgress(
                           path.getFileName().toString(), currentProgressIndex))
+              .sorted(this::compareFileProgressIndex)
               .toArray(Path[]::new);
-      for (Path path : deletionPaths) {
-        FileUtils.deleteFileOrDirectory(path.toFile());
+      // File name represents the max progressIndex in its previous file. If currentProgressIndex is
+      // larger than a fileName's progressIndex, it means that the file before this file has been
+      // fully synchronized and can be deleted.
+      // So here we cannot guarantee that the last file can be deleted, we can only guarantee that
+      // the first n-1 files can be deleted (if the length of deletionPaths is n)
+      for (int i = 0; i < deletionPaths.length - 1; i++) {
+        FileUtils.deleteFileOrDirectory(deletionPaths[i].toFile());
       }
     } catch (IOException e) {
       LOGGER.warn(
@@ -195,7 +201,30 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  private boolean isCurrentFileCanBeDeleted(String fileName, ProgressIndex currentProgressIndex) {
+  private int compareFileProgressIndex(Path file1, Path file2) {
+    Pattern pattern = Pattern.compile(DELETION_FILE_NAME_PATTERN);
+    String fileName1 = file1.getFileName().toString();
+    String fileName2 = file2.getFileName().toString();
+    Matcher matcher1 = pattern.matcher(fileName1);
+    Matcher matcher2 = pattern.matcher(fileName2);
+    // Definitely match. Because upper caller has filtered fileNames.
+    if (matcher1.matches() && matcher2.matches()) {
+      int fileRebootTimes1 = Integer.parseInt(matcher1.group(REBOOT_TIME));
+      long fileMemTableFlushOrderId1 = Long.parseLong(matcher1.group(MEM_TABLE_FLUSH_ORDER));
+
+      int fileRebootTimes2 = Integer.parseInt(matcher2.group(REBOOT_TIME));
+      long fileMemTableFlushOrderId2 = Long.parseLong(matcher2.group(MEM_TABLE_FLUSH_ORDER));
+
+      int rebootCompareRes = Integer.compare(fileRebootTimes1, fileRebootTimes2);
+      return rebootCompareRes == 0
+          ? Long.compare(fileMemTableFlushOrderId1, fileMemTableFlushOrderId2)
+          : rebootCompareRes;
+    }
+    return 0;
+  }
+
+  private boolean isFileProgressBehindGivenProgress(
+      String fileName, ProgressIndex currentProgressIndex) {
     if (currentProgressIndex instanceof SimpleProgressIndex) {
       SimpleProgressIndex simpleProgressIndex = (SimpleProgressIndex) currentProgressIndex;
       int curRebootTimes = simpleProgressIndex.getRebootTimes();

@@ -63,8 +63,9 @@ public class DeletionReader implements Closeable {
     }
 
     // Read metaData
-    ByteBuffer intBuffer = ByteBuffer.allocate(4);
-    fileChannel.read(intBuffer);
+    ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
+    long position = fileChannel.size() - Integer.BYTES;
+    fileChannel.read(intBuffer, position);
     intBuffer.flip();
     int deletionNum = intBuffer.getInt();
     if (LOGGER.isDebugEnabled()) {
@@ -72,7 +73,7 @@ public class DeletionReader implements Closeable {
     }
 
     // Read deletions
-    long remainingBytes = fileChannel.size() - fileChannel.position();
+    long remainingBytes = fileChannel.size() - fileChannel.position() - Integer.BYTES;
     ByteBuffer byteBuffer = ByteBuffer.allocate((int) remainingBytes);
     fileChannel.read(byteBuffer);
     byteBuffer.flip();
