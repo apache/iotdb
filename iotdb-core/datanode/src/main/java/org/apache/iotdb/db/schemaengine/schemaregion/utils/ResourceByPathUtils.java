@@ -207,7 +207,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy =
-        alignedMemChunk.getSortedTvListForQuery(alignedFullPath.getSchemaList());
+        alignedMemChunk.getSortedTvListForQuery(
+            alignedFullPath.getSchemaList(), context.isIgnoreAllNullRows());
     List<TimeRange> timeColumnDeletion = null;
     List<List<TimeRange>> valueColumnsDeletionList = null;
     if (modsToMemtable != null) {

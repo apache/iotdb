@@ -269,7 +269,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public synchronized TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList) {
+  public synchronized TVList getSortedTvListForQuery(
+      List<IMeasurementSchema> schemaList, boolean ignoreAllNullRows) {
     sortTVList();
     // increase reference count
     list.increaseReferenceCount();
@@ -280,7 +281,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
       dataTypeList.add(measurementSchema.getType());
     }
-    return list.getTvListByColumnIndex(columnIndexList, dataTypeList);
+    return list.getTvListByColumnIndex(columnIndexList, dataTypeList, ignoreAllNullRows);
   }
 
   private void sortTVList() {
