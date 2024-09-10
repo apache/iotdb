@@ -165,7 +165,7 @@ public class PipeDataNodeTaskBuilder {
     try {
       final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
           DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(extractorParameters);
-      if (!insertionDeletionListeningOptionPair.left) {
+      if (!insertionDeletionListeningOptionPair.right) {
         return;
       }
     } catch (IllegalPathException e) {
@@ -181,7 +181,7 @@ public class PipeDataNodeTaskBuilder {
             PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
     if (isRealtime == null) {
       connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
-      LOGGER.warn(
+      LOGGER.info(
           "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
       return;
     }
