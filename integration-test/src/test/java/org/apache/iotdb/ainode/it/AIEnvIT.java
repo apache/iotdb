@@ -35,13 +35,13 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
 public class AIEnvIT {
-  @BeforeClass
+  @Before
   public void setUp() throws Exception {
     // Init 1C1D1M cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
   }
 
-  @AfterClass
+  @After
   public void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }

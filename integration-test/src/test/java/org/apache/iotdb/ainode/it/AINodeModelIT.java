@@ -54,7 +54,7 @@ public class AINodeModelIT {
           + File.separator
           + "ainode-example";
 
-  String[] sqls =
+  static String[] sqls =
       new String[] {
         "CREATE DATABASE root.AI.data",
         "CREATE TIMESERIES root.AI.data.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -72,14 +72,14 @@ public class AINodeModelIT {
       };
 
   @BeforeClass
-  public void setUp() throws Exception {
+  public static void setUp() throws Exception {
     // Init 1C1D1M cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
     prepareData(sqls);
   }
 
   @AfterClass
-  public void tearDown() {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
