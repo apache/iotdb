@@ -51,7 +51,7 @@ fi
 
 CLASSPATH=${IOTDB_HOME}/lib/*
 
-MAIN_CLASS=org.apache.iotdb.tool.ExportSchema
+MAIN_CLASS=org.apache.iotdb.tool.schema.ExportSchema
 
 "$JAVA" -DIOTDB_HOME=${IOTDB_HOME} -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

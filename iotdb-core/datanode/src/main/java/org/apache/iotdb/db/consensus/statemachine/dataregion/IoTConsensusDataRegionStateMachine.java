@@ -79,7 +79,7 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
     IConsensusRequest result;
     if (request instanceof IndexedConsensusRequest) {
       IndexedConsensusRequest indexedRequest = (IndexedConsensusRequest) request;
-      result = grabInsertNode(indexedRequest);
+      result = grabPlanNode(indexedRequest);
     } else if (request instanceof BatchIndexedConsensusRequest) {
       BatchIndexedConsensusRequest batchRequest = (BatchIndexedConsensusRequest) request;
       DeserializedBatchIndexedConsensusRequest deserializedRequest =
@@ -88,7 +88,7 @@ public class IoTConsensusDataRegionStateMachine extends DataRegionStateMachine {
               batchRequest.getEndSyncIndex(),
               batchRequest.getRequests().size());
       for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
-        final PlanNode planNode = grabInsertNode(indexedRequest);
+        final PlanNode planNode = grabPlanNode(indexedRequest);
         if (planNode instanceof ComparableConsensusRequest) {
           final IoTProgressIndex ioTProgressIndex =
               new IoTProgressIndex(batchRequest.getSourcePeerId(), indexedRequest.getSyncIndex());

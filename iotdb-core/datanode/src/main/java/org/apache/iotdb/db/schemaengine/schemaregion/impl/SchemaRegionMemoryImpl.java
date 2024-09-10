@@ -245,7 +245,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
-              new PartialPath(storageGroupFullPath),
+              PartialPath.getDatabasePath(storageGroupFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,
@@ -855,7 +855,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     Set<PartialPath> deviceBasedPathPatternSet = new HashSet<>();
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeseries(pathPattern)) {
+      for (PartialPath devicePath : mtree.getDevicesOfPreDeletedTimeSeries(pathPattern)) {
         deviceBasedPathPatternSet.addAll(pathPattern.alterPrefixPath(devicePath));
       }
     }
@@ -865,7 +865,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
     for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mtree.getPreDeletedTimeseries(pathPattern)) {
+      for (PartialPath path : mtree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
@@ -960,7 +960,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   private void deleteSingleTimeseriesInBlackList(final PartialPath path)
       throws MetadataException, IOException {
-    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeSeries(path);
     removeFromTagInvertedIndex(measurementMNode);
     if (measurementMNode.isLogicalView()) {
       regionStatistics.deleteView(1L);
@@ -979,7 +979,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    */
   private void deleteOneTimeseriesUpdateStatistics(final PartialPath path)
       throws MetadataException, IOException {
-    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeseries(path);
+    final IMeasurementMNode<IMemMNode> measurementMNode = mtree.deleteTimeSeries(path);
     removeFromTagInvertedIndex(measurementMNode);
     if (measurementMNode.isLogicalView()) {
       regionStatistics.deleteView(1L);

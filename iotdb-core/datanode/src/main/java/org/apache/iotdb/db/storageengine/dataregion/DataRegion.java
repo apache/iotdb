@@ -396,6 +396,10 @@ public class DataRegion implements IDataRegionForQuery {
     return asyncTsFileResourceRecoverTaskList;
   }
 
+  public void clearAsyncTsFileResourceRecoverTaskList() {
+    asyncTsFileResourceRecoverTaskList.clear();
+  }
+
   /** this class is used to store recovering context. */
   private class DataRegionRecoveryContext {
 
@@ -1012,7 +1016,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     long deviceTTL =
-        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
+        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getTargetPath().getNodes());
     if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
           insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
@@ -3404,7 +3408,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long deviceTTL =
           DataNodeTTLCache.getInstance()
-              .getTTL(insertRowsOfOneDeviceNode.getDevicePath().getNodes());
+              .getTTL(insertRowsOfOneDeviceNode.getTargetPath().getNodes());
       long[] costsForMetrics = new long[4];
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {

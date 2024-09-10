@@ -38,9 +38,10 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
   private final AtomicLong viewNumber = new AtomicLong(0);
   private final Map<Integer, Integer> templateUsage = new ConcurrentHashMap<>();
 
-  private long mlogLength = 0;
+  private long mLogLength = 0;
 
-  public MemSchemaRegionStatistics(int schemaRegionId, ISchemaEngineStatistics engineStatistics) {
+  public MemSchemaRegionStatistics(
+      final int schemaRegionId, final ISchemaEngineStatistics engineStatistics) {
     this.schemaEngineStatistics = engineStatistics.getAsMemSchemaEngineStatistics();
     this.schemaRegionId = schemaRegionId;
   }
@@ -50,18 +51,18 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     return schemaEngineStatistics.isAllowToCreateNewSeries();
   }
 
-  public void requestMemory(long size) {
+  public void requestMemory(final long size) {
     memoryUsage.addAndGet(size);
     schemaEngineStatistics.requestMemory(size);
   }
 
-  public void releaseMemory(long size) {
+  public void releaseMemory(final long size) {
     memoryUsage.addAndGet(-size);
     schemaEngineStatistics.releaseMemory(size);
   }
 
   @Override
-  public long getSeriesNumber(boolean includeView) {
+  public long getSeriesNumber(final boolean includeView) {
     if (includeView) {
       return viewNumber.get() + measurementNumber.get() + getTemplateSeriesNumber();
     } else {
@@ -69,7 +70,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     }
   }
 
-  public void addMeasurement(long addedNum) {
+  public void addMeasurement(final long addedNum) {
     measurementNumber.addAndGet(addedNum);
     schemaEngineStatistics.addMeasurement(addedNum);
   }
@@ -79,12 +80,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     schemaEngineStatistics.deleteMeasurement(deletedNum);
   }
 
-  public void addView(long addedNum) {
+  public void addView(final long addedNum) {
     viewNumber.addAndGet(addedNum);
     schemaEngineStatistics.addView(addedNum);
   }
 
-  public void deleteView(long deletedNum) {
+  public void deleteView(final long deletedNum) {
     viewNumber.addAndGet(-deletedNum);
     schemaEngineStatistics.deleteView(deletedNum);
   }
@@ -111,7 +112,7 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
 
   @Override
   public long getTemplateSeriesNumber() {
-    ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
+    final ClusterTemplateManager clusterTemplateManager = ClusterTemplateManager.getInstance();
     return templateUsage.entrySet().stream()
         .mapToLong(
             i -> {
@@ -121,12 +122,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
         .sum();
   }
 
-  public void activateTemplate(int templateId) {
+  public void activateTemplate(final int templateId) {
     templateUsage.compute(templateId, (k, v) -> (v == null) ? 1 : v + 1);
     schemaEngineStatistics.activateTemplate(templateId);
   }
 
-  public void deactivateTemplate(int templateId) {
+  public void deactivateTemplate(final int templateId) {
     templateUsage.compute(templateId, (k, v) -> (v == null || v == 1) ? null : v - 1);
     schemaEngineStatistics.deactivateTemplate(templateId, 1);
   }
@@ -141,12 +142,12 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     return schemaRegionId;
   }
 
-  public void setMlogLength(long mlogLength) {
-    this.mlogLength = mlogLength;
+  public void setMLogLength(final long mLogLength) {
+    this.mLogLength = mLogLength;
   }
 
-  public long getMlogLength() {
-    return mlogLength;
+  public long getMLogLength() {
+    return mLogLength;
   }
 
   @Override

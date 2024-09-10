@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -228,13 +227,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   void subSerialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(time, buffer);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), buffer);
+    ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
   }
 
   void subSerialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(time, stream);
-    ReadWriteIOUtils.write(devicePath.getFullPath(), stream);
+    ReadWriteIOUtils.write(targetPath.getFullPath(), stream);
     serializeMeasurementsAndValues(stream);
   }
 
@@ -428,9 +427,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   void subDeserialize(ByteBuffer byteBuffer) {
     time = byteBuffer.getLong();
     try {
-      devicePath =
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(byteBuffer));
+      targetPath = readTargetPath(byteBuffer);
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -527,7 +524,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   protected int subSerializeSize() {
     int size = 0;
     size += Long.BYTES;
-    size += ReadWriteIOUtils.sizeToWrite(devicePath.getFullPath());
+    size += ReadWriteIOUtils.sizeToWrite(targetPath.getFullPath());
     return size + serializeMeasurementsAndValuesSize();
   }
 
@@ -597,7 +594,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
 
   protected void subSerialize(IWALByteBufferView buffer) {
     buffer.putLong(time);
-    WALWriteUtils.write(devicePath.getFullPath(), buffer);
+    WALWriteUtils.write(targetPath.getFullPath(), buffer);
     serializeMeasurementsAndValues(buffer);
   }
 
@@ -680,9 +677,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setTime(stream.readLong());
     try {
-      insertNode.setDevicePath(
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(stream)));
+      insertNode.setTargetPath(insertNode.readTargetPath(stream));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }
@@ -772,9 +767,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setTime(buffer.getLong());
     try {
-      insertNode.setDevicePath(
-          DataNodeDevicePathCache.getInstance()
-              .getPartialPath(ReadWriteIOUtils.readString(buffer)));
+      insertNode.setTargetPath(insertNode.readTargetPath(buffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(DESERIALIZE_ERROR, e);
     }

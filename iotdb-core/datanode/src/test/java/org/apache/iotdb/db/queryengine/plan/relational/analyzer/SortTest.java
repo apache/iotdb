@@ -19,11 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
@@ -46,13 +42,19 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.junit.Test;
 
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.LimitOffsetPushDownTest.getChildrenNode;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.DEFAULT_WARNING;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_ID;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SESSION_INFO;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHANGHAI_SHENZHEN_DEVICE_ENTRIES;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.SHENZHEN_DEVICE_ENTRIES;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.assertTableScan;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.getChildrenNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.ASC;
 import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.DESC;
 import static org.junit.Assert.assertEquals;
@@ -60,15 +62,6 @@ import static org.junit.Assert.assertTrue;
 
 public class SortTest {
 
-  static QueryId queryId = new QueryId("test_query");
-  static SessionInfo sessionInfo =
-      new SessionInfo(
-          1L,
-          "iotdb-user",
-          ZoneId.systemDefault(),
-          IoTDBConstant.ClientVersion.V_1_0,
-          "db",
-          IClientSession.SqlDialect.TABLE);
   static Metadata metadata = new TestMatadata();
   String sql;
   Analysis analysis;
@@ -82,14 +75,6 @@ public class SortTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   TableScanNode tableScanNode;
-  List<String> originalDeviceEntries1 =
-      Arrays.asList(
-          "table1.shanghai.B3.YY",
-          "table1.shenzhen.B1.XX",
-          "table1.shenzhen.B2.ZZ",
-          "table1.shanghai.A3.YY");
-  static List<String> originalDeviceEntries2 =
-      Arrays.asList("table1.shenzhen.B1.XX", "table1.shenzhen.B2.ZZ");
 
   // order by some_ids, time, others; has filter
   @Test
@@ -97,10 +82,10 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag3 asc, time desc, s1+s2 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -127,7 +112,7 @@ public class SortTest {
     // DistributePlan: `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to
     // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -153,7 +138,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
     LimitNode limitNode =
@@ -170,17 +156,18 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     sql = "SELECT * FROM table1 order by tag2 desc, tag3 asc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
     // LogicalPlan: `Output-Offset-Limit-StreamSort-TableScan`
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof StreamSortNode);
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     // DistributedPlan: `Output-Offset-TopK-Limit-TableScan`
@@ -199,10 +186,10 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, tag3 asc, time desc, s1+s2 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -223,7 +210,7 @@ public class SortTest {
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to `Output-Offset-Project-TopK-Limit-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -251,7 +238,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink-Limit-Project-Filter-TableScan`
     IdentitySinkNode identitySinkNode =
@@ -267,7 +255,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   // order by all_ids, time, others
@@ -277,10 +266,11 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, tag3 asc, time desc, s1+s2 desc";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
-    analysis = analyzeSQL(sql, metadata, context);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
+    analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
+            .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Project-StreamSort-Project-Filter-TableScan`
@@ -297,7 +287,7 @@ public class SortTest {
     assertEquals(6, tableScanNode.getDeviceEntries().size());
 
     // DistributePlan: optimize `Output-Project-MergeSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -322,7 +312,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink-Project-Filter-TableScan`
     projectNode =
@@ -336,7 +327,8 @@ public class SortTest {
         DESC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   // order by some_ids, others, time
@@ -345,10 +337,10 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, s1+s2 desc, time desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -375,7 +367,7 @@ public class SortTest {
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan` to
     // `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -401,7 +393,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
     streamSortNode =
@@ -416,7 +409,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   // order by all_ids, others, time
@@ -425,10 +419,10 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by tag2 desc, tag1 desc, tag3 asc, s1+s2 desc, time desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
     // LogicalPlan: `Output-Offset-Limit-Project-StreamSort-Project-Filter-TableScan`
@@ -451,7 +445,7 @@ public class SortTest {
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
     // to `Output-Offset-Project-TopK-Limit-StreamSort-Project-Filter-TableScan`
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     outputNode =
@@ -479,7 +473,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
 
     // DistributePlan: `IdentitySink - Limit - StreamSort - Project - Filter - TableScan`
     IdentitySinkNode sinkNode =
@@ -495,7 +490,8 @@ public class SortTest {
         ASC,
         0,
         0,
-        false);
+        false,
+        "");
   }
 
   @Test
@@ -503,47 +499,51 @@ public class SortTest {
     // order by time, some_ids, others; no filter
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 order by time desc, tag2 asc, tag3 desc, s1+s2 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
-    assertTopKNoFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 15, 0, true);
+    assertTopKNoFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 15, 0, true);
 
     // order by time, others, some_ids; has filter
     sql =
         "SELECT time, tag3, substring(tag1, 1), cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag1 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 0, 0, false);
 
     // order by time, others, all_ids; has filter
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, s1+s2 asc, tag2 asc, tag3 desc, tag1 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 0, 0, false);
 
     // order by time, all_ids, others; has filter
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by time desc, tag2 asc, tag3 desc, tag1 asc, s1+s2 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
-    assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, DESC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, DESC, 0, 0, false);
   }
 
   @Test
@@ -552,57 +552,60 @@ public class SortTest {
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "order by s1+s2 desc, tag2 desc, tag1 desc, time desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKNoFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
+    assertTopKNoFilter(SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
 
     // order by others, all_ids, time
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by s1+s2 desc, tag2 desc, tag1 desc, tag3 desc, time asc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
 
     // order by others, time, some_ids
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by s1+s2 desc, time desc, tag2 desc, tag1 desc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
 
     // order by others, time, all_ids
     sql =
         "SELECT time, tag3, tag1, cast(s2 as double), s2+s3, attr1 FROM table1 "
             + "where s1>1 and s1+s3>0 and cast(s1 as double)>1.0 order by s1+s2 desc, time desc, tag2 desc, tag1 desc, tag3 asc offset 5 limit 10";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    assertTopKWithFilter(originalDeviceEntries1, originalDeviceEntries2, ASC, 0, 0, false);
+    assertTopKWithFilter(
+        SHANGHAI_SHENZHEN_DEVICE_ENTRIES, SHENZHEN_DEVICE_ENTRIES, ASC, 0, 0, false);
   }
 
   @Test
   public void projectSortTest() {
     // columns in order and select is different
     sql = "SELECT time, attr1, s1 FROM table1 order by attr2 limit 5";
-    context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
+    context = new MPPQueryContext(sql, QUERY_ID, SESSION_INFO, null, null);
     analysis = analyzeSQL(sql, metadata, context);
     logicalQueryPlan =
-        new TableLogicalPlanner(context, metadata, sessionInfo, warningCollector).plan(analysis);
+        new TableLogicalPlanner(context, metadata, SESSION_INFO, warningCollector).plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode sinkNode =
@@ -639,7 +642,7 @@ public class SortTest {
     assertEquals(isPushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());
 
     // DistributePlan `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -663,7 +666,8 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
 
     // IdentitySink - TopK - Project - Filter - TableScan
     identitySinkNode =
@@ -680,7 +684,8 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
   }
 
   public void assertTopKNoFilter(
@@ -707,7 +712,7 @@ public class SortTest {
     assertEquals(isPushLimitToEachDevice, tableScanNode.isPushLimitToEachDevice());
 
     // DistributePlan `Identity - Output - Offset - Project - TopK - {Exchange + TopK + Exchange}
-    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan, context);
+    distributionPlanner = new TableDistributedPlanner(analysis, logicalQueryPlan);
     distributedQueryPlan = distributionPlanner.plan();
     assertEquals(3, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
@@ -730,7 +735,8 @@ public class SortTest {
         expectedOrdering,
         expectedPushDownLimit,
         expectedPushDownOffset,
-        isPushLimitToEachDevice);
+        isPushLimitToEachDevice,
+        "");
 
     // IdentitySink - TopK - Project - TableScan
     identitySinkNode =

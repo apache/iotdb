@@ -93,9 +93,10 @@ public abstract class AbstractSchemaRegionTest {
 
   protected ISchemaRegion getSchemaRegion(final String database, final int schemaRegionId)
       throws Exception {
-    SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
+    final SchemaRegionId regionId = new SchemaRegionId(schemaRegionId);
     if (SchemaEngine.getInstance().getSchemaRegion(regionId) == null) {
-      SchemaEngine.getInstance().createSchemaRegion(new PartialPath(database), regionId);
+      SchemaEngine.getInstance()
+          .createSchemaRegion(PartialPath.getDatabasePath(database), regionId);
     }
     return SchemaEngine.getInstance().getSchemaRegion(regionId);
   }

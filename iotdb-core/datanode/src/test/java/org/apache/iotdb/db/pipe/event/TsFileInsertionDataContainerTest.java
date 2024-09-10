@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.pipe.api.access.Row;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -40,6 +41,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.tsfile.write.TsFileWriter;
@@ -54,6 +56,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -525,24 +528,27 @@ public class TsFileInsertionDataContainerTest {
     alignedTsFile = new File("0-0-2-0.tsfile");
 
     final List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.TIMESTAMP));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.DATE));
 
     final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
     t.rowSize = 2;
     t.addTimestamp(0, 1000);
     t.addTimestamp(1, 2000);
-    t.addValue("s1", 0, 2);
+    t.addValue("s1", 0, 2L);
     t.addValue("s2", 0, null);
+    t.addValue("s3", 0, LocalDate.of(2020, 8, 1));
     t.addValue("s1", 1, null);
-    t.addValue("s2", 1, 2L);
+    t.addValue("s2", 1, new Binary("test", TSFileConfig.STRING_CHARSET));
+    t.addValue("s3", 1, LocalDate.of(2024, 8, 1));
 
     try (final TsFileWriter writer = new TsFileWriter(alignedTsFile)) {
       writer.registerAlignedTimeseries(new PartialPath("root.sg.d"), schemaList);
       writer.writeAligned(t);
     }
     testTsFilePointNum(
-        alignedTsFile, new PrefixPipePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, isQuery, 2);
+        alignedTsFile, new PrefixPipePattern("root"), Long.MIN_VALUE, Long.MAX_VALUE, isQuery, 4);
   }
 
   private void testTsFilePointNum(

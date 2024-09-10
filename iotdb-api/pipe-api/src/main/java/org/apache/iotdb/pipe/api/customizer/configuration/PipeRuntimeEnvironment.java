@@ -24,4 +24,6 @@ public interface PipeRuntimeEnvironment {
   String getPipeName();
 
   long getCreationTime();
+
+  int getRegionId();
 }
