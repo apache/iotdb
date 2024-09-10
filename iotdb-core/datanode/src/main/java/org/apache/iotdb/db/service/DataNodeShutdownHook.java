@@ -76,6 +76,9 @@ public class DataNodeShutdownHook extends Thread {
     // Wait all wal are flushed
     WALManager.getInstance().waitAllWALFlushed();
 
+    // Wait all deletions are flushed
+    DeletionResourceManager.exit();
+
     // Flush data to Tsfile and remove WAL log files
     if (!IoTDBDescriptor.getInstance()
         .getConfig()
@@ -97,7 +100,9 @@ public class DataNodeShutdownHook extends Thread {
         .getConfig()
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().parallelStream()
+      DataRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .parallelStream()
           .forEach(
               id -> {
                 try {
