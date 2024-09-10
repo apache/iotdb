@@ -21,7 +21,6 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -29,14 +28,14 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Queue;
 
 public class AlignedSeriesBatchCompactionUtils {
 
@@ -75,29 +74,6 @@ public class AlignedSeriesBatchCompactionUtils {
     }
     return new AlignedChunkMetadata(
         alignedChunkMetadata.getTimeChunkMetadata(), Arrays.asList(valueChunkMetadataArr));
-  }
-
-  public static AlignedChunkMetadata filterAlignedChunkMetadata(
-      AlignedChunkMetadata alignedChunkMetadata, List<String> selectedMeasurements) {
-    List<IChunkMetadata> valueChunkMetadataList =
-        Arrays.asList(new IChunkMetadata[selectedMeasurements.size()]);
-
-    Map<String, Integer> measurementIndex = new HashMap<>();
-    for (int i = 0; i < selectedMeasurements.size(); i++) {
-      measurementIndex.put(selectedMeasurements.get(i), i);
-    }
-
-    for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (chunkMetadata == null) {
-        continue;
-      }
-      Integer idx = measurementIndex.get(chunkMetadata.getMeasurementUid());
-      if (idx != null) {
-        valueChunkMetadataList.set(idx, chunkMetadata);
-      }
-    }
-    return new AlignedChunkMetadata(
-        alignedChunkMetadata.getTimeChunkMetadata(), valueChunkMetadataList);
   }
 
   public static AlignedChunkMetadata fillAlignedChunkMetadataBySchemaList(
@@ -175,8 +151,8 @@ public class AlignedSeriesBatchCompactionUtils {
 
   public static class BatchColumnSelection {
     private final List<IMeasurementSchema> schemaList;
-    private final LinkedList<Integer> typeSortedColumnIndexList;
-    private final LinkedList<Integer> largeTypeSortedColumnIndexList;
+    private final Queue<Integer> normalTypeSortedColumnIndexList;
+    private final Queue<Integer> binaryTypeSortedColumnIndexList;
     private final int batchSize;
     private int selectedColumnNum;
 
@@ -185,14 +161,14 @@ public class AlignedSeriesBatchCompactionUtils {
 
     public BatchColumnSelection(List<IMeasurementSchema> valueSchemas, int batchSize) {
       this.schemaList = valueSchemas;
-      this.typeSortedColumnIndexList = new LinkedList<>();
-      this.largeTypeSortedColumnIndexList = new LinkedList<>();
+      this.normalTypeSortedColumnIndexList = new ArrayDeque<>(valueSchemas.size());
+      this.binaryTypeSortedColumnIndexList = new ArrayDeque<>();
       for (int i = 0; i < valueSchemas.size(); i++) {
         IMeasurementSchema schema = valueSchemas.get(i);
-        if (isLargeDataType(schema.getTypeInByte())) {
-          this.largeTypeSortedColumnIndexList.addLast(i);
+        if (schema.getType().isBinary()) {
+          this.binaryTypeSortedColumnIndexList.add(i);
         } else {
-          this.typeSortedColumnIndexList.addLast(i);
+          this.normalTypeSortedColumnIndexList.add(i);
         }
       }
       this.batchSize = batchSize;
@@ -222,12 +198,13 @@ public class AlignedSeriesBatchCompactionUtils {
       // TODO: select batch by allocated memory and chunk size to perform more strict memory control
       this.columnIndexList = new ArrayList<>(batchSize);
       this.currentSelectedColumnSchemaList = new ArrayList<>(batchSize);
-      while (!typeSortedColumnIndexList.isEmpty() || !largeTypeSortedColumnIndexList.isEmpty()) {
-        LinkedList<Integer> sourceTypeSortedList =
-            largeTypeSortedColumnIndexList.isEmpty()
-                ? typeSortedColumnIndexList
-                : largeTypeSortedColumnIndexList;
-        Integer columnIndex = sourceTypeSortedList.removeFirst();
+      while (!normalTypeSortedColumnIndexList.isEmpty()
+          || !binaryTypeSortedColumnIndexList.isEmpty()) {
+        Queue<Integer> sourceTypeSortedList =
+            binaryTypeSortedColumnIndexList.isEmpty()
+                ? normalTypeSortedColumnIndexList
+                : binaryTypeSortedColumnIndexList;
+        Integer columnIndex = sourceTypeSortedList.poll();
         this.columnIndexList.add(columnIndex);
         this.currentSelectedColumnSchemaList.add(this.schemaList.get(columnIndex));
         selectedColumnNum++;
@@ -235,12 +212,6 @@ public class AlignedSeriesBatchCompactionUtils {
           break;
         }
       }
-    }
-
-    private static boolean isLargeDataType(byte dataType) {
-      return dataType == TSDataType.TEXT.getType()
-          || dataType == TSDataType.STRING.getType()
-          || dataType == TSDataType.BLOB.getType();
     }
   }
 }
