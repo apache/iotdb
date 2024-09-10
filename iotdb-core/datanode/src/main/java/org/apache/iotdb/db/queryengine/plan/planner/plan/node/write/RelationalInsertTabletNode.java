@@ -96,6 +96,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     super(id);
   }
 
+  @Override
   public IDeviceID getDeviceID(int rowIdx) {
     if (deviceIDs == null) {
       deviceIDs = new IDeviceID[rowCount];
@@ -123,6 +124,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return visitor.visitRelationalInsertTablet(this, context);
   }
 
+  @Override
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
@@ -168,6 +170,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     }
   }
 
+  @Override
   public void subDeserialize(ByteBuffer buffer) {
     super.subDeserialize(buffer);
     TsTableColumnCategory[] columnCategories = new TsTableColumnCategory[measurements.length];
@@ -177,6 +180,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     setColumnCategories(columnCategories);
   }
 
+  @Override
   void subSerialize(IWALByteBufferView buffer, int start, int end) {
     super.subSerialize(buffer, start, end);
     for (int i = 0; i < measurements.length; i++) {
@@ -232,6 +236,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return PlanNodeType.RELATIONAL_INSERT_TABLET;
   }
 
+  @Override
   public List<Pair<IDeviceID, Integer>> splitByDevice(int start, int end) {
     List<Pair<IDeviceID, Integer>> result = new ArrayList<>();
     IDeviceID prevDeviceId = getDeviceID(start);
@@ -254,14 +259,17 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     return checkTTLInternal(results, rowTTLGetter, false);
   }
 
+  @Override
   public String getTableName() {
     return targetPath.getFullPath();
   }
 
+  @Override
   protected PartialPath readTargetPath(ByteBuffer buffer) {
     return new PartialPath(ReadWriteIOUtils.readString(buffer), false);
   }
 
+  @Override
   protected PartialPath readTargetPath(DataInputStream stream) throws IOException {
     return new PartialPath(ReadWriteIOUtils.readString(stream), false);
   }

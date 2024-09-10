@@ -3495,7 +3495,7 @@ public class DataRegion implements IDataRegionForQuery {
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleWalCost(costsForMetrics[2]);
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleMemTableCost(costsForMetrics[3]);
       if (CommonDescriptor.getInstance().getConfig().isLastCacheEnable()
-          && (!insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader())) {
+          && !insertRowsOfOneDeviceNode.isGeneratedByRemoteConsensusLeader()) {
         // disable updating last cache on follower
         startTime = System.nanoTime();
         tryToUpdateInsertRowsLastCache(executedInsertRowNodeList);
