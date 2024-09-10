@@ -294,7 +294,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
   }
 
-  public void decreaseOrRemoveAsyncClient() {
+  public void close() {
     synchronized (IoTDBDataNodeAsyncClientManager.class) {
       attributesCount.computeIfPresent(receiverAttributes, (k, v) -> v - 1);
 

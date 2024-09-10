@@ -539,7 +539,13 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       tabletBatchBuilder.close();
     }
 
-    clientManager.decreaseOrRemoveAsyncClient();
+    try {
+      if (clientManager != null) {
+        clientManager.close();
+      }
+    } catch (final Exception e) {
+      LOGGER.warn("Failed to close client manager.", e);
+    }
 
     super.close();
   }
