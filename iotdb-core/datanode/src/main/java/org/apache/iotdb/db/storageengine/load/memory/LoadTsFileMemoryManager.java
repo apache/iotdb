@@ -117,10 +117,9 @@ public class LoadTsFileMemoryManager {
     try {
       forceAllocateFromQuery(bytesNeeded);
     } catch (LoadRuntimeOutOfMemoryException e) {
-      if (dataCacheMemoryBlock != null && dataCacheMemoryBlock.doShrink(bytesNeeded)) {
-        memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
+      if (dataCacheMemoryBlock == null || !dataCacheMemoryBlock.doShrink(bytesNeeded)) {
+        throw e;
       }
-      throw e;
     }
     memoryBlock.setTotalMemorySizeInBytes(newSizeInBytes);
   }

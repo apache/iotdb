@@ -80,7 +80,6 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.TsFileSequenceReaderTimeseriesMetadataIterator;
 import org.apache.tsfile.utils.Pair;
@@ -255,16 +254,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         tsFileResource.deserialize();
       }
 
-      final TsFileDeviceIterator tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
-      final AtomicInteger deviceCount = new AtomicInteger();
-      tsFileDeviceIterator.forEachRemaining(o -> deviceCount.getAndIncrement());
-
-      // Use device time index if the device count is less than the threshold, avoiding too much
-      // memory usage
-      final boolean useDeviceTimeIndex =
-          deviceCount.get() < MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX;
-      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(
-          tsFileResource, useDeviceTimeIndex);
+      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
@@ -332,8 +322,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     public void setCurrentModificationsAndTimeIndex(
-        TsFileResource resource, boolean useDeviceTimeIndex) throws IOException {
-      schemaCache.setCurrentModificationsAndTimeIndex(resource, useDeviceTimeIndex);
+        TsFileResource resource, TsFileSequenceReader reader) throws IOException {
+      schemaCache.setCurrentModificationsAndTimeIndex(resource, reader);
     }
 
     public void autoCreateAndVerify(
@@ -806,7 +796,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     public void setCurrentModificationsAndTimeIndex(
-        TsFileResource resource, boolean useDeviceTimeIndex) throws IOException {
+        TsFileResource resource, TsFileSequenceReader reader) throws IOException {
       clearModificationsAndTimeIndex();
 
       currentModifications = resource.getModFile().getModifications();
@@ -823,13 +813,23 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       block.forceResize(newMemorySize);
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 
-      if (useDeviceTimeIndex && resource.resourceFileExists()) {
-        currentTimeIndex = resource.getTimeIndex();
-        if (currentTimeIndex instanceof FileTimeIndex) {
-          currentTimeIndex = resource.buildDeviceTimeIndex();
+      // No need to build device time index if there are no modifications
+      if (currentModifications.size() > 0 && resource.resourceFileExists()) {
+        final AtomicInteger deviceCount = new AtomicInteger();
+        reader
+            .getAllDevicesIteratorWithIsAligned()
+            .forEachRemaining(o -> deviceCount.getAndIncrement());
+
+        // Use device time index only if the device count is less than the threshold, avoiding too
+        // much memory usage
+        if (deviceCount.get() < MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX) {
+          currentTimeIndex = resource.getTimeIndex();
+          if (currentTimeIndex instanceof FileTimeIndex) {
+            currentTimeIndex = resource.buildDeviceTimeIndex();
+          }
+          currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
+          block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
         }
-        currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
-        block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
       }
     }
 
