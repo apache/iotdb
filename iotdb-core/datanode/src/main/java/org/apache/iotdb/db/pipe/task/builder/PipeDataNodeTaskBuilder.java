@@ -169,7 +169,9 @@ public class PipeDataNodeTaskBuilder {
         return;
       }
     } catch (IllegalPathException e) {
-      LOGGER.warn("Parameter parsing failed: {}", e.getMessage());
+      LOGGER.warn(
+          "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}",
+          e.getMessage());
       return;
     }
 
@@ -180,13 +182,13 @@ public class PipeDataNodeTaskBuilder {
     if (isRealtime == null) {
       connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
       LOGGER.warn(
-          "PipeDataNodeTaskBuilder: Sync issues may occur when 'inclusion' is 'data.delete' and 'realtime-first' is 'true'. Defaulting 'realtime-first' to 'false'.");
+          "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
       return;
     }
 
     if (isRealtime) {
       LOGGER.warn(
-          "PipeDataNodeTaskBuilder: 'inclusion' = 'data.delete' and 'realtime-first'= 'true' may cause sync issues after deletion.");
+          "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
     }
   }
 }
