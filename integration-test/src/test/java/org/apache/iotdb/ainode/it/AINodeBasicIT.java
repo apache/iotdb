@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({AIClusterIT.class})
-public class AINodeModelIT {
+public class AINodeBasicIT {
   static final String MODEL_PATH =
       System.getProperty("user.dir")
           + File.separator
@@ -100,6 +100,30 @@ public class AINodeModelIT {
       }
     } catch (SQLException e) {
       assertEquals(errorMessage, e.getMessage());
+    }
+  }
+
+  @Test
+  public void aiNodeConnectionTest() {
+    String sql = "SHOW AINODES";
+    String title = "NodeID,Status,RpcAddress,RpcPort";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        checkHeader(resultSetMetaData, title);
+        int count = 0;
+        while (resultSet.next()) {
+          assertEquals("2", resultSet.getString(1));
+          assertEquals("Running", resultSet.getString(2));
+          count++;
+        }
+        assertEquals(1, count);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
