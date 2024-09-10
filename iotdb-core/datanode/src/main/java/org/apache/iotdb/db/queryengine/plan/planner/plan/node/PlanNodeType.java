@@ -257,7 +257,7 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
-    case 97:
+      case 97:
         return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
@@ -275,8 +275,8 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
-        case 97:
-            return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(buffer);
+      case 97:
+        return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -475,9 +475,9 @@ public enum PlanNodeType {
         return ActiveRegionScanMergeNode.deserialize(buffer);
       case 96:
         return DeviceSchemaFetchScanNode.deserialize(buffer);
-        case 97:
-            throw new UnsupportedOperationException(
-                    "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
+      case 97:
+        throw new UnsupportedOperationException(
+            "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
