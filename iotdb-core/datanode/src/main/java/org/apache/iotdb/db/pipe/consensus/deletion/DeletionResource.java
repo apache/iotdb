@@ -24,6 +24,9 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -36,14 +39,20 @@ import java.util.function.Consumer;
  * framework, PipeConsensus will use {@link PipeSchemaRegionWritePlanEvent}
  */
 public class DeletionResource {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
   private final AtomicLong latestUpdateTime;
   private PipeSchemaRegionWritePlanEvent deletionEvent;
+  private volatile Status currentStatus;
+  // it's safe to use volatile here to make this reference thread-safe.
+  @SuppressWarnings("squid:S3077")
+  private volatile Exception cause;
 
   public DeletionResource(
       PipeSchemaRegionWritePlanEvent deletionEvent, Consumer<DeletionResource> removeHook) {
     this.deletionEvent = deletionEvent;
     this.removeHook = removeHook;
+    this.currentStatus = Status.RUNNING;
     latestUpdateTime = new AtomicLong(System.currentTimeMillis());
   }
 
@@ -75,6 +84,32 @@ public class DeletionResource {
 
   public long getLatestUpdateTime() {
     return latestUpdateTime.get();
+  }
+
+  public void onPersistFailed(Exception e) {
+    cause = e;
+    currentStatus = Status.FAILURE;
+    this.notifyAll();
+  }
+
+  public void onPersistSucceed() {
+    currentStatus = Status.SUCCESS;
+    this.notifyAll();
+  }
+
+  /** @return true if this object has been successfully persisted, false if persist failed. */
+  public synchronized Status waitForResult() {
+    while (currentStatus == Status.RUNNING) {
+      try {
+        this.wait();
+      } catch (InterruptedException e) {
+        LOGGER.warn("Interrupted when waiting for result.", e);
+        Thread.currentThread().interrupt();
+        currentStatus = Status.FAILURE;
+        break;
+      }
+    }
+    return currentStatus;
   }
 
   public ProgressIndex getProgressIndex() {
@@ -123,5 +158,15 @@ public class DeletionResource {
   @Override
   public int hashCode() {
     return Objects.hash(deletionEvent, latestUpdateTime);
+  }
+
+  public Exception getCause() {
+    return cause;
+  }
+
+  public enum Status {
+    SUCCESS,
+    FAILURE,
+    RUNNING,
   }
 }

@@ -21,6 +21,10 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeDataRegionAssigner;
@@ -141,10 +145,15 @@ public class PipeInsertionDataNodeListener {
                 PipeRealtimeEventFactory.createRealtimeEvent(key, shouldPrintMessage)));
   }
 
-  public void listenToDeleteData(DeleteDataNode node, String regionId) {
-    dataRegionId2Assigner.forEach(
-        (key, value) ->
-            value.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node, regionId)));
+  public DeletionResource listenToDeleteData(DeleteDataNode node, String regionId) {
+    PipeRealtimeEvent realtimeEvent = PipeRealtimeEventFactory.createRealtimeEvent(node, regionId);
+    dataRegionId2Assigner.forEach((key, value) -> value.publishToAssign(realtimeEvent));
+    // log deletion to DAL
+    DeletionResourceManager mgr = DeletionResourceManager.getInstance(regionId);
+    if (mgr == null) {
+      return null;
+    }
+    return mgr.registerDeletionResource((PipeSchemaRegionWritePlanEvent) realtimeEvent.getEvent());
   }
 
   /////////////////////////////// singleton ///////////////////////////////

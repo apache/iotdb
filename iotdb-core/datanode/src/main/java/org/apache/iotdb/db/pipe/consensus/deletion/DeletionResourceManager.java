@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
+import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 
@@ -76,7 +77,7 @@ public class DeletionResourceManager implements AutoCloseable {
             IoTDBDescriptor.getInstance().getConfig().getPipeConsensusDeletionFileDir()
                 + File.separator
                 + dataRegionId);
-    this.deletionBuffer = new DeletionBuffer(dataRegionId, storageDir.getAbsolutePath());
+    this.deletionBuffer = new PageCacheDeletionBuffer(dataRegionId, storageDir.getAbsolutePath());
     initAndRecover();
     // Only after initAndRecover can we start serialize and sync new deletions.
     this.deletionBuffer.start();
@@ -134,11 +135,12 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  public void registerDeletionResource(PipeSchemaRegionWritePlanEvent event) {
+  public DeletionResource registerDeletionResource(PipeSchemaRegionWritePlanEvent event) {
     DeletionResource deletionResource = new DeletionResource(event, this::removeDeletionResource);
     event.setDeletionResource(deletionResource);
     this.deletionResources.add(deletionResource);
     deletionBuffer.registerDeletionResource(deletionResource);
+    return deletionResource;
   }
 
   public List<DeletionResource> getAllDeletionResources() {

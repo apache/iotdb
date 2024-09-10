@@ -68,8 +68,6 @@ public class PipeRealtimeEventFactory {
       final DeleteDataNode node, final String regionId) {
     PipeSchemaRegionWritePlanEvent deletionEvent =
         new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe());
-    Optional.ofNullable(DeletionResourceManager.getInstance(regionId))
-        .ifPresent(mgr -> mgr.registerDeletionResource(deletionEvent));
     return new PipeRealtimeEvent(deletionEvent, null, null, null);
   }
 
