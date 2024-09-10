@@ -88,7 +88,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public InsertTabletStatement(InsertTabletNode node) {
     this();
-    setDevicePath(node.getDevicePath());
+    setDevicePath(node.getTargetPath());
     setMeasurements(node.getMeasurements());
     setTimes(node.getTimes());
     setColumns(node.getColumns());
@@ -194,12 +194,6 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      LOGGER.warn(
-          "Inserting to {}.{} : Cast from {} to {}",
-          devicePath,
-          measurements[columnIndex],
-          dataTypes[columnIndex],
-          dataType);
       columns[columnIndex] =
           CommonUtils.castArray(dataTypes[columnIndex], dataType, columns[columnIndex]);
       dataTypes[columnIndex] = dataType;

@@ -218,6 +218,9 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
           break;
+        case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+          // The CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE doesn't need redo
+          break;
         default:
           throw new RuntimeException("Unsupported type " + walEntry.getType());
       }

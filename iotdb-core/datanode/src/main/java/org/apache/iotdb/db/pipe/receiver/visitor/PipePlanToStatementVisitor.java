@@ -77,7 +77,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Statement, Void> {
   @Override
   public InsertRowStatement visitInsertRow(final InsertRowNode node, final Void context) {
     final InsertRowStatement statement = new InsertRowStatement();
-    statement.setDevicePath(node.getDevicePath());
+    statement.setDevicePath(node.getTargetPath());
     statement.setTime(node.getTime());
     statement.setMeasurements(node.getMeasurements());
     statement.setDataTypes(node.getDataTypes());

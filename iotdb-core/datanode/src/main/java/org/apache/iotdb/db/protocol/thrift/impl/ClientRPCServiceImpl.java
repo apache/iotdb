@@ -1123,7 +1123,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       List<ColumnHeader> columnHeaders =
           Collections.singletonList(new ColumnHeader(outputColumnName, dataType));
       DatasetHeader header = new DatasetHeader(columnHeaders, false);
-      header.setColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
+      header.setTreeColumnToTsBlockIndexMap(Collections.singletonList(outputColumnName));
 
       TSExecuteStatementResp resp = createResponse(header, 1);
       TSQueryDataSet queryDataSet = convertTsBlockByFetchSize(blockResult);
@@ -2937,6 +2937,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     resp.setDataTypeList(header.getRespDataTypeList());
     resp.setAliasColumns(header.getRespAliasColumns());
     resp.setIgnoreTimeStamp(header.isIgnoreTimestamp());
+    resp.setColumnIndex2TsBlockColumnIndexList(header.getColumnIndex2TsBlockColumnIndexList());
     resp.setQueryId(queryId);
     resp.setTableModel(
         SESSION_MANAGER.getCurrSessionAndUpdateIdleTime().getSqlDialect()

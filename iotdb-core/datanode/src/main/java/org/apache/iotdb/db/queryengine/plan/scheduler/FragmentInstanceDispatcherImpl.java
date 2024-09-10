@@ -338,6 +338,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
                 throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
               }
+            } else if (sendFragmentInstanceResp.status != null) {
+              throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
             }
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(
@@ -463,6 +465,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             }
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.DISPATCH_ERROR, readResult.getMessage()));
+          } else if (readResult.getStatus() != null) {
+            throw new FragmentInstanceDispatchException(readResult.getStatus());
           } else {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, readResult.getMessage()));

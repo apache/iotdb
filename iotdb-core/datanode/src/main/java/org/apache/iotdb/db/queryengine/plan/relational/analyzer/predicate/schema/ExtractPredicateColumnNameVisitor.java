@@ -77,13 +77,23 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
 
   @Override
   protected String visitComparisonExpression(final ComparisonExpression node, final Void context) {
-    final String columnName;
-    if (node.getLeft() instanceof Literal) {
-      columnName = node.getRight().accept(this, context);
-    } else {
-      columnName = node.getLeft().accept(this, context);
+    return node.getLeft() instanceof Literal
+        ? node.getRight().accept(this, context)
+        : node.getLeft().accept(this, context);
+  }
+
+  @Override
+  protected String visitBetweenPredicate(final BetweenPredicate node, final Void context) {
+    if (node.getValue() instanceof SymbolReference) {
+      return node.getValue().accept(this, context);
     }
-    return columnName;
+    if (node.getMin() instanceof SymbolReference) {
+      return node.getMin().accept(this, context);
+    }
+    if (node.getMax() instanceof SymbolReference) {
+      return node.getMax().accept(this, context);
+    }
+    return null;
   }
 
   @Override
@@ -109,11 +119,6 @@ public class ExtractPredicateColumnNameVisitor extends PredicateVisitor<String, 
 
   @Override
   protected String visitNullIfExpression(final NullIfExpression node, final Void context) {
-    return null;
-  }
-
-  @Override
-  protected String visitBetweenPredicate(final BetweenPredicate node, final Void context) {
     return null;
   }
 

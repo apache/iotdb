@@ -248,7 +248,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  insertRowNode.devicePath.getIDeviceIDAsFullDevice(),
+                  insertRowNode.targetPath.getIDeviceIDAsFullDevice(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   null);
       // Collect redirectInfo

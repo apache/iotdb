@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import re
 
 from iotdb.ainode.constant import DEFAULT_MODEL_FILE_NAME, DEFAULT_CONFIG_FILE_NAME
 
@@ -69,7 +70,7 @@ class UnsupportedError(_BaseError):
         self.message = "{0} is not supported in current version".format(msg)
 
 
-class InvaildUriError(_BaseError):
+class InvalidUriError(_BaseError):
     def __init__(self, uri: str):
         self.message = "Invalid uri: {}, there are no {} or {} under this uri.".format(uri, DEFAULT_MODEL_FILE_NAME,
                                                                                        DEFAULT_CONFIG_FILE_NAME)
@@ -78,11 +79,10 @@ class InvaildUriError(_BaseError):
 class InvalidWindowArgumentError(_BaseError):
     def __init__(
             self,
-            window_interval: int,
-            window_step: int,
-            dataset_length: int):
-        self.message = "Invalid inference input: window_interval {0}, window_step {1}, dataset_length {2}".format(
-            window_interval, window_step, dataset_length)
+            window_interval,
+            window_step,
+            dataset_length):
+        self.message = f"Invalid inference input: window_interval {window_interval}, window_step {window_step}, dataset_length {dataset_length}"
 
 
 class InferenceModelInternalError(_BaseError):
@@ -121,3 +121,14 @@ class ListRangeException(_BaseError):
 class AttributeNotSupportError(_BaseError):
     def __init__(self, model_name: str, attribute_name: str):
         self.message = "Attribute {0} is not supported in model {1}".format(attribute_name, model_name)
+
+
+# This is used to extract the key message in RuntimeError instead of the traceback message
+def runtime_error_extractor(error_message):
+    pattern = re.compile(r"RuntimeError: (.+)")
+    match = pattern.search(error_message)
+
+    if match:
+        return match.group(1)
+    else:
+        return ""

@@ -38,13 +38,19 @@ class Field(object):
                 output.set_bool_value(field.get_bool_value())
             elif output.get_data_type() == TSDataType.INT32:
                 output.set_int_value(field.get_int_value())
-            elif output.get_data_type() == TSDataType.INT64:
+            elif (
+                output.get_data_type() == TSDataType.INT64
+                or output.get_data_type() == TSDataType.TIMESTAMP
+            ):
                 output.set_long_value(field.get_long_value())
             elif output.get_data_type() == TSDataType.FLOAT:
                 output.set_float_value(field.get_float_value())
             elif output.get_data_type() == TSDataType.DOUBLE:
                 output.set_double_value(field.get_double_value())
-            elif output.get_data_type() == TSDataType.TEXT:
+            elif (
+                output.get_data_type() == TSDataType.TEXT
+                or output.get_data_type() == TSDataType.STRING
+            ):
                 output.set_binary_value(field.get_binary_value())
             else:
                 raise Exception(
@@ -94,6 +100,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.INT64
+            and self.__data_type != TSDataType.TIMESTAMP
             or self.value is None
             or self.value is pd.NA
         ):
@@ -136,6 +143,8 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.TEXT
+            and self.__data_type != TSDataType.STRING
+            and self.__data_type != TSDataType.BLOB
             or self.value is None
             or self.value is pd.NA
         ):
@@ -145,7 +154,7 @@ class Field(object):
     def get_string_value(self):
         if self.__data_type is None or self.value is None or self.value is pd.NA:
             return "None"
-        elif self.__data_type == 5:
+        elif self.__data_type == 5 or self.__data_type == 11:
             return self.value.decode("utf-8")
         else:
             return str(self.get_object_value(self.__data_type))

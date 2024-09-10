@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.pipe.event.common.row;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -66,13 +67,12 @@ public class PipeRowCollector implements RowCollector {
       final String deviceId = pipeRow.getDeviceId();
       final List<IMeasurementSchema> measurementSchemaList =
           new ArrayList<>(Arrays.asList(measurementSchemaArray));
-      tablet =
-          new Tablet(
-              deviceId,
-              measurementSchemaList,
-              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-      isAligned = pipeRow.isAligned();
+      // Calculate row count and memory size of the tablet based on the first row
+      Pair<Integer, Integer> rowCountAndMemorySize =
+          PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(pipeRow);
+      tablet = new Tablet(deviceId, measurementSchemaList, rowCountAndMemorySize.getLeft());
       tablet.initBitMaps();
+      isAligned = pipeRow.isAligned();
     }
 
     final int rowIndex = tablet.rowSize;

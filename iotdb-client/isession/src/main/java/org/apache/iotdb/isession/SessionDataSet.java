@@ -57,7 +57,8 @@ public class SessionDataSet implements ISessionDataSet {
       boolean moreData,
       ZoneId zoneId,
       int timeFactor,
-      boolean tableModel) {
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -76,7 +77,8 @@ public class SessionDataSet implements ISessionDataSet {
             zoneId,
             RpcUtils.DEFAULT_TIME_FORMAT,
             timeFactor,
-            tableModel);
+            tableModel,
+            columnIndex2TsBlockColumnIndexList);
   }
 
   @SuppressWarnings("squid:S107") // ignore Methods should not have too many parameters
@@ -96,7 +98,8 @@ public class SessionDataSet implements ISessionDataSet {
       int fetchSize,
       ZoneId zoneId,
       int timeFactor,
-      boolean tableModel) {
+      boolean tableModel,
+      List<Integer> columnIndex2TsBlockColumnIndexList) {
     this.ioTDBRpcDataSet =
         new IoTDBRpcDataSet(
             sql,
@@ -115,30 +118,31 @@ public class SessionDataSet implements ISessionDataSet {
             zoneId,
             RpcUtils.DEFAULT_TIME_FORMAT,
             timeFactor,
-            tableModel);
+            tableModel,
+            columnIndex2TsBlockColumnIndexList);
   }
 
   public int getFetchSize() {
-    return ioTDBRpcDataSet.fetchSize;
+    return ioTDBRpcDataSet.getFetchSize();
   }
 
   public void setFetchSize(int fetchSize) {
-    ioTDBRpcDataSet.fetchSize = fetchSize;
+    ioTDBRpcDataSet.setFetchSize(fetchSize);
   }
 
   @Override
   public List<String> getColumnNames() {
-    return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
+    return new ArrayList<>(ioTDBRpcDataSet.getColumnNameList());
   }
 
   @Override
   public List<String> getColumnTypes() {
-    return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
+    return new ArrayList<>(ioTDBRpcDataSet.getColumnTypeList());
   }
 
   @Override
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
-    if (ioTDBRpcDataSet.hasCachedRecord) {
+    if (ioTDBRpcDataSet.hasCachedRecord()) {
       return true;
     } else {
       return ioTDBRpcDataSet.next();
@@ -152,7 +156,7 @@ public class SessionDataSet implements ISessionDataSet {
         i++) {
       Field field;
 
-      String columnName = ioTDBRpcDataSet.columnNameList.get(i);
+      String columnName = ioTDBRpcDataSet.getColumnNameList().get(i);
 
       if (!ioTDBRpcDataSet.isNull(columnName)) {
         TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
@@ -194,7 +198,7 @@ public class SessionDataSet implements ISessionDataSet {
       }
       outFields.add(field);
     }
-    return new RowRecord(ioTDBRpcDataSet.time, outFields);
+    return new RowRecord(ioTDBRpcDataSet.getCurrentRowTime(), outFields);
   }
 
   /**
@@ -208,10 +212,10 @@ public class SessionDataSet implements ISessionDataSet {
    */
   @Override
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
-    if (!ioTDBRpcDataSet.hasCachedRecord && !hasNext()) {
+    if (!ioTDBRpcDataSet.hasCachedRecord() && !hasNext()) {
       return null;
     }
-    ioTDBRpcDataSet.hasCachedRecord = false;
+    ioTDBRpcDataSet.setHasCachedRecord(false);
 
     return constructRowRecordFromValueArray();
   }
@@ -316,11 +320,11 @@ public class SessionDataSet implements ISessionDataSet {
     }
 
     public List<String> getColumnNameList() {
-      return ioTDBRpcDataSet.columnNameList;
+      return ioTDBRpcDataSet.getColumnNameList();
     }
 
     public List<String> getColumnTypeList() {
-      return ioTDBRpcDataSet.columnTypeList;
+      return ioTDBRpcDataSet.getColumnTypeList();
     }
   }
 }

@@ -19,12 +19,13 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.scan;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -42,8 +43,8 @@ import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.DateUtils;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
@@ -175,19 +176,36 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
   private Tablet getNextTablet() {
     try {
-      final Tablet tablet =
-          new Tablet(
-              currentDevice.toString(),
-              currentMeasurements,
-              PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-      tablet.initBitMaps();
+      Tablet tablet = null;
 
+      if (!data.hasCurrent()) {
+        tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
+        tablet.initBitMaps();
+        // Ignore the memory cost of tablet
+        PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
+        return tablet;
+      }
+
+      boolean isFirstRow = true;
       while (data.hasCurrent()) {
         if (isMultiPage || data.currentTime() >= startTime && data.currentTime() <= endTime) {
+          if (isFirstRow) {
+            // Calculate row count and memory size of the tablet based on the first row
+            Pair<Integer, Integer> rowCountAndMemorySize =
+                PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(data);
+            tablet =
+                new Tablet(
+                    currentDevice.toString(), currentMeasurements, rowCountAndMemorySize.getLeft());
+            tablet.initBitMaps();
+            PipeDataNodeResourceManager.memory()
+                .forceResize(allocatedMemoryBlockForTablet, rowCountAndMemorySize.getRight());
+            isFirstRow = false;
+          }
+
           final int rowIndex = tablet.rowSize;
 
           tablet.addTimestamp(rowIndex, data.currentTime());
-          putValueToColumns(data, tablet.values, tablet.bitMaps, rowIndex);
+          putValueToColumns(data, tablet, rowIndex);
 
           tablet.rowSize++;
         }
@@ -197,16 +215,22 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           data = chunkReader.nextPageData();
         }
 
-        if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        if (tablet != null && tablet.rowSize == tablet.getMaxRowNumber()) {
           break;
         }
+      }
+
+      if (tablet == null) {
+        tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
+        tablet.initBitMaps();
+        // Ignore the memory cost of tablet
+        PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
       }
 
       // Switch chunk reader iff current chunk is all consumed
       if (!data.hasCurrent()) {
         prepareData();
       }
-
       return tablet;
     } catch (final Exception e) {
       close();
@@ -231,17 +255,17 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
     } while (!data.hasCurrent());
   }
 
-  private void putValueToColumns(
-      final BatchData data, final Object[] columns, final BitMap[] bitMaps, final int rowIndex) {
-    final TSDataType type = data.getDataType();
-    if (type == TSDataType.VECTOR) {
+  private void putValueToColumns(final BatchData data, final Tablet tablet, final int rowIndex) {
+    final Object[] columns = tablet.values;
+
+    if (data.getDataType() == TSDataType.VECTOR) {
       for (int i = 0; i < columns.length; ++i) {
         final TsPrimitiveType primitiveType = data.getVector()[i];
         if (Objects.isNull(primitiveType)) {
-          bitMaps[i].mark(rowIndex);
+          tablet.bitMaps[i].mark(rowIndex);
           continue;
         }
-        switch (primitiveType.getDataType()) {
+        switch (tablet.getSchemas().get(i).getType()) {
           case BOOLEAN:
             ((boolean[]) columns[i])[rowIndex] = primitiveType.getBoolean();
             break;
@@ -272,7 +296,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         }
       }
     } else {
-      switch (type) {
+      switch (tablet.getSchemas().get(0).getType()) {
         case BOOLEAN:
           ((boolean[]) columns[0])[rowIndex] = data.getBoolean();
           break;
