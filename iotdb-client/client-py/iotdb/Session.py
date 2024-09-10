@@ -1082,12 +1082,11 @@ class Session(object):
 
     def insert_relational_tablet(self, tablet):
         """
-        insert one tablet, in a tablet, for each timestamp, the number of measurements is same
-            for example three records in the same device can form a tablet:
-                timestamps,     m1,    m2,     m3
-                         1,  125.3,  True,  text1
-                         2,  111.6, False,  text2
-                         3,  688.6,  True,  text3
+        insert one tablet, for example three column in the table1 can form a tablet:
+            timestamps,    id1,  attr1,    m1
+                     1,  id:1,  attr:1,   1.0
+                     2,  id:1,  attr:1,   2.0
+                     3,  id:2,  attr:2,   3.0
         :param tablet: a tablet specified above
         """
         request = self.gen_insert_relational_tablet_req(tablet)
