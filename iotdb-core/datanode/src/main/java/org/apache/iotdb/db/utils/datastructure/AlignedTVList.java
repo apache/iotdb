@@ -945,7 +945,10 @@ public abstract class AlignedTVList extends TVList {
 
   /** Build TsBlock by column. */
   public TsBlock buildTsBlock(
-      int floatPrecision, List<TSEncoding> encodingList, List<List<TimeRange>> deletionList) {
+      int floatPrecision,
+      List<TSEncoding> encodingList,
+      List<TimeRange> timeColumnDeletion,
+      List<List<TimeRange>> deletionList) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
