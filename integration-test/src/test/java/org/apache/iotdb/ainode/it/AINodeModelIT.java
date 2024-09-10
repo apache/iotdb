@@ -79,7 +79,7 @@ public class AINodeModelIT {
   }
 
   @AfterClass
-  public static void tearDown() {
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
@@ -120,7 +120,7 @@ public class AINodeModelIT {
           String modelType = resultSet.getString(2);
           String status = resultSet.getString(3);
 
-          assertEquals("identity", modelName);
+          assertEquals("operationTest", modelName);
           assertEquals("USER_DEFINED", modelType);
           assertEquals("ACTIVE", status);
           count++;
@@ -145,6 +145,7 @@ public class AINodeModelIT {
   @Test
   public void callInferenceTest() {
     String sql = "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data\")";
+    String sql2 = "CALL INFERENCE(identity, \"select s2,s0,s1 from root.AI.data\")";
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -164,18 +165,8 @@ public class AINodeModelIT {
         }
         assertEquals(7, count);
       }
-    } catch (SQLException e) {
-      fail(e.getMessage());
-    }
-  }
 
-  @Test
-  public void callInferenceTest2() {
-    String sql = "CALL INFERENCE(identity, \"select s2,s0,s1 from root.AI.data\")";
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      try (ResultSet resultSet = statement.executeQuery(sql)) {
+      try (ResultSet resultSet = statement.executeQuery(sql2)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "output0,output1,output2");
         int count = 0;
@@ -197,29 +188,17 @@ public class AINodeModelIT {
   }
 
   @Test
-  public void errorTest1() {
+  public void errorTest() {
     String sql =
         "CALL INFERENCE(notFound404, \"select s0,s1,s2 from root.AI.data\", window=head(5))";
     errorTest(sql, "1505: model [notFound404] has not been created.");
-  }
-
-  @Test
-  public void errorTest2() {
-    String sql = "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data\", window=head(2))";
+    sql = "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data\", window=head(2))";
     errorTest(sql, "701: Window output 2 is not equal to input size of model 7");
-  }
-
-  @Test
-  public void errorTest3() {
-    String sql = "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data limit 5\")";
+    sql = "CALL INFERENCE(identity, \"select s0,s1,s2 from root.AI.data limit 5\")";
     errorTest(
         sql,
         "301: The number of rows 5 in the input data does not match the model input 7. Try to use LIMIT in SQL or WINDOW in CALL INFERENCE");
-  }
-
-  @Test
-  public void errorTest4() {
-    String sql = "CREATE MODEL 中文 USING URI \"" + MODEL_PATH + "\"";
+    sql = "CREATE MODEL 中文 USING URI \"" + MODEL_PATH + "\"";
     errorTest(sql, "701: ModelName can only contain letters, numbers, and underscores");
   }
 }
