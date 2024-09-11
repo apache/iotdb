@@ -714,8 +714,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus setDatabase(DatabaseSchemaPlan databaseSchemaPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus setDatabase(final DatabaseSchemaPlan databaseSchemaPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return clusterSchemaManager.setDatabase(databaseSchemaPlan, false);
     } else {
@@ -781,34 +781,34 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSchemaPartitionTableResp getSchemaPartition(PathPatternTree patternTree) {
+  public TSchemaPartitionTableResp getSchemaPartition(final PathPatternTree patternTree) {
     // Construct empty response
 
-    TSStatus status = confirmLeader();
+    final TSStatus status = confirmLeader();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
+      final TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
       return resp.setStatus(status);
     }
 
     // Build GetSchemaPartitionPlan
-    Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
-    List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
-    List<PartialPath> allDatabasePaths = new ArrayList<>();
-    for (String database : allDatabases) {
+    final Map<String, Set<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
+    final List<PartialPath> relatedPaths = patternTree.getAllPathPatterns();
+    final List<String> allDatabases = getClusterSchemaManager().getDatabaseNames();
+    final List<PartialPath> allDatabasePaths = new ArrayList<>();
+    for (final String database : allDatabases) {
       try {
-        allDatabasePaths.add(new PartialPath(database));
-      } catch (IllegalPathException e) {
+        allDatabasePaths.add(PartialPath.getDatabasePath(database));
+      } catch (final IllegalPathException e) {
         throw new RuntimeException(e);
       }
     }
-    Map<String, Boolean> scanAllRegions = new HashMap<>();
-    for (PartialPath path : relatedPaths) {
+    final Map<String, Boolean> scanAllRegions = new HashMap<>();
+    for (final PartialPath path : relatedPaths) {
       for (int i = 0; i < allDatabases.size(); i++) {
-        String database = allDatabases.get(i);
-        PartialPath databasePath = allDatabasePaths.get(i);
+        final String database = allDatabases.get(i);
+        final PartialPath databasePath = allDatabasePaths.get(i);
         if (path.overlapWithFullPathPrefix(databasePath) && !scanAllRegions.containsKey(database)) {
-          List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, databasePath);
+          final List<TSeriesPartitionSlot> relatedSlot = calculateRelatedSlot(path, databasePath);
           if (relatedSlot.isEmpty()) {
             scanAllRegions.put(database, true);
             partitionSlotsMap.put(database, new HashSet<>());
@@ -819,7 +819,7 @@ public class ConfigManager implements IManager {
       }
     }
 
-    Map<String, List<TSeriesPartitionSlot>> databaseSlotMap = new HashMap<>();
+    final Map<String, List<TSeriesPartitionSlot>> databaseSlotMap = new HashMap<>();
     partitionSlotsMap.forEach((db, slots) -> databaseSlotMap.put(db, new ArrayList<>(slots)));
     return getSchemaPartition(databaseSlotMap);
   }

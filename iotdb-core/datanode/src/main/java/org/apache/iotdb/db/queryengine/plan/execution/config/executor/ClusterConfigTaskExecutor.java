@@ -401,21 +401,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
   @Override
   public SettableFuture<ConfigTaskResult> showDatabase(
-      ShowDatabaseStatement showDatabaseStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      final ShowDatabaseStatement showDatabaseStatement) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    List<String> databasePathPattern =
+    final List<String> databasePathPattern =
         Arrays.asList(showDatabaseStatement.getPathPattern().getNodes());
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
-      TGetDatabaseReq req =
+      final TGetDatabaseReq req =
           new TGetDatabaseReq(
               databasePathPattern, showDatabaseStatement.getAuthorityScope().serialize());
-      TShowDatabaseResp resp = client.showDatabase(req);
+      final TShowDatabaseResp resp = client.showDatabase(req);
       // build TSBlock
       showDatabaseStatement.buildTSBlock(resp.getDatabaseInfoMap(), future);
-    } catch (IOException | ClientManagerException | TException | IllegalPathException e) {
+    } catch (final IOException | ClientManagerException | TException | IllegalPathException e) {
       future.setException(e);
     }
     return future;
@@ -3080,18 +3080,23 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createDatabase(final CreateDB createDB) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    final String dbName = createDB.getDbName();
     // Check database length here
     // We need to calculate the database name without "root."
-    if (createDB.getDbName().length() > MAX_DATABASE_NAME_LENGTH) {
+    if (dbName.contains(".") || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
       final IllegalPathException illegalPathException =
           new IllegalPathException(
               createDB.getDbName(),
-              "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
+              dbName.contains(".")
+                  ? "The database name shall not contain '.'"
+                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
       future.setException(
           new IoTDBException(
               illegalPathException.getMessage(), illegalPathException.getErrorCode()));
       return future;
     }
+
     // Construct request using statement
     final TDatabaseSchema databaseSchema = new TDatabaseSchema();
     databaseSchema.setName(ROOT + PATH_SEPARATOR_CHAR + createDB.getDbName());

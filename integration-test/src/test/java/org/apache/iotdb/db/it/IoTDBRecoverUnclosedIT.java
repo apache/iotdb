@@ -96,7 +96,7 @@ public class IoTDBRecoverUnclosedIT {
 
   @Test
   public void test() throws SQLException, IOException {
-    String[] retArray = new String[] {"0,2", "0,4", "0,3"};
+    String[] retArray = new String[] {"2", "4", "3"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -104,8 +104,7 @@ public class IoTDBRecoverUnclosedIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-        String ans =
-            resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(TEMPERATURE_STR));
+        String ans = resultSet.getString(count(TEMPERATURE_STR));
         assertEquals(retArray[0], ans);
       }
 
@@ -113,10 +112,7 @@ public class IoTDBRecoverUnclosedIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-        String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(minTime(TEMPERATURE_STR));
+        String ans = resultSet.getString(minTime(TEMPERATURE_STR));
         assertEquals(retArray[1], ans);
       }
 
@@ -124,10 +120,7 @@ public class IoTDBRecoverUnclosedIT {
       try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         assertNotNull(resultSet);
         resultSet.next();
-        String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(minTime(TEMPERATURE_STR));
+        String ans = resultSet.getString(minTime(TEMPERATURE_STR));
         assertEquals(retArray[2], ans);
       }
 
@@ -163,7 +156,7 @@ public class IoTDBRecoverUnclosedIT {
       assertEquals(7500, tempResultSet.getInt("count(" + d0s0 + ")"));
 
       // test max, min value
-      retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
+      retArray = new String[] {"8499,500.0", "2499,500.0"};
       selectSql =
           "select max_value(s0),min_value(s2) "
               + "from root.vehicle.d0 where time >= 100 and time < 9000";
@@ -171,11 +164,7 @@ public class IoTDBRecoverUnclosedIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(maxValue(d0s0))
-                + ","
-                + resultSet.getString(minValue(d0s2));
+            resultSet.getString(maxValue(d0s0)) + "," + resultSet.getString(minValue(d0s2));
         assertEquals(retArray[0], ans);
       }
 
@@ -184,11 +173,7 @@ public class IoTDBRecoverUnclosedIT {
         assertNotNull(resultSet);
         resultSet.next();
         String ans =
-            resultSet.getString(TIMESTAMP_STR)
-                + ","
-                + resultSet.getString(maxValue(d0s1))
-                + ","
-                + resultSet.getString(minValue(d0s2));
+            resultSet.getString(maxValue(d0s1)) + "," + resultSet.getString(minValue(d0s2));
         assertEquals(retArray[1], ans);
       }
     } catch (Exception e) {

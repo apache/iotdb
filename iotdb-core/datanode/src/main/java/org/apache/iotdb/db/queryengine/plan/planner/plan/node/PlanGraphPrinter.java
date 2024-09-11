@@ -624,6 +624,64 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitAggregation(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    if (node.isStreamable()) {
+      boxValue.add("Streamable: true");
+    }
+    int i = 0;
+    for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
+        aggregation : node.getAggregations().values()) {
+      boxValue.add(
+          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+    }
+    boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    boxValue.add(String.format("Step: %s", node.getStep()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAggregationTableScan(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AggregationTableScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    if (node.isStreamable()) {
+      boxValue.add("Streamable: true");
+    }
+    int i = 0;
+    for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
+        aggregation : node.getAggregations().values()) {
+      boxValue.add(
+          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+    }
+    boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    boxValue.add(String.format("Step: %s", node.getStep()));
+
+    if (node.getProjection() != null) {
+      boxValue.add(
+          String.format("Project-Expressions: %s", node.getProjection().getMap().values()));
+    }
+
+    boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    if (node.getPushDownPredicate() != null) {
+      boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
+    }
+    boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
+    boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
+    boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
+    boxValue.add(String.format("RegionId: %s", node.getRegionReplicaSet().getRegionId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitFilter(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node,
       GraphContext context) {

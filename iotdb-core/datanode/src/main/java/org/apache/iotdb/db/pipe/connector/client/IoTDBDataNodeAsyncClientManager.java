@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransfe
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
-import org.apache.iotdb.db.pipe.connector.protocol.thrift.async.IoTDBDataRegionAsyncConnector;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -62,6 +61,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
   private final Set<TEndPoint> endPointSet;
 
+  private static final Map<String, Integer> RECEIVER_ATTRIBUTES_REF_COUNT =
+      new ConcurrentHashMap<>();
+  private final String receiverAttributes;
+
+  // receiverAttributes -> IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>
   private static final Map<String, IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient>>
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER = new ConcurrentHashMap<>();
   private final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> endPoint2Client;
@@ -82,18 +86,19 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     endPointSet = new HashSet<>(endPoints);
 
-    final String receiverAttributes =
+    receiverAttributes =
         String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
-    if (!ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.containsKey(receiverAttributes)) {
-      synchronized (IoTDBDataRegionAsyncConnector.class) {
-        ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
-            receiverAttributes,
-            new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
-                .createClientManager(
-                    new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
-      }
+    synchronized (IoTDBDataNodeAsyncClientManager.class) {
+      ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
+          receiverAttributes,
+          new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
+              .createClientManager(
+                  new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
+      endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
+
+      RECEIVER_ATTRIBUTES_REF_COUNT.compute(
+          receiverAttributes, (attributes, refCount) -> refCount == null ? 1 : refCount + 1);
     }
-    endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
 
     switch (loadBalanceStrategy) {
       case CONNECTOR_LOAD_BALANCE_ROUND_ROBIN_STRATEGY:
@@ -286,6 +291,28 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
     }
 
     LEADER_CACHE_MANAGER.updateLeaderEndPoint(deviceId, endPoint);
+  }
+
+  public void close() {
+    synchronized (IoTDBDataNodeAsyncClientManager.class) {
+      RECEIVER_ATTRIBUTES_REF_COUNT.computeIfPresent(
+          receiverAttributes,
+          (attributes, refCount) -> {
+            if (refCount <= 1) {
+              final IClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager =
+                  ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.remove(receiverAttributes);
+              if (clientManager != null) {
+                try {
+                  clientManager.close();
+                } catch (Exception e) {
+                  LOGGER.warn("Failed to close client manager.", e);
+                }
+              }
+              return null;
+            }
+            return refCount - 1;
+          });
+    }
   }
 
   /////////////////////// Strategies for load balance //////////////////////////

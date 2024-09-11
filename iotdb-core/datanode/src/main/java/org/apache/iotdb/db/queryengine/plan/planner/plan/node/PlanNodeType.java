@@ -108,6 +108,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -285,6 +286,8 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
+      case 97:
+        return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(stream);
       case 2000:
         return RelationalInsertTabletNode.deserializeFromWAL(stream);
       case 2001:
@@ -307,6 +310,8 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
+      case 97:
+        return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserializeFromWAL(buffer);
       case 2001:
@@ -512,6 +517,9 @@ public enum PlanNodeType {
         return ActiveRegionScanMergeNode.deserialize(buffer);
       case 96:
         return DeviceSchemaFetchScanNode.deserialize(buffer);
+      case 97:
+        throw new UnsupportedOperationException(
+            "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:

@@ -34,10 +34,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ReplaceSymbolInExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -77,9 +79,11 @@ import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TABL
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeVisitor.getTimePartitionSlotList;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor.extractUnique;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.DeterminismEvaluator.isDeterministic;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.extractGlobalTimeFilter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.combineConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.extractConjuncts;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils.filterDeterministicConjuncts;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.JoinType.INNER;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
@@ -216,6 +220,78 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     //        Expression leftExpression, Expression rightExpression) {
     //      return false;
     //    }
+
+    @Override
+    public PlanNode visitAggregation(AggregationNode node, RewriteContext context) {
+      if (node.hasEmptyGroupingSet()) {
+        // TODO: in case of grouping sets, we should be able to push the filters over grouping keys
+        // below the aggregation
+        // and also preserve the filter above the aggregation if it has an empty grouping set
+        return visitPlan(node, context);
+      }
+
+      Expression inheritedPredicate = context.inheritedPredicate;
+
+      EqualityInference equalityInference = new EqualityInference(metadata, inheritedPredicate);
+
+      List<Expression> pushdownConjuncts = new ArrayList<>();
+      List<Expression> postAggregationConjuncts = new ArrayList<>();
+
+      // Strip out non-deterministic conjuncts
+      extractConjuncts(inheritedPredicate).stream()
+          .filter(expression -> !isDeterministic(expression))
+          .forEach(postAggregationConjuncts::add);
+      inheritedPredicate = filterDeterministicConjuncts(inheritedPredicate);
+
+      // Sort non-equality predicates by those that can be pushed down and those that cannot
+      Set<Symbol> groupingKeys = ImmutableSet.copyOf(node.getGroupingKeys());
+      EqualityInference.nonInferrableConjuncts(metadata, inheritedPredicate)
+          .forEach(
+              conjunct -> {
+                if (node.getGroupIdSymbol().isPresent()
+                    && extractUnique(conjunct).contains(node.getGroupIdSymbol().get())) {
+                  // aggregation operator synthesizes outputs for group ids corresponding to the
+                  // global grouping set (i.e., ()), so we
+                  // need to preserve any predicates that evaluate the group id to run after the
+                  // aggregation
+                  // TODO: we should be able to infer if conditions on grouping() correspond to
+                  // global grouping sets to determine whether
+                  // we need to do this for each specific case
+                  postAggregationConjuncts.add(conjunct);
+                } else {
+                  Expression rewrittenConjunct = equalityInference.rewrite(conjunct, groupingKeys);
+                  if (rewrittenConjunct != null) {
+                    pushdownConjuncts.add(rewrittenConjunct);
+                  } else {
+                    postAggregationConjuncts.add(conjunct);
+                  }
+                }
+              });
+
+      // Add the equality predicates back in
+      EqualityInference.EqualityPartition equalityPartition =
+          equalityInference.generateEqualitiesPartitionedBy(groupingKeys);
+      pushdownConjuncts.addAll(equalityPartition.getScopeEqualities());
+      postAggregationConjuncts.addAll(equalityPartition.getScopeComplementEqualities());
+      postAggregationConjuncts.addAll(equalityPartition.getScopeStraddlingEqualities());
+
+      // PlanNode rewrittenSource = context.rewrite(node.getSource(),
+      // combineConjuncts(pushdownConjuncts));
+
+      // if (rewrittenSource != node.getChild()) {
+      context.inheritedPredicate = combineConjuncts(pushdownConjuncts);
+      PlanNode output =
+          AggregationNode.builderFrom(node)
+              .setSource(node.getChild().accept(this, context))
+              .setPreGroupedSymbols(ImmutableList.of())
+              .build();
+      if (!postAggregationConjuncts.isEmpty()) {
+        output =
+            new FilterNode(
+                queryId.genPlanNodeId(), output, combineConjuncts(postAggregationConjuncts));
+      }
+      return output;
+    }
 
     @Override
     public PlanNode visitTableScan(TableScanNode node, RewriteContext context) {

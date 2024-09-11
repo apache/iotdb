@@ -238,17 +238,24 @@ public class TableDeviceSchemaFetcher {
           new ConvertSchemaPredicateToFilterVisitor.Context(tableInstance);
       final DeviceInCacheFilterVisitor filterVisitor =
           new DeviceInCacheFilterVisitor(attributeColumns);
-      final SchemaFilter fuzzyFilter =
-          compactedIdFuzzyPredicate == null
-              ? null
-              : compactedIdFuzzyPredicate.accept(visitor, context);
+
+      final Predicate<DeviceEntry> check;
+      if (Objects.isNull(compactedIdFuzzyPredicate)) {
+        check = o -> true;
+      } else {
+        final SchemaFilter fuzzyFilter = compactedIdFuzzyPredicate.accept(visitor, context);
+        // Currently if a predicate cannot be converted to schema filter, we abandon cache
+        // and just fetch remote. Later cache will be a memory source and combine filter
+        check = Objects.nonNull(fuzzyFilter) ? o -> filterVisitor.process(fuzzyFilter, o) : null;
+      }
+
       for (final int index : idSingleMatchIndexList) {
         if (!tryGetDeviceInCache(
             deviceEntryList,
             database,
             tableInstance,
             index2FilterMapList.get(index),
-            o -> fuzzyFilter == null || filterVisitor.process(fuzzyFilter, o),
+            check,
             attributeColumns,
             fetchPaths,
             isDirectDeviceQuery)) {
@@ -316,9 +323,12 @@ public class TableDeviceSchemaFetcher {
 
     final IDeviceID deviceID = convertIdValuesToDeviceID(idValues, tableInstance);
 
-    // DeviceEntryList == null means that this is update statement
-    // Shall not get from cache and shall reach the SchemaRegion to update
-    if (Objects.isNull(attributeMap) || Objects.isNull(deviceEntryList)) {
+    // 1. AttributeMap == null means cache miss
+    // 2. DeviceEntryList == null means that this is update statement, shall not get from cache and
+    // shall reach the SchemaRegion to update
+    // 3. Check == null means that the fuzzyPredicate cannot be parsed into schema filter,
+    // and currently we shall push it to schema region
+    if (Objects.isNull(attributeMap) || Objects.isNull(deviceEntryList) || Objects.isNull(check)) {
       if (Objects.nonNull(fetchPaths)) {
         fetchPaths.add(deviceID);
       }

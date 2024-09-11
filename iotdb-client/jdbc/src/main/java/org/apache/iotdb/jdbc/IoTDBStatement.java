@@ -347,7 +347,8 @@ public class IoTDBStatement implements Statement {
                 execResp.moreData,
                 zoneId,
                 charset,
-                execResp.isSetTableModel() && execResp.isTableModel());
+                execResp.isSetTableModel() && execResp.isTableModel(),
+                execResp.getColumnIndex2TsBlockColumnIndexList());
       }
       return true;
     }
@@ -490,7 +491,8 @@ public class IoTDBStatement implements Statement {
               execResp.moreData,
               zoneId,
               charset,
-              execResp.isSetTableModel() && execResp.isTableModel());
+              execResp.isSetTableModel() && execResp.isTableModel(),
+              execResp.getColumnIndex2TsBlockColumnIndexList());
     }
     return resultSet;
   }

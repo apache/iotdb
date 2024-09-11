@@ -449,6 +449,37 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
+  @Test
+  public void testTaskEstimateMemory()
+      throws IOException, MetadataException, WriteProcessException {
+    ICompactionPerformer performer = getPerformer();
+    if (performer instanceof ReadPointCompactionPerformer) {
+      // not implemented
+      return;
+    }
+    createFiles(3, 3, 10, 100, 0, 0, 0, 0, isAligned, true);
+    SettleCompactionTask task1 =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            Collections.singletonList(seqResources.get(0)),
+            Arrays.asList(seqResources.get(1), seqResources.get(2)),
+            true,
+            performer,
+            0);
+
+    SettleCompactionTask task2 =
+        new SettleCompactionTask(
+            0, tsFileManager, seqResources, Collections.emptyList(), true, performer, 0);
+
+    SettleCompactionTask task3 =
+        new SettleCompactionTask(
+            0, tsFileManager, Collections.emptyList(), seqResources, true, performer, 0);
+    Assert.assertTrue(task1.getEstimatedMemoryCost() > 0);
+    Assert.assertEquals(0, task2.getEstimatedMemoryCost());
+    Assert.assertTrue(task3.getEstimatedMemoryCost() > 0);
+  }
+
   public static List<IFullPath> createTimeseries(
       int deviceNum, int measurementNum, boolean isAligned) throws IllegalPathException {
     List<IFullPath> timeseriesPath = new ArrayList<>();

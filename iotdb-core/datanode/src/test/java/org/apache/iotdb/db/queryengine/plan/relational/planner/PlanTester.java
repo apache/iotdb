@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TSBSMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.execution.querystats.PlanOptimizersStatsCollector;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -58,13 +59,23 @@ public class PlanTester {
           IoTDBConstant.ClientVersion.V_1_0,
           "db",
           IClientSession.SqlDialect.TABLE);
-  private final Metadata metadata = new TestMatadata();
+  private final Metadata metadata;
 
   private DistributedQueryPlan distributedQueryPlan;
 
   private Analysis analysis;
 
+  private SymbolAllocator symbolAllocator;
+
   private LogicalQueryPlan plan;
+
+  public PlanTester() {
+    this(new TestMatadata());
+  }
+
+  public PlanTester(Metadata metadata) {
+    this.metadata = metadata;
+  }
 
   public LogicalQueryPlan createPlan(String sql) {
     return createPlan(sessionInfo, sql, NOOP, createPlanOptimizersStatsCollector());
@@ -79,13 +90,16 @@ public class PlanTester {
       String sql,
       WarningCollector warningCollector,
       PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+    distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
     Analysis analysis = analyze(sql, metadata);
     this.analysis = analysis;
+    this.symbolAllocator = new SymbolAllocator();
 
     TableLogicalPlanner logicalPlanner =
-        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP);
+        new TableLogicalPlanner(
+            context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP);
 
     plan = logicalPlanner.plan(analysis);
 
@@ -98,12 +112,14 @@ public class PlanTester {
       List<PlanOptimizer> optimizers,
       WarningCollector warningCollector,
       PlanOptimizersStatsCollector planOptimizersStatsCollector) {
+    distributedQueryPlan = null;
     MPPQueryContext context = new MPPQueryContext(sql, queryId, sessionInfo, null, null);
 
     Analysis analysis = analyze(sql, metadata);
 
     TableLogicalPlanner logicalPlanner =
-        new TableLogicalPlanner(context, metadata, sessionInfo, WarningCollector.NOOP, optimizers);
+        new TableLogicalPlanner(
+            context, metadata, sessionInfo, symbolAllocator, WarningCollector.NOOP, optimizers);
 
     return logicalPlanner.plan(analysis);
   }
@@ -111,9 +127,15 @@ public class PlanTester {
   public static Analysis analyze(String sql, Metadata metadata) {
     SqlParser sqlParser = new SqlParser();
     Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault());
+    String databaseName;
+    if (metadata instanceof TSBSMetadata) {
+      databaseName = "tsbs";
+    } else {
+      databaseName = "testdb";
+    }
     SessionInfo session =
         new SessionInfo(
-            0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
+            0, "test", ZoneId.systemDefault(), databaseName, IClientSession.SqlDialect.TABLE);
     final MPPQueryContext context =
         new MPPQueryContext(sql, new QueryId("test_query"), session, null, null);
     return analyzeStatement(statement, metadata, context, sqlParser, session);
@@ -148,9 +170,9 @@ public class PlanTester {
 
   public PlanNode getFragmentPlan(int index) {
     if (distributedQueryPlan == null) {
-      distributedQueryPlan = new TableDistributedPlanner(analysis, plan).plan();
+      distributedQueryPlan = new TableDistributedPlanner(analysis, symbolAllocator, plan).plan();
     }
-    return distributedQueryPlan.getFragments().get(index).getPlanNodeTree();
+    return distributedQueryPlan.getFragments().get(index).getPlanNodeTree().getChildren().get(0);
   }
 
   private static class NopAccessControl implements AccessControl {}

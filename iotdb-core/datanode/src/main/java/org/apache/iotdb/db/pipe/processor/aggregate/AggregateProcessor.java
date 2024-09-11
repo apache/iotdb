@@ -188,10 +188,7 @@ public class AggregateProcessor implements PipeProcessor {
     databaseWithPathSeparator =
         StorageEngine.getInstance()
                 .getDataRegion(
-                    new DataRegionId(
-                        ((PipeTaskProcessorRuntimeEnvironment)
-                                configuration.getRuntimeEnvironment())
-                            .getRegionId()))
+                    new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()))
                 .getDatabaseName()
             + TsFileConstant.PATH_SEPARATOR;
 
