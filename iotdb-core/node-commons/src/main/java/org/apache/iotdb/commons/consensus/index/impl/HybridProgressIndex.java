@@ -189,7 +189,7 @@ public class HybridProgressIndex extends ProgressIndex {
       }
 
       if (progressIndex instanceof StateProgressIndex) {
-        return progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(this);
+        return progressIndex.deepCopy().updateToMinimumEqualOrIsAfterProgressIndex(this);
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
