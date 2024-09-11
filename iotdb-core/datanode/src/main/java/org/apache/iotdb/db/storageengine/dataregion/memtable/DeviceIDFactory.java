@@ -67,7 +67,7 @@ public class DeviceIDFactory {
    * @return device id of the timeseries
    */
   public IDeviceID getDeviceID(final PartialPath devicePath) {
-    return getDeviceIDFunction.apply(devicePath.getFullPath());
+    return devicePath.getIDeviceID();
   }
 
   public static List<IDeviceID> convertRawDeviceIDs2PartitionKeys(
