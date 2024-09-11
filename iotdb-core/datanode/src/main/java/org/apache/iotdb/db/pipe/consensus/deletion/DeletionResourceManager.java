@@ -105,6 +105,11 @@ public class DeletionResourceManager implements AutoCloseable {
           try (DeletionReader deletionReader =
               new DeletionReader(path.toFile(), this::removeDeletionResource)) {
             deletionResources.addAll(deletionReader.readAllDeletions());
+          } catch (IOException e) {
+            LOGGER.warn(
+                "Detect file corrupted when recover DAL-{}, discard all subsequent DALs...",
+                path.getFileName());
+            break;
           }
         }
         hasCompletedRecovery = true;

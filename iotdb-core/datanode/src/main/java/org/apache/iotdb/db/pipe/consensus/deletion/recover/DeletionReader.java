@@ -52,7 +52,7 @@ public class DeletionReader implements Closeable {
     this.removeHook = removeHook;
   }
 
-  public List<DeletionResource> readAllDeletions() {
+  public List<DeletionResource> readAllDeletions() throws IOException {
     try {
       // Read magic string
       ByteBuffer magicStringBuffer = ByteBuffer.allocate(MAGIC_STRING_BYTES_SIZE);
@@ -80,9 +80,13 @@ public class DeletionReader implements Closeable {
       }
       return deletions;
     } catch (IOException e) {
-      // TODO: 如果文件写坏了
+      // if file is corrupted, throw an exception and skip subsequence DAL.
+      LOGGER.warn(
+          "Failed to read deletion file {}, may because this file corrupted when writing it.",
+          logFile,
+          e);
+      throw e;
     }
-    return new ArrayList<>();
   }
 
   @Override
