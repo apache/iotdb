@@ -51,6 +51,7 @@ public class ClusterConstant {
   public static final String LIGHT_WEIGHT_STANDALONE_MODE = "LightWeightStandaloneMode";
   public static final String SCALABLE_SINGLE_NODE_MODE = "ScalableSingleNodeMode";
   public static final String HIGH_PERFORMANCE_MODE = "HighPerformanceMode";
+  public static final String FAST_HIGH_PERFORMANCE_MODE = "FastHighPerformanceMode";
   public static final String STRONG_CONSISTENCY_CLUSTER_MODE = "StrongConsistencyClusterMode";
 
   // System arguments in pom.xml
@@ -98,6 +99,21 @@ public class ClusterConstant {
       "highPerformanceMode.schemaRegionReplicaNumber";
   public static final String HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM =
       "highPerformanceMode.dataRegionReplicaNumber";
+
+  public static final String FAST_HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM =
+      "fastHighPerformanceMode.configNodeNumber";
+  public static final String FAST_HIGH_PERFORMANCE_MODE_DATA_NODE_NUM =
+      "fastHighPerformanceMode.dataNodeNumber";
+  public static final String FAST_HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS =
+      "fastHighPerformanceMode.configNodeConsensus";
+  public static final String FAST_HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS =
+      "fastHighPerformanceMode.schemaRegionConsensus";
+  public static final String FAST_HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS =
+      "fastHighPerformanceMode.dataRegionConsensus";
+  public static final String FAST_HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM =
+      "fastHighPerformanceMode.schemaRegionReplicaNumber";
+  public static final String FAST_HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM =
+      "fastHighPerformanceMode.dataRegionReplicaNumber";
 
   public static final String STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_NUM =
       "strongConsistencyClusterMode.configNodeNumber";
@@ -217,9 +233,7 @@ public class ClusterConstant {
   public static final String SIMPLE_CONSENSUS_STR = "Simple";
   public static final String RATIS_CONSENSUS_STR = "Ratis";
   public static final String IOT_CONSENSUS_STR = "IoT";
-  public static final String PIPE_CONSENSUS_STR = "Pipe";
-  public static final String STREAM_CONSENSUS_STR = "Stream";
-  public static final String BATCH_CONSENSUS_STR = "Batch";
+  public static final String FAST_IOT_CONSENSUS_STR = "FastIoT";
 
   public static final String JAVA_CMD =
       System.getProperty("java.home")

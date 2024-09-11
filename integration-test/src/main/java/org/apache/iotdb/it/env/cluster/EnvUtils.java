@@ -32,17 +32,18 @@ import java.util.stream.IntStream;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.FAST_IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
-import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
-import static org.apache.iotdb.consensus.ConsensusFactory.REAL_PIPE_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.db.utils.DateTimeUtils.convertLongToDate;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.BATCH_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DELIMITER;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DIR_TIME_REPLACEMENT;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_DATA_NODE_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_IOT_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_NODE_NUM;
@@ -51,13 +52,11 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STAND
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LOCK_FILE_PATH;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.RATIS_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCALABLE_SINGLE_NODE_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SIMPLE_CONSENSUS_STR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.STREAM_CONSENSUS_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.STRONG_CONSISTENCY_CLUSTER_MODE_DATA_NODE_NUM;
@@ -146,6 +145,10 @@ public class EnvUtils {
           return new Pair<>(
               Integer.parseInt(System.getProperty(HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM)),
               Integer.parseInt(System.getProperty(HIGH_PERFORMANCE_MODE_DATA_NODE_NUM)));
+        case FAST_HIGH_PERFORMANCE_MODE:
+          return new Pair<>(
+              Integer.parseInt(System.getProperty(FAST_HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM)),
+              Integer.parseInt(System.getProperty(FAST_HIGH_PERFORMANCE_MODE_DATA_NODE_NUM)));
         case STRONG_CONSISTENCY_CLUSTER_MODE:
           return new Pair<>(
               Integer.parseInt(System.getProperty(STRONG_CONSISTENCY_CLUSTER_MODE_CONFIG_NODE_NUM)),
@@ -222,12 +225,8 @@ public class EnvUtils {
         return RATIS_CONSENSUS_STR;
       case IOT_CONSENSUS:
         return IOT_CONSENSUS_STR;
-      case REAL_PIPE_CONSENSUS:
-        return PIPE_CONSENSUS_STR;
-      case IOT_CONSENSUS_V2:
-        return STREAM_CONSENSUS_STR;
       case FAST_IOT_CONSENSUS:
-        return BATCH_CONSENSUS_STR;
+        return FAST_IOT_CONSENSUS_STR;
       default:
         throw new IllegalArgumentException("Unknown consensus type: " + consensus);
     }
@@ -241,11 +240,7 @@ public class EnvUtils {
         return RATIS_CONSENSUS;
       case IOT_CONSENSUS_STR:
         return IOT_CONSENSUS;
-      case PIPE_CONSENSUS_STR:
-        return REAL_PIPE_CONSENSUS;
-      case STREAM_CONSENSUS_STR:
-        return IOT_CONSENSUS_V2;
-      case BATCH_CONSENSUS_STR:
+      case FAST_IOT_CONSENSUS_STR:
         return FAST_IOT_CONSENSUS;
       default:
         throw new IllegalArgumentException("Unknown consensus type: " + consensus);

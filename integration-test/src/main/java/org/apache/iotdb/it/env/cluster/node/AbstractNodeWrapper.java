@@ -71,6 +71,12 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURAT
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.FAST_HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS;
@@ -380,6 +386,26 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
           clusterConfigProperties.setProperty(
               DATA_REPLICATION_FACTOR,
               System.getProperty(HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM));
+          break;
+        case FAST_HIGH_PERFORMANCE_MODE:
+          clusterConfigProperties.setProperty(
+              CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(FAST_HIGH_PERFORMANCE_MODE_CONFIG_NODE_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(FAST_HIGH_PERFORMANCE_MODE_SCHEMA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              DATA_REGION_CONSENSUS_PROTOCOL_CLASS,
+              fromConsensusAbbrToFullName(
+                  System.getProperty(FAST_HIGH_PERFORMANCE_MODE_DATA_REGION_CONSENSUS)));
+          clusterConfigProperties.setProperty(
+              SCHEMA_REPLICATION_FACTOR,
+              System.getProperty(FAST_HIGH_PERFORMANCE_MODE_SCHEMA_REGION_REPLICA_NUM));
+          clusterConfigProperties.setProperty(
+              DATA_REPLICATION_FACTOR,
+              System.getProperty(FAST_HIGH_PERFORMANCE_MODE_DATA_REGION_REPLICA_NUM));
           break;
         case STRONG_CONSISTENCY_CLUSTER_MODE:
           clusterConfigProperties.setProperty(

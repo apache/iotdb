@@ -60,6 +60,13 @@
         <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
         <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
         <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
+        <fastHighPerformanceMode.configNodeConsensus>Ratis</fastHighPerformanceMode.configNodeConsensus>
+        <fastHighPerformanceMode.configNodeNumber>1</fastHighPerformanceMode.configNodeNumber>
+        <fastHighPerformanceMode.dataNodeNumber>3</fastHighPerformanceMode.dataNodeNumber>
+        <fastHighPerformanceMode.dataRegionConsensus>FastIoT</fastHighPerformanceMode.dataRegionConsensus>
+        <fastHighPerformanceMode.dataRegionReplicaNumber>2</fastHighPerformanceMode.dataRegionReplicaNumber>
+        <fastHighPerformanceMode.schemaRegionConsensus>Ratis</fastHighPerformanceMode.schemaRegionConsensus>
+        <fastHighPerformanceMode.schemaRegionReplicaNumber>3</fastHighPerformanceMode.schemaRegionReplicaNumber>
         <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
         <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
         <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
@@ -307,6 +314,13 @@
                                 <highPerformanceMode.dataRegionConsensus>${highPerformanceMode.dataRegionConsensus}</highPerformanceMode.dataRegionConsensus>
                                 <highPerformanceMode.schemaRegionReplicaNumber>${highPerformanceMode.schemaRegionReplicaNumber}</highPerformanceMode.schemaRegionReplicaNumber>
                                 <highPerformanceMode.dataRegionReplicaNumber>${highPerformanceMode.dataRegionReplicaNumber}</highPerformanceMode.dataRegionReplicaNumber>
+                                <fastHighPerformanceMode.configNodeNumber>${fastHighPerformanceMode.configNodeNumber}</fastHighPerformanceMode.configNodeNumber>
+                                <fastHighPerformanceMode.dataNodeNumber>${fastHighPerformanceMode.dataNodeNumber}</fastHighPerformanceMode.dataNodeNumber>
+                                <fastHighPerformanceMode.configNodeConsensus>${fastHighPerformanceMode.configNodeConsensus}</fastHighPerformanceMode.configNodeConsensus>
+                                <fastHighPerformanceMode.schemaRegionConsensus>${fastHighPerformanceMode.schemaRegionConsensus}</fastHighPerformanceMode.schemaRegionConsensus>
+                                <fastHighPerformanceMode.dataRegionConsensus>${fastHighPerformanceMode.dataRegionConsensus}</fastHighPerformanceMode.dataRegionConsensus>
+                                <fastHighPerformanceMode.schemaRegionReplicaNumber>${fastHighPerformanceMode.schemaRegionReplicaNumber}</fastHighPerformanceMode.schemaRegionReplicaNumber>
+                                <fastHighPerformanceMode.dataRegionReplicaNumber>${fastHighPerformanceMode.dataRegionReplicaNumber}</fastHighPerformanceMode.dataRegionReplicaNumber>
                                 <strongConsistencyClusterMode.configNodeNumber>${strongConsistencyClusterMode.configNodeNumber}</strongConsistencyClusterMode.configNodeNumber>
                                 <strongConsistencyClusterMode.dataNodeNumber>${strongConsistencyClusterMode.dataNodeNumber}</strongConsistencyClusterMode.dataNodeNumber>
                                 <strongConsistencyClusterMode.configNodeConsensus>${strongConsistencyClusterMode.configNodeConsensus}</strongConsistencyClusterMode.configNodeConsensus>
