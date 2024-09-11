@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,6 +37,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * NOTE: Currently, {@link StateProgressIndex} does not perform deep copies of the {@link Binary}
+ * during construction or updates, which may lead to unintended shared state or modifications. This
+ * behavior should be reviewed and adjusted as necessary to ensure the integrity and independence of
+ * the progress index instances.
+ */
 public class StateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -62,7 +69,7 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   public Map<String, Binary> getState() {
-    return new HashMap<>(state);
+    return ImmutableMap.copyOf(state);
   }
 
   @Override

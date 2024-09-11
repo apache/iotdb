@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -61,7 +62,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   }
 
   public Map<String, Pair<Long, ByteBuffer>> getTimeSeries2TimestampWindowBufferPairMap() {
-    return new HashMap<>(timeSeries2TimestampWindowBufferPairMap);
+    return ImmutableMap.copyOf(timeSeries2TimestampWindowBufferPairMap);
   }
 
   public long getMinTime() {

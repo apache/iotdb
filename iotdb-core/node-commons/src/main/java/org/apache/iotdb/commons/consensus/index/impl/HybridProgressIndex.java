@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -61,7 +62,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   public Map<Short, ProgressIndex> getType2Index() {
-    return ((HybridProgressIndex) deepCopy()).type2Index;
+    return ImmutableMap.copyOf(((HybridProgressIndex) deepCopy()).type2Index);
   }
 
   @Override

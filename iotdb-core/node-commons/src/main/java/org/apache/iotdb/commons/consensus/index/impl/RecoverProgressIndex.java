@@ -61,7 +61,7 @@ public class RecoverProgressIndex extends ProgressIndex {
   }
 
   public Map<Integer, SimpleProgressIndex> getDataNodeId2LocalIndex() {
-    return ((RecoverProgressIndex) deepCopy()).dataNodeId2LocalIndex;
+    return ImmutableMap.copyOf(((RecoverProgressIndex) deepCopy()).dataNodeId2LocalIndex);
   }
 
   @Override
