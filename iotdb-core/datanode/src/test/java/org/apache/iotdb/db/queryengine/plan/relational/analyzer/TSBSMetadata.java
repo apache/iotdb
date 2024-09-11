@@ -34,108 +34,182 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
-import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_1_ATTRIBUTES;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_2;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_2_ATTRIBUTES;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_3;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_3_ATTRIBUTES;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_4;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_4_ATTRIBUTES;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_5;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_5_ATTRIBUTES;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTableModelDataPartition.DEVICE_6_ATTRIBUTES;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_1;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_2;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_3;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T2_DEVICE_1;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T2_DEVICE_2;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T2_DEVICE_3;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.getFunctionType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isOneNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTwoTypeComparable;
+import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
-import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
-public class TestMatadata implements Metadata {
+public class TSBSMetadata implements Metadata {
 
   private final TypeManager typeManager = new InternalTypeManager();
 
-  public static final String DB1 = "testdb";
-  public static final String TABLE1 = "table1";
-  public static final String TIME = "time";
-  private static final String TAG1 = "tag1";
-  private static final String TAG2 = "tag2";
-  private static final String TAG3 = "tag3";
-  private static final String ATTR1 = "attr1";
-  private static final String ATTR2 = "attr2";
-  private static final String S1 = "s1";
-  private static final String S2 = "s2";
-  private static final String S3 = "s3";
-  private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, TIMESTAMP);
-  private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
-  private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
-  private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, StringType.STRING);
-  private static final ColumnMetadata ATTR1_CM = new ColumnMetadata(ATTR1, StringType.STRING);
-  private static final ColumnMetadata ATTR2_CM = new ColumnMetadata(ATTR2, StringType.STRING);
-  private static final ColumnMetadata S1_CM = new ColumnMetadata(S1, INT64);
-  private static final ColumnMetadata S2_CM = new ColumnMetadata(S2, INT64);
-  private static final ColumnMetadata S3_CM = new ColumnMetadata(S3, DOUBLE);
+  public static final String DB1 = "tsbs";
+  public static final String TABLE_DIAGNOSTICS = "diagnostics";
+  public static final String TABLE_READINGS = "readings";
 
-  public static final String DB2 = "db2";
-  public static final String TABLE2 = "table2";
+  public static final String TIME = "time";
+  private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, TIMESTAMP);
+
+  // ID columns
+  public static final String NAME = "name";
+  private static final ColumnMetadata NAME_CM = new ColumnMetadata(NAME, TEXT);
+  public static final String FLEET = "fleet";
+  private static final ColumnMetadata FLEET_CM = new ColumnMetadata(FLEET, TEXT);
+  public static final String DRIVER = "driver";
+  private static final ColumnMetadata DRIVER_CM = new ColumnMetadata(DRIVER, TEXT);
+  public static final String MODEL = "model";
+  private static final ColumnMetadata MODEL_CM = new ColumnMetadata(MODEL, TEXT);
+
+  // ATTRIBUTE columns
+  public static final String DEVICE_VERSION = "device_version";
+  private static final ColumnMetadata DEVICE_VERSION_CM = new ColumnMetadata(DEVICE_VERSION, TEXT);
+  public static final String LOAD_CAPACITY = "load_capacity";
+  private static final ColumnMetadata LOAD_CAPACITY_CM = new ColumnMetadata(LOAD_CAPACITY, DOUBLE);
+  public static final String FUEL_CAPACITY = "fuel_capacity";
+  private static final ColumnMetadata FUEL_CAPACITY_CM = new ColumnMetadata(FUEL_CAPACITY, DOUBLE);
+  public static final String NOMINAL_FUEL_CONSUMPTION = "nominal_fuel_consumption";
+  private static final ColumnMetadata NOMINAL_FUEL_CONSUMPTION_CM =
+      new ColumnMetadata(NOMINAL_FUEL_CONSUMPTION, DOUBLE);
+
+  // TABLE_DIAGNOSTICS measurement columns
+  public static final String FUEL_STATE = "fuel_state";
+  private static final ColumnMetadata FUEL_STATE_CM = new ColumnMetadata(FUEL_STATE, DOUBLE);
+  public static final String CURRENT_LOAD = "current_load";
+  private static final ColumnMetadata CURRENT_LOAD_CM = new ColumnMetadata(CURRENT_LOAD, INT32);
+  public static final String STATUS = "status";
+  private static final ColumnMetadata STATUS_CM = new ColumnMetadata(STATUS, INT32);
+
+  // TABLE_READINGS measurement columns
+  public static final String LATITUDE = "latitude";
+  private static final ColumnMetadata LATITUDE_CM = new ColumnMetadata(LATITUDE, DOUBLE);
+  public static final String LONGITUDE = "longitude";
+  private static final ColumnMetadata LONGITUDE_CM = new ColumnMetadata(LONGITUDE, DOUBLE);
+  public static final String ELEVATION = "elevation";
+  private static final ColumnMetadata ELEVATION_CM = new ColumnMetadata(ELEVATION, INT32);
+  public static final String VELOCITY = "velocity";
+  private static final ColumnMetadata VELOCITY_CM = new ColumnMetadata(VELOCITY, INT32);
+  public static final String HEADING = "heading";
+  private static final ColumnMetadata HEADING_CM = new ColumnMetadata(HEADING, INT32);
+  public static final String GRADE = "grade";
+  private static final ColumnMetadata GRADE_CM = new ColumnMetadata(GRADE, INT32);
+  public static final String FUEL_CONSUMPTION = "fuel_consumption";
+  private static final ColumnMetadata FUEL_CONSUMPTION_CM =
+      new ColumnMetadata(FUEL_CONSUMPTION, INT32);
 
   @Override
   public boolean tableExists(QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
-        && name.getObjectName().equalsIgnoreCase(TABLE1);
+        && (name.getObjectName().equalsIgnoreCase(TABLE_DIAGNOSTICS)
+            || name.getObjectName().equalsIgnoreCase(TABLE_READINGS));
   }
 
   @Override
   public Optional<TableSchema> getTableSchema(SessionInfo session, QualifiedObjectName name) {
-    List<ColumnSchema> columnSchemas =
-        Arrays.asList(
-            ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build(),
-            ColumnSchema.builder(TAG1_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(TAG2_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(TAG3_CM).setColumnCategory(TsTableColumnCategory.ID).build(),
-            ColumnSchema.builder(ATTR1_CM)
-                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
-                .build(),
-            ColumnSchema.builder(ATTR2_CM)
-                .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
-                .build(),
-            ColumnSchema.builder(S1_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S2_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build(),
-            ColumnSchema.builder(S3_CM)
-                .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
-                .build());
+    List<ColumnSchema> columnSchemas = new ArrayList<>();
+    columnSchemas.add(
+        ColumnSchema.builder(TIME_CM).setColumnCategory(TsTableColumnCategory.TIME).build());
+    columnSchemas.add(
+        ColumnSchema.builder(NAME_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+    columnSchemas.add(
+        ColumnSchema.builder(FLEET_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+    columnSchemas.add(
+        ColumnSchema.builder(DRIVER_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+    columnSchemas.add(
+        ColumnSchema.builder(MODEL_CM).setColumnCategory(TsTableColumnCategory.ID).build());
+    columnSchemas.add(
+        ColumnSchema.builder(DEVICE_VERSION_CM)
+            .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+            .build());
+    columnSchemas.add(
+        ColumnSchema.builder(LOAD_CAPACITY_CM)
+            .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+            .build());
+    columnSchemas.add(
+        ColumnSchema.builder(FUEL_CAPACITY_CM)
+            .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+            .build());
+    columnSchemas.add(
+        ColumnSchema.builder(NOMINAL_FUEL_CONSUMPTION_CM)
+            .setColumnCategory(TsTableColumnCategory.ATTRIBUTE)
+            .build());
 
-    return Optional.of(new TableSchema(TABLE1, columnSchemas));
+    if (name.getObjectName().equalsIgnoreCase(TABLE_DIAGNOSTICS)) {
+      columnSchemas.add(
+          ColumnSchema.builder(FUEL_STATE_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(CURRENT_LOAD_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(STATUS_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      return Optional.of(new TableSchema(TABLE_DIAGNOSTICS, columnSchemas));
+    } else if (name.getObjectName().equalsIgnoreCase(TABLE_READINGS)) {
+      columnSchemas.add(
+          ColumnSchema.builder(LATITUDE_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(LONGITUDE_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(ELEVATION_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(VELOCITY_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(HEADING_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(GRADE_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      columnSchemas.add(
+          ColumnSchema.builder(FUEL_CONSUMPTION_CM)
+              .setColumnCategory(TsTableColumnCategory.MEASUREMENT)
+              .build());
+      return Optional.of(new TableSchema(TABLE_READINGS, columnSchemas));
+    } else {
+      return Optional.empty();
+    }
   }
 
   @Override
@@ -212,62 +286,41 @@ public class TestMatadata implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns,
       MPPQueryContext context) {
-
-    if (expressionList.size() == 2) {
-      if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")
-              && compareEqualsMatch(expressionList.get(1), "tag2", "A1")
-          || compareEqualsMatch(expressionList.get(1), "tag1", "beijing")
-              && compareEqualsMatch(expressionList.get(0), "tag2", "A1")) {
-        return Collections.singletonList(
-            new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES));
-      }
-      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")
-              && compareEqualsMatch(expressionList.get(1), "tag2", "B3")
-          || compareEqualsMatch(expressionList.get(1), "tag1", "shanghai")
-              && compareEqualsMatch(expressionList.get(0), "tag2", "B3")) {
-        return Collections.singletonList(
-            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_1_ATTRIBUTES));
-      }
-
-    } else if (expressionList.size() == 1) {
-      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")) {
-        return Arrays.asList(
-            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
-            new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES));
-      }
-      if (compareEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
-        return Arrays.asList(
-            new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
-            new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
-      }
+    if (expressionList.size() == 2
+        && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
+        && expressionList.get(1).toString().equals("(NOT (\"name\" IS NULL))")
+        && attributeColumns.isEmpty()) {
+      // r01, r02
+      return ImmutableList.of(
+          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of()),
+          new DeviceEntry(new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of()));
+    } else if (expressionList.size() == 1
+        && expressionList.get(0).toString().equals("(\"fleet\" = 'South')")
+        && attributeColumns.size() == 1
+        && attributeColumns.get(0).equals("load_capacity")) {
+      // r03
+      return ImmutableList.of(
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("2000")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("1000")));
+    } else {
+      // others (The return result maybe not correct in actual, but it is convenient for test of
+      // DistributionPlan)
+      return Arrays.asList(
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T1_DEVICE_3.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T2_DEVICE_1.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T2_DEVICE_2.split("\\.")), ImmutableList.of("", "")),
+          new DeviceEntry(
+              new StringArrayDeviceID(T2_DEVICE_3.split("\\.")), ImmutableList.of("", "")));
     }
-
-    return Arrays.asList(
-        new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
-        new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
-        new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
-        new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
-        new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
-        new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
-  }
-
-  private boolean compareEqualsMatch(Expression expression, String idOrAttr, String value) {
-    if (expression instanceof ComparisonExpression
-        && ((ComparisonExpression) expression).getOperator()
-            == ComparisonExpression.Operator.EQUAL) {
-      Expression leftExpression = ((ComparisonExpression) expression).getLeft();
-      Expression rightExpression = ((ComparisonExpression) expression).getRight();
-      if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
-        return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
-            && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
-      } else if (leftExpression instanceof StringLiteral
-          && rightExpression instanceof SymbolReference) {
-        return ((SymbolReference) rightExpression).getName().equalsIgnoreCase(idOrAttr)
-            && ((StringLiteral) leftExpression).getValue().equalsIgnoreCase(value);
-      }
-    }
-
-    return false;
   }
 
   @Override
@@ -316,10 +369,10 @@ public class TestMatadata implements Metadata {
   }
 
   private static final DataPartition DATA_PARTITION =
-      MockTableModelDataPartition.constructDataPartition();
+      MockTSBSDataPartition.constructDataPartition();
 
   private static final SchemaPartition SCHEMA_PARTITION =
-      MockTableModelDataPartition.constructSchemaPartition();
+      MockTSBSDataPartition.constructSchemaPartition();
 
   private static IPartitionFetcher getFakePartitionFetcher() {
 

@@ -29,13 +29,13 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 
-public final class TableScanMatcher implements Matcher {
-  private final String expectedTableName;
-  private final Optional<Boolean> hasTableLayout;
+public class TableScanMatcher implements Matcher {
+  protected final String expectedTableName;
+  protected final Optional<Boolean> hasTableLayout;
   // this field empty means no need to match
-  private final List<String> outputSymbols;
+  protected final List<String> outputSymbols;
   // this field empty means no need to match
-  private Set<String> assignmentsKeys;
+  protected Set<String> assignmentsKeys;
 
   public TableScanMatcher(
       String expectedTableName,
