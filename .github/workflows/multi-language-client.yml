@@ -153,7 +153,7 @@ jobs:
       - name: Cache pip packages
         uses: actions/cache@v4
         with:
-          path: ${{ steps.pip-cache.outputs.dir }}
+          path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: ${{ runner.os }}-pip-
       - name: Build IoTDB server distribution zip and python client
