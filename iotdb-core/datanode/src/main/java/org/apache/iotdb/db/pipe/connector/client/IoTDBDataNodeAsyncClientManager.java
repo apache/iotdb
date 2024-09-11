@@ -89,7 +89,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
 
     receiverAttributes =
         String.format("%s-%s", shouldReceiverConvertOnTypeMismatch, loadTsFileStrategy);
-    synchronized (IoTDBDataRegionAsyncConnector.class) {
+    synchronized (IoTDBDataNodeAsyncClientManager.class) {
       ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.putIfAbsent(
           receiverAttributes,
           new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
