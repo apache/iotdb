@@ -78,18 +78,18 @@ public class JoinTest {
   @Test
   public void innerJoinTest1() {
     // join on
-    //        assertInnerJoinTest1(
-    //            "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
-    //                + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-    //                + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6",
-    //            false);
-    //
-    //        // implicit join
-    //        assertInnerJoinTest1(
-    //            "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
-    //                + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-    //                + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6",
-    //            false);
+    assertInnerJoinTest1(
+        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
+            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6",
+        false);
+
+    // implicit join
+    assertInnerJoinTest1(
+        "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
+            + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6",
+        false);
 
     // join using
     assertInnerJoinTest1(

@@ -148,6 +148,10 @@ public class DatasetHeader {
     return respAliasColumns;
   }
 
+  public List<String> getColumnToTsBlockIndexList() {
+    return this.columnToTsBlockIndexList;
+  }
+
   public Map<String, Integer> getColumnNameIndexMap() {
     if (columnToTsBlockIndexMap == null || columnToTsBlockIndexMap.isEmpty()) {
       return columnToTsBlockIndexMap;
