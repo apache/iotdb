@@ -52,41 +52,37 @@ public class DeletionReader implements Closeable {
     this.removeHook = removeHook;
   }
 
-  public List<DeletionResource> readAllDeletions() throws IOException {
-    // Read magic string
-    ByteBuffer magicStringBuffer = ByteBuffer.allocate(MAGIC_STRING_BYTES_SIZE);
-    fileChannel.read(magicStringBuffer);
-    magicStringBuffer.flip();
-    String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
-    }
-
-    // Read metaData
-    ByteBuffer intBuffer = ByteBuffer.allocate(Integer.BYTES);
-    long position = fileChannel.size() - Integer.BYTES;
-    fileChannel.read(intBuffer, position);
-    intBuffer.flip();
-    int deletionNum = intBuffer.getInt();
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Read deletion file-{} contains {} deletions", logFile, deletionNum);
-    }
-
-    // Read deletions
-    long remainingBytes = fileChannel.size() - fileChannel.position() - Integer.BYTES;
-    ByteBuffer byteBuffer = ByteBuffer.allocate((int) remainingBytes);
-    fileChannel.read(byteBuffer);
-    byteBuffer.flip();
-
-    List<DeletionResource> deletions = new ArrayList<>();
-    for (int i = 0; i < deletionNum; i++) {
-      DeletionResource deletionResource = DeletionResource.deserialize(byteBuffer, removeHook);
-      deletions.add(deletionResource);
+  public List<DeletionResource> readAllDeletions() {
+    try {
+      // Read magic string
+      ByteBuffer magicStringBuffer = ByteBuffer.allocate(MAGIC_STRING_BYTES_SIZE);
+      fileChannel.read(magicStringBuffer);
+      magicStringBuffer.flip();
+      String magicVersion = new String(magicStringBuffer.array(), StandardCharsets.UTF_8);
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+        LOGGER.debug("Read deletion file-{} magic version: {}", logFile, magicVersion);
       }
+
+      // Read deletions
+      long remainingBytes = fileChannel.size() - fileChannel.position();
+      ByteBuffer byteBuffer = ByteBuffer.allocate((int) remainingBytes);
+      fileChannel.read(byteBuffer);
+      byteBuffer.flip();
+
+      List<DeletionResource> deletions = new ArrayList<>();
+
+      while (byteBuffer.hasRemaining()) {
+        DeletionResource deletionResource = DeletionResource.deserialize(byteBuffer, removeHook);
+        deletions.add(deletionResource);
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug("Read deletion: {} from file {}", deletionResource, logFile);
+        }
+      }
+      return deletions;
+    } catch (IOException e) {
+      // TODO: 如果文件写坏了
     }
-    return deletions;
+    return new ArrayList<>();
   }
 
   @Override

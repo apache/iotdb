@@ -74,8 +74,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private final Lock buffersLock = new ReentrantLock();
   // Total size of this batch.
   private final AtomicInteger totalSize = new AtomicInteger(0);
-  // Deletion num of this batch.
-  private final AtomicInteger deletionNum = new AtomicInteger(0);
   // All deletions that will be written to the current file
   private final List<DeletionResource> pendingDeletions = new ArrayList<>();
 
@@ -104,6 +102,27 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   @Override
   public void start() {
     persistThread.submit(new PersistTask());
+    try {
+      // initial file is the minimumProgressIndex
+      this.logFile =
+          new File(
+              baseDirectory,
+              String.format("_%d-%d%s", 0, 0, DeletionResourceManager.DELETION_FILE_SUFFIX));
+      this.logStream = new FileOutputStream(logFile, true);
+      this.logChannel = logStream.getChannel();
+      // Create file && write magic string
+      if (!logFile.exists() || logFile.length() == 0) {
+        this.logChannel.write(
+            ByteBuffer.wrap(
+                DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
+      }
+    } catch (IOException e) {
+      LOGGER.warn(
+          "Deletion persist: Cannot create file {}, please check your file system manually.",
+          logFile,
+          e);
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -140,32 +159,34 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private void appendCurrentBatch() throws IOException {
     serializeBuffer.flip();
     logChannel.write(serializeBuffer);
+    // Mark DeletionResources to persisted once deletion has been written to page cache
+    pendingDeletions.forEach(DeletionResource::onPersistSucceed);
+    resetTaskAttribute();
   }
 
-  private void fsyncCurrentLoggingFileAndReset(int deletionNum, ProgressIndex curMaxProgressIndex)
+  private void fsyncCurrentLoggingFileAndReset(ProgressIndex curMaxProgressIndex)
       throws IOException {
     try {
-      // Write metaData.
-      ByteBuffer metaData = ByteBuffer.allocate(4);
-      metaData.putInt(deletionNum);
-      metaData.flip();
-      this.logChannel.write(metaData);
       // Close old resource to fsync.
       this.logStream.close();
       this.logChannel.close();
-      // Mark DeletionResources to persisted
-      this.pendingDeletions.forEach(DeletionResource::onPersistSucceed);
     } finally {
-      reset(curMaxProgressIndex);
+      resetFileAttribute(curMaxProgressIndex);
     }
   }
 
-  private void reset(ProgressIndex curMaxProgressIndex) {
+  private void resetTaskAttribute() {
+    this.pendingDeletions.clear();
+    clearBuffer();
+  }
+
+  private void resetFileAttribute(ProgressIndex curMaxProgressIndex) {
     // Reset file attributes.
     this.totalSize.set(0);
-    this.deletionNum.set(0);
     this.maxProgressIndexInLastBatch = curMaxProgressIndex;
-    this.pendingDeletions.clear();
+  }
+
+  private void clearBuffer() {
     // Clear serialize buffer
     buffersLock.lock();
     try {
@@ -214,7 +235,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         LOGGER.warn(
             "Deletion persist: Cannot write to {}, may cause data inconsistency.", logFile, e);
         pendingDeletions.forEach(deletionResource -> deletionResource.onPersistFailed(e));
-        reset(maxProgressIndexInLastBatch);
+        resetFileAttribute(maxProgressIndexInLastBatch);
       } finally {
         if (!isClosed) {
           persistThread.submit(new PersistTask());
@@ -230,7 +251,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       }
       serializeBuffer.put(buffer.array());
       totalSize.addAndGet(buffer.position());
-      deletionNum.incrementAndGet();
       return true;
     }
 
@@ -272,7 +292,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         if (!serializeDeletionToBatchBuffer(deletionResource)) {
           // If working buffer is exhausted, fsync immediately and roll to a new file.
           appendCurrentBatch();
-          fsyncCurrentLoggingFileAndReset(deletionNum.get(), maxProgressIndexInCurrentBatch);
+          fsyncCurrentLoggingFileAndReset(maxProgressIndexInCurrentBatch);
           switchLoggingFile();
           return;
         }
@@ -285,7 +305,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       // Persist deletions; Defensive programming here, just in case.
       if (totalSize.get() > 0) {
         appendCurrentBatch();
-        fsyncCurrentLoggingFileAndReset(deletionNum.get(), maxProgressIndexInCurrentBatch);
+        fsyncCurrentLoggingFileAndReset(maxProgressIndexInCurrentBatch);
         switchLoggingFile();
       }
     }

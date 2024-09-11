@@ -88,20 +88,18 @@ public class DeletionResource implements PersistentResource {
     return latestUpdateTime.get();
   }
 
-  public void onPersistFailed(Exception e) {
+  public synchronized void onPersistFailed(Exception e) {
     cause = e;
     currentStatus = Status.FAILURE;
     this.notifyAll();
   }
 
-  public void onPersistSucceed() {
+  public synchronized void onPersistSucceed() {
     currentStatus = Status.SUCCESS;
     this.notifyAll();
   }
 
-  /**
-   * @return true if this object has been successfully persisted, false if persist failed.
-   */
+  /** @return true if this object has been successfully persisted, false if persist failed. */
   public synchronized Status waitForResult() {
     while (currentStatus == Status.RUNNING) {
       try {

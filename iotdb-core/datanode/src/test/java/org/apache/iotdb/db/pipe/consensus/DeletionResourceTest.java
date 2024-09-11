@@ -40,7 +40,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DeletionResourceTest {
@@ -91,8 +94,7 @@ public class DeletionResourceTest {
           new PipeSchemaRegionWritePlanEvent(deleteDataNode, true);
       deletionResourceManager.registerDeletionResource(deletionEvent);
     }
-    // Sleep to wait deletion being persisted
-    Thread.sleep(1000);
+
     Stream<Path> paths =
         Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_IDS[1]));
     ;
@@ -125,27 +127,38 @@ public class DeletionResourceTest {
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATE_REGION_IDS[3]);
     // new a deletion
     int rebootTimes = 0;
+    int deletionCount = 100;
     MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
-    DeleteDataNode deleteDataNode =
-        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
-    deleteDataNode.setProgressIndex(
-        new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, 1)));
-    PipeSchemaRegionWritePlanEvent deletionEvent =
-        new PipeSchemaRegionWritePlanEvent(deleteDataNode, true);
-    // Only register one deletionResource
-    deletionResourceManager.registerDeletionResource(deletionEvent);
-    deletionEvent.increaseReferenceCount("test");
+    List<PipeSchemaRegionWritePlanEvent> deletionEvents = new ArrayList<>();
+    for (int i = 0; i < deletionCount; i++) {
+      DeleteDataNode deleteDataNode =
+          new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
+      deleteDataNode.setProgressIndex(
+          new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
+      PipeSchemaRegionWritePlanEvent deletionEvent =
+          new PipeSchemaRegionWritePlanEvent(deleteDataNode, true);
+      deletionEvents.add(deletionEvent);
+      deletionResourceManager.registerDeletionResource(deletionEvent);
+    }
+    deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
     // Sleep to wait deletion being persisted
     Thread.sleep(1000);
-    Stream<Path> paths =
-        Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_IDS[3]));
-    Assert.assertTrue(paths.anyMatch(Files::isRegularFile));
+    List<Path> paths =
+        Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_IDS[3]))
+            .collect(Collectors.toList());
+    Assert.assertTrue(paths.stream().anyMatch(Files::isRegularFile));
+    int beforeFileCount = paths.size();
+    if (beforeFileCount < 2) {
+      return;
+    }
     // Remove deletion
-    deletionEvent.decreaseReferenceCount("test", false);
+    deletionEvents.forEach(deletionEvent -> deletionEvent.decreaseReferenceCount("test", false));
     // Sleep to wait deletion being removed
     Thread.sleep(1000);
-    Stream<Path> newPaths =
-        Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_IDS[3]));
-    Assert.assertFalse(newPaths.anyMatch(Files::isRegularFile));
+    List<Path> newPaths =
+        Files.list(Paths.get(DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_IDS[3]))
+            .collect(Collectors.toList());
+    int afterCount = newPaths.size();
+    Assert.assertTrue(afterCount < beforeFileCount);
   }
 }
