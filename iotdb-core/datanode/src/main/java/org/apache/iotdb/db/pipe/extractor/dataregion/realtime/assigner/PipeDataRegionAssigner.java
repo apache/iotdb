@@ -161,7 +161,7 @@ public class PipeDataRegionAssigner implements Closeable {
             dataRegionId, event.getTimePartitionId(), event.getProgressIndex())) {
       event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent);
       LOGGER.warn(
-          "Data region {} bind {} to event {} because of a prior flush.",
+          "Data region {} bind {} to event {} because it was flushed prematurely.",
           dataRegionId,
           maxProgressIndexForTsFileInsertionEvent,
           event);
