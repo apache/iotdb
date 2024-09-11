@@ -61,7 +61,7 @@ public class HybridProgressIndex extends ProgressIndex {
   }
 
   public Map<Short, ProgressIndex> getType2Index() {
-    return type2Index;
+    return ((HybridProgressIndex) deepCopy()).type2Index;
   }
 
   @Override
@@ -196,7 +196,7 @@ public class HybridProgressIndex extends ProgressIndex {
             progressIndex.getType().getType(),
             (thisK, thisV) ->
                 (thisV == null
-                    ? progressIndex
+                    ? progressIndex.deepCopy()
                     : thisV.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex)));
         return this;
       }
@@ -209,7 +209,7 @@ public class HybridProgressIndex extends ProgressIndex {
                   thatK,
                   (thisK, thisV) ->
                       (thisV == null
-                          ? thatV
+                          ? thatV.deepCopy()
                           : thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
       return this;
     } finally {

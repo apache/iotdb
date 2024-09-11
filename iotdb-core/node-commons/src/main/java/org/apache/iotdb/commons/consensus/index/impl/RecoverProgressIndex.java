@@ -61,9 +61,7 @@ public class RecoverProgressIndex extends ProgressIndex {
   }
 
   public Map<Integer, SimpleProgressIndex> getDataNodeId2LocalIndex() {
-    return ImmutableMap.<Integer, SimpleProgressIndex>builder()
-        .putAll(dataNodeId2LocalIndex)
-        .build();
+    return ((RecoverProgressIndex) deepCopy()).dataNodeId2LocalIndex;
   }
 
   @Override
@@ -194,7 +192,7 @@ public class RecoverProgressIndex extends ProgressIndex {
                   thatK,
                   (thisK, thisV) ->
                       (thisV == null
-                          ? thatV
+                          ? (SimpleProgressIndex) thatV.deepCopy()
                           : (SimpleProgressIndex)
                               thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
       return this;

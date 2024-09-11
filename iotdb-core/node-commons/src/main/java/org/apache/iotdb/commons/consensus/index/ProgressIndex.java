@@ -95,6 +95,20 @@ public abstract class ProgressIndex {
     return super.hashCode();
   }
 
+  /**
+   * Creates and returns a deep copy of this {@link ProgressIndex} instance.
+   *
+   * <p>This method performs a deep copy, meaning all nested objects and fields within this {@link
+   * ProgressIndex} are recursively copied, resulting in a new instance that is independent of the
+   * original. Modifications to the copied instance will not affect the original instance and vice
+   * versa.
+   *
+   * <p>When constructing or updating another {@link ProgressIndex} using an existing {@link
+   * ProgressIndex}, it is recommended to perform a deep copy of the existing instance to avoid
+   * unintended modifications or shared state between the instances.
+   *
+   * @return a new {@link ProgressIndex} instance that is a deep copy of this progress index
+   */
   public abstract ProgressIndex deepCopy();
 
   /**
@@ -118,7 +132,9 @@ public abstract class ProgressIndex {
    *
    * @param progressIndex the {@link ProgressIndex} to be compared
    * @return the minimum {@link ProgressIndex} after the given {@link ProgressIndex} and this {@link
-   *     ProgressIndex}
+   *     ProgressIndex}, the returned {@link ProgressIndex} will contain deep copies of all
+   *     references to the given {@param progressIndex}, ensuring no shared state between the
+   *     original and the result
    */
   public abstract ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(
       ProgressIndex progressIndex);
@@ -165,7 +181,9 @@ public abstract class ProgressIndex {
    *     should be the minimum {@link ProgressIndex} equal or after the first {@link ProgressIndex}
    *     and the second {@link ProgressIndex}
    * @return the minimum {@link ProgressIndex} after the first {@link ProgressIndex} and the second
-   *     {@link ProgressIndex}
+   *     {@link ProgressIndex}, the returned {@link ProgressIndex} will contain deep copies of all
+   *     references to {@param progressIndex1} and {@param progressIndex2}, ensuring that the result
+   *     is independent and modifications to it do not affect the original instances
    */
   protected static ProgressIndex blendProgressIndex(
       ProgressIndex progressIndex1, ProgressIndex progressIndex2) {
@@ -173,14 +191,14 @@ public abstract class ProgressIndex {
       return MinimumProgressIndex.INSTANCE;
     }
     if (progressIndex1 == null || progressIndex1 instanceof MinimumProgressIndex) {
-      return progressIndex2 == null ? MinimumProgressIndex.INSTANCE : progressIndex2;
+      return progressIndex2 == null ? MinimumProgressIndex.INSTANCE : progressIndex2.deepCopy();
     }
     if (progressIndex2 == null || progressIndex2 instanceof MinimumProgressIndex) {
-      return progressIndex1; // progressIndex1 is not null
+      return progressIndex1.deepCopy(); // progressIndex1 is not null
     }
 
     return progressIndex1 instanceof StateProgressIndex
-        ? progressIndex1.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2)
+        ? progressIndex1.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2).deepCopy()
         : new HybridProgressIndex(progressIndex1)
             .updateToMinimumEqualOrIsAfterProgressIndex(progressIndex2);
   }

@@ -56,11 +56,13 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   public ProgressIndex getInnerProgressIndex() {
-    return innerProgressIndex == null ? MinimumProgressIndex.INSTANCE : innerProgressIndex;
+    return innerProgressIndex == null
+        ? MinimumProgressIndex.INSTANCE
+        : innerProgressIndex.deepCopy();
   }
 
   public Map<String, Binary> getState() {
-    return state;
+    return new HashMap<>(state);
   }
 
   @Override

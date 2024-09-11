@@ -37,6 +37,12 @@ import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+/**
+ * NOTE: Currently, {@link TimeWindowStateProgressIndex} does not perform deep copies of the {@link
+ * ByteBuffer} during construction or updates, which may lead to unintended shared state or
+ * modifications. This behavior should be reviewed and adjusted as necessary to ensure the integrity
+ * and independence of the progress index instances.
+ */
 public class TimeWindowStateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -55,7 +61,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   }
 
   public Map<String, Pair<Long, ByteBuffer>> getTimeSeries2TimestampWindowBufferPairMap() {
-    return timeSeries2TimestampWindowBufferPairMap;
+    return new HashMap<>(timeSeries2TimestampWindowBufferPairMap);
   }
 
   public long getMinTime() {
