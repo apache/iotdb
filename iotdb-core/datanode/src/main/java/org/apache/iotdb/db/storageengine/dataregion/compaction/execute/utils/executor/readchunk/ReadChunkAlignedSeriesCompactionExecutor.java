@@ -254,7 +254,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws IOException {
     writer.markStartingWritingAligned();
     checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
-    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
+    if (timeChunk.getChunkMetadata().getStartTime() != timeChunk.getChunkMetadata().getEndTime()) {
+      checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
+    }
     writer.writeChunk(timeChunk.getChunk(), timeChunk.getChunkMetadata());
     timeChunk.clear();
     int nonEmptyChunkNum = 1;
@@ -334,7 +336,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws PageException, IOException {
     int nonEmptyPage = 1;
     checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
-    checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    if (timePage.getHeader().getStartTime() != timePage.getHeader().getEndTime()) {
+      checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    }
     timePage.flushToTimeChunkWriter(chunkWriter);
     for (int i = 0; i < valuePageLoaders.size(); i++) {
       PageLoader valuePage = valuePageLoaders.get(i);

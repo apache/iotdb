@@ -24,10 +24,15 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionId;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.FunctionNullability;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
@@ -91,6 +96,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -126,6 +132,7 @@ public class ExpressionAnalyzer {
 
   private final TypeProvider symbolTypes;
 
+  private final Map<NodeRef<Node>, ResolvedFunction> resolvedFunctions = new LinkedHashMap<>();
   private final Set<NodeRef<SubqueryExpression>> subqueries = new LinkedHashSet<>();
   private final Set<NodeRef<ExistsPredicate>> existsSubqueries = new LinkedHashSet<>();
 
@@ -198,6 +205,10 @@ public class ExpressionAnalyzer {
     this.parameters = requireNonNull(parameters, "parameters is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.getPreanalyzedType = requireNonNull(getPreanalyzedType, "getPreanalyzedType is null");
+  }
+
+  public Map<NodeRef<Node>, ResolvedFunction> getResolvedFunctions() {
+    return unmodifiableMap(resolvedFunctions);
   }
 
   public Map<NodeRef<Expression>, Type> getExpressionTypes() {
@@ -776,6 +787,17 @@ public class ExpressionAnalyzer {
       }
 
       Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
+      // now we only support scalar or agg functions
+      ResolvedFunction resolvedFunction =
+          new ResolvedFunction(
+              new BoundSignature(functionName.toLowerCase(Locale.ENGLISH), type, argumentTypes),
+              new FunctionId("noop"),
+              isAggregation ? FunctionKind.AGGREGATE : FunctionKind.SCALAR,
+              true,
+              isAggregation
+                  ? FunctionNullability.getAggregationFunctionNullability(argumentTypes.size())
+                  : FunctionNullability.getScalarFunctionNullability(argumentTypes.size()));
+      resolvedFunctions.put(NodeRef.of(node), resolvedFunction);
       return setExpressionType(node, type);
     }
 
@@ -1436,6 +1458,11 @@ public class ExpressionAnalyzer {
       SessionInfo session,
       AccessControl accessControl) {
     analysis.addTypes(analyzer.getExpressionTypes());
+    analyzer
+        .getResolvedFunctions()
+        .forEach(
+            (key, value) ->
+                analysis.addResolvedFunction(key.getNode(), value, session.getUserName()));
     analysis.addColumnReferences(analyzer.getColumnReferences());
     analysis.addTableColumnReferences(
         accessControl, session.getIdentity(), analyzer.getTableColumnReferences());

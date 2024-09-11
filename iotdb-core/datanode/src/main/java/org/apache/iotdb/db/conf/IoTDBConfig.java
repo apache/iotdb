@@ -1139,6 +1139,8 @@ public class IoTDBConfig {
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
 
+  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
+
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
 
@@ -3977,6 +3979,16 @@ public class IoTDBConfig {
   public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {
+    return loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
+  }
+
+  public void setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
+      int loadTsFileMaxDeviceCountToUseDeviceTimeIndex) {
+    this.loadTsFileMaxDeviceCountToUseDeviceTimeIndex =
+        loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
   }
 
   public long getLoadMemoryAllocateRetryIntervalMs() {

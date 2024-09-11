@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -614,7 +613,7 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean isAggregationFunction(
       SessionInfo session, String functionName, AccessControl accessControl) {
-    return BuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getNativeFunctionNames()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 
@@ -696,6 +695,11 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public boolean canUseStatistics(String functionName) {
+    return TableBuiltinAggregationFunction.canUseStatistics(functionName);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
