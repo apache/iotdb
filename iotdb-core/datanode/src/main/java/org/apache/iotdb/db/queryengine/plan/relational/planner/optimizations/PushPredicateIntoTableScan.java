@@ -674,7 +674,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 node.isSpillable());
       }
 
-      JoinNode.EquiJoinClause joinCriteria = node.getCriteria().get(0);
+      JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
       OrderingScheme leftOrderingScheme =
           new OrderingScheme(
               Collections.singletonList(joinCriteria.getLeft()),
