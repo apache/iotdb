@@ -167,11 +167,11 @@ jobs:
       - name: Check code style and test make package
         if: ${{ matrix.python == '3.x'}}
         shell: bash
-        run: |
-          black iotdb-client/client-py/ --check --diff
-          ./iotdb-client/client-py/release.sh
-      - name: Integration test
+        run: black iotdb-client/client-py/ --check --diff
+      - name: Integration test and test make package
         shell: bash
-        run: pytest iotdb-client/client-py
+        run: |
+          cd iotdb-client/client-py/ && pytest .
+          ./release.sh
 
 
