@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.execution.relational;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.NullOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
@@ -64,8 +65,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Trim;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.CaseWhenThenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
@@ -91,8 +94,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalAn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.LogicalOrMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AbsColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AcosColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AsinColumnTransformer;
@@ -149,7 +152,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Tr
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.UpperColumnTransformer;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
@@ -175,13 +177,14 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoMetadataChecker.isStringLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
-import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
+import static org.apache.tsfile.utils.RegexUtils.compileRegex;
+import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class ColumnTransformerBuilder
     extends AstVisitor<ColumnTransformer, ColumnTransformerBuilder.Context> {
@@ -1154,18 +1157,13 @@ public class ColumnTransformerBuilder
         context.cache.put(node, identity);
       } else {
         ColumnTransformer childColumnTransformer = process(node.getValue(), context);
-        Optional<String> escapeValueOpt =
-            node.getEscape().isPresent()
-                ? Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue())
-                : Optional.empty();
         context.cache.put(
             node,
-            new LikeColumnTransformer(
+            new RegularColumnTransformer(
                 BOOLEAN,
                 childColumnTransformer,
-                LikePattern.compile(
-                    ((StringLiteral) node.getPattern()).getValue(),
-                    getEscapeCharacter(escapeValueOpt))));
+                compileRegex(
+                    parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue()))));
       }
     }
     ColumnTransformer res = context.cache.get(node);
@@ -1310,7 +1308,48 @@ public class ColumnTransformerBuilder
   @Override
   protected ColumnTransformer visitSimpleCaseExpression(
       SimpleCaseExpression node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(InternalTypeManager.getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        List<ColumnTransformer> whenList = new ArrayList<>();
+        List<ColumnTransformer> thenList = new ArrayList<>();
+        for (WhenClause whenClause : node.getWhenClauses()) {
+          // TODO:
+          whenList.add(process(whenClause.getOperand(), context));
+          thenList.add(process(whenClause.getResult(), context));
+        }
+
+        ColumnTransformer children = process(node.getOperand(), context);
+        if (node.getDefaultValue().isPresent()) {
+          ColumnTransformer elseColumnTransformer = process(node.getDefaultValue().get(), context);
+          context.cache.put(
+              node,
+              new CaseWhenThenColumnTransformer(
+                  elseColumnTransformer.getType(),
+                  whenList,
+                  thenList,
+                  elseColumnTransformer));
+        } else {
+          context.cache.put(
+              node,
+              new CaseWhenThenColumnTransformer(
+                  thenList.get(0).getType(), whenList, thenList, children));
+        }
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
