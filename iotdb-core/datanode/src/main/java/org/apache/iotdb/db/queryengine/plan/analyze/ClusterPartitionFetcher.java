@@ -347,15 +347,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(String database) {
-    PathPatternTree patternTree = new PathPatternTree();
+  public SchemaPartition getSchemaPartition(final String database) {
+    final PathPatternTree patternTree = new PathPatternTree();
     try {
       patternTree.appendPathPattern(
-          new PartialPath(
-              PathUtils.qualifyDatabaseName(database)
-                  + IoTDBConstant.PATH_SEPARATOR
-                  + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-    } catch (IllegalPathException e) {
+          PartialPath.getDatabasePath(database)
+              .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+    } catch (final IllegalPathException e) {
       throw new SemanticException(e);
     }
     return getSchemaPartition(patternTree);

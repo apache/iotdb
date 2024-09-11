@@ -27,6 +27,10 @@ class TSDataType(IntEnum):
     FLOAT = 3
     DOUBLE = 4
     TEXT = 5
+    TIMESTAMP = 8
+    DATE = 9
+    BLOB = 10
+    STRING = 11
 
     def np_dtype(self):
         return {
@@ -36,6 +40,8 @@ class TSDataType(IntEnum):
             TSDataType.INT32: np.dtype(">i4"),
             TSDataType.INT64: np.dtype(">i8"),
             TSDataType.TEXT: np.dtype("str"),
+            TSDataType.TIMESTAMP: np.dtype(">i8"),
+            TSDataType.STRING: np.dtype("str"),
         }[self]
 
 

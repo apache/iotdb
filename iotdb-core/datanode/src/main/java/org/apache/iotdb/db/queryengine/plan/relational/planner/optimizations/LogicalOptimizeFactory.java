@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
@@ -25,7 +30,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Me
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOutputSourceColumns;
@@ -60,6 +68,10 @@ public class LogicalOptimizeFactory {
 
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
+            new PruneAggregationColumns(),
+            // TODO After ValuesNode introduced
+            // new RemoveEmptyGlobalAggregation(),
+            new PruneAggregationSourceColumns(),
             new PruneFilterColumns(),
             new PruneLimitColumns(),
             new PruneOffsetColumns(),
@@ -67,7 +79,8 @@ public class LogicalOptimizeFactory {
             new PruneProjectColumns(),
             new PruneSortColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()),
-            new PruneTopKColumns());
+            new PruneTopKColumns(),
+            new PruneJoinColumns());
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, ruleStats, columnPruningRules);
 
@@ -114,6 +127,14 @@ public class LogicalOptimizeFactory {
         ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject());
     IterativeOptimizer limitPushdownOptimizer =
         new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules);
+
+    PlanOptimizer unAliasSymbolReferences =
+        new UnaliasSymbolReferences(plannerContext.getMetadata());
+
+    PlanOptimizer transformAggregationToStreamableOptimizer =
+        new TransformAggregationToStreamable();
+
+    PlanOptimizer pushAggregationIntoTableScanOptimizer = new PushAggregationIntoTableScan();
 
     PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
 
@@ -180,6 +201,7 @@ public class LogicalOptimizeFactory {
                             new RemoveRedundantIdentityProjections()))
                     .build()),
             simplifyOptimizer,
+            unAliasSymbolReferences,
             columnPruningOptimizer,
             inlineProjectionLimitFiltersOptimizer,
             pushPredicateIntoTableScanOptimizer,
@@ -188,6 +210,8 @@ public class LogicalOptimizeFactory {
             inlineProjectionLimitFiltersOptimizer,
             limitPushdownOptimizer,
             pushLimitOffsetIntoTableScanOptimizer,
+            transformAggregationToStreamableOptimizer,
+            pushAggregationIntoTableScanOptimizer,
             transformSortToStreamSortOptimizer,
             topKOptimizer);
   }

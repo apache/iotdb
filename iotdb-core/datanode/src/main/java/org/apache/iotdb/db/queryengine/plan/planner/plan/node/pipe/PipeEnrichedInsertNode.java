@@ -155,13 +155,13 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
-  public PartialPath getDevicePath() {
-    return insertNode.getDevicePath();
+  public PartialPath getTargetPath() {
+    return insertNode.getTargetPath();
   }
 
   @Override
-  public void setDevicePath(PartialPath devicePath) {
-    insertNode.setDevicePath(devicePath);
+  public void setTargetPath(PartialPath targetPath) {
+    insertNode.setTargetPath(targetPath);
   }
 
   @Override

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,6 +35,15 @@ public class FunctionNullability {
     this.returnNullable = returnNullable;
     this.argumentNullable =
         new ArrayList<>(requireNonNull(argumentNullable, "argumentNullable is null"));
+  }
+
+  public static FunctionNullability getAggregationFunctionNullability(int argumentsNumber) {
+    return new FunctionNullability(false, Collections.nCopies(argumentsNumber, true));
+  }
+
+  // TODO modify for each scalar function
+  public static FunctionNullability getScalarFunctionNullability(int argumentsNumber) {
+    return new FunctionNullability(true, Collections.nCopies(argumentsNumber, true));
   }
 
   public boolean isReturnNullable() {

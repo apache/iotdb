@@ -21,7 +21,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -73,6 +75,21 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
         newNode.addChild(child.accept(this, context));
       }
       return newNode;
+    }
+
+    @Override
+    public PlanNode visitJoin(JoinNode node, Context context) {
+      PlanNode leftChild = node.getLeftChild().accept(this, new Context());
+      PlanNode rightChild = node.getRightChild().accept(this, new Context());
+      node.setLeftChild(leftChild);
+      node.setRightChild(rightChild);
+
+      // TODO(beyyes) when outer, left, right join is introduced, fix the condition
+      if (node.getJoinType() == JoinNode.JoinType.INNER) {
+        context.enablePushDown = false;
+      }
+
+      return node;
     }
 
     @Override
@@ -169,6 +186,12 @@ public class PushLimitOffsetIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitStreamSort(StreamSortNode node, Context context) {
       return visitSort(node, context);
+    }
+
+    @Override
+    public PlanNode visitAggregation(AggregationNode node, Context context) {
+      context.enablePushDown = false;
+      return node;
     }
 
     @Override

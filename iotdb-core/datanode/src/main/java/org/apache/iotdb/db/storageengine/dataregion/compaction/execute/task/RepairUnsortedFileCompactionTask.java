@@ -136,13 +136,6 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     calculateSourceFilesAndTargetFiles();
     isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
     Arrays.fill(isHoldingWriteLock, false);
-    String dataDirectory = sourceFile.getTsFile().getParent();
-    logFile =
-        new File(
-            dataDirectory
-                + File.separator
-                + filesView.targetFilesInPerformer.get(0).getTsFile().getName()
-                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
   }
 
   @Override
