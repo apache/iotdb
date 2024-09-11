@@ -300,6 +300,9 @@ public class LogDispatcher {
     }
 
     public void stop() {
+      //      if (stopped) {
+      //        logger.trace();
+      //      }
       stopped = true;
       try {
         if (!threadSemaphore.tryAcquire(30, TimeUnit.SECONDS)) {
@@ -567,5 +570,9 @@ public class LogDispatcher {
       logBatches.addTLogEntry(
           new TLogEntry(request.getSerializedRequests(), request.getSearchIndex(), false));
     }
+  }
+
+  public static void main(String[] args) {
+    logger.trace("??");
   }
 }
