@@ -389,6 +389,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  // ========== SubQuery Test =========
   @Test
   public void subQueryTest1() {
     String[] expectedHeader = new String[] {"time", "level", "device", "add_num"};
@@ -409,5 +410,40 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  // ========== Join Test =========
+  @Test
+  public void innerJoinTest1() {
+    // no filter test
+    String[] expectedHeader =
+        new String[] {"time", "device", "level", "num", "str", "device", "attr2", "num", "bool"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.100Z,l5,d1,9,",
+          "1971-01-01T00:00:01.000Z,l4,d1,6,",
+          "1971-01-01T00:00:10.000Z,l5,d1,8,",
+          "1971-04-26T18:01:40.000Z,l4,d1,14,",
+          "1971-08-20T11:33:20.000Z,l5,d1,16,",
+          "1970-01-01T00:00:00.080Z,l4,d2,10,",
+        };
+
+    // join on
+    String sql =
+        "SELECT t1.time, t1.device, t1.level, t1.num, t1.str,"
+            + "t2.device, t2.attr2, t2.num, t2.bool "
+            + "FROM table0 t1 JOIN table0 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // implicit join
+    //    sql = "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
+    //                    + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+    //                    + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6";
+    //
+    //    // join using
+    //    sql =
+    //            "SELECT time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
+    //                    + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
+    //                    + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6";
   }
 }

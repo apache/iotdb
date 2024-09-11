@@ -319,7 +319,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftCoercion.getOutputSymbols(),
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
-            Optional.empty());
+            Optional.empty(),
+            0,
+            0,
+            null,
+            null);
 
     // Add a projection to produce the outputs of the columns in the USING clause,
     // which are defined as coalesce(l.k, r.k)
@@ -481,7 +485,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftPlanBuilder.getRoot().getOutputSymbols(),
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
-            Optional.empty());
+            Optional.empty(),
+            0,
+            0,
+            null,
+            null);
 
     if (type != INNER) {
       for (Expression complexExpression : complexJoinExpressions) {
@@ -532,7 +540,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                       complexJoinExpressions.stream()
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
-              Optional.empty());
+              Optional.empty(),
+              0,
+              0,
+              null,
+              null);
     }
 
     if (type == INNER) {

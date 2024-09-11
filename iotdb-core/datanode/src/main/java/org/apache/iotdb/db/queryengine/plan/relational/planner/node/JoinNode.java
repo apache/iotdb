@@ -52,6 +52,11 @@ public class JoinNode extends TwoChildProcessNode {
   private final Optional<Expression> filter;
   private final Optional<Boolean> spillable;
 
+  public int leftTimeColumnIdx;
+  public int rightTimeColumnIdx;
+  public int[] leftOutputSymbolIdx;
+  public int[] rightOutputSymbolIdx;
+
   // private final boolean maySkipOutputDuplicates;
   // private final Optional<Symbol> leftHashSymbol;
   // private final Optional<Symbol> rightHashSymbol;
@@ -67,7 +72,11 @@ public class JoinNode extends TwoChildProcessNode {
       List<Symbol> leftOutputSymbols,
       List<Symbol> rightOutputSymbols,
       Optional<Expression> filter,
-      Optional<Boolean> spillable) {
+      Optional<Boolean> spillable,
+      int leftTimeColumnIdx,
+      int rightTimeColumnIdx,
+      int[] leftOutputSymbolIdx,
+      int[] rightOutputSymbolIdx) {
     super(id);
     requireNonNull(joinType, "type is null");
     requireNonNull(leftChild, "left is null");
@@ -98,6 +107,10 @@ public class JoinNode extends TwoChildProcessNode {
     // this.maySkipOutputDuplicates = maySkipOutputDuplicates;
     // this.leftHashSymbol = leftHashSymbol;
     // this.rightHashSymbol = rightHashSymbol;
+    this.leftTimeColumnIdx = leftTimeColumnIdx;
+    this.leftOutputSymbolIdx = leftOutputSymbolIdx;
+    this.rightTimeColumnIdx = rightTimeColumnIdx;
+    this.rightOutputSymbolIdx = rightOutputSymbolIdx;
 
     Set<Symbol> leftSymbols = ImmutableSet.copyOf(leftChild.getOutputSymbols());
     Set<Symbol> rightSymbols = ImmutableSet.copyOf(rightChild.getOutputSymbols());
@@ -142,7 +155,11 @@ public class JoinNode extends TwoChildProcessNode {
         leftOutputSymbols,
         rightOutputSymbols,
         filter,
-        spillable);
+        spillable,
+        leftTimeColumnIdx,
+        rightTimeColumnIdx,
+        leftOutputSymbolIdx,
+        rightOutputSymbolIdx);
   }
 
   @Override
@@ -165,7 +182,11 @@ public class JoinNode extends TwoChildProcessNode {
             leftOutputSymbols,
             rightOutputSymbols,
             filter,
-            spillable);
+            spillable,
+            leftTimeColumnIdx,
+            rightTimeColumnIdx,
+            leftOutputSymbolIdx,
+            rightOutputSymbolIdx);
     joinNode.setLeftChild(null);
     joinNode.setRightChild(null);
     return joinNode;

@@ -17,6 +17,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.AddJoinIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateLimitProjectWithTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EliminateLimitWithTableScan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
@@ -45,7 +46,9 @@ public class DistributedOptimizeFactory {
             plannerContext,
             new RuleStatsRecorder(),
             ImmutableSet.of(
-                new EliminateLimitWithTableScan(), new EliminateLimitProjectWithTableScan()));
+                new EliminateLimitWithTableScan(),
+                new EliminateLimitProjectWithTableScan(),
+                new AddJoinIndex()));
 
     this.planOptimizers = ImmutableList.of(topKOptimizer, sortElimination, limitElimination);
   }

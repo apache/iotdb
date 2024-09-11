@@ -754,29 +754,30 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
 
-    int leftTimeColumnIdx =
-        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
-    int rightTimeColumnIdx =
-        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
-    int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
-    for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
-      leftOutputSymbolIdx[i] =
-          node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
-    }
-    int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
-    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-      rightOutputSymbolIdx[i] =
-          node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
-    }
+    //    int leftTimeColumnIdx =
+    //        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
+    //    int rightTimeColumnIdx =
+    //        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
+    //    int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
+    //    for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+    //      leftOutputSymbolIdx[i] =
+    //          node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
+    //    }
+    //    int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
+    //    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+    //      rightOutputSymbolIdx[i] =
+    //
+    // node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
+    //    }
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
       return new InnerJoinOperator(
           operatorContext,
           leftChild,
-          leftTimeColumnIdx,
-          leftOutputSymbolIdx,
+          node.leftTimeColumnIdx,
+          node.leftOutputSymbolIdx,
           rightChild,
-          rightTimeColumnIdx,
-          rightOutputSymbolIdx,
+          node.rightTimeColumnIdx,
+          node.rightOutputSymbolIdx,
           ASC_TIME_COMPARATOR,
           dataTypes);
     }

@@ -423,7 +423,11 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               newLeftOutputSymbols,
               newRightOutputSymbols,
               newFilter,
-              node.isSpillable()),
+              node.isSpillable(),
+              node.leftTimeColumnIdx,
+              node.rightTimeColumnIdx,
+              node.leftOutputSymbolIdx,
+              node.rightOutputSymbolIdx),
           outputMapping);
     }
   }

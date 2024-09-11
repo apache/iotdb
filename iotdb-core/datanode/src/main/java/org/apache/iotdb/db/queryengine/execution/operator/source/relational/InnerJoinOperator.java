@@ -140,6 +140,8 @@ public class InnerJoinOperator implements ProcessOperator {
         leftIndex = 0;
         break;
       }
+
+      leftProbeTime = getCurrentLeftTime();
     }
 
     // TODO if will return empty tsblock?
@@ -160,7 +162,7 @@ public class InnerJoinOperator implements ProcessOperator {
     TsBlock result =
         TsBlock.wrapBlocksWithoutCopy(
             this.resultBuilder.getPositionCount(),
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 1),
+            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, this.resultBuilder.getPositionCount()),
             valueColumns);
     resultBuilder.reset();
     return result;
@@ -195,36 +197,38 @@ public class InnerJoinOperator implements ProcessOperator {
         && comparator.lessThan(getCurrentRightTime(), leftTime)) {
       rightIndex++;
     }
-    int idx = rightIndex;
-    try {
-      while (idx < rightTsBlock.getPositionCount() && getRightTime(idx) >= leftTime) {
-        if (leftTime == getRightTime(idx)) {
-          for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
-            ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
-            if (leftTsBlock.getColumn(leftOutputSymbolIdx[i]).isNull(leftIndex)) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.write(leftTsBlock.getColumn(leftOutputSymbolIdx[i]), leftIndex);
-            }
-          }
-          for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-            ColumnBuilder columnBuilder =
-                resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
 
-            if (rightTsBlock.getColumn(rightOutputSymbolIdx[i]).isNull(idx)) {
-              columnBuilder.appendNull();
-            } else {
-              columnBuilder.write(rightTsBlock.getColumn(rightOutputSymbolIdx[i]), idx);
-            }
-          }
-          resultBuilder.declarePosition();
-          idx++;
+    if (rightIndex >= rightTsBlock.getPositionCount()) {
+      rightTsBlock = null;
+      rightIndex = 0;
+      return;
+    }
+
+    int idx = rightIndex;
+    while (idx < rightTsBlock.getPositionCount() && leftTime == getRightTime(idx)) {
+
+      for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+        if (leftTsBlock.getColumn(leftOutputSymbolIdx[i]).isNull(leftIndex)) {
+          columnBuilder.appendNull();
         } else {
-          break;
+          columnBuilder.write(leftTsBlock.getColumn(leftOutputSymbolIdx[i]), leftIndex);
         }
       }
-    } catch (Exception e) {
-      System.out.println("aa");
+
+      for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+        ColumnBuilder columnBuilder =
+            resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
+
+        if (rightTsBlock.getColumn(rightOutputSymbolIdx[i]).isNull(idx)) {
+          columnBuilder.appendNull();
+        } else {
+          columnBuilder.write(rightTsBlock.getColumn(rightOutputSymbolIdx[i]), idx);
+        }
+      }
+
+      resultBuilder.declarePosition();
+      idx++;
     }
   }
 
@@ -258,6 +262,9 @@ public class InnerJoinOperator implements ProcessOperator {
       if (rightChild.hasNextWithTimer()) {
         rightTsBlock = rightChild.nextWithTimer();
         rightIndex = 0;
+        if (rightTsBlock != null) {
+          System.out.println("===");
+        }
       }
     }
     return tsBlockIsNotEmpty(leftTsBlock, leftIndex) && tsBlockIsNotEmpty(rightTsBlock, rightIndex);

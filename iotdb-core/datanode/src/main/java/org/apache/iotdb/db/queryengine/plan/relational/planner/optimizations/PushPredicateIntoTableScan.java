@@ -440,9 +440,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       List<Symbol> newTableScanSymbols = new ArrayList<>(size);
       Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
       Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol originalSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
+      for (Symbol originalSymbol : tableScanNode.getOutputSymbols()) {
+        ColumnSchema columnSchema = tableScanNode.getAssignments().get(originalSymbol);
 
         Symbol realSymbol = Symbol.of(columnSchema.getName());
         newTableScanSymbols.add(realSymbol);
@@ -671,7 +670,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 leftSource.getOutputSymbols(),
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
-                node.isSpillable());
+                node.isSpillable(),
+                node.leftTimeColumnIdx,
+                node.rightTimeColumnIdx,
+                node.leftOutputSymbolIdx,
+                node.rightOutputSymbolIdx);
       }
 
       JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
