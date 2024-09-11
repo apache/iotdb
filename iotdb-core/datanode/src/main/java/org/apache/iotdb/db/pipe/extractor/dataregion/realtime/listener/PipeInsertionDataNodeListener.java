@@ -150,10 +150,9 @@ public class PipeInsertionDataNodeListener {
     dataRegionId2Assigner.forEach((key, value) -> value.publishToAssign(realtimeEvent));
     // log deletion to DAL
     DeletionResourceManager mgr = DeletionResourceManager.getInstance(regionId);
-    if (mgr == null) {
-      return null;
-    }
-    return mgr.registerDeletionResource((PipeSchemaRegionWritePlanEvent) realtimeEvent.getEvent());
+    return mgr == null
+        ? null
+        : mgr.registerDeletionResource((PipeSchemaRegionWritePlanEvent) realtimeEvent.getEvent());
   }
 
   /////////////////////////////// singleton ///////////////////////////////

@@ -25,8 +25,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
@@ -47,7 +50,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DeletionResourceTest {
-  private static final String[] FAKE_DATE_REGION_IDS = {"2", "3", "4", "5"};
+  private static final String[] FAKE_DATE_REGION_IDS = {"2", "3", "4", "5", "6"};
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getPipeConsensusDeletionFileDir();
   private static final int THIS_DATANODE_ID =
@@ -160,5 +163,20 @@ public class DeletionResourceTest {
             .collect(Collectors.toList());
     int afterCount = newPaths.size();
     Assert.assertTrue(afterCount < beforeFileCount);
+  }
+
+  @Test
+  public void testWaitForResult() throws Exception {
+    deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATE_REGION_IDS[4]);
+    int rebootTimes = 0;
+    MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
+    DeleteDataNode deleteDataNode =
+        new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
+    deleteDataNode.setProgressIndex(
+        new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, 1)));
+    DeletionResource deletionResource =
+        PipeInsertionDataNodeListener.getInstance()
+            .listenToDeleteData(deleteDataNode, FAKE_DATE_REGION_IDS[4]);
+    Assert.assertSame(deletionResource.waitForResult(), Status.SUCCESS);
   }
 }
