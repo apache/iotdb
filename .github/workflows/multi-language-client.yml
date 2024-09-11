@@ -164,7 +164,7 @@ jobs:
           docker images
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
-      - name: Check code style and test make package
+      - name: Check code style
         if: ${{ matrix.python == '3.x'}}
         shell: bash
         run: black iotdb-client/client-py/ --check --diff
@@ -173,5 +173,3 @@ jobs:
         run: |
           cd iotdb-client/client-py/ && pytest .
           ./release.sh
-
-
