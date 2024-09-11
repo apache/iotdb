@@ -371,15 +371,15 @@ public class InsertNodeMemoryEstimator {
 
   // ============================= Primitive Type Wrapper Classes =========
 
-  public static final long SIZE_OF_LONG =
+  private static final long SIZE_OF_LONG =
       RamUsageEstimator.alignObjectSize(Long.BYTES + NUM_BYTES_OBJECT_HEADER);
-  public static final long SIZE_OF_INT =
+  private static final long SIZE_OF_INT =
       RamUsageEstimator.alignObjectSize(Integer.BYTES + NUM_BYTES_OBJECT_HEADER);
-  public static final long SIZE_OF_DOUBLE =
+  private static final long SIZE_OF_DOUBLE =
       RamUsageEstimator.alignObjectSize(Double.BYTES + NUM_BYTES_OBJECT_HEADER);
-  public static final long SIZE_OF_FLOAT =
+  private static final long SIZE_OF_FLOAT =
       RamUsageEstimator.alignObjectSize(Float.BYTES + NUM_BYTES_OBJECT_HEADER);
-  public static final long SIZE_OF_BOOLEAN =
+  private static final long SIZE_OF_BOOLEAN =
       RamUsageEstimator.alignObjectSize(1 + NUM_BYTES_OBJECT_HEADER);
 
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different
@@ -421,7 +421,7 @@ public class InsertNodeMemoryEstimator {
   private static long calculateFullInsertNodeSize(final InsertNode node) {
     long size = 0;
     // PartialPath
-    size += sizeOfPartialPath(node.getDevicePath());
+    size += sizeOfPartialPath(node.getTargetPath());
     // MeasurementSchemas
     size += sizeOfMeasurementSchemas(node.getMeasurementSchemas());
     // Measurement
@@ -515,7 +515,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getDevicePath());
+      size += sizeOfPartialPath(rows.get(0).getTargetPath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
@@ -537,7 +537,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getDevicePath());
+      size += sizeOfPartialPath(rows.get(0).getTargetPath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
@@ -568,7 +568,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertTabletNodeSizeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getDevicePath());
+      size += sizeOfPartialPath(rows.get(0).getTargetPath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // ParentInsertTabletNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
@@ -595,7 +595,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getDevicePath());
+      size += sizeOfPartialPath(rows.get(0).getTargetPath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
