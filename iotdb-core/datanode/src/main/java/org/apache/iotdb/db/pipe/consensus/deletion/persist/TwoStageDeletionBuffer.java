@@ -146,10 +146,10 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
   }
 
   /** Notice: this method only called when buffer is exhausted by SerializeTask. */
-  private void syncWorkingBuffer(ProgressIndex maxProgressIndexInCurrentBatch, int deletionNum) {
+  private void syncWorkingBuffer(ProgressIndex maxProgressIndexInCurrentBatch) {
     switchWorkingBufferToFlushing();
     try {
-      syncBufferThread.submit(new SyncBufferTask(maxProgressIndexInCurrentBatch, deletionNum));
+      syncBufferThread.submit(new SyncBufferTask(maxProgressIndexInCurrentBatch));
     } catch (IOException e) {
       LOGGER.warn(
           "Failed to submit syncBufferTask, May because file open error and cause data inconsistency. Please check your file system. ",
@@ -179,8 +179,6 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
   private class SerializeTask implements Runnable {
     // Total size of this batch.
     private int totalSize = 0;
-    // Deletion num of this batch.
-    private int deletionNum = 0;
     // Max progressIndex among this batch. Used by SyncTask for naming .deletion file.
     private ProgressIndex maxProgressIndexInCurrentBatch = MinimumProgressIndex.INSTANCE;
 
@@ -232,10 +230,9 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
         while (!serializeToWorkingBuffer(deletionResource)) {
           // If working buffer is exhausted, submit a syncTask to consume current batch and switch
           // buffer to start a new batch.
-          syncWorkingBuffer(maxProgressIndexInCurrentBatch, deletionNum);
+          syncWorkingBuffer(maxProgressIndexInCurrentBatch);
           // Reset maxProgressIndex and deletionNum for new batch.
           maxProgressIndexInCurrentBatch = MinimumProgressIndex.INSTANCE;
-          deletionNum = 0;
         }
         // Update max progressIndex
         maxProgressIndexInCurrentBatch =
@@ -244,7 +241,7 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
       }
       // Persist deletions; Defensive programming here, just in case.
       if (totalSize > 0) {
-        syncWorkingBuffer(maxProgressIndexInCurrentBatch, deletionNum);
+        syncWorkingBuffer(maxProgressIndexInCurrentBatch);
       }
     }
 
@@ -260,7 +257,6 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
       }
       workingBuffer.put(buffer.array());
       totalSize += buffer.position();
-      deletionNum++;
       return true;
     }
   }
@@ -280,14 +276,11 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
   }
 
   private class SyncBufferTask implements Runnable {
-    private final int deletionNum;
     private final File logFile;
     private final FileOutputStream logStream;
     private final FileChannel logChannel;
 
-    public SyncBufferTask(ProgressIndex maxProgressIndexInCurrentBatch, int deletionNum)
-        throws IOException {
-      this.deletionNum = deletionNum;
+    public SyncBufferTask(ProgressIndex maxProgressIndexInCurrentBatch) throws IOException {
       // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
       ProgressIndex curProgressIndex =
           ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(
@@ -323,11 +316,6 @@ public class TwoStageDeletionBuffer implements DeletionBuffer {
         // Write deletions.
         syncingBuffer.flip();
         this.logChannel.write(syncingBuffer);
-        // Write metaData.
-        ByteBuffer metaData = ByteBuffer.allocate(4);
-        metaData.putInt(deletionNum);
-        metaData.flip();
-        this.logChannel.write(metaData);
       } catch (IOException e) {
         LOGGER.warn(
             "Deletion persist: Cannot write to {}, may cause data inconsistency.", logFile, e);
