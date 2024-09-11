@@ -99,7 +99,9 @@ public class DeletionResource implements PersistentResource {
     this.notifyAll();
   }
 
-  /** @return true if this object has been successfully persisted, false if persist failed. */
+  /**
+   * @return true if this object has been successfully persisted, false if persist failed.
+   */
   public synchronized Status waitForResult() {
     while (currentStatus == Status.RUNNING) {
       try {

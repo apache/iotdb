@@ -50,9 +50,9 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * The core idea of this buffer is to delete writes to the Page cache and fsync when certain
- * conditions are met. This design does not decouple serialization and writing, but provides easier
- * writing.
+ * The core idea of this buffer is to write deletion to the Page cache and fsync them to disk when
+ * certain conditions are met. This design does not decouple serialization and writing, but provides
+ * an easier way to maintain and understand.
  */
 public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageDeletionBuffer.class);
