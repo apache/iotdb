@@ -108,11 +108,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
         if (IOTDB_CONFIG.getLoadActiveListeningDirs() != listeningDirsConfig.get()) {
           synchronized (this) {
             if (IOTDB_CONFIG.getLoadActiveListeningDirs() != listeningDirsConfig.get()) {
+              listeningDirs.clear();
+
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
               listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
             }
           }
         }
+      } else {
+        listeningDirs.clear();
       }
       // Hot reload active load listening dir for pipe data sync
       // Active load is always enabled for pipe data sync
