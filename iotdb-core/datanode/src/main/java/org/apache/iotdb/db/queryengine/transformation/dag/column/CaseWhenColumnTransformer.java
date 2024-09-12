@@ -12,10 +12,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
-
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
+package org.apache.iotdb.db.queryengine.transformation.dag.column;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.block.column.Column;
@@ -33,15 +30,18 @@ import org.apache.tsfile.utils.Pair;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SearchedCaseColumnTransformer extends ColumnTransformer {
+public class CaseWhenColumnTransformer extends ColumnTransformer {
+
   List<Pair<ColumnTransformer, ColumnTransformer>> whenThenTransformers;
+
   ColumnTransformer elseTransformer;
 
-  public SearchedCaseColumnTransformer(
+  public CaseWhenColumnTransformer(
       Type returnType,
       List<ColumnTransformer> whenTransformers,
       List<ColumnTransformer> thenTransformers,
       ColumnTransformer elseTransformer) {
+
     super(returnType);
     Validate.isTrue(
         whenTransformers.size() == thenTransformers.size(),
@@ -51,21 +51,6 @@ public class SearchedCaseColumnTransformer extends ColumnTransformer {
       this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));
     }
     this.elseTransformer = elseTransformer;
-  }
-
-  public SearchedCaseColumnTransformer(
-      Type returnType,
-      List<ColumnTransformer> whenTransformers,
-      List<ColumnTransformer> thenTransformers) {
-    super(returnType);
-    Validate.isTrue(
-        whenTransformers.size() == thenTransformers.size(),
-        "the size between whenTransformers and thenTransformers needs to be same");
-    this.whenThenTransformers = new ArrayList<>();
-    for (int i = 0; i < whenTransformers.size(); i++) {
-      this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));
-    }
-    this.elseTransformer = new NullColumnTransformer();
   }
 
   public List<Pair<ColumnTransformer, ColumnTransformer>> getWhenThenColumnTransformers() {
@@ -103,9 +88,7 @@ public class SearchedCaseColumnTransformer extends ColumnTransformer {
       whenThenTransformer.left.tryEvaluate();
       whenThenTransformer.right.tryEvaluate();
     }
-    if (!(elseTransformer instanceof NullColumnTransformer)) {
-      elseTransformer.tryEvaluate();
-    }
+    elseTransformer.tryEvaluate();
 
     int positionCount = whenThenTransformers.get(0).left.getColumnCachePositionCount();
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
@@ -114,10 +97,7 @@ public class SearchedCaseColumnTransformer extends ColumnTransformer {
       thenColumnList.add(whenThenColumnTransformer.right.getColumn());
     }
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-
-    Column elseColumn =
-        elseTransformer instanceof NullColumnTransformer ? null : elseTransformer.getColumn();
-
+    Column elseColumn = elseTransformer.getColumn();
     for (int i = 0; i < positionCount; i++) {
       boolean hasValue = false;
       for (int j = 0; j < whenThenTransformers.size(); j++) {
@@ -134,14 +114,10 @@ public class SearchedCaseColumnTransformer extends ColumnTransformer {
         }
       }
       if (!hasValue) {
-        if (elseColumn == null) {
-          builder.appendNull();
+        if (!elseColumn.isNull(i)) {
+          writeToColumnBuilder(elseTransformer, elseColumn, i, builder);
         } else {
-          if (!elseColumn.isNull(i)) {
-            writeToColumnBuilder(elseTransformer, elseColumn, i, builder);
-          } else {
-            builder.appendNull();
-          }
+          builder.appendNull();
         }
       }
     }
