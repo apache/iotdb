@@ -28,12 +28,9 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
-import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.db.schemaengine.SchemaEngine;
-import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.DirectoryChecker;
@@ -44,16 +41,14 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+public class DataNodeShutdownHook extends Thread {
 
-public class IoTDBShutdownHook extends Thread {
-
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBShutdownHook.class);
+  private static final Logger logger = LoggerFactory.getLogger(DataNodeShutdownHook.class);
 
   private final TDataNodeLocation nodeLocation;
 
-  public IoTDBShutdownHook(TDataNodeLocation nodeLocation) {
-    super(ThreadName.IOTDB_SHUTDOWN_HOOK.getName());
+  public DataNodeShutdownHook(TDataNodeLocation nodeLocation) {
+    super(ThreadName.DATANODE_SHUTDOWN_HOOK.getName());
     this.nodeLocation = nodeLocation;
   }
 
@@ -62,12 +57,6 @@ public class IoTDBShutdownHook extends Thread {
     logger.info("DataNode exiting...");
     // Stop external rpc service firstly.
     RPCService.getInstance().stop();
-
-    // Close rocksdb if possible to avoid lose data
-    if (SchemaEngineMode.valueOf(CommonDescriptor.getInstance().getConfig().getSchemaEngineMode())
-        .equals(SchemaEngineMode.Rocksdb_based)) {
-      SchemaEngine.getInstance().clear();
-    }
 
     // Reject write operations to make sure all tsfiles will be sealed
     CommonDescriptor.getInstance().getConfig().setStopping(true);
@@ -93,53 +82,22 @@ public class IoTDBShutdownHook extends Thread {
         .getConfig()
         .getDataRegionConsensusProtocolClass()
         .equals(ConsensusFactory.RATIS_CONSENSUS)) {
-      DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().parallelStream()
-          .forEach(
-              id -> {
-                try {
-                  DataRegionConsensusImpl.getInstance().triggerSnapshot(id, false);
-                } catch (ConsensusException e) {
-                  logger.warn(
-                      "Something wrong happened while calling consensus layer's "
-                          + "triggerSnapshot API.",
-                      e);
-                }
-              });
+      triggerSnapshotForAllDataRegion();
     }
-
-    // Close consensusImpl
-    try {
-      SchemaRegionConsensusImpl.getInstance().stop();
-      DataRegionConsensusImpl.getInstance().stop();
-    } catch (IOException e) {
-      logger.error("Stop ConsensusImpl error in IoTDBShutdownHook", e);
-    }
-
-    // Clear lock file
-    DirectoryChecker.getInstance().deregisterAll();
 
     // Set and report shutdown to cluster ConfigNode-leader
-    CommonDescriptor.getInstance().getConfig().setNodeStatus(NodeStatus.Unknown);
-    boolean isReportSuccess = false;
-    try (ConfigNodeClient client =
-        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      isReportSuccess =
-          client.reportDataNodeShutdown(nodeLocation).getCode()
-              == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    if (!reportShutdownToConfigNodeLeader()) {
+      logger.warn(
+          "Failed to report DataNode's shutdown to ConfigNode. The cluster will still take the current DataNode as Running for a few seconds.");
+    }
 
-      // Actually stop all services started by the DataNode.
-      // If we don't call this, services like the RestService are not stopped and I can't re-start
-      // it.
-      DataNode.getInstance().stop();
-    } catch (ClientManagerException e) {
-      logger.error("Failed to borrow ConfigNodeClient", e);
-    } catch (TException e) {
-      logger.error("Failed to report shutdown", e);
-    }
-    if (!isReportSuccess) {
-      logger.error(
-          "Reporting DataNode shutdown failed. The cluster will still take the current DataNode as Running for a few seconds.");
-    }
+    // Actually stop all services started by the DataNode.
+    // If we don't call this, services like the RestService are not stopped and I can't re-start
+    // it.
+    DataNode.getInstance().stop();
+
+    // Clear lock file. All services should be shutdown before this line.
+    DirectoryChecker.getInstance().deregisterAll();
 
     if (logger.isInfoEnabled()) {
       logger.info(
@@ -147,5 +105,33 @@ public class IoTDBShutdownHook extends Thread {
           MemUtils.bytesCntToStr(
               Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));
     }
+  }
+
+  private void triggerSnapshotForAllDataRegion() {
+    DataRegionConsensusImpl.getInstance().getAllConsensusGroupIds().parallelStream()
+        .forEach(
+            id -> {
+              try {
+                DataRegionConsensusImpl.getInstance().triggerSnapshot(id, false);
+              } catch (ConsensusException e) {
+                logger.warn(
+                    "Something wrong happened while calling consensus layer's "
+                        + "triggerSnapshot API.",
+                    e);
+              }
+            });
+  }
+
+  private boolean reportShutdownToConfigNodeLeader() {
+    try (ConfigNodeClient client =
+        ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      return client.reportDataNodeShutdown(nodeLocation).getCode()
+          == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    } catch (ClientManagerException e) {
+      logger.error("Failed to borrow ConfigNodeClient", e);
+    } catch (TException e) {
+      logger.error("Failed to report shutdown", e);
+    }
+    return false;
   }
 }
