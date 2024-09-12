@@ -190,6 +190,10 @@ public class TierManager {
         : unSeqTiers.get(tierLevel).getNextFolder();
   }
 
+  public List<String> getAllFoldersOfTier(int tierLevel, boolean sequence) {
+    return sequence ? seqTiers.get(tierLevel).getFolders() : unSeqTiers.get(tierLevel).getFolders();
+  }
+
   public List<String> getAllFilesFolders() {
     List<String> folders = new ArrayList<>(seqDir2TierLevel.keySet());
     folders.addAll(unSeqDir2TierLevel.keySet());
