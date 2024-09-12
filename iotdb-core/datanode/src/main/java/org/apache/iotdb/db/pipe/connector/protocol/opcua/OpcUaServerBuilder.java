@@ -49,7 +49,9 @@ import org.eclipse.milo.opcua.stack.server.security.DefaultServerCertificateVali
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,7 +73,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
  * Eclipse Milo.
  */
-public class OpcUaServerBuilder {
+public class OpcUaServerBuilder implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
@@ -82,6 +84,7 @@ public class OpcUaServerBuilder {
   private String password;
   private Path securityDir;
   private boolean enableAnonymousAccess;
+  private DefaultTrustListManager trustListManager;
 
   OpcUaServerBuilder() {
     tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
@@ -144,7 +147,8 @@ public class OpcUaServerBuilder {
 
     final OpcUaServerConfig serverConfig;
 
-    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+    trustListManager = new DefaultTrustListManager(pkiDir);
+
     LOGGER.info(
         "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
         pkiDir.getAbsolutePath());
@@ -322,6 +326,17 @@ public class OpcUaServerBuilder {
           String.format(
               "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",
               tcpBindPort, httpsBindPort, attrName, thisAttr, attrName, thatAttr));
+    }
+  }
+
+  @Override
+  public void close() {
+    if (Objects.nonNull(trustListManager)) {
+      try {
+        trustListManager.close();
+      } catch (final IOException e) {
+        LOGGER.warn("Failed to close trustListManager, because {}.", e.getMessage());
+      }
     }
   }
 }
