@@ -33,8 +33,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
-import org.apache.tsfile.common.constant.TsFileConstant;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -201,7 +199,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
                       + pathToTimePartition
                       + File.separator
                       + fileNamePrefixStr
-                      + TsFileConstant.TSFILE_SUFFIX);
+                      + ".tsfile");
           if (file.exists()) {
             canAllocateCurrentFileName = false;
             break;
