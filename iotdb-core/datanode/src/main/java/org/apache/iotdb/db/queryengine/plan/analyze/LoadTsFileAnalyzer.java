@@ -203,12 +203,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       LOGGER.warn(exceptionMessage, e);
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.LOAD_FILE_ERROR,
-              String.format(
-                  "Auto create or verify schema error when executing statement %s.",
-                  loadTsFileStatement)));
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
     }
 
@@ -446,8 +441,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
             String.format(
-                "Auto create or verify schema error when executing statement %s.",
-                loadTsFileStatement));
+                "Auto create or verify schema error when executing statement %s.  Detail: %s.",
+                loadTsFileStatement, e.getMessage()));
       }
     }
 
