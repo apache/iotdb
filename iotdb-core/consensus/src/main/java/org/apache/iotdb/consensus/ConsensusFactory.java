@@ -54,9 +54,9 @@ public class ConsensusFactory {
       // special judge for IoTConsensusV2
       if (className.equals(IOT_CONSENSUS_V2)) {
         className = REAL_PIPE_CONSENSUS;
-        // initialize pipeConsensus' thrift component
+        // initialize iotConsensusV2's thrift component
         PipeConsensusClientMgrContainer.build();
-        // initialize pipeConsensus's metric component
+        // initialize iotConsensusV2's metric component
         PipeConsensusSyncLagManager.build();
       }
       Class<?> executor = Class.forName(className);
