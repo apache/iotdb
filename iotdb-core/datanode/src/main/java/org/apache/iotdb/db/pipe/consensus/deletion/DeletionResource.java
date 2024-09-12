@@ -35,9 +35,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
- * DeletionResource is designed for PipeConsensus to manage the lifecycle of all deletion operations
- * including realtime deletion and historical deletion. In order to be compatible with user pipe
- * framework, PipeConsensus will use {@link PipeSchemaRegionWritePlanEvent}
+ * DeletionResource is designed for IoTConsensusV2 to manage the lifecycle of all deletion
+ * operations including realtime deletion and historical deletion. In order to be compatible with
+ * user pipe framework, PipeConsensus will use {@link PipeSchemaRegionWritePlanEvent}
  */
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
