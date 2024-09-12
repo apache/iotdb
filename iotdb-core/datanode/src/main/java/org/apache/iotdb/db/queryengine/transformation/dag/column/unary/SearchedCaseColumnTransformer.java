@@ -14,6 +14,10 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
+import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
+
+import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.AbstractIntType;
@@ -26,28 +30,21 @@ import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
-import org.apache.commons.lang3.Validate;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class SimpleCaseFunctionColumnTransformer extends UnaryColumnTransformer {
-
+public class SearchedCaseColumnTransformer extends ColumnTransformer {
   List<Pair<ColumnTransformer, ColumnTransformer>> whenThenTransformers;
-
   ColumnTransformer elseTransformer;
 
-  public SimpleCaseFunctionColumnTransformer(
+  public SearchedCaseColumnTransformer(
       Type returnType,
       List<ColumnTransformer> whenTransformers,
       List<ColumnTransformer> thenTransformers,
-      ColumnTransformer elseTransformer,
-      ColumnTransformer childColumnTransformer) {
-
-    super(returnType, childColumnTransformer);
+      ColumnTransformer elseTransformer) {
+    super(returnType);
     Validate.isTrue(
-        whenThenTransformers.size() == thenTransformers.size(),
+        whenTransformers.size() == thenTransformers.size(),
         "the size between whenTransformers and thenTransformers needs to be same");
     this.whenThenTransformers = new ArrayList<>();
     for (int i = 0; i < whenTransformers.size(); i++) {
@@ -56,12 +53,11 @@ public class SimpleCaseFunctionColumnTransformer extends UnaryColumnTransformer 
     this.elseTransformer = elseTransformer;
   }
 
-  public SimpleCaseFunctionColumnTransformer(
+  public SearchedCaseColumnTransformer(
       Type returnType,
       List<ColumnTransformer> whenTransformers,
-      List<ColumnTransformer> thenTransformers,
-      ColumnTransformer childColumnTransformer) {
-    super(returnType, childColumnTransformer);
+      List<ColumnTransformer> thenTransformers) {
+    super(returnType);
     Validate.isTrue(
         whenTransformers.size() == thenTransformers.size(),
         "the size between whenTransformers and thenTransformers needs to be same");
@@ -69,7 +65,15 @@ public class SimpleCaseFunctionColumnTransformer extends UnaryColumnTransformer 
     for (int i = 0; i < whenTransformers.size(); i++) {
       this.whenThenTransformers.add(new Pair<>(whenTransformers.get(i), thenTransformers.get(i)));
     }
-    this.elseTransformer = null;
+    this.elseTransformer = new NullColumnTransformer();
+  }
+
+  public List<Pair<ColumnTransformer, ColumnTransformer>> getWhenThenColumnTransformers() {
+    return whenThenTransformers;
+  }
+
+  public ColumnTransformer getElseTransformer() {
+    return elseTransformer;
   }
 
   private void writeToColumnBuilder(
@@ -92,14 +96,14 @@ public class SimpleCaseFunctionColumnTransformer extends UnaryColumnTransformer 
   }
 
   @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+  protected void evaluate() {
     List<Column> whenColumnList = new ArrayList<>();
     List<Column> thenColumnList = new ArrayList<>();
     for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
       whenThenTransformer.left.tryEvaluate();
       whenThenTransformer.right.tryEvaluate();
     }
-    if (elseTransformer != null) {
+    if (!(elseTransformer instanceof NullColumnTransformer)) {
       elseTransformer.tryEvaluate();
     }
 
@@ -111,7 +115,8 @@ public class SimpleCaseFunctionColumnTransformer extends UnaryColumnTransformer 
     }
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
 
-    Column elseColumn = elseTransformer == null ? null : elseTransformer.getColumn();
+    Column elseColumn =
+        elseTransformer instanceof NullColumnTransformer ? null : elseTransformer.getColumn();
 
     for (int i = 0; i < positionCount; i++) {
       boolean hasValue = false;
@@ -142,5 +147,10 @@ public class SimpleCaseFunctionColumnTransformer extends UnaryColumnTransformer 
     }
 
     initializeColumnCache(builder.build());
+  }
+
+  @Override
+  protected void checkType() {
+    // do nothing
   }
 }
