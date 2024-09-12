@@ -1533,16 +1533,12 @@ class Session(object):
                 values_tobe_packed.append(parse_date_to_int(value))
             # BLOB
             elif data_type == 10:
-                if isinstance(value, str):
-                    value_bytes = bytes(value, "utf-8")
-                else:
-                    value_bytes = value
                 format_str_list.append("ci")
-                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append(str(len(value)))
                 format_str_list.append("s")
                 values_tobe_packed.append(b"\x0a")
-                values_tobe_packed.append(len(value_bytes))
-                values_tobe_packed.append(value_bytes)
+                values_tobe_packed.append(len(value))
+                values_tobe_packed.append(value)
             # STRING
             elif data_type == 11:
                 if isinstance(value, str):

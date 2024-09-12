@@ -43,8 +43,8 @@ class TSDataType(IntEnum):
             TSDataType.TEXT: str,
             TSDataType.TIMESTAMP: np.dtype(">i8"),
             TSDataType.DATE: date,
-            TSDataType.STRING: str,
             TSDataType.BLOB: bytes,
+            TSDataType.STRING: str,
         }[self]
 
 
