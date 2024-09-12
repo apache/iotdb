@@ -362,7 +362,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream().anyMatch(pipePattern::mayOverlapWithDevice);
-    } catch (final IOException e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,

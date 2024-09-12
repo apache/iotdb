@@ -39,6 +39,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.Spy;
 
 import javax.annotation.Nonnull;
 
@@ -58,7 +60,7 @@ public class TsFileResourceProgressIndexTest {
   private final File file =
       new File(
           TsFileNameGenerator.generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 1, 1, 1, 1));
-  private final TsFileResource tsFileResource = new TsFileResource(file);
+  @Spy private TsFileResource tsFileResource = Mockito.spy(new TsFileResource(file));
   private final Map<IDeviceID, Integer> deviceToIndex = new HashMap<>();
   private final long[] startTimes = new long[DEVICE_NUM];
   private final long[] endTimes = new long[DEVICE_NUM];
@@ -84,6 +86,7 @@ public class TsFileResourceProgressIndexTest {
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    Mockito.doReturn("1").when(tsFileResource).getDataRegionId();
 
     IntStream.range(0, INDEX_NUM).forEach(i -> indexList.add(new MockProgressIndex(i)));
   }
