@@ -158,7 +158,7 @@ public class OpcUaServerBuilder {
     final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
     final DefaultServerCertificateValidator certificateValidator =
-        new DefaultServerCertificateValidator(new DefaultTrustListManager(pkiDir));
+        new DefaultServerCertificateValidator(trustListManager);
 
     final UsernameIdentityValidator identityValidator =
         new UsernameIdentityValidator(
