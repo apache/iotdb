@@ -1135,7 +1135,7 @@ public class TsFileResource {
 
     maxProgressIndex =
         (maxProgressIndex == null
-            ? progressIndex
+            ? progressIndex.deepCopy()
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
   }
 
@@ -1144,7 +1144,7 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex = progressIndex;
+    maxProgressIndex = progressIndex.deepCopy();
   }
 
   public ProgressIndex getMaxProgressIndexAfterClose() throws IllegalStateException {

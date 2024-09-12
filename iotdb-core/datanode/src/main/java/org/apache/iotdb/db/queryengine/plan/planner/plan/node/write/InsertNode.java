@@ -277,7 +277,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
+    this.progressIndex = progressIndex.deepCopy();
   }
 
   // endregion
