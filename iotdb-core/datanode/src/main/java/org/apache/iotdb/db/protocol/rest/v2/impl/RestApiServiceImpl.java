@@ -278,7 +278,7 @@ public class RestApiServiceImpl extends RestApiService {
   public Response insertTablet(
       InsertTabletRequest insertTabletRequest, SecurityContext securityContext) {
     Long queryId = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     InsertTabletStatement insertTabletStatement = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);
