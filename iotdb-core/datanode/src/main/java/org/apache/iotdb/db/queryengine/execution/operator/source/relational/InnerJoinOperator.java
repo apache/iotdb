@@ -257,16 +257,27 @@ public class InnerJoinOperator implements ProcessOperator {
       leftIndex = 0;
     }
 
-    if ((System.nanoTime() - start < maxRuntime)
-        && (rightTsBlock == null || rightTsBlock.getPositionCount() == rightIndex)) {
-      if (rightChild.hasNextWithTimer()) {
-        rightTsBlock = rightChild.nextWithTimer();
-        rightIndex = 0;
-        if (rightTsBlock != null) {
-          System.out.println("===");
-        }
+    if ((rightTsBlock == null || rightTsBlock.getPositionCount() == rightIndex)
+        && rightChild.hasNextWithTimer()) {
+      rightTsBlock = rightChild.nextWithTimer();
+      rightIndex = 0;
+      if (rightTsBlock != null) {
+        System.out.println("===");
       }
     }
+
+    // TODO use maxRunTime
+    //    if ((System.nanoTime() - start < maxRuntime)
+    //        && (rightTsBlock == null || rightTsBlock.getPositionCount() == rightIndex)) {
+    //      if (rightChild.hasNextWithTimer()) {
+    //        rightTsBlock = rightChild.nextWithTimer();
+    //        rightIndex = 0;
+    //        if (rightTsBlock != null) {
+    //          System.out.println("===");
+    //        }
+    //      }
+    //    }
+
     return tsBlockIsNotEmpty(leftTsBlock, leftIndex) && tsBlockIsNotEmpty(rightTsBlock, rightIndex);
   }
 
