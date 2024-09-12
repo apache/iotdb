@@ -17,8 +17,8 @@
 #
 
 # for package
-from .IoTDBConstants import TSDataType
-from iotdb.tsfile.utils import DateUtils
+from iotdb.utils.IoTDBConstants import TSDataType
+from iotdb.tsfile.utils.DateUtils import parse_int_to_date
 import numpy as np
 import pandas as pd
 
@@ -166,7 +166,7 @@ class Field(object):
             or self.value is pd.NA
         ):
             return None
-        return DateUtils.parse_int_to_date(self.value)
+        return parse_int_to_date(self.value)
 
     def get_string_value(self):
         if self.__data_type is None or self.value is None or self.value is pd.NA:
@@ -200,9 +200,11 @@ class Field(object):
         elif data_type == 4:
             return np.float64(self.value)
         elif data_type == 9:
-            return DateUtils.parse_int_to_date(self.value)
-        # TEXT, BLOB, STRING
-        return self.value
+            return parse_int_to_date(self.value)
+        elif data_type == 5 or data_type == 10 or data_type == 11:
+            return self.value
+        else:
+            raise RuntimeError("Unsupported data type:" + str(data_type))
 
     @staticmethod
     def get_field(value, data_type):

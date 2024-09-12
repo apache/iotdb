@@ -119,7 +119,7 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
-        sql_dialect=None,
+        sql_dialect=SQL_DIALECT,
         database=None,
     ):
         if node_urls is None:
@@ -168,7 +168,7 @@ class Session(object):
                             )
                         else:
                             error_msg = str(e)
-                        raise IoTDBConnectionException(error_msg) from None
+                        raise IoTDBConnectionException(error_msg)
                 break
         self.__client = self.__default_connection.client
         self.__session_id = self.__default_connection.session_id
@@ -226,7 +226,7 @@ class Session(object):
 
         except Exception as e:
             transport.close()
-            raise IoTDBConnectionException(e) from None
+            raise IoTDBConnectionException(e)
 
         if self.__zone_id is not None:
             request = TSSetTimeZoneReq(session_id, self.__zone_id)
@@ -1494,8 +1494,8 @@ class Session(object):
                 format_str_list.append("ci")
                 values_tobe_packed.append(b"\x01")
                 values_tobe_packed.append(value)
-            # INT64 or TIMESTAMP
-            elif data_type == 2 or data_type == 8:
+            # INT64
+            elif data_type == 2:
                 format_str_list.append("cq")
                 values_tobe_packed.append(b"\x02")
                 values_tobe_packed.append(value)
@@ -1509,8 +1509,8 @@ class Session(object):
                 format_str_list.append("cd")
                 values_tobe_packed.append(b"\x04")
                 values_tobe_packed.append(value)
-            # TEXT or STRING or BLOB
-            elif data_type == 5 or data_type == 10 or data_type == 11:
+            # TEXT
+            elif data_type == 5:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
@@ -1521,11 +1521,40 @@ class Session(object):
                 values_tobe_packed.append(b"\x05")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
+            # TIMESTAMP
+            elif data_type == 8:
+                format_str_list.append("cq")
+                values_tobe_packed.append(b"\x08")
+                values_tobe_packed.append(value)
             # DATE
             elif data_type == 9:
                 format_str_list.append("ci")
-                values_tobe_packed.append(b"\x01")
+                values_tobe_packed.append(b"\x09")
                 values_tobe_packed.append(parse_date_to_int(value))
+            # BLOB
+            elif data_type == 10:
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0a")
+                values_tobe_packed.append(len(value_bytes))
+                values_tobe_packed.append(value_bytes)
+            # STRING
+            elif data_type == 11:
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0b")
+                values_tobe_packed.append(len(value_bytes))
+                values_tobe_packed.append(value_bytes)
             else:
                 raise RuntimeError("Unsupported data type:" + str(data_type))
         format_str = "".join(format_str_list)

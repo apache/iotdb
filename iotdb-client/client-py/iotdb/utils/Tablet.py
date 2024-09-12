@@ -211,7 +211,7 @@ class Tablet(object):
                         values_tobe_packed.append(value_bytes)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
+            # DATE
             elif data_type == 9:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("i")
