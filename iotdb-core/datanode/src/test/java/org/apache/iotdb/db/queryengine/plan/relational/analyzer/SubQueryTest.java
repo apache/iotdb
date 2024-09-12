@@ -166,18 +166,17 @@ public class SubQueryTest {
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
-    // LogicalPlan: `Output - Offset - TopK - Project - Limit - Project - StreamSort - Project -
+    // LogicalPlan: `Output - Offset - TopK - Limit - Project - StreamSort - Project -
     // TableScan`
     assertTrue(logicalPlanNode instanceof OutputNode);
     assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
     assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof TopKNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof LimitNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof StreamSortNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 8) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 8);
+    assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof LimitNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 7);
     assertEquals(3, tableScanNode.getPushDownLimit());
     assertTrue(tableScanNode.isPushLimitToEachDevice());
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
@@ -187,7 +186,6 @@ public class SubQueryTest {
      *   └──OutputNode-16
      *       └──OffsetNode-12
      *           └──TopKNode-13
-     *               └──ProjectNode-9
      *                   └──ProjectNode-59
      *                       └──TopKNode-6
      *                           ├──ExchangeNode-195: [SourceAddress:192.0.12.1/test_query.2.0/197]
@@ -205,9 +203,8 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(outputNode, 1) instanceof OffsetNode);
     assertTrue(getChildrenNode(outputNode, 2) instanceof TopKNode);
     assertTrue(getChildrenNode(outputNode, 3) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 5) instanceof TopKNode);
-    TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 5);
+    assertTrue(getChildrenNode(outputNode, 4) instanceof TopKNode);
+    TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 4);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
@@ -264,20 +261,19 @@ public class SubQueryTest {
             .plan(analysis);
     logicalPlanNode = logicalQueryPlan.getRootNode();
 
-    // LogicalPlan: `Output - Offset - ProjectNode - TopK - Project - Limit - Project - StreamSort -
+    // LogicalPlan: `Output - Offset - ProjectNode - TopK - Limit - Project - StreamSort -
     // Project -
     // TableScan`
     assertTrue(logicalPlanNode instanceof OutputNode);
     assertTrue(getChildrenNode(logicalPlanNode, 1) instanceof OffsetNode);
     assertTrue(getChildrenNode(logicalPlanNode, 2) instanceof ProjectNode);
     assertTrue(getChildrenNode(logicalPlanNode, 3) instanceof TopKNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof LimitNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof StreamSortNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 8) instanceof ProjectNode);
-    assertTrue(getChildrenNode(logicalPlanNode, 9) instanceof TableScanNode);
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 9);
+    assertTrue(getChildrenNode(logicalPlanNode, 4) instanceof LimitNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 5) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 6) instanceof StreamSortNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 7) instanceof ProjectNode);
+    assertTrue(getChildrenNode(logicalPlanNode, 8) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 8);
     assertEquals(3, tableScanNode.getPushDownLimit());
     assertTrue(tableScanNode.isPushLimitToEachDevice());
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
@@ -287,7 +283,6 @@ public class SubQueryTest {
      *   └──OutputNode-16
      *       └──OffsetNode-12
      *           └──TopKNode-13
-     *               └──ProjectNode-9
      *                   └──ProjectNode-59
      *                       └──TopKNode-6
      *                           ├──ExchangeNode-195: [SourceAddress:192.0.12.1/test_query.2.0/197]
@@ -302,7 +297,6 @@ public class SubQueryTest {
      *       └──OffsetNode-12
      *           └──ProjectNode-43
      *               └──TopKNode-13
-     *                   └──ProjectNode-9
      *                       └──ProjectNode-59
      *                           └──TopKNode-6
      *                               ├──ExchangeNode-201: [SourceAddress:192.0.12.1/test_query.2.0/203]
@@ -321,9 +315,8 @@ public class SubQueryTest {
     assertTrue(getChildrenNode(outputNode, 2) instanceof ProjectNode);
     assertTrue(getChildrenNode(outputNode, 3) instanceof TopKNode);
     assertTrue(getChildrenNode(outputNode, 4) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 5) instanceof ProjectNode);
-    assertTrue(getChildrenNode(outputNode, 6) instanceof TopKNode);
-    TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 6);
+    assertTrue(getChildrenNode(outputNode, 5) instanceof TopKNode);
+    TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 5);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);
@@ -390,7 +383,6 @@ public class SubQueryTest {
         OffsetNode.class,
         ProjectNode.class,
         TopKNode.class,
-        ProjectNode.class,
         // Notice that, the filter in outer query can not be pushed down into subquery
         FilterNode.class,
         LimitNode.class,
@@ -400,9 +392,9 @@ public class SubQueryTest {
         TableScanNode.class);
     assertEquals(
         "(\"s1\" > 1)",
-        ((FilterNode) getChildrenNode(logicalPlanNode, 5)).getPredicate().toString());
-    assertEquals(3, ((LimitNode) getChildrenNode(logicalPlanNode, 6)).getCount());
-    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 10);
+        ((FilterNode) getChildrenNode(logicalPlanNode, 4)).getPredicate().toString());
+    assertEquals(3, ((LimitNode) getChildrenNode(logicalPlanNode, 5)).getCount());
+    tableScanNode = (TableScanNode) getChildrenNode(logicalPlanNode, 9);
     assertEquals(3, tableScanNode.getPushDownLimit());
     assertTrue(tableScanNode.isPushLimitToEachDevice());
     assertEquals("(\"s1\" > 1)", tableScanNode.getPushDownPredicate().toString());
@@ -413,7 +405,6 @@ public class SubQueryTest {
      *       └──OffsetNode-13
      *           └──ProjectNode-45
      *               └──TopKNode-14
-     *                   └──ProjectNode-10
      *                       └──FilterNode-9
      *                           └──ProjectNode-65
      *                               └──TopKNode-6
@@ -435,11 +426,10 @@ public class SubQueryTest {
         OffsetNode.class,
         ProjectNode.class,
         TopKNode.class,
-        ProjectNode.class,
         FilterNode.class,
         ProjectNode.class,
         TopKNode.class);
-    TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 7);
+    TopKNode topKNode = (TopKNode) getChildrenNode(outputNode, 6);
     assertTrue(topKNode.getChildren().get(0) instanceof ExchangeNode);
     assertTrue(topKNode.getChildren().get(1) instanceof LimitNode);
     assertTrue(topKNode.getChildren().get(2) instanceof ExchangeNode);

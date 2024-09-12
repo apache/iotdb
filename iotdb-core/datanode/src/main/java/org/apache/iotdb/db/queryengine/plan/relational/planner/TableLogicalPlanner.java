@@ -75,7 +75,7 @@ public class TableLogicalPlanner {
   private static final Logger LOG = LoggerFactory.getLogger(TableLogicalPlanner.class);
   private final MPPQueryContext queryContext;
   private final SessionInfo sessionInfo;
-  private final SymbolAllocator symbolAllocator = new SymbolAllocator();
+  private final SymbolAllocator symbolAllocator;
   private final List<PlanOptimizer> planOptimizers;
   private final Metadata metadata;
   private final WarningCollector warningCollector;
@@ -84,10 +84,30 @@ public class TableLogicalPlanner {
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
+      SymbolAllocator symbolAllocator,
       WarningCollector warningCollector) {
     this.queryContext = queryContext;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
+    this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
+    this.planOptimizers =
+        new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
+            .getPlanOptimizers();
+  }
+
+  // TODO Remove this in later PR because the SymbolAllocator are not transmit
+  @Deprecated
+  @TestOnly
+  public TableLogicalPlanner(
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      SessionInfo sessionInfo,
+      WarningCollector warningCollector) {
+    this.queryContext = queryContext;
+    this.metadata = metadata;
+    this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.symbolAllocator = new SymbolAllocator();
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers =
         new LogicalOptimizeFactory(new PlannerContext(metadata, new InternalTypeManager()))
@@ -99,11 +119,13 @@ public class TableLogicalPlanner {
       MPPQueryContext queryContext,
       Metadata metadata,
       SessionInfo sessionInfo,
+      SymbolAllocator symbolAllocator,
       WarningCollector warningCollector,
       List<PlanOptimizer> planOptimizers) {
     this.queryContext = queryContext;
     this.metadata = metadata;
     this.sessionInfo = requireNonNull(sessionInfo, "session is null");
+    this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers = planOptimizers;
   }

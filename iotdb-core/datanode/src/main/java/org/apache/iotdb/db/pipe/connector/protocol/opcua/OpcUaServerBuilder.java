@@ -50,6 +50,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -57,6 +58,7 @@ import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -81,7 +83,7 @@ public class OpcUaServerBuilder {
   private Path securityDir;
   private boolean enableAnonymousAccess;
 
-  public OpcUaServerBuilder() {
+  OpcUaServerBuilder() {
     tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
     httpsBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
     user = PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
@@ -91,37 +93,37 @@ public class OpcUaServerBuilder {
         PipeConnectorConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
   }
 
-  public OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
+  OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
     return this;
   }
 
-  public OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
+  OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
     this.httpsBindPort = httpsBindPort;
     return this;
   }
 
-  public OpcUaServerBuilder setUser(final String user) {
+  OpcUaServerBuilder setUser(final String user) {
     this.user = user;
     return this;
   }
 
-  public OpcUaServerBuilder setPassword(final String password) {
+  OpcUaServerBuilder setPassword(final String password) {
     this.password = password;
     return this;
   }
 
-  public OpcUaServerBuilder setSecurityDir(final String securityDir) {
+  OpcUaServerBuilder setSecurityDir(final String securityDir) {
     this.securityDir = Paths.get(securityDir);
     return this;
   }
 
-  public OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
+  OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
     this.enableAnonymousAccess = enableAnonymousAccess;
     return this;
   }
 
-  public OpcUaServer build() throws Exception {
+  OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
       throw new PipeException("Unable to create security dir: " + securityDir);
@@ -297,5 +299,30 @@ public class OpcUaServerBuilder {
         .setTransportProfile(TransportProfile.HTTPS_UABINARY)
         .setBindPort(httpsBindPort)
         .build();
+  }
+
+  /////////////////////////////// Conflict detection ///////////////////////////////
+
+  void checkEquals(
+      final String user,
+      final String password,
+      final Path securityDir,
+      final boolean enableAnonymousAccess) {
+    checkEquals("user", this.user, user);
+    checkEquals("password", this.password, password);
+    checkEquals(
+        "security dir",
+        FileSystems.getDefault().getPath(this.securityDir.toAbsolutePath().toString()),
+        FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
+    checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
+  }
+
+  private void checkEquals(final String attrName, final Object thisAttr, final Object thatAttr) {
+    if (!Objects.equals(thisAttr, thatAttr)) {
+      throw new PipeException(
+          String.format(
+              "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",
+              tcpBindPort, httpsBindPort, attrName, thisAttr, attrName, thatAttr));
+    }
   }
 }

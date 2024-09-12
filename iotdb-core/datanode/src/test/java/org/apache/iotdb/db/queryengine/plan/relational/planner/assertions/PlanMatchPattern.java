@@ -18,7 +18,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -150,75 +154,138 @@ public final class PlanMatchPattern {
     return this;
   }
 
-  /*public static PlanMatchPattern aggregation(
-          Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
-          PlanMatchPattern source)
-  {
-      PlanMatchPattern result = node(AggregationNode.class, source);
-      aggregations.entrySet().forEach(
-              aggregation -> result.withAlias(aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
-      return result;
+  public static PlanMatchPattern aggregation(
+      Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
+      PlanMatchPattern source) {
+    PlanMatchPattern result = node(AggregationNode.class, source);
+    aggregations
+        .entrySet()
+        .forEach(
+            aggregation ->
+                result.withAlias(
+                    aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
+    return result;
   }
 
   public static PlanMatchPattern aggregation(
-          Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
-          Step step,
-          PlanMatchPattern source)
-  {
-      PlanMatchPattern result = node(AggregationNode.class, source).with(new AggregationStepMatcher(step));
-      aggregations.entrySet().forEach(
-              aggregation -> result.withAlias(aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
-      return result;
+      Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
+      AggregationNode.Step step,
+      PlanMatchPattern source) {
+    PlanMatchPattern result =
+        node(AggregationNode.class, source).with(new AggregationStepMatcher(step));
+    aggregations
+        .entrySet()
+        .forEach(
+            aggregation ->
+                result.withAlias(
+                    aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
+    return result;
   }
 
   public static PlanMatchPattern aggregation(
-          Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
-          Predicate<AggregationNode> predicate,
-          PlanMatchPattern source)
-  {
-      PlanMatchPattern result = node(AggregationNode.class, source)
-              .with(new PredicateMatcher<>(predicate));
-      aggregations.entrySet().forEach(
-              aggregation -> result.withAlias(aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
-      return result;
+      Map<String, ExpectedValueProvider<AggregationFunction>> aggregations,
+      Predicate<AggregationNode> predicate,
+      PlanMatchPattern source) {
+    PlanMatchPattern result =
+        node(AggregationNode.class, source).with(new PredicateMatcher<>(predicate));
+    aggregations
+        .entrySet()
+        .forEach(
+            aggregation ->
+                result.withAlias(
+                    aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
+    return result;
   }
 
   public static PlanMatchPattern aggregation(
-          GroupingSetDescriptor groupingSets,
-          Map<Optional<String>, ExpectedValueProvider<AggregationFunction>> aggregations,
-          Optional<Symbol> groupId,
-          Step step,
-          PlanMatchPattern source)
-  {
-      return aggregation(groupingSets, aggregations, ImmutableList.of(), groupId, step, source);
+      GroupingSetDescriptor groupingSets,
+      Map<Optional<String>, ExpectedValueProvider<AggregationFunction>> aggregations,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      PlanMatchPattern source) {
+    return aggregation(groupingSets, aggregations, ImmutableList.of(), groupId, step, source);
   }
 
   public static PlanMatchPattern aggregation(
-          GroupingSetDescriptor groupingSets,
-          Map<Optional<String>, ExpectedValueProvider<AggregationFunction>> aggregations,
-          List<String> preGroupedSymbols,
-          Optional<Symbol> groupId,
-          Step step,
-          PlanMatchPattern source)
-  {
-      return aggregation(groupingSets, aggregations, preGroupedSymbols, ImmutableList.of(), groupId, step, source);
+      GroupingSetDescriptor groupingSets,
+      Map<Optional<String>, ExpectedValueProvider<AggregationFunction>> aggregations,
+      List<String> preGroupedSymbols,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      PlanMatchPattern source) {
+    return aggregation(
+        groupingSets, aggregations, preGroupedSymbols, ImmutableList.of(), groupId, step, source);
   }
 
   public static PlanMatchPattern aggregation(
-          GroupingSetDescriptor groupingSets,
-          Map<Optional<String>, ExpectedValueProvider<AggregationFunction>> aggregations,
-          List<String> preGroupedSymbols,
-          List<String> masks,
-          Optional<Symbol> groupId,
-          Step step,
-          PlanMatchPattern source)
-  {
-      PlanMatchPattern result = node(AggregationNode.class, source).with(new AggregationMatcher(groupingSets, preGroupedSymbols, masks, groupId, step));
-      aggregations.entrySet().forEach(
-              aggregation -> result.withAlias(aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
-      return result;
+      GroupingSetDescriptor groupingSets,
+      Map<Optional<String>, ExpectedValueProvider<AggregationFunction>> aggregations,
+      List<String> preGroupedSymbols,
+      List<String> masks,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      PlanMatchPattern source) {
+    PlanMatchPattern result =
+        node(AggregationNode.class, source)
+            .with(new AggregationMatcher(groupingSets, preGroupedSymbols, masks, groupId, step));
+    aggregations
+        .entrySet()
+        .forEach(
+            aggregation ->
+                result.withAlias(
+                    aggregation.getKey(), new AggregationFunctionMatcher(aggregation.getValue())));
+    return result;
   }
 
+  public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
+      String name, List<String> args) {
+    return new AggregationFunctionProvider(
+        name, false, toSymbolAliases(args), ImmutableList.of(), Optional.empty());
+  }
+
+  public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
+      String name, List<String> args, List<PlanMatchPattern.Ordering> orderBy) {
+    return new AggregationFunctionProvider(
+        name, false, toSymbolAliases(args), orderBy, Optional.empty());
+  }
+
+  public static ExpectedValueProvider<AggregationFunction> aggregationFunction(
+      String name, boolean distinct, List<PlanTestSymbol> args) {
+    return new AggregationFunctionProvider(
+        name, distinct, args, ImmutableList.of(), Optional.empty());
+  }
+
+  // Attention: Now we only pass aliases according to outputSymbols, but we don't verify the output
+  // column if exists in Table because there maybe partial Agg-result.
+  public static PlanMatchPattern aggregationTableScan(
+      GroupingSetDescriptor groupingSets,
+      List<String> preGroupedSymbols,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      String expectedTableName,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys) {
+    PlanMatchPattern result = node(AggregationTableScanNode.class);
+
+    result.with(
+        new AggregationTableScanMatcher(
+            groupingSets,
+            preGroupedSymbols,
+            ImmutableList.of(),
+            groupId,
+            step,
+            expectedTableName,
+            Optional.empty(),
+            outputSymbols,
+            assignmentsKeys));
+
+    outputSymbols.forEach(
+        outputSymbol ->
+            result.withAlias(outputSymbol, new ColumnReference(expectedTableName, outputSymbol)));
+    return result;
+  }
+
+  /*
   public static PlanMatchPattern distinctLimit(long limit, List<String> distinctSymbols, PlanMatchPattern source)
   {
       return node(DistinctLimitNode.class, source).with(new DistinctLimitMatcher(
@@ -374,6 +441,10 @@ public final class PlanMatchPattern {
     return node(FilterNode.class, source).with(new FilterMatcher(expectedPredicate));
   }
 
+  public static PlanMatchPattern filter(PlanMatchPattern source) {
+    return node(FilterNode.class, source);
+  }
+
   /*public static PlanMatchPattern groupId(List<List<String>> groupingSets, String groupIdSymbol, PlanMatchPattern source)
       {
           return groupId(groupingSets, ImmutableList.of(), groupIdSymbol, source);
@@ -478,6 +549,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern mergeSort(PlanMatchPattern... sources) {
     return node(MergeSortNode.class, sources);
+  }
+
+  public static PlanMatchPattern collect(PlanMatchPattern... sources) {
+    return node(CollectNode.class, sources);
   }
 
   public static PlanMatchPattern exchange() {

@@ -17,26 +17,54 @@
 #
 
 import struct
-
+from enum import unique, IntEnum
+from typing import List
 from iotdb.utils.BitMap import BitMap
+from iotdb.utils.IoTDBConstants import TSDataType
+
+
+@unique
+class ColumnType(IntEnum):
+    ID = 0
+    MEASUREMENT = 1
+    ATTRIBUTE = 2
+
+    def n_copy(self, n):
+        result = []
+        for i in range(n):
+            result.append(self)
+        return result
 
 
 class Tablet(object):
-    def __init__(self, device_id, measurements, data_types, values, timestamps):
+    def __init__(
+        self,
+        insert_target_name: str,
+        column_names: List[str],
+        data_types: List[TSDataType],
+        values: List[List],
+        timestamps: List[int],
+        column_types: List[ColumnType] = None,
+    ):
         """
         creating a tablet for insertion
-          for example, considering device: root.sg1.d1
+          for example using tree-model, considering device: root.sg1.d1
             timestamps,     m1,    m2,     m3
                      1,  125.3,  True,  text1
                      2,  111.6, False,  text2
                      3,  688.6,  True,  text3
-        Notice: From 0.13.0, the tablet can contain empty cell
-                The tablet will be sorted at the initialization by timestamps
-        :param device_id: String, IoTDB time series path to device layer (without sensor)
-        :param measurements: List, sensors
-        :param data_types: TSDataType List, specify value types for sensors
+          for example using table-model, considering table: table1
+            timestamps,    id1,  attr1,    m1
+                     1,  id:1,  attr:1,   1.0
+                     2,  id:1,  attr:1,   2.0
+                     3,  id:2,  attr:2,   3.0
+        Notice: The tablet will be sorted at the initialization by timestamps
+        :param insert_target_name: Str, DeviceId if using tree-view interfaces or TableName when using table-view interfaces.
+        :param column_names: Str List, names of columns
+        :param data_types: TSDataType List, specify value types for columns
         :param values: 2-D List, the values of each row should be the outer list element
-        :param timestamps: List,
+        :param timestamps: int List, contains the timestamps
+        :param column_types: ColumnType List, marking the type of each column, can be none for tree-view interfaces.
         """
         if len(timestamps) != len(values):
             raise RuntimeError(
@@ -51,11 +79,17 @@ class Tablet(object):
             self.__values = values
             self.__timestamps = timestamps
 
-        self.__device_id = device_id
-        self.__measurements = measurements
+        self.__insert_target_name = insert_target_name
+        self.__measurements = column_names
         self.__data_types = data_types
         self.__row_number = len(timestamps)
-        self.__column_number = len(measurements)
+        self.__column_number = len(column_names)
+        if column_types is None:
+            self.__column_types = ColumnType.n_copy(
+                ColumnType.MEASUREMENT, self.__column_number
+            )
+        else:
+            self.__column_types = column_types
 
     @staticmethod
     def check_sorted(timestamps):
@@ -70,11 +104,14 @@ class Tablet(object):
     def get_data_types(self):
         return self.__data_types
 
+    def get_column_categories(self):
+        return self.__column_types
+
     def get_row_number(self):
         return self.__row_number
 
-    def get_device_id(self):
-        return self.__device_id
+    def get_insert_target_name(self):
+        return self.__insert_target_name
 
     def get_binary_timestamps(self):
         format_str_list = [">"]
@@ -150,7 +187,7 @@ class Tablet(object):
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
 
-            elif data_type_value == 5:
+            elif data_type_value == 5 or data_type_value == 11:
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
                         if isinstance(self.__values[j][i], str):

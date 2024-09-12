@@ -56,18 +56,15 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class BatchedFastAlignedSeriesCompactionExecutor
     extends FastAlignedSeriesCompactionExecutor {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private final Set<String> compactedMeasurements;
+  private AlignedSeriesBatchCompactionUtils.BatchColumnSelection batchColumnSelection;
   private final IMeasurementSchema timeSchema;
   private final List<IMeasurementSchema> valueMeasurementSchemas;
   private final List<TsFileResource> sortedSourceFiles;
@@ -100,7 +97,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         summary);
     timeSchema = measurementSchemas.remove(0);
     valueMeasurementSchemas = measurementSchemas;
-    this.compactedMeasurements = new HashSet<>();
+    this.batchColumnSelection =
+        new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(
+            valueMeasurementSchemas, batchSize);
     this.sortedSourceFiles = sortedSourceFiles;
     this.alignedChunkMetadataCache = new HashMap<>();
     this.batchCompactionPlan = new BatchCompactionPlan();
@@ -122,13 +121,9 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     List<AlignedChunkMetadata> filteredAlignedChunkMetadataList = new ArrayList<>();
     for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-      List<String> selectedMeasurements =
-          selectedValueMeasurementSchemas.stream()
-              .map(IMeasurementSchema::getMeasurementId)
-              .collect(Collectors.toList());
       filteredAlignedChunkMetadataList.add(
-          AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadata(
-              alignedChunkMetadata, selectedMeasurements));
+          AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadataByIndex(
+              alignedChunkMetadata, batchColumnSelection.getSelectedColumnIndexList()));
     }
     return filteredAlignedChunkMetadataList;
   }
@@ -145,13 +140,16 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private void compactFirstBatch()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
-    List<IMeasurementSchema> firstGroupMeasurements =
-        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-            valueMeasurementSchemas, compactedMeasurements, batchSize);
+    if (!batchColumnSelection.hasNext()) {
+      return;
+    }
+    batchColumnSelection.next();
+
     List<IMeasurementSchema> currentBatchMeasurementSchemas =
-        new ArrayList<>(firstGroupMeasurements.size() + 1);
+        new ArrayList<>(batchColumnSelection.getCurrentSelectedColumnSchemaList().size() + 1);
     currentBatchMeasurementSchemas.add(timeSchema);
-    currentBatchMeasurementSchemas.addAll(firstGroupMeasurements);
+    currentBatchMeasurementSchemas.addAll(
+        batchColumnSelection.getCurrentSelectedColumnSchemaList());
 
     FirstBatchFastAlignedSeriesCompactionExecutor executor =
         new FirstBatchFastAlignedSeriesCompactionExecutor(
@@ -173,14 +171,13 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private void compactLeftBatches()
       throws PageException, IllegalPathException, IOException, WriteProcessException {
-    while (compactedMeasurements.size() < valueMeasurementSchemas.size()) {
-      List<IMeasurementSchema> selectedValueColumnGroup =
-          AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-              valueMeasurementSchemas, compactedMeasurements, batchSize);
+    while (batchColumnSelection.hasNext()) {
+      batchColumnSelection.next();
       List<IMeasurementSchema> currentBatchMeasurementSchemas =
-          new ArrayList<>(selectedValueColumnGroup.size() + 1);
+          new ArrayList<>(batchColumnSelection.getCurrentSelectedColumnSchemaList().size() + 1);
       currentBatchMeasurementSchemas.add(timeSchema);
-      currentBatchMeasurementSchemas.addAll(selectedValueColumnGroup);
+      currentBatchMeasurementSchemas.addAll(
+          batchColumnSelection.getCurrentSelectedColumnSchemaList());
       FollowingBatchFastAlignedSeriesCompactionExecutor executor =
           new FollowingBatchFastAlignedSeriesCompactionExecutor(
               compactionWriter,

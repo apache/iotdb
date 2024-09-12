@@ -21,6 +21,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.ArrayList;
@@ -58,7 +59,9 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
       SessionInfo sessionInfo,
       TableScanNode node,
       Set<Symbol> referencedOutputs) {
-    // List<Symbol> newOutputs = filteredCopy(node.getOutputSymbols(), referencedOutputs::contains);
+    if (node instanceof AggregationTableScanNode) {
+      return Optional.empty();
+    }
     List<Symbol> newOutputs = new ArrayList<>();
     Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
     for (Symbol symbol : node.getOutputSymbols()) {
