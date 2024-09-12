@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
@@ -58,7 +59,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private int counter = 0;
 
-  private ProgressIndex maxProgressIndexForTsFileInsertionEvent;
+  private ProgressIndex maxProgressIndexForTsFileInsertionEvent = MinimumProgressIndex.INSTANCE;
 
   public String getDataRegionId() {
     return dataRegionId;
