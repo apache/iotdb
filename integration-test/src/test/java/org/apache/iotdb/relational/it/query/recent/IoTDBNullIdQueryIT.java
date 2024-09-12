@@ -39,6 +39,7 @@ import java.sql.Types;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.defaultFormatDataTime;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
+import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -53,10 +54,25 @@ public class IoTDBNullIdQueryIT {
         "USE " + DATABASE_NAME,
         "CREATE TABLE testNullId(id1 STRING ID, id2 STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
         "INSERT INTO testNullId(time,id1,id2,s1,s2,s3) " + "values(1, null, null, 0, false, 11.1)",
+        "CREATE TABLE table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT64 MEASUREMENT)",
+        // in seq disk
+        "INSERT INTO table1(time,device_id,s1,s2,s3) " + "values(1, 'd1', 1, false, 11)",
+        "INSERT INTO table1(time,device_id,s1) " + "values(5, 'd1', 5)",
+        "FLUSH",
+        // in uneq disk
+        "INSERT INTO table1(time,device_id,s1,s2,s3) " + "values(4, 'd1', 4, true, 44)",
+        "INSERT INTO table1(time,device_id,s1) " + "values(3, 'd1', 3)",
+        "FLUSH",
+        // in seq memtable
+        "INSERT INTO table1(time,device_id,s1,s2,s3) " + "values(7, 'd1', 7, false, 77)",
+        "INSERT INTO table1(time,device_id,s1) " + "values(6, 'd1', 6)",
+        // in unseq memtable
+        "INSERT INTO table1(time,device_id,s1) " + "values(2, 'd1', 2)",
       };
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
     prepareTableData(createSqls);
   }
@@ -203,5 +219,94 @@ public class IoTDBNullIdQueryIT {
       assertEquals(result, ans);
       assertFalse(resultSet.next());
     }
+  }
+
+  @Test
+  public void nullSelectTest() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,false,11,",
+          "1970-01-01T00:00:00.002Z,d1,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,true,44,",
+          "1970-01-01T00:00:00.005Z,d1,null,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,false,77,"
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.002Z,d1,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,true,44,",
+          "1970-01-01T00:00:00.005Z,d1,null,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,false,77,"
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 where time > 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,false,11,",
+          "1970-01-01T00:00:00.002Z,d1,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,true,44,",
+          "1970-01-01T00:00:00.005Z,d1,null,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 where time < 7",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,true,44,",
+          "1970-01-01T00:00:00.005Z,d1,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 where time > 1 and time < 7 and s1 >= 3 and s1 <= 5",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.002Z,d1,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.005Z,d1,null,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,null,"
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 where s2 is NULL",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,false,11,",
+          "1970-01-01T00:00:00.004Z,d1,true,44,",
+          "1970-01-01T00:00:00.007Z,d1,false,77,"
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 where s2 IS NOT NULL OR s3 IS NOT NULL",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 }
