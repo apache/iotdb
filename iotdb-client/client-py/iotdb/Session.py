@@ -58,6 +58,7 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
+from .tsfile.utils.DateUtils import parse_date_to_int
 from .utils.IoTDBConnectionException import IoTDBConnectionException
 
 logger = logging.getLogger("IoTDB")
@@ -1493,8 +1494,8 @@ class Session(object):
                 format_str_list.append("ci")
                 values_tobe_packed.append(b"\x01")
                 values_tobe_packed.append(value)
-            # INT64
-            elif data_type == 2:
+            # INT64 or TIMESTAMP
+            elif data_type == 2 or data_type == 8:
                 format_str_list.append("cq")
                 values_tobe_packed.append(b"\x02")
                 values_tobe_packed.append(value)
@@ -1508,8 +1509,8 @@ class Session(object):
                 format_str_list.append("cd")
                 values_tobe_packed.append(b"\x04")
                 values_tobe_packed.append(value)
-            # TEXT
-            elif data_type == 5:
+            # TEXT or STRING or BLOB
+            elif data_type == 5 or data_type == 10 or data_type == 11:
                 if isinstance(value, str):
                     value_bytes = bytes(value, "utf-8")
                 else:
@@ -1520,6 +1521,11 @@ class Session(object):
                 values_tobe_packed.append(b"\x05")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
+            # DATE
+            elif data_type == 9:
+                format_str_list.append("ci")
+                values_tobe_packed.append(b"\x01")
+                values_tobe_packed.append(parse_date_to_int(value))
             else:
                 raise RuntimeError("Unsupported data type:" + str(data_type))
         format_str = "".join(format_str_list)

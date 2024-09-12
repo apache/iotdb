@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import datetime
 from enum import unique, IntEnum
 import numpy as np
 
@@ -39,9 +40,11 @@ class TSDataType(IntEnum):
             TSDataType.DOUBLE: np.dtype(">f8"),
             TSDataType.INT32: np.dtype(">i4"),
             TSDataType.INT64: np.dtype(">i8"),
-            TSDataType.TEXT: np.dtype("str"),
+            TSDataType.TEXT: str,
             TSDataType.TIMESTAMP: np.dtype(">i8"),
-            TSDataType.STRING: np.dtype("str"),
+            TSDataType.DATE: datetime.date,
+            TSDataType.STRING: str,
+            TSDataType.BLOB: bytes,
         }[self]
 
 
