@@ -105,9 +105,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       if (!Files.isReadable(listeningDirPath)) {
         if (!noPermissionDirs.contains(listeningDir)) {
-          LOGGER.error("Current dir path is not readable: {}." +
-                  "Skip scanning this dir. Please check the permission."
-              , listeningDirPath);
+          LOGGER.error(
+              "Current dir path is not readable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
           noPermissionDirs.add(listeningDir);
         }
         return false;
@@ -115,9 +116,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
 
       if (!Files.isWritable(listeningDirPath)) {
         if (!noPermissionDirs.contains(listeningDir)) {
-          LOGGER.error("Current dir path is not writable: {}." +
-                  "Skip scanning this dir. Please check the permission."
-              , listeningDirPath);
+          LOGGER.error(
+              "Current dir path is not writable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
           noPermissionDirs.add(listeningDir);
         }
         return false;
@@ -126,8 +128,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       noPermissionDirs.remove(listeningDir);
       return true;
     } catch (final Exception e) {
-      LOGGER.error("Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
-          listeningDir, e);
+      LOGGER.error(
+          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
+          listeningDir,
+          e);
       return false;
     }
   }
