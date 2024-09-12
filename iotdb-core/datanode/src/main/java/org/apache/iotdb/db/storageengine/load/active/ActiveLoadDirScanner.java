@@ -73,6 +73,17 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     hotReloadActiveLoadDirs();
 
     for (final String listeningDir : listeningDirs) {
+      // check dir auth
+      final Path listeningDirPath = new File(listeningDir).toPath();
+      if (!Files.isReadable(listeningDirPath)) {
+        LOGGER.error("Current dir path is not readable: {}", listeningDirPath);
+        continue;
+      }
+      if (!Files.isWritable(listeningDirPath)) {
+        LOGGER.error("Current dir path is not writable: {}", listeningDirPath);
+        continue;
+      }
+
       final int currentAllowedPendingSize = activeLoadTsFileLoader.getCurrentAllowedPendingSize();
       if (currentAllowedPendingSize <= 0) {
         return;
