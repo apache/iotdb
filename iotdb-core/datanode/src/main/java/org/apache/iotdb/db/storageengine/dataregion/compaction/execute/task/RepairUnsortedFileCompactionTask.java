@@ -30,7 +30,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
 import java.io.File;
@@ -38,18 +37,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Repair the internal unsorted file by compaction and move it to unSequence space after compaction
  * whether the source TsFileResource is sequence or not.
  */
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
-
-  private static Lock generateTargetFileLock = new ReentrantLock();
 
   private final TsFileResource sourceFile;
   private final boolean rewriteFile;
@@ -154,88 +148,37 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   }
 
   private File generateTargetFile() throws IOException {
-    String targetFileParentPath = sourceFile.getTsFile().getParentFile().getPath();
-    // if source file is sequence, the sequence data targetFileParentPath should be replaced to
-    // unsequence
+    String path = sourceFile.getTsFile().getParentFile().getPath();
+    // if source file is sequence, the sequence data path should be replaced to unsequence
     if (sourceFile.isSeq()) {
-      int pos = targetFileParentPath.lastIndexOf("sequence");
-      targetFileParentPath =
-          targetFileParentPath.substring(0, pos)
-              + "unsequence"
-              + targetFileParentPath.substring(pos + "sequence".length());
+      int pos = path.lastIndexOf("sequence");
+      path = path.substring(0, pos) + "unsequence" + path.substring(pos + "sequence".length());
     }
 
     TsFileNameGenerator.TsFileName tsFileName =
         TsFileNameGenerator.getTsFileName(sourceFile.getTsFile().getName());
 
-    // Use the log file to determine whether there are other concurrent
-    // repair tasks using the file with the same name.
-    String dataDirForLogFile = TierManager.getInstance().getAllFoldersOfTier(0, false).get(0);
-    String pathToTimePartition =
-        sourceFile.getDatabaseName()
-            + File.separator
-            + sourceFile.getDataRegionId()
-            + File.separator
-            + sourceFile.getTimePartition();
-
     File targetTsFile = null;
-    generateTargetFileLock.lock();
-    List<String> allUnSequenceFolders = TierManager.getInstance().getAllUnSequenceFileFolders();
-    try {
-      while (logFile == null) {
-        boolean canAllocateCurrentFileName = true;
-        // set version = 0 to keep unsequence data cover sequence data
-        String fileNamePrefixStr =
-            String.format(
-                "%d-%d-%d-%d", tsFileName.getTime(), 0, tsFileName.getInnerCompactionCnt() + 1, 0);
-        // timestamp +1 for next times of the loop
-        tsFileName.setTime(tsFileName.getTime() + 1);
-        // 1. check files with same filename in all unsequence data dirs
-        for (String folder : allUnSequenceFolders) {
-          File file =
-              new File(
-                  folder
-                      + File.separator
-                      + pathToTimePartition
-                      + File.separator
-                      + fileNamePrefixStr
-                      + ".tsfile");
-          if (file.exists()) {
-            canAllocateCurrentFileName = false;
-            break;
-          }
-        }
-        if (!canAllocateCurrentFileName) {
-          continue;
-        }
-        // 2. check log file with same filename in first unsequence data dir
-        File logFileForCurrentFileName =
-            new File(
-                dataDirForLogFile
-                    + File.separator
-                    + pathToTimePartition
-                    + File.separator
-                    + fileNamePrefixStr
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX
-                    + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-        logFileForCurrentFileName.getParentFile().mkdirs();
-        if (!logFileForCurrentFileName.createNewFile()) {
-          // There is a compaction task which will generate a tsfile with the same file name.
-          continue;
-        }
-        logFile = logFileForCurrentFileName;
-        targetTsFile =
-            new File(
-                targetFileParentPath
-                    + File.separator
-                    + fileNamePrefixStr
-                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
+    // set version = 0 to keep unsequence data cover sequence data
+    do {
+      String fileNameStr =
+          String.format(
+              "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+              tsFileName.getTime(),
+              0,
+              tsFileName.getInnerCompactionCnt() + 1,
+              0);
+      targetTsFile = new File(path + File.separator + fileNameStr);
+      if (!targetTsFile.getParentFile().exists()) {
         targetTsFile.getParentFile().mkdirs();
-        break;
       }
-    } finally {
-      generateTargetFileLock.unlock();
-    }
+      // avoid same file name
+      tsFileName.setTime(tsFileName.getTime() + 1);
+      // Use the log file method to determine whether there are other concurrent
+      // repair tasks using the file with the same name.
+      logFile =
+          new File(targetTsFile.getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
+    } while (!logFile.createNewFile());
     return targetTsFile;
   }
 
