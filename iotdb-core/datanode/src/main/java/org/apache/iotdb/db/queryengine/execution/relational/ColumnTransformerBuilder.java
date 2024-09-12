@@ -1324,11 +1324,16 @@ public class ColumnTransformerBuilder
         List<ColumnTransformer> thenList = new ArrayList<>();
         for (WhenClause whenClause : node.getWhenClauses()) {
           // TODO:
-          whenList.add(process(whenClause.getOperand(), context));
+          whenList.add(
+              process(
+                  new ComparisonExpression(
+                      ComparisonExpression.Operator.EQUAL,
+                      node.getOperand(),
+                      whenClause.getOperand()),
+                  context));
           thenList.add(process(whenClause.getResult(), context));
         }
 
-        ColumnTransformer children = process(node.getOperand(), context);
         if (node.getDefaultValue().isPresent()) {
           ColumnTransformer elseColumnTransformer = process(node.getDefaultValue().get(), context);
           context.cache.put(
