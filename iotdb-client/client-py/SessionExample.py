@@ -15,11 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-from datetime import date
 
 # Uncomment the following line to use apache-iotdb module installed by pip3
 import numpy as np
-
+from datetime import date
 from iotdb.Session import Session
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor

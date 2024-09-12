@@ -168,7 +168,7 @@ class Session(object):
                             )
                         else:
                             error_msg = str(e)
-                        raise IoTDBConnectionException(error_msg)
+                        raise IoTDBConnectionException(error_msg) from None
                 break
         self.__client = self.__default_connection.client
         self.__session_id = self.__default_connection.session_id
@@ -226,7 +226,7 @@ class Session(object):
 
         except Exception as e:
             transport.close()
-            raise IoTDBConnectionException(e)
+            raise IoTDBConnectionException(e) from None
 
         if self.__zone_id is not None:
             request = TSSetTimeZoneReq(session_id, self.__zone_id)
