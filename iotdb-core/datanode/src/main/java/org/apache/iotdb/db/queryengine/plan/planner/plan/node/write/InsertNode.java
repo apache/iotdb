@@ -210,6 +210,10 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     this.deviceID = deviceID;
   }
 
+  public boolean isDeviceIDExists() {
+    return deviceID != null;
+  }
+
   public boolean isGeneratedByRemoteConsensusLeader() {
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:

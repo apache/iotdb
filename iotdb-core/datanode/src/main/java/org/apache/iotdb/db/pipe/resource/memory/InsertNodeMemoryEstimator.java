@@ -209,16 +209,14 @@ public class InsertNodeMemoryEstimator {
   private static final long RELATIONAL_INSERT_ROW_NODE_SIZE =
       RamUsageEstimator.alignObjectSize(
           NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
+              + INSERT_ROW_NODE_SIZE
               + RELATIONAL_INSERT_ROW_NODE_PRIMITIVE_SIZE
               + RELATIONAL_INSERT_ROW_NODE_REFERENCE_SIZE);
 
   private static final long RELATIONAL_INSERT_TABLET_NODE_SIZE =
       RamUsageEstimator.alignObjectSize(
           NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
+              + INSERT_TABLET_NODE_SIZE
               + RELATIONAL_INSERT_TABLET_NODE_PRIMITIVE_SIZE
               + RELATIONAL_INSERT_TABLET_NODE_REFERENCE_SIZE);
 
@@ -249,6 +247,8 @@ public class InsertNodeMemoryEstimator {
   private static final long PLAIN_DEVICE_ID_SIZE =
       RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + PLAIN_DEVICE_ID_REFERENCE_SIZE);
 
+  private static final long STRING_ARRAY_DEVICE_ID_SIZE =
+      RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + NUM_BYTES_OBJECT_REF);
   // =============================Thrift==================================
 
   // Calculate the total size of reference types in TRegionReplicaSet
@@ -433,7 +433,9 @@ public class InsertNodeMemoryEstimator {
     // idColumnIndices
     size += sizeOfColumnIndices(node.getColumnCategories());
     // deviceID
-    size += sizeOfIDeviceID(node.getDeviceID());
+    if (node.isDeviceIDExists()) {
+      size += sizeOfIDeviceID(node.getDeviceID());
+    }
     // dataRegionReplicaSet
     size += sizeOfTRegionReplicaSet(node.getRegionReplicaSet());
     // progressIndex
@@ -451,7 +453,9 @@ public class InsertNodeMemoryEstimator {
     // idColumnIndices
     size += sizeOfColumnIndices(node.getColumnCategories());
     // deviceID
-    size += sizeOfIDeviceID(node.getDeviceID());
+    if (node.isDeviceIDExists()) {
+      size += sizeOfIDeviceID(node.getDeviceID());
+    }
     // dataRegionReplicaSet
     size += sizeOfTRegionReplicaSet(node.getRegionReplicaSet());
     // progressIndex
@@ -611,7 +615,9 @@ public class InsertNodeMemoryEstimator {
     long size = RELATIONAL_INSERT_ROW_NODE_SIZE;
 
     size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
-    size += sizeOfIDeviceID(node.getDeviceID());
+    if (node.isDeviceIDExists()) {
+      size += sizeOfIDeviceID(node.getDeviceID());
+    }
     return size;
   }
 
@@ -680,33 +686,7 @@ public class InsertNodeMemoryEstimator {
         size += sizeOfString(entry.getKey()) + sizeOfString(entry.getValue());
       }
     }
-    // load EncodingBuilder
-    switch (measurementSchema.getValueEncoder().getType()) {
-      case PLAIN:
-        size += TS_ENCODING_PLAIN_BUILDER_SIZE;
-        break;
-      case DICTIONARY:
-        size += TS_ENCODING_DICTIONARY_BUILDER_SIZE;
-        break;
-      case RLE:
-        size += TS_ENCODING_RLE_BUILDER_SIZE;
-        break;
-      case TS_2DIFF:
-        size += TS_ENCODING_TS_2DIFF_BUILDER_SIZE;
-        break;
-      case GORILLA_V1:
-        size += TS_ENCODING_GORILLA_V1_BUILDER_SIZE;
-        break;
-      case REGULAR:
-        size += TS_ENCODING_REGULAR_BUILDER_SIZE;
-        break;
-      case GORILLA:
-        size += TS_ENCODING_GORILLA_BUILDER_SIZE;
-        break;
-      case ZIGZAG:
-        size += TS_ENCODING_ZIGZAG_BUILDER_SIZE;
-    }
-
+    size += TS_ENCODING_PLAIN_BUILDER_SIZE;
     return size;
   }
 
@@ -747,17 +727,19 @@ public class InsertNodeMemoryEstimator {
     final String id = deviceID.toString();
 
     if (id != null) {
-      size += sizeOfString(id);
-      // table
-      size += sizeOfString(deviceID.getTableName());
-      // segments[]
-      int num = deviceID.segmentNum();
-      size +=
-          RamUsageEstimator.alignObjectSize(
-              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * deviceID.segmentNum());
-      while (num > 0) {
-        size += sizeOfString(deviceID.segment(--num));
-      }
+      // Estimate the sum of the table and segment lengths to be the size of the id
+      size += sizeOfString(id) * 2;
+      // Ignore, this calculation will trigger the lazy loading mechanism
+      //      // table
+      //      size += sizeOfString(deviceID.getTableName());
+      //      // segments[]
+      //      int num = deviceID.segmentNum();
+      //      size +=
+      //          RamUsageEstimator.alignObjectSize(
+      //              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * deviceID.segmentNum());
+      //      while (num > 0) {
+      //        size += sizeOfString(deviceID.segment(--num));
+      //      }
     }
 
     return size;
@@ -765,14 +747,8 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfStringArrayDeviceID(final StringArrayDeviceID deviceID) {
     // Memory alignment of basic types and reference types in structures
-    long size =
-        RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + PLAIN_DEVICE_ID_REFERENCE_SIZE);
-
-    final String id = deviceID.toString();
-    if (id != null) {
-      size += sizeOfString(id);
-    }
-
+    long size = STRING_ARRAY_DEVICE_ID_SIZE;
+    size += sizeOfStringArray(deviceID.getSegments());
     return size;
   }
 

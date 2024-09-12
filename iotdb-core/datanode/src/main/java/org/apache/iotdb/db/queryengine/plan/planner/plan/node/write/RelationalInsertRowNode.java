@@ -99,6 +99,10 @@ public class RelationalInsertRowNode extends InsertRowNode {
     return deviceID;
   }
 
+  public boolean isDeviceIDExists() {
+    return deviceID != null;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitRelationalInsertRow(this, context);
