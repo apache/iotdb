@@ -51,6 +51,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
+  private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
+
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
   public ActiveLoadDirScanner(final ActiveLoadTsFileLoader activeLoadTsFileLoader) {
@@ -73,6 +75,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     hotReloadActiveLoadDirs();
 
     for (final String listeningDir : listeningDirs) {
+      if (!checkPermission(listeningDir)) {
+        continue;
+      }
+
       final int currentAllowedPendingSize = activeLoadTsFileLoader.getCurrentAllowedPendingSize();
       if (currentAllowedPendingSize <= 0) {
         return;
@@ -90,6 +96,43 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
           .filter(this::isTsFileCompleted)
           .limit(currentAllowedPendingSize)
           .forEach(file -> activeLoadTsFileLoader.tryTriggerTsFileLoad(file, isGeneratedByPipe));
+    }
+  }
+
+  private boolean checkPermission(final String listeningDir) {
+    try {
+      final Path listeningDirPath = new File(listeningDir).toPath();
+
+      if (!Files.isReadable(listeningDirPath)) {
+        if (!noPermissionDirs.contains(listeningDir)) {
+          LOGGER.error(
+              "Current dir path is not readable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
+          noPermissionDirs.add(listeningDir);
+        }
+        return false;
+      }
+
+      if (!Files.isWritable(listeningDirPath)) {
+        if (!noPermissionDirs.contains(listeningDir)) {
+          LOGGER.error(
+              "Current dir path is not writable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
+          noPermissionDirs.add(listeningDir);
+        }
+        return false;
+      }
+
+      noPermissionDirs.remove(listeningDir);
+      return true;
+    } catch (final Exception e) {
+      LOGGER.error(
+          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
+          listeningDir,
+          e);
+      return false;
     }
   }
 
