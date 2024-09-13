@@ -361,5 +361,15 @@ public class PipeConsensusConfig {
     public String getValue() {
       return value;
     }
+
+    public static ReplicateMode fromValue(String value) {
+      if (value.equalsIgnoreCase(STREAM.getValue())) {
+        return STREAM;
+      } else if (value.equalsIgnoreCase(BATCH.getValue())) {
+        return BATCH;
+      }
+      // return batch by default
+      return BATCH;
+    }
   }
 }

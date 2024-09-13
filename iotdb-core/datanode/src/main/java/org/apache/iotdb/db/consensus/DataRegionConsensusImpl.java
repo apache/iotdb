@@ -171,7 +171,7 @@ public class DataRegionConsensusImpl {
                           .setProgressIndexManager(new ProgressIndexDataNodeManager())
                           .setConsensusPipeGuardJobIntervalInSeconds(300)
                           .build())
-                  .setReplicateMode(ReplicateMode.valueOf(CONF.getIotConsensusV2Mode()))
+                  .setReplicateMode(ReplicateMode.fromValue(CONF.getIotConsensusV2Mode()))
                   .build())
           .setRatisConfig(
               RatisConfig.newBuilder()
