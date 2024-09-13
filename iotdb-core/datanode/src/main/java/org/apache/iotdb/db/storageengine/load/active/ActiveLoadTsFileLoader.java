@@ -207,7 +207,7 @@ public class ActiveLoadTsFileLoader {
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
     if (status.getMessage() != null && status.getMessage().contains("memory")) {
-      LOGGER.warn(
+      LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
