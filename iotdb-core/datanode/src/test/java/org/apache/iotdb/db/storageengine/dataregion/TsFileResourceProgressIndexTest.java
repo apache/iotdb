@@ -195,6 +195,11 @@ public class TsFileResourceProgressIndexTest {
     }
 
     @Override
+    public ProgressIndex deepCopy() {
+      return new MockProgressIndex(type, val);
+    }
+
+    @Override
     public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
       if (!(progressIndex instanceof MockProgressIndex)) {
         throw new IllegalStateException("Mock update error.");

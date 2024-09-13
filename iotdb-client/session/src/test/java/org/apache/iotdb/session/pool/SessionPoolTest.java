@@ -1264,7 +1264,8 @@ public class SessionPoolTest {
             10,
             ZoneId.systemDefault(),
             1000,
-            false);
+            false,
+            execResp.getColumnIndex2TsBlockColumnIndexList());
     Mockito.when(session.executeQueryStatement(any(String.class), eq(50)))
         .thenReturn(sessionDataSet);
     sessionDataSetWrapper = sessionPool.executeQueryStatement(sql, 50);
@@ -1475,6 +1476,8 @@ public class SessionPoolTest {
     dataTypeList.add("INT32");
     dataTypeList.add("FLOAT");
 
+    List<Integer> columnIndex2TsBlockColumnIndexList = Arrays.asList(0, 1, 2, 3);
+
     Mockito.when(execResp.isSetColumns()).thenReturn(true);
     Mockito.when(execResp.getColumns()).thenReturn(columns);
     Mockito.when(execResp.isSetDataTypeList()).thenReturn(true);
@@ -1484,6 +1487,8 @@ public class SessionPoolTest {
     Mockito.when(execResp.isSetQueryId()).thenReturn(true);
     Mockito.when(execResp.getQueryId()).thenReturn(queryId);
     Mockito.when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    Mockito.when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(columnIndex2TsBlockColumnIndexList);
 
     SessionDataSet sessionDataSet =
         new SessionDataSet(
@@ -1502,7 +1507,8 @@ public class SessionPoolTest {
             10,
             ZoneId.systemDefault(),
             1000,
-            false);
+            false,
+            execResp.getColumnIndex2TsBlockColumnIndexList());
 
     Mockito.when(session.executeQueryStatement(any(String.class))).thenReturn(sessionDataSet);
 

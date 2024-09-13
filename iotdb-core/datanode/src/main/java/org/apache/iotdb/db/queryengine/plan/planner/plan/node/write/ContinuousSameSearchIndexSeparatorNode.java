@@ -19,15 +19,35 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
 
 /**
  * For IoTConsensus sync. See <a href="https://github.com/apache/iotdb/pull/12955">github pull
  * request</a> for details.
  */
-public class ContinuousSameSearchIndexSeparatorNode implements WALEntryValue {
+public class ContinuousSameSearchIndexSeparatorNode extends SearchNode implements WALEntryValue {
+
+  public ContinuousSameSearchIndexSeparatorNode() {
+    super(new PlanNodeId(""));
+  }
+
+  public ContinuousSameSearchIndexSeparatorNode(PlanNodeId id) {
+    super(id);
+    this.searchIndex = -1;
+  }
 
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
@@ -39,5 +59,66 @@ public class ContinuousSameSearchIndexSeparatorNode implements WALEntryValue {
   @Override
   public int serializedSize() {
     return Short.BYTES + Long.BYTES;
+  }
+
+  public static ContinuousSameSearchIndexSeparatorNode deserializeFromWAL(DataInputStream stream)
+      throws IOException {
+    long ignored = stream.readLong();
+    return new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId(""));
+  }
+
+  public static ContinuousSameSearchIndexSeparatorNode deserializeFromWAL(ByteBuffer buffer) {
+    long ignored = buffer.getLong();
+    return new ContinuousSameSearchIndexSeparatorNode(new PlanNodeId(""));
+  }
+
+  // region all operations below are unsupported
+
+  private static final String UNSUPPORTED_MESSAGE =
+      "ContinuousSameSearchIndexSeparatorNode not support this operation";
+
+  @Override
+  public TRegionReplicaSet getRegionReplicaSet() {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  public List<PlanNode> getChildren() {
+    return null;
+  }
+
+  @Override
+  public void addChild(PlanNode child) {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  public PlanNode clone() {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  public int allowedChildCount() {
+    return 0;
+  }
+
+  @Override
+  public List<String> getOutputColumnNames() {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
+  }
+
+  @Override
+  public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    throw new UnsupportedOperationException(UNSUPPORTED_MESSAGE);
   }
 }

@@ -182,11 +182,11 @@ class IoTDBRpcDataSet(object):
                 data_array = np.frombuffer(
                     value_buffer, np.dtype(np.int32).newbyteorder(">")
                 )
-            elif data_type == 2:
+            elif data_type == 2 or data_type == 8:
                 data_array = np.frombuffer(
                     value_buffer, np.dtype(np.int64).newbyteorder(">")
                 )
-            elif data_type == 5:
+            elif data_type == 5 or data_type == 11:
                 j = 0
                 offset = 0
                 data_array = []
@@ -225,7 +225,7 @@ class IoTDBRpcDataSet(object):
 
                 if data_type == 1:
                     tmp_array = pd.Series(tmp_array, dtype="Int32")
-                elif data_type == 2:
+                elif data_type == 2 or data_type == 8:
                     tmp_array = pd.Series(tmp_array, dtype="Int64")
                 elif data_type == 0:
                     tmp_array = pd.Series(tmp_array, dtype="boolean")
@@ -297,11 +297,11 @@ class IoTDBRpcDataSet(object):
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.int32).newbyteorder(">")
                     )
-                elif data_type == 2:
+                elif data_type == 2 or data_type == 8:
                     data_array = np.frombuffer(
                         value_buffer, np.dtype(np.int64).newbyteorder(">")
                     )
-                elif data_type == 5:
+                elif data_type == 5 or data_type == 11:
                     j = 0
                     offset = 0
                     data_array = []
@@ -327,13 +327,13 @@ class IoTDBRpcDataSet(object):
                 self.__query_data_set.valueList[location] = None
                 tmp_array = []
                 if len(data_array) < total_length:
-                    if data_type == 1 or data_type == 2:
+                    if data_type == 1 or data_type == 2 or data_type == 8:
                         tmp_array = np.full(total_length, np.nan, np.float32)
                     elif data_type == 3 or data_type == 4:
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
                     elif data_type == 0:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                    elif data_type == 5:
+                    elif data_type == 5 or data_type == 11 or data_type == 10:
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
 
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
@@ -345,7 +345,7 @@ class IoTDBRpcDataSet(object):
 
                     if data_type == 1:
                         tmp_array = pd.Series(tmp_array).astype("Int32")
-                    elif data_type == 2:
+                    elif data_type == 2 or data_type == 8:
                         tmp_array = pd.Series(tmp_array).astype("Int64")
                     elif data_type == 0:
                         tmp_array = pd.Series(tmp_array).astype("boolean")

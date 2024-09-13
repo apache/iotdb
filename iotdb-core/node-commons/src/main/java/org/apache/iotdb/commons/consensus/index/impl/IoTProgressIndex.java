@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -32,6 +33,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IoTProgressIndex extends ProgressIndex {
@@ -45,8 +47,11 @@ public class IoTProgressIndex extends ProgressIndex {
   }
 
   public IoTProgressIndex(Integer peerId, Long searchIndex) {
-    peerId2SearchIndex = new HashMap<>();
-    peerId2SearchIndex.put(peerId, searchIndex);
+    this(ImmutableMap.of(peerId, searchIndex));
+  }
+
+  public IoTProgressIndex(Map<Integer, Long> peerId2SearchIndex) {
+    this.peerId2SearchIndex = new HashMap<>(peerId2SearchIndex);
   }
 
   @Override
@@ -151,7 +156,12 @@ public class IoTProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(peerId2SearchIndex);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new IoTProgressIndex(peerId2SearchIndex);
   }
 
   @Override

@@ -335,7 +335,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
+    this.progressIndex = progressIndex.deepCopy();
     insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
 }
