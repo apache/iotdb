@@ -34,7 +34,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LoadTsFileAnalyzeSchemaMemoryBlock.class);
 
-  private final long totalMemorySizeInBytes;
+  private long totalMemorySizeInBytes;
   private final AtomicLong memoryUsageInBytes;
 
   LoadTsFileAnalyzeSchemaMemoryBlock(long totalMemorySizeInBytes) {
@@ -45,12 +45,12 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   }
 
   @Override
-  public boolean hasEnoughMemory(long memoryTobeAddedInBytes) {
+  public synchronized boolean hasEnoughMemory(long memoryTobeAddedInBytes) {
     return memoryUsageInBytes.get() + memoryTobeAddedInBytes <= totalMemorySizeInBytes;
   }
 
   @Override
-  public void addMemoryUsage(long memoryInBytes) {
+  public synchronized void addMemoryUsage(long memoryInBytes) {
     memoryUsageInBytes.addAndGet(memoryInBytes);
 
     MetricService.getInstance()
@@ -63,7 +63,7 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   }
 
   @Override
-  public void reduceMemoryUsage(long memoryInBytes) {
+  public synchronized void reduceMemoryUsage(long memoryInBytes) {
     if (memoryUsageInBytes.addAndGet(-memoryInBytes) < 0) {
       LOGGER.warn("{} has reduce memory usage to negative", this);
     }
@@ -78,7 +78,25 @@ public class LoadTsFileAnalyzeSchemaMemoryBlock extends LoadTsFileAbstractMemory
   }
 
   @Override
-  protected void releaseAllMemory() {
+  synchronized long getMemoryUsageInBytes() {
+    return memoryUsageInBytes.get();
+  }
+
+  synchronized long getTotalMemorySizeInBytes() {
+    return totalMemorySizeInBytes;
+  }
+
+  synchronized void setTotalMemorySizeInBytes(long totalMemorySizeInBytes) {
+    this.totalMemorySizeInBytes = totalMemorySizeInBytes;
+  }
+
+  @Override
+  public synchronized void forceResize(long newSizeInBytes) {
+    MEMORY_MANAGER.forceResize(this, newSizeInBytes);
+  }
+
+  @Override
+  protected synchronized void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
           "Try to release memory from a memory block {} which has not released all memory", this);

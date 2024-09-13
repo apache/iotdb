@@ -27,6 +27,7 @@ DEFAULT_MULTIPIE = 5
 DEFAULT_FETCH_SIZE = 5000
 DEFAULT_MAX_RETRY = 3
 DEFAULT_TIME_ZONE = "UTC+8"
+SQL_DIALECT = "tree"
 logger = logging.getLogger("IoTDB")
 
 
@@ -42,6 +43,8 @@ class PoolConfig(object):
         time_zone: str = DEFAULT_TIME_ZONE,
         max_retry: int = DEFAULT_MAX_RETRY,
         enable_compression: bool = False,
+        sql_dialect: str = SQL_DIALECT,
+        database: str = None,
     ):
         self.host = host
         self.port = port
@@ -58,6 +61,8 @@ class PoolConfig(object):
         self.time_zone = time_zone
         self.max_retry = max_retry
         self.enable_compression = enable_compression
+        self.sql_dialect = sql_dialect
+        self.database = database
 
 
 class SessionPool(object):
@@ -80,6 +85,9 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
+                enable_redirection=True,
+                sql_dialect=self.__pool_config.sql_dialect,
+                database=self.__pool_config.database,
             )
 
         else:
@@ -90,6 +98,9 @@ class SessionPool(object):
                 self.__pool_config.password,
                 self.__pool_config.fetch_size,
                 self.__pool_config.time_zone,
+                enable_redirection=True,
+                sql_dialect=self.__pool_config.sql_dialect,
+                database=self.__pool_config.database,
             )
 
         session.open(self.__pool_config.enable_compression)

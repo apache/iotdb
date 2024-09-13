@@ -151,7 +151,7 @@ public class SchemaRegionCachedMetric implements ISchemaRegionMetric {
         Metric.SCHEMA_REGION.toString(),
         MetricLevel.IMPORTANT,
         regionStatistics,
-        CachedSchemaRegionStatistics::getMlogLength,
+        CachedSchemaRegionStatistics::getMLogLength,
         Tag.NAME.toString(),
         MLOG_LENGTH,
         Tag.REGION.toString(),

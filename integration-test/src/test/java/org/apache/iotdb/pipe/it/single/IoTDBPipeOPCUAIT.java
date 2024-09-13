@@ -63,7 +63,18 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           client
               .createPipe(
-                  new TCreatePipeReq("testPipe", Collections.singletonMap("sink", "opc-ua-sink"))
+                  new TCreatePipeReq("testPipe", connectorAttributes)
+                      .setExtractorAttributes(Collections.emptyMap())
+                      .setProcessorAttributes(Collections.emptyMap()))
+              .getCode());
+
+      // Test conflict
+      connectorAttributes.put("password", "conflict");
+      Assert.assertEquals(
+          TSStatusCode.PIPE_ERROR.getStatusCode(),
+          client
+              .createPipe(
+                  new TCreatePipeReq("testPipe", connectorAttributes)
                       .setExtractorAttributes(Collections.emptyMap())
                       .setProcessorAttributes(Collections.emptyMap()))
               .getCode());

@@ -714,7 +714,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // Get resources for trigger,udf,pipe...
     prepareResources();
 
-    Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook(generateDataNodeLocation()));
+    Runtime.getRuntime().addShutdownHook(new DataNodeShutdownHook(generateDataNodeLocation()));
     setUncaughtExceptionHandler();
 
     logger.info("Recover the schema...");
@@ -1146,18 +1146,24 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   public void stop() {
-    deactivate();
+    stopTriggerRelatedServices();
+    registerManager.deregisterAll();
+    JMXService.deregisterMBean(mbeanName);
     SchemaEngine.getInstance().clear();
-    try {
-      MetricService.getInstance().stop();
-      if (schemaRegionConsensusStarted) {
+    MetricService.getInstance().stop();
+    if (schemaRegionConsensusStarted) {
+      try {
         SchemaRegionConsensusImpl.getInstance().stop();
+      } catch (Exception e) {
+        logger.warn("Exception during SchemaRegionConsensusImpl stopping", e);
       }
-      if (dataRegionConsensusStarted) {
+    }
+    if (dataRegionConsensusStarted) {
+      try {
         DataRegionConsensusImpl.getInstance().stop();
+      } catch (Exception e) {
+        logger.warn("Exception during DataRegionConsensusImpl stopping", e);
       }
-    } catch (Exception e) {
-      logger.error("Stop data node error", e);
     }
   }
 
@@ -1171,14 +1177,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       registerManager.register(PipeDataNodeAgent.receiver().airGap());
     }
-  }
-
-  private void deactivate() {
-    logger.info("Deactivating IoTDB DataNode...");
-    stopTriggerRelatedServices();
-    registerManager.deregisterAll();
-    JMXService.deregisterMBean(mbeanName);
-    logger.info("IoTDB DataNode is deactivated.");
   }
 
   private void stopTriggerRelatedServices() {

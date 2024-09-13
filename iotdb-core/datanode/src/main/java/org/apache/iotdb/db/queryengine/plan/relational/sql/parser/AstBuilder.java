@@ -727,7 +727,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             propertyValue.getExpressionType() + " is not supported for 'set configuration'");
       }
       String value = ((StringLiteral) propertyValue).getValue();
-      configItems.put(key, value);
+      configItems.put(key.trim(), value.trim());
     }
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);

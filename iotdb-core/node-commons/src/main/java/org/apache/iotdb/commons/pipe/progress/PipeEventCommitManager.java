@@ -34,8 +34,11 @@ public class PipeEventCommitManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitManager.class);
 
-  // key: pipeName_regionId
-  private final Map<String, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
+  private final Map<CommitterKey, PipeEventCommitter> eventCommitterMap = new ConcurrentHashMap<>();
+
+  // the restartTimes in the committer key is always -1
+  private final Map<CommitterKey, Integer> eventCommitterRestartTimesMap =
+      new ConcurrentHashMap<>();
 
   private BiConsumer<String, Boolean> commitRateMarker;
 
@@ -48,23 +51,28 @@ public class PipeEventCommitManager {
       return;
     }
 
-    final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
+    final CommitterKey committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     if (eventCommitterMap.containsKey(committerKey)) {
       LOGGER.warn(
           "Pipe with same name is already registered on this region, overwriting: {}",
           committerKey);
     }
-    final PipeEventCommitter eventCommitter =
-        new PipeEventCommitter(pipeName, creationTime, regionId);
+
+    final PipeEventCommitter eventCommitter = new PipeEventCommitter(committerKey);
     eventCommitterMap.put(committerKey, eventCommitter);
-    PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey);
+
+    PipeEventCommitMetrics.getInstance().register(eventCommitter, committerKey.stringify());
     LOGGER.info("Pipe committer registered for pipe on region: {}", committerKey);
   }
 
   public void deregister(final String pipeName, final long creationTime, final int regionId) {
-    final String committerKey = generateCommitterKey(pipeName, creationTime, regionId);
+    final CommitterKey committerKey = generateCommitterKey(pipeName, creationTime, regionId);
     eventCommitterMap.remove(committerKey);
-    PipeEventCommitMetrics.getInstance().deregister(committerKey);
+    eventCommitterRestartTimesMap.compute(
+        generateCommitterRestartTimesKey(pipeName, creationTime, regionId),
+        (k, v) -> Objects.nonNull(v) ? v + 1 : 0);
+
+    PipeEventCommitMetrics.getInstance().deregister(committerKey.stringify());
     LOGGER.info("Pipe committer deregistered for pipe on region: {}", committerKey);
   }
 
@@ -78,7 +86,8 @@ public class PipeEventCommitManager {
       return;
     }
 
-    final String committerKey = generateCommitterKey(event.getPipeName(), creationTime, regionId);
+    final CommitterKey committerKey =
+        generateCommitterKey(event.getPipeName(), creationTime, regionId);
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       return;
@@ -86,7 +95,7 @@ public class PipeEventCommitManager {
     event.setCommitterKeyAndCommitId(committerKey, committer.generateCommitId());
   }
 
-  public void commit(final EnrichedEvent event, final String committerKey) {
+  public void commit(final EnrichedEvent event, final CommitterKey committerKey) {
     if (event == null
         || !event.needToCommit()
         || Objects.isNull(event.getPipeName())
@@ -112,7 +121,16 @@ public class PipeEventCommitManager {
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
 
     if (committer == null) {
-      if (LOGGER.isDebugEnabled()) {
+      final int currentRestartTimes =
+          eventCommitterRestartTimesMap.computeIfAbsent(
+              generateCommitterRestartTimesKey(committerKey), k -> 0);
+      if (committerKey.getRestartTimes() < currentRestartTimes) {
+        LOGGER.warn(
+            "stale PipeEventCommitter({}) when commit event: {}, current restart times {}",
+            committerKey,
+            event.coreReportMessage(),
+            currentRestartTimes);
+      } else if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
             "missing PipeEventCommitter({}) when commit event: {}, stack trace: {}",
             committerKey,
@@ -125,54 +143,45 @@ public class PipeEventCommitManager {
     committer.commit(event);
   }
 
-  private static String generateCommitterKey(
+  private CommitterKey generateCommitterKey(
       final String pipeName, final long creationTime, final int regionId) {
-    return String.format("%s_%s_%s", pipeName, regionId, creationTime);
+    return new CommitterKey(
+        pipeName,
+        creationTime,
+        regionId,
+        eventCommitterRestartTimesMap.computeIfAbsent(
+            generateCommitterRestartTimesKey(pipeName, creationTime, regionId), k -> 0));
   }
 
-  /**
-   * Parses the region ID from the given committer key.
-   *
-   * <p>The committer key is expected to be in the format of {@code
-   * <pipeName>_<regionId>_<creationTime>}, where {@code pipeName} may contain underscores. This
-   * method extracts the region ID, which is assumed to be an integer between the second-to-last and
-   * the last underscore in the string.
-   *
-   * @param committerKey the committer key to parse.
-   * @return the parsed region ID as an {@code int}, or {@code -1} if the committer key format is
-   *     invalid or if the region ID is not a valid integer.
-   */
-  public static int parseRegionIdFromCommitterKey(final String committerKey) {
-    try {
-      final int lastUnderscoreIndex = committerKey.lastIndexOf('_');
-      final int secondLastUnderscoreIndex = committerKey.lastIndexOf('_', lastUnderscoreIndex - 1);
+  private static CommitterKey generateCommitterRestartTimesKey(
+      final String pipeName, final long creationTime, final int regionId) {
+    return new CommitterKey(pipeName, creationTime, regionId);
+  }
 
-      if (lastUnderscoreIndex == -1 || secondLastUnderscoreIndex == -1) {
-        return -1; // invalid format
-      }
-
-      final String regionIdStr =
-          committerKey.substring(secondLastUnderscoreIndex + 1, lastUnderscoreIndex);
-      return Integer.parseInt(regionIdStr); // convert region id to integer
-    } catch (final NumberFormatException e) {
-      return -1; // return -1 if the region id is not a valid integer
-    }
+  private static CommitterKey generateCommitterRestartTimesKey(final CommitterKey committerKey) {
+    return new CommitterKey(
+        committerKey.getPipeName(), committerKey.getCreationTime(), committerKey.getRegionId());
   }
 
   public void setCommitRateMarker(final BiConsumer<String, Boolean> commitRateMarker) {
     this.commitRateMarker = commitRateMarker;
   }
 
-  private PipeEventCommitManager() {
-    // Do nothing but make it private.
-  }
-
-  public long getGivenConsensusPipeCommitId(String committerKey) {
+  public long getGivenConsensusPipeCommitId(
+      final String consensusPipeName, final long creationTime, final int consensusGroupId) {
+    final CommitterKey committerKey =
+        generateCommitterKey(consensusPipeName, creationTime, consensusGroupId);
     final PipeEventCommitter committer = eventCommitterMap.get(committerKey);
     if (committer == null) {
       return 0;
     }
     return committer.getCurrentCommitId();
+  }
+
+  //////////////////////////// singleton ////////////////////////////
+
+  private PipeEventCommitManager() {
+    // Do nothing but make it private.
   }
 
   private static class PipeEventCommitManagerHolder {

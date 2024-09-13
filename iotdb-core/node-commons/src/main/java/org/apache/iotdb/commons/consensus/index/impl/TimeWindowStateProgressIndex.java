@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -37,6 +38,12 @@ import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+/**
+ * NOTE: Currently, {@link TimeWindowStateProgressIndex} does not perform deep copies of the {@link
+ * ByteBuffer} during construction or updates, which may lead to unintended shared state or
+ * modifications. This behavior should be reviewed and adjusted as necessary to ensure the integrity
+ * and independence of the progress index instances.
+ */
 public class TimeWindowStateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -46,7 +53,8 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
 
   public TimeWindowStateProgressIndex(
       @Nonnull Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap) {
-    this.timeSeries2TimestampWindowBufferPairMap = timeSeries2TimestampWindowBufferPairMap;
+    this.timeSeries2TimestampWindowBufferPairMap =
+        new HashMap<>(timeSeries2TimestampWindowBufferPairMap);
   }
 
   private TimeWindowStateProgressIndex() {
@@ -54,7 +62,7 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   }
 
   public Map<String, Pair<Long, ByteBuffer>> getTimeSeries2TimestampWindowBufferPairMap() {
-    return timeSeries2TimestampWindowBufferPairMap;
+    return ImmutableMap.copyOf(timeSeries2TimestampWindowBufferPairMap);
   }
 
   public long getMinTime() {
@@ -184,6 +192,11 @@ public class TimeWindowStateProgressIndex extends ProgressIndex {
   @Override
   public int hashCode() {
     return Objects.hash(timeSeries2TimestampWindowBufferPairMap);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new TimeWindowStateProgressIndex(timeSeries2TimestampWindowBufferPairMap);
   }
 
   @Override

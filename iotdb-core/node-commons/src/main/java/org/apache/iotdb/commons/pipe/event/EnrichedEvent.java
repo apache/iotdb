@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -55,7 +56,7 @@ public abstract class EnrichedEvent implements Event {
   protected final long creationTime;
   protected final PipeTaskMeta pipeTaskMeta;
 
-  protected String committerKey;
+  protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
   protected int rebootTimes = 0;
@@ -371,7 +372,7 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventPathsOverlappedWithPattern();
 
-  public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
+  public void setCommitterKeyAndCommitId(final CommitterKey committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
   }
@@ -384,7 +385,7 @@ public abstract class EnrichedEvent implements Event {
     return rebootTimes;
   }
 
-  public String getCommitterKey() {
+  public CommitterKey getCommitterKey() {
     return committerKey;
   }
 
