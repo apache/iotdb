@@ -27,6 +27,7 @@ import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
@@ -950,7 +951,8 @@ public abstract class AlignedTVList extends TVList {
       int floatPrecision,
       List<TSEncoding> encodingList,
       List<TimeRange> timeColumnDeletion,
-      List<List<TimeRange>> deletionList) {
+      List<List<TimeRange>> deletionList,
+      boolean ignoreAllNullRows) {
     TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
     // Time column
     TimeColumnBuilder timeBuilder = builder.getTimeColumnBuilder();
@@ -985,8 +987,11 @@ public abstract class AlignedTVList extends TVList {
       sortedRowIndex = nextRowIndex - 1;
     }
 
+    boolean[] hasAnyNonNullValue = new boolean[validRowCount];
+    int columnCount = dataTypes.size();
+    int currentWriteRowIndex;
     // value columns
-    for (int columnIndex = 0; columnIndex < dataTypes.size(); columnIndex++) {
+    for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
       deleteCursor = new int[] {0};
       // Pair of Time and Index
       Pair<Long, Integer> lastValidPointIndexForTimeDupCheck = null;
@@ -994,6 +999,7 @@ public abstract class AlignedTVList extends TVList {
         lastValidPointIndexForTimeDupCheck = new Pair<>(Long.MIN_VALUE, null);
       }
       ColumnBuilder valueBuilder = builder.getColumnBuilder(columnIndex);
+      currentWriteRowIndex = 0;
       for (int sortedRowIndex = 0; sortedRowIndex < rowCount; sortedRowIndex++) {
         // skip empty row
         if (rowBitMap != null && rowBitMap.isMarked(getValueIndex(sortedRowIndex))) {
@@ -1029,8 +1035,10 @@ public abstract class AlignedTVList extends TVList {
                 Objects.isNull(deletionList) ? null : deletionList.get(columnIndex),
                 deleteCursor)) {
           valueBuilder.appendNull();
+          currentWriteRowIndex++;
           continue;
         }
+        hasAnyNonNullValue[currentWriteRowIndex++] = true;
         switch (dataTypes.get(columnIndex)) {
           case BOOLEAN:
             valueBuilder.writeBoolean(getBooleanByValueIndex(originRowIndex, columnIndex));
@@ -1068,6 +1076,49 @@ public abstract class AlignedTVList extends TVList {
       }
     }
     builder.declarePositions(validRowCount);
+    TsBlock tsBlock = builder.build();
+    if (!ignoreAllNullRows || !needRebuildTsBlock(hasAnyNonNullValue)) {
+      return tsBlock;
+    } else {
+      // if exist all null rows, at most have validRowCount - 1 valid rows
+      return reBuildTsBlock(hasAnyNonNullValue, validRowCount, columnCount, tsBlock);
+    }
+  }
+
+  // existing any all null row should rebuild the tsblock
+  private boolean needRebuildTsBlock(boolean[] hasAnyNonNullValue) {
+    for (boolean b : hasAnyNonNullValue) {
+      if (!b) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private TsBlock reBuildTsBlock(
+      boolean[] hasAnyNonNullValue,
+      int previousValidRowCount,
+      int columnCount,
+      TsBlock previousTsBlock) {
+    TsBlockBuilder builder = new TsBlockBuilder(previousValidRowCount - 1, dataTypes);
+    TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+    Column timeColumn = previousTsBlock.getTimeColumn();
+    for (int i = 0; i < previousValidRowCount; i++) {
+      if (hasAnyNonNullValue[i]) {
+        timeColumnBuilder.writeLong(timeColumn.getLong(i));
+        builder.declarePosition();
+      }
+    }
+
+    for (int columnIndex = 0; columnIndex < columnCount; columnIndex++) {
+      ColumnBuilder columnBuilder = builder.getColumnBuilder(columnIndex);
+      Column column = previousTsBlock.getColumn(columnIndex);
+      for (int i = 0; i < previousValidRowCount; i++) {
+        if (hasAnyNonNullValue[i]) {
+          columnBuilder.write(column, i);
+        }
+      }
+    }
     return builder.build();
   }
 

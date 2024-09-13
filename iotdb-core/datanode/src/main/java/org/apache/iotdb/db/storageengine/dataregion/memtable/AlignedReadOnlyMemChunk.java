@@ -70,7 +70,11 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     this.tsBlock =
         ((AlignedTVList) tvList)
             .buildTsBlock(
-                floatPrecision, encodingList, timeColumnDeletion, valueColumnsDeletionList);
+                floatPrecision,
+                encodingList,
+                timeColumnDeletion,
+                valueColumnsDeletionList,
+                context.isIgnoreAllNullRows());
     initAlignedChunkMetaFromTsBlock();
   }
 

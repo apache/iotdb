@@ -129,6 +129,8 @@ public class IoTDBInsertAlignedValuesTableIT {
         assertTrue(resultSet.getBoolean(1));
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(1));
+        assertTrue(resultSet.next());
+        assertTrue(resultSet.wasNull());
         assertFalse(resultSet.next());
       }
 
@@ -393,19 +395,27 @@ public class IoTDBInsertAlignedValuesTableIT {
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select time, s3 from dev10")) {
         while (resultSet.next()) {
-          assertEquals(99, resultSet.getInt(2));
+          if (rowCount == 99) {
+            assertEquals(99, resultSet.getInt(2));
+          } else {
+            assertTrue(resultSet.wasNull());
+          }
           rowCount++;
         }
-        assertEquals(1, rowCount);
+        assertEquals(100, rowCount);
       }
 
       try (ResultSet resultSet = statement.executeQuery("select time, s2 from dev10")) {
         rowCount = 0;
         while (resultSet.next()) {
-          assertEquals(rowCount, resultSet.getInt(2));
+          if (rowCount == 99) {
+            assertTrue(resultSet.wasNull());
+          } else {
+            assertEquals(rowCount, resultSet.getInt(2));
+          }
           rowCount++;
         }
-        assertEquals(99, rowCount);
+        assertEquals(100, rowCount);
       }
 
       try (ResultSet resultSet = statement.executeQuery("select time, s1 from dev10")) {
@@ -518,10 +528,14 @@ public class IoTDBInsertAlignedValuesTableIT {
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select s3 from dev13")) {
         while (resultSet.next()) {
-          assertEquals(rowCount + 49, resultSet.getInt(1));
+          if (rowCount >= 49) {
+            assertEquals(rowCount, resultSet.getInt(1));
+          } else {
+            assertTrue(resultSet.wasNull());
+          }
           rowCount++;
         }
-        assertEquals(51, rowCount);
+        assertEquals(100, rowCount);
       }
 
       try (ResultSet resultSet = statement.executeQuery("select s2 from dev13")) {

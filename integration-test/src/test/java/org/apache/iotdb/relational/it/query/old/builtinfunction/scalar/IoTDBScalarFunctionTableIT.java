@@ -389,7 +389,7 @@ public class IoTDBScalarFunctionTableIT {
     String[] expectedHeader = new String[] {"s10", "res1", "res2", "res3"};
     String[] expectedAns =
         new String[] {
-          "0xabcd,true,true,true,",
+          "0xabcd,true,true,true,", "null,null,null,null,", "null,null,null,null,",
         };
     tableResultSetEqualTest(
         "select s10, s10 > x'2d' as res1, s10 <> x'2d' as res2, s10 = X'abcd' as res3 from absTable",
@@ -404,7 +404,7 @@ public class IoTDBScalarFunctionTableIT {
     String[] expectedHeader = new String[] {"s7", "res1", "res2", "res3"};
     String[] expectedAns =
         new String[] {
-          "2021-10-01,true,true,true,",
+          "2021-10-01,true,true,true,", "null,null,null,null,", "null,null,null,null,",
         };
     // add it back while supporting Implicit conversion
     //    tableResultSetEqualTest(
