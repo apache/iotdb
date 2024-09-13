@@ -41,8 +41,7 @@ public class PipeTimePartitionProgressIndexKeeper {
             timePartitionId,
             (k, v) -> {
               if (v == null) {
-                // TODO: deep-copy
-                return new Pair<>(progressIndex, true);
+                return new Pair<>(progressIndex.deepCopy(), true);
               }
               return new Pair<>(
                   v.getLeft().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex), true);
