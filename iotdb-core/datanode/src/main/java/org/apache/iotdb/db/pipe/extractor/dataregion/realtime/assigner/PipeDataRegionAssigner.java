@@ -59,7 +59,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private int counter = 0;
 
-  private ProgressIndex maxProgressIndexForTsFileInsertionEvent = MinimumProgressIndex.INSTANCE;
+  private final ProgressIndex maxProgressIndexForTsFileInsertionEvent = MinimumProgressIndex.INSTANCE;
 
   public String getDataRegionId() {
     return dataRegionId;
