@@ -160,16 +160,16 @@ public class PipeDataRegionAssigner implements Closeable {
     if (PipeTimePartitionProgressIndexKeeper.getInstance()
         .isProgressIndexAfterOrEquals(
             dataRegionId, event.getTimePartitionId(), event.getProgressIndex())) {
-      event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent);
+      event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent.deepCopy());
       LOGGER.warn(
           "Data region {} bind {} to event {} because it was flushed prematurely.",
           dataRegionId,
           maxProgressIndexForTsFileInsertionEvent,
           event);
     } else {
-      maxProgressIndexForTsFileInsertionEvent =
-          maxProgressIndexForTsFileInsertionEvent.updateToMinimumEqualOrIsAfterProgressIndex(
-              event.getProgressIndex());
+      // self update
+      maxProgressIndexForTsFileInsertionEvent.updateToMinimumEqualOrIsAfterProgressIndex(
+          event.getProgressIndex());
     }
   }
 
