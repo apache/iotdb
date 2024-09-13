@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLev
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.RawDataAggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.FullOuterTimeJoinNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.AlignedLastQueryScanNode;
@@ -104,6 +105,38 @@ public class DataQueryLogicalPlannerTest {
 
     PlanNode actualPlan = parseSQLToPlanNode(sql);
     Assert.assertEquals(actualPlan, lastQueryNode);
+  }
+
+  @Test
+  public void testLastQuerySortWithLimit() {
+    String sql = "SELECT last * FROM root.sg.d1 ORDER BY time DESC LIMIT 1";
+
+    QueryId queryId = new QueryId("test");
+    // fake initResultNodeContext()
+    queryId.genPlanNodeId();
+
+    LastQueryScanNode d1s3 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3"), null);
+    LastQueryScanNode d1s1 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1"), null);
+    LastQueryScanNode d1s2 =
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2"), null);
+
+    List<PlanNode> sourceNodeList = Arrays.asList(d1s3, d1s1, d1s2);
+    LastQueryNode lastQueryNode =
+        new LastQueryNode(queryId.genPlanNodeId(), sourceNodeList, null, false);
+    SortNode sortNode =
+        new SortNode(
+            queryId.genPlanNodeId(),
+            lastQueryNode,
+            new OrderByParameter(Collections.singletonList(new SortItem("TIME", Ordering.DESC))));
+    LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), sortNode, 1);
+
+    PlanNode actualPlan = parseSQLToPlanNode(sql);
+    Assert.assertEquals(actualPlan, limitNode);
   }
 
   @Test

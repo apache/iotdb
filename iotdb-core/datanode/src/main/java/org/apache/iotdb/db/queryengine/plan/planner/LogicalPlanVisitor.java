@@ -145,15 +145,16 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(analysis, context);
 
     if (queryStatement.isLastQuery()) {
-      planBuilder =
-          planBuilder
-              .planLast(analysis, analysis.getTimeseriesOrderingForLastQuery())
-              .planOffset(queryStatement.getRowOffset())
-              .planLimit(queryStatement.getRowLimit());
+      planBuilder = planBuilder.planLast(analysis, analysis.getTimeseriesOrderingForLastQuery());
 
       if (queryStatement.hasOrderBy() && !queryStatement.onlyOrderByTimeseries()) {
         planBuilder = planBuilder.planOrderBy(queryStatement.getSortItemList());
       }
+
+      planBuilder =
+          planBuilder
+              .planOffset(queryStatement.getRowOffset())
+              .planLimit(queryStatement.getRowLimit());
       return planBuilder.getRoot();
     }
 
