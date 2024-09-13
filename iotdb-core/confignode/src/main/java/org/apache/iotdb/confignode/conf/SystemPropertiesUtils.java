@@ -147,12 +147,6 @@ public class SystemPropertiesUtils {
       conf.setDataRegionConsensusProtocolClass(dataRegionConsensusProtocolClass);
     }
 
-    String iotConsensusV2Mode = systemProperties.getProperty(IOT_CONSENSUS_V2_MODE, null);
-    if (!iotConsensusV2Mode.equals(conf.getIotConsensusV2Mode())) {
-      LOGGER.warn(format, IOT_CONSENSUS_V2_MODE, conf.getIotConsensusV2Mode(), iotConsensusV2Mode);
-      conf.setIotConsensusV2Mode(iotConsensusV2Mode);
-    }
-
     String schemaRegionConsensusProtocolClass =
         systemProperties.getProperty(SCHEMA_CONSENSUS_PROTOCOL, null);
     if (!schemaRegionConsensusProtocolClass.equals(conf.getSchemaRegionConsensusProtocolClass())) {
