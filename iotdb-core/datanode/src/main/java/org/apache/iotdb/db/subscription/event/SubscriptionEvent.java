@@ -222,7 +222,7 @@ public class SubscriptionEvent {
 
   private boolean canRecycle() {
     // Recycle events that may not be able to be committed, i.e., those that have been polled but
-    // not committed within a certain period of time.
+    // not committed within the invisible duration.
     return System.currentTimeMillis() - lastPolledTimestamp.get() > invisibleDuration.get();
   }
 
@@ -232,13 +232,6 @@ public class SubscriptionEvent {
 
     // reset lastPolledTimestamp makes this event eagerly pollable
     lastPolledTimestamp.set(INVALID_TIMESTAMP);
-  }
-
-  public void nack(final long invisibleDurationMs) {
-    // reset current response index
-    currentResponseIndex = 0;
-
-    changeInvisibleDuration(invisibleDurationMs);
   }
 
   public void changeInvisibleDuration(final long invisibleDurationMs) {

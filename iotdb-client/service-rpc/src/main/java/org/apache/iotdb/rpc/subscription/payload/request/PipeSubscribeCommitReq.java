@@ -41,10 +41,10 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * PipeSubscribeCommitReq#commitContexts}.
    *
    * <p>If {@code nack} is {@code false}, it indicates an acknowledgement (ack) meaning the
-   * consumption was successful.
+   * consumption of messages was successful.
    *
    * <p>If {@code nack} is {@code true}, it indicates a negative acknowledgement (nack) meaning the
-   * consumption was not successful.
+   * consumption of messages was not successful.
    */
   private transient boolean nack;
 
@@ -54,8 +54,8 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    *
    * <p>This field is effective only when {@link PipeSubscribeCommitReq#nack} is {@code true}.
    *
-   * <p>If is zero, the message will be immediately re-consumed. Otherwise, it sets the invisibility
-   * period for the message.
+   * <p>If is zero, the messages will be immediately re-consumed. Otherwise, it sets the invisible
+   * duration for the messages.
    */
   private transient long invisibleDurationMs;
 

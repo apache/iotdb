@@ -496,7 +496,9 @@ public abstract class SubscriptionPrefetchingQueue {
     if (invisibleDurationMs == 0L) {
       event.nack(); // now pollable
     } else {
-      event.nack(invisibleDurationMs);
+      event.changeInvisibleDuration(invisibleDurationMs);
+      // NOTE: the current response index should not be reset here, but rather perform nack by
+      // inactive recycle after the invisible duration
     }
 
     // no need to update inFlightEvents and prefetchingQueue
