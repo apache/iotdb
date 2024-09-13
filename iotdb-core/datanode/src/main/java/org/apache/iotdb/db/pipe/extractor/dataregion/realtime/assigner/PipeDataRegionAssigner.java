@@ -59,7 +59,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   private int counter = 0;
 
-  private final ProgressIndex maxProgressIndexForTsFileInsertionEvent = MinimumProgressIndex.INSTANCE;
+  private ProgressIndex maxProgressIndexForTsFileInsertionEvent = MinimumProgressIndex.INSTANCE;
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -167,9 +167,9 @@ public class PipeDataRegionAssigner implements Closeable {
           maxProgressIndexForTsFileInsertionEvent,
           event);
     } else {
-      // self update
-      maxProgressIndexForTsFileInsertionEvent.updateToMinimumEqualOrIsAfterProgressIndex(
-          event.getProgressIndex());
+      maxProgressIndexForTsFileInsertionEvent =
+          maxProgressIndexForTsFileInsertionEvent.updateToMinimumEqualOrIsAfterProgressIndex(
+              event.getProgressIndex());
     }
   }
 
