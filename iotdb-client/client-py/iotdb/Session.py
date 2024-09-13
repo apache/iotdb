@@ -58,6 +58,7 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
+from .tsfile.utils.DateUtils import parse_date_to_int
 from .utils.IoTDBConnectionException import IoTDBConnectionException
 
 logger = logging.getLogger("IoTDB")
@@ -118,7 +119,7 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
-        sql_dialect=None,
+        sql_dialect=SQL_DIALECT,
         database=None,
     ):
         if node_urls is None:
@@ -1518,6 +1519,36 @@ class Session(object):
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
                 values_tobe_packed.append(b"\x05")
+                values_tobe_packed.append(len(value_bytes))
+                values_tobe_packed.append(value_bytes)
+            # TIMESTAMP
+            elif data_type == 8:
+                format_str_list.append("cq")
+                values_tobe_packed.append(b"\x08")
+                values_tobe_packed.append(value)
+            # DATE
+            elif data_type == 9:
+                format_str_list.append("ci")
+                values_tobe_packed.append(b"\x09")
+                values_tobe_packed.append(parse_date_to_int(value))
+            # BLOB
+            elif data_type == 10:
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0a")
+                values_tobe_packed.append(len(value))
+                values_tobe_packed.append(value)
+            # STRING
+            elif data_type == 11:
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0b")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:

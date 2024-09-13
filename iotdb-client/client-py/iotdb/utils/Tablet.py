@@ -18,7 +18,9 @@
 
 import struct
 from enum import unique, IntEnum
-from typing import List
+from typing import List, Union
+
+from iotdb.tsfile.utils.DateUtils import parse_date_to_int
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType
 
@@ -59,7 +61,7 @@ class Tablet(object):
                      2,  id:1,  attr:1,   2.0
                      3,  id:2,  attr:2,   3.0
         Notice: The tablet will be sorted at the initialization by timestamps
-        :param insert_target_name: Str, DeviceId if using tree-view interfaces or TableName when using table-view interfaces.
+        :param insert_target_name: Str, DeviceId if using tree model or TableName when using table model.
         :param column_names: Str List, names of columns
         :param data_types: TSDataType List, specify value types for columns
         :param values: 2-D List, the values of each row should be the outer list element
@@ -126,13 +128,14 @@ class Tablet(object):
     def get_binary_values(self):
         format_str_list = [">"]
         values_tobe_packed = []
-        bitmaps = []
+        bitmaps: List[Union[BitMap, None]] = []
         has_none = False
         for i in range(self.__column_number):
             bitmap = None
             bitmaps.append(bitmap)
-            data_type_value = self.__data_types[i]
-            if data_type_value == 0:
+            data_type = self.__data_types[i]
+            # BOOLEAN
+            if data_type == 0:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("?")
                 for j in range(self.__row_number):
@@ -142,8 +145,8 @@ class Tablet(object):
                         values_tobe_packed.append(False)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
-            elif data_type_value == 1:
+            # INT32
+            elif data_type == 1:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("i")
                 for j in range(self.__row_number):
@@ -153,8 +156,8 @@ class Tablet(object):
                         values_tobe_packed.append(0)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
-            elif data_type_value == 2:
+            # INT64 or TIMESTAMP
+            elif data_type == 2 or data_type == 8:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("q")
                 for j in range(self.__row_number):
@@ -164,8 +167,8 @@ class Tablet(object):
                         values_tobe_packed.append(0)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
-            elif data_type_value == 3:
+            # FLOAT
+            elif data_type == 3:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("f")
                 for j in range(self.__row_number):
@@ -175,8 +178,8 @@ class Tablet(object):
                         values_tobe_packed.append(0)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
-            elif data_type_value == 4:
+            # DOUBLE
+            elif data_type == 4:
                 format_str_list.append(str(self.__row_number))
                 format_str_list.append("d")
                 for j in range(self.__row_number):
@@ -186,8 +189,8 @@ class Tablet(object):
                         values_tobe_packed.append(0)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
-            elif data_type_value == 5 or data_type_value == 11:
+            # TEXT, STRING, BLOB
+            elif data_type == 5 or data_type == 11 or data_type == 10:
                 for j in range(self.__row_number):
                     if self.__values[j][i] is not None:
                         if isinstance(self.__values[j][i], str):
@@ -208,7 +211,19 @@ class Tablet(object):
                         values_tobe_packed.append(value_bytes)
                         self.__mark_none_value(bitmaps, i, j)
                         has_none = True
-
+            # DATE
+            elif data_type == 9:
+                format_str_list.append(str(self.__row_number))
+                format_str_list.append("i")
+                for j in range(self.__row_number):
+                    if self.__values[j][i] is not None:
+                        values_tobe_packed.append(
+                            parse_date_to_int(self.__values[j][i])
+                        )
+                    else:
+                        values_tobe_packed.append(0)
+                        self.__mark_none_value(bitmaps, i, j)
+                        has_none = True
             else:
                 raise RuntimeError("Unsupported data type:" + str(self.__data_types[i]))
 
