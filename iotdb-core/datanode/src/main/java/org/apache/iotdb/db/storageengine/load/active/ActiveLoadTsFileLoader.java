@@ -206,12 +206,19 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
-        filePair.getLeft(),
-        filePair.getRight(),
-        status);
-    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    if (status.getMessage().contains("memory")) {
+      LOGGER.warn(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else {
+      LOGGER.warn(
+          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          filePair.getLeft(),
+          filePair.getRight(),
+          status);
+      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    }
   }
 
   private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {
@@ -223,19 +230,12 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
-    if (e.getMessage() != null && e.getMessage().contains("memory")) {
-      LOGGER.info(
-          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
-          filePair.getLeft(),
-          filePair.getRight());
-    } else {
-      LOGGER.warn(
-          "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
-          filePair.getLeft(),
-          filePair.getRight(),
-          e);
-      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
-    }
+    LOGGER.warn(
+        "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
+        filePair.getLeft(),
+        filePair.getRight(),
+        e);
+    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
   }
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {
