@@ -71,13 +71,7 @@ import org.apache.ratis.protocol.RaftGroupMemberId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
 import org.apache.ratis.protocol.SnapshotManagementRequest;
-import org.apache.ratis.protocol.exceptions.AlreadyExistsException;
-import org.apache.ratis.protocol.exceptions.GroupMismatchException;
-import org.apache.ratis.protocol.exceptions.NotLeaderException;
-import org.apache.ratis.protocol.exceptions.RaftException;
-import org.apache.ratis.protocol.exceptions.ReadException;
-import org.apache.ratis.protocol.exceptions.ReadIndexException;
-import org.apache.ratis.protocol.exceptions.ResourceUnavailableException;
+import org.apache.ratis.protocol.exceptions.*;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
 import org.apache.ratis.server.RaftServerConfigKeys;
@@ -381,6 +375,14 @@ class RatisConsensus implements IConsensus {
       }
     } catch (GroupMismatchException e) {
       throw new ConsensusGroupNotExistException(groupId);
+    } catch (IllegalStateException e) {
+      if (e.getMessage() != null && e.getMessage().contains("ServerNotReadyException")) {
+        ServerNotReadyException serverNotReadyException =
+            new ServerNotReadyException(e.getMessage());
+        throw new RatisReadUnavailableException(serverNotReadyException);
+      } else {
+        throw new RatisRequestFailedException(e);
+      }
     } catch (Exception e) {
       throw new RatisRequestFailedException(e);
     }
