@@ -331,7 +331,7 @@ public abstract class InsertNode extends SearchNode {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
+    this.progressIndex = progressIndex.deepCopy();
   }
 
   // endregion

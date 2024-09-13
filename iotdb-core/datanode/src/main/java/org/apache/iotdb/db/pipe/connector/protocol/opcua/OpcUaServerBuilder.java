@@ -49,7 +49,9 @@ import org.eclipse.milo.opcua.stack.server.security.DefaultServerCertificateVali
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -71,7 +73,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
  * Eclipse Milo.
  */
-public class OpcUaServerBuilder {
+public class OpcUaServerBuilder implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
@@ -82,6 +84,7 @@ public class OpcUaServerBuilder {
   private String password;
   private Path securityDir;
   private boolean enableAnonymousAccess;
+  private DefaultTrustListManager trustListManager;
 
   OpcUaServerBuilder() {
     tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
@@ -143,73 +146,73 @@ public class OpcUaServerBuilder {
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
     final OpcUaServerConfig serverConfig;
-    try (final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir)) {
-      LOGGER.info(
-          "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
-          pkiDir.getAbsolutePath());
 
-      final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
+    trustListManager = new DefaultTrustListManager(pkiDir);
 
-      final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
-          new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
-      httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
-      HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
-      final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
+    LOGGER.info(
+        "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
+        pkiDir.getAbsolutePath());
 
-      final DefaultServerCertificateValidator certificateValidator =
-          new DefaultServerCertificateValidator(trustListManager);
+    final KeyPair httpsKeyPair = SelfSignedCertificateGenerator.generateRsaKeyPair(2048);
 
-      final UsernameIdentityValidator identityValidator =
-          new UsernameIdentityValidator(
-              enableAnonymousAccess,
-              authChallenge ->
-                  authChallenge.getUsername().equals(user)
-                      && authChallenge.getPassword().equals(password));
+    final SelfSignedHttpsCertificateBuilder httpsCertificateBuilder =
+        new SelfSignedHttpsCertificateBuilder(httpsKeyPair);
+    httpsCertificateBuilder.setCommonName(HostnameUtil.getHostname());
+    HostnameUtil.getHostnames(WILD_CARD_ADDRESS).forEach(httpsCertificateBuilder::addDnsName);
+    final X509Certificate httpsCertificate = httpsCertificateBuilder.build();
 
-      final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
+    final DefaultServerCertificateValidator certificateValidator =
+        new DefaultServerCertificateValidator(trustListManager);
 
-      final X509Certificate certificate =
-          certificateManager.getCertificates().stream()
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new UaRuntimeException(
-                          StatusCodes.Bad_ConfigurationError, "No certificate found"));
+    final UsernameIdentityValidator identityValidator =
+        new UsernameIdentityValidator(
+            enableAnonymousAccess,
+            authChallenge ->
+                authChallenge.getUsername().equals(user)
+                    && authChallenge.getPassword().equals(password));
 
-      final String applicationUri =
-          CertificateUtil.getSanUri(certificate)
-              .orElseThrow(
-                  () ->
-                      new UaRuntimeException(
-                          StatusCodes.Bad_ConfigurationError,
-                          "Certificate is missing the application URI"));
+    final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
 
-      final Set<EndpointConfiguration> endpointConfigurations =
-          createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+    final X509Certificate certificate =
+        certificateManager.getCertificates().stream()
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new UaRuntimeException(
+                        StatusCodes.Bad_ConfigurationError, "No certificate found"));
 
-      serverConfig =
-          OpcUaServerConfig.builder()
-              .setApplicationUri(applicationUri)
-              .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
-              .setEndpoints(endpointConfigurations)
-              .setBuildInfo(
-                  new BuildInfo(
-                      "urn:apache:iotdb:opc-ua-server",
-                      "apache",
-                      "Apache IoTDB OPC UA server",
-                      OpcUaServer.SDK_VERSION,
-                      "",
-                      DateTime.now()))
-              .setCertificateManager(certificateManager)
-              .setTrustListManager(trustListManager)
-              .setCertificateValidator(certificateValidator)
-              .setHttpsKeyPair(httpsKeyPair)
-              .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
-              .setIdentityValidator(
-                  new CompositeValidator(identityValidator, x509IdentityValidator))
-              .setProductUri("urn:apache:iotdb:opc-ua-server")
-              .build();
-    }
+    final String applicationUri =
+        CertificateUtil.getSanUri(certificate)
+            .orElseThrow(
+                () ->
+                    new UaRuntimeException(
+                        StatusCodes.Bad_ConfigurationError,
+                        "Certificate is missing the application URI"));
+
+    final Set<EndpointConfiguration> endpointConfigurations =
+        createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
+
+    serverConfig =
+        OpcUaServerConfig.builder()
+            .setApplicationUri(applicationUri)
+            .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
+            .setEndpoints(endpointConfigurations)
+            .setBuildInfo(
+                new BuildInfo(
+                    "urn:apache:iotdb:opc-ua-server",
+                    "apache",
+                    "Apache IoTDB OPC UA server",
+                    OpcUaServer.SDK_VERSION,
+                    "",
+                    DateTime.now()))
+            .setCertificateManager(certificateManager)
+            .setTrustListManager(trustListManager)
+            .setCertificateValidator(certificateValidator)
+            .setHttpsKeyPair(httpsKeyPair)
+            .setHttpsCertificateChain(new X509Certificate[] {httpsCertificate})
+            .setIdentityValidator(new CompositeValidator(identityValidator, x509IdentityValidator))
+            .setProductUri("urn:apache:iotdb:opc-ua-server")
+            .build();
 
     // Setup server to enable event posting
     final OpcUaServer server = new OpcUaServer(serverConfig);
@@ -323,6 +326,17 @@ public class OpcUaServerBuilder {
           String.format(
               "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",
               tcpBindPort, httpsBindPort, attrName, thisAttr, attrName, thatAttr));
+    }
+  }
+
+  @Override
+  public void close() {
+    if (Objects.nonNull(trustListManager)) {
+      try {
+        trustListManager.close();
+      } catch (final IOException e) {
+        LOGGER.warn("Failed to close trustListManager, because {}.", e.getMessage());
+      }
     }
   }
 }

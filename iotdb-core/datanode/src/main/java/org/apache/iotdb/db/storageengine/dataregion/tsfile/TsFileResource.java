@@ -1138,7 +1138,7 @@ public class TsFileResource implements PersistentResource {
 
     maxProgressIndex =
         (maxProgressIndex == null
-            ? progressIndex
+            ? progressIndex.deepCopy()
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
   }
 
@@ -1147,7 +1147,7 @@ public class TsFileResource implements PersistentResource {
       return;
     }
 
-    maxProgressIndex = progressIndex;
+    maxProgressIndex = progressIndex.deepCopy();
   }
 
   @Override

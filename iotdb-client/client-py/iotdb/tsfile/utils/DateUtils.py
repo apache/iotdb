@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -17,34 +16,26 @@
 # under the License.
 #
 
-github:
-  description: "Apache IoTDB"
-  homepage: https://iotdb.apache.org/
-  labels:
-    - timeseries
-    - nosql
-    - database
-    - iot
-    - big-data
-    - java
-    - tsdb
-  features:
-    wiki: true
-    issues: true
-  enabled_merge_buttons:
-    # enable squash button:
-    squash:  true
-    # enable merge button:
-    merge:   false
-    # disable rebase button:
-    rebase:  true
-  collaborators:
-    - shuwenwei
-    - liyuheng55555
-    - CritasWang
-    - HxpSerein
-    - DanielWang2035
-    - Pengzna
-    - Wei-hao-Li
-    - Colinleeo
-    - Caideyipi
+from datetime import date
+
+
+class DateTimeParseException(Exception):
+    pass
+
+
+def parse_int_to_date(date_int: int) -> date:
+    try:
+        year = date_int // 10000
+        month = (date_int // 100) % 100
+        day = date_int % 100
+        return date(year, month, day)
+    except ValueError as e:
+        raise DateTimeParseException("Invalid date format.") from e
+
+
+def parse_date_to_int(local_date: date) -> int:
+    if local_date is None:
+        raise DateTimeParseException("Date expression is none or empty.")
+    if local_date.year < 1000:
+        raise DateTimeParseException("Year must be between 1000 and 9999.")
+    return local_date.year * 10000 + local_date.month * 100 + local_date.day
