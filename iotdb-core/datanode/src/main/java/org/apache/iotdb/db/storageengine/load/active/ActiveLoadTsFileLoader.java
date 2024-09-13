@@ -206,7 +206,7 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    if (status.getMessage().contains("memory")) {
+    if (status.getMessage() != null && status.getMessage().contains("memory")) {
       LOGGER.warn(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
@@ -230,11 +230,18 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
-    LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
-        filePair.getLeft(),
-        filePair.getRight(),
-        e);
+    if (e.getMessage() != null && e.getMessage().contains("memory")) {
+      LOGGER.warn(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else {
+      LOGGER.warn(
+          "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
+          filePair.getLeft(),
+          filePair.getRight(),
+          e);
+    }
     removeFileAndResourceAndModsToFailDir(filePair.getLeft());
   }
 
