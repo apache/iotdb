@@ -38,12 +38,21 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Repair the internal unsorted file by compaction and move it to unSequence space after compaction
  * whether the source TsFileResource is sequence or not.
  */
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
+
+  private static final AtomicLong lastAllocatedFileTimestamp = new AtomicLong(Long.MAX_VALUE / 2);
+
+  public static void recoverAllocatedFileTimestamp(long timestamp) {
+    if (timestamp > lastAllocatedFileTimestamp.get()) {
+      lastAllocatedFileTimestamp.set(timestamp);
+    }
+  }
 
   private final TsFileResource sourceFile;
   private final boolean rewriteFile;
@@ -136,6 +145,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     calculateSourceFilesAndTargetFiles();
     isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
     Arrays.fill(isHoldingWriteLock, false);
+    logFile =
+        new File(
+            filesView.targetFilesInLog.get(0).getTsFilePath()
+                + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
   }
 
   @Override
@@ -148,38 +161,28 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   }
 
   private File generateTargetFile() throws IOException {
-    String path = sourceFile.getTsFile().getParentFile().getPath();
-    // if source file is sequence, the sequence data path should be replaced to unsequence
-    if (sourceFile.isSeq()) {
-      int pos = path.lastIndexOf("sequence");
-      path = path.substring(0, pos) + "unsequence" + path.substring(pos + "sequence".length());
-    }
-
-    TsFileNameGenerator.TsFileName tsFileName =
+    String targetFileDir = sourceFile.getTsFile().getParentFile().getPath();
+    TsFileNameGenerator.TsFileName sourceFileName =
         TsFileNameGenerator.getTsFileName(sourceFile.getTsFile().getName());
-
-    File targetTsFile = null;
-    // set version = 0 to keep unsequence data cover sequence data
-    do {
-      String fileNameStr =
-          String.format(
-              "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
-              tsFileName.getTime(),
-              0,
-              tsFileName.getInnerCompactionCnt() + 1,
-              0);
-      targetTsFile = new File(path + File.separator + fileNameStr);
-      if (!targetTsFile.getParentFile().exists()) {
-        targetTsFile.getParentFile().mkdirs();
-      }
-      // avoid same file name
-      tsFileName.setTime(tsFileName.getTime() + 1);
-      // Use the log file method to determine whether there are other concurrent
-      // repair tasks using the file with the same name.
-      logFile =
-          new File(targetTsFile.getPath() + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
-    } while (!logFile.createNewFile());
-    return targetTsFile;
+    String fileNameStr =
+        String.format(
+            "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+            sourceFile.isSeq()
+                ? lastAllocatedFileTimestamp.incrementAndGet()
+                : sourceFileName.getTime(),
+            sourceFile.isSeq() ? 0 : sourceFileName.getVersion(),
+            sourceFileName.getInnerCompactionCnt() + 1,
+            sourceFileName.getCrossCompactionCnt());
+    // if source file is sequence, the sequence data targetFileDir should be replaced to unsequence
+    if (sourceFile.isSeq()) {
+      int pos = targetFileDir.lastIndexOf("sequence");
+      targetFileDir =
+          targetFileDir.substring(0, pos)
+              + "unsequence"
+              + targetFileDir.substring(pos + "sequence".length());
+    }
+    File targetFile = new File(targetFileDir + File.separator + fileNameStr);
+    return targetFile;
   }
 
   @Override
