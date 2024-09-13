@@ -133,6 +133,10 @@ public enum TSStatusCode {
 
   OPERATOR_NOT_FOUND(716),
 
+  // Arithmetic
+  NUMERIC_VALUE_OUT_OF_RANGE(750),
+  DIVISION_BY_ZERO(751),
+
   // Authentication
   INIT_AUTH_ERROR(800),
   WRONG_LOGIN_PASSWORD(801),

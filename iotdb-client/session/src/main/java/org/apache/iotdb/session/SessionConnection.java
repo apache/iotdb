@@ -463,7 +463,8 @@ public class SessionConnection {
         session.fetchSize,
         zoneId,
         timeFactor,
-        execResp.isSetTableModel() && execResp.isTableModel());
+        execResp.isSetTableModel() && execResp.isTableModel(),
+        execResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -565,7 +566,8 @@ public class SessionConnection {
         execResp.moreData,
         zoneId,
         timeFactor,
-        execResp.isSetTableModel() && execResp.isTableModel());
+        execResp.isSetTableModel() && execResp.isTableModel(),
+        execResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -614,7 +616,8 @@ public class SessionConnection {
             tsExecuteStatementResp.moreData,
             zoneId,
             timeFactor,
-            tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel()),
+            tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
+            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList()),
         redirectedEndPoint);
   }
 
@@ -658,7 +661,8 @@ public class SessionConnection {
         tsExecuteStatementResp.moreData,
         zoneId,
         timeFactor,
-        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel());
+        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -742,7 +746,8 @@ public class SessionConnection {
         tsExecuteStatementResp.moreData,
         zoneId,
         timeFactor,
-        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel());
+        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(

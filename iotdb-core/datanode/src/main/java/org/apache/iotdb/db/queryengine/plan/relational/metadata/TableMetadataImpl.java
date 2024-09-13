@@ -23,13 +23,17 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.DivisionResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
@@ -59,6 +63,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
+import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
@@ -104,25 +109,58 @@ public class TableMetadataImpl implements Metadata {
 
     switch (operatorType) {
       case ADD:
-      case SUBTRACT:
-      case MULTIPLY:
-      case DIVIDE:
-      case MODULUS:
-        if (!isTwoNumericType(argumentTypes)) {
+        if (!isTwoTypeCalculable(argumentTypes)
+            || !AdditionResolver.checkConditions(argumentTypes).isPresent()) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have two numeric operands."));
         }
-        return DOUBLE;
+        return AdditionResolver.checkConditions(argumentTypes).get();
+      case SUBTRACT:
+        if (!isTwoTypeCalculable(argumentTypes)
+            || !SubtractionResolver.checkConditions(argumentTypes).isPresent()) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Should have two numeric operands."));
+        }
+        return SubtractionResolver.checkConditions(argumentTypes).get();
+      case MULTIPLY:
+        if (!isTwoTypeCalculable(argumentTypes)
+            || !MultiplicationResolver.checkConditions(argumentTypes).isPresent()) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Should have two numeric operands."));
+        }
+        return MultiplicationResolver.checkConditions(argumentTypes).get();
+      case DIVIDE:
+        if (!isTwoTypeCalculable(argumentTypes)
+            || !DivisionResolver.checkConditions(argumentTypes).isPresent()) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Should have two numeric operands."));
+        }
+        return DivisionResolver.checkConditions(argumentTypes).get();
+      case MODULUS:
+        if (!isTwoTypeCalculable(argumentTypes)
+            || !ModulusResolver.checkConditions(argumentTypes).isPresent()) {
+          throw new OperatorNotFoundException(
+              operatorType,
+              argumentTypes,
+              new IllegalArgumentException("Should have two numeric operands."));
+        }
+        return ModulusResolver.checkConditions(argumentTypes).get();
       case NEGATION:
-        if (!isOneNumericType(argumentTypes)) {
+        if (!isOneNumericType(argumentTypes) && !isTimestampType(argumentTypes.get(0))) {
           throw new OperatorNotFoundException(
               operatorType,
               argumentTypes,
               new IllegalArgumentException("Should have one numeric operands."));
         }
-        return DOUBLE;
+        return argumentTypes.get(0);
       case EQUAL:
       case LESS_THAN:
       case LESS_THAN_OR_EQUAL:
@@ -575,7 +613,7 @@ public class TableMetadataImpl implements Metadata {
   @Override
   public boolean isAggregationFunction(
       SessionInfo session, String functionName, AccessControl accessControl) {
-    return BuiltinAggregationFunction.getNativeFunctionNames()
+    return TableBuiltinAggregationFunction.getNativeFunctionNames()
         .contains(functionName.toLowerCase(Locale.ENGLISH));
   }
 
@@ -657,6 +695,11 @@ public class TableMetadataImpl implements Metadata {
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return partitionFetcher.getDataPartitionWithUnclosedTimeRange(
         Collections.singletonMap(database, sgNameToQueryParamsMap));
+  }
+
+  @Override
+  public boolean canUseStatistics(String functionName) {
+    return TableBuiltinAggregationFunction.canUseStatistics(functionName);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
@@ -744,5 +787,23 @@ public class TableMetadataImpl implements Metadata {
 
     // Boolean type and Binary Type can not be compared with other types
     return (isNumericType(left) && isNumericType(right)) || (isCharType(left) && isCharType(right));
+  }
+
+  public static boolean isArithmeticType(Type type) {
+    return INT32.equals(type)
+        || INT64.equals(type)
+        || FLOAT.equals(type)
+        || DOUBLE.equals(type)
+        || DATE.equals(type)
+        || TIMESTAMP.equals(type);
+  }
+
+  public static boolean isTwoTypeCalculable(List<? extends Type> argumentTypes) {
+    if (argumentTypes.size() != 2) {
+      return false;
+    }
+    Type left = argumentTypes.get(0);
+    Type right = argumentTypes.get(1);
+    return isArithmeticType(left) && isArithmeticType(right);
   }
 }

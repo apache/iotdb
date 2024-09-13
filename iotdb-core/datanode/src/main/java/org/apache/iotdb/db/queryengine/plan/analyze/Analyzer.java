@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.ANALYZER;
+import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.TREE_TYPE;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -51,7 +52,8 @@ public class Analyzer {
     }
 
     if (statement.isQuery()) {
-      QueryPlanCostMetricSet.getInstance().recordPlanCost(ANALYZER, System.nanoTime() - startTime);
+      QueryPlanCostMetricSet.getInstance()
+          .recordPlanCost(TREE_TYPE, ANALYZER, System.nanoTime() - startTime);
     }
     return analysis;
   }

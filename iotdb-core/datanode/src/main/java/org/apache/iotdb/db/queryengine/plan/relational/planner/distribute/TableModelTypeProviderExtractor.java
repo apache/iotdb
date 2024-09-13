@@ -24,8 +24,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Tabl
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -81,6 +83,17 @@ public class TableModelTypeProviderExtractor {
         beTypeProvider.putTableModelType(symbol, feTypeProvider.getTableModelType(symbol));
       }
       node.getChildren().forEach(child -> child.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitAggregation(AggregationNode node, Void context) {
+      node.getChild().accept(this, context);
+      node.getAggregations()
+          .forEach(
+              (k, v) ->
+                  beTypeProvider.putTableModelType(
+                      k, v.getResolvedFunction().getSignature().getReturnType()));
       return null;
     }
 
@@ -191,6 +204,13 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitExchange(ExchangeNode node, Void context) {
       node.getChildren().forEach(c -> c.accept(this, context));
+      return null;
+    }
+
+    @Override
+    public Void visitJoin(JoinNode node, Void context) {
+      node.getLeftChild().accept(this, context);
+      node.getRightChild().accept(this, context);
       return null;
     }
 

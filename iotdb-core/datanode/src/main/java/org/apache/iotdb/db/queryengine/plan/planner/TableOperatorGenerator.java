@@ -68,8 +68,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -738,6 +741,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitJoin(JoinNode node, LocalExecutionPlanContext context) {
+    throw new IllegalStateException("JoinOperator is not implemented currently.");
+  }
+
+  @Override
   public Operator visitCountMerge(
       final CountSchemaMergeNode node, final LocalExecutionPlanContext context) {
     final OperatorContext operatorContext =
@@ -844,5 +852,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     tableName,
                     columnHeaderList)
                 : null));
+  }
+
+  @Override
+  public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
+    throw new UnsupportedOperationException("Agg-BE not supported");
+  }
+
+  @Override
+  public Operator visitAggregationTableScan(
+      AggregationTableScanNode node, LocalExecutionPlanContext context) {
+    throw new UnsupportedOperationException("Agg-BE not supported");
   }
 }

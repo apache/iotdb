@@ -76,6 +76,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
@@ -398,6 +399,10 @@ public class DataRegion implements IDataRegionForQuery {
     return asyncTsFileResourceRecoverTaskList;
   }
 
+  public void clearAsyncTsFileResourceRecoverTaskList() {
+    asyncTsFileResourceRecoverTaskList.clear();
+  }
+
   /** this class is used to store recovering context. */
   private class DataRegionRecoveryContext {
 
@@ -546,12 +551,24 @@ public class DataRegion implements IDataRegionForQuery {
                   latestPartitionId,
                   ((TreeMap<Long, List<TsFileResource>>) partitionTmpUnseqTsFiles).lastKey());
         }
+        File logFile = SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, "FileTimeIndexCache_0");
+        Map<TsFileID, FileTimeIndex> fileTimeIndexMap = new HashMap<>();
+        if (logFile.exists()) {
+          try {
+            FileTimeIndexCacheReader logReader =
+                new FileTimeIndexCacheReader(logFile, dataRegionId);
+            logReader.read(fileTimeIndexMap);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        }
         for (Entry<Long, List<TsFileResource>> partitionFiles : partitionTmpSeqTsFiles.entrySet()) {
           Callable<Void> asyncRecoverTask =
               recoverFilesInPartition(
                   partitionFiles.getKey(),
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
+                  fileTimeIndexMap,
                   true);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
@@ -564,6 +581,7 @@ public class DataRegion implements IDataRegionForQuery {
                   partitionFiles.getKey(),
                   dataRegionRecoveryContext,
                   partitionFiles.getValue(),
+                  fileTimeIndexMap,
                   false);
           if (asyncRecoverTask != null) {
             asyncTsFileResourceRecoverTaskList.add(asyncRecoverTask);
@@ -672,6 +690,8 @@ public class DataRegion implements IDataRegionForQuery {
         && !config.isEnableCrossSpaceCompaction()) {
       return;
     }
+    RepairUnsortedFileCompactionTask.recoverAllocatedFileTimestamp(
+        tsFileManager.getMaxFileTimestampOfUnSequenceFile());
     CompactionScheduleTaskManager.getInstance().registerDataRegion(this);
   }
 
@@ -870,45 +890,29 @@ public class DataRegion implements IDataRegionForQuery {
       long partitionId,
       DataRegionRecoveryContext context,
       List<TsFileResource> resourceList,
+      Map<TsFileID, FileTimeIndex> fileTimeIndexMap,
       boolean isSeq) {
-
-    File partitionSysDir =
-        SystemFileFactory.INSTANCE.getFile(dataRegionSysDir, String.valueOf(partitionId));
-    File logFile = SystemFileFactory.INSTANCE.getFile(partitionSysDir, "FileTimeIndexCache_0");
-    if (logFile.exists()) {
-      Map<TsFileID, FileTimeIndex> fileTimeIndexMap;
-      try {
-        FileTimeIndexCacheReader logReader =
-            new FileTimeIndexCacheReader(logFile, dataRegionId, partitionId);
-        fileTimeIndexMap = logReader.read();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+    List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
+    List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
+    Callable<Void> asyncRecoverTask = null;
+    for (TsFileResource tsFileResource : resourceList) {
+      if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
+        tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
+        tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+        tsFileManager.add(tsFileResource, isSeq);
+        resourceListForAsyncRecover.add(tsFileResource);
+      } else {
+        resourceListForSyncRecover.add(tsFileResource);
       }
-      List<TsFileResource> resourceListForAsyncRecover = new ArrayList<>();
-      List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
-      Callable<Void> asyncRecoverTask = null;
-      for (TsFileResource tsFileResource : resourceList) {
-        if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
-          tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
-          tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-          tsFileManager.add(tsFileResource, isSeq);
-          resourceListForAsyncRecover.add(tsFileResource);
-        } else {
-          resourceListForSyncRecover.add(tsFileResource);
-        }
-      }
-      if (!resourceListForAsyncRecover.isEmpty()) {
-        asyncRecoverTask =
-            asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover, isSeq);
-      }
-      if (!resourceListForSyncRecover.isEmpty()) {
-        syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);
-      }
-      return asyncRecoverTask;
-    } else {
-      syncRecoverFilesInPartition(partitionId, context, resourceList, isSeq);
-      return null;
     }
+    if (!resourceListForAsyncRecover.isEmpty()) {
+      asyncRecoverTask =
+          asyncRecoverFilesInPartition(partitionId, context, resourceListForAsyncRecover, isSeq);
+    }
+    if (!resourceListForSyncRecover.isEmpty()) {
+      syncRecoverFilesInPartition(partitionId, context, resourceListForSyncRecover, isSeq);
+    }
+    return asyncRecoverTask;
   }
 
   private Callable<Void> asyncRecoverFilesInPartition(
@@ -1017,7 +1021,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void insert(InsertRowNode insertRowNode) throws WriteProcessException {
     // reject insertions that are out of ttl
     long deviceTTL =
-        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getDevicePath().getNodes());
+        DataNodeTTLCache.getInstance().getTTL(insertRowNode.getTargetPath().getNodes());
     if (!CommonUtils.isAlive(insertRowNode.getTime(), deviceTTL)) {
       throw new OutOfTTLException(
           insertRowNode.getTime(), (CommonDateTimeUtils.currentTime() - deviceTTL));
@@ -1364,7 +1368,7 @@ public class DataRegion implements IDataRegionForQuery {
     DataNodeSchemaCache.getInstance()
         .updateLastCache(
             getDatabaseName(),
-            node.getDevicePath(),
+            node.getTargetPath(),
             rawMeasurements,
             node.getMeasurementSchemas(),
             node.isAligned(),
@@ -1409,7 +1413,7 @@ public class DataRegion implements IDataRegionForQuery {
     DataNodeSchemaCache.getInstance()
         .updateLastCache(
             getDatabaseName(),
-            node.getDevicePath(),
+            node.getTargetPath(),
             rawMeasurements,
             node.getMeasurementSchemas(),
             node.isAligned(),
@@ -1504,7 +1508,7 @@ public class DataRegion implements IDataRegionForQuery {
         DataNodeSchemaCache.getInstance()
             .updateLastCacheWithoutLock(
                 getDatabaseName(),
-                node.getDevicePath(),
+                node.getTargetPath(),
                 rawMeasurements,
                 node.getMeasurementSchemas(),
                 node.isAligned(),
@@ -3484,7 +3488,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long deviceTTL =
           DataNodeTTLCache.getInstance()
-              .getTTL(insertRowsOfOneDeviceNode.getDevicePath().getNodes());
+              .getTTL(insertRowsOfOneDeviceNode.getTargetPath().getNodes());
       long[] costsForMetrics = new long[4];
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
@@ -3919,9 +3923,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void compactFileTimeIndexCache() {
-    for (long timePartition : partitionMaxFileVersions.keySet()) {
-      tsFileManager.compactFileTimeIndexCache(timePartition);
-    }
+    tsFileManager.compactFileTimeIndexCache();
   }
 
   @TestOnly

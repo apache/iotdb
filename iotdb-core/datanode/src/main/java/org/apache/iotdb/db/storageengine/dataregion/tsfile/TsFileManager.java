@@ -392,18 +392,33 @@ public class TsFileManager {
         && unsequenceFiles.higherKey(timePartitionId) == null);
   }
 
-  public void compactFileTimeIndexCache(long timePartition) {
+  public void compactFileTimeIndexCache() {
+    int currentResourceSize = size(true) + size(false);
     readLock();
     try {
       FileTimeIndexCacheRecorder.getInstance()
           .compactFileTimeIndexIfNeeded(
               storageGroupName,
               Integer.parseInt(dataRegionId),
-              timePartition,
-              sequenceFiles.get(timePartition),
-              unsequenceFiles.get(timePartition));
+              currentResourceSize,
+              sequenceFiles,
+              unsequenceFiles);
     } finally {
       readUnlock();
     }
+  }
+
+  public long getMaxFileTimestampOfUnSequenceFile() {
+    long maxFileTimestamp = -1;
+    resourceListLock.readLock().lock();
+    try {
+      for (TsFileResourceList resourceList : unsequenceFiles.values()) {
+        TsFileResource lastResource = resourceList.get(resourceList.size() - 1);
+        maxFileTimestamp = Math.max(maxFileTimestamp, lastResource.getTimePartition());
+      }
+    } finally {
+      resourceListLock.readLock().unlock();
+    }
+    return maxFileTimestamp;
   }
 }

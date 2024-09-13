@@ -475,7 +475,7 @@ public class SourceHandle implements ISourceHandle {
           Thread.currentThread().interrupt();
           throw new IllegalStateException(e);
         } catch (ExecutionException e) {
-          throw new IllegalStateException(e);
+          throw new IllegalStateException(e.getCause() == null ? e : e.getCause());
         }
       }
       throw new IllegalStateException("Source handle is aborted.");

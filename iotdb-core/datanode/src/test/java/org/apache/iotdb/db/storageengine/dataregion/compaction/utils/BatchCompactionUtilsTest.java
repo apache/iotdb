@@ -61,9 +61,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class BatchCompactionUtilsTest extends AbstractCompactionTest {
 
@@ -88,11 +86,11 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT32));
       }
     }
-    Set<String> selectedColumns = new HashSet<>();
-    List<IMeasurementSchema> iMeasurementSchemas =
-        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-            measurementSchemas, selectedColumns, 10);
-    Assert.assertEquals(10, iMeasurementSchemas.size());
+    AlignedSeriesBatchCompactionUtils.BatchColumnSelection batchColumnSelection =
+        new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(measurementSchemas, 10);
+    Assert.assertTrue(batchColumnSelection.hasNext());
+    batchColumnSelection.next();
+    Assert.assertEquals(10, batchColumnSelection.getCurrentSelectedColumnSchemaList().size());
   }
 
   @Test

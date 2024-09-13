@@ -213,9 +213,6 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_last_cache", Boolean.toString(config.isLastCacheEnable()))));
-    if (config.getSchemaEngineMode().equals("Rocksdb_based")) {
-      config.setLastCacheEnable(false);
-    }
 
     config.setTagAttributeTotalSize(
         Integer.parseInt(
@@ -275,6 +272,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+    config.setPipeDataStructureTabletSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_data_structure_tablet_size_in_bytes",
+                String.valueOf(config.getPipeDataStructureTabletSizeInBytes()))));
     config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
         Double.parseDouble(
             properties.getProperty(

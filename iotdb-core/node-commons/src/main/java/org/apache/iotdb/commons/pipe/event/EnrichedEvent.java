@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -54,7 +55,7 @@ public abstract class EnrichedEvent implements Event {
   protected final long creationTime;
   protected final PipeTaskMeta pipeTaskMeta;
 
-  protected String committerKey;
+  protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
   protected int rebootTimes = 0;
@@ -103,8 +104,7 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
-   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be incremented
-   *     regardless of the circumstances
+   *     {@code false} otherwise
    */
   public synchronized boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
@@ -156,8 +156,7 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
-   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be decremented
-   *     regardless of the circumstances
+   *     {@code false} otherwise
    */
   public synchronized boolean decreaseReferenceCount(
       final String holderMessage, final boolean shouldReport) {
@@ -222,10 +221,6 @@ public abstract class EnrichedEvent implements Event {
    */
   public synchronized boolean clearReferenceCount(final String holderMessage) {
     if (isReleased.get()) {
-      LOGGER.warn(
-          "clear reference count to event that has already been released: {}, stack trace: {}",
-          coreReportMessage(),
-          Thread.currentThread().getStackTrace());
       return false;
     }
 
@@ -369,7 +364,7 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventPathsOverlappedWithPattern();
 
-  public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
+  public void setCommitterKeyAndCommitId(final CommitterKey committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
   }
@@ -382,7 +377,7 @@ public abstract class EnrichedEvent implements Event {
     return rebootTimes;
   }
 
-  public String getCommitterKey() {
+  public CommitterKey getCommitterKey() {
     return committerKey;
   }
 

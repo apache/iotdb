@@ -33,6 +33,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
@@ -126,7 +127,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     BitMap[] newBitMaps = this.bitMaps == null ? null : initBitmaps(dataTypes.length, count);
     return new RelationalInsertTabletNode(
         getPlanNodeId(),
-        devicePath,
+        targetPath,
         isAligned,
         measurements,
         dataTypes,
@@ -252,6 +253,14 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   public String getTableName() {
-    return devicePath.getFullPath();
+    return targetPath.getFullPath();
+  }
+
+  protected PartialPath readTargetPath(ByteBuffer buffer) {
+    return new PartialPath(ReadWriteIOUtils.readString(buffer), false);
+  }
+
+  protected PartialPath readTargetPath(DataInputStream stream) throws IOException {
+    return new PartialPath(ReadWriteIOUtils.readString(stream), false);
   }
 }

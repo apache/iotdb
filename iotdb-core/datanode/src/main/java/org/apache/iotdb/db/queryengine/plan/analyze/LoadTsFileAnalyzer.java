@@ -101,6 +101,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class LoadTsFileAnalyzer implements AutoCloseable {
@@ -110,12 +111,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
   private static final int BATCH_FLUSH_TIME_SERIES_NUMBER;
+  private static final int MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX;
   private static final long ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
   private static final long FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
 
   static {
     final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
     BATCH_FLUSH_TIME_SERIES_NUMBER = CONFIG.getLoadTsFileAnalyzeSchemaBatchFlushTimeSeriesNumber();
+    MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX =
+        CONFIG.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex();
     ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES =
         CONFIG.getLoadTsFileAnalyzeSchemaMemorySizeInBytes() <= 0
             ? ((long) BATCH_FLUSH_TIME_SERIES_NUMBER) << 10
@@ -212,12 +216,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       LOGGER.warn(exceptionMessage, e);
       analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(
-          RpcUtils.getStatus(
-              TSStatusCode.LOAD_FILE_ERROR,
-              String.format(
-                  "Auto create or verify schema error when executing statement %s.",
-                  loadTsFileStatement)));
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
     }
 
@@ -250,7 +249,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         tsFileResource.deserialize();
       }
 
-      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource);
+      schemaAutoCreatorAndVerifier.setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
       // check if the tsfile is empty
       if (!timeseriesMetadataIterator.hasNext()) {
@@ -317,8 +316,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       this.schemaCache = new LoadTsFileAnalyzeSchemaCache();
     }
 
-    public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
-      schemaCache.setCurrentModificationsAndTimeIndex(resource);
+    public void setCurrentModificationsAndTimeIndex(
+        TsFileResource resource, TsFileSequenceReader reader) throws IOException {
+      schemaCache.setCurrentModificationsAndTimeIndex(resource, reader);
     }
 
     public void autoCreateAndVerify(
@@ -455,8 +455,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         LOGGER.warn("Auto create or verify schema error.", e);
         throw new SemanticException(
             String.format(
-                "Auto create or verify schema error when executing statement %s.",
-                loadTsFileStatement));
+                "Auto create or verify schema error when executing statement %s.  Detail: %s.",
+                loadTsFileStatement, e.getMessage()));
       }
     }
 
@@ -790,22 +790,41 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
-    public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
+    public void setCurrentModificationsAndTimeIndex(
+        TsFileResource resource, TsFileSequenceReader reader) throws IOException {
       clearModificationsAndTimeIndex();
 
       currentModifications = resource.getModFile().getModifications();
       for (final Modification modification : currentModifications) {
         currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
       }
+
+      // If there are too many modifications, a larger memory block is needed to avoid frequent
+      // flush.
+      long newMemorySize =
+          currentModificationsMemoryUsageSizeInBytes > ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES / 2
+              ? currentModificationsMemoryUsageSizeInBytes + ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES
+              : ANALYZE_SCHEMA_MEMORY_SIZE_IN_BYTES;
+      block.forceResize(newMemorySize);
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 
-      if (resource.resourceFileExists()) {
-        currentTimeIndex = resource.getTimeIndex();
-        if (currentTimeIndex instanceof FileTimeIndex) {
-          currentTimeIndex = resource.buildDeviceTimeIndex();
+      // No need to build device time index if there are no modifications
+      if (currentModifications.size() > 0 && resource.resourceFileExists()) {
+        final AtomicInteger deviceCount = new AtomicInteger();
+        reader
+            .getAllDevicesIteratorWithIsAligned()
+            .forEachRemaining(o -> deviceCount.getAndIncrement());
+
+        // Use device time index only if the device count is less than the threshold, avoiding too
+        // much memory usage
+        if (deviceCount.get() < MAX_DEVICE_COUNT_TO_USE_DEVICE_TIME_INDEX) {
+          currentTimeIndex = resource.getTimeIndex();
+          if (currentTimeIndex instanceof FileTimeIndex) {
+            currentTimeIndex = resource.buildDeviceTimeIndex();
+          }
+          currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
+          block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
         }
-        currentTimeIndexMemoryUsageSizeInBytes = currentTimeIndex.calculateRamSize();
-        block.addMemoryUsage(currentTimeIndexMemoryUsageSizeInBytes);
       }
     }
 

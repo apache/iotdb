@@ -34,7 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
@@ -72,6 +75,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMeta
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class TestMatadata implements Metadata {
 
@@ -88,7 +92,7 @@ public class TestMatadata implements Metadata {
   private static final String S1 = "s1";
   private static final String S2 = "s2";
   private static final String S3 = "s3";
-  private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, INT64);
+  private static final ColumnMetadata TIME_CM = new ColumnMetadata(TIME, TIMESTAMP);
   private static final ColumnMetadata TAG1_CM = new ColumnMetadata(TAG1, StringType.STRING);
   private static final ColumnMetadata TAG2_CM = new ColumnMetadata(TAG2, StringType.STRING);
   private static final ColumnMetadata TAG3_CM = new ColumnMetadata(TAG3, StringType.STRING);
@@ -208,20 +212,62 @@ public class TestMatadata implements Metadata {
       List<Expression> expressionList,
       List<String> attributeColumns,
       MPPQueryContext context) {
-    if (expressionList.size() == 2
-        && expressionList.get(0).toString().equals("(\"tag1\" = 'beijing')")
-        && expressionList.get(1).toString().equals("(\"tag2\" = 'A1')")) {
-      return Collections.singletonList(
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES));
-    } else {
-      return Arrays.asList(
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
-          new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+
+    if (expressionList.size() == 2) {
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "beijing")
+              && compareEqualsMatch(expressionList.get(1), "tag2", "A1")
+          || compareEqualsMatch(expressionList.get(1), "tag1", "beijing")
+              && compareEqualsMatch(expressionList.get(0), "tag2", "A1")) {
+        return Collections.singletonList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")
+              && compareEqualsMatch(expressionList.get(1), "tag2", "B3")
+          || compareEqualsMatch(expressionList.get(1), "tag1", "shanghai")
+              && compareEqualsMatch(expressionList.get(0), "tag2", "B3")) {
+        return Collections.singletonList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_1_ATTRIBUTES));
+      }
+
+    } else if (expressionList.size() == 1) {
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shanghai")) {
+        return Arrays.asList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES));
+      }
+      if (compareEqualsMatch(expressionList.get(0), "tag1", "shenzhen")) {
+        return Arrays.asList(
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
+            new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES));
+      }
     }
+
+    return Arrays.asList(
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_4.split("\\.")), DEVICE_4_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_1.split("\\.")), DEVICE_1_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_6.split("\\.")), DEVICE_6_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_5.split("\\.")), DEVICE_5_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_3.split("\\.")), DEVICE_3_ATTRIBUTES),
+        new DeviceEntry(new StringArrayDeviceID(DEVICE_2.split("\\.")), DEVICE_2_ATTRIBUTES));
+  }
+
+  private boolean compareEqualsMatch(Expression expression, String idOrAttr, String value) {
+    if (expression instanceof ComparisonExpression
+        && ((ComparisonExpression) expression).getOperator()
+            == ComparisonExpression.Operator.EQUAL) {
+      Expression leftExpression = ((ComparisonExpression) expression).getLeft();
+      Expression rightExpression = ((ComparisonExpression) expression).getRight();
+      if (leftExpression instanceof SymbolReference && rightExpression instanceof StringLiteral) {
+        return ((SymbolReference) leftExpression).getName().equalsIgnoreCase(idOrAttr)
+            && ((StringLiteral) rightExpression).getValue().equalsIgnoreCase(value);
+      } else if (leftExpression instanceof StringLiteral
+          && rightExpression instanceof SymbolReference) {
+        return ((SymbolReference) rightExpression).getName().equalsIgnoreCase(idOrAttr)
+            && ((StringLiteral) leftExpression).getValue().equalsIgnoreCase(value);
+      }
+    }
+
+    return false;
   }
 
   @Override
@@ -262,6 +308,11 @@ public class TestMatadata implements Metadata {
   public DataPartition getDataPartitionWithUnclosedTimeRange(
       String database, List<DataPartitionQueryParam> sgNameToQueryParamsMap) {
     return DATA_PARTITION;
+  }
+
+  @Override
+  public boolean canUseStatistics(String name) {
+    return BuiltinAggregationFunction.canUseStatistics(name);
   }
 
   private static final DataPartition DATA_PARTITION =

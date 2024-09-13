@@ -56,7 +56,11 @@ public class AvgAccumulator implements Accumulator {
         addDoubleInput(columns, bitMap);
         return;
       case TEXT:
+      case BLOB:
+      case STRING:
       case BOOLEAN:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in aggregation AVG : %s", seriesDataType));

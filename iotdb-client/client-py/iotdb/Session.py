@@ -58,6 +58,7 @@ from .thrift.rpc.ttypes import (
     TSLastDataQueryReq,
     TSInsertStringRecordsOfOneDeviceReq,
 )
+from .tsfile.utils.DateUtils import parse_date_to_int
 from .utils.IoTDBConnectionException import IoTDBConnectionException
 
 logger = logging.getLogger("IoTDB")
@@ -73,6 +74,7 @@ class Session(object):
     DEFAULT_PASSWORD = "root"
     DEFAULT_ZONE_ID = time.strftime("%z")
     RETRY_NUM = 3
+    SQL_DIALECT = "tree"
 
     def __init__(
         self,
@@ -83,6 +85,8 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
+        sql_dialect=SQL_DIALECT,
+        database=None,
     ):
         self.__host = host
         self.__port = port
@@ -103,6 +107,8 @@ class Session(object):
         self.__enable_redirection = enable_redirection
         self.__device_id_to_endpoint = None
         self.__endpoint_to_connection = None
+        self.__sql_dialect = sql_dialect
+        self.__database = database
 
     @classmethod
     def init_from_node_urls(
@@ -113,11 +119,21 @@ class Session(object):
         fetch_size=DEFAULT_FETCH_SIZE,
         zone_id=DEFAULT_ZONE_ID,
         enable_redirection=True,
+        sql_dialect=SQL_DIALECT,
+        database=None,
     ):
         if node_urls is None:
             raise RuntimeError("node urls is empty")
         session = Session(
-            None, None, user, password, fetch_size, zone_id, enable_redirection
+            None,
+            None,
+            user,
+            password,
+            fetch_size,
+            zone_id,
+            enable_redirection,
+            sql_dialect=sql_dialect,
+            database=database,
         )
         session.__hosts = []
         session.__ports = []
@@ -180,12 +196,15 @@ class Session(object):
         else:
             client = Client(TBinaryProtocol.TBinaryProtocolAccelerated(transport))
 
+        configuration = {"version": "V_1_0", "sql_dialect": self.__sql_dialect}
+        if self.__database is not None:
+            configuration["db"] = self.__database
         open_req = TSOpenSessionReq(
             client_protocol=self.protocol_version,
             username=self.__user,
             password=self.__password,
             zoneId=self.__zone_id,
-            configuration={"version": "V_1_0"},
+            configuration=configuration,
         )
 
         try:
@@ -890,13 +909,15 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet)
         try:
-            connection = self.get_connection(tablet.get_device_id())
+            connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
-            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(
+                tablet.get_insert_target_name(), e.redirect_node
+            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -915,14 +936,14 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                connection = self.get_connection(tablet_lst[i].get_device_id())
+                connection = self.get_connection(tablet_lst[i].get_insert_target_name())
                 request = request_group.setdefault(
                     connection.client,
                     TSInsertTabletsReq(
                         connection.session_id, [], [], [], [], [], [], False
                     ),
                 )
-                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.prefixPaths.append(tablet_lst[i].get_insert_target_name())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
@@ -981,13 +1002,15 @@ class Session(object):
         """
         request = self.gen_insert_tablet_req(tablet, True)
         try:
-            connection = self.get_connection(tablet.get_device_id())
+            connection = self.get_connection(tablet.get_insert_target_name())
             request.sessionId = connection.session_id
             return Session.verify_success_with_redirection(
                 connection.client.insertTablet(request)
             )
         except RedirectException as e:
-            return self.handle_redirection(tablet.get_device_id(), e.redirect_node)
+            return self.handle_redirection(
+                tablet.get_insert_target_name(), e.redirect_node
+            )
         except TTransport.TException as e:
             if self.reconnect():
                 try:
@@ -1006,14 +1029,14 @@ class Session(object):
         if self.__enable_redirection:
             request_group = {}
             for i in range(len(tablet_lst)):
-                connection = self.get_connection(tablet_lst[i].get_device_id())
+                connection = self.get_connection(tablet_lst[i].get_insert_target_name())
                 request = request_group.setdefault(
                     connection.client,
                     TSInsertTabletsReq(
                         connection.session_id, [], [], [], [], [], [], True
                     ),
                 )
-                request.prefixPaths.append(tablet_lst[i].get_device_id())
+                request.prefixPaths.append(tablet_lst[i].get_insert_target_name())
                 request.timestampsList.append(tablet_lst[i].get_binary_timestamps())
                 request.measurementsList.append(tablet_lst[i].get_measurements())
                 request.valuesList.append(tablet_lst[i].get_binary_values())
@@ -1057,6 +1080,36 @@ class Session(object):
                     raise IoTDBConnectionException(
                         self.connection_error_msg()
                     ) from None
+
+    def insert_relational_tablet(self, tablet):
+        """
+        insert one tablet, for example three column in the table1 can form a tablet:
+            timestamps,    id1,  attr1,    m1
+                     1,  id:1,  attr:1,   1.0
+                     2,  id:1,  attr:1,   2.0
+                     3,  id:2,  attr:2,   3.0
+        :param tablet: a tablet specified above
+        """
+        request = self.gen_insert_relational_tablet_req(tablet)
+        try:
+            connection = self.get_connection(tablet.get_insert_target_name())
+            request.sessionId = connection.session_id
+            return Session.verify_success_with_redirection(
+                connection.client.insertTablet(request)
+            )
+        except RedirectException as e:
+            return self.handle_redirection(
+                tablet.get_insert_target_name(), e.redirect_node
+            )
+        except TTransport.TException as e:
+            if self.reconnect():
+                try:
+                    request.sessionId = self.__session_id
+                    return Session.verify_success(self.__client.insertTablet(request))
+                except TTransport.TException as e1:
+                    raise IoTDBConnectionException(e1) from None
+            else:
+                raise IoTDBConnectionException(self.connection_error_msg()) from None
 
     def insert_records_of_one_device(
         self, device_id, times_list, measurements_list, types_list, values_list
@@ -1274,13 +1327,27 @@ class Session(object):
     def gen_insert_tablet_req(self, tablet, is_aligned=False):
         return TSInsertTabletReq(
             self.__session_id,
-            tablet.get_device_id(),
+            tablet.get_insert_target_name(),
             tablet.get_measurements(),
             tablet.get_binary_values(),
             tablet.get_binary_timestamps(),
             tablet.get_data_types(),
             tablet.get_row_number(),
             is_aligned,
+        )
+
+    def gen_insert_relational_tablet_req(self, tablet, is_aligned=False):
+        return TSInsertTabletReq(
+            self.__session_id,
+            tablet.get_insert_target_name(),
+            tablet.get_measurements(),
+            tablet.get_binary_values(),
+            tablet.get_binary_timestamps(),
+            tablet.get_data_types(),
+            tablet.get_row_number(),
+            is_aligned,
+            True,
+            tablet.get_column_categories(),
         )
 
     def gen_insert_tablets_req(self, tablet_lst, is_aligned=False):
@@ -1291,7 +1358,7 @@ class Session(object):
         type_lst = []
         size_lst = []
         for tablet in tablet_lst:
-            device_id_lst.append(tablet.get_device_id())
+            device_id_lst.append(tablet.get_insert_target_name())
             measurements_lst.append(tablet.get_measurements())
             values_lst.append(tablet.get_binary_values())
             timestamps_lst.append(tablet.get_binary_timestamps())
@@ -1364,6 +1431,18 @@ class Session(object):
             else:
                 raise IoTDBConnectionException(self.connection_error_msg()) from None
 
+        previous_db = self.__database
+        if resp.database is not None:
+            self.__database = resp.database
+        if previous_db != self.__database and self.__endpoint_to_connection is not None:
+            iterator = iter(self.__endpoint_to_connection.items())
+            for entry in list(iterator):
+                endpoint, connection = entry
+                if connection != self.__default_connection:
+                    try:
+                        connection.change_database(sql)
+                    except Exception as e:
+                        self.__endpoint_to_connection.pop(endpoint)
         return Session.verify_success(resp.status)
 
     def execute_statement(self, sql: str, timeout=0):
@@ -1440,6 +1519,36 @@ class Session(object):
                 format_str_list.append(str(len(value_bytes)))
                 format_str_list.append("s")
                 values_tobe_packed.append(b"\x05")
+                values_tobe_packed.append(len(value_bytes))
+                values_tobe_packed.append(value_bytes)
+            # TIMESTAMP
+            elif data_type == 8:
+                format_str_list.append("cq")
+                values_tobe_packed.append(b"\x08")
+                values_tobe_packed.append(value)
+            # DATE
+            elif data_type == 9:
+                format_str_list.append("ci")
+                values_tobe_packed.append(b"\x09")
+                values_tobe_packed.append(parse_date_to_int(value))
+            # BLOB
+            elif data_type == 10:
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0a")
+                values_tobe_packed.append(len(value))
+                values_tobe_packed.append(value)
+            # STRING
+            elif data_type == 11:
+                if isinstance(value, str):
+                    value_bytes = bytes(value, "utf-8")
+                else:
+                    value_bytes = value
+                format_str_list.append("ci")
+                format_str_list.append(str(len(value_bytes)))
+                format_str_list.append("s")
+                values_tobe_packed.append(b"\x0b")
                 values_tobe_packed.append(len(value_bytes))
                 values_tobe_packed.append(value_bytes)
             else:
@@ -2221,6 +2330,17 @@ class SessionConnection(object):
         self.transport = transport
         self.session_id = session_id
         self.statement_id = statement_id
+
+    def change_database(self, sql):
+        try:
+            self.client.executeUpdateStatement(
+                TSExecuteStatementReq(self.session_id, sql, self.statement_id)
+            )
+        except TTransport.TException as e:
+            raise IoTDBConnectionException(
+                "failed to change database",
+                e,
+            ) from None
 
     def close_connection(self, req):
         try:

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantPageLoader;
@@ -56,8 +57,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -95,6 +94,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.targetResource = targetResource;
     this.summary = summary;
     collectValueColumnSchemaList();
+    fillAlignedChunkMetadataToMatchSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
@@ -119,10 +119,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.timeSchema = timeSchema;
     this.schemaList = valueSchemaList;
-    this.measurementSchemaListIndexMap = new HashMap<>();
-    for (int i = 0; i < schemaList.size(); i++) {
-      measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
-    }
     this.chunkWriter = constructAlignedChunkWriter();
   }
 
@@ -171,10 +167,18 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         measurementSchemaMap.values().stream()
             .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
             .collect(Collectors.toList());
+  }
 
-    this.measurementSchemaListIndexMap = new HashMap<>();
-    for (int i = 0; i < schemaList.size(); i++) {
-      this.measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+  private void fillAlignedChunkMetadataToMatchSchemaList() {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
+      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+      for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
+        AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(i);
+        alignedChunkMetadataList.set(
+            i,
+            AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+                alignedChunkMetadata, schemaList));
+      }
     }
   }
 
@@ -209,17 +213,17 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws IOException, PageException {
     ChunkLoader timeChunk =
         getChunkLoader(reader, (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-    List<ChunkLoader> valueChunks = Arrays.asList(new ChunkLoader[schemaList.size()]);
-    Collections.fill(valueChunks, getChunkLoader(reader, null));
+    List<ChunkLoader> valueChunks = new ArrayList<>(schemaList.size());
     long pointNum = 0;
-    for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (chunkMetadata == null || !isValueChunkDataTypeMatchSchema(chunkMetadata)) {
+    for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+      IChunkMetadata chunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(i);
+      if (chunkMetadata == null
+          || !chunkMetadata.getDataType().equals(schemaList.get(i).getType())) {
+        valueChunks.add(getChunkLoader(reader, null));
         continue;
       }
       pointNum += chunkMetadata.getStatistics().getCount();
-      ChunkLoader valueChunk = getChunkLoader(reader, (ChunkMetadata) chunkMetadata);
-      int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
-      valueChunks.set(idx, valueChunk);
+      valueChunks.add(getChunkLoader(reader, (ChunkMetadata) chunkMetadata));
     }
     summary.increaseProcessPointNum(pointNum);
     if (flushController.canFlushCurrentChunkWriter()) {
@@ -230,12 +234,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     } else {
       compactAlignedChunkByDeserialize(timeChunk, valueChunks);
     }
-  }
-
-  private boolean isValueChunkDataTypeMatchSchema(IChunkMetadata valueChunkMetadata) {
-    String measurement = valueChunkMetadata.getMeasurementUid();
-    IMeasurementSchema schema = schemaList.get(measurementSchemaListIndexMap.get(measurement));
-    return schema.getType() == valueChunkMetadata.getDataType();
   }
 
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
@@ -256,7 +254,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws IOException {
     writer.markStartingWritingAligned();
     checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
-    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
+    if (timeChunk.getChunkMetadata().getStartTime() != timeChunk.getChunkMetadata().getEndTime()) {
+      checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
+    }
     writer.writeChunk(timeChunk.getChunk(), timeChunk.getChunkMetadata());
     timeChunk.clear();
     int nonEmptyChunkNum = 1;
@@ -336,7 +336,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws PageException, IOException {
     int nonEmptyPage = 1;
     checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
-    checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    if (timePage.getHeader().getStartTime() != timePage.getHeader().getEndTime()) {
+      checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    }
     timePage.flushToTimeChunkWriter(chunkWriter);
     for (int i = 0; i < valuePageLoaders.size(); i++) {
       PageLoader valuePage = valuePageLoaders.get(i);
@@ -495,9 +497,13 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
 
     private boolean canFlushPage(PageLoader timePage, List<PageLoader> valuePages) {
+      long count = timePage.getHeader().getStatistics().getCount();
       boolean largeEnough =
-          timePage.getHeader().getUncompressedSize() >= targetPageSize
-              || timePage.getHeader().getStatistics().getCount() >= targetPagePointNum;
+          count >= targetPagePointNum
+              || Math.max(
+                      estimateMemorySizeAsPageWriter(timePage),
+                      timePage.getHeader().getUncompressedSize())
+                  >= targetPageSize;
       if (timeSchema.getEncodingType() != timePage.getEncoding()
           || timeSchema.getCompressor() != timePage.getCompressionType()) {
         return false;
@@ -515,11 +521,53 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         if (valuePage.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
           return false;
         }
-        if (valuePage.getHeader().getUncompressedSize() >= targetPageSize) {
+        if (Math.max(
+                valuePage.getHeader().getUncompressedSize(),
+                estimateMemorySizeAsPageWriter(valuePage))
+            >= targetPageSize) {
           largeEnough = true;
         }
       }
       return largeEnough;
+    }
+
+    private long estimateMemorySizeAsPageWriter(PageLoader pageLoader) {
+      long count = pageLoader.getHeader().getStatistics().getCount();
+      long size;
+      switch (pageLoader.getDataType()) {
+        case INT32:
+        case DATE:
+          size = count * Integer.BYTES;
+          break;
+        case TIMESTAMP:
+        case INT64:
+        case VECTOR:
+          size = count * Long.BYTES;
+          break;
+        case FLOAT:
+          size = count * Float.BYTES;
+          break;
+        case DOUBLE:
+          size = count * Double.BYTES;
+          break;
+        case BOOLEAN:
+          size = count * Byte.BYTES;
+          break;
+        case TEXT:
+        case STRING:
+        case BLOB:
+          size = pageLoader.getHeader().getUncompressedSize();
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unsupported data type: " + pageLoader.getDataType().toString());
+      }
+      // Due to the fact that the page writer in memory includes some other objects
+      // and has a special calculation method, the estimated size will actually be
+      // larger. So we simply adopt the method of multiplying by 1.05 times. If this
+      // is not done, the result here might be close to the target page size but
+      // slightly smaller.
+      return (long) (size * 1.05);
     }
   }
 }

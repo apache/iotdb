@@ -181,23 +181,27 @@ public class WALFileTest {
           TSDataType.INT64,
           TSDataType.INT32,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
         };
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[8];
     columns[0] = 1.0;
     columns[1] = 2.0f;
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
     columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+    columns[6] = new Binary("jj" + 0, TSFileConfig.STRING_CHARSET);
+    columns[7] = new Binary("kk" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode insertRowNode =
         new InsertRowNode(
             new PlanNodeId(""),
             new PartialPath(devicePath),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
             dataTypes,
             time,
             columns,
@@ -211,6 +215,8 @@ public class WALFileTest {
           new MeasurementSchema("s4", dataTypes[3]),
           new MeasurementSchema("s5", dataTypes[4]),
           new MeasurementSchema("s6", dataTypes[5]),
+          new MeasurementSchema("s7", dataTypes[6]),
+          new MeasurementSchema("s8", dataTypes[7]),
         };
     insertRowNode.setMeasurementSchemas(schemas);
     return insertRowNode;
@@ -226,23 +232,27 @@ public class WALFileTest {
           TSDataType.INT64,
           TSDataType.INT32,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
         };
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[8];
     columns[0] = 1.0;
     columns[1] = 2.0f;
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
     columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+    columns[6] = new Binary("jj" + 0, TSFileConfig.STRING_CHARSET);
+    columns[7] = new Binary("kk" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode insertRowNode =
         new InsertRowNode(
             new PlanNodeId(""),
             new PartialPath(devicePath),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
             dataTypes,
             time,
             columns,
@@ -256,6 +266,8 @@ public class WALFileTest {
           new MeasurementSchema("s4", dataTypes[3]),
           new MeasurementSchema("s5", dataTypes[4]),
           new MeasurementSchema("s6", dataTypes[5]),
+          new MeasurementSchema("s7", dataTypes[6]),
+          new MeasurementSchema("s8", dataTypes[7]),
         };
     insertRowNode.setMeasurementSchemas(schemas);
     insertRowsNode.addOneInsertRowNode(insertRowNode, 0);
@@ -266,7 +278,7 @@ public class WALFileTest {
             new PlanNodeId(""),
             new PartialPath(devicePath),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
             dataTypes,
             time,
             columns,
@@ -289,16 +301,20 @@ public class WALFileTest {
           TSDataType.INT64,
           TSDataType.INT32,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
         };
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[8];
     columns[0] = new double[4];
     columns[1] = new float[4];
     columns[2] = new long[4];
     columns[3] = new int[4];
     columns[4] = new boolean[4];
     columns[5] = new Binary[4];
+    columns[6] = new Binary[4];
+    columns[7] = new Binary[4];
 
     for (int r = 0; r < 4; r++) {
       ((double[]) columns[0])[r] = 1.0 + r;
@@ -307,6 +323,8 @@ public class WALFileTest {
       ((int[]) columns[3])[r] = 100 + r;
       ((boolean[]) columns[4])[r] = (r % 2 == 0);
       ((Binary[]) columns[5])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
+      ((Binary[]) columns[6])[r] = new Binary("jj" + r, TSFileConfig.STRING_CHARSET);
+      ((Binary[]) columns[7])[r] = new Binary("kk" + r, TSFileConfig.STRING_CHARSET);
     }
 
     BitMap[] bitMaps = new BitMap[dataTypes.length];
@@ -324,13 +342,15 @@ public class WALFileTest {
           new MeasurementSchema("s4", dataTypes[3]),
           new MeasurementSchema("s5", dataTypes[4]),
           new MeasurementSchema("s6", dataTypes[5]),
+          new MeasurementSchema("s7", dataTypes[6]),
+          new MeasurementSchema("s8", dataTypes[7]),
         };
 
     return new InsertTabletNode(
         new PlanNodeId(""),
         new PartialPath(devicePath),
         false,
-        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+        new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
         dataTypes,
         schemas,
         times,

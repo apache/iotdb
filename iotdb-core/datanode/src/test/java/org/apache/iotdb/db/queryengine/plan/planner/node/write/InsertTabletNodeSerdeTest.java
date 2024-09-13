@@ -97,57 +97,63 @@ public class InsertTabletNodeSerdeTest {
 
   @Test
   public void testSerializeAndDeserializeRelational() throws IllegalPathException {
-    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNode();
+    for (String tableName : new String[] {"table1", "ta`ble1", "root.table1"}) {
+      RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNode(tableName);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
-    insertTabletNode.serialize(byteBuffer);
-    byteBuffer.flip();
+      ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+      insertTabletNode.serialize(byteBuffer);
+      byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), byteBuffer.getShort());
+      Assert.assertEquals(
+          PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), byteBuffer.getShort());
 
-    Assert.assertEquals(insertTabletNode, RelationalInsertTabletNode.deserialize(byteBuffer));
+      Assert.assertEquals(insertTabletNode, RelationalInsertTabletNode.deserialize(byteBuffer));
 
-    insertTabletNode = getRelationalInsertTabletNodeWithSchema();
-    byteBuffer = ByteBuffer.allocate(10000);
-    insertTabletNode.serialize(byteBuffer);
-    byteBuffer.flip();
+      insertTabletNode = getRelationalInsertTabletNodeWithSchema(tableName);
+      byteBuffer = ByteBuffer.allocate(10000);
+      insertTabletNode.serialize(byteBuffer);
+      byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), byteBuffer.getShort());
+      Assert.assertEquals(
+          PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), byteBuffer.getShort());
 
-    Assert.assertEquals(insertTabletNode, RelationalInsertTabletNode.deserialize(byteBuffer));
+      Assert.assertEquals(insertTabletNode, RelationalInsertTabletNode.deserialize(byteBuffer));
+    }
   }
 
   @Test
-  public void testSerializeAndDeserializeForWALRelational()
-      throws IllegalPathException, IOException {
-    RelationalInsertTabletNode insertTabletNode = getRelationalInsertTabletNodeWithSchema();
+  public void testSerializeAndDeserializeForWALRelational() throws IOException {
+    for (String tableName : new String[] {"table1", "ta`ble1", "root.table1"}) {
+      RelationalInsertTabletNode insertTabletNode =
+          getRelationalInsertTabletNodeWithSchema(tableName);
 
-    int serializedSize = insertTabletNode.serializedSize();
+      int serializedSize = insertTabletNode.serializedSize();
 
-    byte[] bytes = new byte[serializedSize];
-    WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
+      byte[] bytes = new byte[serializedSize];
+      WALByteBufferForTest walBuffer = new WALByteBufferForTest(ByteBuffer.wrap(bytes));
 
-    insertTabletNode.serializeToWAL(walBuffer);
-    Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
+      insertTabletNode.serializeToWAL(walBuffer);
+      Assert.assertFalse(walBuffer.getBuffer().hasRemaining());
 
-    DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
+      DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
-    Assert.assertEquals(
-        PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), dataInputStream.readShort());
+      Assert.assertEquals(
+          PlanNodeType.RELATIONAL_INSERT_TABLET.getNodeType(), dataInputStream.readShort());
 
-    RelationalInsertTabletNode tmpNode =
-        RelationalInsertTabletNode.deserializeFromWAL(dataInputStream);
-    tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
+      RelationalInsertTabletNode tmpNode =
+          RelationalInsertTabletNode.deserializeFromWAL(dataInputStream);
+      tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
 
-    tmpNode.setMeasurementSchemas(
-        new MeasurementSchema[] {
-          new MeasurementSchema("s1", TSDataType.DOUBLE),
-          new MeasurementSchema("s2", TSDataType.FLOAT),
-          new MeasurementSchema("s3", TSDataType.INT64),
-          new MeasurementSchema("s4", TSDataType.INT32),
-          new MeasurementSchema("s5", TSDataType.BOOLEAN)
-        });
-    Assert.assertEquals(insertTabletNode, tmpNode);
+      tmpNode.setMeasurementSchemas(
+          new MeasurementSchema[] {
+            new MeasurementSchema("s1", TSDataType.DOUBLE),
+            new MeasurementSchema("s2", TSDataType.FLOAT),
+            new MeasurementSchema("s3", TSDataType.INT64),
+            new MeasurementSchema("s4", TSDataType.INT32),
+            new MeasurementSchema("s5", TSDataType.BOOLEAN)
+          });
+      Assert.assertEquals(insertTabletNode, tmpNode);
+    }
   }
 
   @Test
@@ -268,7 +274,8 @@ public class InsertTabletNodeSerdeTest {
     return insertTabletNode;
   }
 
-  private RelationalInsertTabletNode getRelationalInsertTabletNode() throws IllegalPathException {
+  private RelationalInsertTabletNode getRelationalInsertTabletNode(String tableName)
+      throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     TSDataType[] dataTypes = new TSDataType[5];
     dataTypes[0] = TSDataType.DOUBLE;
@@ -295,7 +302,7 @@ public class InsertTabletNodeSerdeTest {
     RelationalInsertTabletNode tabletNode =
         new RelationalInsertTabletNode(
             new PlanNodeId("plannode 1"),
-            new PartialPath("root.isp.d1"),
+            new PartialPath(tableName, false),
             false,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,
@@ -314,8 +321,7 @@ public class InsertTabletNodeSerdeTest {
     return tabletNode;
   }
 
-  private RelationalInsertTabletNode getRelationalInsertTabletNodeWithSchema()
-      throws IllegalPathException {
+  private RelationalInsertTabletNode getRelationalInsertTabletNodeWithSchema(String tableName) {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     TSDataType[] dataTypes = new TSDataType[5];
     dataTypes[0] = TSDataType.DOUBLE;
@@ -342,7 +348,7 @@ public class InsertTabletNodeSerdeTest {
     RelationalInsertTabletNode insertTabletNode =
         new RelationalInsertTabletNode(
             new PlanNodeId("plannode 1"),
-            new PartialPath("root.isp.d1"),
+            new PartialPath(tableName, false),
             false,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             dataTypes,

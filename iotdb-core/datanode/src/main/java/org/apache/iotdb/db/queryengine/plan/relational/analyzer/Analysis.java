@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatement
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -70,6 +71,7 @@ import javax.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -138,6 +140,7 @@ public class Analysis implements IAnalysis {
   private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
 
   private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
+  private final Map<NodeRef<Node>, RoutineEntry> resolvedFunctions = new LinkedHashMap<>();
 
   private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> aggregates =
       new LinkedHashMap<>();
@@ -284,6 +287,20 @@ public class Analysis implements IAnalysis {
     scopes.put(NodeRef.of(node), scope);
   }
 
+  public Set<ResolvedFunction> getResolvedFunctions() {
+    return resolvedFunctions.values().stream()
+        .map(RoutineEntry::getFunction)
+        .collect(toImmutableSet());
+  }
+
+  public ResolvedFunction getResolvedFunction(Node node) {
+    return resolvedFunctions.get(NodeRef.of(node)).getFunction();
+  }
+
+  public void addResolvedFunction(Node node, ResolvedFunction function, String authorization) {
+    resolvedFunctions.put(NodeRef.of(node), new RoutineEntry(function, authorization));
+  }
+
   public void addColumnReferences(Map<NodeRef<Expression>, ResolvedField> columnReferences) {
     this.columnReferences.putAll(columnReferences);
   }
@@ -302,6 +319,10 @@ public class Analysis implements IAnalysis {
 
   public List<FunctionCall> getAggregates(QuerySpecification query) {
     return aggregates.get(NodeRef.of(query));
+  }
+
+  public boolean hasAggregates() {
+    return !aggregates.isEmpty();
   }
 
   public void setOrderByAggregates(OrderBy node, List<Expression> aggregates) {
@@ -479,6 +500,9 @@ public class Analysis implements IAnalysis {
   }
 
   private <T extends Node> List<T> dereference(Collection<NodeRef<T>> nodeRefs) {
+    if (nodeRefs.isEmpty()) {
+      return Collections.emptyList();
+    }
     return nodeRefs.stream().map(NodeRef::getNode).collect(toImmutableList());
   }
 
@@ -515,6 +539,16 @@ public class Analysis implements IAnalysis {
   public boolean isColumnReference(Expression expression) {
     requireNonNull(expression, "expression is null");
     return columnReferences.containsKey(NodeRef.of(expression));
+  }
+
+  public Set<String> getUsedColumns(QualifiedObjectName tableName) {
+    for (Map<QualifiedObjectName, Set<String>> map : tableColumnReferences.values()) {
+      Set<String> fields = map.get(tableName);
+      if (fields != null) {
+        return fields;
+      }
+    }
+    return Collections.emptySet();
   }
 
   public void addTableColumnReferences(
@@ -942,6 +976,24 @@ public class Analysis implements IAnalysis {
               rollups.stream().flatMap(Collection::stream).flatMap(Collection::stream),
               ordinarySets.stream().flatMap(Collection::stream).flatMap(Collection::stream))
           .collect(toImmutableSet());
+    }
+  }
+
+  private static class RoutineEntry {
+    private final ResolvedFunction function;
+    private final String authorization;
+
+    public RoutineEntry(ResolvedFunction function, String authorization) {
+      this.function = requireNonNull(function, "function is null");
+      this.authorization = requireNonNull(authorization, "authorization is null");
+    }
+
+    public ResolvedFunction getFunction() {
+      return function;
+    }
+
+    public String getAuthorization() {
+      return authorization;
     }
   }
 
