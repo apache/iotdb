@@ -31,6 +31,8 @@ public enum SubscriptionPollResponseType {
   FILE_INIT((short) 2),
   FILE_PIECE((short) 3),
   FILE_SEAL((short) 4),
+
+  TERMINATION((short) 5),
   ;
 
   private final short type;

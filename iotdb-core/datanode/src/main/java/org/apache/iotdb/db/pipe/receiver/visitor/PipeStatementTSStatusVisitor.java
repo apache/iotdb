@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsSta
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
@@ -54,6 +55,20 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitNode(final StatementNode node, final TSStatus context) {
     return context;
+  }
+
+  @Override
+  public TSStatus visitLoadFile(
+      final LoadTsFileStatement loadTsFileStatement, final TSStatus context) {
+    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()
+        || context.getCode() == TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
+            && context.getMessage() != null
+            && context.getMessage().contains("memory")) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    }
+    return super.visitLoadFile(loadTsFileStatement, context);
   }
 
   @Override
@@ -82,17 +97,17 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   private TSStatus visitInsertBase(
       final InsertBaseStatement insertBaseStatement, final TSStatus context) {
-    if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
+    if (context.getCode() == TSStatusCode.SYSTEM_READ_ONLY.getStatusCode()) {
+      return new TSStatus(
+              TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode())
+          .setMessage(context.getMessage());
+    } else if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
-      if (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
-          && config.isEnablePartialInsert()) {
-        return new TSStatus(
-                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-            .setMessage(context.getMessage());
-      }
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+        && (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
+            && config.isEnablePartialInsert())) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return visitStatement(insertBaseStatement, context);
@@ -125,7 +140,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitCreateMultiTimeseries(
+  public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, final TSStatus context) {
     return visitGeneralCreateMultiTimeseries(createMultiTimeSeriesStatement, context);
   }
@@ -168,7 +183,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitAlterTimeseries(
+  public TSStatus visitAlterTimeSeries(
       final AlterTimeSeriesStatement alterTimeSeriesStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       if (context.getMessage().contains("already")) {

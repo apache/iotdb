@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
+import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,13 +42,13 @@ public class ConsensusFactory {
   public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
   public static final String REAL_PIPE_CONSENSUS = "org.apache.iotdb.consensus.pipe.PipeConsensus";
   // Corresponding to streamConsensus
-  public static final String IOTV2_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTV2Consensus";
+  public static final String IOT_CONSENSUS_V2 = "org.apache.iotdb.consensus.iot.IoTConsensusV2";
   // Corresponding to batchConsensus
   public static final String FAST_IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.FastIoTConsensus";
   private static final Map<String, ReplicateMode> PIPE_CONSENSUS_MODE_MAP = new HashMap<>();
 
   static {
-    PIPE_CONSENSUS_MODE_MAP.put(IOTV2_CONSENSUS, ReplicateMode.STREAM);
+    PIPE_CONSENSUS_MODE_MAP.put(IOT_CONSENSUS_V2, ReplicateMode.STREAM);
     PIPE_CONSENSUS_MODE_MAP.put(FAST_IOT_CONSENSUS, ReplicateMode.BATCH);
   }
 
@@ -61,11 +62,13 @@ public class ConsensusFactory {
       String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {
       // special judge for PipeConsensus
-      if (className.equals(IOTV2_CONSENSUS) || className.equals(FAST_IOT_CONSENSUS)) {
+      if (className.equals(IOT_CONSENSUS_V2) || className.equals(FAST_IOT_CONSENSUS)) {
         config.getPipeConsensusConfig().setReplicateMode(PIPE_CONSENSUS_MODE_MAP.get(className));
         className = REAL_PIPE_CONSENSUS;
         // initialize pipeConsensus' thrift component
         PipeConsensusClientMgrContainer.build();
+        // initialize pipeConsensus's metric component
+        PipeConsensusSyncLagManager.build();
       }
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =

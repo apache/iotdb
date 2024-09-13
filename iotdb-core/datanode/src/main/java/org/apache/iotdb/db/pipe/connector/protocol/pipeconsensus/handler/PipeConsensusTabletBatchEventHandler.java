@@ -27,6 +27,7 @@ import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusBatchTransferResp;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.PipeConsensusAsyncConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder.PipeConsensusAsyncBatchReqBuilder;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,16 +49,19 @@ public class PipeConsensusTabletBatchEventHandler
   private final List<Event> events;
   private final TPipeConsensusBatchTransferReq req;
   private final PipeConsensusAsyncConnector connector;
+  private final PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
 
   public PipeConsensusTabletBatchEventHandler(
       final PipeConsensusAsyncBatchReqBuilder batchBuilder,
-      final PipeConsensusAsyncConnector connector)
+      final PipeConsensusAsyncConnector connector,
+      final PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics)
       throws IOException {
     // Deep copy to keep Ids' and events' reference
     requestCommitIds = batchBuilder.deepCopyRequestCommitIds();
     events = batchBuilder.deepCopyEvents();
     req = batchBuilder.toTPipeConsensusBatchTransferReq();
 
+    this.pipeConsensusConnectorMetrics = pipeConsensusConnectorMetrics;
     this.connector = connector;
   }
 
@@ -86,6 +90,7 @@ public class PipeConsensusTabletBatchEventHandler
             .filter(tsStatus -> tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
             .forEach(
                 tsStatus -> {
+                  pipeConsensusConnectorMetrics.recordRetryCounter();
                   connector
                       .statusHandler()
                       .handle(tsStatus, tsStatus.getMessage(), events.toString());

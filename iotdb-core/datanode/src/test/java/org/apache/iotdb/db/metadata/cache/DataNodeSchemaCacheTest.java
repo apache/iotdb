@@ -138,10 +138,10 @@ public class DataNodeSchemaCacheTest {
   @Test
   public void testLastCache() throws IllegalPathException {
     // test no cache
-    PartialPath devicePath = new PartialPath("root.sg1.d1");
-    PartialPath seriesPath1 = new PartialPath("root.sg1.d1.s1");
-    PartialPath seriesPath2 = new PartialPath("root.sg1.d1.s2");
-    PartialPath seriesPath3 = new PartialPath("root.sg1.d1.s3");
+    MeasurementPath devicePath = new MeasurementPath("root.sg1.d1");
+    MeasurementPath seriesPath1 = new MeasurementPath("root.sg1.d1.s1");
+    MeasurementPath seriesPath2 = new MeasurementPath("root.sg1.d1.s2");
+    MeasurementPath seriesPath3 = new MeasurementPath("root.sg1.d1.s3");
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
     Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
@@ -206,16 +206,19 @@ public class DataNodeSchemaCacheTest {
         new MeasurementSchema("s1", TSDataType.INT32),
         s1TagMap,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT),
         null,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
+        null,
         null,
         null,
         false);
@@ -231,16 +234,19 @@ public class DataNodeSchemaCacheTest {
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s4"),
         new MeasurementSchema("s4", TSDataType.TEXT),
         null,
         null,
+        null,
         false);
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s5"),
         new MeasurementSchema("s5", TSDataType.INT64),
+        null,
         null,
         null,
         false);
@@ -272,9 +278,9 @@ public class DataNodeSchemaCacheTest {
         true,
         1L);
 
-    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s1")));
-    Assert.assertNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s2")));
-    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
+    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s1")));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s2")));
+    Assert.assertNotNull(dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s3")));
 
     dataNodeSchemaCache.updateLastCache(
         database,
@@ -289,13 +295,13 @@ public class DataNodeSchemaCacheTest {
 
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s1")));
+        dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s1")));
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s2")));
+        dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s2")));
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
-        dataNodeSchemaCache.getLastCache(new PartialPath("root.db.d.s3")));
+        dataNodeSchemaCache.getLastCache(new MeasurementPath("root.db.d.s3")));
   }
 
   @Test
@@ -330,7 +336,7 @@ public class DataNodeSchemaCacheTest {
     ClusterSchemaTree d2Tree =
         dataNodeSchemaCache.getMatchedSchemaWithTemplate(new PartialPath("root.sg1.d2"));
     ClusterSchemaTree d3Tree =
-        dataNodeSchemaCache.getMatchedSchemaWithoutTemplate(new PartialPath("root.sg1.d3.s1"));
+        dataNodeSchemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath("root.sg1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
     for (MeasurementPath measurementPath : measurementPaths) {

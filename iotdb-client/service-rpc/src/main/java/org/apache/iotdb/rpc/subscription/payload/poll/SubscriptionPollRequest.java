@@ -38,11 +38,18 @@ public class SubscriptionPollRequest {
 
   private final transient long timeoutMs; // unused now
 
+  /** The maximum size, in bytes, for the response payload. */
+  private final transient long maxBytes;
+
   public SubscriptionPollRequest(
-      final short requestType, final SubscriptionPollPayload payload, final long timeoutMs) {
+      final short requestType,
+      final SubscriptionPollPayload payload,
+      final long timeoutMs,
+      final long maxBytes) {
     this.requestType = requestType;
     this.payload = payload;
     this.timeoutMs = timeoutMs;
+    this.maxBytes = maxBytes;
   }
 
   public short getRequestType() {
@@ -55,6 +62,10 @@ public class SubscriptionPollRequest {
 
   public long getTimeoutMs() {
     return timeoutMs;
+  }
+
+  public long getMaxBytes() {
+    return maxBytes;
   }
 
   //////////////////////////// serialization ////////////////////////////
@@ -71,6 +82,7 @@ public class SubscriptionPollRequest {
     ReadWriteIOUtils.write(requestType, stream);
     payload.serialize(stream);
     ReadWriteIOUtils.write(timeoutMs, stream);
+    ReadWriteIOUtils.write(maxBytes, stream);
   }
 
   public static SubscriptionPollRequest deserialize(final ByteBuffer buffer) {
@@ -84,6 +96,9 @@ public class SubscriptionPollRequest {
         case POLL_FILE:
           payload = new PollFilePayload().deserialize(buffer);
           break;
+        case POLL_TABLETS:
+          payload = new PollTabletsPayload().deserialize(buffer);
+          break;
         default:
           LOGGER.warn("unexpected request type: {}, payload will be null", requestType);
           break;
@@ -93,7 +108,8 @@ public class SubscriptionPollRequest {
     }
 
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionPollRequest(requestType, payload, timeoutMs);
+    final long maxBytes = ReadWriteIOUtils.readLong(buffer);
+    return new SubscriptionPollRequest(requestType, payload, timeoutMs, maxBytes);
   }
 
   /////////////////////////////// object ///////////////////////////////
@@ -106,6 +122,8 @@ public class SubscriptionPollRequest {
         + payload
         + ", timeoutMs="
         + timeoutMs
+        + ", maxBytes="
+        + maxBytes
         + "}";
   }
 }

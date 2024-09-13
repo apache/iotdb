@@ -21,10 +21,14 @@ package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.util.function.BiConsumer;
 
 public class CommonDateTimeUtils {
+  protected static final Logger LOGGER = LoggerFactory.getLogger(CommonDateTimeUtils.class);
 
   public CommonDateTimeUtils() {
     // Empty constructor
@@ -41,6 +45,12 @@ public class CommonDateTimeUtils {
         break;
       default:
         break;
+    }
+    // To avoid integer overflow
+    if (result < 0) {
+      LOGGER.warn(
+          "Integer overflow when converting {}ms to {}{}.", milliTime, result, timePrecision);
+      result = Long.MAX_VALUE;
     }
     return result;
   }

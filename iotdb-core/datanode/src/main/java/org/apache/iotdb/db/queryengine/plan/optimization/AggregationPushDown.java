@@ -62,6 +62,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -79,7 +80,7 @@ public class AggregationPushDown implements PlanOptimizer {
 
   @Override
   public PlanNode optimize(PlanNode plan, Analysis analysis, MPPQueryContext context) {
-    if (analysis.getStatement().getType() != StatementType.QUERY) {
+    if (analysis.getTreeStatement().getType() != StatementType.QUERY) {
       return plan;
     }
     QueryStatement queryStatement = analysis.getQueryStatement();
@@ -92,12 +93,9 @@ public class AggregationPushDown implements PlanOptimizer {
     RewriterContext rewriterContext =
         new RewriterContext(analysis, context, queryStatement.isAlignByDevice());
     PlanNode node;
-    try {
-      node = plan.accept(new Rewriter(), rewriterContext);
-    } finally {
-      // release the last batch of memory
-      rewriterContext.releaseMemoryForFrontEndImmediately();
-    }
+
+    node = plan.accept(new Rewriter(), rewriterContext);
+
     return node;
   }
 
@@ -109,7 +107,7 @@ public class AggregationPushDown implements PlanOptimizer {
       }
 
       // check any of the devices
-      String device = analysis.getDeviceList().get(0).toString();
+      IDeviceID device = analysis.getDeviceList().get(0).getIDeviceIDAsFullDevice();
       return cannotUseStatistics(
           analysis.getDeviceToAggregationExpressions().get(device),
           analysis.getDeviceToSourceTransformExpressions().get(device));
@@ -139,8 +137,8 @@ public class AggregationPushDown implements PlanOptimizer {
               return true;
             }
             if (StringUtils.isEmpty(alignedDeviceId)) {
-              alignedDeviceId = ts.getPath().getDevice();
-            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDevice())) {
+              alignedDeviceId = ts.getPath().getDeviceString();
+            } else if (!alignedDeviceId.equalsIgnoreCase(ts.getPath().getDeviceString())) {
               // count_time from only one aligned device can use AlignedSeriesAggScan
               return true;
             }
@@ -227,7 +225,13 @@ public class AggregationPushDown implements PlanOptimizer {
     @Override
     public PlanNode visitSingleDeviceView(SingleDeviceViewNode node, RewriterContext context) {
       context.setCurDevice(node.getDevice());
-      context.setCurDevicePath(new PartialPath(node.getDevice().split(",")));
+      try {
+        context.setCurDevicePath(new PartialPath(node.getDevice()));
+      } catch (IllegalPathException e) {
+        throw new IllegalStateException(
+            String.format(
+                "Illegal device path: %s in AggregationPushDown rule.", node.getDevice()));
+      }
       PlanNode rewrittenChild = node.getChild().accept(this, context);
       node.setChild(rewrittenChild);
       return node;
@@ -382,7 +386,7 @@ public class AggregationPushDown implements PlanOptimizer {
           PartialPath path = ts.getPath();
           Pair<List<String>, List<IMeasurementSchema>> pair =
               map.computeIfAbsent(
-                  path.getDevice(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
+                  path.getDeviceString(), k -> new Pair<>(new ArrayList<>(), new ArrayList<>()));
           pair.left.add(path.getMeasurement());
           try {
             pair.right.add(path.getMeasurementSchema());
@@ -633,16 +637,12 @@ public class AggregationPushDown implements PlanOptimizer {
 
   private static class RewriterContext {
 
-    private static final long RELEASE_BATCH_SIZE = 1024L * 1024L;
-
     private final Analysis analysis;
     private final MPPQueryContext context;
     private final boolean isAlignByDevice;
 
-    private String curDevice;
+    private IDeviceID curDevice;
     private PartialPath curDevicePath;
-
-    private long bytesToBeReleased = 0;
 
     public RewriterContext(Analysis analysis, MPPQueryContext context, boolean isAlignByDevice) {
       this.analysis = analysis;
@@ -659,7 +659,7 @@ public class AggregationPushDown implements PlanOptimizer {
       return isAlignByDevice;
     }
 
-    public void setCurDevice(String curDevice) {
+    public void setCurDevice(IDeviceID curDevice) {
       this.curDevice = curDevice;
     }
 
@@ -683,17 +683,7 @@ public class AggregationPushDown implements PlanOptimizer {
     }
 
     public void releaseMemoryForFrontEnd(final long bytes) {
-      bytesToBeReleased += bytes;
-      if (bytesToBeReleased >= RELEASE_BATCH_SIZE) {
-        releaseMemoryForFrontEndImmediately();
-      }
-    }
-
-    public void releaseMemoryForFrontEndImmediately() {
-      if (bytesToBeReleased > 0) {
-        context.releaseMemoryForFrontEnd(bytesToBeReleased);
-        bytesToBeReleased = 0;
-      }
+      this.context.releaseMemoryReservedForFrontEnd(bytes);
     }
   }
 }

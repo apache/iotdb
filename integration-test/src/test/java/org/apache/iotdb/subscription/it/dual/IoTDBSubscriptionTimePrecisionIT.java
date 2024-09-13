@@ -22,7 +22,7 @@ package org.apache.iotdb.subscription.it.dual;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.MultiClusterIT2Subscription;
+import org.apache.iotdb.itbase.category.MultiClusterIT2SubscriptionArchVerification;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
@@ -30,7 +30,6 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.write.record.Tablet;
-import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,21 +42,21 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
+import static org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant.AWAIT;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({MultiClusterIT2Subscription.class})
+@Category({MultiClusterIT2SubscriptionArchVerification.class})
 public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionTimePrecisionIT.class);
 
   @Override
-  void setUpConfig() {
+  protected void setUpConfig() {
     super.setUpConfig();
 
     // Set timestamp precision to nanosecond
@@ -160,7 +159,8 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
               } finally {
                 LOGGER.info("consumer exiting...");
               }
-            });
+            },
+            String.format("%s - consumer", testName.getDisplayName()));
     thread.start();
 
     // Check data on receiver
@@ -168,21 +168,16 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
       try (final Connection connection = receiverEnv.getConnection();
           final Statement statement = connection.createStatement()) {
         // Keep retrying if there are execution failures
-        Awaitility.await()
-            .pollDelay(IoTDBSubscriptionITConstant.AWAITILITY_POLL_DELAY_SECOND, TimeUnit.SECONDS)
-            .pollInterval(
-                IoTDBSubscriptionITConstant.AWAITILITY_POLL_INTERVAL_SECOND, TimeUnit.SECONDS)
-            .atMost(IoTDBSubscriptionITConstant.AWAITILITY_AT_MOST_SECOND, TimeUnit.SECONDS)
-            .untilAsserted(
-                () ->
-                    TestUtils.assertSingleResultSetEqual(
-                        TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
-                        new HashMap<String, String>() {
-                          {
-                            put("count(root.db.d1.s2)", "100");
-                            put("count(root.db.d2.s1)", "100");
-                          }
-                        }));
+        AWAIT.untilAsserted(
+            () ->
+                TestUtils.assertSingleResultSetEqual(
+                    TestUtils.executeQueryWithRetry(statement, "select count(*) from root.**"),
+                    new HashMap<String, String>() {
+                      {
+                        put("count(root.db.d1.s2)", "100");
+                        put("count(root.db.d2.s1)", "100");
+                      }
+                    }));
       }
     } catch (final Exception e) {
       e.printStackTrace();

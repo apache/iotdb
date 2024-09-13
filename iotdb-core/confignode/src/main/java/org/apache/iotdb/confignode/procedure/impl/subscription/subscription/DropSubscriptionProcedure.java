@@ -62,9 +62,10 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
   private TUnsubscribeReq unsubscribeReq;
 
-  private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
-  private List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>();
+  // NOTE: The 'drop pipe' operation should be performed before 'alter consumer group'.
   private List<DropPipeProcedureV2> dropPipeProcedures = new ArrayList<>();
+  private List<AlterTopicProcedure> alterTopicProcedures = new ArrayList<>();
+  private AlterConsumerGroupProcedure alterConsumerGroupProcedure;
 
   // Record failed index of procedures to rollback properly.
   // We only record fail index when executing on config nodes, because when executing on data nodes
@@ -76,7 +77,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     super();
   }
 
-  public DropSubscriptionProcedure(TUnsubscribeReq unsubscribeReq) {
+  public DropSubscriptionProcedure(final TUnsubscribeReq unsubscribeReq) {
     this.unsubscribeReq = unsubscribeReq;
   }
 
@@ -86,27 +87,28 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  protected void executeFromValidate(ConfigNodeProcedureEnv env) throws SubscriptionException {
+  protected boolean executeFromValidate(final ConfigNodeProcedureEnv env)
+      throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromValidate");
 
     subscriptionInfo.get().validateBeforeUnsubscribe(unsubscribeReq);
 
     // Construct AlterConsumerGroupProcedure
-    ConsumerGroupMeta updatedConsumerGroupMeta =
+    final ConsumerGroupMeta updatedConsumerGroupMeta =
         subscriptionInfo.get().deepCopyConsumerGroupMeta(unsubscribeReq.getConsumerGroupId());
 
     // Get topics subscribed by no consumers in this group after this un-subscription
-    Set<String> topicsUnsubByGroup =
+    final Set<String> topicsUnsubByGroup =
         updatedConsumerGroupMeta.removeSubscription(
             unsubscribeReq.getConsumerId(), unsubscribeReq.getTopicNames());
     alterConsumerGroupProcedure =
         new AlterConsumerGroupProcedure(updatedConsumerGroupMeta, subscriptionInfo);
 
-    for (String topic : unsubscribeReq.getTopicNames()) {
+    for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
         // Topic will be subscribed by no consumers in this group
 
-        TopicMeta updatedTopicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
+        final TopicMeta updatedTopicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
         updatedTopicMeta.removeSubscribedConsumerGroup(unsubscribeReq.getConsumerGroupId());
 
         alterTopicProcedures.add(new AlterTopicProcedure(updatedTopicMeta, subscriptionInfo));
@@ -118,28 +120,52 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       }
     }
 
-    alterConsumerGroupProcedure.executeFromValidate(env);
-
-    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
-      alterTopicProcedure.executeFromValidate(env);
-    }
-
-    for (DropPipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
+    // Validate DropPipeProcedureV2s
+    for (final DropPipeProcedureV2 dropPipeProcedure : dropPipeProcedures) {
       dropPipeProcedure.executeFromValidateTask(env);
       dropPipeProcedure.executeFromCalculateInfoForTask(env);
     }
+
+    // Validate AlterTopicProcedures
+    for (final AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      alterTopicProcedure.executeFromValidate(env);
+    }
+
+    // Validate AlterConsumerGroupProcedure
+    alterConsumerGroupProcedure.executeFromValidate(env);
+    return true;
   }
 
   @Override
-  protected void executeFromOperateOnConfigNodes(ConfigNodeProcedureEnv env)
+  protected void executeFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException {
     LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnConfigNodes");
 
-    alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
-
     TSStatus response;
 
-    List<AlterTopicPlan> alterTopicPlans =
+    // Execute DropPipeProcedureV2s
+    final List<ConfigPhysicalPlan> dropPipePlans =
+        dropPipeProcedures.stream()
+            .map(proc -> new DropPipePlanV2(proc.getPipeName()))
+            .collect(Collectors.toList());
+    try {
+      response =
+          env.getConfigManager()
+              .getConsensusManager()
+              .write(new OperateMultiplePipesPlanV2(dropPipePlans));
+    } catch (final ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      response.setMessage(e.getMessage());
+    }
+    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && response.getSubStatusSize() > 0) {
+      // Record the failed index for rollback
+      dropPipeProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
+    }
+
+    // Execute AlterTopicProcedures
+    final List<AlterTopicPlan> alterTopicPlans =
         alterTopicProcedures.stream()
             .map(AlterTopicProcedure::getUpdatedTopicMeta)
             .map(AlterTopicPlan::new)
@@ -149,7 +175,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           env.getConfigManager()
               .getConsensusManager()
               .write(new AlterMultipleTopicsPlan(alterTopicPlans));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
@@ -160,51 +186,21 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       alterTopicProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
     }
 
-    List<ConfigPhysicalPlan> dropPipePlans =
-        dropPipeProcedures.stream()
-            .map(proc -> new DropPipePlanV2(proc.getPipeName()))
-            .collect(Collectors.toList());
-    try {
-      response =
-          env.getConfigManager()
-              .getConsensusManager()
-              .write(new OperateMultiplePipesPlanV2(dropPipePlans));
-    } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-      response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-      response.setMessage(e.getMessage());
-    }
-    if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        && response.getSubStatusSize() > 0) {
-      // Record the failed index for rollback
-      dropPipeProcedureFailIndexOnCN = response.getSubStatusSize() - 1;
-    }
+    // Execute AlterConsumerGroupProcedure
+    alterConsumerGroupProcedure.executeFromOperateOnConfigNodes(env);
   }
 
   @Override
-  protected void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
+  protected void executeFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
       throws SubscriptionException, IOException {
     LOGGER.info("DropSubscriptionProcedure: executeFromOperateOnDataNodes");
 
-    alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
-
-    // push topic meta to data nodes
-    List<ByteBuffer> topicMetaBinaryList = new ArrayList<>();
-    for (AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
-      topicMetaBinaryList.add(alterTopicProcedure.getUpdatedTopicMeta().serialize());
-    }
-    if (pushTopicMetaHasException(env.pushMultiTopicMetaToDataNodes(topicMetaBinaryList))) {
-      // If not all topic meta are pushed successfully, the meta can be pushed during meta sync.
-      LOGGER.warn(
-          "Failed to alter topics when creating subscription, metadata will be synchronized later.");
-    }
-
-    // push pipe meta to data nodes
-    List<String> pipeNames =
+    // Push pipe meta to data nodes
+    final List<String> pipeNames =
         dropPipeProcedures.stream()
             .map(DropPipeProcedureV2::getPipeName)
             .collect(Collectors.toList());
-    String exceptionMessage =
+    final String exceptionMessage =
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, dropMultiPipeOnDataNodes(pipeNames, env));
     if (!exceptionMessage.isEmpty()) {
@@ -214,23 +210,37 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           pipeNames,
           exceptionMessage);
     }
+
+    // Push topic meta to data nodes
+    final List<ByteBuffer> topicMetaBinaryList = new ArrayList<>();
+    for (final AlterTopicProcedure alterTopicProcedure : alterTopicProcedures) {
+      topicMetaBinaryList.add(alterTopicProcedure.getUpdatedTopicMeta().serialize());
+    }
+    if (pushTopicMetaHasException(env.pushMultiTopicMetaToDataNodes(topicMetaBinaryList))) {
+      // If not all topic meta are pushed successfully, the meta can be pushed during meta sync.
+      LOGGER.warn(
+          "Failed to alter topics when creating subscription, metadata will be synchronized later.");
+    }
+
+    // Push consumer group meta to data nodes
+    alterConsumerGroupProcedure.executeFromOperateOnDataNodes(env);
   }
 
   @Override
-  protected void rollbackFromValidate(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromValidate(final ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromLock");
   }
 
   @Override
-  protected void rollbackFromOperateOnConfigNodes(ConfigNodeProcedureEnv env) {
+  protected void rollbackFromOperateOnConfigNodes(final ConfigNodeProcedureEnv env) {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnConfigNodes");
 
+    // Rollback AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.rollbackFromOperateOnConfigNodes(env);
 
+    // Rollback AlterTopicProcedures
     TSStatus response;
-
-    // rollback alterTopicProcedures
-    List<AlterTopicPlan> alterTopicRollbackPlans = new ArrayList<>();
+    final List<AlterTopicPlan> alterTopicRollbackPlans = new ArrayList<>();
     for (int i = 0;
         i <= Math.min(alterTopicProcedureFailIndexOnCN, alterTopicProcedures.size());
         i++) {
@@ -242,23 +252,25 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
           env.getConfigManager()
               .getConsensusManager()
               .write(new AlterMultipleTopicsPlan(alterTopicRollbackPlans));
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
       response = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       response.setMessage(e.getMessage());
     }
-    // if failed to rollback, throw exception
+    // If failed to rollback, throw exception
     if (response.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new SubscriptionException(response.getMessage());
     }
 
-    // Do nothing to rollback dropPipeProcedures
+    // Do nothing to rollback DropPipeProcedureV2s
   }
 
   @Override
-  protected void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) throws IOException {
+  protected void rollbackFromOperateOnDataNodes(final ConfigNodeProcedureEnv env)
+      throws IOException {
     LOGGER.info("DropSubscriptionProcedure: rollbackFromOperateOnDataNodes");
 
+    // Rollback AlterConsumerGroupProcedure
     alterConsumerGroupProcedure.rollbackFromOperateOnDataNodes(env);
 
     // Push all topic metas to datanode, may be time-consuming
@@ -268,7 +280,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     }
 
     // Push all pipe metas to datanode, may be time-consuming
-    String exceptionMessage =
+    final String exceptionMessage =
         AbstractOperatePipeProcedureV2.parsePushPipeMetaExceptionForPipe(
             null, AbstractOperatePipeProcedureV2.pushPipeMetaToDataNodes(env, pipeTaskInfo));
     if (!exceptionMessage.isEmpty()) {
@@ -279,7 +291,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(ProcedureType.DROP_SUBSCRIPTION_PROCEDURE.getTypeCode());
 
     super.serialize(stream);
@@ -289,7 +301,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     final int size = unsubscribeReq.getTopicNamesSize();
     ReadWriteIOUtils.write(size, stream);
     if (size != 0) {
-      for (String topicName : unsubscribeReq.getTopicNames()) {
+      for (final String topicName : unsubscribeReq.getTopicNames()) {
         ReadWriteIOUtils.write(topicName, stream);
       }
     }
@@ -306,7 +318,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     if (alterTopicProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(alterTopicProcedures.size(), stream);
-      for (AlterTopicProcedure topicProcedure : alterTopicProcedures) {
+      for (final AlterTopicProcedure topicProcedure : alterTopicProcedures) {
         topicProcedure.serialize(stream);
       }
     } else {
@@ -317,7 +329,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
     if (dropPipeProcedures != null) {
       ReadWriteIOUtils.write(true, stream);
       ReadWriteIOUtils.write(dropPipeProcedures.size(), stream);
-      for (AbstractOperatePipeProcedureV2 pipeProcedure : dropPipeProcedures) {
+      for (final AbstractOperatePipeProcedureV2 pipeProcedure : dropPipeProcedures) {
         pipeProcedure.serialize(stream);
       }
     } else {
@@ -326,7 +338,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) {
+  public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
     unsubscribeReq =
@@ -355,7 +367,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
         // This readShort should return ALTER_TOPIC_PROCEDURE, and we ignore it.
         ReadWriteIOUtils.readShort(byteBuffer);
 
-        AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
+        final AlterTopicProcedure topicProcedure = new AlterTopicProcedure();
         topicProcedure.deserialize(byteBuffer);
         alterTopicProcedures.add(topicProcedure);
       }
@@ -366,9 +378,9 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
       size = ReadWriteIOUtils.readInt(byteBuffer);
       for (int i = 0; i < size; ++i) {
         // This readShort should return DROP_PIPE_PROCEDURE.
-        short typeCode = ReadWriteIOUtils.readShort(byteBuffer);
+        final short typeCode = ReadWriteIOUtils.readShort(byteBuffer);
         if (typeCode == ProcedureType.DROP_PIPE_PROCEDURE_V2.getTypeCode()) {
-          DropPipeProcedureV2 dropPipeProcedureV2 = new DropPipeProcedureV2();
+          final DropPipeProcedureV2 dropPipeProcedureV2 = new DropPipeProcedureV2();
           dropPipeProcedureV2.deserialize(byteBuffer);
           dropPipeProcedures.add(dropPipeProcedureV2);
         }
@@ -377,14 +389,14 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    DropSubscriptionProcedure that = (DropSubscriptionProcedure) o;
+    final DropSubscriptionProcedure that = (DropSubscriptionProcedure) o;
     return Objects.equals(getProcId(), that.getProcId())
         && Objects.equals(getCurrentState(), that.getCurrentState())
         && getCycles() == that.getCycles()
@@ -408,7 +420,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
   @TestOnly
   public void setAlterConsumerGroupProcedure(
-      AlterConsumerGroupProcedure alterConsumerGroupProcedure) {
+      final AlterConsumerGroupProcedure alterConsumerGroupProcedure) {
     this.alterConsumerGroupProcedure = alterConsumerGroupProcedure;
   }
 
@@ -418,7 +430,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @TestOnly
-  public void setAlterTopicProcedures(List<AlterTopicProcedure> alterTopicProcedures) {
+  public void setAlterTopicProcedures(final List<AlterTopicProcedure> alterTopicProcedures) {
     this.alterTopicProcedures = alterTopicProcedures;
   }
 
@@ -428,7 +440,7 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
   }
 
   @TestOnly
-  public void setDropPipeProcedures(List<DropPipeProcedureV2> dropPipeProcedures) {
+  public void setDropPipeProcedures(final List<DropPipeProcedureV2> dropPipeProcedures) {
     this.dropPipeProcedures = dropPipeProcedures;
   }
 

@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -61,9 +62,17 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final String trustStorePath,
       final String trustStorePwd,
       final boolean useLeaderCache,
-      final String loadBalanceStrategy) {
+      final String loadBalanceStrategy,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy) {
     return new IoTDBConfigNodeSyncClientManager(
-        nodeUrls, useSSL, trustStorePath, trustStorePwd, loadBalanceStrategy);
+        nodeUrls,
+        useSSL,
+        trustStorePath,
+        trustStorePwd,
+        loadBalanceStrategy,
+        shouldReceiverConvertOnTypeMismatch,
+        loadTsFileStrategy);
   }
 
   @Override
@@ -105,12 +114,12 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransferWrapper(
       final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent) throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBConfigRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeConfigRegionWritePlanEvent);
     } finally {
       pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
@@ -130,6 +139,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                   pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()));
       rateLimitIfNeeded(
           pipeConfigRegionWritePlanEvent.getPipeName(),
+          pipeConfigRegionWritePlanEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);
@@ -165,12 +175,12 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
 
   private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBConfigRegionConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBConfigRegionConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeConfigRegionSnapshotEvent);
     } finally {
       pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
@@ -181,14 +191,23 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
   private void doTransfer(final PipeConfigRegionSnapshotEvent snapshotEvent)
       throws PipeException, IOException {
     final String pipeName = snapshotEvent.getPipeName();
+    final long creationTime = snapshotEvent.getCreationTime();
     final File snapshotFile = snapshotEvent.getSnapshotFile();
     final File templateFile = snapshotEvent.getTemplateFile();
     final Pair<IoTDBSyncClient, Boolean> clientAndStatus = clientManager.getClient();
 
     // 1. Transfer snapshotFile, and template File if exists
-    transferFilePieces(pipeName, snapshotFile, clientAndStatus, true);
+    transferFilePieces(
+        Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+        snapshotFile,
+        clientAndStatus,
+        true);
     if (Objects.nonNull(templateFile)) {
-      transferFilePieces(pipeName, templateFile, clientAndStatus, true);
+      transferFilePieces(
+          Collections.singletonMap(new Pair<>(pipeName, creationTime), 1.0),
+          templateFile,
+          clientAndStatus,
+          true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     final TPipeTransferResp resp;
@@ -206,6 +225,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
                   snapshotEvent.toSealTypeString()));
       rateLimitIfNeeded(
           snapshotEvent.getPipeName(),
+          snapshotEvent.getCreationTime(),
           clientAndStatus.getLeft().getEndPoint(),
           req.getBody().length);
       resp = clientAndStatus.getLeft().pipeTransfer(req);

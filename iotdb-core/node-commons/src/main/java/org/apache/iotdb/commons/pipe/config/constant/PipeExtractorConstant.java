@@ -35,8 +35,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_MODE_KEY = "extractor.mode";
   public static final String SOURCE_MODE_KEY = "source.mode";
   public static final String EXTRACTOR_MODE_QUERY_VALUE = "query";
+  public static final String EXTRACTOR_MODE_SNAPSHOT_VALUE = "snapshot";
   public static final String EXTRACTOR_MODE_SUBSCRIBE_VALUE = "subscribe";
-  public static final String EXTRACTOR_MODE_DEFAULT_VALUE = EXTRACTOR_MODE_SUBSCRIBE_VALUE;
+  public static final String EXTRACTOR_MODE_LIVE_VALUE = "live";
+  public static final String EXTRACTOR_MODE_DEFAULT_VALUE = EXTRACTOR_MODE_LIVE_VALUE;
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
@@ -64,6 +66,10 @@ public class PipeExtractorConstant {
   public static final String SOURCE_HISTORY_END_TIME_KEY = "source.history.end-time";
   public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_KEY = "extractor.history.loose-range";
   public static final String SOURCE_HISTORY_LOOSE_RANGE_KEY = "source.history.loose-range";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE = "time";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE = "path";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE = "all";
+  public static final String EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE = "";
   public static final String EXTRACTOR_MODS_ENABLE_KEY = "extractor.mods.enable";
   public static final String SOURCE_MODS_ENABLE_KEY = "source.mods.enable";
   public static final boolean EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE = false;
@@ -81,6 +87,10 @@ public class PipeExtractorConstant {
   public static final String EXTRACTOR_REALTIME_MODE_BATCH_MODE_VALUE = "batch";
   public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_KEY = "extractor.realtime.loose-range";
   public static final String SOURCE_REALTIME_LOOSE_RANGE_KEY = "source.realtime.loose-range";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_TIME_VALUE = "time";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_PATH_VALUE = "path";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE = "all";
+  public static final String EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE = "";
 
   public static final String EXTRACTOR_START_TIME_KEY = "extractor.start-time";
   public static final String SOURCE_START_TIME_KEY = "source.start-time";

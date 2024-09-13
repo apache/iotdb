@@ -65,6 +65,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -1065,10 +1066,10 @@ public class PipelineBuilderTest {
   @Test
   public void testConsumeOneByOneChildrenPipelineBuilderDependency() throws IllegalPathException {
     TypeProvider typeProvider = new TypeProvider();
-    typeProvider.setType("root.sg.d0.s1", TSDataType.INT64);
-    typeProvider.setType("root.sg.d1.s1", TSDataType.INT64);
-    typeProvider.setType("count(root.sg.d0.s1)", TSDataType.INT64);
-    typeProvider.setType("count(root.sg.d1.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("root.sg.d0.s1", TSDataType.INT64);
+    typeProvider.setTreeModelType("root.sg.d1.s1", TSDataType.INT64);
+    typeProvider.setTreeModelType("count(root.sg.d0.s1)", TSDataType.INT64);
+    typeProvider.setTreeModelType("count(root.sg.d1.s1)", TSDataType.INT64);
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(new PlanNodeId("DeviceViewNode"), null, null, null);
     for (int i = 0; i < 2; i++) {
@@ -1627,7 +1628,7 @@ public class PipelineBuilderTest {
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
               new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
     return fullOuterTimeJoinNode;
@@ -1651,7 +1652,7 @@ public class PipelineBuilderTest {
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
               new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       fullOuterTimeJoinNode.addChild(seriesScanNode);
     }
     return fullOuterTimeJoinNode;
@@ -1666,7 +1667,7 @@ public class PipelineBuilderTest {
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
               new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       leftOuterTimeJoinNode.addChild(seriesScanNode);
     }
     return leftOuterTimeJoinNode;
@@ -1708,18 +1709,18 @@ public class PipelineBuilderTest {
           new SingleDeviceViewNode(
               new PlanNodeId(String.format("SingleDeviceViewNode%d", i)),
               Arrays.asList("Time", "Device", "s1"),
-              "root.sg.d" + i,
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i),
               Arrays.asList(0, 1, 2));
       singleDeviceViewNode.setCacheOutputColumnNames(true);
       SeriesScanNode seriesScanNode =
           new SeriesScanNode(
               new PlanNodeId(String.format("SeriesScanNode%d", i)),
               new MeasurementPath(String.format("root.sg.d%d.s1", i), TSDataType.INT32));
-      typeProvider.setType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
+      typeProvider.setTreeModelType(seriesScanNode.getSeriesPath().toString(), TSDataType.INT32);
       singleDeviceViewNode.addChild(seriesScanNode);
-      typeProvider.setType("Time", TSDataType.INT64);
-      typeProvider.setType("Device", TSDataType.TEXT);
-      typeProvider.setType("s1", TSDataType.INT32);
+      typeProvider.setTreeModelType("Time", TSDataType.INT64);
+      typeProvider.setTreeModelType("Device", TSDataType.TEXT);
+      typeProvider.setTreeModelType("s1", TSDataType.INT32);
       topKNode.addChild(singleDeviceViewNode);
     }
     return topKNode;

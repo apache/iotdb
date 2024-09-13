@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFileSealWithModReq;
+import org.apache.iotdb.db.pipe.consensus.PipeConsensusConnectorMetrics;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -65,30 +66,24 @@ import java.util.stream.Collectors;
 
 /** This connector is used for PipeConsensus to transfer queued event. */
 public class PipeConsensusSyncConnector extends IoTDBConnector {
-
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusSyncConnector.class);
-
   private static final String PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT =
       "PipeConsensus: syncClient connection to %s:%s failed when %s, because: %s";
-
   private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";
-
   private static final String TSFILE_SCENARIO = "transfer tsfile";
-
   private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
-
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncRetryClientManager;
-
   private final List<TEndPoint> peers;
-
   private final int thisDataNodeId;
-
   private final int consensusGroupId;
-
+  private final PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
   private PipeConsensusSyncBatchReqBuilder tabletBatchBuilder;
 
   public PipeConsensusSyncConnector(
-      List<TEndPoint> peers, int consensusGroupId, int thisDataNodeId) {
+      List<TEndPoint> peers,
+      int consensusGroupId,
+      int thisDataNodeId,
+      PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics) {
     // In PipeConsensus, one pipeConsensusTask corresponds to a pipeConsensusConnector. Thus,
     // `peers` here actually is a singletonList that contains one peer's TEndPoint. But here we
     // retain the implementation of list to cope with possible future expansion
@@ -97,6 +92,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     this.thisDataNodeId = thisDataNodeId;
     this.syncRetryClientManager =
         PipeConsensusClientMgrContainer.getInstance().getSyncClientManager();
+    this.pipeConsensusConnectorMetrics = pipeConsensusConnectorMetrics;
   }
 
   @Override
@@ -137,7 +133,10 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
           doTransfer();
         }
       } else {
+        long startTime = System.nanoTime();
         doTransferWrapper((PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
+        long duration = System.nanoTime() - startTime;
+        pipeConsensusConnectorMetrics.recordRetryWALTransferTimer(duration);
       }
     } catch (Exception e) {
       throw new PipeConnectionException(
@@ -154,12 +153,14 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
     // processor and will not change the event type like
     // org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBDataRegionSyncConnector
     try {
+      long startTime = System.nanoTime();
       // In order to commit in order
       if (isTabletBatchModeEnabled && !tabletBatchBuilder.isEmpty()) {
         doTransfer();
       }
-
       doTransfer((PipeTsFileInsertionEvent) tsFileInsertionEvent);
+      long duration = System.nanoTime() - startTime;
+      pipeConsensusConnectorMetrics.recordRetryTsFileTransferTimer(duration);
     } catch (Exception e) {
       throw new PipeConnectionException(
           String.format(
@@ -223,12 +224,12 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        PipeConsensusSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          PipeConsensusSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -319,6 +320,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                     modFile.length(),
                     tsFile.getName(),
                     tsFile.length(),
+                    pipeTsFileInsertionEvent.getFlushPointCount(),
                     tCommitId,
                     tConsensusGroupId,
                     pipeTsFileInsertionEvent.getProgressIndex(),
@@ -332,6 +334,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
                 PipeConsensusTsFileSealReq.toTPipeConsensusTransferReq(
                     tsFile.getName(),
                     tsFile.length(),
+                    pipeTsFileInsertionEvent.getFlushPointCount(),
                     tCommitId,
                     tConsensusGroupId,
                     pipeTsFileInsertionEvent.getProgressIndex(),

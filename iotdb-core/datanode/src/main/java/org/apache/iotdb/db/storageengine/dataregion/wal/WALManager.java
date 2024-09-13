@@ -69,7 +69,11 @@ public class WALManager implements IService {
   private final AtomicLong totalFileNum = new AtomicLong();
 
   private WALManager() {
-    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+    if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)
+        || config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.FAST_IOT_CONSENSUS)) {
       walNodesManager = new FirstCreateStrategy();
     } else if (config.getMaxWalNodesNum() == 0) {
       walNodesManager = new ElasticStrategy();
@@ -80,6 +84,12 @@ public class WALManager implements IService {
 
   public static String getApplicantUniqueId(String storageGroupName, boolean sequence) {
     return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            || config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)
+            || config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
         ? storageGroupName
         : storageGroupName
             + IoTDBConstant.FILE_NAME_SEPARATOR
@@ -95,11 +105,17 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  /** WAL node will be registered only when using iot consensus protocol. */
+  /** WAL node will be registered only when using iot series consensus protocol. */
   public void registerWALNode(
       String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS))) {
       return;
     }
 
@@ -108,10 +124,16 @@ public class WALManager implements IService {
     WritingMetrics.getInstance().createWALNodeInfoMetrics(applicantUniqueId);
   }
 
-  /** WAL node will be deleted only when using iot consensus protocol. */
+  /** WAL node will be deleted only when using iot series consensus protocol. */
   public void deleteWALNode(String applicantUniqueId) {
     if (config.getWalMode() == WALMode.DISABLE
-        || !config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)) {
+        || (!config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.IOT_CONSENSUS_V2)
+            && !config
+                .getDataRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.FAST_IOT_CONSENSUS))) {
       return;
     }
 
@@ -159,7 +181,7 @@ public class WALManager implements IService {
       deleteOutdatedFilesInWALNodes();
       if (firstLoop && shouldThrottle()) {
         logger.warn(
-            "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
+            "WAL disk usage {} is larger than the iot_consensus_throttle_threshold_in_byte * 0.8 {}, please check your write load, iot consensus and the pipe module. It's better to allocate more disk for WAL.",
             getTotalDiskUsage(),
             getThrottleThreshold());
       }

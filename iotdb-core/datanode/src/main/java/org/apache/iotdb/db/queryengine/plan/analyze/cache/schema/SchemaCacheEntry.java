@@ -40,6 +40,7 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   private final Map<String, String> tagMap;
   private final boolean isAligned;
 
+  @SuppressWarnings("java:S3077")
   private volatile ILastCacheContainer lastCacheContainer = null;
 
   public SchemaCacheEntry(
@@ -68,6 +69,11 @@ public class SchemaCacheEntry implements IMeasurementSchemaInfo {
   @Override
   public Map<String, String> getTagMap() {
     return tagMap;
+  }
+
+  @Override
+  public Map<String, String> getAttributeMap() {
+    return null;
   }
 
   public TSDataType getTsDataType() {

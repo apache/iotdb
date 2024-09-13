@@ -30,6 +30,9 @@ public class DriverTaskAbortedException extends Exception {
   public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
   public static final String BY_INTERNAL_ERROR_SCHEDULED = "internal error scheduled";
 
+  public static final String BY_MEMORY_NOT_ENOUGH =
+      "Memory is not enough to execute the query task.";
+
   public DriverTaskAbortedException(String driverTaskName, String causeMsg) {
     super(String.format("DriverTask %s is aborted by %s", driverTaskName, causeMsg));
   }

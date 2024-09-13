@@ -37,14 +37,20 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
   private final String name;
   private final String alias;
   private Map<String, String> tagMap;
+  private Map<String, String> attributeMap;
   private final IMeasurementSchema schema;
 
   public MeasurementSchemaInfo(
-      String name, IMeasurementSchema schema, String alias, Map<String, String> tagMap) {
+      String name,
+      IMeasurementSchema schema,
+      String alias,
+      Map<String, String> tagMap,
+      Map<String, String> attributeMap) {
     this.name = name;
     this.schema = schema;
     this.alias = alias;
     this.tagMap = tagMap;
+    this.attributeMap = attributeMap;
   }
 
   public String getName() {
@@ -66,6 +72,11 @@ public class MeasurementSchemaInfo implements IMeasurementSchemaInfo {
   @Override
   public Map<String, String> getTagMap() {
     return tagMap;
+  }
+
+  @Override
+  public Map<String, String> getAttributeMap() {
+    return attributeMap;
   }
 
   @Override

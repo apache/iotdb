@@ -25,12 +25,14 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
@@ -52,16 +54,17 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   private ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
-      Tablet tablet,
-      boolean isAligned,
-      EnrichedEvent sourceEvent,
-      boolean needToReport,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
-    super(pipeName, pipeTaskMeta, pattern, startTime, endTime);
+      final Tablet tablet,
+      final boolean isAligned,
+      final EnrichedEvent sourceEvent,
+      final boolean needToReport,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
+    super(pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
     this.tablet = Objects.requireNonNull(tablet);
     this.isAligned = isAligned;
     this.sourceEvent = sourceEvent;
@@ -69,18 +72,20 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public PipeRawTabletInsertionEvent(
-      Tablet tablet,
-      boolean isAligned,
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      EnrichedEvent sourceEvent,
-      boolean needToReport) {
+      final Tablet tablet,
+      final boolean isAligned,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final boolean needToReport) {
     this(
         tablet,
         isAligned,
         sourceEvent,
         needToReport,
         pipeName,
+        creationTime,
         pipeTaskMeta,
         null,
         Long.MIN_VALUE,
@@ -88,33 +93,38 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @TestOnly
-  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned) {
-    this(tablet, isAligned, null, false, null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeRawTabletInsertionEvent(final Tablet tablet, final boolean isAligned) {
+    this(tablet, isAligned, null, false, null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @TestOnly
-  public PipeRawTabletInsertionEvent(Tablet tablet, boolean isAligned, PipePattern pattern) {
-    this(tablet, isAligned, null, false, null, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+  public PipeRawTabletInsertionEvent(
+      final Tablet tablet, final boolean isAligned, final PipePattern pattern) {
+    this(tablet, isAligned, null, false, null, 0, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @TestOnly
-  public PipeRawTabletInsertionEvent(Tablet tablet, long startTime, long endTime) {
-    this(tablet, false, null, false, null, null, null, startTime, endTime);
+  public PipeRawTabletInsertionEvent(
+      final Tablet tablet, final long startTime, final long endTime) {
+    this(tablet, false, null, false, null, 0, null, null, startTime, endTime);
   }
 
   @Override
-  public boolean internallyIncreaseResourceReferenceCount(String holderMessage) {
-    allocatedMemoryBlock = PipeResourceManager.memory().forceAllocateWithRetry(tablet);
+  public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
     return true;
   }
 
   @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
+  public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     allocatedMemoryBlock.close();
 
     // Record the deviceId before the memory is released,
     // for later possibly updating the leader cache.
-    deviceId = tablet.deviceId;
+    deviceId = tablet.getDeviceId();
 
     // Actually release the occupied memory.
     tablet = null;
@@ -130,7 +140,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
-  public void bindProgressIndex(ProgressIndex overridingProgressIndex) {
+  public void bindProgressIndex(final ProgressIndex overridingProgressIndex) {
     // Normally not all events need to report progress, but if the overridingProgressIndex
     // is given, indicating that the progress needs to be reported.
     if (Objects.nonNull(overridingProgressIndex)) {
@@ -152,17 +162,19 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime) {
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime) {
     return new PipeRawTabletInsertionEvent(
         tablet,
         isAligned,
         sourceEvent,
         needToReport,
         pipeName,
+        creationTime,
         pipeTaskMeta,
         pattern,
         startTime,
@@ -184,19 +196,31 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
     return startTime <= timestamps[timestamps.length - 1] && timestamps[0] <= endTime;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    final String deviceId = getDeviceId();
+    return Objects.isNull(deviceId)
+        || pipePattern.mayOverlapWithDevice(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId));
+  }
+
   public void markAsNeedToReport() {
     this.needToReport = true;
   }
 
   public String getDeviceId() {
     // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
-    return Objects.nonNull(tablet) ? tablet.deviceId : deviceId;
+    return Objects.nonNull(tablet) ? tablet.getDeviceId() : deviceId;
+  }
+
+  public EnrichedEvent getSourceEvent() {
+    return sourceEvent;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
 
   @Override
-  public Iterable<TabletInsertionEvent> processRowByRow(BiConsumer<Row, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processRowByRow(
+      final BiConsumer<Row, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer =
           new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
@@ -205,7 +229,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
-  public Iterable<TabletInsertionEvent> processTablet(BiConsumer<Tablet, RowCollector> consumer) {
+  public Iterable<TabletInsertionEvent> processTablet(
+      final BiConsumer<Tablet, RowCollector> consumer) {
     if (dataContainer == null) {
       dataContainer =
           new TabletInsertionDataContainer(pipeTaskMeta, this, tablet, isAligned, pipePattern);
@@ -241,11 +266,18 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
     return new PipeRawTabletInsertionEvent(
-        convertToTablet(), isAligned, pipeName, pipeTaskMeta, this, needToReport);
+        convertToTablet(), isAligned, pipeName, creationTime, pipeTaskMeta, this, needToReport);
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
-    return !shouldParseTimeOrPattern() && tablet.rowSize == 0;
+    return !shouldParseTimeOrPattern() && isTabletEmpty(tablet);
+  }
+
+  public static boolean isTabletEmpty(final Tablet tablet) {
+    return Objects.isNull(tablet)
+        || tablet.rowSize == 0
+        || Objects.isNull(tablet.getSchemas())
+        || tablet.getSchemas().isEmpty();
   }
 
   /////////////////////////// Object ///////////////////////////

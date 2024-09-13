@@ -25,6 +25,8 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.Map;
 
 /**
@@ -37,12 +39,12 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   private final EnrichedEvent event;
   private final TsFileEpoch tsFileEpoch;
 
-  private Map<String, String[]> device2Measurements;
+  private Map<IDeviceID, String[]> device2Measurements;
 
   public PipeRealtimeEvent(
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
-      final Map<String, String[]> device2Measurements,
+      final Map<IDeviceID, String[]> device2Measurements,
       final PipePattern pattern) {
     this(event, tsFileEpoch, device2Measurements, null, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
   }
@@ -50,7 +52,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   public PipeRealtimeEvent(
       final EnrichedEvent event,
       final TsFileEpoch tsFileEpoch,
-      final Map<String, String[]> device2Measurements,
+      final Map<IDeviceID, String[]> device2Measurements,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
@@ -58,7 +60,13 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
     // is only used in the realtime event extractor, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
-    super(event != null ? event.getPipeName() : null, pipeTaskMeta, pattern, startTime, endTime);
+    super(
+        event != null ? event.getPipeName() : null,
+        event != null ? event.getCreationTime() : 0,
+        pipeTaskMeta,
+        pattern,
+        startTime,
+        endTime);
 
     this.event = event;
     this.tsFileEpoch = tsFileEpoch;
@@ -73,7 +81,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return tsFileEpoch;
   }
 
-  public Map<String, String[]> getSchemaInfo() {
+  public Map<IDeviceID, String[]> getSchemaInfo() {
     return device2Measurements;
   }
 
@@ -123,10 +131,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     return event.getProgressIndex();
   }
 
-  /**
-   * If pipe's pattern is database-level, then no need to parse event by pattern cause pipes are
-   * data-region-level.
-   */
   @Override
   public void skipParsingPattern() {
     event.skipParsingPattern();
@@ -138,15 +142,36 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   }
 
   @Override
+  public boolean shouldParseTime() {
+    return event.shouldParseTime();
+  }
+
+  @Override
+  public boolean shouldParsePattern() {
+    return event.shouldParsePattern();
+  }
+
+  @Override
+  public boolean mayEventTimeOverlappedWithTimeRange() {
+    return event.mayEventTimeOverlappedWithTimeRange();
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return event.mayEventPathsOverlappedWithPattern();
+  }
+
+  @Override
   public PipeRealtimeEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
     return new PipeRealtimeEvent(
         event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-            pipeName, pipeTaskMeta, pattern, startTime, endTime),
+            pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime),
         this.tsFileEpoch,
         this.device2Measurements,
         pipeTaskMeta,
@@ -158,11 +183,6 @@ public class PipeRealtimeEvent extends EnrichedEvent {
   @Override
   public boolean isGeneratedByPipe() {
     return event.isGeneratedByPipe();
-  }
-
-  @Override
-  public boolean mayEventTimeOverlappedWithTimeRange() {
-    return event.mayEventTimeOverlappedWithTimeRange();
   }
 
   @Override

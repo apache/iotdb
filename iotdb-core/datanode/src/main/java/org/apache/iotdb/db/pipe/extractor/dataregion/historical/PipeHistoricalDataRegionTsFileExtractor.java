@@ -32,7 +32,8 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -45,6 +46,7 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,13 +61,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_END_TIME_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_HISTORY_START_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant.EXTRACTOR_MODS_ENABLE_KEY;
@@ -87,6 +94,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private static final long PIPE_MIN_FLUSH_INTERVAL_IN_MS = 2000;
 
   private String pipeName;
+  private long creationTime;
+
   private PipeTaskMeta pipeTaskMeta;
   private ProgressIndex startIndex;
 
@@ -101,6 +110,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private long historicalDataExtractionTimeLowerBound; // Arrival time
 
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
+  private boolean sloppyPattern; // true to disable pattern filter after extraction
 
   private Pair<Boolean, Boolean> listeningOptionPair;
   private boolean shouldExtractInsertion;
@@ -121,6 +131,31 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     } catch (final Exception e) {
       // compatible with the current validation framework
       throw new PipeParameterNotValidException(e.getMessage());
+    }
+
+    final String extractorHistoryLooseRangeValue =
+        parameters
+            .getStringOrDefault(
+                Arrays.asList(EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
+                EXTRACTOR_HISTORY_LOOSE_RANGE_DEFAULT_VALUE)
+            .trim();
+    if (EXTRACTOR_HISTORY_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(extractorHistoryLooseRangeValue)) {
+      sloppyTimeRange = true;
+      sloppyPattern = true;
+    } else {
+      final Set<String> sloppyOptionSet =
+          Arrays.stream(extractorHistoryLooseRangeValue.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .map(String::toLowerCase)
+              .collect(Collectors.toSet());
+      sloppyTimeRange = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_TIME_VALUE);
+      sloppyPattern = sloppyOptionSet.remove(EXTRACTOR_HISTORY_LOOSE_RANGE_PATH_VALUE);
+      if (!sloppyOptionSet.isEmpty()) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "Parameters in set %s are not allowed in 'history.loose-range'", sloppyOptionSet));
+      }
     }
 
     if (parameters.hasAnyAttributes(
@@ -152,6 +187,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                   EXTRACTOR_END_TIME_KEY,
                   historicalDataExtractionEndTime));
         }
+      } catch (final PipeParameterNotValidException e) {
+        throw e;
       } catch (final Exception e) {
         // compatible with the current validation framework
         throw new PipeParameterNotValidException(e.getMessage());
@@ -221,8 +258,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
         (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     pipeName = environment.getPipeName();
+    creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    startIndex = environment.getPipeTaskMeta().getProgressIndex().deepCopy();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -280,19 +318,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       }
     }
 
-    sloppyTimeRange =
-        Arrays.stream(
-                parameters
-                    .getStringOrDefault(
-                        Arrays.asList(
-                            EXTRACTOR_HISTORY_LOOSE_RANGE_KEY, SOURCE_HISTORY_LOOSE_RANGE_KEY),
-                        "")
-                    .split(","))
-            .map(String::trim)
-            .map(String::toLowerCase)
-            .collect(Collectors.toSet())
-            .contains("time");
-
     shouldTransferModFile =
         parameters.getBooleanOrDefault(
             Arrays.asList(SOURCE_MODS_ENABLE_KEY, EXTRACTOR_MODS_ENABLE_KEY),
@@ -300,26 +325,30 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                 || // Should extract deletion
                 listeningOptionPair.getRight());
 
+    final String extractorModeValue =
+        parameters.getStringOrDefault(
+            Arrays.asList(
+                PipeExtractorConstant.EXTRACTOR_MODE_KEY, PipeExtractorConstant.SOURCE_MODE_KEY),
+            PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE);
     shouldTerminatePipeOnAllHistoricalEventsConsumed =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    PipeExtractorConstant.EXTRACTOR_MODE_KEY,
-                    PipeExtractorConstant.SOURCE_MODE_KEY),
-                PipeExtractorConstant.EXTRACTOR_MODE_DEFAULT_VALUE)
-            .equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE);
+        extractorModeValue.equalsIgnoreCase(PipeExtractorConstant.EXTRACTOR_MODE_QUERY_VALUE)
+            || extractorModeValue.equalsIgnoreCase(
+                PipeExtractorConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE);
 
-    LOGGER.info(
-        "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
-        pipeName,
-        dataRegionId,
-        DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
-        historicalDataExtractionStartTime,
-        DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
-        historicalDataExtractionEndTime,
-        sloppyTimeRange,
-        shouldTransferModFile,
-        shouldTerminatePipeOnAllHistoricalEventsConsumed);
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info(
+          "Pipe {}@{}: historical data extraction time range, start time {}({}), end time {}({}), sloppy pattern {}, sloppy time range {}, should transfer mod file {}, should terminate pipe on all historical events consumed {}",
+          pipeName,
+          dataRegionId,
+          DateTimeUtils.convertLongToDate(historicalDataExtractionStartTime),
+          historicalDataExtractionStartTime,
+          DateTimeUtils.convertLongToDate(historicalDataExtractionEndTime),
+          historicalDataExtractionEndTime,
+          sloppyPattern,
+          sloppyTimeRange,
+          shouldTransferModFile,
+          shouldTerminatePipeOnAllHistoricalEventsConsumed);
+    }
   }
 
   private void flushDataRegionAllTsFiles() {
@@ -339,6 +368,9 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      return;
+    }
     if (!shouldExtractInsertion) {
       return;
     }
@@ -399,7 +431,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         !resource.isClosed()
                             || mayTsFileContainUnprocessedData(resource)
                                 && isTsFileResourceOverlappedWithTimeRange(resource)
-                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(sequenceTsFileResources);
 
@@ -412,7 +445,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                         !resource.isClosed()
                             || mayTsFileContainUnprocessedData(resource)
                                 && isTsFileResourceOverlappedWithTimeRange(resource)
-                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource))
+                                && isTsFileGeneratedAfterExtractionTimeLowerBound(resource)
+                                && mayTsFileResourceOverlappedWithPattern(resource))
                 .collect(Collectors.toList());
         resourceList.addAll(unsequenceTsFileResources);
 
@@ -421,7 +455,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
               // Pin the resource, in case the file is removed by compaction or anything.
               // Will unpin it after the PipeTsFileInsertionEvent is created and pinned.
               try {
-                PipeResourceManager.tsfile().pinTsFileResource(resource, shouldTransferModFile);
+                PipeDataNodeResourceManager.tsfile()
+                    .pinTsFileResource(resource, shouldTransferModFile);
               } catch (final IOException e) {
                 LOGGER.warn("Pipe: failed to pin TsFileResource {}", resource.getTsFilePath());
               }
@@ -474,6 +509,36 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     return !startIndex.isAfter(resource.getMaxProgressIndexAfterClose());
   }
 
+  private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
+    if (!sloppyPattern) {
+      return true;
+    }
+
+    final Set<IDeviceID> deviceSet;
+    try {
+      final Map<IDeviceID, Boolean> deviceIsAlignedMap =
+          PipeDataNodeResourceManager.tsfile()
+              .getDeviceIsAlignedMapFromCache(
+                  PipeTsFileResourceManager.getHardlinkOrCopiedFileInPipeDir(resource.getTsFile()),
+                  false);
+      deviceSet =
+          Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "Pipe {}@{}: failed to get devices from TsFile {}, extract it anyway",
+          pipeName,
+          dataRegionId,
+          resource.getTsFilePath(),
+          e);
+      return true;
+    }
+
+    return deviceSet.stream()
+        .anyMatch(
+            // TODO: use IDeviceID
+            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
+  }
+
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
     return !(resource.getFileEndTime() < historicalDataExtractionStartTime
         || historicalDataExtractionEndTime < resource.getFileStartTime());
@@ -511,11 +576,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     final TsFileResource resource = pendingQueue.poll();
     if (resource == null) {
-      isTerminateSignalSent = true;
       final PipeTerminateEvent terminateEvent =
-          new PipeTerminateEvent(pipeName, pipeTaskMeta, dataRegionId);
-      terminateEvent.increaseReferenceCount(
-          PipeHistoricalDataRegionTsFileExtractor.class.getName());
+          new PipeTerminateEvent(pipeName, creationTime, pipeTaskMeta, dataRegionId);
+      if (!terminateEvent.increaseReferenceCount(
+          PipeHistoricalDataRegionTsFileExtractor.class.getName())) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to increase reference count for terminate event, will resend it",
+            pipeName,
+            dataRegionId);
+        return null;
+      }
+      isTerminateSignalSent = true;
       return terminateEvent;
     }
 
@@ -525,12 +596,14 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
             shouldTransferModFile,
             false,
             false,
+            true,
             pipeName,
+            creationTime,
             pipeTaskMeta,
             pipePattern,
             historicalDataExtractionStartTime,
             historicalDataExtractionEndTime);
-    if (isDbNameCoveredByPattern) {
+    if (sloppyPattern || isDbNameCoveredByPattern) {
       event.skipParsingPattern();
     }
 
@@ -538,24 +611,34 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       event.skipParsingTime();
     }
 
-    event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
     try {
-      PipeResourceManager.tsfile().unpinTsFileResource(resource);
-    } catch (final IOException e) {
-      LOGGER.warn(
-          "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
-          pipeName,
-          dataRegionId,
-          resource.getTsFilePath());
+      final boolean isReferenceCountIncreased =
+          event.increaseReferenceCount(PipeHistoricalDataRegionTsFileExtractor.class.getName());
+      if (!isReferenceCountIncreased) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
+            pipeName,
+            dataRegionId,
+            event);
+      }
+      return isReferenceCountIncreased ? event : null;
+    } finally {
+      try {
+        PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
+      } catch (final IOException e) {
+        LOGGER.warn(
+            "Pipe {}@{}: failed to unpin TsFileResource after creating event, original path: {}",
+            pipeName,
+            dataRegionId,
+            resource.getTsFilePath());
+      }
     }
-
-    return event;
   }
 
+  @Override
   public synchronized boolean hasConsumedAll() {
-    // If the pendingQueue is null when the function is called, it
-    // implies that the extractor only extracts deletion thus the
-    // Historical event has nothing to consume
+    // If the pendingQueue is null when the function is called, it implies that the extractor only
+    // extracts deletion thus the historical event has nothing to consume.
     return Objects.isNull(pendingQueue)
         || pendingQueue.isEmpty()
             && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
@@ -572,7 +655,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       pendingQueue.forEach(
           resource -> {
             try {
-              PipeResourceManager.tsfile().unpinTsFileResource(resource);
+              PipeDataNodeResourceManager.tsfile().unpinTsFileResource(resource);
             } catch (final IOException e) {
               LOGGER.warn(
                   "Pipe {}@{}: failed to unpin TsFileResource after dropping pipe, original path: {}",

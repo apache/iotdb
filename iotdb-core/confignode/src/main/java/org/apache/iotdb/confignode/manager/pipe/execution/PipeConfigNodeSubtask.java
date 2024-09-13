@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeC
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -181,11 +182,14 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
         return false;
       }
 
-      outputPipeConnector.transfer(event);
-      decreaseReferenceCountAndReleaseLastEvent(true);
+      if (!(event instanceof ProgressReportEvent)) {
+        outputPipeConnector.transfer(event);
+        PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
+      }
+      decreaseReferenceCountAndReleaseLastEvent(event, true);
 
-      PipeConfigRegionConnectorMetrics.getInstance().markConfigEvent(taskID);
     } catch (final PipeException e) {
+      setLastExceptionEvent(event);
       if (!isClosed.get()) {
         throw e;
       } else {
@@ -193,9 +197,10 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             "{} in pipe transfer, ignored because pipe is dropped.",
             e.getClass().getSimpleName(),
             e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     } catch (final Exception e) {
+      setLastExceptionEvent(event);
       if (!isClosed.get()) {
         throw new PipeException(
             String.format(
@@ -203,7 +208,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractConnectorSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     }
 

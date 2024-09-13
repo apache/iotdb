@@ -28,15 +28,19 @@ import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.service.metric.MetricService;
+import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.exception.ConsensusGroupModifyPeerException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ProgressIndexManager;
+import org.apache.iotdb.consensus.pipe.metric.PipeConsensusServerMetrics;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedReq;
 import org.apache.iotdb.consensus.pipe.thrift.TCheckConsensusPipeCompletedResp;
 import org.apache.iotdb.consensus.pipe.thrift.TNotifyPeerToCreateConsensusPipeReq;
@@ -66,7 +70,10 @@ import java.util.stream.Collectors;
 public class PipeConsensusServerImpl {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusServerImpl.class);
   private static final long CHECK_TRANSMISSION_COMPLETION_INTERVAL_IN_MILLISECONDS = 2_000L;
-
+  private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
+      PerformanceOverviewMetrics.getInstance();
+  private static final long RETRY_WAIT_TIME_IN_MS = 500;
+  private static final long MAX_RETRY_TIMES = 20;
   private final Peer thisNode;
   private final IStateMachine stateMachine;
   private final Lock stateMachineLock = new ReentrantLock();
@@ -77,6 +84,8 @@ public class PipeConsensusServerImpl {
   private final ConsensusPipeManager consensusPipeManager;
   private final ProgressIndexManager progressIndexManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
+  private final PipeConsensusServerMetrics pipeConsensusServerMetrics;
+  private final ReplicateMode replicateMode;
 
   private ProgressIndex cachedProgressIndex = MinimumProgressIndex.INSTANCE;
 
@@ -98,6 +107,8 @@ public class PipeConsensusServerImpl {
     this.consensusPipeManager = consensusPipeManager;
     this.progressIndexManager = config.getPipe().getProgressIndexManager();
     this.syncClientManager = syncClientManager;
+    this.pipeConsensusServerMetrics = new PipeConsensusServerMetrics(this);
+    this.replicateMode = config.getReplicateMode();
 
     if (configuration.isEmpty()) {
       peerManager.recover();
@@ -127,16 +138,35 @@ public class PipeConsensusServerImpl {
     }
   }
 
+  @SuppressWarnings("java:S2276")
   public synchronized void start(boolean startConsensusPipes) throws IOException {
     stateMachine.start();
+    MetricService.getInstance().addMetricSet(this.pipeConsensusServerMetrics);
 
     if (startConsensusPipes) {
       // start all consensus pipes
       final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-      final List<Peer> successfulPipes =
+      List<Peer> failedPipes =
           updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.RUNNING);
-      if (successfulPipes.size() < otherPeers.size()) {
+      // considering procedure can easily time out, keep trying updateConsensusPipesStatus until all
+      // consensus pipes are started gracefully or exceed the maximum number of attempts.
+      // NOTE: start pipe procedure is idempotent guaranteed.
+      try {
+        for (int i = 0; i < MAX_RETRY_TIMES && !failedPipes.isEmpty(); i++) {
+          failedPipes = updateConsensusPipesStatus(failedPipes, PipeStatus.RUNNING);
+          Thread.sleep(RETRY_WAIT_TIME_IN_MS);
+        }
+      } catch (InterruptedException e) {
+        LOGGER.warn(
+            "PipeConsensusImpl-peer{}: pipeConsensusImpl thread get interrupted when start consensus pipe. May because IoTDB process is killed.",
+            thisNode);
+        throw new IOException(String.format("%s cannot start all consensus pipes", thisNode));
+      }
+      // if there still are some consensus pipes failed to start, throw an exception.
+      if (!failedPipes.isEmpty()) {
         // roll back
+        List<Peer> successfulPipes = new ArrayList<>(otherPeers);
+        successfulPipes.removeAll(failedPipes);
         updateConsensusPipesStatus(successfulPipes, PipeStatus.STOPPED);
         throw new IOException(String.format("%s cannot start all consensus pipes", thisNode));
       }
@@ -147,26 +177,27 @@ public class PipeConsensusServerImpl {
   public synchronized void stop() {
     // stop all consensus pipes
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    final List<Peer> successfulPipes =
+    final List<Peer> failedPipes =
         updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.STOPPED);
-    if (successfulPipes.size() < otherPeers.size()) {
+    if (!failedPipes.isEmpty()) {
       // do not roll back, because it will stop anyway
       LOGGER.warn("{} cannot stop all consensus pipes", thisNode);
     }
-
+    MetricService.getInstance().removeMetricSet(this.pipeConsensusServerMetrics);
     stateMachine.stop();
     isStarted.set(false);
   }
 
   public synchronized void clear() throws IOException {
     final List<Peer> otherPeers = peerManager.getOtherPeers(thisNode);
-    final List<Peer> successfulPipes =
+    final List<Peer> failedPipes =
         updateConsensusPipesStatus(new ArrayList<>(otherPeers), PipeStatus.DROPPED);
-    if (successfulPipes.size() < otherPeers.size()) {
+    if (!failedPipes.isEmpty()) {
       // do not roll back, because it will clear anyway
       LOGGER.warn("{} cannot drop all consensus pipes", thisNode);
     }
 
+    MetricService.getInstance().removeMetricSet(this.pipeConsensusServerMetrics);
     peerManager.clear();
     stateMachine.stop();
     isStarted.set(false);
@@ -183,13 +214,21 @@ public class PipeConsensusServerImpl {
                 }
                 return true;
               } catch (Exception e) {
-                LOGGER.warn("{} cannot create consensus pipe between {} and {}", thisNode, peer, e);
+                LOGGER.warn(
+                    "{}: cannot create consensus pipe between {} and {}",
+                    e.getMessage(),
+                    thisNode,
+                    peer);
                 return false;
               }
             })
         .collect(Collectors.toList());
   }
 
+  /**
+   * update given consensus pipes' status, returns the peer corresponding to the pipe that failed to
+   * update
+   */
   private List<Peer> updateConsensusPipesStatus(List<Peer> peers, PipeStatus status) {
     return peers.stream()
         .filter(
@@ -199,15 +238,15 @@ public class PipeConsensusServerImpl {
                   consensusPipeManager.updateConsensusPipe(
                       new ConsensusPipeName(thisNode, peer), status);
                 }
-                return true;
+                return false;
               } catch (Exception e) {
                 LOGGER.warn(
-                    "{} cannot update consensus pipe between {} and {} to status {}",
+                    "{}: cannot update consensus pipe between {} and {} to status {}",
+                    e.getMessage(),
                     thisNode,
                     peer,
-                    status,
-                    e);
-                return false;
+                    status);
+                return true;
               }
             })
         .collect(Collectors.toList());
@@ -237,6 +276,10 @@ public class PipeConsensusServerImpl {
                   consensusGroupId,
                   existedName,
                   expectedStatus);
+              if (expectedStatus.equals(PipeStatus.RUNNING)) {
+                // Do nothing. Because Pipe framework's metaSync will do that.
+                return;
+              }
               consensusPipeManager.updateConsensusPipe(existedName, expectedStatus);
             } catch (Exception e) {
               LOGGER.warn(
@@ -274,12 +317,25 @@ public class PipeConsensusServerImpl {
 
   public TSStatus write(IConsensusRequest request) {
     try {
+      long consensusWriteStartTime = System.nanoTime();
       stateMachineLock.lock();
+      long getStateMachineLockTime = System.nanoTime();
+      // statistic the time of acquiring stateMachine lock
+      pipeConsensusServerMetrics.recordGetStateMachineLockTime(
+          getStateMachineLockTime - consensusWriteStartTime);
+      long writeToStateMachineStartTime = System.nanoTime();
       if (request instanceof ComparableConsensusRequest) {
         ((ComparableConsensusRequest) request)
             .setProgressIndex(progressIndexManager.assignProgressIndex(thisNode.getGroupId()));
       }
-      return stateMachine.write(request);
+      TSStatus result = stateMachine.write(request);
+      long writeToStateMachineEndTime = System.nanoTime();
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
+      // statistic the time of writing request into stateMachine
+      pipeConsensusServerMetrics.recordUserWriteStateMachineTime(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
+      return result;
     } finally {
       stateMachineLock.unlock();
     }
@@ -287,8 +343,23 @@ public class PipeConsensusServerImpl {
 
   public TSStatus writeOnFollowerReplica(IConsensusRequest request) {
     try {
+      long consensusWriteStartTime = System.nanoTime();
       stateMachineLock.lock();
-      return stateMachine.write(request);
+      long getStateMachineLockTime = System.nanoTime();
+      // statistic the time of acquiring stateMachine lock
+      pipeConsensusServerMetrics.recordGetStateMachineLockTime(
+          getStateMachineLockTime - consensusWriteStartTime);
+
+      long writeToStateMachineStartTime = System.nanoTime();
+      TSStatus result = stateMachine.write(request);
+      long writeToStateMachineEndTime = System.nanoTime();
+
+      PERFORMANCE_OVERVIEW_METRICS.recordEngineCost(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
+      // statistic the time of writing request into stateMachine
+      pipeConsensusServerMetrics.recordReplicaWriteStateMachineTime(
+          writeToStateMachineEndTime - writeToStateMachineStartTime);
+      return result;
     } finally {
       stateMachineLock.unlock();
     }
@@ -539,5 +610,13 @@ public class PipeConsensusServerImpl {
 
   public List<Peer> getPeers() {
     return peerManager.getPeers();
+  }
+
+  public String getConsensusGroupId() {
+    return consensusGroupId;
+  }
+
+  public long getReplicateMode() {
+    return (replicateMode == ReplicateMode.BATCH) ? 2 : 1;
   }
 }

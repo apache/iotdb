@@ -28,10 +28,13 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
@@ -48,6 +51,10 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSe
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -69,6 +76,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -98,6 +109,11 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Al
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.CreateTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RollbackCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.DropSchemaTemplatePlan;
@@ -117,6 +133,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
+import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -175,6 +192,8 @@ public class ConfigPlanExecutor {
 
   private final CQInfo cqInfo;
 
+  private final ModelInfo modelInfo;
+
   private final PipeInfo pipeInfo;
 
   private final SubscriptionInfo subscriptionInfo;
@@ -193,6 +212,7 @@ public class ConfigPlanExecutor {
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
+      ModelInfo modelInfo,
       PipeInfo pipeInfo,
       SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo,
@@ -224,6 +244,9 @@ public class ConfigPlanExecutor {
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
 
+    this.modelInfo = modelInfo;
+    this.snapshotProcessorList.add(modelInfo);
+
     this.pipeInfo = pipeInfo;
     this.snapshotProcessorList.add(pipeInfo);
 
@@ -247,6 +270,8 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case GetDataNodeConfiguration:
         return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
+      case GetAINodeConfiguration:
+        return nodeInfo.getAINodeConfiguration((GetAINodeConfigurationPlan) req);
       case CountDatabase:
         return clusterSchemaInfo.countMatchedDatabases((CountDatabasePlan) req);
       case GetDatabase:
@@ -303,6 +328,10 @@ public class ConfigPlanExecutor {
         return udfInfo.getUDFTable();
       case GetFunctionJar:
         return udfInfo.getUDFJar((GetUDFJarPlan) req);
+      case ShowModel:
+        return modelInfo.showModel((ShowModelPlan) req);
+      case GetModelInfo:
+        return modelInfo.getModelInfo((GetModelInfoPlan) req);
       case GetPipePluginTable:
         return pipeInfo.getPipePluginInfo().showPipePlugins();
       case GetPipePluginJar:
@@ -310,7 +339,7 @@ public class ConfigPlanExecutor {
       case ShowPipeV2:
         return pipeInfo.getPipeTaskInfo().showPipes();
       case ShowTTL:
-        return ttlInfo.showAllTTL();
+        return ttlInfo.showTTL((ShowTTLPlan) req);
       case ShowTopic:
         return subscriptionInfo.showTopics();
       case ShowSubscription:
@@ -334,6 +363,12 @@ public class ConfigPlanExecutor {
           return status;
         }
         return partitionInfo.updateDataNode((UpdateDataNodePlan) physicalPlan);
+      case RegisterAINode:
+        return nodeInfo.registerAINode((RegisterAINodePlan) physicalPlan);
+      case UpdateAINodeConfiguration:
+        return nodeInfo.updateAINode((UpdateAINodePlan) physicalPlan);
+      case RemoveAINode:
+        return nodeInfo.removeAINode((RemoveAINodePlan) physicalPlan);
       case CreateDatabase:
         status = clusterSchemaInfo.createDatabase((DatabaseSchemaPlan) physicalPlan);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -458,6 +493,16 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.dropSchemaTemplate((DropSchemaTemplatePlan) physicalPlan);
       case ExtendSchemaTemplate:
         return clusterSchemaInfo.extendSchemaTemplate((ExtendSchemaTemplatePlan) physicalPlan);
+      case PreCreateTable:
+        return clusterSchemaInfo.preCreateTable((PreCreateTablePlan) physicalPlan);
+      case RollbackCreateTable:
+        return clusterSchemaInfo.rollbackCreateTable((RollbackCreateTablePlan) physicalPlan);
+      case CommitCreateTable:
+        return clusterSchemaInfo.commitCreateTable((CommitCreateTablePlan) physicalPlan);
+      case AddTableColumn:
+        return clusterSchemaInfo.addTableColumn((AddTableColumnPlan) physicalPlan);
+      case SetTableProperties:
+        return clusterSchemaInfo.setTableProperties((SetTablePropertiesPlan) physicalPlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:
@@ -495,10 +540,22 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
+      case CreateModel:
+        return modelInfo.createModel((CreateModelPlan) physicalPlan);
+      case UpdateModelInfo:
+        return modelInfo.updateModelInfo((UpdateModelInfoPlan) physicalPlan);
+      case DropModel:
+        return modelInfo.dropModel(((DropModelPlan) physicalPlan).getModelName());
+      case DropModelInNode:
+        return modelInfo.dropModelInNode(((DropModelInNodePlan) physicalPlan).getNodeId());
       case CreatePipePlugin:
         return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
       case DropPipePlugin:
         return pipeInfo.getPipePluginInfo().dropPipePlugin((DropPipePluginPlan) physicalPlan);
+      case setSpaceQuota:
+        return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
+      case setThrottleQuota:
+        return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
       case CreatePipeSinkV1:
       case DropPipeV1:
       case DropPipeSinkV1:
@@ -508,10 +565,6 @@ public class ConfigPlanExecutor {
       case SetPipeStatusV1:
       case ShowPipeV1:
         return new TSStatus(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode());
-      case setSpaceQuota:
-        return quotaInfo.setSpaceQuota((SetSpaceQuotaPlan) physicalPlan);
-      case setThrottleQuota:
-        return quotaInfo.setThrottleQuota((SetThrottleQuotaPlan) physicalPlan);
       case PipeEnriched:
         return executeNonQueryPlan(((PipeEnrichedPlan) physicalPlan).getInnerPlan());
       case PipeDeleteTimeSeries:

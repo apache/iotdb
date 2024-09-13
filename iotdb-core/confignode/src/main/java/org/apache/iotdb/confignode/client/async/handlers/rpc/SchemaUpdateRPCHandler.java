@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -31,12 +31,12 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
+public class SchemaUpdateRPCHandler extends DataNodeTSStatusRPCHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SchemaUpdateRPCHandler.class);
 
   public SchemaUpdateRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -50,10 +50,10 @@ public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
     responseMap.put(requestId, tsStatus);
     LOGGER.info("{} for {} receives: {}", requestType, requestId, tsStatus);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.warn(
           "Failed to {} on DataNode {}, {}", requestType, formattedTargetLocation, tsStatus);
     } else {
@@ -68,9 +68,9 @@ public class SchemaUpdateRPCHandler extends AsyncTSStatusRPCHandler {
     String errorMsg =
         requestType
             + " error on DataNode: {id="
-            + targetDataNode.getDataNodeId()
+            + targetNode.getDataNodeId()
             + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
+            + targetNode.getInternalEndPoint()
             + "}"
             + e.getMessage();
     LOGGER.warn(errorMsg);

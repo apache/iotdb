@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.consensus;
 
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ public class ConsensusPipeDataNodeRuntimeAgentGuardian implements ConsensusPipeG
           "Registering periodical job {} with interval in seconds {}.", id, intervalInSeconds);
 
       this.registered = true;
-      PipeAgent.runtime().registerPeriodicalJob(id, guardJob, intervalInSeconds);
+      PipeDataNodeAgent.runtime().registerPeriodicalJob(id, guardJob, intervalInSeconds);
     }
   }
 

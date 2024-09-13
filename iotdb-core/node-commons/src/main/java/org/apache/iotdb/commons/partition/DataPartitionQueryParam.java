@@ -20,12 +20,15 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class DataPartitionQueryParam {
 
-  private String devicePath;
+  private String databaseName;
+  private IDeviceID deviceID;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
   // it will be set to true in query when there exist filter like: time <= XXX
@@ -37,17 +40,17 @@ public class DataPartitionQueryParam {
   private boolean needRightAll = false;
 
   public DataPartitionQueryParam(
-      String devicePath, List<TTimePartitionSlot> timePartitionSlotList) {
-    this.devicePath = devicePath;
+      IDeviceID deviceID, List<TTimePartitionSlot> timePartitionSlotList) {
+    this.deviceID = deviceID;
     this.timePartitionSlotList = timePartitionSlotList;
   }
 
   public DataPartitionQueryParam(
-      String devicePath,
+      IDeviceID deviceID,
       List<TTimePartitionSlot> timePartitionSlotList,
       boolean needLeftAll,
       boolean needRightAll) {
-    this.devicePath = devicePath;
+    this.deviceID = deviceID;
     this.timePartitionSlotList = timePartitionSlotList;
     this.needLeftAll = needLeftAll;
     this.needRightAll = needRightAll;
@@ -55,12 +58,12 @@ public class DataPartitionQueryParam {
 
   public DataPartitionQueryParam() {}
 
-  public String getDevicePath() {
-    return devicePath;
+  public IDeviceID getDeviceID() {
+    return deviceID;
   }
 
-  public void setDevicePath(String devicePath) {
-    this.devicePath = devicePath;
+  public void setDeviceID(IDeviceID deviceID) {
+    this.deviceID = deviceID;
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlotList() {
@@ -85,5 +88,13 @@ public class DataPartitionQueryParam {
 
   public void setNeedRightAll(boolean needRightAll) {
     this.needRightAll = needRightAll;
+  }
+
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
+  public void setDatabaseName(String databaseName) {
+    this.databaseName = databaseName;
   }
 }

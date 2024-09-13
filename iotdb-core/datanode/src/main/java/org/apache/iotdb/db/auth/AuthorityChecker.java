@@ -40,6 +40,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.ratis.util.MemoizedSupplier;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -66,8 +67,8 @@ public class AuthorityChecker {
   private static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
-  private static final IAuthorityFetcher authorityFetcher =
-      new ClusterAuthorityFetcher(new BasicAuthorityCache());
+  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
+      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
   private static final PerformanceOverviewMetrics PERFORMANCE_OVERVIEW_METRICS =
       PerformanceOverviewMetrics.getInstance();
@@ -77,24 +78,24 @@ public class AuthorityChecker {
   }
 
   public static IAuthorityFetcher getAuthorityFetcher() {
-    return authorityFetcher;
+    return authorityFetcher.get();
   }
 
   public static boolean invalidateCache(String username, String rolename) {
-    return authorityFetcher.getAuthorCache().invalidateCache(username, rolename);
+    return authorityFetcher.get().getAuthorCache().invalidateCache(username, rolename);
   }
 
   public static TSStatus checkUser(String userName, String password) {
-    return authorityFetcher.checkUser(userName, password);
+    return authorityFetcher.get().checkUser(userName, password);
   }
 
   public static SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
-    return authorityFetcher.queryPermission(authorStatement);
+    return authorityFetcher.get().queryPermission(authorStatement);
   }
 
   public static SettableFuture<ConfigTaskResult> operatePermission(
       AuthorStatement authorStatement) {
-    return authorityFetcher.operatePermission(authorStatement);
+    return authorityFetcher.get().operatePermission(authorStatement);
   }
 
   /** Check whether specific Session has the authorization to given plan. */
@@ -145,7 +146,7 @@ public class AuthorityChecker {
 
   public static TSStatus getTSStatus(
       List<Integer> noPermissionIndexList,
-      List<PartialPath> pathList,
+      List<? extends PartialPath> pathList,
       PrivilegeType neededPrivilege) {
     if (noPermissionIndexList == null || noPermissionIndexList.isEmpty()) {
       return SUCCEED;
@@ -166,35 +167,38 @@ public class AuthorityChecker {
   public static boolean checkFullPathPermission(
       String userName, PartialPath fullPath, int permission) {
     return authorityFetcher
+        .get()
         .checkUserPathPrivileges(userName, Collections.singletonList(fullPath), permission)
         .isEmpty();
   }
 
   public static List<Integer> checkFullPathListPermission(
-      String userName, List<PartialPath> fullPaths, int permission) {
-    return authorityFetcher.checkUserPathPrivileges(userName, fullPaths, permission);
+      String userName, List<? extends PartialPath> fullPaths, int permission) {
+    return authorityFetcher.get().checkUserPathPrivileges(userName, fullPaths, permission);
   }
 
   public static List<Integer> checkPatternPermission(
-      String userName, List<PartialPath> pathPatterns, int permission) {
-    return authorityFetcher.checkUserPathPrivileges(userName, pathPatterns, permission);
+      String userName, List<? extends PartialPath> pathPatterns, int permission) {
+    return authorityFetcher.get().checkUserPathPrivileges(userName, pathPatterns, permission);
   }
 
   public static PathPatternTree getAuthorizedPathTree(String userName, int permission)
       throws AuthException {
-    return authorityFetcher.getAuthorizedPatternTree(userName, permission);
+    return authorityFetcher.get().getAuthorizedPatternTree(userName, permission);
   }
 
   public static boolean checkSystemPermission(String userName, int permission) {
-    return authorityFetcher.checkUserSysPrivileges(userName, permission).getCode()
+    return authorityFetcher.get().checkUserSysPrivileges(userName, permission).getCode()
         == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
 
   public static boolean checkGrantOption(
       String userName, String[] privilegeList, List<PartialPath> nodeNameList) {
     for (String s : privilegeList) {
-      if (!authorityFetcher.checkUserPrivilegeGrantOpt(
-          userName, nodeNameList, PrivilegeType.valueOf(s.toUpperCase()).ordinal())) {
+      if (!authorityFetcher
+          .get()
+          .checkUserPrivilegeGrantOpt(
+              userName, nodeNameList, PrivilegeType.valueOf(s.toUpperCase()).ordinal())) {
         return false;
       }
     }
@@ -202,7 +206,7 @@ public class AuthorityChecker {
   }
 
   public static boolean checkRole(String username, String rolename) {
-    return authorityFetcher.checkRole(username, rolename);
+    return authorityFetcher.get().checkRole(username, rolename);
   }
 
   public static void buildTSBlock(

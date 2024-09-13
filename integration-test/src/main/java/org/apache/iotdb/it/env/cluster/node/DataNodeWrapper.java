@@ -20,6 +20,7 @@
 package org.apache.iotdb.it.env.cluster.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
@@ -35,6 +36,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIREC
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_NODE_NAME;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_COMMON_PROPERTIES;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_DATA_NODE_PROPERTIES;
@@ -60,10 +62,11 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.PAGE_SIZE_IN_BYTE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.PIPE_AIR_GAP_RECEIVER_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.REST_SERVICE_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_CONSENSUS_PROTOCOL_CLASS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.SCHEMA_REPLICATION_FACTOR;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.SYSTEM_PROPERTIES_FILE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.TARGET;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.USER_DIR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.WAL_BUFFER_SIZE_IN_BYTE;
 
 public class DataNodeWrapper extends AbstractNodeWrapper {
   private int mppDataExchangePort;
@@ -139,7 +142,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public String getSystemPropertiesPath() {
-    return workDirFilePath("data/datanode/system/schema", SYSTEM_PROPERTIES_FILE);
+    return workDirFilePath("data/datanode/system/schema", IoTDBStartCheck.PROPERTIES_FILE_NAME);
   }
 
   @Override
@@ -203,6 +206,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         DN_DATA_REGION_CONSENSUS_PORT, String.valueOf(this.dataRegionConsensusPort));
     mutableNodeProperties.setProperty(
         DN_SCHEMA_REGION_CONSENSUS_PORT, String.valueOf(this.schemaRegionConsensusPort));
+    mutableNodeProperties.setProperty(WAL_BUFFER_SIZE_IN_BYTE, "16777216");
+    mutableNodeProperties.setProperty(SCHEMA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
+    mutableNodeProperties.setProperty(DATA_REGION_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
   }
 
   @Override

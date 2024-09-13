@@ -165,9 +165,11 @@ public class SimpleConsensusTest {
   @Test
   public void addConsensusGroup() {
     try {
+      Assert.assertEquals(0, consensusImpl.getReplicationNum(dataRegionId));
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      Assert.assertEquals(1, consensusImpl.getReplicationNum(dataRegionId));
     } catch (ConsensusException e) {
       Assert.fail();
     }
@@ -211,7 +213,7 @@ public class SimpleConsensusTest {
   }
 
   @Test
-  public void removeConsensusGroup() throws ConsensusException {
+  public void removeConsensusGroup() {
     try {
       consensusImpl.deleteLocalPeer(dataRegionId);
       Assert.fail();
@@ -223,7 +225,9 @@ public class SimpleConsensusTest {
       consensusImpl.createLocalPeer(
           dataRegionId,
           Collections.singletonList(new Peer(dataRegionId, 1, new TEndPoint("0.0.0.0", 6667))));
+      Assert.assertEquals(1, consensusImpl.getReplicationNum(dataRegionId));
       consensusImpl.deleteLocalPeer(dataRegionId);
+      Assert.assertEquals(0, consensusImpl.getReplicationNum(dataRegionId));
     } catch (ConsensusException e) {
       Assert.fail();
     }

@@ -79,7 +79,7 @@ public class StatementMemorySourceVisitor
   @Override
   public StatementMemorySource visitExplain(
       ExplainStatement node, StatementMemorySourceContext context) {
-    context.getAnalysis().setStatement(node.getQueryStatement());
+    context.getAnalysis().setRealStatement(node.getQueryStatement());
     DatasetHeader header =
         new DatasetHeader(
             Collections.singletonList(
@@ -100,6 +100,10 @@ public class StatementMemorySourceVisitor
             new PlanGraphPrinter.GraphContext(
                 context.getQueryContext().getTypeProvider().getTemplatedInfo()));
 
+    return getStatementMemorySource(header, lines);
+  }
+
+  static StatementMemorySource getStatementMemorySource(DatasetHeader header, List<String> lines) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.TEXT));
     lines.forEach(
         line -> {

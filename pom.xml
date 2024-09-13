@@ -28,7 +28,7 @@
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>iotdb-parent</artifactId>
-    <version>1.3.3-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Apache IoTDB Project Parent POM</name>
     <description>This is the top level project that builds, packages the tsfile, iotdb engine, jdbc, and integration libs.</description>
@@ -59,7 +59,7 @@
         <checker-qual.version>3.38.0</checker-qual.version>
         <cmake.build.type>Release</cmake.build.type>
         <commons-cli.version>1.5.0</commons-cli.version>
-        <commons-codec.version>1.16.0</commons-codec.version>
+        <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-io.version>2.13.0</commons-io.version>
         <commons-jexl3.version>3.3</commons-jexl3.version>
@@ -76,15 +76,11 @@
         <enforcer.skip>true</enforcer.skip>
         <felix.version>5.1.9</felix.version>
         <findbugs.jsr305.version>3.0.2</findbugs.jsr305.version>
-        <flink-shaded-zookeeper-3.version>3.8.1-17.0</flink-shaded-zookeeper-3.version>
-        <flink.version>1.17.1</flink.version>
         <fusesource-mqtt-client.version>1.16</fusesource-mqtt-client.version>
         <!-- JDK1.8 only support google java format 1.7-->
         <google.java.format.version>1.22.0</google.java.format.version>
         <gson.version>2.10.1</gson.version>
         <guava.version>32.1.2-jre</guava.version>
-        <hadoop.version>3.3.6</hadoop.version>
-        <hive.version>3.1.3</hive.version>
         <httpclient.version>4.5.14</httpclient.version>
         <httpcore.version>4.4.16</httpcore.version>
         <!--
@@ -104,9 +100,9 @@
         <!-- This is the last version to support the javax namespace -->
         <jersey.version>2.40</jersey.version>
         <!-- This was the last version to support Java 8 -->
-        <jetty.version>9.4.53.v20231009</jetty.version>
+        <jetty.version>9.4.55.v20240627</jetty.version>
         <jjwt.version>0.11.5</jjwt.version>
-        <jline.version>3.23.0</jline.version>
+        <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
         <json-smart.version>2.5.0</json-smart.version>
         <jtransforms.version>3.1</jtransforms.version>
@@ -118,18 +114,17 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <micrometer.version>1.11.4</micrometer.version>
-        <milo.version>0.6.11</milo.version>
+        <milo.version>0.6.14</milo.version>
         <!-- It seems that powermock is having issues with the newest mockito versions -->
         <mockito.version>2.23.4</mockito.version>
         <!-- This was the last version to support Java 8 -->
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.17</moquette.version>
-        <netty.version>4.1.97.Final</netty.version>
-        <nimbus-jose-jwt.version>9.37.2</nimbus-jose-jwt.version>
+        <netty.version>4.1.110.Final</netty.version>
+        <nimbus-jose-jwt.version>9.37.3</nimbus-jose-jwt.version>
         <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
-        <orc-core.version>1.9.1</orc-core.version>
         <osgi.version>7.0.0</osgi.version>
         <pax-jdbc-common.version>1.5.6</pax-jdbc-common.version>
         <powermock.version>2.0.9</powermock.version>
@@ -140,18 +135,13 @@
       is for ensuring the SNAPSHOT will stay available. We should however have the Ratis folks do a
       new release soon, as releasing with this version is more than sub-ideal.
     -->
-        <ratis.version>3.1.0-d09cbac-SNAPSHOT</ratis.version>
+        <ratis.version>3.1.1-0133c90-SNAPSHOT</ratis.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
-        <reactor-netty.version>1.1.13</reactor-netty.version>
-        <reactor.version>3.5.10</reactor.version>
+        <reactor-netty.version>1.1.20</reactor-netty.version>
+        <reactor.version>3.5.18</reactor.version>
         <reflections.version>0.10.2</reflections.version>
-        <rocketmq-client.version>5.1.3</rocketmq-client.version>
-        <scala.library.version>2.12.19</scala.library.version>
-        <scala.version>2.12</scala.version>
-        <!-- Newer version requires refactoring of testsuite -->
-        <scalatest.version>3.0.9</scalatest.version>
         <slf4j.version>2.0.9</slf4j.version>
-        <snappy-java.version>1.1.10.4</snappy-java.version>
+        <snappy-java.version>1.1.10.5</snappy-java.version>
         <sonar.coverage.jacoco.xmlReportPaths>target/jacoco-merged-reports/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
@@ -160,17 +150,11 @@
         <sonar.java.checkstyle.reportPaths>target/checkstyle-report.xml</sonar.java.checkstyle.reportPaths>
         <sonar.junit.reportPaths>target/surefire-reports,target/failsafe-reports</sonar.junit.reportPaths>
         <sonar.organization>apache</sonar.organization>
-        <spark-scala.2.11.version>2.4.8</spark-scala.2.11.version>
-        <spark-scala.2.12.version>3.5.0</spark-scala.2.12.version>
         <!-- Override this to `true`, if you want to disable spotless -->
         <spotless.skip>false</spotless.skip>
         <spotless.version>2.43.0</spotless.version>
-        <!-- This is the matching version of spring-boot for spring 5.3.30 -->
-        <spring-boot.version>2.7.18</spring-boot.version>
-        <!-- This is the last version to support the javax namespace -->
-        <spring.version>5.3.34</spring.version>
         <!-- This was the last version to support Java 8 -->
-        <swagger.version>1.6.11</swagger.version>
+        <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
         <thrift.exec.absolute.path/>
         <!--
@@ -180,12 +164,9 @@
       we'll stay at 0.14.1.
     -->
         <thrift.version>0.14.1</thrift.version>
-        <!-- This was the last version to support Java 8 -->
-        <tomcat.version>9.0.86</tomcat.version>
         <xz.version>1.9</xz.version>
-        <zeppelin.version>0.11.1</zeppelin.version>
-        <zstd-jni.version>1.5.5-5</zstd-jni.version>
-        <tsfile.version>1.0.1-e1207ba-SNAPSHOT</tsfile.version>
+        <zstd-jni.version>1.5.6-3</zstd-jni.version>
+        <tsfile.version>1.2.0-240911-SNAPSHOT</tsfile.version>
     </properties>
     <!--
     if we claim dependencies in dependencyManagement, then we do not claim
@@ -200,51 +181,6 @@
                 <version>${netty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-autoconfigure</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-tx</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-beans</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-web</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-context</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-webmvc</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-jdbc</artifactId>
-                <version>${spring.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-test</artifactId>
-                <version>${spring.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
@@ -334,68 +270,6 @@
                 <version>${powermock.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-clients</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-core</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-hadoop-fs</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-java</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-streaming-core</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-streaming-java</artifactId>
-                <version>${flink.version}</version>
-                <exclusions>
-                    <!-- This dependency pulls in loads of duplicate versions of all sorts of libraries -->
-                    <exclusion>
-                        <groupId>org.apache.flink</groupId>
-                        <artifactId>flink-shaded-zookeeper-3</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-table-api-java-bridge</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-table-common</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-table-test-utils</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-shaded-zookeeper-3</artifactId>
-                <version>${flink-shaded-zookeeper-3.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.flink</groupId>
-                <artifactId>flink-table-api-java</artifactId>
-                <version>${flink.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
@@ -411,117 +285,6 @@
                 <version>${findbugs.jsr305.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-client</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>javax.xml.bind</groupId>
-                        <artifactId>jaxb-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>jcl-over-slf4j</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-client-api</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-common</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>reload4j</artifactId>
-                    </exclusion>
-                    <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-reload4j</artifactId>
-                    </exclusion>
-                    <!-- Multiple CVEs reported for this, however we are not using Log4j -->
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.xml.bind</groupId>
-                        <artifactId>jaxb-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.ws.rs</groupId>
-                        <artifactId>jsr311-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>com.sun.jersey</groupId>
-                        <artifactId>jersey-server</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-client-runtime</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>reload4j</artifactId>
-                    </exclusion>
-                    <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-reload4j</artifactId>
-                    </exclusion>
-                    <!-- Multiple CVEs reported for this, however we are not using Log4j -->
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-mapreduce-client-core</artifactId>
-                <version>${hadoop.version}</version>
-                <exclusions>
-                    <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>reload4j</artifactId>
-                    </exclusion>
-                    <!-- This is a fork of log4j 1, and it duplicates all sorts of classes -->
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-reload4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.xml.bind</groupId>
-                        <artifactId>jaxb-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>com.sun.jersey</groupId>
-                        <artifactId>jersey-server</artifactId>
-                    </exclusion>
-                    <!-- Multiple CVEs are reported for this version, but we're using a newer version -->
-                    <exclusion>
-                        <groupId>io.netty</groupId>
-                        <artifactId>netty</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-yarn-registry</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
@@ -532,259 +295,9 @@
                 <version>${jakarta.servlet-api.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.apache.hive</groupId>
-                <artifactId>hive-exec</artifactId>
-                <version>${hive.version}</version>
-                <!-- Using the default adds a shaded version with loads of duplicate classes -->
-                <classifier>core</classifier>
-                <exclusions>
-                    <!-- This seems to only be available in a version with included protobuf and slf4j -->
-                    <exclusion>
-                        <groupId>org.apache.calcite.avatica</groupId>
-                        <artifactId>avatica</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.logging.log4j</groupId>
-                        <artifactId>log4j-1.2-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.xml.bind</groupId>
-                        <artifactId>jaxb-api</artifactId>
-                    </exclusion>
-                    <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
-                    <exclusion>
-                        <groupId>org.apache.ivy</groupId>
-                        <artifactId>ivy</artifactId>
-                    </exclusion>
-                    <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
-                    <exclusion>
-                        <groupId>org.apache.ant</groupId>
-                        <artifactId>ant</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>org.bouncycastle</groupId>
-                        <artifactId>bcprov-jdk15on</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>org.bouncycastle</groupId>
-                        <artifactId>bcpkix-jdk15on</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>com.cedarsoftware</groupId>
-                        <artifactId>json-io</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>org.apache.calcite</groupId>
-                        <artifactId>calcite-core</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hive</groupId>
-                <artifactId>hive-serde</artifactId>
-                <version>${hive.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.apache.logging.log4j</groupId>
-                        <artifactId>log4j-slf4j-impl</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.hive</groupId>
-                <artifactId>hive-common</artifactId>
-                <version>${hive.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.javolution</groupId>
-                        <artifactId>javolution</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.xml.bind</groupId>
-                        <artifactId>jaxb-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.logging.log4j</groupId>
-                        <artifactId>log4j-1.2-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.logging.log4j</groupId>
-                        <artifactId>log4j-slf4j-impl</artifactId>
-                    </exclusion>
-                    <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
-                    <exclusion>
-                        <groupId>org.apache.ant</groupId>
-                        <artifactId>ant</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-core_2.11</artifactId>
-                <version>${spark-scala.2.11.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>ch.qos.reload4j</groupId>
-                        <artifactId>reload4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.activation</groupId>
-                        <artifactId>activation</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>javax.ws.rs</groupId>
-                        <artifactId>javax.ws.rs-api</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.glassfish.hk2.external</groupId>
-                        <artifactId>javax.inject</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.glassfish.hk2.external</groupId>
-                        <artifactId>aopalliance-repackaged</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.glassfish.hk2.external</groupId>
-                        <artifactId>jakarta.inject</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-reload4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>jcl-over-slf4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.spark-project.spark</groupId>
-                        <artifactId>unused</artifactId>
-                    </exclusion>
-                    <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
-                    <exclusion>
-                        <groupId>org.apache.ivy</groupId>
-                        <artifactId>ivy</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                    <!-- Multiple CVEs are reported for this version, but we're using a newer version -->
-                    <exclusion>
-                        <groupId>io.netty</groupId>
-                        <artifactId>netty</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql_2.11</artifactId>
-                <version>${spark-scala.2.11.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.spark-project.spark</groupId>
-                        <artifactId>unused</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-catalyst_2.11</artifactId>
-                <version>${spark-scala.2.11.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.spark-project.spark</groupId>
-                        <artifactId>unused</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-core_2.12</artifactId>
-                <version>${spark-scala.2.12.version}</version>
-                <exclusions>
-                    <!-- There is no way on earth that I can imagine that ivy is really needed (CVEs reported) -->
-                    <exclusion>
-                        <groupId>org.apache.ivy</groupId>
-                        <artifactId>ivy</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-common-utils_2.12</artifactId>
-                <version>${spark-scala.2.12.version}</version>
-                <exclusions>
-                    <!-- We don't want this in the classpath as we're using logback as provider -->
-                    <exclusion>
-                        <groupId>org.apache.logging.log4j</groupId>
-                        <artifactId>log4j-slf4j2-impl</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>jcl-over-slf4j</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql_2.12</artifactId>
-                <version>${spark-scala.2.12.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-catalyst_2.12</artifactId>
-                <version>${spark-scala.2.12.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.spark</groupId>
-                <artifactId>spark-sql-api_2.12</artifactId>
-                <version>${spark-scala.2.12.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scala-lang</groupId>
-                <artifactId>scala-library</artifactId>
-                <version>${scala.library.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>
                 <version>1.78</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scalatest</groupId>
-                <artifactId>scalatest_2.11</artifactId>
-                <version>${scalatest.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.scalactic</groupId>
-                <artifactId>scalactic_2.11</artifactId>
-                <version>${scalatest.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.zeppelin</groupId>
-                <artifactId>zeppelin-interpreter</artifactId>
-                <version>${zeppelin.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>jcl-over-slf4j</artifactId>
-                    </exclusion>
-                    <!-- CVEs reported, but most probably not needed -->
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>commons-io</groupId>
@@ -849,6 +362,17 @@
             <dependency>
                 <groupId>org.eclipse.milo</groupId>
                 <artifactId>stack-core</artifactId>
+                <version>${milo.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.sun.activation</groupId>
+                        <artifactId>jakarta.activation</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.milo</groupId>
+                <artifactId>sdk-core</artifactId>
                 <version>${milo.version}</version>
                 <exclusions>
                     <exclusion>
@@ -1001,11 +525,6 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>org.apache.rocketmq</groupId>
-                <artifactId>rocketmq-client</artifactId>
-                <version>${rocketmq-client.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.fusesource.mqtt-client</groupId>
                 <artifactId>mqtt-client</artifactId>
                 <version>${fusesource-mqtt-client.version}</version>
@@ -1053,11 +572,6 @@
             <dependency>
                 <groupId>io.dropwizard.metrics</groupId>
                 <artifactId>metrics-core</artifactId>
-                <version>${dropwizard.metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-jmx</artifactId>
                 <version>${dropwizard.metrics.version}</version>
             </dependency>
             <dependency>
@@ -1121,15 +635,6 @@
                 <artifactId>awaitility</artifactId>
                 <version>${awaitility.version}</version>
             </dependency>
-            <!--
-        TODO: This dependency is only needed to run one single test-case ... possibly refactor?
-        (org.apache.iotdb.db.conf.IoTDBDescriptorTest)
-      -->
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-core</artifactId>
-                <version>${tomcat.version}</version>
-            </dependency>
             <dependency>
                 <groupId>io.projectreactor.netty</groupId>
                 <artifactId>reactor-netty-http</artifactId>
@@ -1186,34 +691,9 @@
                 <version>${jersey.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.glassfish.jersey.core</groupId>
-                <artifactId>jersey-client</artifactId>
+                <groupId>org.glassfish.jersey.inject</groupId>
+                <artifactId>jersey-hk2</artifactId>
                 <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.jersey.core</groupId>
-                <artifactId>jersey-core</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.jersey.core</groupId>
-                <artifactId>jersey-common</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.jersey.core</groupId>
-                <artifactId>jersey-server</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.jersey.containers</groupId>
-                <artifactId>jersey-container-servlet</artifactId>
-                <version>${jersey.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.rabbitmq</groupId>
-                <artifactId>amqp-client</artifactId>
-                <version>5.18.0</version>
             </dependency>
             <!-- Conflict:
         json-smart (pulls in 9.3),
@@ -1243,466 +723,6 @@
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
                 <version>${jackson.version}</version>
-            </dependency>
-            <!-- Conflict:
-        jackson-dataformat-yaml (pulls in 1.33),
-        swagger-core (pulls in 2.ß),
-        swagger-jaxrs (pulls in 2.0)
-      -->
-            <dependency>
-                <groupId>org.yaml</groupId>
-                <artifactId>snakeyaml</artifactId>
-                <version>2.0</version>
-            </dependency>
-            <!-- Conflict:
-        flink-core (pulls in 2.24.0)
-        chill-java (pulls in 2.21)
-      -->
-            <dependency>
-                <groupId>com.esotericsoftware.kryo</groupId>
-                <artifactId>kryo</artifactId>
-                <version>2.24.0</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-common (pulls in 4.2.1)
-        woodstox-core (pulls in 4.2)
-      -->
-            <dependency>
-                <groupId>org.codehaus.woodstox</groupId>
-                <artifactId>stax2-api</artifactId>
-                <version>4.2.1</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 2.2.11)
-        jersey-json (pulls in 2.2.2)
-      -->
-            <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>2.2.11</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 1.21)
-        hadoop-common (pulls in 1.21)
-        avro (pulls in 1.4.1)
-      -->
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-compress</artifactId>
-                <version>1.26.0</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 4.0 and 3.0)
-      -->
-            <dependency>
-                <groupId>com.google.inject.extensions</groupId>
-                <artifactId>guice-servlet</artifactId>
-                <version>4.0</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 9.4.51.v20230217)
-        hadoop-common (pulls in 9.4.52.v20230823)
-      -->
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-io</artifactId>
-                <version>9.4.52.v20230823</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-common (pulls in 1.2 and 1.1.3)
-      -->
-            <dependency>
-                <groupId>commons-logging</groupId>
-                <artifactId>commons-logging</artifactId>
-                <version>1.2</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 3.0 and 4.0)
-      -->
-            <dependency>
-                <groupId>com.google.inject</groupId>
-                <artifactId>guice</artifactId>
-                <version>4.0</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 2.12.7 and 2.15.2)
-      -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.module</groupId>
-                <artifactId>jackson-module-jaxb-annotations</artifactId>
-                <version>2.15.2</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-common (pulls in 1.9 and 1.10.0)
-      -->
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-text</artifactId>
-                <version>1.10.0</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-mapreduce-client-core (pulls in 1.2.2)
-        hadoop-common (pulls in 1.2.1)
-      -->
-            <dependency>
-                <groupId>jakarta.activation</groupId>
-                <artifactId>jakarta.activation-api</artifactId>
-                <version>1.2.2</version>
-            </dependency>
-            <!-- Conflict:
-        spring-boot (pulls in 5.3.19)
-        everything else (pulls in 5.3.30)
-      -->
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-core</artifactId>
-                <version>5.3.30</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 3.3.6 and 3.1.0)
-        hadoop-common (pulls in 3.3.6)
-      -->
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-auth</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 3.3.6 and 3.1.0)
-        hive-connector (pulls in 3.3.6)
-      -->
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-yarn-api</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 3.3.6 and 3.1.0)
-        hadoop-mapreduce-client-core (pulls in 3.3.6)
-        hadoop-mapreduce-client-core (pulls in 3.3.6)
-      -->
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-yarn-common</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <!-- Conflict:
-        hive-serde (pulls in 3.1.0)
-        hadoop-mapreduce-client-core (pulls in 3.3.6)
-      -->
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 3.3.6 and 3.1.0)
-        hadoop-common (pulls in 3.3.6)
-        hadoop-mapreduce-client-core (pulls in 3.3.6)
-      -->
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-annotations</artifactId>
-                <version>${hadoop.version}</version>
-            </dependency>
-            <!-- Conflict:
-        hive-serde (pulls in 1.5.4)
-        hadoop-common (puss in 1.1)
-      -->
-            <dependency>
-                <groupId>org.codehaus.jettison</groupId>
-                <artifactId>jettison</artifactId>
-                <version>1.5.4</version>
-            </dependency>
-            <!-- Conflict:
-        hive-common (pulls in 9.3.20.v20170531)
-        hadoop-mapreduce-client-core (pulls in 9.4.51.v20230217)
-      -->
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-client</artifactId>
-                <version>9.4.51.v20230217</version>
-            </dependency>
-            <!-- Conflict:
-        hadoop-common (pulls in 3.6.3)
-        hive-exe (pulls in 3.4.6 and 3.6.3)
-        hive-serde (pulls in 3.4.6 and 3.6.3)
-      -->
-            <dependency>
-                <groupId>org.apache.zookeeper</groupId>
-                <artifactId>zookeeper</artifactId>
-                <version>3.7.2</version>
-            </dependency>
-            <!-- Conflict:
-        hive-common (pulls in 9.3.20.v20170531)
-        hadoop-common (pulls in 9.4.51.v20230217)
-      -->
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-webapp</artifactId>
-                <version>9.4.51.v20230217</version>
-            </dependency>
-            <!-- Conflict:
-        hive-serde (pulls in 1.8.2)
-        hadoop-mapreduce-client-core (pulls in 1.7.7)
-        hadoop-common (pulls in 1.7.7)
-      -->
-            <dependency>
-                <groupId>org.apache.avro</groupId>
-                <artifactId>avro</artifactId>
-                <version>1.11.3</version>
-                <exclusions>
-                    <!-- Jackson moved from codehaus to fasterxml and is now the new version -->
-                    <exclusion>
-                        <groupId>org.codehaus.jackson</groupId>
-                        <artifactId>jackson-core-asl</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.codehaus.jackson</groupId>
-                        <artifactId>jackson-mapper-asl</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <!-- Security Issue:
-        avro-mapred (pulls in vulnerable version of jackson)
-      -->
-            <dependency>
-                <groupId>org.apache.avro</groupId>
-                <artifactId>avro-mapred</artifactId>
-                <version>1.8.2</version>
-                <classifier>hadoop2</classifier>
-                <exclusions>
-                    <!-- Jackson moved from codehaus to fasterxml and is now the new version -->
-                    <exclusion>
-                        <groupId>org.codehaus.jackson</groupId>
-                        <artifactId>jackson-core-asl</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.codehaus.jackson</groupId>
-                        <artifactId>jackson-mapper-asl</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <!-- Security Issue:
-        parquet-hadoop (pulls in vulnerable version of jackson)
-      -->
-            <dependency>
-                <groupId>org.apache.parquet</groupId>
-                <artifactId>parquet-hadoop</artifactId>
-                <version>1.10.1</version>
-                <exclusions>
-                    <!-- Jackson moved from codehaus to fasterxml and is now the new version and for the codehaus version CVEs were reported -->
-                    <exclusion>
-                        <groupId>org.codehaus.jackson</groupId>
-                        <artifactId>jackson-core-asl</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.codehaus.jackson</groupId>
-                        <artifactId>jackson-mapper-asl</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <!-- Conflict:
-        hive-serde (pulls in 9.4.51.v20230217)
-        hive-common (pulls in 9.4.52.v20230823)
-      -->
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-util-ajax</artifactId>
-                <version>${jetty.version}</version>
-            </dependency>
-            <!-- Conflict:
-        hive-serde (pulls in 2.12.0)
-        hadoop-common (pulls in 5.2.0)
-      -->
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-framework</artifactId>
-                <version>5.2.0</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 5.2.0 and 2.12.0)
-        hadoop-common (pulls in 5.2.0)
-      -->
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-recipes</artifactId>
-                <version>5.2.0</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 5.2.0 and 2.12.0)
-        hadoop-common (pulls in 5.2.0)
-      -->
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-client</artifactId>
-                <version>5.2.0</version>
-            </dependency>
-            <!-- Conflict:
-        hive-serde (pulls in 1.2.22)
-        hadoop-mapreduce-client-core (pulls in 1.2.22 and 1.2.19)
-      -->
-            <dependency>
-                <groupId>ch.qos.reload4j</groupId>
-                <artifactId>reload4j</artifactId>
-                <version>1.2.22</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 2.8.1)
-        hive-serde (pulls in 2.9.9)
-        hive-common (pulls in 2.9.9)
-      -->
-            <dependency>
-                <groupId>joda-time</groupId>
-                <artifactId>joda-time</artifactId>
-                <version>2.9.9</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 3.9.0 and 3.6)
-        hadoop-common (pulls in 3.9.0)
-      -->
-            <dependency>
-                <groupId>commons-net</groupId>
-                <artifactId>commons-net</artifactId>
-                <version>3.9.0</version>
-            </dependency>
-            <!-- Conflict:
-        hive-exec (pulls in 3.5.2 and 3.3)
-      -->
-            <dependency>
-                <groupId>org.antlr</groupId>
-                <artifactId>antlr-runtime</artifactId>
-                <version>3.5.2</version>
-            </dependency>
-            <!-- Security Issue:
-        hadoop-mapreduce-client-core (pulls in vulnerable version)
-      -->
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib</artifactId>
-                <version>1.9.10</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib-common</artifactId>
-                <version>1.9.10</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib-jdk7</artifactId>
-                <version>1.9.10</version>
-            </dependency>
-            <dependency>
-                <groupId>org.jetbrains.kotlin</groupId>
-                <artifactId>kotlin-stdlib-jdk8</artifactId>
-                <version>1.9.10</version>
-            </dependency>
-            <!-- Security Issue:
-        hadoop-mapreduce-client-core (pulls in vulnerable version)
-      -->
-            <dependency>
-                <groupId>com.squareup.okio</groupId>
-                <artifactId>okio</artifactId>
-                <version>3.5.0</version>
-            </dependency>
-            <!-- Security Issue:
-        hadoop-mapreduce-client-core (pulls in vulnerable version)
-      -->
-            <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java</artifactId>
-                <version>3.24.3</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.protobuf</groupId>
-                <artifactId>protobuf-java-util</artifactId>
-                <version>3.24.3</version>
-            </dependency>
-            <!-- Security Issue:
-        hive-exec (pulls in vulnerable version)
-      -->
-            <dependency>
-                <groupId>org.codehaus.janino</groupId>
-                <artifactId>janino</artifactId>
-                <version>3.1.10</version>
-            </dependency>
-            <dependency>
-                <groupId>org.codehaus.janino</groupId>
-                <artifactId>commons-compiler</artifactId>
-                <version>3.1.10</version>
-            </dependency>
-            <!-- Security Issue:
-        zeppelin-interpreter (pulls in vulnerable version)
-      -->
-            <dependency>
-                <groupId>io.atomix</groupId>
-                <artifactId>atomix</artifactId>
-                <version>3.1.12</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atomix</groupId>
-                <artifactId>atomix-primitive</artifactId>
-                <version>3.1.12</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atomix</groupId>
-                <artifactId>atomix-storage</artifactId>
-                <version>3.1.12</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atomix</groupId>
-                <artifactId>atomix-cluster</artifactId>
-                <version>3.1.12</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atomix</groupId>
-                <artifactId>atomix-utils</artifactId>
-                <version>3.1.12</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atomix</groupId>
-                <artifactId>atomix-raft</artifactId>
-                <version>3.1.12</version>
-            </dependency>
-            <!-- Security Issue:
-       zeppelin-interpreter (pulls in vulnerable version)
-     -->
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-configuration2</artifactId>
-                <version>2.10.1</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.orc</groupId>
-                <artifactId>orc-core</artifactId>
-                <version>${orc-core.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.orc</groupId>
-                <artifactId>orc-core</artifactId>
-                <version>${orc-core.version}</version>
-                <classifier>nohive</classifier>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.orc</groupId>
-                <artifactId>orc-mapreduce</artifactId>
-                <version>${orc-core.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.orc</groupId>
-                <artifactId>orc-mapreduce</artifactId>
-                <version>${orc-core.version}</version>
-                <classifier>nohive</classifier>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.orc</groupId>
-                <artifactId>orc-shims</artifactId>
-                <version>${orc-core.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.glassfish.jersey.inject</groupId>
-                <artifactId>jersey-hk2</artifactId>
-                <version>${jersey.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -1734,6 +754,8 @@
                     <version>3.1.2</version>
                     <configuration>
                         <argLine>${argLine} -Xmx1024m</argLine>
+                        <!-- Force the working directory to be different for each fork, so forks don't trample each other -->
+                        <workingDirectory>${project.build.directory}/fork_${surefire.forkNumber}</workingDirectory>
                     </configuration>
                 </plugin>
                 <!--
@@ -1757,6 +779,7 @@
                             <exclude>**/.gitignore</exclude>
                             <exclude>**/.gitmodules</exclude>
                             <exclude>**/.git-blame-ignore-revs</exclude>
+                            <exclude>**/git.properties</exclude>
                             <!-- Maven related files -->
                             <exclude>**/target/**</exclude>
                             <!-- Eclipse related files -->
@@ -1799,11 +822,9 @@
                             <exclude>client-go/rpc/*</exclude>
                             <!-- python -->
                             <exclude>.pytest_cache/**</exclude>
-                            <exclude>venv/**</exclude>
+                            <exclude>**/venv/**</exclude>
                             <exclude>apache_iotdb.egg-info/**</exclude>
-                            <exclude>**/iotdb/thrift/__init__.py</exclude>
-                            <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
-                            <exclude>**/iotdb/thrift/common/__init__.py</exclude>
+                            <exclude>**/thrift/**/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- site-->
@@ -1814,6 +835,7 @@
                             <exclude>**/pnpm-lock.yaml</exclude>
                             <!-- This is generated by the IntelliJ Antlr Plugin -->
                             <exclude>**/db/qp/sql/gen/**</exclude>
+                            <exclude>**/ainode-example/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -1857,7 +879,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-jar-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>3.2.2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.eluder.coveralls</groupId>
@@ -1887,7 +909,7 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>exec-maven-plugin</artifactId>
-                    <version>3.1.0</version>
+                    <version>3.1.1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -1897,7 +919,7 @@
                 <plugin>
                     <groupId>org.cyclonedx</groupId>
                     <artifactId>cyclonedx-maven-plugin</artifactId>
-                    <version>2.7.9</version>
+                    <version>2.7.11</version>
                 </plugin>
                 <plugin>
                     <groupId>net.nicoulaj.maven.plugins</groupId>
@@ -1930,9 +952,9 @@
                     <version>3.6.0</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.apache.thrift.tools</groupId>
-                    <artifactId>maven-thrift-plugin</artifactId>
-                    <version>0.1.11</version>
+                    <groupId>org.apache.thrift</groupId>
+                    <artifactId>thrift-maven-plugin</artifactId>
+                    <version>0.10.0</version>
                 </plugin>
                 <plugin>
                     <groupId>com.bazaarvoice.maven.plugins</groupId>
@@ -1953,21 +975,6 @@
                     <groupId>org.eclipse.m2e</groupId>
                     <artifactId>lifecycle-mapping</artifactId>
                     <version>1.0.0</version>
-                </plugin>
-                <plugin>
-                    <groupId>com.github.eirslett</groupId>
-                    <artifactId>frontend-maven-plugin</artifactId>
-                    <version>1.14.0</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-antrun-plugin</artifactId>
-                    <version>3.1.0</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.scala-tools</groupId>
-                    <artifactId>maven-scala-plugin</artifactId>
-                    <version>2.15.2</version>
                 </plugin>
                 <plugin>
                     <groupId>org.antlr</groupId>
@@ -2039,7 +1046,7 @@
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>
                         <artifactId>jaxb-core</artifactId>
-                        <version>2.3.0</version>
+                        <version>2.3.0.1</version>
                     </dependency>
                     <dependency>
                         <groupId>com.sun.xml.bind</groupId>
@@ -2347,7 +1354,7 @@
                     <execution>
                         <id>create-source-package</id>
                         <goals>
-                            <goal>jar</goal>
+                            <goal>jar-no-fork</goal>
                         </goals>
                         <phase>package</phase>
                     </execution>
@@ -2394,16 +1401,6 @@
         <system>Jira</system>
         <url>https://issues.apache.org/jira/browse/iotdb</url>
     </issueManagement>
-    <!--
-    Needed for fetching lt_downsampling_java8 (which is used by library-udf)
-    (Adding this in the root or when building other parts, this transitive dependency can be fetched)
-  -->
-    <repositories>
-        <repository>
-            <id>jitpack.io</id>
-            <url>https://jitpack.io</url>
-        </repository>
-    </repositories>
     <!-- Only configure the site distribution as the rest is handled by the apache parent -->
     <distributionManagement>
         <site>
@@ -2429,6 +1426,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -2444,6 +1443,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>linux-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -2459,6 +1460,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-x86_64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -2474,6 +1477,8 @@
                 <cmake.generator>Unix Makefiles</cmake.generator>
                 <os.classifier>mac-aarch64</os.classifier>
                 <thrift.executable>thrift</thrift.executable>
+                <python.venv.bin>venv/bin/</python.venv.bin>
+                <python.exe.bin>python3</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -2489,6 +1494,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-x86_64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -2504,6 +1511,8 @@
                 <cmake.generator>Visual Studio 17 2022</cmake.generator>
                 <os.classifier>windows-aarch64</os.classifier>
                 <thrift.executable>Release/thrift.exe</thrift.executable>
+                <python.venv.bin>venv/Scripts/</python.venv.bin>
+                <python.exe.bin>python</python.exe.bin>
             </properties>
         </profile>
         <profile>
@@ -2513,6 +1522,25 @@
             </activation>
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
+                <!--
+                    Add argLine for Java 9 and above, due to
+                    [JEP 260: Encapsulate Most Internal APIs],
+                    [JEP 396: Strongly Encapsulate JDK Internals by Default],
+                    [JEP 403: Strongly Encapsulate JDK Internals]
+                -->
+                <argLine><![CDATA[
+                        --add-opens=java.base/java.lang=ALL-UNNAMED
+                        --add-opens=java.base/java.util=ALL-UNNAMED
+                        --add-opens=java.base/java.nio=ALL-UNNAMED
+                        --add-opens=java.base/java.io=ALL-UNNAMED
+                        --add-opens=java.base/java.net=ALL-UNNAMED
+                        --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
+                        --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+                      ]]></argLine>
             </properties>
         </profile>
         <!-- Current version of spotless cannot support JDK11 below -->
@@ -2526,32 +1554,6 @@
                 <spotless.version>2.27.1</spotless.version>
                 <!-- To avoid format conflicts -->
                 <spotless.skip>true</spotless.skip>
-            </properties>
-        </profile>
-        <!--
-      Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
-      (https://openjdk.java.net/jeps/396)
-    -->
-        <profile>
-            <id>.java-16</id>
-            <activation>
-                <jdk>16</jdk>
-            </activation>
-            <properties>
-                <argLine>--illegal-access=permit --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
-            </properties>
-        </profile>
-        <!--
-      Add argLine for Java 16 and above, due to [JEP 396: Strongly Encapsulate JDK Internals by Default]
-      (https://openjdk.java.net/jeps/396)
-    -->
-        <profile>
-            <id>.java-17-and-above</id>
-            <activation>
-                <jdk>[17,)</jdk>
-            </activation>
-            <properties>
-                <argLine>--add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</argLine>
             </properties>
         </profile>
         <!-- Little helper profile that will disable running the cmake tests when the maven tests are being skipped -->
@@ -2614,8 +1616,8 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.apache.thrift.tools</groupId>
-                        <artifactId>maven-thrift-plugin</artifactId>
+                        <groupId>org.apache.thrift</groupId>
+                        <artifactId>thrift-maven-plugin</artifactId>
                         <configuration>
                             <thriftExecutable>${thrift.exec.absolute.path}</thriftExecutable>
                             <thriftSourceRoot>${project.basedir}/src/main/thrift</thriftSourceRoot>
@@ -2639,7 +1641,7 @@
                                 <phase>generate-sources</phase>
                                 <configuration>
                                     <generator>py</generator>
-                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift</includes>
+                                    <includes>**/common.thrift,**/client.thrift,**/datanode.thrift,**/confignode.thrift,**/ainode.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-python/</outputDirectory>
                                 </configuration>
                             </execution>
@@ -2650,7 +1652,7 @@
                                 </goals>
                                 <phase>generate-sources</phase>
                                 <configuration>
-                                    <generator>go</generator>
+                                    <generator>go:package_prefix=github.com/apache/iotdb-client-go/</generator>
                                     <includes>**/common.thrift,**/client.thrift</includes>
                                     <outputDirectory>${project.build.directory}/generated-sources-go</outputDirectory>
                                 </configuration>

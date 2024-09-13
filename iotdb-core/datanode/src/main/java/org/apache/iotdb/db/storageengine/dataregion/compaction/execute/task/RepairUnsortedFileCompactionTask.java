@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.RepairUnsortedFileCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -34,14 +35,24 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Repair the internal unsorted file by compaction and move it to unSequence space after compaction
  * whether the source TsFileResource is sequence or not.
  */
 public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
+
+  private static final AtomicLong lastAllocatedFileTimestamp = new AtomicLong(Long.MAX_VALUE / 2);
+
+  public static void recoverAllocatedFileTimestamp(long timestamp) {
+    if (timestamp > lastAllocatedFileTimestamp.get()) {
+      lastAllocatedFileTimestamp.set(timestamp);
+    }
+  }
 
   private final TsFileResource sourceFile;
   private final boolean rewriteFile;
@@ -131,45 +142,59 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
   @Override
   protected void prepare() throws IOException {
-    targetTsFileResource =
-        new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING);
-    String dataDirectory = sourceFile.getTsFile().getParent();
+    calculateSourceFilesAndTargetFiles();
+    isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
+    Arrays.fill(isHoldingWriteLock, false);
     logFile =
         new File(
-            dataDirectory
-                + File.separator
-                + targetTsFileResource.getTsFile().getName()
+            filesView.targetFilesInLog.get(0).getTsFilePath()
                 + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
   }
 
-  private File generateTargetFile() throws IOException {
-    String path = sourceFile.getTsFile().getParentFile().getPath();
-    // if source file is sequence, the sequence data path should be replaced to unsequence
-    if (sourceFile.isSeq()) {
-      int pos = path.lastIndexOf("sequence");
-      path = path.substring(0, pos) + "unsequence" + path.substring(pos + "sequence".length());
-    }
+  @Override
+  protected void calculateSourceFilesAndTargetFiles() throws IOException {
+    filesView.sourceFilesInLog = filesView.sourceFilesInCompactionPerformer;
+    filesView.targetFilesInLog =
+        Collections.singletonList(
+            new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING));
+    filesView.targetFilesInPerformer = filesView.targetFilesInLog;
+  }
 
-    TsFileNameGenerator.TsFileName tsFileName =
+  private File generateTargetFile() throws IOException {
+    String targetFileDir = sourceFile.getTsFile().getParentFile().getPath();
+    TsFileNameGenerator.TsFileName sourceFileName =
         TsFileNameGenerator.getTsFileName(sourceFile.getTsFile().getName());
-    tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
     String fileNameStr =
         String.format(
-            "%d-%d-%d-%d.tsfile",
-            tsFileName.getTime(), tsFileName.getVersion(), tsFileName.getInnerCompactionCnt(), 0);
-    File targetTsFile = new File(path + File.separator + fileNameStr);
-    if (!targetTsFile.getParentFile().exists()) {
-      targetTsFile.getParentFile().mkdirs();
+            "%d-%d-%d-%d" + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+            sourceFile.isSeq()
+                ? lastAllocatedFileTimestamp.incrementAndGet()
+                : sourceFileName.getTime(),
+            sourceFile.isSeq() ? 0 : sourceFileName.getVersion(),
+            sourceFileName.getInnerCompactionCnt() + 1,
+            sourceFileName.getCrossCompactionCnt());
+    // if source file is sequence, the sequence data targetFileDir should be replaced to unsequence
+    if (sourceFile.isSeq()) {
+      int pos = targetFileDir.lastIndexOf("sequence");
+      targetFileDir =
+          targetFileDir.substring(0, pos)
+              + "unsequence"
+              + targetFileDir.substring(pos + "sequence".length());
     }
-    return targetTsFile;
+    File targetFile = new File(targetFileDir + File.separator + fileNameStr);
+    return targetFile;
   }
 
   @Override
   protected void prepareTargetFiles() throws IOException {
     CompactionUtils.updateProgressIndex(
-        targetTsFileList, selectedTsFileResourceList, Collections.emptyList());
+        filesView.targetFilesInPerformer,
+        filesView.sourceFilesInCompactionPerformer,
+        Collections.emptyList());
     CompactionUtils.moveTargetFile(
-        targetTsFileList, CompactionTaskType.REPAIR, storageGroupName + "-" + dataRegionId);
+        filesView.targetFilesInPerformer,
+        CompactionTaskType.REPAIR,
+        storageGroupName + "-" + dataRegionId);
 
     LOGGER.info(
         "{}-{} [InnerSpaceCompactionTask] start to rename mods file",
@@ -178,11 +203,11 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
 
     if (rewriteFile) {
       CompactionUtils.combineModsInInnerCompaction(
-          selectedTsFileResourceList, targetTsFileResource);
+          filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
     } else {
       if (sourceFile.modFileExists()) {
         Files.createLink(
-            new File(targetTsFileResource.getModFile().getFilePath()).toPath(),
+            new File(filesView.targetFilesInPerformer.get(0).getModFile().getFilePath()).toPath(),
             new File(sourceFile.getModFile().getFilePath()).toPath());
       }
     }
@@ -202,7 +227,9 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   public long getEstimatedMemoryCost() {
     if (innerSpaceEstimator != null && memoryCost == 0L) {
       try {
-        memoryCost = innerSpaceEstimator.estimateInnerCompactionMemory(selectedTsFileResourceList);
+        memoryCost =
+            innerSpaceEstimator.estimateInnerCompactionMemory(
+                filesView.sourceFilesInCompactionPerformer);
       } catch (IOException e) {
         innerSpaceEstimator.cleanup();
       }

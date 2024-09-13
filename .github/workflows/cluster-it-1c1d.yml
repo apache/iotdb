@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
-      - pipe-meta-sync
+      - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -13,7 +13,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
-      - pipe-meta-sync
+      - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -26,6 +26,7 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
   DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:

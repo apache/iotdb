@@ -78,6 +78,20 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
+      // Test unsupported types
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          env,
+          Arrays.asList(
+              "create timeSeries root.ln.wf01.wt01.boolean boolean",
+              "create timeSeries root.ln.wf01.wt01.date date",
+              "create timeSeries root.ln.wf01.wt01.text text",
+              "create timeSeries root.ln.wf01.wt01.string string",
+              "create timeSeries root.ln.wf01.wt01.blob blob",
+              "insert into root.ln.wf01.wt01(time, boolean, date, text, string, blob) values (20000, false, '2000-12-13', 'abc', 'def', X'f103')",
+              "flush"))) {
+        return;
+      }
+
       if (!TestUtils.tryExecuteNonQueriesWithRetry(
           env,
           Arrays.asList(

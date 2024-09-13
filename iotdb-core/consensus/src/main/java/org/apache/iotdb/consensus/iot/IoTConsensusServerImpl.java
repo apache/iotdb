@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -59,6 +60,8 @@ import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentReq;
 import org.apache.iotdb.consensus.iot.thrift.TSendSnapshotFragmentRes;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadReq;
 import org.apache.iotdb.consensus.iot.thrift.TTriggerSnapshotLoadRes;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceReq;
+import org.apache.iotdb.consensus.iot.thrift.TWaitReleaseAllRegionRelatedResourceRes;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteReq;
 import org.apache.iotdb.consensus.iot.thrift.TWaitSyncLogCompleteRes;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -119,7 +122,7 @@ public class IoTConsensusServerImpl {
   private final List<Peer> configuration;
   private final AtomicLong searchIndex;
   private final LogDispatcher logDispatcher;
-  private final IoTConsensusConfig config;
+  private IoTConsensusConfig config;
   private final ConsensusReqReader consensusReqReader;
   private volatile boolean active;
   private String newSnapshotDirName;
@@ -298,23 +301,18 @@ public class IoTConsensusServerImpl {
 
   public void transmitSnapshot(Peer targetPeer) throws ConsensusGroupModifyPeerException {
     File snapshotDir = new File(storageDir, newSnapshotDirName);
-    List<Path> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
+    List<File> snapshotPaths = stateMachine.getSnapshotFiles(snapshotDir);
     AtomicLong snapshotSizeSumAtomic = new AtomicLong();
     StringBuilder allFilesStr = new StringBuilder();
     snapshotPaths.forEach(
-        path -> {
-          try {
-            long fileSize = Files.size(path);
-            snapshotSizeSumAtomic.addAndGet(fileSize);
-            allFilesStr
-                .append("\n")
-                .append(path)
-                .append(" ")
-                .append(humanReadableByteCountSI(fileSize));
-          } catch (IOException e) {
-            logger.error(
-                "[SNAPSHOT TRANSMISSION] Calculate snapshot file's size fail: {}", path, e);
-          }
+        file -> {
+          long fileSize = file.length();
+          snapshotSizeSumAtomic.addAndGet(fileSize);
+          allFilesStr
+              .append("\n")
+              .append(file.getName())
+              .append(" ")
+              .append(humanReadableByteCountSI(fileSize));
         });
     final long snapshotSizeSum = snapshotSizeSumAtomic.get();
     long transitedSnapshotSizeSum = 0;
@@ -329,8 +327,9 @@ public class IoTConsensusServerImpl {
         "[SNAPSHOT TRANSMISSION] All the files below shell be transmitted: {}", allFilesStr);
     try (SyncIoTConsensusServiceClient client =
         syncClientManager.borrowClient(targetPeer.getEndpoint())) {
-      for (Path path : snapshotPaths) {
-        SnapshotFragmentReader reader = new SnapshotFragmentReader(newSnapshotDirName, path);
+      for (File file : snapshotPaths) {
+        SnapshotFragmentReader reader =
+            new SnapshotFragmentReader(newSnapshotDirName, file.toPath());
         try {
           while (reader.hasNext()) {
             // TODO: zero copy ?
@@ -356,7 +355,7 @@ public class IoTConsensusServerImpl {
               humanReadableByteCountSI(snapshotSizeSum),
               CommonDateTimeUtils.convertMillisecondToDurationStr(
                   (System.nanoTime() - startTime) / 1_000_000),
-              path);
+              file);
         } finally {
           reader.close();
         }
@@ -550,8 +549,7 @@ public class IoTConsensusServerImpl {
     }
   }
 
-  public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer)
-      throws ConsensusGroupModifyPeerException {
+  public void notifyPeersToRemoveSyncLogChannel(Peer targetPeer) {
     // The configuration will be modified during iterating because we will add the targetPeer to
     // configuration
     ImmutableList<Peer> currentMembers = ImmutableList.copyOf(this.configuration);
@@ -572,12 +570,14 @@ public class IoTConsensusServerImpl {
                       targetPeer.getEndpoint(),
                       targetPeer.getNodeId()));
           if (!isSuccess(res.status)) {
-            throw new ConsensusGroupModifyPeerException(
-                String.format("remove sync log channel failed from %s to %s", peer, targetPeer));
+            logger.warn("removing sync log channel failed from {} to {}", peer, targetPeer);
           }
         } catch (Exception e) {
-          throw new ConsensusGroupModifyPeerException(
-              String.format("error when removing sync log channel to %s", peer), e);
+          logger.warn(
+              "Exception happened during removing sync log channel from {} to {}",
+              peer,
+              targetPeer,
+              e);
         }
       }
     }
@@ -622,6 +622,43 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  public boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
+    return stateMachine.hasReleaseAllRegionRelatedResource(groupId);
+  }
+
+  public void waitReleaseAllRegionRelatedResource(Peer targetPeer)
+      throws ConsensusGroupModifyPeerException {
+    long checkIntervalInMs = 10_000L;
+    try (SyncIoTConsensusServiceClient client =
+        syncClientManager.borrowClient(targetPeer.getEndpoint())) {
+      while (true) {
+        TWaitReleaseAllRegionRelatedResourceRes res =
+            client.waitReleaseAllRegionRelatedResource(
+                new TWaitReleaseAllRegionRelatedResourceReq(
+                    targetPeer.getGroupId().convertToTConsensusGroupId()));
+        if (res.releaseAllResource) {
+          logger.info("[WAIT RELEASE] {} has released all region related resource", targetPeer);
+          return;
+        }
+        logger.info("[WAIT RELEASE] {} is still releasing all region related resource", targetPeer);
+        Thread.sleep(checkIntervalInMs);
+      }
+    } catch (ClientManagerException | TException e) {
+      throw new ConsensusGroupModifyPeerException(
+          String.format(
+              "error when waiting %s to release all region related resource. %s",
+              targetPeer, e.getMessage()),
+          e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ConsensusGroupModifyPeerException(
+          String.format(
+              "thread interrupted when waiting %s to release all region related resource. %s",
+              targetPeer, e.getMessage()),
+          e);
+    }
+  }
+
   private boolean isSuccess(TSStatus status) {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
   }
@@ -651,20 +688,33 @@ public class IoTConsensusServerImpl {
     logger.info("[IoTConsensus] persist new configuration: {}", configuration);
   }
 
-  public void removeSyncLogChannel(Peer targetPeer) throws ConsensusGroupModifyPeerException {
+  /**
+   * @return totally succeed
+   */
+  public boolean removeSyncLogChannel(Peer targetPeer) {
+    // step 1, remove sync channel in LogDispatcher
+    boolean exceptionHappened = false;
+    String suggestion = "";
     try {
-      // step 1, remove sync channel in LogDispatcher
       logDispatcher.removeLogDispatcherThread(targetPeer);
-      logger.info("[IoTConsensus] log dispatcher to {} removed and cleanup", targetPeer);
-      // step 2, update configuration
-      configuration.remove(targetPeer);
-      checkAndUpdateSafeDeletedSearchIndex();
-      // step 3, persist configuration
-      persistConfiguration();
-      logger.info("[IoTConsensus] configuration updated to {}", this.configuration);
-    } catch (IOException e) {
-      throw new ConsensusGroupModifyPeerException("error when remove LogDispatcherThread", e);
+    } catch (Exception e) {
+      logger.warn(
+          "[IoTConsensus] Exception happened during removing log dispatcher thread, but configuration.dat will still be removed.",
+          e);
+      suggestion = "It's suggested restart the DataNode to remove log dispatcher thread.";
+      exceptionHappened = true;
     }
+    if (!exceptionHappened) {
+      logger.info(
+          "[IoTConsensus] Log dispatcher thread to {} has been removed and cleanup", targetPeer);
+    }
+    // step 2, update configuration
+    configuration.remove(targetPeer);
+    checkAndUpdateSafeDeletedSearchIndex();
+    // step 3, persist configuration
+    persistConfiguration();
+    logger.info("[IoTConsensus] Configuration updated to {}. {}", this.configuration, suggestion);
+    return !exceptionHappened;
   }
 
   public void persistConfiguration() {
@@ -890,6 +940,7 @@ public class IoTConsensusServerImpl {
   public void cleanupLocalSnapshot() {
     try {
       cleanupSnapshot(newSnapshotDirName);
+      stateMachine.clearSnapshot();
     } catch (ConsensusGroupModifyPeerException e) {
       logger.warn(
           "Cleanup local snapshot fail. You may manually delete {}.", newSnapshotDirName, e);
@@ -1037,6 +1088,11 @@ public class IoTConsensusServerImpl {
     }
   }
 
+  /** This method is used for hot reload of IoTConsensusConfig. */
+  public void reloadConsensusConfig(IoTConsensusConfig config) {
+    this.config = config;
+  }
+
   /**
    * This method is used for write of IoTConsensus SyncLog. By this method, we can keep write order
    * in follower the same as the leader. And besides order insurance, we can make the
@@ -1126,6 +1182,7 @@ public class IoTConsensusServerImpl {
                 request.getStartSyncIndex(),
                 e);
             Thread.currentThread().interrupt();
+            break;
           }
         }
         long sortTime = System.nanoTime();

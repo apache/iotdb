@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node;
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -49,7 +50,6 @@ public abstract class PlanNode implements IConsensusRequest {
   protected PlanNodeId id;
 
   protected boolean isGeneratedByPipe = false;
-  protected boolean isGeneratedByRemoteConsensusLeader = false;
 
   protected PlanNode(PlanNodeId id) {
     requireNonNull(id, "id is null");
@@ -68,17 +68,8 @@ public abstract class PlanNode implements IConsensusRequest {
     return isGeneratedByPipe;
   }
 
-  public boolean isGeneratedByRemoteConsensusLeader() {
-    return isGeneratedByRemoteConsensusLeader;
-  }
-
   public void markAsGeneratedByPipe() {
     isGeneratedByPipe = true;
-  }
-
-  @Override
-  public void markAsGeneratedByRemoteConsensusLeader() {
-    isGeneratedByRemoteConsensusLeader = true;
   }
 
   public abstract List<PlanNode> getChildren();
@@ -215,5 +206,14 @@ public abstract class PlanNode implements IConsensusRequest {
   @Override
   public int hashCode() {
     return Objects.hash(id);
+  }
+
+  // =========================== Used for Table Model ============================
+  public List<Symbol> getOutputSymbols() {
+    throw new UnsupportedOperationException("This planNode does not support getOutputSymbols().");
+  }
+
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    throw new UnsupportedOperationException();
   }
 }

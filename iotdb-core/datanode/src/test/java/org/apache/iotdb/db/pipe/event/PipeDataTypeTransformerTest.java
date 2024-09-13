@@ -50,6 +50,10 @@ public class PipeDataTypeTransformerTest {
     tsDataTypeList.add(TSDataType.DOUBLE);
     tsDataTypeList.add(TSDataType.BOOLEAN);
     tsDataTypeList.add(TSDataType.TEXT);
+    tsDataTypeList.add(TSDataType.TIMESTAMP);
+    tsDataTypeList.add(TSDataType.DATE);
+    tsDataTypeList.add(TSDataType.BLOB);
+    tsDataTypeList.add(TSDataType.STRING);
     tsDataTypeList.add(null);
 
     nullTypeList = null;
@@ -60,14 +64,19 @@ public class PipeDataTypeTransformerTest {
     typeList.add(Type.DOUBLE);
     typeList.add(Type.BOOLEAN);
     typeList.add(Type.TEXT);
+    typeList.add(Type.TIMESTAMP);
+    typeList.add(Type.DATE);
+    typeList.add(Type.BLOB);
+    typeList.add(Type.STRING);
     typeList.add(null);
   }
 
   @Test
   public void testDataTypeTransformer() {
-    List<Type> nullResultList =
+    final List<Type> nullResultList =
         PipeDataTypeTransformer.transformToPipeDataTypeList(nullTsDataTypeList);
-    List<Type> resultList = PipeDataTypeTransformer.transformToPipeDataTypeList(tsDataTypeList);
+    final List<Type> resultList =
+        PipeDataTypeTransformer.transformToPipeDataTypeList(tsDataTypeList);
     Assert.assertEquals(nullResultList, nullTypeList);
     Assert.assertEquals(resultList, typeList);
   }

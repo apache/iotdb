@@ -42,6 +42,7 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeSchemaRegionConnectorMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final ConcurrentMap<String, PipeConnectorSubtask> connectorMap =
@@ -129,7 +130,7 @@ public class PipeSchemaRegionConnectorMetrics implements IMetricSet {
     }
     final Rate rate = schemaRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe schema region write plan event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;

@@ -22,13 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -53,26 +53,19 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode.NO_CONSENSUS_INDEX;
 
-public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
+public class DeleteDataNode extends SearchNode implements WALEntryValue {
   /** byte: type, integer: pathList.size(), long: deleteStartTime, deleteEndTime, searchIndex */
   private static final int FIXED_SERIALIZED_SIZE = Short.BYTES + Integer.BYTES + Long.BYTES * 3;
 
-  private final List<PartialPath> pathList;
+  private final List<MeasurementPath> pathList;
   private final long deleteStartTime;
   private final long deleteEndTime;
-
-  /**
-   * this index is used by wal search, its order should be protected by the upper layer, and the
-   * value should start from 1
-   */
-  protected long searchIndex = NO_CONSENSUS_INDEX;
 
   private TRegionReplicaSet regionReplicaSet;
 
   public DeleteDataNode(
-      PlanNodeId id, List<PartialPath> pathList, long deleteStartTime, long deleteEndTime) {
+      PlanNodeId id, List<MeasurementPath> pathList, long deleteStartTime, long deleteEndTime) {
     super(id);
     this.pathList = pathList;
     this.deleteStartTime = deleteStartTime;
@@ -81,7 +74,7 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   public DeleteDataNode(
       PlanNodeId id,
-      List<PartialPath> pathList,
+      List<MeasurementPath> pathList,
       long deleteStartTime,
       long deleteEndTime,
       TRegionReplicaSet regionReplicaSet) {
@@ -92,7 +85,7 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
     this.regionReplicaSet = regionReplicaSet;
   }
 
-  public List<PartialPath> getPathList() {
+  public List<MeasurementPath> getPathList() {
     return pathList;
   }
 
@@ -102,15 +95,6 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   public long getDeleteEndTime() {
     return deleteEndTime;
-  }
-
-  public long getSearchIndex() {
-    return searchIndex;
-  }
-
-  /** Search index should start from 1 */
-  public void setSearchIndex(long searchIndex) {
-    this.searchIndex = searchIndex;
   }
 
   @Override
@@ -165,12 +149,10 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
   public static DeleteDataNode deserializeFromWAL(DataInputStream stream) throws IOException {
     long searchIndex = stream.readLong();
     int size = stream.readInt();
-    List<PartialPath> pathList = new ArrayList<>(size);
+    List<MeasurementPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       try {
-        pathList.add(
-            DataNodeDevicePathCache.getInstance()
-                .getPartialPath(ReadWriteIOUtils.readString(stream)));
+        pathList.add(new MeasurementPath(ReadWriteIOUtils.readString(stream)));
       } catch (IllegalPathException e) {
         throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
       }
@@ -187,10 +169,10 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
   public static DeleteDataNode deserializeFromWAL(ByteBuffer buffer) {
     long searchIndex = buffer.getLong();
     int size = buffer.getInt();
-    List<PartialPath> pathList = new ArrayList<>(size);
+    List<MeasurementPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       try {
-        pathList.add(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+        pathList.add(new MeasurementPath(ReadWriteIOUtils.readString(buffer)));
       } catch (IllegalPathException e) {
         throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
       }
@@ -228,14 +210,17 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
-    List<PartialPath> pathList = new ArrayList<>(size);
+    List<MeasurementPath> pathList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
-      pathList.add((PartialPath) PathDeserializeUtil.deserialize(byteBuffer));
+      pathList.add((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
     }
     long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
     long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+
+    // DeleteDataNode has no child
+    int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
     return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
   }
 
@@ -286,9 +271,9 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
     ISchemaTree schemaTree = ((Analysis) analysis).getSchemaTree();
     DataPartition dataPartition = analysis.getDataPartitionInfo();
 
-    Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap = new HashMap<>();
+    Map<TRegionReplicaSet, List<MeasurementPath>> regionToPatternMap = new HashMap<>();
 
-    for (PartialPath pathPattern : pathList) {
+    for (MeasurementPath pathPattern : pathList) {
       if (pathPattern.getTailNode().equals(MULTI_LEVEL_PATH_WILDCARD)) {
         splitPathPatternByDevice(
             pathPattern, pathPattern, schemaTree, dataPartition, regionToPatternMap);
@@ -317,23 +302,27 @@ public class DeleteDataNode extends WritePlanNode implements WALEntryValue {
 
   private void splitPathPatternByDevice(
       PartialPath devicePattern,
-      PartialPath pathPattern,
+      MeasurementPath pathPattern,
       ISchemaTree schemaTree,
       DataPartition dataPartition,
-      Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap) {
+      Map<TRegionReplicaSet, List<MeasurementPath>> regionToPatternMap) {
     for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
       PartialPath devicePath = deviceSchemaInfo.getDevicePath();
       // regionId is null when data region of devicePath not existed
       dataPartition
           .getDataRegionReplicaSetWithTimeFilter(
-              devicePath.getFullPath(), TimeFilterApi.between(deleteStartTime, deleteEndTime))
+              devicePath.getIDeviceIDAsFullDevice(),
+              TimeFilterApi.between(deleteStartTime, deleteEndTime))
           .stream()
           .filter(regionReplicaSet -> regionReplicaSet.getRegionId() != null)
           .forEach(
               regionReplicaSet ->
                   regionToPatternMap
                       .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
-                      .addAll(pathPattern.alterPrefixPath(devicePath)));
+                      .addAll(
+                          pathPattern.alterPrefixPath(devicePath).stream()
+                              .map(d -> (MeasurementPath) d)
+                              .collect(Collectors.toList())));
     }
   }
 }

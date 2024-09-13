@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -36,14 +37,34 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
-import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.QueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigExecution;
-import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -53,7 +74,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
@@ -142,16 +162,9 @@ public class Coordinator {
       return result;
     } finally {
       if (queryContext != null) {
-        queryContext.releaseMemoryForFrontEnd();
+        queryContext.releaseAllMemoryReservedForFrontEnd();
       }
-      if (queryContext != null && !queryContext.getAcquiredLockNumMap().isEmpty()) {
-        Map<SchemaLockType, Integer> lockMap = queryContext.getAcquiredLockNumMap();
-        for (Map.Entry<SchemaLockType, Integer> entry : lockMap.entrySet()) {
-          for (int i = 0; i < entry.getValue(); i++) {
-            DataNodeSchemaLockManager.getInstance().releaseReadLock(entry.getKey());
-          }
-        }
-      }
+      DataNodeSchemaLockManager.getInstance().releaseReadLock(queryContext);
     }
   }
 
@@ -204,7 +217,7 @@ public class Coordinator {
           queryContext,
           statement.getType(),
           executor,
-          statement.accept(new ConfigTaskVisitor(), queryContext));
+          statement.accept(new TreeConfigTaskVisitor(), queryContext));
     }
     TreeModelPlanner treeModelPlanner =
         new TreeModelPlanner(
@@ -217,6 +230,127 @@ public class Coordinator {
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
     return new QueryExecution(treeModelPlanner, queryContext, executor);
+  }
+
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        ((queryContext, startTime) ->
+            createQueryExecutionForTableModel(
+                statement,
+                sqlParser,
+                clientSession,
+                queryContext,
+                metadata,
+                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                startTime)));
+  }
+
+  public ExecutionResult executeForTableModel(
+      Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        ((queryContext, startTime) ->
+            createQueryExecutionForTableModel(
+                statement,
+                sqlParser,
+                clientSession,
+                queryContext,
+                metadata,
+                timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+                startTime)));
+  }
+
+  private IQueryExecution createQueryExecutionForTableModel(
+      Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      long timeOut,
+      long startTime) {
+    queryContext.setTableQuery(true);
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
+    TableModelPlanner tableModelPlanner =
+        new TableModelPlanner(
+            statement.toRelationalStatement(queryContext),
+            sqlParser,
+            metadata,
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+    return new QueryExecution(tableModelPlanner, queryContext, executor);
+  }
+
+  private IQueryExecution createQueryExecutionForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      MPPQueryContext queryContext,
+      Metadata metadata,
+      long timeOut,
+      long startTime) {
+    queryContext.setTableQuery(true);
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
+    if (statement instanceof DropDB
+        || statement instanceof ShowDB
+        || statement instanceof CreateDB
+        || statement instanceof Use
+        || statement instanceof CreateTable
+        || statement instanceof DescribeTable
+        || statement instanceof ShowTables
+        || statement instanceof AddColumn
+        || statement instanceof SetProperties
+        || statement instanceof DropTable
+        || statement instanceof ShowCluster
+        || statement instanceof ShowRegions
+        || statement instanceof ShowDataNodes
+        || statement instanceof ShowConfigNodes
+        || statement instanceof Flush
+        || statement instanceof SetConfiguration) {
+      return new ConfigExecution(
+          queryContext,
+          null,
+          executor,
+          statement.accept(new TableConfigTaskVisitor(clientSession, metadata), queryContext));
+    }
+    if (statement instanceof WrappedInsertStatement) {
+      ((WrappedInsertStatement) statement).setContext(queryContext);
+    }
+    TableModelPlanner tableModelPlanner =
+        new TableModelPlanner(
+            statement,
+            sqlParser,
+            metadata,
+            executor,
+            writeOperationExecutor,
+            scheduledExecutor,
+            SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
+            ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER);
+    return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {

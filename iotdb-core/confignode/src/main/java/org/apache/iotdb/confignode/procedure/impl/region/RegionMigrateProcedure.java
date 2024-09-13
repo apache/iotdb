@@ -215,11 +215,12 @@ public class RegionMigrateProcedure
       coordinatorForAddPeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
       coordinatorForRemovePeer = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOGGER.error(
-          "Error in deserialize {} (procID {}), this procedure may belong to old version and already cannot be used.",
+      LOGGER.warn(
+          "Error in deserialize {} (procID {}). This procedure will be ignored. It may belong to old version and cannot be used now.",
           this.getClass(),
           this.getProcId(),
           e);
+      throw e;
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionRecoverException;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionValidationFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogAnalyzer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
@@ -48,6 +49,7 @@ import java.util.stream.Stream;
 public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   private Phaser phaser;
+  private boolean failToPassOverlapValidation = false;
 
   public InsertionCrossSpaceCompactionTask(
       Phaser phaser,
@@ -182,6 +184,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           targetFile,
           String.format("%.2f", costTime));
     } catch (Exception e) {
+      if (e instanceof CompactionValidationFailedException) {
+        failToPassOverlapValidation = true;
+      }
       isSuccess = false;
       handleException(LOGGER, e);
       recover();
@@ -293,7 +298,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || !targetFile.resourceFileExists()
         || (unseqFileToInsert != null
             && unseqFileToInsert.modFileExists()
-            && !targetFile.modFileExists());
+            && !targetFile.modFileExists())
+        || failToPassOverlapValidation;
   }
 
   private void rollback() throws IOException {

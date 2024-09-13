@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
@@ -45,7 +46,7 @@ public class SubscriptionBrokerAgent {
   //////////////////////////// provided for subscription agent ////////////////////////////
 
   public List<SubscriptionEvent> poll(
-      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+      final ConsumerConfig consumerConfig, final Set<String> topicNames, final long maxBytes) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -57,13 +58,12 @@ public class SubscriptionBrokerAgent {
     }
     // TODO: currently we fetch messages from all topics
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.poll(consumerId, topicNames);
+    return broker.poll(consumerId, topicNames, maxBytes);
   }
 
   public List<SubscriptionEvent> pollTsFile(
       final ConsumerConfig consumerConfig,
-      final String topicName,
-      final String fileName,
+      final SubscriptionCommitContext commitContext,
       final long writingOffset) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
@@ -75,7 +75,24 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.pollTsFile(consumerId, topicName, fileName, writingOffset);
+    return broker.pollTsFile(consumerId, commitContext, writingOffset);
+  }
+
+  public List<SubscriptionEvent> pollTablets(
+      final ConsumerConfig consumerConfig,
+      final SubscriptionCommitContext commitContext,
+      final int offset) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      final String errorMessage =
+          String.format(
+              "Subscription: broker bound to consumer group [%s] does not exist", consumerGroupId);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionException(errorMessage);
+    }
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.pollTablets(consumerId, commitContext, offset);
   }
 
   /**
@@ -94,24 +111,37 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn(errorMessage);
       throw new SubscriptionException(errorMessage);
     }
-    return broker.commit(commitContexts, nack);
+    final String consumerId = consumerConfig.getConsumerId();
+    return broker.commit(consumerId, commitContexts, nack);
   }
 
   /////////////////////////////// broker ///////////////////////////////
 
+  /**
+   * Caller should ensure that the method is called in the lock {@link
+   * ConsumerGroupMetaKeeper#acquireWriteLock}.
+   */
   public boolean isBrokerExist(final String consumerGroupId) {
     return consumerGroupIdToSubscriptionBroker.containsKey(consumerGroupId);
   }
 
-  public synchronized void createBroker(final String consumerGroupId) {
+  /**
+   * Caller should ensure that the method is called in the lock {@link
+   * ConsumerGroupMetaKeeper#acquireWriteLock}.
+   */
+  public void createBroker(final String consumerGroupId) {
     final SubscriptionBroker broker = new SubscriptionBroker(consumerGroupId);
     consumerGroupIdToSubscriptionBroker.put(consumerGroupId, broker);
+    LOGGER.info("Subscription: create broker bound to consumer group [{}]", consumerGroupId);
   }
 
   /**
-   * @return true -> if drop broker success
+   * Caller should ensure that the method is called in the lock {@link
+   * ConsumerGroupMetaKeeper#acquireWriteLock}.
+   *
+   * @return {@code true} if drop broker success, {@code false} otherwise
    */
-  public synchronized boolean dropBroker(final String consumerGroupId) {
+  public boolean dropBroker(final String consumerGroupId) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
@@ -123,9 +153,11 @@ public class SubscriptionBrokerAgent {
       LOGGER.warn(
           "Subscription: broker bound to consumer group [{}] is not empty when dropping",
           consumerGroupId);
+      // do nothing
       return false;
     }
     consumerGroupIdToSubscriptionBroker.remove(consumerGroupId);
+    LOGGER.info("Subscription: drop broker bound to consumer group [{}]", consumerGroupId);
     return true;
   }
 
@@ -135,29 +167,40 @@ public class SubscriptionBrokerAgent {
     final String consumerGroupId = subtask.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
     broker.bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
   }
 
-  public void unbindPrefetchingQueue(final SubscriptionConnectorSubtask subtask) {
-    final String consumerGroupId = subtask.getConsumerGroupId();
+  public void unbindPrefetchingQueue(final String consumerGroupId, final String topicName) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    broker.unbindPrefetchingQueue(subtask.getTopicName());
+    broker.unbindPrefetchingQueue(topicName);
   }
 
-  public void executePrefetch(final SubscriptionConnectorSubtask subtask) {
-    final String consumerGroupId = subtask.getConsumerGroupId();
+  public void removePrefetchingQueue(final String consumerGroupId, final String topicName) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
-      LOGGER.warn("Subscription: consumer group [{}] does not exist", consumerGroupId);
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return;
     }
-    broker.executePrefetch(subtask.getTopicName());
+    broker.removePrefetchingQueue(topicName);
+  }
+
+  public void executePrefetch(final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      return;
+    }
+    broker.executePrefetch(topicName);
   }
 }

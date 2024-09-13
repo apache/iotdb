@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.sametype.numeric;
 
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
+import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
@@ -28,6 +29,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -43,54 +45,76 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
   protected double doubleValue;
 
   @Override
-  public void configureSystemParameters(Map<String, String> systemParams) {
+  public void configureSystemParameters(final Map<String, String> systemParams) {
     // Do nothing
   }
 
   @Override
-  public boolean initAndGetIsSupport(boolean initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final boolean initialInput, final long initialTimestamp) {
     return false;
   }
 
   @Override
-  public boolean initAndGetIsSupport(int initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final int initialInput, final long initialTimestamp) {
     outPutDataType = TSDataType.INT32;
     return true;
   }
 
   @Override
-  public boolean initAndGetIsSupport(long initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final LocalDate initialInput, final long initialTimestamp) {
+    return false;
+  }
+
+  @Override
+  public boolean initAndGetIsSupport(final long initialInput, final long initialTimestamp) {
     outPutDataType = TSDataType.INT64;
     return true;
   }
 
   @Override
-  public boolean initAndGetIsSupport(float initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final float initialInput, final long initialTimestamp) {
     outPutDataType = TSDataType.FLOAT;
     return true;
   }
 
   @Override
-  public boolean initAndGetIsSupport(double initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final double initialInput, final long initialTimestamp) {
     outPutDataType = TSDataType.DOUBLE;
     return true;
   }
 
   @Override
-  public boolean initAndGetIsSupport(String initialInput, long initialTimestamp) {
+  public boolean initAndGetIsSupport(final String initialInput, final long initialTimestamp) {
     return false;
   }
 
   @Override
-  public void updateValue(boolean input, long timestamp) {
+  public boolean initAndGetIsSupport(final Binary initialInput, final long initialTimestamp) {
+    return false;
+  }
+
+  @Override
+  public void updateValue(final boolean input, final long timestamp) {
     throw new UnsupportedOperationException(
         "AbstractSameTypeNumericOperator does not support boolean input");
   }
 
   @Override
-  public void updateValue(String input, long timestamp) {
+  public void updateValue(final LocalDate input, final long timestamp) {
+    throw new UnsupportedOperationException(
+        "AbstractSameTypeNumericOperator does not support date input");
+  }
+
+  @Override
+  public void updateValue(final String input, final long timestamp) {
     throw new UnsupportedOperationException(
         "AbstractSameTypeNumericOperator does not support string input");
+  }
+
+  @Override
+  public void updateValue(final Binary input, final long timestamp) {
+    throw new UnsupportedOperationException(
+        "AbstractSameTypeNumericOperator does not support binary input");
   }
 
   @Override
@@ -104,13 +128,19 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
         return new Pair<>(TSDataType.FLOAT, floatValue);
       case DOUBLE:
         return new Pair<>(TSDataType.DOUBLE, doubleValue);
+      case BLOB:
+      case TEXT:
+      case BOOLEAN:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         return null;
     }
   }
 
   @Override
-  public void serialize(DataOutputStream outputStream) throws IOException {
+  public void serialize(final DataOutputStream outputStream) throws IOException {
     outPutDataType.serializeTo(outputStream);
     switch (outPutDataType) {
       case INT32:
@@ -125,13 +155,19 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
       case DOUBLE:
         ReadWriteIOUtils.write(doubleValue, outputStream);
         break;
+      case TIMESTAMP:
+      case DATE:
+      case BOOLEAN:
+      case STRING:
+      case TEXT:
+      case BLOB:
       default:
         throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
     }
   }
 
   @Override
-  public void deserialize(ByteBuffer byteBuffer) throws IOException {
+  public void deserialize(final ByteBuffer byteBuffer) throws IOException {
     outPutDataType = TSDataType.deserializeFrom(byteBuffer);
     switch (outPutDataType) {
       case INT32:
@@ -146,6 +182,12 @@ public abstract class AbstractSameTypeNumericOperator implements IntermediateRes
       case DOUBLE:
         doubleValue = ReadWriteIOUtils.readDouble(byteBuffer);
         break;
+      case TEXT:
+      case BLOB:
+      case BOOLEAN:
+      case STRING:
+      case DATE:
+      case TIMESTAMP:
       default:
         throw new IOException(String.format("Unsupported output datatype %s", outPutDataType));
     }

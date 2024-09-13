@@ -35,10 +35,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
 
   protected PipeSnapshotEvent(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final PipeSnapshotResourceManager resourceManager) {
-    super(pipeName, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.resourceManager = resourceManager;
   }
 
@@ -59,6 +60,11 @@ public abstract class PipeSnapshotEvent extends EnrichedEvent implements Seriali
 
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
+    return true;
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
     return true;
   }
 

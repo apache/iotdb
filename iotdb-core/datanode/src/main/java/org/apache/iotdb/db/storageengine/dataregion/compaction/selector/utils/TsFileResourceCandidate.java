@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -32,6 +34,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TsFileResourceCandidate {
   @SuppressWarnings("squid:S1104")
@@ -46,8 +49,9 @@ public class TsFileResourceCandidate {
   private Map<IDeviceID, DeviceInfo> deviceInfoMap;
 
   private boolean hasDetailedDeviceInfo;
+  private CompactionScheduleContext compactionScheduleContext;
 
-  protected TsFileResourceCandidate(TsFileResource tsFileResource) {
+  public TsFileResourceCandidate(TsFileResource tsFileResource, CompactionScheduleContext context) {
     this.resource = tsFileResource;
     this.selected = false;
     // although we do the judgement here, the task should be validated before executing because
@@ -55,6 +59,7 @@ public class TsFileResourceCandidate {
     this.isValidCandidate =
         tsFileResource.getStatus() == TsFileResourceStatus.NORMAL
             && tsFileResource.getTsFileRepairStatus() == TsFileRepairStatus.NORMAL;
+    this.compactionScheduleContext = context;
   }
 
   /**
@@ -67,6 +72,11 @@ public class TsFileResourceCandidate {
   }
 
   private void prepareDeviceInfos() throws IOException {
+    boolean canCacheDeviceInfo = resource.getStatus() != TsFileResourceStatus.UNCLOSED;
+    if (deviceInfoMap == null && compactionScheduleContext != null) {
+      // get device info from cache
+      deviceInfoMap = compactionScheduleContext.getResourceDeviceInfo(this.resource);
+    }
     if (deviceInfoMap != null) {
       return;
     }
@@ -79,7 +89,7 @@ public class TsFileResourceCandidate {
           hasDetailedDeviceInfo = false;
           return;
         }
-        DeviceTimeIndex timeIndex = resource.buildDeviceTimeIndex();
+        ArrayDeviceTimeIndex timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);
         for (IDeviceID deviceId : timeIndex.getDevices()) {
           deviceInfoMap.put(
               deviceId,
@@ -98,15 +108,23 @@ public class TsFileResourceCandidate {
       }
     }
     hasDetailedDeviceInfo = true;
+    if (compactionScheduleContext != null && canCacheDeviceInfo) {
+      compactionScheduleContext.addResourceDeviceTimeIndex(this.resource, deviceInfoMap);
+    }
   }
 
   public void markAsSelected() {
     this.selected = true;
   }
 
-  public List<DeviceInfo> getDevices() throws IOException {
+  public List<DeviceInfo> getDeviceInfoList() throws IOException {
     prepareDeviceInfos();
     return new ArrayList<>(deviceInfoMap.values());
+  }
+
+  public Set<IDeviceID> getDevices() throws IOException {
+    prepareDeviceInfos();
+    return deviceInfoMap.keySet();
   }
 
   public DeviceInfo getDeviceInfoById(IDeviceID deviceId) throws IOException {

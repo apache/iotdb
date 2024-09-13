@@ -27,7 +27,7 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -38,6 +38,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -65,7 +66,7 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithRetry(
-      TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
+      TEndPoint endPoint, Object req, CnToDnRequestType requestType) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -84,7 +85,7 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithGivenRetry(
-      TEndPoint endPoint, Object req, DataNodeRequestType requestType, int retryNum) {
+      TEndPoint endPoint, Object req, CnToDnRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -103,7 +104,7 @@ public class SyncDataNodeClientPool {
   }
 
   private Object executeSyncRequest(
-      DataNodeRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
+      CnToDnRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
       throws TException {
     switch (requestType) {
       case INVALIDATE_PARTITION_CACHE:
@@ -128,6 +129,8 @@ public class SyncDataNodeClientPool {
         return client.killQueryInstance((String) req);
       case UPDATE_TEMPLATE:
         return client.updateTemplate((TUpdateTemplateReq) req);
+      case UPDATE_TABLE:
+        return client.updateTable((TUpdateTableReq) req);
       case CREATE_NEW_REGION_PEER:
         return client.createNewRegionPeer((TCreatePeerReq) req);
       case ADD_REGION_PEER:
@@ -189,7 +192,6 @@ public class SyncDataNodeClientPool {
     return new TRegionLeaderChangeResp(status, -1L);
   }
 
-  // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
 
     private static final SyncDataNodeClientPool INSTANCE = new SyncDataNodeClientPool();

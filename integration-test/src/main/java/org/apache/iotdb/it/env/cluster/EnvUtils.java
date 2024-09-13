@@ -31,8 +31,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.FAST_IOT_CONSENSUS;
-import static org.apache.iotdb.consensus.ConsensusFactory.IOTV2_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
+import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.REAL_PIPE_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
@@ -224,7 +224,7 @@ public class EnvUtils {
         return IOT_CONSENSUS_STR;
       case REAL_PIPE_CONSENSUS:
         return PIPE_CONSENSUS_STR;
-      case IOTV2_CONSENSUS:
+      case IOT_CONSENSUS_V2:
         return STREAM_CONSENSUS_STR;
       case FAST_IOT_CONSENSUS:
         return BATCH_CONSENSUS_STR;
@@ -244,7 +244,7 @@ public class EnvUtils {
       case PIPE_CONSENSUS_STR:
         return REAL_PIPE_CONSENSUS;
       case STREAM_CONSENSUS_STR:
-        return IOTV2_CONSENSUS;
+        return IOT_CONSENSUS_V2;
       case BATCH_CONSENSUS_STR:
         return FAST_IOT_CONSENSUS;
       default:

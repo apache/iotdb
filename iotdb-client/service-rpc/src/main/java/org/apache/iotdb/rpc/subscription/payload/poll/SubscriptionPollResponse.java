@@ -95,6 +95,9 @@ public class SubscriptionPollResponse {
         case ERROR:
           payload = new ErrorPayload().deserialize(buffer);
           break;
+        case TERMINATION:
+          payload = new TerminationPayload().deserialize(buffer);
+          break;
         default:
           LOGGER.warn("unexpected response type: {}, payload will be null", responseType);
           break;

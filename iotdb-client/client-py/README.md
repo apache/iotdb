@@ -21,7 +21,6 @@
 
 # Apache IoTDB
 
-[![Python Client](https://github.com/apache/iotdb/actions/workflows/client-python.yml/badge.svg?branch=master)](https://github.com/apache/iotdb/actions/workflows/client-python.yml)
 [![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
@@ -40,7 +39,7 @@ high-speed data ingestion and complex data analysis in the IoT industrial fields
 
 ### Requirements
 
-You have to install thrift (>=0.13) before using the package.
+You have to install thrift (>=0.14.1) before using the package.
 
 
 
@@ -48,9 +47,7 @@ You have to install thrift (>=0.13) before using the package.
 
 First, download the latest package: `pip3 install apache-iotdb`
 
-*Notice: If you are installing Python API v0.13.0, DO NOT install by `pip install apache-iotdb==0.13.0`, use `pip install apache-iotdb==0.13.0.post1` instead!* 
-
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/client-py/SessionExample.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/iotdb/blob/master/iotdb-client/client-py/SessionExample.py)
 
 An example of aligned timeseries: [Aligned Timeseries Session Example](https://github.com/apache/iotdb/blob/master/client-py/SessionAlignedTimeseriesExample.py)
 
@@ -312,91 +309,6 @@ session.execute_non_query_statement(sql)
 session.execute_statement(sql)
 ```
 
-### Device Template
-#### Create Device Template
-The step for creating a metadata template is as follows
-1. Create the template class
-2. Adding child Node，InternalNode and MeasurementNode can be chose
-3. Execute create device template function
-
-```python
-template = Template(name=template_name, share_time=True)
-
-i_node_gps = InternalNode(name="GPS", share_time=False)
-i_node_v = InternalNode(name="vehicle", share_time=True)
-m_node_x = MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, Compressor.SNAPPY)
-
-i_node_gps.add_child(m_node_x)
-i_node_v.add_child(m_node_x)
-
-template.add_template(i_node_gps)
-template.add_template(i_node_v)
-template.add_template(m_node_x)
-
-session.create_schema_template(template)
-```
-#### Modify Device Template nodes
-Modify nodes in a template, the template must be already created. These are functions that add or delete some measurement nodes.
-* add node in template
-```python
-session.add_measurements_in_template(template_name, measurements_path, data_types, encodings, compressors, is_aligned)
-```
-
-* delete node in template
-```python
-session.delete_node_in_template(template_name, path)
-```
-
-#### Set Device Template
-```python
-session.set_schema_template(template_name, prefix_path)
-```
-
-#### Uset Device Template
-```python
-session.unset_schema_template(template_name, prefix_path)
-```
-
-#### Show Device Template
-* Show all device templates
-```python
-session.show_all_templates()
-```
-* Count all nodes in templates
-```python
-session.count_measurements_in_template(template_name)
-```
-
-* Judge whether the path is measurement or not in templates, This measurement must be in the template
-```python
-session.count_measurements_in_template(template_name, path)
-```
-
-* Judge whether the path is exist or not in templates, This path may not belong to the template
-```python
-session.is_path_exist_in_template(template_name, path)
-```
-
-* Show nodes under in device template
-```python
-session.show_measurements_in_template(template_name)
-```
-
-* Show the path prefix where a device template is set
-```python
-session.show_paths_template_set_on(template_name)
-```
-
-* Show the path prefix where a device template is used (i.e. the time series has been created)
-```python
-session.show_paths_template_using_on(template_name)
-```
-
-#### Drop Device Template
-Delete an existing metadata template，dropping an already set template is not supported
-```python
-session.drop_schema_template("template_python")
-```
 
 
 ### Pandas Support
@@ -601,9 +513,9 @@ This is an example of how to connect to IoTDB with python, using the thrift rpc 
 
 ### Prerequisites
 
-Python3.7 or later is preferred.
+Python3.6 or later is preferred.
 
-You have to install Thrift (0.11.0 or later) to compile our thrift file into python code. Below is the official tutorial of installation, eventually, you should have a thrift executable.
+You have to install Thrift (0.14.1 or later) to compile our thrift file into python code. Below is the official tutorial of installation, eventually, you should have a thrift executable.
 
 ```
 http://thrift.apache.org/docs/install/
@@ -689,8 +601,7 @@ Namely, these are
 
 * Remove all transient directories from last release (if exists)
 * (Re-)generate all generated sources via mvn
-* Run Linting (flake8)
-* Run Tests via pytest
+* Run Tests via pytest (optional)
 * Build
 * Release to pypi
 

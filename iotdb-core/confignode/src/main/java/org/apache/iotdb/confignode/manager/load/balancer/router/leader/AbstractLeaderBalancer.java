@@ -93,6 +93,26 @@ public abstract class AbstractLeaderBalancer {
       LOGGER.warn(
           "[LeaderBalancer] The following RegionGroups' leader cannot be selected because their corresponding caches are incomplete: {}",
           differenceSet);
+      Set<TConsensusGroupId> databaseRegionGroupUnionSet =
+          databaseRegionGroupMap.values().stream()
+              .flatMap(List::stream)
+              .collect(Collectors.toSet());
+      differenceSet.forEach(
+          regionId -> {
+            if (!databaseRegionGroupUnionSet.contains(regionId)) {
+              LOGGER.warn("[LeaderBalancer] Region: {} not in databaseRegionGroupMap", regionId);
+            }
+            if (!regionLocationMap.containsKey(regionId)) {
+              LOGGER.warn("[LeaderBalancer] Region: {} not in regionLocationMap", regionId);
+            }
+            if (!regionLeaderMap.containsKey(regionId)) {
+
+              LOGGER.warn("[LeaderBalancer] Region: {} not in regionLeaderMap", regionId);
+            }
+            if (!regionStatisticsMap.containsKey(regionId)) {
+              LOGGER.warn("[LeaderBalancer] Region: {} not in regionStatisticsMap", regionId);
+            }
+          });
     }
   }
 

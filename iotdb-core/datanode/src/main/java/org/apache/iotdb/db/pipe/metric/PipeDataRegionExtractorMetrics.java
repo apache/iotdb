@@ -44,6 +44,7 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataRegionExtractorMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, IoTDBDataRegionExtractor> extractorMap = new ConcurrentHashMap<>();
@@ -316,7 +317,7 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe data region extractor tablet event, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
@@ -330,7 +331,7 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe data region extractor tsfile event, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
@@ -344,7 +345,7 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
     }
     final Rate rate = pipeHeartbeatRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe data region extractor heartbeat event, IoTDBDataRegionExtractor({}) does not exist",
           taskID);
       return;
@@ -359,7 +360,7 @@ public class PipeDataRegionExtractorMetrics implements IMetricSet {
     }
     final Gauge gauge = recentProcessedTsFileEpochStateMap.get(taskID);
     if (gauge == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to set recent processed tsfile epoch state, PipeRealtimeDataRegionExtractor({}) does not exist",
           taskID);
       return;

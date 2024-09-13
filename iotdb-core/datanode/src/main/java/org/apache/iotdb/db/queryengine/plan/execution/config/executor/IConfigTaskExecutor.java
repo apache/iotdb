@@ -23,11 +23,22 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -46,9 +57,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.ShowPipesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
@@ -79,6 +93,9 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
 
+import java.util.List;
+import java.util.Map;
+
 public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> setDatabase(DatabaseSchemaStatement databaseSchemaStatement);
@@ -105,7 +122,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> createPipePlugin(CreatePipePluginStatement createPipeStatement);
 
-  SettableFuture<ConfigTaskResult> dropPipePlugin(String pluginName);
+  SettableFuture<ConfigTaskResult> dropPipePlugin(DropPipePluginStatement dropPipePluginStatement);
 
   SettableFuture<ConfigTaskResult> showPipePlugins();
 
@@ -134,6 +151,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showClusterParameters();
 
   SettableFuture<ConfigTaskResult> showClusterId();
+
+  SettableFuture<ConfigTaskResult> testConnection(boolean needDetails);
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 
@@ -239,7 +258,56 @@ public interface IConfigTaskExecutor {
 
   TThrottleQuotaResp getThrottleQuota();
 
+  SettableFuture<ConfigTaskResult> createModel(
+      CreateModelStatement createModelStatement, MPPQueryContext context);
+
+  SettableFuture<ConfigTaskResult> dropModel(String modelName);
+
+  SettableFuture<ConfigTaskResult> showModels(String modelName);
+
+  SettableFuture<ConfigTaskResult> showAINodes(ShowAINodesStatement showAINodesStatement);
+
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 
   void handlePipeConfigClientExit(String clientId);
+
+  // =============================== table syntax =========================================
+
+  SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB);
+
+  SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
+
+  SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions);
+
+  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodes showDataNodes);
+
+  SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes);
+
+  SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
+
+  SettableFuture<ConfigTaskResult> dropDatabase(final DropDB dropDB);
+
+  SettableFuture<ConfigTaskResult> createDatabase(final CreateDB createDB);
+
+  SettableFuture<ConfigTaskResult> createTable(
+      final TsTable table, final String database, final boolean ifNotExists);
+
+  SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
+
+  SettableFuture<ConfigTaskResult> showTables(final String database);
+
+  SettableFuture<ConfigTaskResult> alterTableAddColumn(
+      final String database,
+      final String tableName,
+      final List<TsTableColumnSchema> columnSchemaList,
+      final String queryId,
+      final boolean tableIfExists,
+      final boolean columnIfExists);
+
+  SettableFuture<ConfigTaskResult> alterTableSetProperties(
+      final String database,
+      final String tableName,
+      final Map<String, String> properties,
+      final String queryId,
+      final boolean ifExists);
 }

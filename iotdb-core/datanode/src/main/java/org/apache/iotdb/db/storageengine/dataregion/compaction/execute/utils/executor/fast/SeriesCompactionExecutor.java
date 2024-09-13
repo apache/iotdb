@@ -25,10 +25,8 @@ import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.FileElement;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.NonAlignedPageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.PageElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
@@ -39,7 +37,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
@@ -62,7 +59,7 @@ public abstract class SeriesCompactionExecutor {
         throws WriteProcessException, IOException, IllegalPathException;
   }
 
-  private final FastCompactionTaskSummary summary;
+  protected final FastCompactionTaskSummary summary;
 
   // source files which are sorted by the start time of current device from old to new. Notice: If
   // the type of timeIndex is FileTimeIndex, it may contain resources in which the current device
@@ -79,12 +76,14 @@ public abstract class SeriesCompactionExecutor {
 
   protected Map<TsFileResource, TsFileSequenceReader> readerCacheMap;
 
-  private final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  protected final Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
       modificationCacheMap;
 
-  private final PointPriorityReader pointPriorityReader;
+  protected final PointPriorityReader pointPriorityReader;
 
   protected IDeviceID deviceId;
+
+  protected boolean isBatchedCompaction = false;
 
   // Pages in this list will be sequentially judged whether there is a real overlap to choose
   // whether to put them in the point priority reader to deserialize or directly flush to chunk
@@ -121,16 +120,14 @@ public abstract class SeriesCompactionExecutor {
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.startTime, o2.startTime);
-              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
 
     pageQueue =
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.getStartTime(), o2.getStartTime());
-              return timeCompare != 0
-                  ? timeCompare
-                  : Long.compare(o2.getPriority(), o1.getPriority());
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
   }
 
@@ -153,9 +150,8 @@ public abstract class SeriesCompactionExecutor {
 
       // read current chunk
       readChunk(firstChunkMetadataElement);
-      boolean forceDecodingChunk = firstChunkMetadataElement.needForceDecoding;
 
-      if (isChunkOverlap || isModified || forceDecodingChunk) {
+      if (isChunkOverlap || isModified) {
         // has overlap or modified chunk, then deserialize it
         summary.chunkOverlapOrModified++;
         compactWithOverlapChunks(firstChunkMetadataElement);
@@ -186,23 +182,7 @@ public abstract class SeriesCompactionExecutor {
    */
   private void compactWithNonOverlapChunk(ChunkMetadataElement chunkMetadataElement)
       throws IOException, PageException, WriteProcessException, IllegalPathException {
-    boolean success;
-    if (isAligned) {
-      success =
-          compactionWriter.flushAlignedChunk(
-              chunkMetadataElement.chunk,
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata).getTimeChunkMetadata(),
-              chunkMetadataElement.valueChunks,
-              ((AlignedChunkMetadata) chunkMetadataElement.chunkMetadata)
-                  .getValueChunkMetadataList(),
-              subTaskId);
-    } else {
-      success =
-          compactionWriter.flushNonAlignedChunk(
-              chunkMetadataElement.chunk,
-              (ChunkMetadata) chunkMetadataElement.chunkMetadata,
-              subTaskId);
-    }
+    boolean success = flushChunkToCompactionWriter(chunkMetadataElement);
     if (success) {
       // flush chunk successfully, then remove this chunk
       updateSummary(chunkMetadataElement, ChunkStatus.DIRECTORY_FLUSH);
@@ -215,7 +195,10 @@ public abstract class SeriesCompactionExecutor {
     }
   }
 
-  abstract void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
+  protected abstract boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
+      throws IOException;
+
+  protected abstract void deserializeChunkIntoPageQueue(ChunkMetadataElement chunkMetadataElement)
       throws IOException;
 
   abstract void readChunk(ChunkMetadataElement chunkMetadataElement) throws IOException;
@@ -264,24 +247,7 @@ public abstract class SeriesCompactionExecutor {
 
   private void compactWithNonOverlapPage(PageElement pageElement)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
-    boolean success;
-    if (isAligned) {
-      AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
-      success =
-          compactionWriter.flushAlignedPage(
-              alignedPageElement.getTimePageData(),
-              alignedPageElement.getTimePageHeader(),
-              alignedPageElement.getValuePageDataList(),
-              alignedPageElement.getValuePageHeaders(),
-              subTaskId);
-    } else {
-      NonAlignedPageElement nonAlignedPageElement = (NonAlignedPageElement) pageElement;
-      success =
-          compactionWriter.flushNonAlignedPage(
-              nonAlignedPageElement.getPageData(),
-              nonAlignedPageElement.getPageHeader(),
-              subTaskId);
-    }
+    boolean success = flushPageToCompactionWriter(pageElement);
     if (success) {
       // flush the page successfully, then remove this page
       checkShouldRemoveFile(pageElement);
@@ -305,6 +271,9 @@ public abstract class SeriesCompactionExecutor {
       }
     }
   }
+
+  protected abstract boolean flushPageToCompactionWriter(PageElement pageElement)
+      throws PageException, IOException;
 
   /**
    * Compact a series of pages that overlap with each other. Eg: The parameters are page 1 and page
@@ -453,7 +422,7 @@ public abstract class SeriesCompactionExecutor {
    * @throws IOException if io errors occurred
    * @throws IllegalPathException if file path is illegal
    */
-  private void checkShouldRemoveFile(PageElement pageElement)
+  protected void checkShouldRemoveFile(PageElement pageElement)
       throws IOException, IllegalPathException {
     if (pageElement.isLastPage() && pageElement.getChunkMetadataElement().isLastChunk) {
       // finish compacting the file, remove it from list
@@ -468,7 +437,7 @@ public abstract class SeriesCompactionExecutor {
    * @throws IOException if io errors occurred
    * @throws IllegalPathException if file path is illegal
    */
-  private void checkShouldRemoveFile(ChunkMetadataElement chunkMetadataElement)
+  protected void checkShouldRemoveFile(ChunkMetadataElement chunkMetadataElement)
       throws IOException, IllegalPathException {
     if (chunkMetadataElement.isLastChunk) {
       // finish compacting the file, remove it from list
@@ -564,7 +533,7 @@ public abstract class SeriesCompactionExecutor {
     }
   }
 
-  enum ChunkStatus {
+  protected enum ChunkStatus {
     READ_IN,
     DIRECTORY_FLUSH,
     DESERIALIZE_CHUNK

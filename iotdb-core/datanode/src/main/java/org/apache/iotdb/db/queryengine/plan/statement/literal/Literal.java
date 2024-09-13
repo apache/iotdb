@@ -76,6 +76,10 @@ public abstract class Literal extends StatementNode {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  public int getDate() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
   public long getLong() {
     throw new UnsupportedOperationException(getClass().getName());
   }

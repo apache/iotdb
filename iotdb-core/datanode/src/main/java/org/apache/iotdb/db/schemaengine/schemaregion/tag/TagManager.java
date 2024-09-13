@@ -739,6 +739,21 @@ public class TagManager {
     }
   }
 
+  /**
+   * Read the attributes of this node.
+   *
+   * @param node the node to query.
+   * @return the attribute key-value map.
+   * @throws RuntimeException If any IOException happens.
+   */
+  public Map<String, String> readAttributes(IMeasurementMNode<?> node) {
+    try {
+      return readTagFile(node.getOffset()).getRight();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   public void clear() throws IOException {
     this.tagIndex.clear();
     if (tagLogFile != null) {

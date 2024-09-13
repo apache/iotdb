@@ -23,17 +23,18 @@ package org.apache.iotdb.commons.exception;
 public class IoTDBException extends Exception {
 
   private static final long serialVersionUID = 8480450962311247736L;
-  protected int errorCode;
+  private final int errorCode;
 
   /**
    * This kind of exception is caused by users' wrong sql, and there is no need for server to print
    * the full stack of the exception
    */
-  protected boolean isUserException = false;
+  private final boolean isUserException;
 
   public IoTDBException(String message, int errorCode) {
     super(message);
     this.errorCode = errorCode;
+    this.isUserException = false;
   }
 
   public IoTDBException(String message, int errorCode, boolean isUserException) {
@@ -45,11 +46,13 @@ public class IoTDBException extends Exception {
   public IoTDBException(String message, Throwable cause, int errorCode) {
     super(message, cause);
     this.errorCode = errorCode;
+    this.isUserException = false;
   }
 
   public IoTDBException(Throwable cause, int errorCode) {
     super(cause);
     this.errorCode = errorCode;
+    this.isUserException = false;
   }
 
   public IoTDBException(Throwable cause, int errorCode, boolean isUserException) {

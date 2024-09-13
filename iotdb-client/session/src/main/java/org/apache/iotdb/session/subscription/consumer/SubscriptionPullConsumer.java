@@ -22,6 +22,7 @@ package org.apache.iotdb.session.subscription.consumer;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.util.IdentifierUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 /**
  * The {@link SubscriptionPullConsumer} corresponds to the pull consumption mode in the message
@@ -109,12 +111,14 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
 
     super.open();
 
+    // set isClosed to false before submitting workers
+    isClosed.set(false);
+
+    // submit auto poll worker if enabling auto commit
     if (autoCommit) {
       uncommittedMessages = new ConcurrentSkipListMap<>();
       submitAutoCommitWorker();
     }
-
-    isClosed.set(false);
   }
 
   @Override
@@ -147,10 +151,39 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
     return poll(topicNames, timeout.toMillis());
   }
 
-  @Override
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
       throws SubscriptionException {
-    final List<SubscriptionMessage> messages = super.poll(topicNames, timeoutMs);
+    // parse topic names from external source
+    Set<String> parsedTopicNames =
+        topicNames.stream().map(IdentifierUtils::parseIdentifier).collect(Collectors.toSet());
+
+    if (!parsedTopicNames.isEmpty()) {
+      // filter unsubscribed topics
+      parsedTopicNames.stream()
+          .filter(topicName -> !subscribedTopics.containsKey(topicName))
+          .forEach(
+              topicName ->
+                  LOGGER.warn(
+                      "SubscriptionPullConsumer {} does not subscribe to topic {}",
+                      this,
+                      topicName));
+    } else {
+      parsedTopicNames = subscribedTopics.keySet();
+    }
+
+    if (parsedTopicNames.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
+    if (messages.isEmpty()) {
+      LOGGER.info(
+          "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
+          this,
+          parsedTopicNames,
+          timeoutMs);
+      return messages;
+    }
 
     // add to uncommitted messages
     if (autoCommit) {
@@ -324,6 +357,18 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return this;
     }
 
+    @Override
+    public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
+      super.thriftMaxFrameSize(thriftMaxFrameSize);
+      return this;
+    }
+
+    @Override
+    public Builder maxPollParallelism(final int maxPollParallelism) {
+      super.maxPollParallelism(maxPollParallelism);
+      return this;
+    }
+
     public Builder autoCommit(final boolean autoCommit) {
       this.autoCommit = autoCommit;
       return this;
@@ -345,5 +390,30 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       throw new SubscriptionException(
           "SubscriptionPullConsumer.Builder do not support build push consumer.");
     }
+  }
+
+  /////////////////////////////// stringify ///////////////////////////////
+
+  @Override
+  public String toString() {
+    return "SubscriptionPullConsumer" + this.coreReportMessage();
+  }
+
+  @Override
+  protected Map<String, String> coreReportMessage() {
+    final Map<String, String> coreReportMessage = super.coreReportMessage();
+    coreReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    return coreReportMessage;
+  }
+
+  @Override
+  protected Map<String, String> allReportMessage() {
+    final Map<String, String> allReportMessage = super.allReportMessage();
+    allReportMessage.put("autoCommit", String.valueOf(autoCommit));
+    allReportMessage.put("autoCommitIntervalMs", String.valueOf(autoCommitIntervalMs));
+    if (autoCommit) {
+      allReportMessage.put("uncommittedMessages", uncommittedMessages.toString());
+    }
+    return allReportMessage;
   }
 }

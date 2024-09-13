@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.SchemaRegionListeningQueue;
 import org.apache.iotdb.db.pipe.progress.SimpleProgressIndexAssigner;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner;
@@ -70,7 +70,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner.clean();
 
     // Clean receiver file dir
-    PipeAgent.receiver().cleanPipeReceiverDirs();
+    PipeDataNodeAgent.receiver().cleanPipeReceiverDirs();
 
     PipeAgentLauncher.launchPipePluginAgent(resourcesInformationHolder);
     simpleProgressIndexAssigner.start();
@@ -83,7 +83,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
 
     registerPeriodicalJob(
         "PipeTaskAgent#restartAllStuckPipes",
-        PipeAgent.task()::restartAllStuckPipes,
+        PipeDataNodeAgent.task()::restartAllStuckPipes,
         PipeConfig.getInstance().getPipeStuckRestartIntervalSeconds());
     pipePeriodicalJobExecutor.start();
 
@@ -98,7 +98,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     isShutdown.set(true);
 
     pipePeriodicalJobExecutor.stop();
-    PipeAgent.task().dropAllPipeTasks();
+    PipeDataNodeAgent.task().dropAllPipeTasks();
   }
 
   public boolean isShutdown() {
@@ -207,7 +207,7 @@ public class PipeDataNodeRuntimeAgent implements IService {
     // Quick stop all pipes locally if critical exception occurs,
     // no need to wait for the next heartbeat cycle.
     if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeAgent.task().stopAllPipesWithCriticalException();
+      PipeDataNodeAgent.task().stopAllPipesWithCriticalException();
     }
   }
 

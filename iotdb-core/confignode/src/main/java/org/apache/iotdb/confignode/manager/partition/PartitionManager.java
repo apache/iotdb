@@ -34,9 +34,9 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -90,10 +90,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1004,11 +1007,11 @@ public class PartitionManager {
   /**
    * Get TSeriesPartitionSlot.
    *
-   * @param devicePath Full path ending with device name
+   * @param deviceID
    * @return SeriesPartitionSlot
    */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(devicePath);
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    return executor.getSeriesPartitionSlot(deviceID);
   }
 
   public RegionInfoListResp getRegionInfoList(GetRegionInfoListPlan req) {
@@ -1083,8 +1086,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
     }
     if (Objects.equals(plan.getDatabase(), "")) {
       // Return empty result if Database not specified
@@ -1118,8 +1123,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new GetTimeSlotListResp(RpcUtils.SUCCESS_STATUS, new ArrayList<>());
@@ -1145,8 +1152,10 @@ public class PartitionManager {
     if (req.isSetDatabase()) {
       plan.setDatabase(req.getDatabase());
     } else if (req.isSetDevice()) {
-      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(req.getDevice()));
-      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(req.getDevice()));
+      IDeviceID deviceID =
+          Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(ByteBuffer.wrap(req.getDevice()));
+      plan.setDatabase(getClusterSchemaManager().getDatabaseNameByDevice(deviceID));
+      plan.setSeriesSlotId(executor.getSeriesPartitionSlot(deviceID));
       if (Objects.equals(plan.getDatabase(), "")) {
         // Return empty result if Database not specified
         return new CountTimeSlotListResp(RpcUtils.SUCCESS_STATUS, 0);
@@ -1255,10 +1264,10 @@ public class PartitionManager {
                       switch (selectedRegionMaintainTask.get(0).getRegionId().getType()) {
                         case SchemaRegion:
                           // create SchemaRegion
-                          AsyncClientHandler<TCreateSchemaRegionReq, TSStatus>
+                          DataNodeAsyncRequestContext<TCreateSchemaRegionReq, TSStatus>
                               createSchemaRegionHandler =
-                                  new AsyncClientHandler<>(
-                                      DataNodeRequestType.CREATE_SCHEMA_REGION);
+                                  new DataNodeAsyncRequestContext<>(
+                                      CnToDnRequestType.CREATE_SCHEMA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask schemaRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1271,13 +1280,13 @@ public class PartitionManager {
                                 new TCreateSchemaRegionReq(
                                     schemaRegionCreateTask.getRegionReplicaSet(),
                                     schemaRegionCreateTask.getStorageGroup()));
-                            createSchemaRegionHandler.putDataNodeLocation(
+                            createSchemaRegionHandler.putNodeLocation(
                                 schemaRegionCreateTask.getRegionId().getId(),
                                 schemaRegionCreateTask.getTargetDataNode());
                           }
 
-                          AsyncDataNodeClientPool.getInstance()
-                              .sendAsyncRequestToDataNodeWithRetry(createSchemaRegionHandler);
+                          CnToDnInternalServiceAsyncRequestManager.getInstance()
+                              .sendAsyncRequestWithRetry(createSchemaRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createSchemaRegionHandler.getResponseMap().entrySet()) {
@@ -1291,9 +1300,10 @@ public class PartitionManager {
                           break;
                         case DataRegion:
                           // Create DataRegion
-                          AsyncClientHandler<TCreateDataRegionReq, TSStatus>
+                          DataNodeAsyncRequestContext<TCreateDataRegionReq, TSStatus>
                               createDataRegionHandler =
-                                  new AsyncClientHandler<>(DataNodeRequestType.CREATE_DATA_REGION);
+                                  new DataNodeAsyncRequestContext<>(
+                                      CnToDnRequestType.CREATE_DATA_REGION);
                           for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                             RegionCreateTask dataRegionCreateTask =
                                 (RegionCreateTask) regionMaintainTask;
@@ -1306,13 +1316,13 @@ public class PartitionManager {
                                 new TCreateDataRegionReq(
                                     dataRegionCreateTask.getRegionReplicaSet(),
                                     dataRegionCreateTask.getStorageGroup()));
-                            createDataRegionHandler.putDataNodeLocation(
+                            createDataRegionHandler.putNodeLocation(
                                 dataRegionCreateTask.getRegionId().getId(),
                                 dataRegionCreateTask.getTargetDataNode());
                           }
 
-                          AsyncDataNodeClientPool.getInstance()
-                              .sendAsyncRequestToDataNodeWithRetry(createDataRegionHandler);
+                          CnToDnInternalServiceAsyncRequestManager.getInstance()
+                              .sendAsyncRequestWithRetry(createDataRegionHandler);
 
                           for (Map.Entry<Integer, TSStatus> entry :
                               createDataRegionHandler.getResponseMap().entrySet()) {
@@ -1328,8 +1338,8 @@ public class PartitionManager {
                       break;
                     case DELETE:
                       // delete region
-                      AsyncClientHandler<TConsensusGroupId, TSStatus> deleteRegionHandler =
-                          new AsyncClientHandler<>(DataNodeRequestType.DELETE_REGION);
+                      DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> deleteRegionHandler =
+                          new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
                       Map<Integer, TConsensusGroupId> regionIdMap = new HashMap<>();
                       for (RegionMaintainTask regionMaintainTask : selectedRegionMaintainTask) {
                         RegionDeleteTask regionDeleteTask = (RegionDeleteTask) regionMaintainTask;
@@ -1339,7 +1349,7 @@ public class PartitionManager {
                             regionDeleteTask.getTargetDataNode());
                         deleteRegionHandler.putRequest(
                             regionDeleteTask.getRegionId().getId(), regionDeleteTask.getRegionId());
-                        deleteRegionHandler.putDataNodeLocation(
+                        deleteRegionHandler.putNodeLocation(
                             regionDeleteTask.getRegionId().getId(),
                             regionDeleteTask.getTargetDataNode());
                         regionIdMap.put(
@@ -1347,8 +1357,8 @@ public class PartitionManager {
                       }
 
                       long startTime = System.currentTimeMillis();
-                      AsyncDataNodeClientPool.getInstance()
-                          .sendAsyncRequestToDataNodeWithRetry(deleteRegionHandler);
+                      CnToDnInternalServiceAsyncRequestManager.getInstance()
+                          .sendAsyncRequestWithRetry(deleteRegionHandler);
 
                       LOGGER.info(
                           "Deleting regions costs {}ms", (System.currentTimeMillis() - startTime));

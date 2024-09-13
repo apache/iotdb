@@ -24,8 +24,9 @@ import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 public class PipeProcessorSubtaskWorker extends WrappedRunnable {
@@ -40,8 +41,8 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
   private int workingRoundInAdjustmentInterval = 0;
   private long sleepingTimeInMilliSecond = 50;
 
-  private final ConcurrentMap<PipeProcessorSubtask, PipeProcessorSubtask> subtasks =
-      new ConcurrentHashMap<>();
+  private final Set<PipeProcessorSubtask> subtasks =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Override
   @SuppressWarnings("squid:S2189")
@@ -56,7 +57,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
   private void cleanupClosedSubtasksIfNecessary() {
     if (++closedSubtaskCleanupRoundCounter % CLOSED_SUBTASK_CLEANUP_ROUND_INTERVAL == 0) {
-      subtasks.keySet().stream()
+      subtasks.stream()
           .filter(PipeProcessorSubtask::isClosed)
           .collect(Collectors.toList())
           .forEach(subtasks::remove);
@@ -68,7 +69,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
 
     boolean canSleepBeforeNextRound = true;
 
-    for (final PipeProcessorSubtask subtask : subtasks.keySet()) {
+    for (final PipeProcessorSubtask subtask : subtasks) {
       if (subtask.isClosed() || !subtask.isSubmittingSelf() || subtask.isStoppedByException()) {
         continue;
       }
@@ -79,7 +80,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
           canSleepBeforeNextRound = false;
         }
         subtask.onSuccess(hasAtLeastOneEventProcessed);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         if (subtask.isClosed()) {
           LOGGER.warn("subtask {} is closed, ignore exception", subtask, e);
         } else {
@@ -91,11 +92,11 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     return canSleepBeforeNextRound;
   }
 
-  private void sleepIfNecessary(boolean canSleepBeforeNextRound) {
+  private void sleepIfNecessary(final boolean canSleepBeforeNextRound) {
     if (canSleepBeforeNextRound) {
       try {
         Thread.sleep(sleepingTimeInMilliSecond);
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         LOGGER.warn("subtask worker is interrupted", e);
         Thread.currentThread().interrupt();
       }
@@ -122,7 +123,7 @@ public class PipeProcessorSubtaskWorker extends WrappedRunnable {
     }
   }
 
-  public void schedule(PipeProcessorSubtask pipeProcessorSubtask) {
-    subtasks.put(pipeProcessorSubtask, pipeProcessorSubtask);
+  public void schedule(final PipeProcessorSubtask pipeProcessorSubtask) {
+    subtasks.add(pipeProcessorSubtask);
   }
 }

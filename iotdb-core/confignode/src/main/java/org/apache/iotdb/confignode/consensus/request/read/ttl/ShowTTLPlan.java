@@ -20,14 +20,27 @@ package org.apache.iotdb.confignode.consensus.request.read.ttl;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class ShowTTLPlan extends ConfigPhysicalPlan {
+  private String[] pathPattern;
+
+  public String[] getPathPattern() {
+    return pathPattern;
+  }
+
   public ShowTTLPlan() {
     super(ConfigPhysicalPlanType.ShowTTL);
+    this.pathPattern = SqlConstant.getSingleRootArray();
+  }
+
+  public ShowTTLPlan(String[] pathPattern) {
+    super(ConfigPhysicalPlanType.ShowTTL);
+    this.pathPattern = pathPattern;
   }
 
   @Override

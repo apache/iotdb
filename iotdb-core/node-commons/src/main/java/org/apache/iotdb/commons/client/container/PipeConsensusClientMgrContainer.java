@@ -42,7 +42,7 @@ public class PipeConsensusClientMgrContainer {
   private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
 
-  public PipeConsensusClientMgrContainer() {
+  private PipeConsensusClientMgrContainer() {
     // load rpc client config
     PipeConsensusClientProperty config =
         PipeConsensusClientProperty.newBuilder()

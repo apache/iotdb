@@ -84,6 +84,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+@SuppressWarnings("java:S2142")
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
@@ -105,11 +106,20 @@ public class SessionConnection {
 
   private final long retryIntervalInMs;
 
+  private final String sqlDialect;
+
+  private final String database;
+
+  // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
+  private int timeFactor = 1_000;
+
   // TestOnly
   public SessionConnection() {
     availableNodes = Collections::emptyList;
     this.maxRetryCount = Math.max(0, SessionConfig.MAX_RETRY_COUNT);
     this.retryIntervalInMs = Math.max(0, SessionConfig.RETRY_INTERVAL_IN_MS);
+    this.sqlDialect = "tree";
+    database = null;
   }
 
   public SessionConnection(
@@ -118,7 +128,9 @@ public class SessionConnection {
       ZoneId zoneId,
       Supplier<List<TEndPoint>> availableNodes,
       int maxRetryCount,
-      long retryIntervalInMs)
+      long retryIntervalInMs,
+      String sqlDialect,
+      String database)
       throws IoTDBConnectionException {
     this.session = session;
     this.endPoint = endPoint;
@@ -127,6 +139,8 @@ public class SessionConnection {
     this.availableNodes = availableNodes;
     this.maxRetryCount = Math.max(0, maxRetryCount);
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
+    this.sqlDialect = sqlDialect;
+    this.database = database;
     try {
       init(endPoint, session.useSSL, session.trustStore, session.trustStorePwd);
     } catch (StatementExecutionException e) {
@@ -141,7 +155,9 @@ public class SessionConnection {
       ZoneId zoneId,
       Supplier<List<TEndPoint>> availableNodes,
       int maxRetryCount,
-      long retryIntervalInMs)
+      long retryIntervalInMs,
+      String sqlDialect,
+      String database)
       throws IoTDBConnectionException {
     this.session = session;
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
@@ -149,6 +165,8 @@ public class SessionConnection {
     this.availableNodes = availableNodes;
     this.maxRetryCount = Math.max(0, maxRetryCount);
     this.retryIntervalInMs = Math.max(0, retryIntervalInMs);
+    this.sqlDialect = sqlDialect;
+    this.database = database;
     initClusterConn();
   }
 
@@ -190,12 +208,16 @@ public class SessionConnection {
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
     openReq.putToConfiguration("version", session.version.toString());
+    openReq.putToConfiguration("sql_dialect", sqlDialect);
+    if (database != null) {
+      openReq.putToConfiguration("db", database);
+    }
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
       RpcUtils.verifySuccess(openResp.getStatus());
-
+      this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
             "Protocol differ, Client version is {}}, but Server version is {}",
@@ -439,7 +461,10 @@ public class SessionConnection {
         timeout,
         execResp.moreData,
         session.fetchSize,
-        zoneId);
+        zoneId,
+        timeFactor,
+        execResp.isSetTableModel() && execResp.isTableModel(),
+        execResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected void executeNonQueryStatement(String sql)
@@ -493,7 +518,11 @@ public class SessionConnection {
       throws TException {
     request.setSessionId(sessionId);
     request.setStatementId(statementId);
-    return client.executeUpdateStatementV2(request).status;
+    TSExecuteStatementResp resp = client.executeUpdateStatementV2(request);
+    if (resp.isSetDatabase()) {
+      session.changeDatabase(resp.getDatabase());
+    }
+    return resp.status;
   }
 
   protected SessionDataSet executeRawDataQuery(
@@ -535,7 +564,10 @@ public class SessionConnection {
         execResp.queryResult,
         execResp.isIgnoreTimeStamp(),
         execResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        execResp.isSetTableModel() && execResp.isTableModel(),
+        execResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected Pair<SessionDataSet, TEndPoint> executeLastDataQueryForOneDevice(
@@ -582,7 +614,10 @@ public class SessionConnection {
             tsExecuteStatementResp.queryResult,
             tsExecuteStatementResp.isIgnoreTimeStamp(),
             tsExecuteStatementResp.moreData,
-            zoneId),
+            zoneId,
+            timeFactor,
+            tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
+            tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList()),
         redirectedEndPoint);
   }
 
@@ -624,7 +659,10 @@ public class SessionConnection {
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
         tsExecuteStatementResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   protected SessionDataSet executeAggregationQuery(
@@ -706,7 +744,10 @@ public class SessionConnection {
         tsExecuteStatementResp.queryResult,
         tsExecuteStatementResp.isIgnoreTimeStamp(),
         tsExecuteStatementResp.moreData,
-        zoneId);
+        zoneId,
+        timeFactor,
+        tsExecuteStatementResp.isSetTableModel() && tsExecuteStatementResp.isTableModel(),
+        tsExecuteStatementResp.getColumnIndex2TsBlockColumnIndexList());
   }
 
   private TSAggregationQueryReq createAggregationQueryReq(
@@ -1053,9 +1094,8 @@ public class SessionConnection {
     return client.insertStringRecordsOfOneDevice(request);
   }
 
-  protected void insertTablet(TSInsertTabletReq request)
-      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
-
+  protected void withRetry(TFunction<TSStatus> function)
+      throws StatementExecutionException, RedirectException, IoTDBConnectionException {
     TException lastTException = null;
     TSStatus status = null;
     for (int i = 0; i <= maxRetryCount; i++) {
@@ -1075,7 +1115,7 @@ public class SessionConnection {
         }
       }
       try {
-        status = insertTabletInternal(request);
+        status = function.run();
         // need retry
         if (status.isSetNeedRetry() && status.isNeedRetry()) {
           continue;
@@ -1102,6 +1142,11 @@ public class SessionConnection {
     } else {
       throw new IoTDBConnectionException(logForReconnectionFailure());
     }
+  }
+
+  protected void insertTablet(TSInsertTabletReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    withRetry(() -> insertTabletInternal(request));
   }
 
   private TSStatus insertTabletInternal(TSInsertTabletReq request) throws TException {
@@ -1650,5 +1695,9 @@ public class SessionConnection {
   @Override
   public String toString() {
     return "SessionConnection{" + " endPoint=" + endPoint + "}";
+  }
+
+  private interface TFunction<T> {
+    T run() throws TException;
   }
 }

@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -29,9 +30,12 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
  * {@link EnrichedEvent} is an {@link Event} that can be enriched with additional runtime
@@ -48,9 +52,10 @@ public abstract class EnrichedEvent implements Event {
   protected final AtomicBoolean isReleased;
 
   protected final String pipeName;
+  protected final long creationTime;
   protected final PipeTaskMeta pipeTaskMeta;
 
-  protected String committerKey;
+  protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
   protected int rebootTimes = 0;
@@ -63,10 +68,12 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isPatternParsed;
   protected boolean isTimeParsed;
 
-  protected boolean shouldReportOnCommit = true;
+  protected volatile boolean shouldReportOnCommit = true;
+  protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
 
   protected EnrichedEvent(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
       final long startTime,
@@ -74,12 +81,20 @@ public abstract class EnrichedEvent implements Event {
     referenceCount = new AtomicInteger(0);
     isReleased = new AtomicBoolean(false);
     this.pipeName = pipeName;
+    this.creationTime = creationTime;
     this.pipeTaskMeta = pipeTaskMeta;
     this.pipePattern = pipePattern;
     this.startTime = startTime;
     this.endTime = endTime;
     isPatternParsed = this.pipePattern == null || this.pipePattern.isRoot();
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            reportProgress();
+          }
+          return null;
+        });
   }
 
   /**
@@ -89,32 +104,34 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is increased successfully,
-   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be incremented
-   *     regardless of the circumstances
+   *     {@code false} otherwise
    */
-  public boolean increaseReferenceCount(final String holderMessage) {
+  public synchronized boolean increaseReferenceCount(final String holderMessage) {
     boolean isSuccessful = true;
-    synchronized (this) {
-      if (isReleased.get()) {
-        LOGGER.warn(
-            "re-increase reference count to event that has already been released: {}, stack trace: {}",
-            coreReportMessage(),
-            Thread.currentThread().getStackTrace());
-        isSuccessful = false;
-        // Here we still increase the reference count, to remain consistent with the behavior after
-        // internal increase failure.
-        referenceCount.incrementAndGet();
-      } else {
-        if (referenceCount.get() == 0) {
-          // We assume that this function will not throw any exceptions.
-          isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
-        }
-        referenceCount.incrementAndGet();
-      }
+
+    if (isReleased.get()) {
+      LOGGER.warn(
+          "re-increase reference count to event that has already been released: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+      isSuccessful = false;
+      return isSuccessful;
     }
-    if (!isSuccessful) {
-      LOGGER.warn("increase reference count failed, EnrichedEvent: {}", coreReportMessage());
+
+    if (referenceCount.get() == 0) {
+      // We assume that this function will not throw any exceptions.
+      isSuccessful = internallyIncreaseResourceReferenceCount(holderMessage);
     }
+
+    if (isSuccessful) {
+      referenceCount.incrementAndGet();
+    } else {
+      LOGGER.warn(
+          "increase reference count failed, EnrichedEvent: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+    }
+
     return isSuccessful;
   }
 
@@ -129,7 +146,7 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} if the {@link EnrichedEvent} is not controlled by the invoker, which means
    *     the data stored in the event is not safe to use
    */
-  public abstract boolean internallyIncreaseResourceReferenceCount(String holderMessage);
+  public abstract boolean internallyIncreaseResourceReferenceCount(final String holderMessage);
 
   /**
    * Decrease the {@link EnrichedEvent#referenceCount} of this {@link EnrichedEvent} by 1. If the
@@ -139,34 +156,55 @@ public abstract class EnrichedEvent implements Event {
    *
    * @param holderMessage the message of the invoker
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
-   *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be decremented
-   *     regardless of the circumstances
+   *     {@code false} otherwise
    */
-  public boolean decreaseReferenceCount(final String holderMessage, final boolean shouldReport) {
+  public synchronized boolean decreaseReferenceCount(
+      final String holderMessage, final boolean shouldReport) {
     boolean isSuccessful = true;
-    synchronized (this) {
-      if (referenceCount.get() == 1 && !isReleased.get()) {
-        // We assume that this function will not throw any exceptions.
-        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        if (!shouldReport) {
-          shouldReportOnCommit = false;
-        }
-        PipeEventCommitManager.getInstance().commit(this, committerKey);
+
+    if (isReleased.get()) {
+      LOGGER.warn(
+          "decrease reference count to event that has already been released: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
+      isSuccessful = false;
+      return isSuccessful;
+    }
+
+    if (referenceCount.get() == 1) {
+      // We assume that this function will not throw any exceptions.
+      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+        LOGGER.warn(
+            "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
       }
-      final int newReferenceCount = referenceCount.decrementAndGet();
-      if (newReferenceCount == 0) {
-        isReleased.set(true);
+      if (!shouldReport) {
+        shouldReportOnCommit = false;
       }
+      PipeEventCommitManager.getInstance().commit(this, committerKey);
+    }
+
+    // No matter whether the resource is released, we should decrease the reference count.
+    final int newReferenceCount = referenceCount.decrementAndGet();
+    if (newReferenceCount <= 0) {
+      isReleased.set(true);
+      isSuccessful = newReferenceCount == 0;
       if (newReferenceCount < 0) {
         LOGGER.warn(
             "reference count is decreased to {}, event: {}, stack trace: {}",
             newReferenceCount,
             coreReportMessage(),
             Thread.currentThread().getStackTrace());
+        referenceCount.set(0);
       }
     }
+
     if (!isSuccessful) {
-      LOGGER.warn("decrease reference count failed, EnrichedEvent: {}", coreReportMessage());
+      LOGGER.warn(
+          "decrease reference count failed, EnrichedEvent: {}, stack trace: {}",
+          coreReportMessage(),
+          Thread.currentThread().getStackTrace());
     }
     return isSuccessful;
   }
@@ -181,20 +219,25 @@ public abstract class EnrichedEvent implements Event {
    *     {@code false} otherwise; {@link EnrichedEvent#referenceCount} will be reset to zero
    *     regardless of the circumstances
    */
-  public boolean clearReferenceCount(final String holderMessage) {
-    boolean isSuccessful = true;
-    synchronized (this) {
-      if (referenceCount.get() >= 1 && !isReleased.get()) {
-        // We assume that this function will not throw any exceptions.
-        isSuccessful = internallyDecreaseResourceReferenceCount(holderMessage);
-        isReleased.set(true);
+  public synchronized boolean clearReferenceCount(final String holderMessage) {
+    if (isReleased.get()) {
+      return false;
+    }
+
+    if (referenceCount.get() >= 1) {
+      shouldReportOnCommit = false;
+      // We assume that this function will not throw any exceptions.
+      if (!internallyDecreaseResourceReferenceCount(holderMessage)) {
+        LOGGER.warn(
+            "resource reference count is decreased to 0, but failed to release the resource, EnrichedEvent: {}, stack trace: {}",
+            coreReportMessage(),
+            Thread.currentThread().getStackTrace());
       }
-      referenceCount.set(0);
     }
-    if (!isSuccessful) {
-      LOGGER.warn("clear reference count failed, EnrichedEvent: {}", coreReportMessage());
-    }
-    return isSuccessful;
+
+    referenceCount.set(0);
+    isReleased.set(true);
+    return true;
   }
 
   /**
@@ -208,7 +251,7 @@ public abstract class EnrichedEvent implements Event {
    * @return {@code true} if the {@link EnrichedEvent#referenceCount} is decreased successfully,
    *     {@code true} otherwise
    */
-  public abstract boolean internallyDecreaseResourceReferenceCount(String holderMessage);
+  public abstract boolean internallyDecreaseResourceReferenceCount(final String holderMessage);
 
   protected void reportProgress() {
     if (pipeTaskMeta != null) {
@@ -243,6 +286,14 @@ public abstract class EnrichedEvent implements Event {
 
   public final String getPipeName() {
     return pipeName;
+  }
+
+  public final long getCreationTime() {
+    return creationTime;
+  }
+
+  public final boolean isDataRegionEvent() {
+    return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
   }
 
   /**
@@ -291,11 +342,12 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public abstract EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-      String pipeName,
-      PipeTaskMeta pipeTaskMeta,
-      PipePattern pattern,
-      long startTime,
-      long endTime);
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final PipePattern pattern,
+      final long startTime,
+      final long endTime);
 
   public PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
@@ -310,12 +362,14 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
-  public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
+  public abstract boolean mayEventPathsOverlappedWithPattern();
+
+  public void setCommitterKeyAndCommitId(final CommitterKey committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
   }
 
-  public void setRebootTimes(int rebootTimes) {
+  public void setRebootTimes(final int rebootTimes) {
     this.rebootTimes = rebootTimes;
   }
 
@@ -323,7 +377,7 @@ public abstract class EnrichedEvent implements Event {
     return rebootTimes;
   }
 
-  public String getCommitterKey() {
+  public CommitterKey getCommitterKey() {
     return committerKey;
   }
 
@@ -332,9 +386,11 @@ public abstract class EnrichedEvent implements Event {
   }
 
   public void onCommitted() {
-    if (shouldReportOnCommit) {
-      reportProgress();
-    }
+    onCommittedHooks.forEach(Supplier::get);
+  }
+
+  public void addOnCommittedHook(final Supplier<Void> hook) {
+    onCommittedHooks.add(hook);
   }
 
   public boolean isReleased() {
@@ -342,17 +398,17 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need commiterKey, commitId and rebootTimes to
-   * uniquely identify an event
+   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * to uniquely identify an event
    */
-  public boolean equalsInPipeConsensus(Object o) {
+  public boolean equalsInPipeConsensus(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    EnrichedEvent otherEvent = (EnrichedEvent) o;
+    final EnrichedEvent otherEvent = (EnrichedEvent) o;
     return Objects.equals(committerKey, otherEvent.committerKey)
         && commitId == otherEvent.commitId
         && rebootTimes == otherEvent.rebootTimes;

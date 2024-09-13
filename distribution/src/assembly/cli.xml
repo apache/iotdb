@@ -39,18 +39,18 @@
     <fileSets>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>tools</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/tools</directory>
+            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
+            <source>${project.basedir}/../iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
             <outputDirectory>conf</outputDirectory>
             <fileMode>0755</fileMode>
         </file>

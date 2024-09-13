@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -125,6 +126,7 @@ public class IoTDBJDBCResultSetTest {
 
     execResp.queryResult = FakedFirstFetchTsBlockResult();
 
+    when(connection.getTimeFactor()).thenReturn(1000);
     when(connection.isClosed()).thenReturn(false);
     when(client.executeStatementV2(any(TSExecuteStatementReq.class))).thenReturn(execResp);
     when(execResp.getQueryId()).thenReturn(queryId);
@@ -171,6 +173,16 @@ public class IoTDBJDBCResultSetTest {
     when(execResp.getOperationType()).thenReturn("QUERY");
     when(execResp.isSetQueryId()).thenReturn(true);
     when(execResp.getQueryId()).thenReturn(queryId);
+    when(execResp.isSetTableModel()).thenReturn(false);
+    when(execResp.isIgnoreTimeStamp()).thenReturn(false);
+    List<Integer> columnIndex2TsBlockColumnIndexList = new ArrayList<>(columns.size());
+    columnIndex2TsBlockColumnIndexList.add(0);
+    columnIndex2TsBlockColumnIndexList.add(1);
+    columnIndex2TsBlockColumnIndexList.add(2);
+    columnIndex2TsBlockColumnIndexList.add(0);
+
+    when(execResp.getColumnIndex2TsBlockColumnIndexList())
+        .thenReturn(columnIndex2TsBlockColumnIndexList);
     doReturn("FLOAT")
         .doReturn("INT64")
         .doReturn("INT32")
@@ -251,31 +263,31 @@ public class IoTDBJDBCResultSetTest {
   private void constructObjectList(List<Object> standardObject) {
     Object[][] input = {
       {
-        2L, 2.22F, 40000L, null, 2.22F,
+        new Timestamp(2), 2.22F, 40000L, null, 2.22F,
       },
       {
-        3L, 3.33F, null, null, 3.33F,
+        new Timestamp(3), 3.33F, null, null, 3.33F,
       },
       {
-        4L, 4.44F, null, null, 4.44F,
+        new Timestamp(4), 4.44F, null, null, 4.44F,
       },
       {
-        50L, null, 50000L, null, null,
+        new Timestamp(50), null, 50000L, null, null,
       },
       {
-        100L, null, 199L, null, null,
+        new Timestamp(100), null, 199L, null, null,
       },
       {
-        101L, null, 199L, null, null,
+        new Timestamp(101), null, 199L, null, null,
       },
       {
-        103L, null, 199L, null, null,
+        new Timestamp(103), null, 199L, null, null,
       },
       {
-        105L, 11.11F, 199L, 33333, 11.11F,
+        new Timestamp(105), 11.11F, 199L, 33333, 11.11F,
       },
       {
-        1000L, 1000.11F, 55555L, 22222, 1000.11F,
+        new Timestamp(1000), 1000.11F, 55555L, 22222, 1000.11F,
       }
     };
     for (Object[] row : input) {

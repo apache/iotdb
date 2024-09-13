@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -31,11 +31,11 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class PipePushMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMetaResp> {
+public class PipePushMetaRPCHandler extends DataNodeAsyncRequestRPCHandler<TPushPipeMetaResp> {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipePushMetaRPCHandler.class);
 
   public PipePushMetaRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -60,7 +60,7 @@ public class PipePushMetaRPCHandler extends AbstractAsyncRPCHandler<TPushPipeMet
     }
 
     // Always remove to avoid retrying
-    dataNodeLocationMap.remove(requestId);
+    nodeLocationMap.remove(requestId);
 
     // Always CountDown
     countDownLatch.countDown();

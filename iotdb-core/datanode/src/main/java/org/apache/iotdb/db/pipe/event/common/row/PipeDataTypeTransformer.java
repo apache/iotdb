@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /** Transform between {@link TSDataType} and {@link org.apache.iotdb.pipe.api.type.Type}. */
 public class PipeDataTypeTransformer {
 
-  public static List<Type> transformToPipeDataTypeList(List<TSDataType> tsDataTypeList) {
+  public static List<Type> transformToPipeDataTypeList(final List<TSDataType> tsDataTypeList) {
     return tsDataTypeList == null
         ? null
         : tsDataTypeList.stream()
@@ -37,11 +37,11 @@ public class PipeDataTypeTransformer {
             .collect(Collectors.toList());
   }
 
-  public static Type transformToPipeDataType(TSDataType tsDataType) {
+  public static Type transformToPipeDataType(final TSDataType tsDataType) {
     return tsDataType == null ? null : getPipeDataType(tsDataType.getType());
   }
 
-  private static Type getPipeDataType(byte type) {
+  private static Type getPipeDataType(final byte type) {
     switch (type) {
       case 0:
         return Type.BOOLEAN;
@@ -55,6 +55,14 @@ public class PipeDataTypeTransformer {
         return Type.DOUBLE;
       case 5:
         return Type.TEXT;
+      case 8:
+        return Type.TIMESTAMP;
+      case 9:
+        return Type.DATE;
+      case 10:
+        return Type.BLOB;
+      case 11:
+        return Type.STRING;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }

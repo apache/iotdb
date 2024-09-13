@@ -45,6 +45,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.Properties;
 
 public class ConfigNodeDescriptor {
@@ -62,6 +63,8 @@ public class ConfigNodeDescriptor {
     try {
       ConfigurationFileUtils.checkAndMayUpdate(
           systemConfigUrl, configNodeUrl, dataNodeUrl, commonConfigUrl);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     } catch (Exception e) {
       LOGGER.error("Failed to update config file", e);
     }
@@ -133,8 +136,7 @@ public class ConfigNodeDescriptor {
         MetricConfigDescriptor.getInstance().loadProps(commonProperties, true);
         MetricConfigDescriptor.getInstance()
             .getMetricConfig()
-            .updateRpcInstance(
-                conf.getClusterName(), NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
+            .updateRpcInstance(NodeType.CONFIGNODE, SchemaConstant.SYSTEM_DATABASE);
       }
     } else {
       LOGGER.warn(
@@ -175,9 +177,6 @@ public class ConfigNodeDescriptor {
     }
     if (seedConfigNode != null) {
       conf.setSeedConfigNode(NodeUrlUtils.parseTEndPointUrls(seedConfigNode.trim()).get(0));
-    } else {
-      throw new IOException(
-          "The parameter dn_seed_config_node is not set, this ConfigNode will not join in any cluster.");
     }
 
     conf.setSeriesSlotNum(
@@ -303,10 +302,11 @@ public class ConfigNodeDescriptor {
     conf.setPipeDir(properties.getProperty("pipe_lib_dir", conf.getPipeDir()).trim());
 
     conf.setPipeReceiverFileDir(
-        properties
-            .getProperty(
-                "pipe_receiver_file_dir",
-                conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver")
+        Optional.ofNullable(properties.getProperty("cn_pipe_receiver_file_dir"))
+            .orElse(
+                properties.getProperty(
+                    "pipe_receiver_file_dir",
+                    conf.getSystemDir() + File.separator + "pipe" + File.separator + "receiver"))
             .trim());
 
     conf.setHeartbeatIntervalInMs(
@@ -869,6 +869,11 @@ public class ConfigNodeDescriptor {
       LOGGER.warn("Unknown host when checking seed configNode IP {}", conf.getInternalAddress(), e);
       return false;
     }
+  }
+
+  public void loadHotModifiedProps(Properties properties) {
+    Optional.ofNullable(properties.getProperty(IoTDBConstant.CLUSTER_NAME))
+        .ifPresent(conf::setClusterName);
   }
 
   public static ConfigNodeDescriptor getInstance() {

@@ -22,6 +22,11 @@ package org.apache.iotdb.commons.path;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 
 public class PathPatternTreeUtils {
+
+  private PathPatternTreeUtils() {
+    // hidden constructor
+  }
+
   /**
    * Intersect the pattern tree with the full path prefix tree, and return the intersected pattern
    * tree.

@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 
 import org.slf4j.Logger;
@@ -76,8 +79,13 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
           // reset the thread name here
           try (SetThreadName driverTaskName =
               new SetThreadName(next.getDriver().getDriverTaskId().getFullId())) {
-            logger.warn("[ExecuteFailed]", e);
-            next.setAbortCause(DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED);
+            Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
+            if (rootCause instanceof IoTDBRuntimeException) {
+              next.setAbortCause(e.getMessage());
+            } else {
+              logger.warn("[ExecuteFailed]", e);
+              next.setAbortCause(getAbortCause(e));
+            }
             scheduler.toAborted(next);
           }
         } finally {
@@ -112,5 +120,13 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   @Override
   public void close() throws IOException {
     closed = true;
+  }
+
+  private String getAbortCause(final Exception e) {
+    Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
+    if (rootCause instanceof MemoryNotEnoughException) {
+      return DriverTaskAbortedException.BY_MEMORY_NOT_ENOUGH;
+    }
+    return DriverTaskAbortedException.BY_INTERNAL_ERROR_SCHEDULED;
   }
 }

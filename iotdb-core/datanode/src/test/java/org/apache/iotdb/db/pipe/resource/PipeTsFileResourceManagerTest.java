@@ -21,9 +21,9 @@ package org.apache.iotdb.db.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResource;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -65,7 +65,7 @@ public class PipeTsFileResourceManagerTest {
   @Before
   public void setUp() throws Exception {
     pipeTsFileResourceManager = new PipeTsFileResourceManager();
-    PipeAgent.runtime().startPeriodicalJobExecutor();
+    PipeDataNodeAgent.runtime().startPeriodicalJobExecutor();
 
     createTsfile(TS_FILE_NAME);
     creatModsFile(MODS_FILE_NAME);
@@ -130,9 +130,9 @@ public class PipeTsFileResourceManagerTest {
   private void creatModsFile(String modsFilePath) throws IllegalPathException {
     Modification[] modifications =
         new Modification[] {
-          new Deletion(new PartialPath("root.lemming.device1.sensor1"), 2, 1),
-          new Deletion(new PartialPath("root.lemming.device1.sensor1"), 3, 2, 5),
-          new Deletion(new PartialPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
+          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 2, 1),
+          new Deletion(new MeasurementPath("root.lemming.device1.sensor1"), 3, 2, 5),
+          new Deletion(new MeasurementPath("root.lemming.**"), 11, 1, Long.MAX_VALUE)
         };
 
     try (ModificationFile mFile = new ModificationFile(modsFilePath)) {
@@ -151,8 +151,8 @@ public class PipeTsFileResourceManagerTest {
       FileUtils.deleteFileOrDirectory(pipeFolder);
     }
 
-    PipeAgent.runtime().stopPeriodicalJobExecutor();
-    PipeAgent.runtime().clearPeriodicalJobExecutor();
+    PipeDataNodeAgent.runtime().stopPeriodicalJobExecutor();
+    PipeDataNodeAgent.runtime().clearPeriodicalJobExecutor();
   }
 
   @Test

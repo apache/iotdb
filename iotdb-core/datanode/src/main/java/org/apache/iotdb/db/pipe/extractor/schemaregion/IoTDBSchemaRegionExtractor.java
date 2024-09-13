@@ -29,7 +29,7 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionSnapshotEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
@@ -37,7 +37,7 @@ import org.apache.iotdb.db.pipe.metric.PipeSchemaRegionExtractorMetrics;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -81,14 +81,15 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   @Override
   public void start() throws Exception {
     // Delay the start process to schema region leader ready
-    if (!PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
+    if (!PipeDataNodeAgent.runtime().isSchemaLeaderReady(schemaRegionId)
         || hasBeenStarted.get()
         || hasBeenClosed.get()) {
       return;
     }
 
     // Try open the queue if it is the first task
-    if (PipeAgent.runtime().increaseAndGetSchemaListenerReferenceCount(schemaRegionId) == 1) {
+    if (PipeDataNodeAgent.runtime().increaseAndGetSchemaListenerReferenceCount(schemaRegionId)
+        == 1) {
       SchemaRegionConsensusImpl.getInstance()
           .write(schemaRegionId, new PipeOperateSchemaQueueNode(new PlanNodeId(""), true));
     }
@@ -113,7 +114,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
   // This method will return events only after schema region leader gets ready
   @Override
   public synchronized EnrichedEvent supply() throws Exception {
-    return PipeAgent.runtime().isSchemaLeaderReady(schemaRegionId) ? super.supply() : null;
+    return PipeDataNodeAgent.runtime().isSchemaLeaderReady(schemaRegionId) ? super.supply() : null;
   }
 
   @Override
@@ -133,7 +134,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
-    return PipeAgent.runtime().schemaListener(schemaRegionId);
+    return PipeDataNodeAgent.runtime().schemaListener(schemaRegionId);
   }
 
   @Override
@@ -166,7 +167,7 @@ public class IoTDBSchemaRegionExtractor extends IoTDBNonDataRegionExtractor {
     if (!listenedTypeSet.isEmpty()) {
       // The queue is not closed here, and is closed iff the PipeMetaKeeper
       // has no schema pipe after one successful sync
-      PipeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
+      PipeDataNodeAgent.runtime().decreaseAndGetSchemaListenerReferenceCount(schemaRegionId);
     }
     if (Objects.nonNull(taskID)) {
       PipeSchemaRegionExtractorMetrics.getInstance().deregister(taskID);

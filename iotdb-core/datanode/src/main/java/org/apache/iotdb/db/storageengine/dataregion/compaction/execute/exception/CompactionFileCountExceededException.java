@@ -25,6 +25,7 @@ public class CompactionFileCountExceededException extends Exception {
   }
 
   @Override
+  @SuppressWarnings("java:S3551")
   public Throwable fillInStackTrace() {
     return this;
   }

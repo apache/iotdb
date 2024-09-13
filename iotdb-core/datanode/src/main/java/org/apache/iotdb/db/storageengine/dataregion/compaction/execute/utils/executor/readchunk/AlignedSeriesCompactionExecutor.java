@@ -31,7 +31,6 @@ import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.TsFileAlignedSeriesReaderIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
@@ -213,7 +212,7 @@ public class AlignedSeriesCompactionExecutor {
   private void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
     if (currentWritingTimestamp <= lastWriteTimestamp) {
       throw new CompactionLastTimeCheckFailedException(
-          ((PlainDeviceID) device).toStringID(), currentWritingTimestamp, lastWriteTimestamp);
+          device.toString(), currentWritingTimestamp, lastWriteTimestamp);
     } else {
       lastWriteTimestamp = currentWritingTimestamp;
     }

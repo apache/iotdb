@@ -35,7 +35,6 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
-import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 import static org.junit.Assert.fail;
 
@@ -214,7 +213,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
 
   @Test
   public void deleteTimeSeriesMultiIntervalTest() {
-    String[] retArray1 = new String[] {"0,0"};
+    String[] retArray1 = new String[] {"0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -232,10 +231,7 @@ public class IoTDBDeleteAlignedTimeseriesIT extends AbstractSchemaIT {
           statement.executeQuery(
               "select count(s1) from root.sg.d1 where time >= 3 and time <= 4")) {
         while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.sg.d1.s1"));
+          String ans = resultSet.getString(count("root.sg.d1.s1"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }

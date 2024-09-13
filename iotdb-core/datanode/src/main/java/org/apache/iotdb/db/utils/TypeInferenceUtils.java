@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.ExpressionUtils;
@@ -40,17 +40,7 @@ import java.util.List;
 
 public class TypeInferenceUtils {
 
-  private static final TSDataType booleanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
-
-  private static final TSDataType integerStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
-
-  private static final TSDataType floatingStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
-
-  private static final TSDataType nanStringInferType =
-      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
+  private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
 
   private TypeInferenceUtils() {}
 
@@ -58,7 +48,7 @@ public class TypeInferenceUtils {
     return s.length() >= 3 && s.startsWith("X'") && s.endsWith("'");
   }
 
-  static boolean isNumber(String s) {
+  public static boolean isNumber(String s) {
     if (s == null || s.equals("NaN")) {
       return false;
     }
@@ -67,7 +57,7 @@ public class TypeInferenceUtils {
     } catch (NumberFormatException e) {
       return false;
     }
-    return true;
+    return !s.endsWith("F") && !s.endsWith("f") && !s.endsWith("D") && !s.endsWith("d");
   }
 
   private static boolean isBoolean(String s) {
@@ -94,7 +84,9 @@ public class TypeInferenceUtils {
 
   /** Get predicted DataType of the given value */
   public static TSDataType getPredictedDataType(Object value, boolean inferType) {
-
+    if (value == null) {
+      return null;
+    }
     if (value instanceof Boolean) {
       return TSDataType.BOOLEAN;
     } else if (value instanceof Integer) {
@@ -108,18 +100,18 @@ public class TypeInferenceUtils {
     } else if (inferType) {
       String strValue = value.toString();
       if (isBoolean(strValue)) {
-        return booleanStringInferType;
+        return CONF.getBooleanStringInferType();
       } else if (isNumber(strValue)) {
         if (isLong(StringUtils.trim(strValue))) {
-          return integerStringInferType;
+          return CONF.getIntegerStringInferType();
         } else {
-          return floatingStringInferType;
+          return CONF.getFloatingStringInferType();
         }
       } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
         return null;
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
-        return nanStringInferType;
+        return CONF.getNanStringInferType();
       } else if (isBlob(strValue)) {
         return TSDataType.BLOB;
       } else {
@@ -274,8 +266,7 @@ public class TypeInferenceUtils {
                     ExpressionUtils.reconstructBinaryExpression(
                         keepExpression,
                         new TimeSeriesOperand(
-                            new MeasurementPath(
-                                ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64)),
+                            ((TimeSeriesOperand) leftExpression).getPath(), TSDataType.INT64),
                         rightExpression)));
             return;
           } else {

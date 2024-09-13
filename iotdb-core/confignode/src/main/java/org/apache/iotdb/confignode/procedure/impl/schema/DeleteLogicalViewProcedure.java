@@ -26,9 +26,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteLogicalViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -139,10 +139,10 @@ public class DeleteLogicalViewProcedure
     List<TSStatus> successResult = new ArrayList<>();
     DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
         new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
-            "construct view schemaengine black list",
+            "construct view schema engine black list",
             env,
             targetSchemaRegionGroup,
-            DataNodeRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
+            CnToDnRequestType.CONSTRUCT_VIEW_SCHEMA_BLACK_LIST,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
@@ -184,12 +184,12 @@ public class DeleteLogicalViewProcedure
   private void invalidateCache(ConfigNodeProcedureEnv env) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+    DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
             new TInvalidateMatchedSchemaCacheReq(patternTreeBytes),
             dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (TSStatus status : statusMap.values()) {
       // all dataNodes must clear the related schemaengine cache
@@ -208,10 +208,10 @@ public class DeleteLogicalViewProcedure
   private void deleteViewSchema(ConfigNodeProcedureEnv env) {
     DeleteLogicalViewRegionTaskExecutor<TDeleteViewSchemaReq> deleteTimeSeriesTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
-            "delete view schemaengine",
+            "delete view in schema engine",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            DataNodeRequestType.DELETE_VIEW,
+            CnToDnRequestType.DELETE_VIEW,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeleteViewSchemaReq(consensusGroupIdList, patternTreeBytes)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -244,10 +244,10 @@ public class DeleteLogicalViewProcedure
       throws IOException, InterruptedException, ProcedureException {
     DeleteLogicalViewRegionTaskExecutor<TRollbackViewSchemaBlackListReq> rollbackStateTask =
         new DeleteLogicalViewRegionTaskExecutor<>(
-            "roll back view schemaengine black list",
+            "roll back view schema engine black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree),
-            DataNodeRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
+            CnToDnRequestType.ROLLBACK_VIEW_SCHEMA_BLACK_LIST,
             (dataNodeLocation, consensusGroupIdList) ->
                 new TRollbackViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes));
     rollbackStateTask.execute();
@@ -343,7 +343,7 @@ public class DeleteLogicalViewProcedure
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        DataNodeRequestType dataNodeRequestType,
+        CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
@@ -379,7 +379,7 @@ public class DeleteLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete view %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
+                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
                       requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
       interruptTask();
     }

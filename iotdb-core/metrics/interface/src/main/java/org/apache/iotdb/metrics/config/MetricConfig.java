@@ -159,9 +159,13 @@ public class MetricConfig {
     return internalDatabase;
   }
 
-  /** Update rpc address and rpc port of monitored node. */
-  public void updateRpcInstance(String clusterName, NodeType nodeType, String internalDatabase) {
+  /** Update cluster name of monitored node. */
+  public void updateClusterName(String clusterName) {
     this.clusterName = clusterName;
+  }
+
+  /** Update rpc address and rpc port of monitored node. */
+  public void updateRpcInstance(NodeType nodeType, String internalDatabase) {
     this.nodeType = nodeType;
     this.internalDatabase = internalDatabase;
   }

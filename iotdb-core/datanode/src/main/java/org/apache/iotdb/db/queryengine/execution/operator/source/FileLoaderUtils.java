@@ -19,24 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
+import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.metadata.MemChunkMetadataLoader;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -51,8 +53,6 @@ import java.util.List;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_ALIGNED;
-import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.TIMESERIES_METADATA_MODIFICATION_NONALIGNED;
 
 public class FileLoaderUtils {
 
@@ -75,7 +75,7 @@ public class FileLoaderUtils {
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(
       TsFileResource resource,
-      PartialPath seriesPath,
+      NonAlignedFullPath seriesPath,
       QueryContext context,
       Filter globalTimeFilter,
       Set<String> allSensors,
@@ -96,16 +96,31 @@ public class FileLoaderUtils {
                     resource.getTsFilePath(),
                     new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                         resource.getTsFileID(),
-                        new PlainDeviceID(seriesPath.getDevice()),
+                        seriesPath.getDeviceId(),
                         seriesPath.getMeasurement()),
                     allSensors,
-                    resource.getTimeIndexType() != 1,
+                    resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                     context.isDebug());
         if (timeSeriesMetadata != null) {
-          List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
+          long t2 = System.nanoTime();
+          List<Modification> pathModifications =
+              context.getPathModifications(
+                  resource, seriesPath.getDeviceId(), seriesPath.getMeasurement());
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
+          int modificationCount = pathModifications.size();
+          if (modificationCount != 0) {
+            long costTime = System.nanoTime() - t2;
+            context
+                .getQueryStatistics()
+                .getNonAlignedTimeSeriesMetadataModificationCount()
+                .getAndAdd(modificationCount);
+            context
+                .getQueryStatistics()
+                .getNonAlignedTimeSeriesMetadataModificationTime()
+                .getAndAdd(costTime);
+          }
         }
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -118,18 +133,12 @@ public class FileLoaderUtils {
       }
 
       if (timeSeriesMetadata != null) {
-        long t2 = System.nanoTime();
-        try {
-          if (timeSeriesMetadata.getStatistics().getStartTime()
-              > timeSeriesMetadata.getStatistics().getEndTime()) {
-            return null;
-          }
-          if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
-            return null;
-          }
-        } finally {
-          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_NONALIGNED, System.nanoTime() - t2);
+        if (timeSeriesMetadata.getStatistics().getStartTime()
+            > timeSeriesMetadata.getStatistics().getEndTime()) {
+          return null;
+        }
+        if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
+          return null;
         }
       }
       return timeSeriesMetadata;
@@ -137,19 +146,19 @@ public class FileLoaderUtils {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataMemSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemSeqTime().getAndAdd(costTime);
         } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataMemUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemUnSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataMemUnSeqTime().getAndAdd(costTime);
         }
       } else {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskSeqTime().getAndAdd(costTime);
         } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataDiskUnSeqTime.getAndAdd(costTime);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqCount().getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataDiskUnSeqTime().getAndAdd(costTime);
         }
       }
     }
@@ -165,7 +174,7 @@ public class FileLoaderUtils {
    */
   public static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadata(
       TsFileResource resource,
-      AlignedPath alignedPath,
+      AlignedFullPath alignedPath,
       QueryContext context,
       Filter globalTimeFilter,
       boolean isSeq)
@@ -190,18 +199,12 @@ public class FileLoaderUtils {
       }
 
       if (alignedTimeSeriesMetadata != null) {
-        final long t2 = System.nanoTime();
-        try {
-          if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
-              > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
-            return null;
-          }
-          if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
-            return null;
-          }
-        } finally {
-          SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
-              TIMESERIES_METADATA_MODIFICATION_ALIGNED, System.nanoTime() - t2);
+        if (alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getStartTime()
+            > alignedTimeSeriesMetadata.getTimeseriesMetadata().getStatistics().getEndTime()) {
+          return null;
+        }
+        if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
+          return null;
         }
       }
       return alignedTimeSeriesMetadata;
@@ -209,24 +212,33 @@ public class FileLoaderUtils {
       long costTime = System.nanoTime() - t1;
       if (loadFromMem) {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemSeqTime.getAndAdd(costTime);
-        } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedMemUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemSeqCount().getAndAdd(1);
           context
               .getQueryStatistics()
-              .loadTimeSeriesMetadataAlignedMemUnSeqTime
+              .getLoadTimeSeriesMetadataAlignedMemSeqTime()
+              .getAndAdd(costTime);
+        } else {
+          context.getQueryStatistics().getLoadTimeSeriesMetadataAlignedMemUnSeqCount().getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataAlignedMemUnSeqTime()
               .getAndAdd(costTime);
         }
       } else {
         if (isSeq) {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqCount.getAndAdd(1);
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskSeqTime.getAndAdd(costTime);
-        } else {
-          context.getQueryStatistics().loadTimeSeriesMetadataAlignedDiskUnSeqCount.getAndAdd(1);
+          context.getQueryStatistics().getLoadTimeSeriesMetadataAlignedDiskSeqCount().getAndAdd(1);
           context
               .getQueryStatistics()
-              .loadTimeSeriesMetadataAlignedDiskUnSeqTime
+              .getLoadTimeSeriesMetadataAlignedDiskSeqTime()
+              .getAndAdd(costTime);
+        } else {
+          context
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataAlignedDiskUnSeqCount()
+              .getAndAdd(1);
+          context
+              .getQueryStatistics()
+              .getLoadTimeSeriesMetadataAlignedDiskUnSeqTime()
               .getAndAdd(costTime);
         }
       }
@@ -235,7 +247,7 @@ public class FileLoaderUtils {
 
   private static AlignedTimeSeriesMetadata loadAlignedTimeSeriesMetadataFromDisk(
       TsFileResource resource,
-      AlignedPath alignedPath,
+      AlignedFullPath alignedPath,
       QueryContext context,
       Filter globalTimeFilter)
       throws IOException {
@@ -249,7 +261,7 @@ public class FileLoaderUtils {
     allSensors.add("");
     boolean isDebug = context.isDebug();
     String filePath = resource.getTsFilePath();
-    IDeviceID deviceId = alignedPath.getIDeviceID();
+    IDeviceID deviceId = alignedPath.getDeviceId();
 
     // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
     // we should not ignore the non-exist of device in TsFileMetadata
@@ -258,7 +270,7 @@ public class FileLoaderUtils {
             filePath,
             new TimeSeriesMetadataCacheKey(resource.getTsFileID(), deviceId, ""),
             allSensors,
-            resource.getTimeIndexType() != 1,
+            resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
             isDebug);
     if (timeColumn != null) {
       // only need time column, like count_time aggregation
@@ -280,7 +292,7 @@ public class FileLoaderUtils {
                   new TimeSeriesMetadataCacheKey(
                       resource.getTsFileID(), deviceId, valueMeasurement),
                   allSensors,
-                  resource.getTimeIndexType() != 1,
+                  resource.getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE,
                   isDebug);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);
@@ -304,24 +316,32 @@ public class FileLoaderUtils {
   private static List<List<Modification>> setModifications(
       TsFileResource resource,
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
-      AlignedPath alignedPath,
+      AlignedFullPath alignedPath,
       QueryContext context) {
+    long startTime = System.nanoTime();
     List<TimeseriesMetadata> valueTimeSeriesMetadataList =
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
     List<List<Modification>> res = new ArrayList<>();
     boolean modified = false;
-    for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-      if (valueTimeSeriesMetadataList.get(i) != null) {
+    for (TimeseriesMetadata timeseriesMetadata : valueTimeSeriesMetadataList) {
+      if (timeseriesMetadata != null) {
         List<Modification> pathModifications =
-            context.getPathModifications(resource, alignedPath.getPathWithMeasurement(i));
-        valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
+            context.getPathModifications(
+                resource, alignedPath.getDeviceId(), timeseriesMetadata.getMeasurementId());
+        timeseriesMetadata.setModified(!pathModifications.isEmpty());
         res.add(pathModifications);
         modified = (modified || !pathModifications.isEmpty());
+        context
+            .getQueryStatistics()
+            .getAlignedTimeSeriesMetadataModificationCount()
+            .getAndAdd(pathModifications.size());
       } else {
         res.add(Collections.emptyList());
       }
     }
     alignedTimeSeriesMetadata.getTimeseriesMetadata().setModified(modified);
+    long costTime = System.nanoTime() - startTime;
+    context.getQueryStatistics().getAlignedTimeSeriesMetadataModificationTime().getAndAdd(costTime);
     return res;
   }
 
@@ -349,5 +369,21 @@ public class FileLoaderUtils {
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
     return chunkReader.loadPageReaderList();
+  }
+
+  /**
+   * get the timestamp in file name of the chunk metadata.
+   *
+   * @param chunkMetaData the corresponding ChunkMetadata in that file.
+   */
+  public static long getTimestampInFileName(IChunkMetadata chunkMetaData) {
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    if (chunkLoader instanceof DiskChunkLoader) {
+      return ((DiskChunkLoader) chunkLoader).getTsFileID().getTimestamp();
+    } else if (chunkLoader instanceof DiskAlignedChunkLoader) {
+      return ((DiskAlignedChunkLoader) chunkLoader).getTsFileID().getTimestamp();
+    } else {
+      return Long.MAX_VALUE;
+    }
   }
 }

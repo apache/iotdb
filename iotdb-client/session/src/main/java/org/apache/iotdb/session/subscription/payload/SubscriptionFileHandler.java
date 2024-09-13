@@ -39,14 +39,14 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
   /**
    * @return a new File instance of the corresponding file
    */
-  public File getFile() {
+  public synchronized File getFile() {
     return new File(absolutePath);
   }
 
   /**
    * @return a new Path instance of the corresponding file
    */
-  public Path getPath() {
+  public synchronized Path getPath() {
     return Paths.get(absolutePath);
   }
 
@@ -54,7 +54,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @return the path to the source file
    * @throws IOException if an I/O error occurs
    */
-  public Path deleteFile() throws IOException {
+  public synchronized Path deleteFile() throws IOException {
     final Path sourcePath = getPath();
     Files.delete(sourcePath);
     return sourcePath;
@@ -65,7 +65,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path moveFile(final String target) throws IOException {
+  public synchronized Path moveFile(final String target) throws IOException {
     return this.moveFile(Paths.get(target));
   }
 
@@ -74,7 +74,10 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path moveFile(final Path target) throws IOException {
+  public synchronized Path moveFile(final Path target) throws IOException {
+    if (!Files.exists(target.getParent())) {
+      Files.createDirectories(target.getParent());
+    }
     return Files.move(getPath(), target, StandardCopyOption.REPLACE_EXISTING);
   }
 
@@ -83,7 +86,7 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path copyFile(final String target) throws IOException {
+  public synchronized Path copyFile(final String target) throws IOException {
     return this.copyFile(Paths.get(target));
   }
 
@@ -92,7 +95,10 @@ public abstract class SubscriptionFileHandler implements SubscriptionMessageHand
    * @return the path to the target file
    * @throws IOException if an I/O error occurs
    */
-  public Path copyFile(final Path target) throws IOException {
+  public synchronized Path copyFile(final Path target) throws IOException {
+    if (!Files.exists(target.getParent())) {
+      Files.createDirectories(target.getParent());
+    }
     return Files.copy(
         getPath(), target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
   }

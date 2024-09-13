@@ -57,7 +57,7 @@ public class PipeDataNodeSnapshotResourceManagerTest {
 
   @Before
   public void setUp() throws Exception {
-    File testDir = new File(ROOT_DIR);
+    final File testDir = new File(ROOT_DIR);
     if (testDir.exists()) {
       FileUtils.deleteFileOrDirectory(testDir);
     }
@@ -70,7 +70,7 @@ public class PipeDataNodeSnapshotResourceManagerTest {
 
   @After
   public void tearDown() throws Exception {
-    File testDir = new File(ROOT_DIR);
+    final File testDir = new File(ROOT_DIR);
     if (testDir.exists()) {
       FileUtils.deleteFileOrDirectory(testDir);
     }
@@ -79,37 +79,37 @@ public class PipeDataNodeSnapshotResourceManagerTest {
   @Test
   public void test() {
     try {
-      PipeResourceManager.snapshot()
+      PipeDataNodeResourceManager.snapshot()
           .increaseSnapshotReference(CONSENSUS_SNAPSHOT_DIR + File.separator + FILE);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       Assert.fail();
     }
 
     Assert.assertEquals(
         1,
-        PipeResourceManager.snapshot()
+        PipeDataNodeResourceManager.snapshot()
             .getSnapshotReferenceCount(PIPE_CONSENSUS_SNAPSHOT_DIR + File.separator + FILE));
     Assert.assertTrue(new File(PIPE_CONSENSUS_SNAPSHOT_DIR, FILE).exists());
 
-    PipeResourceManager.snapshot()
+    PipeDataNodeResourceManager.snapshot()
         .decreaseSnapshotReference(PIPE_CONSENSUS_SNAPSHOT_DIR + File.separator + FILE);
 
     Assert.assertEquals(
         0,
-        PipeResourceManager.snapshot()
+        PipeDataNodeResourceManager.snapshot()
             .getSnapshotReferenceCount(PIPE_CONSENSUS_SNAPSHOT_DIR + File.separator + FILE));
     Assert.assertFalse(new File(PIPE_CONSENSUS_SNAPSHOT_DIR, FILE).exists());
 
     try {
-      PipeResourceManager.snapshot()
+      PipeDataNodeResourceManager.snapshot()
           .increaseSnapshotReference(WRONG_SNAPSHOT_DIR + File.separator + FILE);
       Assert.fail();
-    } catch (IOException e) {
+    } catch (final IOException e) {
     }
 
     Assert.assertEquals(
         0,
-        PipeResourceManager.snapshot()
+        PipeDataNodeResourceManager.snapshot()
             .getSnapshotReferenceCount(PIPE_WRONG_SNAPSHOT_DIR + File.separator + FILE));
     Assert.assertFalse(new File(PIPE_WRONG_SNAPSHOT_DIR, FILE).exists());
   }

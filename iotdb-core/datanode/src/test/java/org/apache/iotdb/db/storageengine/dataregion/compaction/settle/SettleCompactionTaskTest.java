@@ -22,9 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -45,6 +45,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -167,7 +168,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertEquals(5, unseqTasks.get(0).getFullyDirtyFiles().size());
     Assert.assertEquals(0, unseqTasks.get(0).getPartiallyDirtyFiles().size());
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(seqResources);
@@ -202,7 +203,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     SettleCompactionTask task =
@@ -241,7 +242,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> partialDeletedFiles = new ArrayList<>();
@@ -290,7 +291,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> allDeletedFiles = new ArrayList<>(seqResources);
@@ -326,7 +327,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> selectedFiles = new ArrayList<>(seqResources);
@@ -368,7 +369,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> partialDeletedFiles = new ArrayList<>();
@@ -387,7 +388,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
 
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(tsFileManager, 0, unseqResources, false, getPerformer(), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, unseqResources, false, getPerformer(), 0);
     Assert.assertTrue(task2.start());
 
     for (TsFileResource tsFileResource : seqResources) {
@@ -416,7 +417,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    Map<PartialPath, List<TimeValuePair>> sourceDatas =
+    Map<IFullPath, List<TimeValuePair>> sourceDatas =
         readSourceFiles(createTimeseries(6, 6, isAligned), Collections.emptyList());
 
     List<TsFileResource> partialDeletedFiles = new ArrayList<>();
@@ -431,7 +432,7 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
 
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(tsFileManager, 0, unseqResources, false, getPerformer(), 0);
+        new InnerSpaceCompactionTask(0, tsFileManager, unseqResources, false, getPerformer(), 0);
     Assert.assertTrue(task2.start());
 
     for (TsFileResource tsFileResource : seqResources) {
@@ -448,21 +449,54 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     validateTargetDatas(sourceDatas, Collections.emptyList());
   }
 
-  public static List<PartialPath> createTimeseries(
+  @Test
+  public void testTaskEstimateMemory()
+      throws IOException, MetadataException, WriteProcessException {
+    ICompactionPerformer performer = getPerformer();
+    if (performer instanceof ReadPointCompactionPerformer) {
+      // not implemented
+      return;
+    }
+    createFiles(3, 3, 10, 100, 0, 0, 0, 0, isAligned, true);
+    SettleCompactionTask task1 =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            Collections.singletonList(seqResources.get(0)),
+            Arrays.asList(seqResources.get(1), seqResources.get(2)),
+            true,
+            performer,
+            0);
+
+    SettleCompactionTask task2 =
+        new SettleCompactionTask(
+            0, tsFileManager, seqResources, Collections.emptyList(), true, performer, 0);
+
+    SettleCompactionTask task3 =
+        new SettleCompactionTask(
+            0, tsFileManager, Collections.emptyList(), seqResources, true, performer, 0);
+    Assert.assertTrue(task1.getEstimatedMemoryCost() > 0);
+    Assert.assertEquals(0, task2.getEstimatedMemoryCost());
+    Assert.assertTrue(task3.getEstimatedMemoryCost() > 0);
+  }
+
+  public static List<IFullPath> createTimeseries(
       int deviceNum, int measurementNum, boolean isAligned) throws IllegalPathException {
-    List<PartialPath> timeseriesPath = new ArrayList<>();
+    List<IFullPath> timeseriesPath = new ArrayList<>();
     for (int d = 0; d < deviceNum; d++) {
       for (int i = 0; i < measurementNum; i++) {
         TSDataType dataType = getDataType(i);
         if (!isAligned) {
           timeseriesPath.add(
-              new MeasurementPath(
-                  testStorageGroup + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + i,
-                  dataType));
+              new NonAlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + d),
+                  new MeasurementSchema("s" + i, dataType)));
         } else {
           timeseriesPath.add(
-              new AlignedPath(
-                  testStorageGroup + PATH_SEPARATOR + "d" + (10000 + d),
+              new AlignedFullPath(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create(
+                      testStorageGroup + PATH_SEPARATOR + "d" + (10000 + d)),
                   Collections.singletonList("s" + i),
                   Collections.singletonList(new MeasurementSchema("s" + i, dataType))));
         }

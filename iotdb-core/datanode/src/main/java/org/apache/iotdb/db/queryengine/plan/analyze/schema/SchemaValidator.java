@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDeviceStatement;
@@ -32,10 +34,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class SchemaValidator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaValidator.class);
 
   public static void validate(
       ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
@@ -50,6 +56,18 @@ public class SchemaValidator {
             insertStatement.getSchemaValidation(), context);
       }
       insertStatement.updateAfterSchemaValidation(context);
+    } catch (QueryProcessException e) {
+      throw new SemanticException(e.getMessage());
+    }
+  }
+
+  public static void validate(
+      Metadata metadata, WrappedInsertStatement insertStatement, MPPQueryContext context) {
+    try {
+      insertStatement.toLowerCase();
+      insertStatement.validateTableSchema(metadata, context);
+      insertStatement.updateAfterSchemaValidation(context);
+      insertStatement.validateDeviceSchema(metadata, context);
     } catch (QueryProcessException e) {
       throw new SemanticException(e.getMessage());
     }

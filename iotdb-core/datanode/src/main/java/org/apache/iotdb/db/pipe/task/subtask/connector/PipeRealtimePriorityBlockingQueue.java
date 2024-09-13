@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.task.connection.BlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
@@ -30,12 +32,18 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import java.util.Objects;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQueue<Event> {
 
   private final BlockingDeque<TsFileInsertionEvent> tsfileInsertEventDeque =
       new LinkedBlockingDeque<>();
+
+  private final AtomicInteger eventCount = new AtomicInteger(0);
+
+  private static final int pollHistoryThreshold =
+      PipeConfig.getInstance().getPipeRealTimeQueuePollHistoryThreshold();
 
   public PipeRealtimePriorityBlockingQueue() {
     super(new PipeDataRegionEventCounter());
@@ -51,10 +59,10 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
     if (event instanceof PipeHeartbeatEvent && super.peekLast() instanceof PipeHeartbeatEvent) {
       // We can NOT keep too many PipeHeartbeatEvent in bufferQueue because they may cause OOM.
       ((EnrichedEvent) event).decreaseReferenceCount(PipeEventCollector.class.getName(), false);
+      return false;
     } else {
-      super.directOffer(event);
+      return super.directOffer(event);
     }
-    return true;
   }
 
   @Override
@@ -70,30 +78,52 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
 
   @Override
   public Event directPoll() {
-    Event event = super.directPoll();
-    if (Objects.isNull(event)) {
-      event = tsfileInsertEventDeque.pollLast();
+    Event event = null;
+    if (eventCount.get() >= pollHistoryThreshold) {
+      event = tsfileInsertEventDeque.pollFirst();
+      eventCount.set(0);
     }
+    if (Objects.isNull(event)) {
+      event = super.directPoll();
+      if (Objects.isNull(event)) {
+        event = tsfileInsertEventDeque.pollLast();
+      }
+      if (event != null) {
+        eventCount.incrementAndGet();
+      }
+    }
+
     return event;
   }
 
   /**
-   * Try to poll the freshest insertion event from the queue. First, try to poll the first offered
-   * non-TsFileInsertionEvent. If no such event is available, poll the last offered
-   * TsFileInsertionEvent. If no event is available, block until an event is available.
+   * When the number of polls exceeds the pollHistoryThreshold, the {@link TsFileInsertionEvent} of
+   * the earliest write to the queue is returned. if the pollHistoryThreshold is not reached then an
+   * attempt is made to poll the queue for the latest insertion {@link Event}. First, it tries to
+   * poll the first provided If there is no such {@link Event}, poll the last supplied {@link
+   * TsFileInsertionEvent}. If no {@link Event} is available, it blocks until a {@link Event} is
+   * available.
    *
-   * @return the freshest insertion event. can be null if no event is available.
+   * @return the freshest insertion {@link Event}. can be {@code null} if no {@link Event} is
+   *     available.
    */
   @Override
   public Event waitedPoll() {
     Event event = null;
-
-    if (!super.isEmpty()) {
+    if (eventCount.get() >= pollHistoryThreshold) {
+      event = tsfileInsertEventDeque.pollFirst();
+      eventCount.set(0);
+    }
+    if (event == null) {
       // Sequentially poll the first offered non-TsFileInsertionEvent
       event = super.directPoll();
-    } else if (!tsfileInsertEventDeque.isEmpty()) {
-      // Always poll the last offered event
-      event = tsfileInsertEventDeque.pollLast();
+      if (event == null && !tsfileInsertEventDeque.isEmpty()) {
+        // Always poll the last offered event
+        event = tsfileInsertEventDeque.pollLast();
+      }
+      if (event != null) {
+        eventCount.incrementAndGet();
+      }
     }
 
     // If no event is available, block until an event is available
@@ -101,6 +131,9 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
       event = super.waitedPoll();
       if (Objects.isNull(event)) {
         event = tsfileInsertEventDeque.pollLast();
+      }
+      if (event != null) {
+        eventCount.incrementAndGet();
       }
     }
 
@@ -117,6 +150,38 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   public void forEach(final Consumer<? super Event> action) {
     super.forEach(action);
     tsfileInsertEventDeque.forEach(action);
+  }
+
+  @Override
+  public void discardAllEvents() {
+    super.discardAllEvents();
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+          }
+          return true;
+        });
+    eventCounter.reset();
+  }
+
+  @Override
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
+    super.discardEventsOfPipe(pipeNameToDrop);
+    tsfileInsertEventDeque.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            if (((EnrichedEvent) event)
+                .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override

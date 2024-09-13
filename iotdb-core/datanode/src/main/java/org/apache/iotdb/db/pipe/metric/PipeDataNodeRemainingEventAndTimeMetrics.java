@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
-import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
-import org.apache.iotdb.db.schemaengine.SchemaEngine;
-import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -49,6 +45,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataNodeRemainingEventAndTimeMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeDataNodeRemainingEventAndTimeOperator>
@@ -107,6 +104,13 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
         remainingEventAndTimeOperatorMap.get(pipeID);
     metricService.remove(
         MetricType.AUTO_GAUGE,
+        Metric.PIPE_DATANODE_REMAINING_EVENT_COUNT.toString(),
+        Tag.NAME.toString(),
+        operator.getPipeName(),
+        Tag.CREATION_TIME.toString(),
+        String.valueOf(operator.getCreationTime()));
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
         Metric.PIPE_DATANODE_REMAINING_TIME.toString(),
         Tag.NAME.toString(),
         operator.getPipeName(),
@@ -123,6 +127,17 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     remainingEventAndTimeOperatorMap
         .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
         .register(extractor);
+    if (Objects.nonNull(metricService)) {
+      createMetrics(pipeID);
+    }
+  }
+
+  public void register(final PipeProcessorSubtask processorSubtask) {
+    // The metric is global thus the regionId is omitted
+    final String pipeID = processorSubtask.getPipeName() + "_" + processorSubtask.getCreationTime();
+    remainingEventAndTimeOperatorMap
+        .computeIfAbsent(pipeID, k -> new PipeDataNodeRemainingEventAndTimeOperator())
+        .register(processorSubtask);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);
     }
@@ -151,6 +166,26 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
+  public void thawRate(final String pipeID) {
+    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
+      // In dataNode, the "thawRate" may be called when there are no subtasks, and we call
+      // "startPipe".
+      // We thaw it later in "startPipeTask".
+      return;
+    }
+    remainingEventAndTimeOperatorMap.get(pipeID).thawRate(true);
+  }
+
+  public void freezeRate(final String pipeID) {
+    if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
+      // In dataNode, the "freezeRate" may be called when there are no subtasks, and we call
+      // "stopPipe" after calling "startPipe".
+      // We do nothing because in that case the rate is not thawed initially
+      return;
+    }
+    remainingEventAndTimeOperatorMap.get(pipeID).freezeRate(true);
+  }
+
   public void deregister(final String pipeID) {
     if (!remainingEventAndTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
@@ -163,13 +198,7 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
-    // Filter commit attempt from assigner
-    final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
-    final int regionId = pipeTaskRuntimeEnvironment.getRegionId();
-    final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String pipeID = pipeName + "_" + creationTime;
-
+  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
     if (Objects.isNull(metricService)) {
       return;
     }
@@ -181,21 +210,25 @@ public class PipeDataNodeRemainingEventAndTimeMetrics implements IMetricSet {
           pipeID);
       return;
     }
-    // Prevent not set pipeName / creation times & potential differences between pipeNames and
-    // creation times
-    if (!Objects.equals(pipeName, operator.getPipeName())
-        || !Objects.equals(creationTime, operator.getCreationTime())) {
+
+    if (isDataRegion) {
+      operator.markDataRegionCommit();
+    } else {
+      operator.markSchemaRegionCommit();
+    }
+  }
+
+  public void markCollectInvocationCount(final String pipeID, final long collectInvocationCount) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
+        remainingEventAndTimeOperatorMap.get(pipeID);
+    if (Objects.isNull(operator)) {
       return;
     }
 
-    // Prevent empty region-ids
-    if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
-      operator.markDataRegionCommit();
-    }
-
-    if (SchemaEngine.getInstance().getAllSchemaRegionIds().contains(new SchemaRegionId(regionId))) {
-      operator.markSchemaRegionCommit();
-    }
+    operator.markCollectInvocationCount(collectInvocationCount);
   }
 
   //////////////////////////// Show pipes ////////////////////////////

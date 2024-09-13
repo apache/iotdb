@@ -21,11 +21,11 @@ package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
-import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
+import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -34,9 +34,13 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class})
@@ -52,7 +56,7 @@ public class IoTDBSetConfigurationIT {
   }
 
   @Test
-  public void testSetConfiguration() throws Exception {
+  public void testSetConfiguration() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("set configuration \"enable_seq_space_compaction\"=\"false\"");
@@ -61,29 +65,78 @@ public class IoTDBSetConfigurationIT {
     } catch (Exception e) {
       Assert.fail(e.getMessage());
     }
-    for (ConfigNodeWrapper configNodeWrapper : EnvFactory.getEnv().getConfigNodeWrapperList()) {
-      String systemPropertiesPath =
-          configNodeWrapper.getNodePath()
-              + File.separator
-              + "conf"
-              + File.separator
-              + CommonConfig.SYSTEM_CONFIG_NAME;
-      File f = new File(systemPropertiesPath);
-      String content = new String(Files.readAllBytes(f.toPath()));
-      Assert.assertTrue(content.contains("enable_seq_space_compaction=false"));
-      Assert.assertTrue(content.contains("enable_unseq_space_compaction=false"));
+    Assert.assertTrue(
+        EnvFactory.getEnv().getConfigNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "enable_seq_space_compaction=false",
+                        "enable_unseq_space_compaction=false")));
+    Assert.assertTrue(
+        EnvFactory.getEnv().getDataNodeWrapperList().stream()
+            .allMatch(
+                nodeWrapper ->
+                    checkConfigFileContains(
+                        nodeWrapper,
+                        "enable_seq_space_compaction=false",
+                        "enable_cross_space_compaction=false")));
+  }
+
+  @Test
+  public void testSetClusterName() throws Exception {
+    // set cluster name on cn and dn
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("set configuration \"cluster_name\"=\"xx\"");
+      ResultSet variables = statement.executeQuery("show variables");
+      variables.next();
+      Assert.assertEquals("xx", variables.getString(2));
     }
-    for (DataNodeWrapper dataNodeWrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+    Assert.assertTrue(
+        EnvFactory.getEnv().getNodeWrapperList().stream()
+            .allMatch(nodeWrapper -> checkConfigFileContains(nodeWrapper, "cluster_name=xx")));
+    // restart successfully
+    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
+    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    // set cluster name on datanode
+    Awaitility.await()
+        .atMost(30, TimeUnit.SECONDS)
+        .pollDelay(1, TimeUnit.SECONDS)
+        .until(
+            () -> {
+              try (Connection connection = EnvFactory.getEnv().getConnection();
+                  Statement statement = connection.createStatement()) {
+                statement.execute("set configuration \"cluster_name\"=\"yy\" on 1");
+              } catch (Exception e) {
+                return false;
+              }
+              return true;
+            });
+    // cannot restart
+    EnvFactory.getEnv().getDataNodeWrapper(0).stop();
+    EnvFactory.getEnv().getDataNodeWrapper(0).start();
+    Awaitility.await()
+        .atMost(10, TimeUnit.SECONDS)
+        .until(() -> !EnvFactory.getEnv().getDataNodeWrapper(0).isAlive());
+    Assert.assertTrue(
+        checkConfigFileContains(EnvFactory.getEnv().getDataNodeWrapper(0), "cluster_name=yy"));
+  }
+
+  private static boolean checkConfigFileContains(
+      AbstractNodeWrapper nodeWrapper, String... contents) {
+    try {
       String systemPropertiesPath =
-          dataNodeWrapper.getNodePath()
+          nodeWrapper.getNodePath()
               + File.separator
               + "conf"
               + File.separator
               + CommonConfig.SYSTEM_CONFIG_NAME;
       File f = new File(systemPropertiesPath);
-      String content = new String(Files.readAllBytes(f.toPath()));
-      Assert.assertTrue(content.contains("enable_seq_space_compaction=false"));
-      Assert.assertTrue(content.contains("enable_cross_space_compaction=false"));
+      String fileContent = new String(Files.readAllBytes(f.toPath()));
+      return Arrays.stream(contents).allMatch(fileContent::contains);
+    } catch (IOException ignore) {
+      return false;
     }
   }
 }

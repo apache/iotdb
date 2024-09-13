@@ -193,6 +193,14 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
   }
 
+  public FunctionType getFunctionType() {
+    return functionType;
+  }
+
+  public void setFunctionType(FunctionType functionType) {
+    this.functionType = functionType;
+  }
+
   public String getFunctionName() {
     return functionName;
   }

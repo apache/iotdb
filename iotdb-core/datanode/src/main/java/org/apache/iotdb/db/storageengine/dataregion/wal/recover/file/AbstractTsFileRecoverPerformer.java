@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 /** This class is used to help recover TsFile. */
 public abstract class AbstractTsFileRecoverPerformer implements Closeable {
@@ -85,6 +86,10 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       boolean result = tsFile.delete();
       logger.warn(
           "TsFile {} is incompatible. Try to delete it and delete result is {}", tsFile, result);
+      // if the broken TsFile is v3, we can recover the all data from wal
+      // to support it, we can regenerate an empty file here
+      Files.createFile(tsFile.toPath());
+      writer = new RestorableTsFileIOWriter(tsFile);
       throw new DataRegionException(e);
     } catch (IOException e) {
       throw new DataRegionException(e);
@@ -120,7 +125,7 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
     }
 
     // set progress index for pipe to avoid data loss
-    PipeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
+    PipeDataNodeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
 
     tsFileResource.serialize();
   }

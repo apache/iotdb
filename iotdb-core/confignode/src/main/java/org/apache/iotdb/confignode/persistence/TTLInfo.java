@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -43,7 +44,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -64,10 +67,14 @@ public class TTLInfo implements SnapshotProcessor {
     lock.writeLock().lock();
     try {
       // check ttl rule capacity
-      if (getTTLCount() >= CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity()) {
+      final int tTlRuleCapacity = CommonDescriptor.getInstance().getConfig().getTTlRuleCapacity();
+      if (getTTLCount() >= tTlRuleCapacity) {
         TSStatus errorStatus = new TSStatus(TSStatusCode.OVERSIZE_TTL.getStatusCode());
         errorStatus.setMessage(
-            "The number of TTL stored in the system has reached threshold, please increase the ttl_rule_capacity parameter.");
+            String.format(
+                "The number of TTL rules has reached the limit (%d). Please delete "
+                    + "some existing rules first.",
+                tTlRuleCapacity));
         return errorStatus;
       }
       ttlCache.setTTL(plan.getPathPattern(), plan.getTTL());
@@ -102,28 +109,37 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   public TSStatus unsetTTL(SetTTLPlan plan) {
+    TSStatus status;
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(plan.getPathPattern());
-      if (plan.isDataBase()) {
+      status = ttlCache.unsetTTL(plan.getPathPattern());
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode() && plan.isDataBase()) {
         // unset ttl to path.**
-        ttlCache.unsetTTL(
-            new PartialPath(plan.getPathPattern())
-                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
-                .getNodes());
+        status =
+            ttlCache.unsetTTL(
+                new PartialPath(plan.getPathPattern())
+                    .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+                    .getNodes());
       }
     } finally {
       lock.writeLock().unlock();
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    return status;
   }
 
-  public ShowTTLResp showAllTTL() {
+  public ShowTTLResp showTTL(ShowTTLPlan plan) {
     ShowTTLResp resp = new ShowTTLResp();
-    Map<String, Long> pathTTLMap;
+    Map<String, Long> pathTTLMap = new HashMap<>();
     lock.readLock().lock();
     try {
-      pathTTLMap = ttlCache.getAllPathTTL();
+      PartialPath pathPattern = new PartialPath(plan.getPathPattern());
+      for (Map.Entry<String[], Long> entry : ttlCache.getAllTTLs().entrySet()) {
+        if (pathPattern.matchFullPath(entry.getKey())) {
+          pathTTLMap.put(
+              String.join(String.valueOf(IoTDBConstant.PATH_SEPARATOR), entry.getKey()),
+              entry.getValue());
+        }
+      }
     } finally {
       lock.readLock().unlock();
     }
@@ -175,6 +191,8 @@ public class TTLInfo implements SnapshotProcessor {
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       ttlCache.clear();
       ttlCache.deserialize(bufferedInputStream);
+    } catch (IllegalPathException e) {
+      throw new IOException(e);
     } finally {
       lock.writeLock().unlock();
     }
@@ -190,7 +208,14 @@ public class TTLInfo implements SnapshotProcessor {
     }
     TTLInfo other = (TTLInfo) o;
     return this.getTTLCount() == other.getTTLCount()
-        && this.showAllTTL().getPathTTLMap().equals(other.showAllTTL().getPathTTLMap());
+        && this.showTTL(new ShowTTLPlan())
+            .getPathTTLMap()
+            .equals(other.showTTL(new ShowTTLPlan()).getPathTTLMap());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getTTLCount(), showTTL(new ShowTTLPlan()).getPathTTLMap());
   }
 
   @TestOnly

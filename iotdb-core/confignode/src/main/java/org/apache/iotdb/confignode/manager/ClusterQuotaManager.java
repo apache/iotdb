@@ -26,9 +26,9 @@ import org.apache.iotdb.common.rpc.thrift.TSetThrottleQuotaReq;
 import org.apache.iotdb.common.rpc.thrift.TSpaceQuota;
 import org.apache.iotdb.common.rpc.thrift.TThrottleQuota;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetSpaceQuotaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.quota.SetThrottleQuotaPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -87,9 +87,11 @@ public class ClusterQuotaManager {
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
-        AsyncClientHandler<TSetSpaceQuotaReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(DataNodeRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
-        AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        DataNodeAsyncRequestContext<TSetSpaceQuotaReq, TSStatus> clientHandler =
+            new DataNodeAsyncRequestContext<>(
+                CnToDnRequestType.SET_SPACE_QUOTA, req, dataNodeLocationMap);
+        CnToDnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
       return response;
@@ -192,10 +194,11 @@ public class ClusterQuotaManager {
       if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         Map<Integer, TDataNodeLocation> dataNodeLocationMap =
             configManager.getNodeManager().getRegisteredDataNodeLocations();
-        AsyncClientHandler<TSetThrottleQuotaReq, TSStatus> clientHandler =
-            new AsyncClientHandler<>(
-                DataNodeRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
-        AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+        DataNodeAsyncRequestContext<TSetThrottleQuotaReq, TSStatus> clientHandler =
+            new DataNodeAsyncRequestContext<>(
+                CnToDnRequestType.SET_THROTTLE_QUOTA, req, dataNodeLocationMap);
+        CnToDnInternalServiceAsyncRequestManager.getInstance()
+            .sendAsyncRequestWithRetry(clientHandler);
         return RpcUtils.squashResponseStatusList(clientHandler.getResponseList());
       }
       return response;

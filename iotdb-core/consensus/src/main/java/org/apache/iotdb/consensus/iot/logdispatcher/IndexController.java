@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** An index controller class to balance the performance degradation of frequent disk I/O. */
 @ThreadSafe
@@ -43,10 +42,8 @@ public class IndexController {
 
   private final Logger logger = LoggerFactory.getLogger(IndexController.class);
 
-  private long lastFlushedIndex;
-  private long currentIndex;
-
-  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+  private volatile long lastFlushedIndex;
+  private volatile long currentIndex;
 
   private final String storageDir;
 
@@ -69,30 +66,20 @@ public class IndexController {
     restore();
   }
 
-  public void update(long index, boolean forcePersist) {
-    try {
-      lock.writeLock().lock();
-      long newCurrentIndex = Math.max(currentIndex, index);
-      logger.debug(
-          "update index from currentIndex {} to {} for file prefix {} in {}",
-          currentIndex,
-          newCurrentIndex,
-          prefix,
-          storageDir);
-      currentIndex = newCurrentIndex;
-      checkPersist(forcePersist);
-    } finally {
-      lock.writeLock().unlock();
-    }
+  public synchronized void update(long index, boolean forcePersist) {
+    long newCurrentIndex = Math.max(currentIndex, index);
+    logger.debug(
+        "update index from currentIndex {} to {} for file prefix {} in {}",
+        currentIndex,
+        newCurrentIndex,
+        prefix,
+        storageDir);
+    currentIndex = newCurrentIndex;
+    checkPersist(forcePersist);
   }
 
   public long getCurrentIndex() {
-    try {
-      lock.readLock().lock();
-      return currentIndex;
-    } finally {
-      lock.readLock().unlock();
-    }
+    return currentIndex;
   }
 
   public long getLastFlushedIndex() {
@@ -224,7 +211,7 @@ public class IndexController {
   public void cleanupVersionFiles() throws IOException {
     File directory = new File(storageDir);
     File[] versionFiles = directory.listFiles((dir, name) -> name.startsWith(prefix));
-    if (versionFiles != null && versionFiles.length > 0) {
+    if (versionFiles != null) {
       for (File versionFile : versionFiles) {
         Files.delete(versionFile.toPath());
       }

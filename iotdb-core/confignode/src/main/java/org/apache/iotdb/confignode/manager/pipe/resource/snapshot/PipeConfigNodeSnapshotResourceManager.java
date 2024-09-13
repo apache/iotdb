@@ -27,16 +27,7 @@ import java.util.HashSet;
 
 public class PipeConfigNodeSnapshotResourceManager extends PipeSnapshotResourceManager {
 
-  private PipeConfigNodeSnapshotResourceManager() {
+  public PipeConfigNodeSnapshotResourceManager() {
     super(new HashSet<>(Collections.singletonList(IoTDBConstant.CONSENSUS_FOLDER_NAME)));
-  }
-
-  private static class PipeConfigNodeSnapshotResourceManagerHolder {
-    private static final PipeConfigNodeSnapshotResourceManager INSTANCE =
-        new PipeConfigNodeSnapshotResourceManager();
-  }
-
-  public static synchronized PipeConfigNodeSnapshotResourceManager getInstance() {
-    return PipeConfigNodeSnapshotResourceManagerHolder.INSTANCE;
   }
 }

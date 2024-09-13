@@ -27,8 +27,9 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,7 +39,7 @@ public class PipeRow implements Row {
 
   protected final String deviceId;
   protected final boolean isAligned;
-  protected final MeasurementSchema[] measurementSchemaList;
+  protected final IMeasurementSchema[] measurementSchemaList;
 
   protected final long[] timestampColumn;
   protected final TSDataType[] valueColumnTypes;
@@ -48,15 +49,15 @@ public class PipeRow implements Row {
   protected final String[] columnNameStringList;
 
   public PipeRow(
-      int rowIndex,
-      String deviceId,
-      boolean isAligned,
-      MeasurementSchema[] measurementSchemaList,
-      long[] timestampColumn,
-      TSDataType[] valueColumnTypes,
-      Object[] valueColumns,
-      BitMap[] bitMaps,
-      String[] columnNameStringList) {
+      final int rowIndex,
+      final String deviceId,
+      final boolean isAligned,
+      final IMeasurementSchema[] measurementSchemaList,
+      final long[] timestampColumn,
+      final TSDataType[] valueColumnTypes,
+      final Object[] valueColumns,
+      final BitMap[] bitMaps,
+      final String[] columnNameStringList) {
     this.rowIndex = rowIndex;
     this.deviceId = deviceId;
     this.isAligned = isAligned;
@@ -74,49 +75,57 @@ public class PipeRow implements Row {
   }
 
   @Override
-  public int getInt(int columnIndex) {
+  public int getInt(final int columnIndex) {
     return ((int[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public long getLong(int columnIndex) {
+  public LocalDate getDate(final int columnIndex) {
+    return ((LocalDate[]) valueColumns[columnIndex])[rowIndex];
+  }
+
+  @Override
+  public long getLong(final int columnIndex) {
     return ((long[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public float getFloat(int columnIndex) {
+  public float getFloat(final int columnIndex) {
     return ((float[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public double getDouble(int columnIndex) {
+  public double getDouble(final int columnIndex) {
     return ((double[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public boolean getBoolean(int columnIndex) {
+  public boolean getBoolean(final int columnIndex) {
     return ((boolean[]) valueColumns[columnIndex])[rowIndex];
   }
 
   @Override
-  public org.apache.iotdb.pipe.api.type.Binary getBinary(int columnIndex) {
+  public org.apache.iotdb.pipe.api.type.Binary getBinary(final int columnIndex) {
     return PipeBinaryTransformer.transformToPipeBinary(
         ((org.apache.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex]);
   }
 
   @Override
-  public String getString(int columnIndex) {
+  public String getString(final int columnIndex) {
     final org.apache.tsfile.utils.Binary binary =
         ((org.apache.tsfile.utils.Binary[]) valueColumns[columnIndex])[rowIndex];
     return binary == null ? null : binary.getStringValue(TSFileConfig.STRING_CHARSET);
   }
 
   @Override
-  public Object getObject(int columnIndex) {
+  public Object getObject(final int columnIndex) {
     switch (getDataType(columnIndex)) {
       case INT32:
         return getInt(columnIndex);
+      case DATE:
+        return getDate(columnIndex);
       case INT64:
+      case TIMESTAMP:
         return getLong(columnIndex);
       case FLOAT:
         return getFloat(columnIndex);
@@ -125,6 +134,8 @@ public class PipeRow implements Row {
       case BOOLEAN:
         return getBoolean(columnIndex);
       case TEXT:
+      case BLOB:
+      case STRING:
         return getBinary(columnIndex);
       default:
         throw new UnsupportedOperationException(
@@ -135,12 +146,12 @@ public class PipeRow implements Row {
   }
 
   @Override
-  public Type getDataType(int columnIndex) {
+  public Type getDataType(final int columnIndex) {
     return PipeDataTypeTransformer.transformToPipeDataType(valueColumnTypes[columnIndex]);
   }
 
   @Override
-  public boolean isNull(int columnIndex) {
+  public boolean isNull(final int columnIndex) {
     return bitMaps[columnIndex].isMarked(rowIndex);
   }
 
@@ -150,7 +161,7 @@ public class PipeRow implements Row {
   }
 
   @Override
-  public int getColumnIndex(Path columnName) throws PipeParameterNotValidException {
+  public int getColumnIndex(final Path columnName) throws PipeParameterNotValidException {
     for (int i = 0; i < columnNameStringList.length; i++) {
       if (columnNameStringList[i].equals(columnName.getFullPath())) {
         return i;
@@ -161,7 +172,7 @@ public class PipeRow implements Row {
   }
 
   @Override
-  public String getColumnName(int columnIndex) {
+  public String getColumnName(final int columnIndex) {
     return columnNameStringList[columnIndex];
   }
 
@@ -179,7 +190,22 @@ public class PipeRow implements Row {
     return isAligned;
   }
 
-  public MeasurementSchema[] getMeasurementSchemaList() {
+  public int getCurrentRowSize() {
+    int rowSize = 0;
+    rowSize += 8; // timestamp
+    for (int i = 0; i < valueColumnTypes.length; i++) {
+      if (valueColumnTypes[i] != null) {
+        if (valueColumnTypes[i].isBinary()) {
+          rowSize += getBinary(i) != null ? getBinary(i).getLength() : 0;
+        } else {
+          rowSize += valueColumnTypes[i].getDataTypeSize();
+        }
+      }
+    }
+    return rowSize;
+  }
+
+  public IMeasurementSchema[] getMeasurementSchemaList() {
     return measurementSchemaList;
   }
 }

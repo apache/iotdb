@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SchemaFetchMergeNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.SeriesSchemaFetchScanNode;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -42,15 +42,17 @@ public class SchemaFetchMergeNodeTest {
         new SchemaFetchMergeNode(new PlanNodeId("0"), Arrays.asList("root.db1", "root.db2"));
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(new PartialPath("root.sg.**.*"));
-    SchemaFetchScanNode schemaFetchScanNode =
-        new SchemaFetchScanNode(
+    SeriesSchemaFetchScanNode seriesSchemaFetchScanNode =
+        new SeriesSchemaFetchScanNode(
             new PlanNodeId("0"),
             new PartialPath("root.sg"),
             patternTree,
             Collections.emptyMap(),
             true,
-            true);
-    schemaFetchMergeNode.addChild(schemaFetchScanNode);
+            false,
+            true,
+            false);
+    schemaFetchMergeNode.addChild(seriesSchemaFetchScanNode);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024 * 1024);
     schemaFetchMergeNode.serialize(byteBuffer);
     byteBuffer.flip();

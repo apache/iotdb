@@ -87,7 +87,7 @@ class SubscriptionAgentLauncher {
         }
 
         return;
-      } catch (SubscriptionException | ClientManagerException | TException e) {
+      } catch (final SubscriptionException | ClientManagerException | TException e) {
         retry++;
         LOGGER.warn(
             "Failed to get topic meta from config node for {} times, will retry at most {} times.",
@@ -97,7 +97,7 @@ class SubscriptionAgentLauncher {
         try {
           Thread.sleep(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
-        } catch (InterruptedException interruptedException) {
+        } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to get topic meta from config node.",
               interruptedException);
@@ -146,7 +146,7 @@ class SubscriptionAgentLauncher {
         }
 
         return;
-      } catch (SubscriptionException | ClientManagerException | TException e) {
+      } catch (final SubscriptionException | ClientManagerException | TException e) {
         retry++;
         LOGGER.warn(
             "Failed to get consumer group meta from config node for {} times, will retry at most {} times.",
@@ -156,7 +156,7 @@ class SubscriptionAgentLauncher {
         try {
           Thread.sleep(
               retry * SubscriptionConfig.getInstance().getSubscriptionLaunchRetryIntervalMs());
-        } catch (InterruptedException interruptedException) {
+        } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to get consumer group meta from config node.",
               interruptedException);

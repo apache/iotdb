@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.metadata.schemaRegion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
+import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
@@ -37,7 +41,11 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.Pair;
+import org.junit.Assert;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,6 +57,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
+import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 
 public class SchemaRegionTestUtil {
 
@@ -63,9 +72,9 @@ public class SchemaRegionTestUtil {
       Map<String, String> attributes,
       String alias)
       throws MetadataException {
-    schemaRegion.createTimeseries(
+    schemaRegion.createTimeSeries(
         SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-            new PartialPath(fullPath),
+            new MeasurementPath(fullPath),
             dataType,
             encoding,
             compressor,
@@ -88,9 +97,9 @@ public class SchemaRegionTestUtil {
       List<String> alias)
       throws MetadataException {
     for (int i = 0; i < fullPaths.size(); i++) {
-      schemaRegion.createTimeseries(
+      schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new PartialPath(fullPaths.get(i)),
+              new MeasurementPath(fullPaths.get(i)),
               dataTypes.get(i),
               encodings.get(i),
               compressors.get(i),
@@ -146,19 +155,19 @@ public class SchemaRegionTestUtil {
   }
 
   /**
-   * Create timeseries quickly using createSimpleTimeSeriesInt64 with given string list of paths.
+   * Create time series quickly using createSimpleTimeSeriesInt64 with given string list of paths.
    *
-   * @param schemaRegion schemaRegion which you want to create timeseries
+   * @param schemaRegion schemaRegion which you want to create time series
    * @param pathList
    */
-  public static void createSimpleTimeseriesByList(ISchemaRegion schemaRegion, List<String> pathList)
+  public static void createSimpleTimeSeriesByList(ISchemaRegion schemaRegion, List<String> pathList)
       throws Exception {
     for (String path : pathList) {
       SchemaRegionTestUtil.createSimpleTimeSeriesInt64(schemaRegion, path);
     }
   }
 
-  public static long getAllTimeseriesCount(
+  public static long getAllTimeSeriesCount(
       ISchemaRegion schemaRegion,
       PartialPath pathPattern,
       Map<Integer, Template> templateMap,
@@ -174,6 +183,34 @@ public class SchemaRegionTestUtil {
       }
       return count;
     } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static void checkSingleTimeSeries(
+      final ISchemaRegion schemaRegion,
+      final PartialPath pathPattern,
+      final boolean isAligned,
+      final TSDataType type,
+      final TSEncoding encoding,
+      final CompressionType compressor,
+      final String alias,
+      final Map<String, String> tags,
+      final Map<String, String> attributes) {
+    try (final ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
+        schemaRegion.getTimeSeriesReader(
+            SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
+                pathPattern, Collections.emptyMap(), 0, 0, false, null, false, ALL_MATCH_SCOPE))) {
+      Assert.assertTrue(timeSeriesReader.hasNext());
+      final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
+      Assert.assertEquals(isAligned, info.isUnderAlignedDevice());
+      Assert.assertEquals(type, info.getSchema().getType());
+      Assert.assertEquals(encoding, info.getSchema().getEncodingType());
+      Assert.assertEquals(compressor, info.getSchema().getCompressor());
+      Assert.assertEquals(alias, info.getAlias());
+      Assert.assertEquals(tags, info.getTags());
+      Assert.assertEquals(attributes, info.getAttributes());
+    } catch (final Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -368,13 +405,71 @@ public class SchemaRegionTestUtil {
     return result;
   }
 
-  public static long deleteTimeSeries(ISchemaRegion schemaRegion, PartialPath pathPattern)
-      throws MetadataException {
-    PathPatternTree patternTree = new PathPatternTree();
+  public static Pair<Long, Boolean> deleteTimeSeries(
+      final ISchemaRegion schemaRegion, final PartialPath pathPattern) throws MetadataException {
+    final PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendPathPattern(pathPattern);
     patternTree.constructTree();
-    long num = schemaRegion.constructSchemaBlackList(patternTree);
+    final Pair<Long, Boolean> numIsViewPair = schemaRegion.constructSchemaBlackList(patternTree);
     schemaRegion.deleteTimeseriesInBlackList(patternTree);
-    return num;
+    return numIsViewPair;
+  }
+
+  public static void createTableDevice(
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final Object[] deviceIds,
+      final Map<String, String> attributes)
+      throws MetadataException {
+    schemaRegion.createOrUpdateTableDevice(
+        new CreateOrUpdateTableDeviceNode(
+            new PlanNodeId(""),
+            null,
+            table,
+            Collections.singletonList(deviceIds),
+            new ArrayList<>(attributes.keySet()),
+            Collections.singletonList(
+                attributes.values().stream()
+                    .map(s -> s != null ? new Binary(s.getBytes(StandardCharsets.UTF_8)) : null)
+                    .toArray())));
+  }
+
+  public static List<IDeviceSchemaInfo> getTableDevice(
+      final ISchemaRegion schemaRegion, final String table, final List<String[]> deviceIdList) {
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    try (final ISchemaReader<IDeviceSchemaInfo> reader =
+        schemaRegion.getTableDeviceReader(table, new ArrayList<>(deviceIdList))) {
+      while (reader.hasNext()) {
+        result.add(reader.next());
+      }
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+    return result;
+  }
+
+  public static List<IDeviceSchemaInfo> getTableDevice(
+      final ISchemaRegion schemaRegion,
+      final String table,
+      final int idColumnNum,
+      final List<SchemaFilter> idDeterminedFilterList) {
+    final List<PartialPath> patternList =
+        DeviceFilterUtil.convertToDevicePattern(
+            schemaRegion.getDatabaseFullPath().substring(ROOT.length() + 1),
+            table,
+            idColumnNum,
+            Collections.singletonList(idDeterminedFilterList));
+    final List<IDeviceSchemaInfo> result = new ArrayList<>();
+    for (final PartialPath pattern : patternList) {
+      try (final ISchemaReader<IDeviceSchemaInfo> reader =
+          schemaRegion.getTableDeviceReader(pattern)) {
+        while (reader.hasNext()) {
+          result.add(reader.next());
+        }
+      } catch (final Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+    return result;
   }
 }

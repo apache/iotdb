@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dprofile;
 
+import org.apache.iotdb.library.dprofile.util.LTThreeBuckets;
 import org.apache.iotdb.library.util.NoNumberException;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.udf.api.UDTF;
@@ -33,11 +34,8 @@ import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
-import com.github.ggalmazor.ltdownsampling.LTThreeBuckets;
-import com.github.ggalmazor.ltdownsampling.Point;
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -122,36 +120,43 @@ public class UDTFSample implements UDTF {
   }
 
   @Override
+  @SuppressWarnings("javabugs:S6320")
   public void transform(RowWindow rowWindow, PointCollector collector) throws Exception {
     // equal-distance sampling
     int n = rowWindow.windowSize();
 
     if (this.k < n) {
       if (this.method == Method.TRIANGLE) {
-        List<Point> input = new LinkedList<>();
+        List<Pair<Long, Double>> input = new LinkedList<>();
         for (int i = 0; i < n; i++) {
           Row row = rowWindow.getRow(i);
-          BigDecimal time = BigDecimal.valueOf(row.getTime());
-          BigDecimal data = BigDecimal.valueOf(Util.getValueAsDouble(row));
-          input.add(new Point(time, data));
+          long time = row.getTime();
+          double data = Util.getValueAsDouble(row);
+          input.add(Pair.of(time, data));
         }
         if (k > 2) {
           // The first and last element will always be sampled so the buckets is k - 2
-          List<Point> output = LTThreeBuckets.sorted(input, k - 2);
-          for (Point p : output) {
+          List<Pair<Long, Double>> output = LTThreeBuckets.sorted(input, k - 2);
+          for (Pair<Long, Double> p : output) {
             switch (dataType) {
               case INT32:
-                collector.putInt(p.getX().longValue(), p.getY().intValue());
+                collector.putInt(p.getLeft(), p.getRight().intValue());
                 break;
               case INT64:
-                collector.putLong(p.getX().longValue(), p.getY().longValue());
+                collector.putLong(p.getLeft(), p.getRight().longValue());
                 break;
               case FLOAT:
-                collector.putFloat(p.getX().longValue(), p.getY().floatValue());
+                collector.putFloat(p.getLeft(), p.getRight().floatValue());
                 break;
               case DOUBLE:
-                collector.putDouble(p.getX().longValue(), p.getY().doubleValue());
+                collector.putDouble(p.getLeft(), p.getRight());
                 break;
+              case TIMESTAMP:
+              case DATE:
+              case BLOB:
+              case BOOLEAN:
+              case STRING:
+              case TEXT:
               default:
                 throw new NoNumberException();
             }

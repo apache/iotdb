@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager.pipe.metric;
 
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -42,6 +41,7 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeConfigNodeRemainingTimeMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeConfigNodeRemainingTimeOperator> remainingTimeOperatorMap =
@@ -110,6 +110,22 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
   }
 
+  public void thawRate(final String pipeID) {
+    if (!remainingTimeOperatorMap.containsKey(pipeID)) {
+      // The configNode may have no pipe task after "startPipe"
+      return;
+    }
+    remainingTimeOperatorMap.get(pipeID).thawRate(true);
+  }
+
+  public void freezeRate(final String pipeID) {
+    if (!remainingTimeOperatorMap.containsKey(pipeID)) {
+      // The configNode may have no pipe task after "stopPipe"
+      return;
+    }
+    remainingTimeOperatorMap.get(pipeID).freezeRate(true);
+  }
+
   public void deregister(final String pipeID) {
     if (!remainingTimeOperatorMap.containsKey(pipeID)) {
       LOGGER.warn(
@@ -122,25 +138,14 @@ public class PipeConfigNodeRemainingTimeMetrics implements IMetricSet {
     }
   }
 
-  public void markRegionCommit(final PipeTaskRuntimeEnvironment pipeTaskRuntimeEnvironment) {
-    // Filter commit attempt from assigner
-    final String pipeName = pipeTaskRuntimeEnvironment.getPipeName();
-    final long creationTime = pipeTaskRuntimeEnvironment.getCreationTime();
-    final String pipeID = pipeName + "_" + creationTime;
-
+  public void markRegionCommit(final String pipeID, final boolean isDataRegion) {
     if (Objects.isNull(metricService)) {
       return;
     }
     final PipeConfigNodeRemainingTimeOperator operator = remainingTimeOperatorMap.get(pipeID);
     if (Objects.isNull(operator)) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe region commit, RemainingTimeOperator({}) does not exist", pipeID);
-      return;
-    }
-    // Prevent not set pipeName / creation times & potential differences between pipeNames and
-    // creation times
-    if (!Objects.equals(pipeName, operator.getPipeName())
-        || !Objects.equals(creationTime, operator.getCreationTime())) {
       return;
     }
 

@@ -27,7 +27,10 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.format.DateTimeParseException;
 import java.util.Objects;
+
+import static org.apache.tsfile.utils.DateUtils.parseIntToLocalDate;
 
 public class LongLiteral extends Literal {
   private final long value;
@@ -58,18 +61,30 @@ public class LongLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    if (dataType == TSDataType.INT32) {
+    if (dataType == TSDataType.INT32 || dataType == TSDataType.DATE) {
       try {
         Math.toIntExact(value);
-        return true;
+        if (dataType == TSDataType.INT32) {
+          return true;
+        }
       } catch (ArithmeticException e) {
+        return false;
+      }
+
+      // check date type
+      try {
+        parseIntToLocalDate((int) value);
+        return true;
+      } catch (DateTimeParseException e) {
         return false;
       }
     }
     return dataType == TSDataType.INT64
         || dataType == TSDataType.FLOAT
         || dataType == TSDataType.DOUBLE
-        || dataType == TSDataType.TEXT;
+        || dataType == TSDataType.TEXT
+        || dataType == TSDataType.STRING
+        || dataType == TSDataType.TIMESTAMP;
   }
 
   @Override
@@ -79,6 +94,11 @@ public class LongLiteral extends Literal {
 
   @Override
   public int getInt() {
+    return Math.toIntExact(value);
+  }
+
+  @Override
+  public int getDate() {
     return Math.toIntExact(value);
   }
 
