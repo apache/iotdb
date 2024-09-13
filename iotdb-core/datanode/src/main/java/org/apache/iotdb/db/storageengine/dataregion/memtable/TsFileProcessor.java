@@ -633,9 +633,10 @@ public class TsFileProcessor {
         new HashMap<>();
     for (InsertRowNode insertRowNode : insertRowsNode.getInsertRowNodeList()) {
       if (insertRowNode.isAligned()) {
-        handleAlignedData(insertRowNode, memIncrements, increasingMemTableInfoForAligned);
+        calculateAlignedRowMemory(insertRowNode, memIncrements, increasingMemTableInfoForAligned);
       } else {
-        handleUnalignedData(insertRowNode, memIncrements, increasingMemTableInfoForNonAligned);
+        calculateNonAlignedRowMemory(
+            insertRowNode, memIncrements, increasingMemTableInfoForNonAligned);
       }
     }
     updateMemoryInfo(memIncrements[0], memIncrements[2], memIncrements[1]);
@@ -643,7 +644,7 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("squid:S3776") // High Cognitive Complexity
-  private void handleAlignedData(
+  private void calculateAlignedRowMemory(
       InsertRowNode insertRowNode,
       long[] memIncrements,
       Map<IDeviceID, Pair<Map<String, TSDataType>, Integer>> increasingMemTableInfoForAligned) {
@@ -729,7 +730,7 @@ public class TsFileProcessor {
   }
 
   @SuppressWarnings("squid:S3776") // High Cognitive Complexity
-  private void handleUnalignedData(
+  private void calculateNonAlignedRowMemory(
       InsertRowNode insertRowNode,
       long[] memIncrements,
       Map<IDeviceID, Map<String, Integer>> increasingMemTableInfoForNonAligned) {
