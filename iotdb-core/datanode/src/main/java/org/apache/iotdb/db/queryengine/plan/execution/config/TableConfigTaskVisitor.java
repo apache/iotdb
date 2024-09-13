@@ -88,6 +88,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
@@ -324,7 +325,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             continue;
           }
           // TODO: support validation for other properties
-          map.put(key, String.valueOf(parseLongFromLiteral(value, "TTL")));
+          map.put(
+              key,
+              String.valueOf(
+                  parseLongFromLiteral(value, TTL_PROPERTY.toLowerCase(Locale.ENGLISH))));
         } else if (serializeDefault) {
           map.put(key, null);
         }
