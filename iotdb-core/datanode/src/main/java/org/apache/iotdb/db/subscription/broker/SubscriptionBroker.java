@@ -142,7 +142,8 @@ public class SubscriptionBroker {
         eventsToPollWithEventsToNack.right.stream()
             .map(SubscriptionEvent::getCommitContext)
             .collect(Collectors.toList()),
-        true);
+        true,
+        0L);
     return eventsToPollWithEventsToNack.left;
   }
 
@@ -230,7 +231,8 @@ public class SubscriptionBroker {
   public List<SubscriptionCommitContext> commit(
       final String consumerId,
       final List<SubscriptionCommitContext> commitContexts,
-      final boolean nack) {
+      final boolean nack,
+      final long invisibleDurationMs) {
     final List<SubscriptionCommitContext> successfulCommitContexts = new ArrayList<>();
     for (final SubscriptionCommitContext commitContext : commitContexts) {
       final String topicName = commitContext.getTopicName();
@@ -255,7 +257,7 @@ public class SubscriptionBroker {
           successfulCommitContexts.add(commitContext);
         }
       } else {
-        if (prefetchingQueue.nack(consumerId, commitContext)) {
+        if (prefetchingQueue.nack(consumerId, commitContext, invisibleDurationMs)) {
           successfulCommitContexts.add(commitContext);
         }
       }

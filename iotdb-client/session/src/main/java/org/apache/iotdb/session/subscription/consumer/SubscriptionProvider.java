@@ -290,35 +290,43 @@ final class SubscriptionProvider extends SubscriptionSession {
     return unsubscribeResp.getTopics();
   }
 
-  List<SubscriptionPollResponse> poll(final Set<String> topicNames) throws SubscriptionException {
+  List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long invisibleDurationMs)
+      throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             0L,
-            thriftMaxFrameSize));
+            thriftMaxFrameSize,
+            invisibleDurationMs));
   }
 
   List<SubscriptionPollResponse> pollFile(
-      final SubscriptionCommitContext commitContext, final long writingOffset)
+      final SubscriptionCommitContext commitContext,
+      final long writingOffset,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL_FILE.getType(),
             new PollFilePayload(commitContext, writingOffset),
             0L,
-            thriftMaxFrameSize));
+            thriftMaxFrameSize,
+            invisibleDurationMs));
   }
 
   List<SubscriptionPollResponse> pollTablets(
-      final SubscriptionCommitContext commitContext, final int offset)
+      final SubscriptionCommitContext commitContext,
+      final int offset,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL_TABLETS.getType(),
             new PollTabletsPayload(commitContext, offset),
             0L,
-            thriftMaxFrameSize));
+            thriftMaxFrameSize,
+            invisibleDurationMs));
   }
 
   List<SubscriptionPollResponse> poll(final SubscriptionPollRequest pollMessage)
@@ -349,14 +357,22 @@ final class SubscriptionProvider extends SubscriptionSession {
     }
     verifyPipeSubscribeSuccess(resp.status);
     final PipeSubscribePollResp pollResp = PipeSubscribePollResp.fromTPipeSubscribeResp(resp);
-    return pollResp.getResponses();
+    final List<SubscriptionPollResponse> responses = pollResp.getResponses();
+    // set origin request for each response
+    responses.forEach(response -> response.setRequest(pollMessage));
+    return responses;
   }
 
-  void commit(final List<SubscriptionCommitContext> subscriptionCommitContexts, final boolean nack)
+  void commit(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts,
+      final boolean nack,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     final PipeSubscribeCommitReq req;
     try {
-      req = PipeSubscribeCommitReq.toTPipeSubscribeReq(subscriptionCommitContexts, nack);
+      req =
+          PipeSubscribeCommitReq.toTPipeSubscribeReq(
+              subscriptionCommitContexts, nack, invisibleDurationMs);
     } catch (final IOException e) {
       LOGGER.warn(
           "IOException occurred when SubscriptionProvider {} serialize commit request {}",

@@ -453,10 +453,13 @@ public abstract class SubscriptionPrefetchingQueue {
   /**
    * @return {@code true} if nack successfully
    */
-  public boolean nack(final String consumerId, final SubscriptionCommitContext commitContext) {
+  public boolean nack(
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final long invisibleDurationMs) {
     acquireReadLock();
     try {
-      return !isClosed() && nackInternal(consumerId, commitContext);
+      return !isClosed() && nackInternal(consumerId, commitContext, invisibleDurationMs);
     } finally {
       releaseReadLock();
     }
@@ -466,7 +469,9 @@ public abstract class SubscriptionPrefetchingQueue {
    * @return {@code true} if nack successfully
    */
   public boolean nackInternal(
-      final String consumerId, final SubscriptionCommitContext commitContext) {
+      final String consumerId,
+      final SubscriptionCommitContext commitContext,
+      final long invisibleDurationMs) {
     final SubscriptionEvent event = inFlightEvents.get(new Pair<>(consumerId, commitContext));
     if (Objects.isNull(event)) {
       LOGGER.warn(
@@ -488,7 +493,11 @@ public abstract class SubscriptionPrefetchingQueue {
           this);
     }
 
-    event.nack(); // now pollable
+    if (invisibleDurationMs == 0L) {
+      event.nack(); // now pollable
+    } else {
+      event.nack(invisibleDurationMs);
+    }
 
     // no need to update inFlightEvents and prefetchingQueue
     return true;

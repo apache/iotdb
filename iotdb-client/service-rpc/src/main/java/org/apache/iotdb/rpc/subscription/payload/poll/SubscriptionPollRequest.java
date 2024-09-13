@@ -41,15 +41,20 @@ public class SubscriptionPollRequest {
   /** The maximum size, in bytes, for the response payload. */
   private final transient long maxBytes;
 
+  /** The duration in milliseconds for polled messages should remain invisible. */
+  private final transient long invisibleDurationMs;
+
   public SubscriptionPollRequest(
       final short requestType,
       final SubscriptionPollPayload payload,
       final long timeoutMs,
-      final long maxBytes) {
+      final long maxBytes,
+      final long invisibleDurationMs) {
     this.requestType = requestType;
     this.payload = payload;
     this.timeoutMs = timeoutMs;
     this.maxBytes = maxBytes;
+    this.invisibleDurationMs = invisibleDurationMs;
   }
 
   public short getRequestType() {
@@ -68,6 +73,10 @@ public class SubscriptionPollRequest {
     return maxBytes;
   }
 
+  public long getInvisibleDurationMs() {
+    return invisibleDurationMs;
+  }
+
   //////////////////////////// serialization ////////////////////////////
 
   public static ByteBuffer serialize(final SubscriptionPollRequest request) throws IOException {
@@ -83,6 +92,7 @@ public class SubscriptionPollRequest {
     payload.serialize(stream);
     ReadWriteIOUtils.write(timeoutMs, stream);
     ReadWriteIOUtils.write(maxBytes, stream);
+    ReadWriteIOUtils.write(invisibleDurationMs, stream);
   }
 
   public static SubscriptionPollRequest deserialize(final ByteBuffer buffer) {
@@ -109,7 +119,9 @@ public class SubscriptionPollRequest {
 
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);
     final long maxBytes = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionPollRequest(requestType, payload, timeoutMs, maxBytes);
+    final long invisibleDurationMs = ReadWriteIOUtils.readLong(buffer);
+    return new SubscriptionPollRequest(
+        requestType, payload, timeoutMs, maxBytes, invisibleDurationMs);
   }
 
   /////////////////////////////// object ///////////////////////////////
@@ -124,6 +136,8 @@ public class SubscriptionPollRequest {
         + timeoutMs
         + ", maxBytes="
         + maxBytes
+        + ", invisibleDurationMs="
+        + invisibleDurationMs
         + "}";
   }
 }

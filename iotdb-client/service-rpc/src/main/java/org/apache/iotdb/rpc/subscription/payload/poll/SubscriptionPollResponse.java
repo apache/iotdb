@@ -38,6 +38,14 @@ public class SubscriptionPollResponse {
 
   private final transient SubscriptionCommitContext commitContext;
 
+  /**
+   * The subscription poll request associated with this response.
+   *
+   * <p>This field is set when the client deserializes the RPC response into {@code
+   * SubscriptionPollResponse}, linking this response to the corresponding request.
+   */
+  private SubscriptionPollRequest request;
+
   public SubscriptionPollResponse(
       final short responseType,
       final SubscriptionPollPayload payload,
@@ -57,6 +65,14 @@ public class SubscriptionPollResponse {
 
   public SubscriptionCommitContext getCommitContext() {
     return commitContext;
+  }
+
+  public void setRequest(final SubscriptionPollRequest request) {
+    this.request = request;
+  }
+
+  public SubscriptionPollRequest getRequest() {
+    return request;
   }
 
   /////////////////////////////// de/ser ///////////////////////////////

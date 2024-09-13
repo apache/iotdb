@@ -139,19 +139,41 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   /////////////////////////////// poll & commit ///////////////////////////////
 
   public List<SubscriptionMessage> poll(final Duration timeout) throws SubscriptionException {
-    return poll(Collections.emptySet(), timeout.toMillis());
+    return poll(Collections.emptySet(), timeout.toMillis(), DEFAULT_INVISIBLE_DURATION);
   }
 
   public List<SubscriptionMessage> poll(final long timeoutMs) throws SubscriptionException {
-    return poll(Collections.emptySet(), timeoutMs);
+    return poll(Collections.emptySet(), timeoutMs, DEFAULT_INVISIBLE_DURATION);
+  }
+
+  public List<SubscriptionMessage> poll(final Duration timeout, final Duration invisibleDuration)
+      throws SubscriptionException {
+    return poll(Collections.emptySet(), timeout.toMillis(), invisibleDuration);
+  }
+
+  public List<SubscriptionMessage> poll(final long timeoutMs, final Duration invisibleDuration)
+      throws SubscriptionException {
+    return poll(Collections.emptySet(), timeoutMs, invisibleDuration);
   }
 
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final Duration timeout)
       throws SubscriptionException {
-    return poll(topicNames, timeout.toMillis());
+    return poll(topicNames, timeout.toMillis(), DEFAULT_INVISIBLE_DURATION);
   }
 
   public List<SubscriptionMessage> poll(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return poll(topicNames, timeoutMs, DEFAULT_INVISIBLE_DURATION);
+  }
+
+  public List<SubscriptionMessage> poll(
+      final Set<String> topicNames, final Duration timeout, final Duration invisibleDuration)
+      throws SubscriptionException {
+    return poll(topicNames, timeout.toMillis(), invisibleDuration);
+  }
+
+  public List<SubscriptionMessage> poll(
+      final Set<String> topicNames, final long timeoutMs, final Duration invisibleDuration)
       throws SubscriptionException {
     // parse topic names from external source
     Set<String> parsedTopicNames =
@@ -175,7 +197,8 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
       return Collections.emptyList();
     }
 
-    final List<SubscriptionMessage> messages = multiplePoll(parsedTopicNames, timeoutMs);
+    final List<SubscriptionMessage> messages =
+        multiplePoll(parsedTopicNames, timeoutMs, invisibleDuration.toMillis());
     if (messages.isEmpty()) {
       LOGGER.info(
           "SubscriptionPullConsumer {} poll empty message from topics {} after {} millisecond(s)",
@@ -226,6 +249,16 @@ public class SubscriptionPullConsumer extends SubscriptionConsumer {
   public void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback) {
     super.commitAsync(messages, callback);
+  }
+
+  public void changeInvisibleDuration(
+      final SubscriptionMessage message, final Duration invisibleDuration) {
+    super.nackMessages(Collections.singletonList(message), invisibleDuration.toMillis());
+  }
+
+  public void changeInvisibleDuration(
+      final Iterable<SubscriptionMessage> messages, final Duration invisibleDuration) {
+    super.nackMessages(messages, invisibleDuration.toMillis());
   }
 
   /////////////////////////////// auto commit ///////////////////////////////

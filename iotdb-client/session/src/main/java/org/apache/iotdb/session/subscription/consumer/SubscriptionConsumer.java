@@ -56,6 +56,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -92,6 +93,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private static final long SLEEP_MS = 100L;
   private static final long SLEEP_DELTA_MS = 50L;
   private static final long TIMER_DELTA_MS = 250L;
+
+  protected static final Duration DEFAULT_INVISIBLE_DURATION = Duration.ofSeconds(600L);
 
   private final String username;
   private final String password;
@@ -470,7 +473,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               });
 
   protected List<SubscriptionMessage> multiplePoll(
-      /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
+      /* @NotNull */ final Set<String> topicNames,
+      final long timeoutMs,
+      final long invisibleDurationMs) {
     if (topicNames.isEmpty()) {
       return Collections.emptyList();
     }
@@ -480,7 +485,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         SubscriptionExecutorServiceManager.getAvailableThreadCountForPollTasks();
     if (availableCount == 0) {
       // non-strict timeout
-      return singlePoll(topicNames, timeoutMs);
+      return singlePoll(topicNames, timeoutMs, invisibleDurationMs);
     }
 
     // dividing topics
@@ -488,7 +493,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final List<Set<String>> partitionedTopicNames =
         partition(topicNames, Math.min(maxPollParallelism, availableCount));
     for (final Set<String> partition : partitionedTopicNames) {
-      tasks.add(new PollTask(partition, timeoutMs));
+      tasks.add(new PollTask(partition, timeoutMs, invisibleDurationMs));
     }
 
     // submit multiple tasks to poll messages
@@ -549,20 +554,25 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
     private final Set<String> topicNames;
     private final long timeoutMs;
+    private final long invisibleDurationMs;
 
-    public PollTask(final Set<String> topicNames, final long timeoutMs) {
+    public PollTask(
+        final Set<String> topicNames, final long timeoutMs, final long invisibleDurationMs) {
       this.topicNames = topicNames;
       this.timeoutMs = timeoutMs;
+      this.invisibleDurationMs = invisibleDurationMs;
     }
 
     @Override
     public List<SubscriptionMessage> call() {
-      return singlePoll(topicNames, timeoutMs);
+      return singlePoll(topicNames, timeoutMs, invisibleDurationMs);
     }
   }
 
   private List<SubscriptionMessage> singlePoll(
-      /* @NotNull */ final Set<String> topicNames, final long timeoutMs)
+      /* @NotNull */ final Set<String> topicNames,
+      final long timeoutMs,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     if (topicNames.isEmpty()) {
       return Collections.emptyList();
@@ -577,7 +587,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         final List<SubscriptionMessage> currentMessages = new ArrayList<>();
         try {
           currentResponses.clear();
-          currentResponses = pollInternal(topicNames);
+          currentResponses = pollInternal(topicNames, invisibleDurationMs);
           for (final SubscriptionPollResponse response : currentResponses) {
             final short responseType = response.getResponseType();
             if (!SubscriptionPollResponseType.isValidatedResponseType(responseType)) {
@@ -611,7 +621,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
               e);
           // nack and clear current responses
           try {
-            nack(currentResponses);
+            nackResponses(currentResponses);
             currentResponses.clear();
           } catch (final Exception ignored) {
           }
@@ -651,7 +661,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     if (Thread.currentThread().isInterrupted()) {
       // nack and clear current responses
       try {
-        nack(currentResponses);
+        nackResponses(currentResponses);
         currentResponses.clear();
       } catch (final Exception ignored) {
       }
@@ -677,7 +687,13 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     final Path filePath = getFilePath(topicName, fileName, true, true);
     final File file = filePath.toFile();
     try (final RandomAccessFile fileWriter = new RandomAccessFile(file, "rw")) {
-      return Optional.of(pollFileInternal(commitContext, fileName, file, fileWriter));
+      return Optional.of(
+          pollFileInternal(
+              commitContext,
+              fileName,
+              file,
+              fileWriter,
+              response.getRequest().getInvisibleDurationMs()));
     } catch (final Exception e) {
       // construct temporary message to nack
       nack(
@@ -691,7 +707,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       final SubscriptionCommitContext commitContext,
       final String rawFileName,
       final File file,
-      final RandomAccessFile fileWriter)
+      final RandomAccessFile fileWriter,
+      final long invisibleDurationMs)
       throws IOException, SubscriptionException {
     LOGGER.info(
         "{} start to poll file {} with commit context {}",
@@ -702,7 +719,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     long writingOffset = fileWriter.length();
     while (true) {
       final List<SubscriptionPollResponse> responses =
-          pollFileInternal(commitContext, writingOffset);
+          pollFileInternal(commitContext, writingOffset, invisibleDurationMs);
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -880,7 +897,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
 
       final List<SubscriptionPollResponse> responses =
-          pollTabletsInternal(commitContext, nextOffset);
+          pollTabletsInternal(
+              commitContext, nextOffset, initialResponse.getRequest().getInvisibleDurationMs());
 
       // It's agreed that the server will always return at least one response, even in case of
       // failure.
@@ -949,8 +967,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
   }
 
-  private List<SubscriptionPollResponse> pollInternal(final Set<String> topicNames)
-      throws SubscriptionException {
+  private List<SubscriptionPollResponse> pollInternal(
+      final Set<String> topicNames, final long invisibleDurationMs) throws SubscriptionException {
     providers.acquireReadLock();
     try {
       final SubscriptionProvider provider = providers.getNextAvailableProvider();
@@ -965,7 +983,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(topicNames);
+        return provider.poll(topicNames, invisibleDurationMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -975,7 +993,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollFileInternal(
-      final SubscriptionCommitContext commitContext, final long writingOffset)
+      final SubscriptionCommitContext commitContext,
+      final long writingOffset,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
@@ -992,7 +1012,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.pollFile(commitContext, writingOffset);
+        return provider.pollFile(commitContext, writingOffset, invisibleDurationMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1002,7 +1022,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   }
 
   private List<SubscriptionPollResponse> pollTabletsInternal(
-      final SubscriptionCommitContext commitContext, final int offset)
+      final SubscriptionCommitContext commitContext,
+      final int offset,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     final int dataNodeId = commitContext.getDataNodeId();
     providers.acquireReadLock();
@@ -1019,7 +1041,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.pollTablets(commitContext, offset);
+        return provider.pollTablets(commitContext, offset, invisibleDurationMs);
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1040,11 +1062,17 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), false);
+      commitInternal(entry.getKey(), entry.getValue(), false, 0L);
     }
   }
 
   protected void nack(final Iterable<SubscriptionMessage> messages) throws SubscriptionException {
+    nackMessages(messages, 0L);
+  }
+
+  protected void nackMessages(
+      final Iterable<SubscriptionMessage> messages, final long invisibleDurationMs)
+      throws SubscriptionException {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
@@ -1062,11 +1090,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final Map.Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), true);
+      commitInternal(entry.getKey(), entry.getValue(), true, invisibleDurationMs);
     }
   }
 
-  private void nack(final List<SubscriptionPollResponse> responses) throws SubscriptionException {
+  private void nackResponses(final Iterable<SubscriptionPollResponse> responses)
+      throws SubscriptionException {
     final Map<Integer, List<SubscriptionCommitContext>> dataNodeIdToSubscriptionCommitContexts =
         new HashMap<>();
     for (final SubscriptionPollResponse response : responses) {
@@ -1077,14 +1106,15 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     }
     for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
-      commitInternal(entry.getKey(), entry.getValue(), true);
+      commitInternal(entry.getKey(), entry.getValue(), true, 0L);
     }
   }
 
   private void commitInternal(
       final int dataNodeId,
       final List<SubscriptionCommitContext> subscriptionCommitContexts,
-      final boolean nack)
+      final boolean nack,
+      final long invisibleDurationMs)
       throws SubscriptionException {
     providers.acquireReadLock();
     try {
@@ -1098,7 +1128,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                 "something unexpected happened when %s commit (nack: %s) messages to subscription provider with data node id %s, the subscription provider may be unavailable or not existed",
                 this, nack, dataNodeId));
       }
-      provider.commit(subscriptionCommitContexts, nack);
+      provider.commit(subscriptionCommitContexts, nack, invisibleDurationMs);
     } finally {
       providers.releaseReadLock();
     }

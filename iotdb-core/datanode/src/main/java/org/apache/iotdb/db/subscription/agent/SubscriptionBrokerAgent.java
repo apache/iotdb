@@ -101,7 +101,8 @@ public class SubscriptionBrokerAgent {
   public List<SubscriptionCommitContext> commit(
       final ConsumerConfig consumerConfig,
       final List<SubscriptionCommitContext> commitContexts,
-      final boolean nack) {
+      final boolean nack,
+      final long invisibleDurationMs) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
@@ -112,7 +113,7 @@ public class SubscriptionBrokerAgent {
       throw new SubscriptionException(errorMessage);
     }
     final String consumerId = consumerConfig.getConsumerId();
-    return broker.commit(consumerId, commitContexts, nack);
+    return broker.commit(consumerId, commitContexts, nack, invisibleDurationMs);
   }
 
   /////////////////////////////// broker ///////////////////////////////

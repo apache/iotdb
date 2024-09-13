@@ -36,7 +36,28 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
   private transient List<SubscriptionCommitContext> commitContexts = new ArrayList<>();
 
+  /**
+   * Indicates the acknowledgement status of the messages corresponding to {@link
+   * PipeSubscribeCommitReq#commitContexts}.
+   *
+   * <p>If {@code nack} is {@code false}, it indicates an acknowledgement (ack) meaning the
+   * consumption was successful.
+   *
+   * <p>If {@code nack} is {@code true}, it indicates a negative acknowledgement (nack) meaning the
+   * consumption was not successful.
+   */
   private transient boolean nack;
+
+  /**
+   * The duration in milliseconds for which messages corresponding to {@link
+   * PipeSubscribeCommitReq#commitContexts} should remain invisible.
+   *
+   * <p>This field is effective only when {@link PipeSubscribeCommitReq#nack} is {@code true}.
+   *
+   * <p>If is zero, the message will be immediately re-consumed. Otherwise, it sets the invisibility
+   * period for the message.
+   */
+  private transient long invisibleDurationMs;
 
   public List<SubscriptionCommitContext> getCommitContexts() {
     return commitContexts;
@@ -46,6 +67,10 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
     return nack;
   }
 
+  public long getInvisibleDurationMs() {
+    return invisibleDurationMs;
+  }
+
   /////////////////////////////// Thrift ///////////////////////////////
 
   /**
@@ -53,7 +78,10 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeCommitReq toTPipeSubscribeReq(
-      final List<SubscriptionCommitContext> commitContexts, final boolean nack) throws IOException {
+      final List<SubscriptionCommitContext> commitContexts,
+      final boolean nack,
+      final long invisibleDurationMs)
+      throws IOException {
     final PipeSubscribeCommitReq req = new PipeSubscribeCommitReq();
 
     req.commitContexts = commitContexts;
@@ -68,6 +96,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
         commitContext.serialize(outputStream);
       }
       ReadWriteIOUtils.write(nack, outputStream);
+      ReadWriteIOUtils.write(invisibleDurationMs, outputStream);
       req.body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
     }
 
@@ -84,6 +113,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
         req.commitContexts.add(SubscriptionCommitContext.deserialize(commitReq.body));
       }
       req.nack = ReadWriteIOUtils.readBool(commitReq.body);
+      req.invisibleDurationMs = ReadWriteIOUtils.readLong(commitReq.body);
     }
 
     req.version = commitReq.version;
@@ -106,6 +136,7 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
     final PipeSubscribeCommitReq that = (PipeSubscribeCommitReq) obj;
     return Objects.equals(this.commitContexts, that.commitContexts)
         && Objects.equals(this.nack, that.nack)
+        && Objects.equals(this.invisibleDurationMs, that.invisibleDurationMs)
         && this.version == that.version
         && this.type == that.type
         && Objects.equals(this.body, that.body);
@@ -113,6 +144,6 @@ public class PipeSubscribeCommitReq extends TPipeSubscribeReq {
 
   @Override
   public int hashCode() {
-    return Objects.hash(commitContexts, nack, version, type, body);
+    return Objects.hash(commitContexts, nack, invisibleDurationMs, version, type, body);
   }
 }
