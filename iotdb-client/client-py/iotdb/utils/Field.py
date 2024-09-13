@@ -42,7 +42,10 @@ class Field(object):
                 or output.get_data_type() == TSDataType.DATE
             ):
                 output.set_int_value(field.get_int_value())
-            elif output.get_data_type() == TSDataType.INT64:
+            elif (
+                output.get_data_type() == TSDataType.INT64
+                or output.get_data_type() == TSDataType.TIMESTAMP
+            ):
                 output.set_long_value(field.get_long_value())
             elif output.get_data_type() == TSDataType.FLOAT:
                 output.set_float_value(field.get_float_value())
@@ -72,6 +75,7 @@ class Field(object):
     def get_bool_value(self):
         if self.__data_type is None:
             raise Exception("Null Field Exception!")
+
         if (
             self.__data_type != TSDataType.BOOLEAN
             or self.value is None
@@ -103,6 +107,7 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.INT64
+            and self.__data_type != TSDataType.TIMESTAMP
             or self.value is None
             or self.value is pd.NA
         ):
@@ -145,6 +150,8 @@ class Field(object):
             raise Exception("Null Field Exception!")
         if (
             self.__data_type != TSDataType.TEXT
+            and self.__data_type != TSDataType.STRING
+            and self.__data_type != TSDataType.BLOB
             or self.value is None
             or self.value is pd.NA
         ):
