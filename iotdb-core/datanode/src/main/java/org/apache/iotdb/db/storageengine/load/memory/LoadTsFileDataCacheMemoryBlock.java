@@ -90,6 +90,12 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
   }
 
   @Override
+  public void forceResize(long newSizeInBytes) {
+    throw new UnsupportedOperationException(
+        "resize is not supported for LoadTsFileDataCacheMemoryBlock");
+  }
+
+  @Override
   protected void releaseAllMemory() {
     if (memoryUsageInBytes.get() != 0) {
       LOGGER.warn(
@@ -125,6 +131,7 @@ public class LoadTsFileDataCacheMemoryBlock extends LoadTsFileAbstractMemoryBloc
     return referenceCount.get();
   }
 
+  @Override
   long getMemoryUsageInBytes() {
     return memoryUsageInBytes.get();
   }

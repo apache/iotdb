@@ -238,25 +238,28 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         // size of a single file, merge all files together and try to include
         // as many files as possible within the limit.
         long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
+        int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
         nextTaskStartIndex = lastSelectedFileIndex + 1;
         for (TsFileResource resource : lastContinuousSkippedResources) {
           long currentFileSize = resource.getTsFileSize();
           if (totalFileSize + currentFileSize > singleFileSizeThreshold
+              || totalFileNum > totalFileNumUpperBound
               || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())) {
             break;
           }
           currentSkippedResources.add(resource);
           totalFileSize += currentFileSize;
           currentSkippedFileTotalSize += currentFileSize;
+          totalFileNum++;
           nextTaskStartIndex++;
         }
 
-        int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
         if (totalFileNum < 2) {
           return;
         }
 
-        boolean canCompactAllFiles = totalFileSize <= singleFileSizeThreshold;
+        boolean canCompactAllFiles =
+            totalFileSize <= singleFileSizeThreshold && totalFileNum <= totalFileNumUpperBound;
         if (canCompactAllFiles) {
           currentSelectedResources =
               Stream.concat(currentSelectedResources.stream(), currentSkippedResources.stream())

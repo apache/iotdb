@@ -18,8 +18,11 @@
 
 import struct
 
+import numpy as np
 from numpy import ndarray
 from typing import List
+
+from iotdb.tsfile.utils.DateUtils import parse_date_to_int
 from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.Tablet import ColumnType
@@ -49,7 +52,7 @@ class NumpyTablet(object):
                      2,  id:1,  attr:1,   2.0
                      3,  id:2,  attr:2,   3.0
         Notice: The tablet will be sorted at the initialization by timestamps
-        :param insert_target_name: Str, DeviceId if using tree-view interfaces or TableName when using table-view interfaces.
+        :param insert_target_name: Str, DeviceId if using tree model or TableName when using table model.
         :param column_names: Str List, names of columns
         :param data_types: TSDataType List, specify value types for columns
         :param values: ndarray List, one ndarray contains the value of one column
@@ -128,12 +131,22 @@ class NumpyTablet(object):
         bs_len = 0
         bs_list = []
         for data_type, value in zip(self.__data_types, self.__values):
+            # BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TIMESTAMP
+            if (
+                data_type == 0
+                or data_type == 1
+                or data_type == 2
+                or data_type == 3
+                or data_type == 4
+                or data_type == 8
+            ):
+                bs = value.tobytes()
             # TEXT, STRING, BLOB
-            if data_type == 5 or data_type == 11 or data_type == 10:
+            elif data_type == 5 or data_type == 11 or data_type == 10:
                 format_str_list = [">"]
                 values_tobe_packed = []
                 for str_list in value:
-                    # Fot TEXT, it's same as the original solution
+                    # For TEXT, it's same as the original solution
                     if isinstance(str_list, str):
                         value_bytes = bytes(str_list, "utf-8")
                     else:
@@ -145,11 +158,18 @@ class NumpyTablet(object):
                     values_tobe_packed.append(value_bytes)
                 format_str = "".join(format_str_list)
                 bs = struct.pack(format_str, *values_tobe_packed)
-            # Non-TEXT
+            # DATE
+            elif data_type == 9:
+                bs = (
+                    np.vectorize(parse_date_to_int)(value)
+                    .astype(np.dtype(">i4"))
+                    .tobytes()
+                )
             else:
-                bs = value.tobytes()
+                raise RuntimeError("Unsupported data type:" + str(data_type))
             bs_list.append(bs)
             bs_len += len(bs)
+
         if self.bitmaps is not None:
             format_str_list = [">"]
             values_tobe_packed = []

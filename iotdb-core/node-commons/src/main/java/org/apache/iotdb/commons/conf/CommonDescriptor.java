@@ -213,9 +213,6 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_last_cache", Boolean.toString(config.isLastCacheEnable()))));
-    if (config.getSchemaEngineMode().equals("Rocksdb_based")) {
-      config.setLastCacheEnable(false);
-    }
 
     config.setTagAttributeTotalSize(
         Integer.parseInt(
