@@ -130,6 +130,7 @@ public class IoTDBInsertAlignedValuesTableIT {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(1));
         assertTrue(resultSet.next());
+        resultSet.getBoolean(1);
         assertTrue(resultSet.wasNull());
         assertFalse(resultSet.next());
       }
@@ -176,6 +177,9 @@ public class IoTDBInsertAlignedValuesTableIT {
         assertTrue(resultSet.getBoolean(2));
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
+        assertTrue(resultSet.next());
+        resultSet.getBoolean(2);
+        assertTrue(resultSet.wasNull());
         assertFalse(resultSet.next());
       }
 
@@ -206,6 +210,9 @@ public class IoTDBInsertAlignedValuesTableIT {
         assertTrue(resultSet.getBoolean(2));
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
+        assertTrue(resultSet.next());
+        resultSet.getBoolean(2);
+        assertTrue(resultSet.wasNull());
         assertFalse(resultSet.next());
       }
 
@@ -395,8 +402,9 @@ public class IoTDBInsertAlignedValuesTableIT {
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select time, s3 from dev10")) {
         while (resultSet.next()) {
+          int v = resultSet.getInt(2);
           if (rowCount == 99) {
-            assertEquals(99, resultSet.getInt(2));
+            assertEquals(99, v);
           } else {
             assertTrue(resultSet.wasNull());
           }
@@ -408,10 +416,11 @@ public class IoTDBInsertAlignedValuesTableIT {
       try (ResultSet resultSet = statement.executeQuery("select time, s2 from dev10")) {
         rowCount = 0;
         while (resultSet.next()) {
+          int v = resultSet.getInt(2);
           if (rowCount == 99) {
             assertTrue(resultSet.wasNull());
           } else {
-            assertEquals(rowCount, resultSet.getInt(2));
+            assertEquals(rowCount, v);
           }
           rowCount++;
         }
@@ -528,8 +537,9 @@ public class IoTDBInsertAlignedValuesTableIT {
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select s3 from dev13")) {
         while (resultSet.next()) {
+          int v = resultSet.getInt(1);
           if (rowCount >= 49) {
-            assertEquals(rowCount, resultSet.getInt(1));
+            assertEquals(rowCount, v);
           } else {
             assertTrue(resultSet.wasNull());
           }
