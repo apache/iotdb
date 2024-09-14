@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.resource.memory;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -26,7 +27,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.HybridProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.IoTProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MetaProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -64,22 +67,14 @@ public class InsertNodeMemoryEstimator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertNodeMemoryEstimator.class);
 
-  private static final String INSERT_TABLET_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode";
-  private static final String INSERT_ROW_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode";
-  private static final String INSERT_ROWS_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode";
-  private static final String INSERT_ROWS_OF_ONE_DEVICE_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode";
-  private static final String INSERT_MULTI_TABLETS_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode";
-  private static final String RELATIONAL_INSERT_ROWS_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode";
-  private static final String RELATIONAL_INSERT_ROW_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode";
-  private static final String RELATIONAL_INSERT_TABLET_NODE_CLASS_NAME =
-      "org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode";
+  private static final String INSERT_TABLET_NODE = "InsertTabletNode";
+  private static final String INSERT_ROW_NODE = "InsertRowNode";
+  private static final String INSERT_ROWS_NODE = "InsertRowsNode";
+  private static final String INSERT_ROWS_OF_ONE_DEVICE_NODE = "InsertRowsOfOneDeviceNode";
+  private static final String INSERT_MULTI_TABLETS_NODE = "InsertMultiTabletsNode";
+  private static final String RELATIONAL_INSERT_ROWS_NODE = "RelationalInsertRowsNode";
+  private static final String RELATIONAL_INSERT_ROW_NODE = "RelationalInsertRowNode";
+  private static final String RELATIONAL_INSERT_TABLET_NODE = "RelationalInsertTabletNode";
 
   private static final long NUM_BYTES_OBJECT_REF = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   private static final long NUM_BYTES_OBJECT_HEADER = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
@@ -91,283 +86,89 @@ public class InsertNodeMemoryEstimator {
   private static final long TS_ENCODING_PLAIN_BUILDER_SIZE =
       RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.PLAIN));
 
-  private static final long TS_ENCODING_DICTIONARY_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.DICTIONARY));
-
-  private static final long TS_ENCODING_RLE_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.RLE));
-
-  private static final long TS_ENCODING_TS_2DIFF_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.TS_2DIFF));
-
-  private static final long TS_ENCODING_GORILLA_V1_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.GORILLA_V1));
-
-  private static final long TS_ENCODING_REGULAR_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.REGULAR));
-
-  private static final long TS_ENCODING_GORILLA_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.GORILLA));
-
-  private static final long TS_ENCODING_ZIGZAG_BUILDER_SIZE =
-      RamUsageEstimator.shallowSizeOf(TSEncodingBuilder.getEncodingBuilder(TSEncoding.ZIGZAG));
-
   // =============================InsertNode==================================
 
-  // Calculate the total size of primitive fields in InsertNode
-  private static final long INSERT_NODE_PRIMITIVE_SIZE =
-      2 * 2 // isAligned + isGeneratedByRemoteConsensusLeader
-          + 2 * Integer.BYTES; // measurementColumnCnt +failedMeasurementNumber
-
-  // Calculate the total size of reference types in InsertNode
-  private static final long INSERT_NODE_REFERENCE_SIZE =
-      9L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in InsertTabletNode
-  private static final long INSERT_TABLET_NODE_PRIMITIVE_SIZE = Integer.BYTES;
-
-  // Calculate the total size of reference types in InsertTabletNode
-  private static final long INSERT_TABLET_NODE_REFERENCE_SIZE =
-      4L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in InsertRowNode
-  private static final long INSERT_ROW_NODE_PRIMITIVE_SIZE = Long.BYTES + 1;
-
-  // Calculate the total size of reference types in InsertRowNode
-  private static final long INSERT_ROW_NODE_REFERENCE_SIZE = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of reference types in InsertRowsNode
-  private static final long INSERT_ROWS_NODE_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of reference types in InsertRowsOfOneDeviceNode
-  private static final long INSERT_ROWS_OF_ONE_DEVICE_NODE_REFERENCE_SIZE =
-      3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in RelationalInsertRowNode
-  private static final long RELATIONAL_INSERT_ROW_NODE_PRIMITIVE_SIZE = Long.BYTES + 1;
-
-  // Calculate the total size of reference types in RelationalInsertRowNode
-  private static final long RELATIONAL_INSERT_ROW_NODE_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of reference types in RelationalInsertRowsNode
-  private static final long RELATIONAL_INSERT_ROWS_NODE_REFERENCE_SIZE =
-      INSERT_ROWS_NODE_REFERENCE_SIZE + NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in InsertTabletNode
-  private static final long RELATIONAL_INSERT_TABLET_NODE_PRIMITIVE_SIZE = Integer.BYTES;
-
-  // Calculate the total size of reference types in InsertTabletNode
-  private static final long RELATIONAL_INSERT_TABLET_NODE_REFERENCE_SIZE =
-      5L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
   private static final long INSERT_TABLET_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
-              + INSERT_TABLET_NODE_PRIMITIVE_SIZE
-              + INSERT_TABLET_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(InsertTabletNode.class);
 
   private static final long INSERT_ROW_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
-              + INSERT_ROW_NODE_PRIMITIVE_SIZE
-              + INSERT_ROW_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowNode.class);
 
   private static final long INSERT_ROWS_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
-              + INSERT_ROWS_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowsNode.class);
 
   private static final long INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
-              + INSERT_ROWS_OF_ONE_DEVICE_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(InsertRowsOfOneDeviceNode.class);
 
   private static final long INSERT_MULTI_TABLETS_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
-              + INSERT_ROWS_OF_ONE_DEVICE_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(InsertMultiTabletsNode.class);
 
   private static final long RELATIONAL_INSERT_ROWS_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_NODE_PRIMITIVE_SIZE
-              + INSERT_NODE_REFERENCE_SIZE
-              + RELATIONAL_INSERT_ROWS_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertRowsNode.class);
 
   private static final long RELATIONAL_INSERT_ROW_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_ROW_NODE_SIZE
-              + RELATIONAL_INSERT_ROW_NODE_PRIMITIVE_SIZE
-              + RELATIONAL_INSERT_ROW_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertRowNode.class);
 
   private static final long RELATIONAL_INSERT_TABLET_NODE_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + INSERT_TABLET_NODE_SIZE
-              + RELATIONAL_INSERT_TABLET_NODE_PRIMITIVE_SIZE
-              + RELATIONAL_INSERT_TABLET_NODE_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertTabletNode.class);
 
   // ============================Device And Measurement===================================
 
-  // Calculate the total size of reference types in PartialPath
-  private static final long PARTIAL_PATH_REFERENCE_SIZE =
-      4L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
   private static final long PARTIAL_PATH_SIZE =
-      RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + PARTIAL_PATH_REFERENCE_SIZE);
-
-  // Calculate the total size of primitive fields in Measurement
-  private static final long MEASUREMENT_PRIMITIVE_SIZE = 3L; // type + encoding +  compressor
-
-  // Calculate the total size of reference types in Measurement
-  private static final long MEASUREMENT_REFERENCE_SIZE =
-      3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      RamUsageEstimator.shallowSizeOfInstance(PartialPath.class);
 
   private static final long MEASUREMENT_SCHEMA_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + MEASUREMENT_PRIMITIVE_SIZE + MEASUREMENT_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in PlainDeviceID
-  private static final long PLAIN_DEVICE_ID_REFERENCE_SIZE =
-      3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      RamUsageEstimator.shallowSizeOfInstance(MeasurementSchema.class);
 
   private static final long PLAIN_DEVICE_ID_SIZE =
-      RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + PLAIN_DEVICE_ID_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(PlainDeviceID.class);
 
   private static final long STRING_ARRAY_DEVICE_ID_SIZE =
-      RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + NUM_BYTES_OBJECT_REF);
+      RamUsageEstimator.shallowSizeOfInstance(StringArrayDeviceID.class);
+
   // =============================Thrift==================================
 
-  // Calculate the total size of reference types in TRegionReplicaSet
-  private static final long T_REGION_REPLICA_SET_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
   private static final long T_REGION_REPLICA_SET_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + T_REGION_REPLICA_SET_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in TDataNodeLocation
-  private static final long T_DATA_NODE_LOCATION_REFERENCE_SIZE =
-      5L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      RamUsageEstimator.shallowSizeOfInstance(TRegionReplicaSet.class);
 
   private static final long T_DATA_NODE_LOCATION_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + T_DATA_NODE_LOCATION_REFERENCE_SIZE + Integer.BYTES);
-
-  // Calculate the total size of reference types in TSStatus
-  private static final long TS_STATUS_REFERENCE_SIZE = 3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in TSStatus
-  private static final long TS_STATUS_PRIMITIVE_SIZE = Integer.BYTES + 1;
+      RamUsageEstimator.shallowSizeOfInstance(TDataNodeLocation.class);
 
   private static final long TS_STATUS_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + TS_STATUS_PRIMITIVE_SIZE + TS_STATUS_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(TSStatus.class);
 
   private static final long T_END_POINT_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + NUM_BYTES_OBJECT_REF + Integer.BYTES);
+      RamUsageEstimator.shallowSizeOfInstance(TEndPoint.class);
 
   private static final long T_CONSENSUS_GROUP_ID_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + NUM_BYTES_OBJECT_REF + Integer.BYTES);
+      RamUsageEstimator.shallowSizeOfInstance(TConsensusGroupId.class);
 
   // =============================ProgressIndex==================================
 
-  // Calculate the total size of reference types in HybridProgressIndex
-  private static final long HYBRID_PROGRESS_INDEX_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
   private static final long HYBRID_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + HYBRID_PROGRESS_INDEX_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in IoTProgressIndex
-  private static final long IO_T_PROGRESS_INDEX_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      RamUsageEstimator.shallowSizeOfInstance(HybridProgressIndex.class);
 
   private static final long IO_T_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + IO_T_PROGRESS_INDEX_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in MetaProgressIndex
-  private static final long META_PROGRESS_INDEX_REFERENCE_SIZE =
-      RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in MetaProgressIndex
-  private static final long META_PROGRESS_INDEX_PRIMITIVE_SIZE = Long.BYTES;
+      RamUsageEstimator.shallowSizeOfInstance(IoTProgressIndex.class);
 
   private static final long META_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + META_PROGRESS_INDEX_PRIMITIVE_SIZE
-              + META_PROGRESS_INDEX_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in RecoverProgressIndex
-  private static final long RECOVER_PROGRESS_INDEX_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      RamUsageEstimator.shallowSizeOfInstance(MetaProgressIndex.class);
 
   private static final long RECOVER_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + RECOVER_PROGRESS_INDEX_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in SimpleProgressIndex
-  private static final long SIMPLE_PROGRESS_INDEX_REFERENCE_SIZE =
-      RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in SimpleProgressIndex
-  private static final long SIMPLE_PROGRESS_INDEX_PRIMITIVE_SIZE = Integer.BYTES + Long.BYTES;
+      RamUsageEstimator.shallowSizeOfInstance(RecoverProgressIndex.class);
 
   private static final long SIMPLE_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + SIMPLE_PROGRESS_INDEX_PRIMITIVE_SIZE
-              + SIMPLE_PROGRESS_INDEX_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in StateProgressIndex
-  private static final long STATE_PROGRESS_INDEX_REFERENCE_SIZE =
-      3L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
-
-  // Calculate the total size of primitive fields in StateProgressIndex
-  private static final long STATE_PROGRESS_INDEX_PRIMITIVE_SIZE = Long.BYTES;
+      RamUsageEstimator.shallowSizeOfInstance(SimpleProgressIndex.class);
 
   private static final long STATE_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER
-              + STATE_PROGRESS_INDEX_PRIMITIVE_SIZE
-              + STATE_PROGRESS_INDEX_REFERENCE_SIZE);
-
-  // Calculate the total size of reference types in TimeWindowStateProgressIndex
-  private static final long TIME_WINDOW_STATE_PROGRESS_INDEX_REFERENCE_SIZE =
-      2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+      RamUsageEstimator.shallowSizeOfInstance(StateProgressIndex.class);
 
   private static final long TIME_WINDOW_STATE_PROGRESS_INDEX_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + TIME_WINDOW_STATE_PROGRESS_INDEX_REFERENCE_SIZE);
+      RamUsageEstimator.shallowSizeOfInstance(TimeWindowStateProgressIndex.class);
 
   // =============================BitMap==================================
-  // Calculate the total size of reference types in BitMap
-  private static final long BIT_MAP_REFERENCE_SIZE = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
-  // Calculate the total size of primitive fields in BitMap
-  private static final long BIT_MAP_PRIMITIVE_SIZE = Integer.BYTES;
-
-  private static final long BIT_MAP_SIZE =
-      RamUsageEstimator.alignObjectSize(
-          NUM_BYTES_OBJECT_HEADER + BIT_MAP_REFERENCE_SIZE + BIT_MAP_PRIMITIVE_SIZE);
+  private static final long BIT_MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(BitMap.class);
 
   // ============================= Primitive Type Wrapper Classes =========
 
@@ -381,6 +182,7 @@ public class InsertNodeMemoryEstimator {
       RamUsageEstimator.alignObjectSize(Float.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_BOOLEAN =
       RamUsageEstimator.alignObjectSize(1 + NUM_BYTES_OBJECT_HEADER);
+  private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
 
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different
   // from the actual result because the properties of the parent class are not added.
@@ -388,24 +190,24 @@ public class InsertNodeMemoryEstimator {
 
   public static long sizeOf(final InsertNode insertNode) {
     try {
-      final String className = insertNode.getClass().getName();
+      final String className = insertNode.getClass().getSimpleName();
       switch (className) {
-        case INSERT_TABLET_NODE_CLASS_NAME:
+        case INSERT_TABLET_NODE:
           return sizeOfInsertTabletNode((InsertTabletNode) insertNode);
-        case INSERT_ROW_NODE_CLASS_NAME:
+        case INSERT_ROW_NODE:
           return (long)
               (sizeOfInsertRowNode((InsertRowNode) insertNode) * INSERT_ROW_NODE_EXPANSION_FACTOR);
-        case INSERT_ROWS_NODE_CLASS_NAME:
+        case INSERT_ROWS_NODE:
           return sizeOfInsertRowsNode((InsertRowsNode) insertNode);
-        case INSERT_ROWS_OF_ONE_DEVICE_NODE_CLASS_NAME:
+        case INSERT_ROWS_OF_ONE_DEVICE_NODE:
           return sizeOfInsertRowsOfOneDeviceNode((InsertRowsOfOneDeviceNode) insertNode);
-        case INSERT_MULTI_TABLETS_NODE_CLASS_NAME:
+        case INSERT_MULTI_TABLETS_NODE:
           return sizeOfInsertMultiTabletsNode((InsertMultiTabletsNode) insertNode);
-        case RELATIONAL_INSERT_ROWS_NODE_CLASS_NAME:
+        case RELATIONAL_INSERT_ROWS_NODE:
           return sizeOfRelationalInsertRowsNode((RelationalInsertRowsNode) insertNode);
-        case RELATIONAL_INSERT_ROW_NODE_CLASS_NAME:
+        case RELATIONAL_INSERT_ROW_NODE:
           return sizeOfRelationalInsertRowNode((RelationalInsertRowNode) insertNode);
-        case RELATIONAL_INSERT_TABLET_NODE_CLASS_NAME:
+        case RELATIONAL_INSERT_TABLET_NODE:
           return sizeOfRelationalInsertTabletNode((RelationalInsertTabletNode) insertNode);
         default:
           return 0L;
@@ -552,7 +354,10 @@ public class InsertNodeMemoryEstimator {
     // results
     size += NUM_BYTES_OBJECT_HEADER;
     for (Map.Entry<Integer, TSStatus> entry : node.getResults().entrySet()) {
-      size += Integer.BYTES + sizeOfTSStatus(entry.getValue());
+      size +=
+          Integer.BYTES
+              + sizeOfTSStatus(entry.getValue())
+              + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
     }
     return size;
   }
@@ -581,9 +386,14 @@ public class InsertNodeMemoryEstimator {
               * (Integer.BYTES + Integer.BYTES + NUM_BYTES_OBJECT_REF + NUM_BYTES_OBJECT_HEADER);
     }
     // results
-    size += NUM_BYTES_OBJECT_HEADER;
-    for (Map.Entry<Integer, TSStatus> entry : node.getResults().entrySet()) {
-      size += Integer.BYTES + sizeOfTSStatus(entry.getValue());
+    if (node.getResults() != null) {
+      size += NUM_BYTES_OBJECT_HEADER;
+      for (Map.Entry<Integer, TSStatus> entry : node.getResults().entrySet()) {
+        size +=
+            Integer.BYTES
+                + sizeOfTSStatus(entry.getValue())
+                + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+      }
     }
     return size;
   }
@@ -615,7 +425,7 @@ public class InsertNodeMemoryEstimator {
     long size = RELATIONAL_INSERT_ROW_NODE_SIZE;
 
     size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
-    if (node.isDeviceIDExists()) {
+    if (node.isDeviceIDPresentInRelationalInsertRowNode()) {
       size += sizeOfIDeviceID(node.getDeviceID());
     }
     return size;
@@ -683,7 +493,10 @@ public class InsertNodeMemoryEstimator {
     if (props != null) {
       size += NUM_BYTES_OBJECT_HEADER;
       for (Map.Entry<String, String> entry : props.entrySet()) {
-        size += sizeOfString(entry.getKey()) + sizeOfString(entry.getValue());
+        size +=
+            sizeOfString(entry.getKey())
+                + sizeOfString(entry.getValue())
+                + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       }
     }
     size += TS_ENCODING_PLAIN_BUILDER_SIZE;
@@ -839,7 +652,7 @@ public class InsertNodeMemoryEstimator {
       case SIMPLE_PROGRESS_INDEX:
         return sizeOfSimpleProgressIndex();
       case MINIMUM_PROGRESS_INDEX:
-        return sizeOfMinimumProgressIndex();
+        return 0L;
       case RECOVER_PROGRESS_INDEX:
         return sizeOfRecoverProgressIndex((RecoverProgressIndex) progressIndex);
       case TIME_WINDOW_STATE_PROGRESS_INDEX:
@@ -896,7 +709,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           NUM_BYTES_OBJECT_HEADER
               + progressIndex.getDataNodeId2LocalIndex().size()
-                  * (long) (Integer.BYTES + Long.BYTES);
+                  * (Integer.BYTES + Long.BYTES + 2 * NUM_BYTES_OBJECT_REF);
     }
     return size;
   }
@@ -915,7 +728,10 @@ public class InsertNodeMemoryEstimator {
     if (progressIndex.getState() != null) {
       size += NUM_BYTES_OBJECT_HEADER;
       for (Map.Entry<String, Binary> entry : progressIndex.getState().entrySet()) {
-        size += sizeOfString(entry.getKey()) + sizeOfBinary(entry.getValue());
+        size +=
+            RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                + sizeOfString(entry.getKey())
+                + sizeOfBinary(entry.getValue());
       }
     }
     return size;
@@ -932,7 +748,10 @@ public class InsertNodeMemoryEstimator {
       size += NUM_BYTES_OBJECT_HEADER;
       for (Map.Entry<String, Pair<Long, ByteBuffer>> entry :
           progressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
-        size += sizeOfString(entry.getKey()) + Long.BYTES * 2;
+        size +=
+            sizeOfString(entry.getKey())
+                + Long.BYTES * 2
+                + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       }
     }
     return size;
@@ -962,7 +781,7 @@ public class InsertNodeMemoryEstimator {
     // ---------------
     // --arrayHeader--
     // ----values-----
-    return RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER + NUM_BYTES_OBJECT_REF)
+    return SIZE_OF_STRING
         + RamUsageEstimator.alignObjectSize(NUM_BYTES_ARRAY_HEADER + value.length());
   }
 

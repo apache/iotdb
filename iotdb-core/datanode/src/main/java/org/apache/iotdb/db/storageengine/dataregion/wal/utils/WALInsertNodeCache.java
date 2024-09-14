@@ -122,22 +122,23 @@ public class WALInsertNodeCache {
     allocatedMemoryBlock.setShrinkCallback(
         (oldMemory, newMemory) -> {
           memoryUsageCheatFactor.updateAndGet(factor -> factor * ((double) oldMemory / newMemory));
-          if (CONFIG.getWALCacheShrinkClearEnabled()) {
-            try {
-              lruCache.cleanUp();
-            } catch (Exception e) {
-              LOGGER.warn(
-                  "Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
-            }
-            LOGGER.info(
-                "Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
-          }
           isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
           LOGGER.info(
               "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
               dataRegionId,
               oldMemory,
               newMemory);
+          if (CONFIG.getWALCacheShrinkClearEnabled()) {
+            try {
+              lruCache.cleanUp();
+            } catch (Exception e) {
+              LOGGER.warn(
+                  "Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
+              return;
+            }
+            LOGGER.info(
+                "Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
+          }
         });
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
   }

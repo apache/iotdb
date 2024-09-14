@@ -99,8 +99,8 @@ public class RelationalInsertRowNode extends InsertRowNode {
     return deviceID;
   }
 
-  public boolean isDeviceIDExists() {
-    return deviceID != null;
+  public boolean isDeviceIDPresentInRelationalInsertRowNode() {
+    return this.deviceID != null;
   }
 
   @Override
