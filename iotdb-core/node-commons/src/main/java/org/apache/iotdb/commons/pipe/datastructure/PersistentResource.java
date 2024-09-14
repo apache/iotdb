@@ -23,4 +23,8 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 
 public interface PersistentResource {
   ProgressIndex getProgressIndex();
+
+  long getFileStartTime();
+
+  long getFileEndTime();
 }

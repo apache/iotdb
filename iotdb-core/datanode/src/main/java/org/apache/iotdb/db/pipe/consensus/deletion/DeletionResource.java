@@ -121,6 +121,16 @@ public class DeletionResource implements PersistentResource {
     return ((DeleteDataNode) deletionEvent.getPlanNode()).getProgressIndex();
   }
 
+  @Override
+  public long getFileStartTime() {
+    return 0;
+  }
+
+  @Override
+  public long getFileEndTime() {
+    return 0;
+  }
+
   public PipeSchemaRegionWritePlanEvent getDeletionEvent() {
     return deletionEvent;
   }

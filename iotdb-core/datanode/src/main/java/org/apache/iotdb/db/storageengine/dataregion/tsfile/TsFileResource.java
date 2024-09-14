@@ -447,11 +447,13 @@ public class TsFileResource implements PersistentResource {
     return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
   }
 
+  @Override
   public long getFileStartTime() {
     return timeIndex.getMinStartTime();
   }
 
   /** Open file's end time is Long.MIN_VALUE */
+  @Override
   public long getFileEndTime() {
     return timeIndex.getMaxEndTime();
   }

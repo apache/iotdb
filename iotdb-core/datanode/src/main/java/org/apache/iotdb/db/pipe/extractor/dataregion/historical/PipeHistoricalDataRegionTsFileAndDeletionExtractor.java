@@ -523,8 +523,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
       // Sort tsFileResource and deletionResource
       resourceList.sort(
-          (o1, o2) -> o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
-      pendingQueue.addAll(resourceList);
+          (o1, o2) ->
+              startIndex instanceof TimeWindowStateProgressIndex
+                  ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
+                  : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
+      pendingQueue = new ArrayDeque<>(resourceList);
     } finally {
       dataRegion.writeUnlock();
     }
