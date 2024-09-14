@@ -816,9 +816,11 @@ public class TsFileProcessor {
 
           int addingPointNum = addingPointNumInfo.getRight();
           // Extending the column of aligned mem chunk
-          if ((alignedMemChunk != null && !alignedMemChunk.containsMeasurement(measurements[i]))
-              && !increasingMemTableInfo.get(deviceId).left.containsKey(measurements[i])) {
-            increasingMemTableInfo.get(deviceId).left.put(measurements[i], dataTypes[i]);
+          boolean currentMemChunkContainsMeasurement =
+              alignedMemChunk != null && alignedMemChunk.containsMeasurement(measurements[i]);
+          if (!currentMemChunkContainsMeasurement
+              && !addingPointNumInfo.left.containsKey(measurements[i])) {
+            addingPointNumInfo.left.put(measurements[i], dataTypes[i]);
             int currentArrayNum =
                 (currentChunkPointNum + addingPointNum) / PrimitiveArrayManager.ARRAY_SIZE
                     + ((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE
@@ -829,17 +831,17 @@ public class TsFileProcessor {
                 currentArrayNum * AlignedTVList.valueListArrayMemCost(dataTypes[i]);
           }
         }
-        int addingPointNum = increasingMemTableInfo.get(deviceId).getRight();
+        int addingPointNum = addingPointNumInfo.right;
         // Here currentChunkPointNum + addingPointNum >= 1
         if (((currentChunkPointNum + addingPointNum) % PrimitiveArrayManager.ARRAY_SIZE) == 0) {
           if (alignedMemChunk != null) {
             dataTypesInTVList.addAll(
                 ((AlignedTVList) alignedMemChunk.getTVList()).getTsDataTypes());
           }
-          dataTypesInTVList.addAll(increasingMemTableInfo.get(deviceId).getLeft().values());
+          dataTypesInTVList.addAll(addingPointNumInfo.left.values());
           memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypesInTVList);
         }
-        increasingMemTableInfo.get(deviceId).setRight(addingPointNum + 1);
+        addingPointNumInfo.setRight(addingPointNum + 1);
       }
 
       for (int i = 0; i < dataTypes.length; i++) {

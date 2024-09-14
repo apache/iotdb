@@ -102,13 +102,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   public void addOneInsertRowNode(InsertRowNode node, int index) {
     insertRowNodeList.add(node);
     insertRowNodeIndexList.add(index);
-    if (isAligned != node.isAligned) {
-      isMixingAlignment = true;
-    }
   }
 
   public boolean isMixingAlignment() {
     return isMixingAlignment;
+  }
+
+  public void setMixingAlignment(boolean mixingAlignment) {
+    isMixingAlignment = mixingAlignment;
   }
 
   @Override

@@ -54,7 +54,6 @@ import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -589,11 +588,11 @@ public class TsFileProcessorTest {
 
     // insert more rows by insertRows
     insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowsNode.setAligned(true);
     insertRowsNode.addOneInsertRowNode(insertRowNode1, 0);
     insertRowsNode.addOneInsertRowNode(insertRowNode2, 1);
     insertRowsNode.addOneInsertRowNode(insertRowNode3, 2);
     insertRowsNode.addOneInsertRowNode(insertRowNode4, 3);
-    insertRowsNode.setAligned(true);
     processor2.insert(insertRowsNode, new long[4]);
 
     Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
@@ -657,6 +656,7 @@ public class TsFileProcessorTest {
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
+    insertRowsNode.setMixingAlignment(true);
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
@@ -674,7 +674,6 @@ public class TsFileProcessorTest {
     Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
   }
 
-  @Ignore
   @Test
   public void testRamCostInsertSameDataBy2Ways2()
       throws MetadataException, WriteProcessException, IOException {
@@ -695,9 +694,10 @@ public class TsFileProcessorTest {
       TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
       record.addTuple(DataPoint.getDataPoint(dataType, "s" + i, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
-      //      if (i <= 50) {
       node.setAligned(true);
-      //      }
+      if (i <= 50) {
+        node.setAligned(true);
+      }
       processor1.insert(node, new long[4]);
     }
     IMemTable memTable1 = processor1.getWorkMemTable();
@@ -717,10 +717,12 @@ public class TsFileProcessorTest {
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
     insertRowsNode.setAligned(true);
     // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
+    insertRowsNode.setMixingAlignment(true);
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
       record.addTuple(DataPoint.getDataPoint(dataType, "s" + i, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
+      node.setAligned(true);
       if (i <= 50) {
         node.setAligned(true);
       }
