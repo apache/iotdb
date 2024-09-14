@@ -2294,17 +2294,19 @@ public class IoTDBDescriptor {
             : loadActiveListeningCheckIntervalSeconds;
     conf.setLoadActiveListeningCheckIntervalSeconds(loadActiveListeningCheckIntervalSeconds);
 
-    final int availableProcessors = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    final int loadActiveListeningMaxThreadNumDefaultValue =
+        Math.min(
+            conf.getLoadActiveListeningMaxThreadNum(),
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
     int loadActiveListeningMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
                 "load_active_listening_max_thread_num",
-                Integer.toString(
-                    Math.min(conf.getLoadActiveListeningMaxThreadNum(), availableProcessors))));
-    if (loadActiveListeningMaxThreadNum <= 0
-        || loadActiveListeningMaxThreadNum > availableProcessors) {
-      loadActiveListeningMaxThreadNum = availableProcessors;
-    }
+                Integer.toString(loadActiveListeningMaxThreadNumDefaultValue)));
+    loadActiveListeningMaxThreadNum =
+        loadActiveListeningMaxThreadNum <= 0
+            ? loadActiveListeningMaxThreadNumDefaultValue
+            : loadActiveListeningMaxThreadNum;
     conf.setLoadActiveListeningMaxThreadNum(loadActiveListeningMaxThreadNum);
   }
 
