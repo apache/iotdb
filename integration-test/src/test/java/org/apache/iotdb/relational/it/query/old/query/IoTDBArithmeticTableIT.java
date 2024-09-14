@@ -198,6 +198,18 @@ public class IoTDBArithmeticTableIT {
   }
 
   @Test
+  public void testTimestampNegation() {
+    String sql = "select -s6 from table1";
+    tableResultSetEqualTest(
+        sql,
+        new String[] {"_col0"},
+        new String[] {
+          "1969-12-31T23:59:59.990Z,", "1969-12-31T23:59:59.980Z,", "1969-12-31T23:59:59.970Z,"
+        },
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testBinaryWrongType() {
 
     testBinaryDifferentCombinationsFail(
