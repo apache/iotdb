@@ -84,11 +84,10 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeNonQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
     Statement statement = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      startTime = System.nanoTime();
       statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
@@ -149,11 +148,10 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
     Statement statement = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     boolean finish = false;
     try {
       RequestValidationHandler.validateSQL(sql);
-      startTime = System.nanoTime();
       statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
 
       if (statement == null) {
@@ -233,10 +231,9 @@ public class RestApiServiceImpl extends RestApiService {
   public Response insertRecords(
       InsertRecordsRequest insertRecordsRequest, SecurityContext securityContext) {
     Long queryId = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     InsertRowsStatement insertRowsStatement = null;
     try {
-      startTime = System.nanoTime();
       RequestValidationHandler.validateInsertRecordsRequest(insertRecordsRequest);
 
       insertRowsStatement =
@@ -278,7 +275,7 @@ public class RestApiServiceImpl extends RestApiService {
   public Response insertTablet(
       InsertTabletRequest insertTabletRequest, SecurityContext securityContext) {
     Long queryId = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     InsertTabletStatement insertTabletStatement = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);

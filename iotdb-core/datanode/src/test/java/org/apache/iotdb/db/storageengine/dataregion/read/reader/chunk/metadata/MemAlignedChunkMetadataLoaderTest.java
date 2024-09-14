@@ -65,7 +65,7 @@ public class MemAlignedChunkMetadataLoaderTest {
     Mockito.when(resource.getVersion()).thenReturn(1L);
 
     MemAlignedChunkMetadataLoader loader =
-        new MemAlignedChunkMetadataLoader(resource, path, context, null);
+        new MemAlignedChunkMetadataLoader(resource, path, context, null, true);
     ITimeSeriesMetadata timeSeriesMetadata = Mockito.mock(AlignedTimeSeriesMetadata.class);
 
     List<IChunkMetadata> chunkMetadataList = loader.loadChunkMetadataList(timeSeriesMetadata);

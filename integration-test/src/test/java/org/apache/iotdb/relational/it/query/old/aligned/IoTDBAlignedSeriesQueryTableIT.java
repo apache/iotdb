@@ -343,6 +343,16 @@ public class IoTDBAlignedSeriesQueryTableIT {
           "28,null,false",
           "29,null,false",
           "30,null,false",
+          "31,null,null",
+          "32,null,null",
+          "33,null,null",
+          "34,null,null",
+          "35,null,null",
+          "36,null,null",
+          "37,null,null",
+          "38,null,null",
+          "39,null,null",
+          "40,null,null",
         };
 
     String[] columnNames = {"s1", "s4"};
@@ -1729,6 +1739,16 @@ public class IoTDBAlignedSeriesQueryTableIT {
           "28,d1,null,false",
           "29,d1,null,false",
           "30,d1,null,false",
+          "31,d1,null,null",
+          "32,d1,null,null",
+          "33,d1,null,null",
+          "34,d1,null,null",
+          "35,d1,null,null",
+          "36,d1,null,null",
+          "37,d1,null,null",
+          "38,d1,null,null",
+          "39,d1,null,null",
+          "40,d1,null,null",
         };
 
     String[] columnNames = {"Device", "s1", "s4"};
