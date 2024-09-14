@@ -261,7 +261,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
     try {
       dataNodesDelegate.requestAll();
-    } catch (SQLException e) {
+    } catch (final SQLException e) {
       logger.error("Start dataNodes failed", e);
       throw new AssertionError();
     }
@@ -274,9 +274,9 @@ public abstract class AbstractEnv implements BaseEnv {
     checkClusterStatusWithoutUnknown();
   }
 
-  private void startAINode(String seedConfigNode, String testClassName) {
-    String aiNodeEndPoint;
-    AINodeWrapper aiNodeWrapper =
+  private void startAINode(final String seedConfigNode, final String testClassName) {
+    final String aiNodeEndPoint;
+    final AINodeWrapper aiNodeWrapper =
         new AINodeWrapper(
             seedConfigNode,
             testClassName,
@@ -288,29 +288,29 @@ public abstract class AbstractEnv implements BaseEnv {
     aiNodeEndPoint = aiNodeWrapper.getIpAndPortString();
     aiNodeWrapper.createNodeDir();
     aiNodeWrapper.createLogDir();
-    RequestDelegate<Void> AINodesDelegate =
+    final RequestDelegate<Void> aiNodesDelegate =
         new ParallelRequestDelegate<>(
             Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT);
 
-    AINodesDelegate.addRequest(
+    aiNodesDelegate.addRequest(
         () -> {
           aiNodeWrapper.start();
           return null;
         });
 
     try {
-      AINodesDelegate.requestAll();
-    } catch (SQLException e) {
+      aiNodesDelegate.requestAll();
+    } catch (final SQLException e) {
       logger.error("Start aiNodes failed", e);
     }
   }
 
   public String getTestClassName() {
-    StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-    for (StackTraceElement stackTraceElement : stack) {
-      String className = stackTraceElement.getClassName();
+    final StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+    for (final StackTraceElement stackTraceElement : stack) {
+      final String className = stackTraceElement.getClassName();
       if (className.endsWith("IT")) {
-        String result = className.substring(className.lastIndexOf(".") + 1);
+        final String result = className.substring(className.lastIndexOf(".") + 1);
         if (!result.startsWith("Abstract")) {
           return result;
         }
@@ -319,8 +319,8 @@ public abstract class AbstractEnv implements BaseEnv {
     return "UNKNOWN-IT";
   }
 
-  private Map<String, Integer> countNodeStatus(Map<Integer, String> nodeStatus) {
-    Map<String, Integer> result = new HashMap<>();
+  private Map<String, Integer> countNodeStatus(final Map<Integer, String> nodeStatus) {
+    final Map<String, Integer> result = new HashMap<>();
     nodeStatus.values().forEach(status -> result.put(status, result.getOrDefault(status, 0) + 1));
     return result;
   }
@@ -347,13 +347,13 @@ public abstract class AbstractEnv implements BaseEnv {
    *
    * @param statusCheck the predicate to test the status of nodes
    */
-  public void checkClusterStatus(Predicate<Map<Integer, String>> statusCheck) {
+  public void checkClusterStatus(final Predicate<Map<Integer, String>> statusCheck) {
     logger.info("Testing cluster environment...");
     TShowClusterResp showClusterResp;
     Exception lastException = null;
     boolean flag;
     for (int i = 0; i < retryCount; i++) {
-      try (SyncConfigNodeIServiceClient client =
+      try (final SyncConfigNodeIServiceClient client =
           (SyncConfigNodeIServiceClient) getLeaderConfigNodeConnection()) {
         flag = true;
         showClusterResp = client.showCluster();
@@ -373,20 +373,19 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the status of nodes
         if (flag) {
-          Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
-          flag = statusCheck.test(nodeStatus);
+          flag = statusCheck.test(showClusterResp.getNodeStatus());
         }
 
         if (flag) {
           logger.info("The cluster is now ready for testing!");
           return;
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         lastException = e;
       }
       try {
         TimeUnit.SECONDS.sleep(1L);
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         lastException = e;
         Thread.currentThread().interrupt();
       }
@@ -403,7 +402,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public void cleanClusterEnvironment() {
-    List<AbstractNodeWrapper> allNodeWrappers =
+    final List<AbstractNodeWrapper> allNodeWrappers =
         Stream.concat(
                 dataNodeWrapperList.stream(),
                 Stream.concat(configNodeWrapperList.stream(), aiNodeWrapperList.stream()))
@@ -412,10 +411,10 @@ public abstract class AbstractEnv implements BaseEnv {
         .findAny()
         .ifPresent(
             nodeWrapper -> logger.info("You can find logs at {}", nodeWrapper.getLogDirPath()));
-    for (AbstractNodeWrapper nodeWrapper : allNodeWrappers) {
+    for (final AbstractNodeWrapper nodeWrapper : allNodeWrappers) {
       nodeWrapper.stopForcibly();
       nodeWrapper.destroyDir();
-      String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
+      final String lockPath = EnvUtils.getLockFilePath(nodeWrapper.getPort());
       if (!new File(lockPath).delete()) {
         logger.error("Delete lock file {} failed", lockPath);
       }
@@ -428,8 +427,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(String username, String password, String sqlDialect)
-      throws SQLException {
+  public Connection getConnection(
+      final String username, final String password, final String sqlDialect) throws SQLException {
     return new ClusterTestConnection(
         getWriteConnection(null, username, password, sqlDialect),
         getReadConnections(null, username, password, sqlDialect));
@@ -437,7 +436,8 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException {
+      final DataNodeWrapper dataNode, final String username, final String password)
+      throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(
             dataNode, null, username, password, TREE_SQL_DIALECT),
@@ -446,7 +446,8 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public Connection getConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, String username, String password) throws SQLException {
+      final DataNodeWrapper dataNode, final String username, final String password)
+      throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(
             dataNode, null, username, password, TREE_SQL_DIALECT),
@@ -455,22 +456,23 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public Connection getConnection(
-      Constant.Version version, String username, String password, String sqlDialect)
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect)
       throws SQLException {
-    if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
-      return new ClusterTestConnection(
-          getWriteConnection(version, username, password, sqlDialect),
-          getReadConnections(version, username, password, sqlDialect));
-    } else {
-      return getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnecton();
-    }
+    return System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")
+        ? new ClusterTestConnection(
+            getWriteConnection(version, username, password, sqlDialect),
+            getReadConnections(version, username, password, sqlDialect))
+        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnecton();
   }
 
   @Override
-  public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
-    DataNodeWrapper dataNode =
+  public ISession getSessionConnection(final String sqlDialect) throws IoTDBConnectionException {
+    final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session =
+    final Session session =
         new Session.Builder()
             .host(dataNode.getIp())
             .port(dataNode.getPort())
@@ -481,11 +483,11 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ISession getSessionConnectionWithDB(String sqlDialect, String database)
+  public ISession getSessionConnectionWithDB(final String sqlDialect, final String database)
       throws IoTDBConnectionException {
-    DataNodeWrapper dataNode =
+    final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session =
+    final Session session =
         new Session.Builder()
             .host(dataNode.getIp())
             .port(dataNode.getPort())
@@ -497,11 +499,12 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ISession getSessionConnection(String userName, String password, String sqlDialect)
+  public ISession getSessionConnection(
+      final String userName, final String password, final String sqlDialect)
       throws IoTDBConnectionException {
-    DataNodeWrapper dataNode =
+    final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session =
+    final Session session =
         new Session.Builder()
             .host(dataNode.getIp())
             .port(dataNode.getPort())
@@ -514,9 +517,9 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
+  public ISession getSessionConnection(final List<String> nodeUrls, final String sqlDialect)
       throws IoTDBConnectionException {
-    Session session =
+    final Session session =
         new Session.Builder()
             .nodeUrls(nodeUrls)
             .username(SessionConfig.DEFAULT_USER)
@@ -534,8 +537,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize, String sqlDialect) {
-    DataNodeWrapper dataNode =
+  public ISessionPool getSessionPool(final int maxSize, final String sqlDialect) {
+    final DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new SessionPool.Builder()
         .host(dataNode.getIp())
@@ -548,7 +551,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize, String sqlDialect, String database) {
+  public ISessionPool getSessionPool(
+      final int maxSize, final String sqlDialect, final String database) {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
     return new SessionPool.Builder()
@@ -579,14 +583,14 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode,
-      Constant.Version version,
-      String username,
-      String password,
-      String sqlDialect)
+      final DataNodeWrapper dataNode,
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect)
       throws SQLException {
-    String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
-    Connection writeConnection =
+    final String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+    final Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX
                 + endpoint
@@ -600,20 +604,20 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected NodeConnection getWriteConnectionFromDataNodeList(
-      List<DataNodeWrapper> dataNodeList,
-      Constant.Version version,
-      String username,
-      String password,
-      String sqlDialect)
+      final List<DataNodeWrapper> dataNodeList,
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect)
       throws SQLException {
-    List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
+    final List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
     Collections.shuffle(dataNodeWrapperListCopy);
     SQLException lastException = null;
-    for (DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
+    for (final DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
       try {
         return getWriteConnectionWithSpecifiedDataNode(
             dataNode, version, username, password, sqlDialect);
-      } catch (SQLException e) {
+      } catch (final SQLException e) {
         lastException = e;
       }
     }
@@ -624,29 +628,32 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   protected List<NodeConnection> getReadConnections(
-      Constant.Version version, String username, String password, String sqlDialect)
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect)
       throws SQLException {
-    List<String> endpoints = new ArrayList<>();
-    ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
+    final List<String> endpoints = new ArrayList<>();
+    final ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
-    for (DataNodeWrapper dataNodeWrapper : this.dataNodeWrapperList) {
-      final String endpoint = dataNodeWrapper.getIpAndPortString();
-      endpoints.add(endpoint);
-      readConnRequestDelegate.addRequest(
-          () -> {
-            Connection readConnection =
-                DriverManager.getConnection(
-                    Config.IOTDB_URL_PREFIX
-                        + endpoint
-                        + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-                    BaseEnv.constructProperties(username, password, sqlDialect));
-            return new NodeConnection(
-                endpoint,
-                NodeConnection.NodeRole.DATA_NODE,
-                NodeConnection.ConnectionRole.READ,
-                readConnection);
-          });
-    }
+
+    dataNodeWrapperList.stream()
+        .map(AbstractNodeWrapper::getIpAndPortString)
+        .forEach(
+            endpoint -> {
+              endpoints.add(endpoint);
+              readConnRequestDelegate.addRequest(
+                  () ->
+                      new NodeConnection(
+                          endpoint,
+                          NodeConnection.NodeRole.DATA_NODE,
+                          NodeConnection.ConnectionRole.READ,
+                          DriverManager.getConnection(
+                              Config.IOTDB_URL_PREFIX
+                                  + endpoint
+                                  + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
+                              BaseEnv.constructProperties(username, password, sqlDialect))));
+            });
     return readConnRequestDelegate.requestAll();
   }
 
@@ -658,19 +665,19 @@ public abstract class AbstractEnv implements BaseEnv {
   // AssertionError.
   protected void testJDBCConnection() {
     logger.info("Testing JDBC connection...");
-    List<String> endpoints =
+    final List<String> endpoints =
         dataNodeWrapperList.stream()
             .map(DataNodeWrapper::getIpAndPortString)
             .collect(Collectors.toList());
-    RequestDelegate<Void> testDelegate =
+    final RequestDelegate<Void> testDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
-    for (DataNodeWrapper dataNode : dataNodeWrapperList) {
+    for (final DataNodeWrapper dataNode : dataNodeWrapperList) {
       final String dataNodeEndpoint = dataNode.getIpAndPortString();
       testDelegate.addRequest(
           () -> {
             Exception lastException = null;
             for (int i = 0; i < retryCount; i++) {
-              try (IoTDBConnection ignored =
+              try (final IoTDBConnection ignored =
                   (IoTDBConnection)
                       DriverManager.getConnection(
                           Config.IOTDB_URL_PREFIX
@@ -680,7 +687,7 @@ public abstract class AbstractEnv implements BaseEnv {
                           System.getProperty("Password", "root"))) {
                 logger.info("Successfully connecting to DataNode: {}.", dataNodeEndpoint);
                 return null;
-              } catch (Exception e) {
+              } catch (final Exception e) {
                 lastException = e;
                 TimeUnit.SECONDS.sleep(1L);
               }
@@ -693,15 +700,16 @@ public abstract class AbstractEnv implements BaseEnv {
     }
     try {
       testDelegate.requestAll();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       logger.error("exception in test Cluster with RPC, message: {}", e.getMessage(), e);
       throw new AssertionError(
           String.format("After %d times retry, the cluster can't work!", retryCount));
     }
   }
 
-  private String getParam(Constant.Version version, int timeout, String timeZone) {
-    StringBuilder sb = new StringBuilder("?");
+  private String getParam(
+      final Constant.Version version, final int timeout, final String timeZone) {
+    final StringBuilder sb = new StringBuilder("?");
     sb.append(Config.NETWORK_TIMEOUT).append("=").append(timeout);
     if (version != null) {
       sb.append("&").append(VERSION).append("=").append(version);
@@ -730,7 +738,7 @@ public abstract class AbstractEnv implements BaseEnv {
 
   @Override
   public List<AbstractNodeWrapper> getNodeWrapperList() {
-    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    final List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
     result.addAll(dataNodeWrapperList);
     return result;
   }
