@@ -432,8 +432,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           expression ->
               ReplaceSymbolInExpression.transform(expression, tableScanNode.getAssignments()));
       if (tableScanNode.getPushDownPredicate() != null) {
-        ReplaceSymbolInExpression.transform(
-            tableScanNode.getPushDownPredicate(), tableScanNode.getAssignments());
+        Expression transformedExpression =
+            ReplaceSymbolInExpression.transform(
+                tableScanNode.getPushDownPredicate(), tableScanNode.getAssignments());
+        tableScanNode.setPushDownPredicate(transformedExpression);
       }
 
       int size = tableScanNode.getOutputSymbols().size();
@@ -458,6 +460,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       tableScanNode.setOutputSymbols(newTableScanSymbols);
       tableScanNode.setAssignments(newTableScanAssignments);
+
       return new ProjectNode(
           queryId.genPlanNodeId(), tableScanNode, new Assignments(projectAssignments));
     }

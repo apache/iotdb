@@ -7,7 +7,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.join;
 
-/** <b>Optimization phase:</b> Logical plan planning. */
+/** <b>Optimization phase:</b> Distributed plan planning. */
 public class AddJoinIndex implements Rule<JoinNode> {
 
   private static final Pattern<JoinNode> PATTERN = join();
@@ -19,19 +19,19 @@ public class AddJoinIndex implements Rule<JoinNode> {
 
   @Override
   public Result apply(JoinNode node, Captures captures, Context context) {
-    ((JoinNode) node).leftTimeColumnIdx =
+    node.leftTimeColumnIdx =
         node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
-    ((JoinNode) node).rightTimeColumnIdx =
+    node.rightTimeColumnIdx =
         node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
 
-    ((JoinNode) node).leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
-    for (int i = 0; i < ((JoinNode) node).leftOutputSymbolIdx.length; i++) {
-      ((JoinNode) node).leftOutputSymbolIdx[i] =
+    node.leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
+    for (int i = 0; i < node.leftOutputSymbolIdx.length; i++) {
+      node.leftOutputSymbolIdx[i] =
           node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
     }
-    ((JoinNode) node).rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
-    for (int i = 0; i < ((JoinNode) node).rightOutputSymbolIdx.length; i++) {
-      ((JoinNode) node).rightOutputSymbolIdx[i] =
+    node.rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
+    for (int i = 0; i < node.rightOutputSymbolIdx.length; i++) {
+      node.rightOutputSymbolIdx[i] =
           node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
     }
     return Result.empty();

@@ -32,25 +32,28 @@ public class DistributedOptimizeFactory {
   private final List<PlanOptimizer> planOptimizers;
 
   public DistributedOptimizeFactory(PlannerContext plannerContext) {
+    RuleStatsRecorder ruleStats = new RuleStatsRecorder();
+
     IterativeOptimizer topKOptimizer =
         new IterativeOptimizer(
             plannerContext,
-            new RuleStatsRecorder(),
+            ruleStats,
             ImmutableSet.of(
                 new MergeLimitWithMergeSort(), new MergeLimitOverProjectWithMergeSort()));
 
     PlanOptimizer sortElimination = new SortElimination();
 
-    IterativeOptimizer limitElimination =
-        new IterativeOptimizer(
-            plannerContext,
-            new RuleStatsRecorder(),
-            ImmutableSet.of(
-                new EliminateLimitWithTableScan(),
-                new EliminateLimitProjectWithTableScan(),
-                new AddJoinIndex()));
-
-    this.planOptimizers = ImmutableList.of(topKOptimizer, sortElimination, limitElimination);
+    this.planOptimizers =
+        ImmutableList.of(
+            topKOptimizer,
+            sortElimination,
+            new IterativeOptimizer(
+                plannerContext,
+                ruleStats,
+                ImmutableSet.of(
+                    new EliminateLimitWithTableScan(),
+                    new EliminateLimitProjectWithTableScan(),
+                    new AddJoinIndex())));
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {
