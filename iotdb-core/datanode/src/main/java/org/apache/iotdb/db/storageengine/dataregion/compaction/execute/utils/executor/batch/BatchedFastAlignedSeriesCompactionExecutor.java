@@ -291,7 +291,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
       ModifiedStatus modifiedStatus =
           AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
-              startTime, endTime, originAlignedChunkMetadata);
+              startTime, endTime, originAlignedChunkMetadata, ignoreAllNullRows);
       batchCompactionPlan.recordPageModifiedStatus(
           resource.getTsFile().getName(), new TimeRange(startTime, endTime), modifiedStatus);
       return modifiedStatus;

@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactPagePlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -126,9 +126,11 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
       AlignedChunkReader alignedChunkReader = new AlignedChunkReader(timeChunk, valueChunks);
       AlignedPageReader iPageReader =
           (AlignedPageReader) alignedChunkReader.loadPageReaderList().get(0);
-      BatchedCompactionAlignedPagePointReader batchCompactionPointReader =
-          new BatchedCompactionAlignedPagePointReader(
-              iPageReader.getTimePageReader(), iPageReader.getValuePageReaderList().subList(1, 2));
+      CompactionAlignedPageLazyLoadPointReader batchCompactionPointReader =
+          new CompactionAlignedPageLazyLoadPointReader(
+              iPageReader.getTimePageReader(),
+              iPageReader.getValuePageReaderList().subList(1, 2),
+              false);
       int readPointNum = 0;
       while (batchCompactionPointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchCompactionPointReader.nextTimeValuePair();

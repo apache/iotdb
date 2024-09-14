@@ -91,6 +91,7 @@ public class FastCompactionPerformer
       modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
+  private boolean ignoreAllNullRows = true;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -115,7 +116,7 @@ public class FastCompactionPerformer
   public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
-            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
+            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap, false);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
@@ -210,7 +211,8 @@ public class FastCompactionPerformer
             sortedSourceFiles,
             measurementSchemas,
             deviceId,
-            taskSummary)
+            taskSummary,
+            ignoreAllNullRows)
         .call();
     subTaskSummary.increase(taskSummary);
   }
@@ -294,6 +296,11 @@ public class FastCompactionPerformer
               + "should be FastCompactionTaskSummary");
     }
     this.subTaskSummary = (FastCompactionTaskSummary) summary;
+  }
+
+  @Override
+  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override

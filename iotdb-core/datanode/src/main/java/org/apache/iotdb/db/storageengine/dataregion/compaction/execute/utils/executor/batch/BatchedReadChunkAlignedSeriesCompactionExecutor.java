@@ -26,8 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Comp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchCompactionPlan;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.ReadChunkAlignedSeriesCompactionExecutor;
@@ -44,7 +44,8 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.page.TimePageReader;
+import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -72,9 +73,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
-      CompactionTaskSummary summary)
+      CompactionTaskSummary summary,
+      boolean ignoreAllNullRows)
       throws IOException {
-    super(device, targetResource, readerAndChunkMetadataList, writer, summary);
+    super(device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
     this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
     this.batchColumnSelection =
         new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(schemaList, batchSize);
@@ -113,7 +115,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             writer,
             summary,
             timeSchema,
-            batchColumnSelection.getCurrentSelectedColumnSchemaList());
+            batchColumnSelection.getCurrentSelectedColumnSchemaList(),
+            ignoreAllNullRows);
     executor.execute();
     LOGGER.debug(
         "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
@@ -136,7 +139,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
               writer,
               summary,
               timeSchema,
-              batchColumnSelection.getCurrentSelectedColumnSchemaList());
+              batchColumnSelection.getCurrentSelectedColumnSchemaList(),
+              ignoreAllNullRows);
       executor.execute();
     }
   }
@@ -172,7 +176,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         CompactionTsFileWriter writer,
         CompactionTaskSummary summary,
         IMeasurementSchema timeSchema,
-        List<IMeasurementSchema> valueSchemaList) {
+        List<IMeasurementSchema> valueSchemaList,
+        boolean ignoreAllNullRows) {
       super(
           device,
           targetResource,
@@ -180,7 +185,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           writer,
           summary,
           timeSchema,
-          valueSchemaList);
+          valueSchemaList,
+          ignoreAllNullRows);
       int compactionFileLevel =
           Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
       this.flushController =
@@ -229,7 +235,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
 
       ModifiedStatus modifiedStatus =
           AlignedSeriesBatchCompactionUtils.calculateAlignedPageModifiedStatus(
-              startTime, endTime, originAlignedChunkMetadata);
+              startTime, endTime, originAlignedChunkMetadata, ignoreAllNullRows);
       batchCompactionPlan.recordPageModifiedStatus(
           file, new TimeRange(startTime, endTime), modifiedStatus);
       return modifiedStatus == ModifiedStatus.ALL_DELETED;
@@ -247,9 +253,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     }
 
     @Override
-    protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {
-      return new BatchedCompactionAlignedPagePointReader(
-          alignedPageReader.getTimePageReader(), alignedPageReader.getValuePageReaderList());
+    protected IPointReader getPointReader(
+        TimePageReader timePageReader, List<ValuePageReader> valuePageReaders) throws IOException {
+      // we have to set ignoreAllNullRows=false because we can not get the entire row here
+      return new CompactionAlignedPageLazyLoadPointReader(timePageReader, valuePageReaders, false);
     }
 
     private class FirstBatchReadChunkAlignedSeriesCompactionFlushController
@@ -280,7 +287,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
         CompactionTsFileWriter writer,
         CompactionTaskSummary summary,
         IMeasurementSchema timeSchema,
-        List<IMeasurementSchema> valueSchemaList) {
+        List<IMeasurementSchema> valueSchemaList,
+        boolean ignoreAllNullRows) {
       super(
           device,
           targetResource,
@@ -288,7 +296,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
           writer,
           summary,
           timeSchema,
-          valueSchemaList);
+          valueSchemaList,
+          ignoreAllNullRows);
       this.flushController = new FollowingBatchReadChunkAlignedSeriesCompactionFlushController();
       this.chunkWriter =
           new FollowingBatchCompactionAlignedChunkWriter(
@@ -355,9 +364,10 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
     }
 
     @Override
-    protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {
-      return new BatchedCompactionAlignedPagePointReader(
-          alignedPageReader.getTimePageReader(), alignedPageReader.getValuePageReaderList());
+    protected IPointReader getPointReader(
+        TimePageReader timePageReader, List<ValuePageReader> valuePageReaders) throws IOException {
+      // we have to set ignoreAllNullRows=false because we can not get the entire row here
+      return new CompactionAlignedPageLazyLoadPointReader(timePageReader, valuePageReaders, false);
     }
 
     private class FollowingBatchReadChunkAlignedSeriesCompactionFlushController

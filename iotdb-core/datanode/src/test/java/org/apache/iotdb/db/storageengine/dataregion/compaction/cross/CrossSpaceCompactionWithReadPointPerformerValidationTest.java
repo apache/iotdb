@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Comp
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
@@ -2174,7 +2175,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2247,7 +2249,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2321,7 +2324,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2396,7 +2400,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2477,7 +2482,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2557,7 +2563,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2638,7 +2645,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();
@@ -2720,7 +2728,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
 
     // inner seq space compact
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
-        new SizeTieredCompactionSelector(COMPACTION_TEST_SG, "0", 0, true, tsFileManager)
+        new SizeTieredCompactionSelector(
+                COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext())
             .selectInnerSpaceTask(tsFileManager.getOrCreateSequenceListByTimePartition(0));
     for (InnerSpaceCompactionTask task : innerSpaceCompactionTasks) {
       task.start();

@@ -98,7 +98,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         (AbstractCrossSpaceEstimator)
             ICompactionSelector.getCompactionEstimator(
                 IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
-    this.context = null;
+    this.context = new CompactionScheduleContext();
   }
 
   public RewriteCrossSpaceCompactionSelector(

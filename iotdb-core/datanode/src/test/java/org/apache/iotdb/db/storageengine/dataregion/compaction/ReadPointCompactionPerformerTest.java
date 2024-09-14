@@ -4672,8 +4672,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    ICompactionPerformer performer = new ReadPointCompactionPerformer(seqResources, unseqResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
@@ -5558,8 +5557,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    ICompactionPerformer performer = new ReadPointCompactionPerformer(seqResources, unseqResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
@@ -5962,8 +5960,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    ICompactionPerformer performer =
-        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    ICompactionPerformer performer = new ReadPointCompactionPerformer(seqResources, unseqResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
@@ -6722,7 +6719,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       List<TsFileResource> targetResources =
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       ICompactionPerformer performer =
-          new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+          new ReadPointCompactionPerformer(seqResources, unseqResources);
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
@@ -6864,7 +6861,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       List<TsFileResource> targetResources =
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       ICompactionPerformer performer =
-          new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+          new ReadPointCompactionPerformer(seqResources, unseqResources);
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());

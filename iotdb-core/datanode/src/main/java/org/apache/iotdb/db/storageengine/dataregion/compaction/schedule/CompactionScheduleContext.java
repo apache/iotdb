@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.DeviceInfo;
@@ -37,17 +41,23 @@ public class CompactionScheduleContext {
   private int submitInsertionCrossSpaceCompactionTaskNum = 0;
   private int submitSettleCompactionTaskNum = 0;
 
-  // region TTL info
+  // region info
   private int fullyDirtyFileNum = 0;
 
   private int partiallyDirtyFileNum = 0;
 
+  private boolean isTreeModel = true;
   // end region
 
   private final Map<TsFileResource, Map<IDeviceID, DeviceInfo>> partitionFileDeviceInfoCache;
 
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
+  }
+
+  public CompactionScheduleContext(boolean isTreeModel) {
+    this();
+    this.isTreeModel = isTreeModel;
   }
 
   public void addResourceDeviceTimeIndex(
@@ -140,5 +150,29 @@ public class CompactionScheduleContext {
 
   public int getPartiallyDirtyFileNum() {
     return partiallyDirtyFileNum;
+  }
+
+  public ISeqCompactionPerformer getSeqCompactionPerformer() {
+    ISeqCompactionPerformer seqCompactionPerformer =
+        IoTDBDescriptor.getInstance().getConfig().getInnerSeqCompactionPerformer().createInstance();
+    seqCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
+    return seqCompactionPerformer;
+  }
+
+  public IUnseqCompactionPerformer getUnseqCompactionPerformer() {
+    IUnseqCompactionPerformer unseqCompactionPerformer =
+        IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getInnerUnseqCompactionPerformer()
+            .createInstance();
+    unseqCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
+    return unseqCompactionPerformer;
+  }
+
+  public ICrossCompactionPerformer getCrossCompactionPerformer() {
+    ICrossCompactionPerformer crossCompactionPerformer =
+        IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer().createInstance();
+    crossCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
+    return crossCompactionPerformer;
   }
 }
