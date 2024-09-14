@@ -371,14 +371,17 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
-    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-      return;
-    }
-    hasBeenStart = true;
+
     if (!shouldExtractInsertion) {
+      hasBeenStart = true;
       return;
     }
 
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      return;
+    }
+
+    hasBeenStart = true;
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
