@@ -533,10 +533,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return true;
     }
 
-    return deviceSet.stream()
-        .anyMatch(
-            // TODO: use IDeviceID
-            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
+    return deviceSet.stream().anyMatch(deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
