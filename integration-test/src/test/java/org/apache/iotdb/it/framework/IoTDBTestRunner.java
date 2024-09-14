@@ -20,6 +20,7 @@
 package org.apache.iotdb.it.framework;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.EnvType;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 
 import org.junit.runner.Description;
@@ -53,7 +54,9 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     final Description description = describeChild(method);
     logger.info("Run {}", description.getMethodName());
     final long currentTime = System.currentTimeMillis();
-    EnvFactory.getEnv().setTestMethodName(description.getMethodName());
+    if (EnvType.getSystemEnvType() != EnvType.MultiCluster) {
+      EnvFactory.getEnv().setTestMethodName(description.getMethodName());
+    }
     MultiEnvFactory.setTestMethodName(description.getMethodName());
     super.runChild(method, notifier);
     final double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
