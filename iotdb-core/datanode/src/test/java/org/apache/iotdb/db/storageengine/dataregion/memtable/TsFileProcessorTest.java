@@ -54,6 +54,7 @@ import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -659,6 +660,66 @@ public class TsFileProcessorTest {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
       record.addTuple(DataPoint.getDataPoint(dataType, measurementId, String.valueOf(i)));
+      InsertRowNode node = buildInsertRowNodeByTSRecord(record);
+      if (i <= 50) {
+        node.setAligned(true);
+      }
+      insertRowsNode.addOneInsertRowNode(node, i - 1);
+    }
+    processor2.insert(insertRowsNode, new long[4]);
+    IMemTable memTable2 = processor2.getWorkMemTable();
+
+    Assert.assertEquals(memTable1.getTVListsRamCost(), memTable2.getTVListsRamCost());
+    Assert.assertEquals(memTable1.getTotalPointsNum(), memTable2.getTotalPointsNum());
+    Assert.assertEquals(memTable1.memSize(), memTable2.memSize());
+  }
+
+  @Ignore
+  @Test
+  public void testRamCostInsertSameDataBy2Ways2()
+      throws MetadataException, WriteProcessException, IOException {
+    TsFileProcessor processor1 =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+    TsFileProcessorInfo tsFileProcessorInfo1 = new TsFileProcessorInfo(sgInfo);
+    processor1.setTsFileProcessorInfo(tsFileProcessorInfo1);
+    this.sgInfo.initTsFileProcessorInfo(processor1);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor1);
+    // insert 100 rows (50 aligned, 50 non-aligned) by insertRow
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
+      record.addTuple(DataPoint.getDataPoint(dataType, "s" + i, String.valueOf(i)));
+      InsertRowNode node = buildInsertRowNodeByTSRecord(record);
+      //      if (i <= 50) {
+      node.setAligned(true);
+      //      }
+      processor1.insert(node, new long[4]);
+    }
+    IMemTable memTable1 = processor1.getWorkMemTable();
+
+    TsFileProcessor processor2 =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor, updateMap, systemFlushTime) -> {},
+            true);
+    TsFileProcessorInfo tsFileProcessorInfo2 = new TsFileProcessorInfo(sgInfo);
+    processor2.setTsFileProcessorInfo(tsFileProcessorInfo2);
+    this.sgInfo.initTsFileProcessorInfo(processor2);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor2);
+    InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""));
+    insertRowsNode.setAligned(true);
+    // insert 100 rows (50 aligned, 50 non-aligned) by insertRows
+    for (int i = 1; i <= 100; i++) {
+      TSRecord record = new TSRecord(i, i <= 50 ? deviceId : "root.vehicle.d2");
+      record.addTuple(DataPoint.getDataPoint(dataType, "s" + i, String.valueOf(i)));
       InsertRowNode node = buildInsertRowNodeByTSRecord(record);
       if (i <= 50) {
         node.setAligned(true);

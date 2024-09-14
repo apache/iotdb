@@ -1447,6 +1447,7 @@ public class DataRegion implements IDataRegionForQuery {
             if (v == null) {
               v = insertRowsNode.emptyClone();
               v.setSearchIndex(insertRowNode.getSearchIndex());
+              v.setAligned(insertRowNode.isAligned());
               if (insertRowNode.isGeneratedByPipe()) {
                 v.markAsGeneratedByPipe();
               }
@@ -3516,7 +3517,7 @@ public class DataRegion implements IDataRegionForQuery {
           TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
-                      new DataRegionId(Integer.valueOf(dataRegionId)),
+                      new DataRegionId(Integer.parseInt(dataRegionId)),
                       timePartitionId,
                       true,
                       Long.MAX_VALUE,
@@ -3538,6 +3539,7 @@ public class DataRegion implements IDataRegionForQuery {
               if (v == null) {
                 v = new InsertRowsNode(insertRowsOfOneDeviceNode.getPlanNodeId());
                 v.setSearchIndex(insertRowNode.getSearchIndex());
+                v.setAligned(insertRowNode.isAligned());
                 if (insertRowNode.isGeneratedByPipe()) {
                   v.markAsGeneratedByPipe();
                 }
