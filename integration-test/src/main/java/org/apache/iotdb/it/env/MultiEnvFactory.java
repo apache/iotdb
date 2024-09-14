@@ -38,24 +38,25 @@ public class MultiEnvFactory {
     // Empty constructor
   }
 
-  public static void setTestMethodName(String testMethodName) {
+  public static void setTestMethodName(final String testMethodName) {
     currentMethodName = testMethodName;
+    envList.forEach(baseEnv -> baseEnv.setTestMethodName(testMethodName));
   }
 
   /** Get an environment with the specific index. */
-  public static BaseEnv getEnv(int index) throws IndexOutOfBoundsException {
+  public static BaseEnv getEnv(final int index) throws IndexOutOfBoundsException {
     return envList.get(index);
   }
 
   /** Create several environments according to the specific number. */
-  public static void createEnv(int num) {
+  public static void createEnv(final int num) {
     // Not judge EnvType for individual test convenience
-    long startTime = System.currentTimeMillis();
+    final long startTime = System.currentTimeMillis();
     for (int i = 0; i < num; ++i) {
       try {
         Class.forName(Config.JDBC_DRIVER_NAME);
         envList.add(new MultiClusterEnv(startTime, i, currentMethodName));
-      } catch (ClassNotFoundException e) {
+      } catch (final ClassNotFoundException e) {
         logger.error("Create env error", e);
         System.exit(-1);
       }

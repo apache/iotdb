@@ -649,7 +649,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     if (testMethodName == null) {
       return testClassName;
     }
-    return testClassName + "_" + testMethodName;
+    return testClassName + File.separator + testMethodName;
   }
 
   public void setKillPoints(List<String> killPoints) {
