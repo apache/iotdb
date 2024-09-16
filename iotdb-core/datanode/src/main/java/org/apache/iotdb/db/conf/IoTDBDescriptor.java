@@ -1708,6 +1708,24 @@ public class IoTDBDescriptor {
                 "compressor", ConfigurationFileUtils.getConfigurationDefaultValue("compressor")));
     TSFileDescriptor.getInstance()
         .getConfig()
+        .setEncryptFlag(
+            properties.getProperty(
+                "encrypt_flag",
+                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_flag")));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptType(
+            properties.getProperty(
+                "encrypt_type",
+                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_type")));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setEncryptKeyFromPath(
+            properties.getProperty(
+                "encrypt_key_path",
+                ConfigurationFileUtils.getConfigurationDefaultValue("encrypt_key_path")));
+    TSFileDescriptor.getInstance()
+        .getConfig()
         .setMaxTsBlockSizeInBytes(
             Integer.parseInt(
                 properties.getProperty(

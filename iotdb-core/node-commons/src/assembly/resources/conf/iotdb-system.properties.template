@@ -1516,6 +1516,21 @@ value_encoder=PLAIN
 # effectiveMode: hot_reload
 compressor=LZ4
 
+# Encryption configuration
+# Data encryption function switch.
+# effectiveMode: restart
+encrypt_flag=false
+
+# Encryption configuration
+# Data encryption method, supports UNENCRYPTED, AES128.
+# effectiveMode: restart
+encrypt_type=org.apache.tsfile.encrypt.UNENCRYPTED
+
+# Encryption configuration
+# Data encryption key source. The key should be 16 byte String.
+# effectiveMode: restart
+encrypt_key_path=
+
 ####################
 ### Authorization Configuration
 ####################

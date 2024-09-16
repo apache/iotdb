@@ -23,7 +23,6 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -94,6 +93,7 @@ public class IoTDBEncryptionValueQueryIT {
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466020000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
+        "flush",
         "CREATE DATABASE root.sgcc",
         "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
         "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
@@ -122,19 +122,17 @@ public class IoTDBEncryptionValueQueryIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    TSFileDescriptor.getInstance().getConfig().setEncryptFlag("true");
-    TSFileDescriptor.getInstance().getConfig().setEncryptType("AES128");
-    TSFileDescriptor.getInstance().getConfig().setEncryptKey("mkmkmkmkmkmkmkmk");
+    EnvFactory.getEnv()
+        .getConfig()
+        .getCommonConfig()
+        .setEncryptFlag(true)
+        .setEncryptType("org.apache.tsfile.encrypt.AES128");
     EnvFactory.getEnv().initClusterEnvironment();
-    System.out.println(TSFileDescriptor.getInstance().getConfig().getEncryptType());
     importData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    TSFileDescriptor.getInstance().getConfig().setEncryptFlag("false");
-    TSFileDescriptor.getInstance().getConfig().setEncryptType("UNENCRYPTED");
-    TSFileDescriptor.getInstance().getConfig().setEncryptKey("abcdefghijklmn");
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
