@@ -375,6 +375,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return;
     }
     if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      LOGGER.info(
+          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
+          pipeName,
+          dataRegionId);
       return;
     }
     hasBeenStarted = true;
