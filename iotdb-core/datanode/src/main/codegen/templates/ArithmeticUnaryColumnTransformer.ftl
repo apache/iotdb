@@ -16,7 +16,7 @@
 <#list mathematicalDataType.types as type>
   <#assign newType = type.type?replace("Type","")>
   <#assign className = "${newType}NegationColumnTransformer">
-<#if newType != "Date" && newType != "Timestamp">
+<#if newType != "Date">
   <@pp.changeOutputFile name="/org/apache/iotdb/db/queryengine/transformation/dag/column/unary/${className}.java" />
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary;
 
@@ -55,8 +55,8 @@ public class ${className} extends UnaryColumnTransformer {
   }
 
   public static ${type.dataType} transform(${type.dataType} value){
-    <#if type.dataType == "Int" || type.dataType == "Long">
-    if(value == ${type.dataType}.MIN_VALUE){
+    <#if type.dataType == "int" || type.dataType == "long">
+    if(value == <#if type.dataType == "int">Integer<#else>Long</#if>.MIN_VALUE){
       throw new IoTDBRuntimeException(String.format("The %s is out of range of ${type.dataType}.", value), NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode(), true);
     }
     </#if>
