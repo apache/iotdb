@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
+import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeManager;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
@@ -142,6 +143,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -580,7 +582,7 @@ public class ProcedureManager {
    * Generate {@link RemoveDataNodesProcedure}s, and serially execute all the {@link
    * RemoveDataNodesProcedure}s.
    */
-  public boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+  public synchronized boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     this.executor.submitProcedure(
         new RemoveDataNodesProcedure(removeDataNodePlan.getDataNodeLocations()));
     LOGGER.info(
@@ -597,6 +599,7 @@ public class ProcedureManager {
   }
 
   public TSStatus checkRemoveDataNodes(List<TDataNodeLocation> dataNodeLocations) {
+    // 1. Only one RemoveDataNodesProcedure is allowed in the cluster
     Optional<Procedure<ConfigNodeProcedureEnv>> anotherRemoveProcedure =
         this.executor.getProcedures().values().stream()
             .filter(
@@ -621,6 +624,39 @@ public class ProcedureManager {
               anotherRemoveDataNodes, anotherRemoveProcedure.get().getProcId());
     }
 
+    // 2. Check if the RemoveDataNodesProcedure has conflict with RegionMigrateProcedure
+    RemoveDataNodeManager manager = new RemoveDataNodeManager(configManager);
+    Set<TConsensusGroupId> removedDataNodesRegionSet =
+        manager.getRemovedDataNodesRegionSet(dataNodeLocations);
+    Optional<Procedure<ConfigNodeProcedureEnv>> conflictRegionMigrateProcedure =
+        this.executor.getProcedures().values().stream()
+            .filter(
+                procedure -> {
+                  if (procedure instanceof RegionMigrateProcedure) {
+                    RegionMigrateProcedure regionMigrateProcedure =
+                        (RegionMigrateProcedure) procedure;
+                    if (regionMigrateProcedure.isFinished()) {
+                      return false;
+                    }
+                    return removedDataNodesRegionSet.contains(
+                            regionMigrateProcedure.getConsensusGroupId())
+                        || dataNodeLocations.contains(regionMigrateProcedure.getDestDataNode());
+                  }
+                  return false;
+                })
+            .findAny();
+    if (conflictRegionMigrateProcedure.isPresent()) {
+      failMessage =
+          String.format(
+              "Submit RemoveDataNodesProcedure failed, "
+                  + "because another RegionMigrateProcedure %s is already in processing which conflicts with this RemoveDataNodesProcedure. "
+                  + "The RegionMigrateProcedure is migrating the region %s to the DataNode %s. "
+                  + "For further information, please search [pid%d] in log. ",
+              conflictRegionMigrateProcedure.get().getProcId(),
+              ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getConsensusGroupId(),
+              ((RegionMigrateProcedure) conflictRegionMigrateProcedure.get()).getDestDataNode(),
+              conflictRegionMigrateProcedure.get().getProcId());
+    }
     if (failMessage != null) {
       LOGGER.warn(failMessage);
       TSStatus failStatus = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());

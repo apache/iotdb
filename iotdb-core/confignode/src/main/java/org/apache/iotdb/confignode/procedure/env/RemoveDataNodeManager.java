@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
@@ -104,7 +105,7 @@ public class RemoveDataNodeManager {
       return dataSet;
     }
 
-    status = checkAllowRemoveDataNode(removeDataNodePlan);
+    status = checkAllowRemoveDataNodes(removeDataNodePlan);
     if (isFailed(status)) {
       dataSet.setStatus(status);
       return dataSet;
@@ -119,7 +120,7 @@ public class RemoveDataNodeManager {
    * @param removeDataNodePlan RemoveDataNodeReq
    * @return SUCCEED_STATUS when request is legal.
    */
-  public TSStatus checkAllowRemoveDataNode(RemoveDataNodePlan removeDataNodePlan) {
+  public TSStatus checkAllowRemoveDataNodes(RemoveDataNodePlan removeDataNodePlan) {
     return configManager
         .getProcedureManager()
         .checkRemoveDataNodes(removeDataNodePlan.getDataNodeLocations());
@@ -214,6 +215,20 @@ public class RemoveDataNodeManager {
               .collect(Collectors.toList()));
     }
     return regionMigrationPlans;
+  }
+
+  /**
+   * Get all consensus group id in removedDataNodes
+   *
+   * @param removedDataNodes List
+   * @return Set<TConsensusGroupId>
+   */
+  public Set<TConsensusGroupId> getRemovedDataNodesRegionSet(
+      List<TDataNodeLocation> removedDataNodes) {
+    return removedDataNodes.stream()
+        .map(this::getMigratedDataNodeRegions)
+        .flatMap(List::stream)
+        .collect(Collectors.toSet());
   }
 
   /**

@@ -377,7 +377,7 @@ public class NodeManager {
    * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
    *     DATANODE_NOT_EXIST when some datanode does not exist.
    */
-  public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+  public synchronized DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
     RemoveDataNodeManager manager = new RemoveDataNodeManager((ConfigManager) configManager);

@@ -84,7 +84,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             return Flow.NO_MORE_STATE;
           }
         case REMOVE_DATA_NODE_PREPARE:
-          // mark the datanode as removing status and broadcast region route map
+          // mark the DataNodes as removing status and broadcast region route map
           env.markDataNodesAsRemovingAndBroadcast(removedDataNodes);
           regionMigrationPlans = manager.getRegionMigrationPlans(removedDataNodes);
           LOG.info(
