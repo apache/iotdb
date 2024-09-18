@@ -168,12 +168,13 @@ public class PipeRealtimePriorityBlockingQueue extends UnboundedBlockingPendingQ
   }
 
   @Override
-  public void discardEventsOfPipe(final String pipeNameToDrop) {
-    super.discardEventsOfPipe(pipeNameToDrop);
+  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+    super.discardEventsOfPipe(pipeNameToDrop, regionId);
     tsfileInsertEventDeque.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
+              && regionId == ((EnrichedEvent) event).getRegionId()) {
             if (((EnrichedEvent) event)
                 .clearReferenceCount(PipeRealtimePriorityBlockingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
