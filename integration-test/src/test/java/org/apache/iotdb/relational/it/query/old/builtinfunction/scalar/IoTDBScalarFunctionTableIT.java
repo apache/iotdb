@@ -384,12 +384,27 @@ public class IoTDBScalarFunctionTableIT {
   }
 
   @Test
+  public void testINT64NotIn() {
+    // case 1: support INT32, INT64, FLOAT, DOUBLE
+    String[] expectedHeader = new String[] {"time", "s3"};
+    String[] expectedAns =
+        new String[] {
+          "1970-01-01T00:00:00.002Z,-1,", "1970-01-01T00:00:00.003Z,-2,",
+        };
+    tableResultSetEqualTest(
+        "select time,s3 from absTable where s3 not in (1)",
+        expectedHeader,
+        expectedAns,
+        DATABASE_NAME);
+  }
+
+  @Test
   public void testBlobCompare() {
     // case 1: support INT32, INT64, FLOAT, DOUBLE
     String[] expectedHeader = new String[] {"s10", "res1", "res2", "res3"};
     String[] expectedAns =
         new String[] {
-          "0xabcd,true,true,true,",
+          "0xabcd,true,true,true,", "null,null,null,null,", "null,null,null,null,",
         };
     tableResultSetEqualTest(
         "select s10, s10 > x'2d' as res1, s10 <> x'2d' as res2, s10 = X'abcd' as res3 from absTable",
@@ -404,7 +419,7 @@ public class IoTDBScalarFunctionTableIT {
     String[] expectedHeader = new String[] {"s7", "res1", "res2", "res3"};
     String[] expectedAns =
         new String[] {
-          "2021-10-01,true,true,true,",
+          "2021-10-01,true,true,true,", "null,null,null,null,", "null,null,null,null,",
         };
     // add it back while supporting Implicit conversion
     //    tableResultSetEqualTest(

@@ -206,12 +206,19 @@ public class ActiveLoadTsFileLoader {
   }
 
   private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    LOGGER.warn(
-        "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
-        filePair.getLeft(),
-        filePair.getRight(),
-        status);
-    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    if (status.getMessage() != null && status.getMessage().contains("memory")) {
+      LOGGER.info(
+          "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else {
+      LOGGER.warn(
+          "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
+          filePair.getLeft(),
+          filePair.getRight(),
+          status);
+      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+    }
   }
 
   private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {

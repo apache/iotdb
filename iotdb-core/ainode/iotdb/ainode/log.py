@@ -21,8 +21,10 @@ import multiprocessing
 import os
 import random
 import sys
+import threading
 
 from iotdb.ainode.constant import STD_LEVEL, AINODE_LOG_FILE_NAMES, AINODE_LOG_FILE_LEVELS
+from iotdb.ainode.util.decorator import singleton
 
 
 class LoggerFilter(logging.Filter):
@@ -53,16 +55,19 @@ class LoggerFilter(logging.Filter):
         return f"[{pid}:{process_name}] {stack_info}"
 
 
+@singleton
 class Logger:
-    """
+    """ Logger is a singleton, it will be initialized when AINodeDescriptor is inited for the first time.
+        You can just use Logger() to get it anywhere.
+
     Args:
         log_dir: log directory
 
-    logger_format: log format of global logger
+    logger_format: log format
     logger: global logger with custom format and level
     file_handlers: file handlers for different levels
     console_handler: console handler for stdout
-    __lock: lock for logger
+    _lock: process lock for logger. This is just a precaution, we currently do not have multiprocessing
     """
 
     def __init__(self, log_dir=None):
@@ -98,37 +103,31 @@ class Logger:
                 self.file_handlers[l].setLevel(file_levels[l])
                 self.file_handlers[l].setFormatter(self.logger_format)
 
-            for filehandler in self.file_handlers:
-                self.logger.addHandler(filehandler)
-
+            for file_handler in self.file_handlers:
+                self.logger.addHandler(file_handler)
+        else:
+            log_dir = "default path"
 
         self.logger.addFilter(LoggerFilter())
-        self.__lock = multiprocessing.Lock()
+        self._lock = threading.Lock()
+        self.info(f"Logger init successfully. Log will be written to {log_dir}")
 
     def debug(self, *args) -> None:
-        self.__lock.acquire()
+        self._lock.acquire()
         self.logger.debug(' '.join(map(str, args)))
-        self.__lock.release()
+        self._lock.release()
 
     def info(self, *args) -> None:
-        self.__lock.acquire()
+        self._lock.acquire()
         self.logger.info(' '.join(map(str, args)))
-        self.__lock.release()
+        self._lock.release()
 
     def warning(self, *args) -> None:
-        self.__lock.acquire()
+        self._lock.acquire()
         self.logger.warning(' '.join(map(str, args)))
-        self.__lock.release()
+        self._lock.release()
 
     def error(self, *args) -> None:
-        self.__lock.acquire()
+        self._lock.acquire()
         self.logger.error(' '.join(map(str, args)))
-        self.__lock.release()
-
-
-logger = Logger()
-
-
-def set_logger(ain_logs_dir):
-    global logger
-    logger = Logger(ain_logs_dir)
+        self._lock.release()

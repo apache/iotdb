@@ -226,7 +226,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public TVList getTvListByColumnIndex(
-      List<Integer> columnIndexList, List<TSDataType> dataTypeList) {
+      List<Integer> columnIndexList, List<TSDataType> dataTypeList, boolean ignoreAllNullRows) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 

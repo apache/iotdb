@@ -79,10 +79,10 @@ public class IoTDBDatabaseIT {
       // create duplicated database with IF NOT EXISTS
       statement.execute("create database IF NOT EXISTS test");
 
-      final String[] databaseNames = new String[] {"test"};
-      final int[] schemaReplicaFactors = new int[] {1};
-      final int[] dataReplicaFactors = new int[] {1};
-      final int[] timePartitionInterval = new int[] {604800000};
+      String[] databaseNames = new String[] {"test"};
+      int[] schemaReplicaFactors = new int[] {1};
+      int[] dataReplicaFactors = new int[] {1};
+      int[] timePartitionInterval = new int[] {604800000};
 
       // show
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
@@ -129,6 +129,42 @@ public class IoTDBDatabaseIT {
 
       // drop nonexistent database with IF EXISTS
       statement.execute("drop database IF EXISTS test");
+
+      // Test create database with properties
+      statement.execute(
+          "create database test_prop with (schema_replication_factor=DEFAULT, data_replication_factor=3, time_partition_interval=100000)");
+
+      databaseNames = new String[] {"test_prop"};
+      dataReplicaFactors = new int[] {3};
+      timePartitionInterval = new int[] {100000};
+
+      // show
+      try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
+        int cnt = 0;
+        final ResultSetMetaData metaData = resultSet.getMetaData();
+        assertEquals(showDBColumnHeaders.size(), metaData.getColumnCount());
+        for (int i = 0; i < showDBColumnHeaders.size(); i++) {
+          assertEquals(showDBColumnHeaders.get(i).getColumnName(), metaData.getColumnName(i + 1));
+        }
+        while (resultSet.next()) {
+          assertEquals(databaseNames[cnt], resultSet.getString(1));
+          assertEquals(schemaReplicaFactors[cnt], resultSet.getInt(2));
+          assertEquals(dataReplicaFactors[cnt], resultSet.getInt(3));
+          assertEquals(timePartitionInterval[cnt], resultSet.getLong(4));
+          cnt++;
+        }
+        assertEquals(databaseNames.length, cnt);
+      }
+
+      try {
+        statement.execute("create database test_prop_2 with (non_exist_prop=DEFAULT)");
+        fail(
+            "create database test_prop_2 shouldn't succeed because the property key does not exist.");
+      } catch (final SQLException e) {
+        assertTrue(
+            e.getMessage(),
+            e.getMessage().contains("Unsupported database property key: non_exist_prop"));
+      }
 
       // create with strange name
       try {

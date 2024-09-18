@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
@@ -415,6 +416,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SetTableProperties:
           plan = new SetTablePropertiesPlan();
+          break;
+        case ShowTable:
+          plan = new ShowTablePlan();
           break;
         case GetNodePathsPartition:
           plan = new GetNodePathsPartitionPlan();

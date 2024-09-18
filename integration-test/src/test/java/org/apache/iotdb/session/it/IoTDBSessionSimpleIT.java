@@ -46,8 +46,9 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -76,13 +77,26 @@ public class IoTDBSessionSimpleIT {
 
   private static Logger LOGGER = LoggerFactory.getLogger(IoTDBSessionSimpleIT.class);
 
-  @Before
-  public void setUp() throws Exception {
+  private static final String[] databasesToClear = new String[] {"root.sg", "root.sg1"};
+
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDown() {
+    for (String database : databasesToClear) {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement("DELETE DATABASE " + database);
+      } catch (Exception ignored) {
+
+      }
+    }
+  }
+
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

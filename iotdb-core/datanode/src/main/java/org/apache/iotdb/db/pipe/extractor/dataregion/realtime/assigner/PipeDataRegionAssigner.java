@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 
+import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
@@ -56,6 +58,8 @@ public class PipeDataRegionAssigner implements Closeable {
   private final String dataRegionId;
 
   private int counter = 0;
+
+  private ProgressIndex maxProgressIndexForTsFileInsertionEvent = MinimumProgressIndex.INSTANCE;
 
   public String getDataRegionId() {
     return dataRegionId;
@@ -128,8 +132,11 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getRealtimeDataExtractionEndTime());
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
-                ((PipeTsFileInsertionEvent) innerEvent)
-                    .disableMod4NonTransferPipes(extractor.isShouldTransferModFile());
+                final PipeTsFileInsertionEvent tsFileInsertionEvent =
+                    (PipeTsFileInsertionEvent) innerEvent;
+                tsFileInsertionEvent.disableMod4NonTransferPipes(
+                    extractor.isShouldTransferModFile());
+                bindOrUpdateProgressIndexForTsFileInsertionEvent(tsFileInsertionEvent);
               }
 
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
@@ -146,6 +153,24 @@ public class PipeDataRegionAssigner implements Closeable {
             });
     event.gcSchemaInfo();
     event.decreaseReferenceCount(PipeDataRegionAssigner.class.getName(), false);
+  }
+
+  private void bindOrUpdateProgressIndexForTsFileInsertionEvent(
+      final PipeTsFileInsertionEvent event) {
+    if (PipeTimePartitionProgressIndexKeeper.getInstance()
+        .isProgressIndexAfterOrEquals(
+            dataRegionId, event.getTimePartitionId(), event.getProgressIndex())) {
+      event.bindProgressIndex(maxProgressIndexForTsFileInsertionEvent.deepCopy());
+      LOGGER.warn(
+          "Data region {} bind {} to event {} because it was flushed prematurely.",
+          dataRegionId,
+          maxProgressIndexForTsFileInsertionEvent,
+          event);
+    } else {
+      maxProgressIndexForTsFileInsertionEvent =
+          maxProgressIndexForTsFileInsertionEvent.updateToMinimumEqualOrIsAfterProgressIndex(
+              event.getProgressIndex());
+    }
   }
 
   public void startAssignTo(final PipeRealtimeDataRegionExtractor extractor) {

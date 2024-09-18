@@ -863,6 +863,16 @@ public class IoTDBInsertTableIT {
 
       rs1 = st1.executeQuery("select time, ss1, ss2 from sg21 order by time");
       assertTrue(rs1.next());
+      rs1.getString("ss1");
+      assertTrue(rs1.wasNull());
+      rs1.getInt("ss2");
+      assertTrue(rs1.wasNull());
+
+      assertTrue(rs1.next());
+      assertEquals("1", rs1.getString("ss1"));
+      rs1.getInt("ss2");
+      assertTrue(rs1.wasNull());
+      assertTrue(rs1.next());
       assertEquals("1", rs1.getString("ss1"));
       assertEquals(1, rs1.getInt("ss2"));
       assertFalse(rs1.next());

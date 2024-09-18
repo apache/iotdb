@@ -42,6 +42,10 @@ public abstract class LoadTsFileAbstractMemoryBlock implements AutoCloseable {
 
   public abstract void reduceMemoryUsage(long memoryInBytes);
 
+  abstract long getMemoryUsageInBytes();
+
+  public abstract void forceResize(long newSizeInBytes);
+
   /**
    * Release all memory of this block.
    *

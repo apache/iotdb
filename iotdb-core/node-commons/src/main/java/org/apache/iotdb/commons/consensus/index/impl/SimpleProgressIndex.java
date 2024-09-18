@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SimpleProgressIndex extends ProgressIndex {
@@ -136,7 +137,12 @@ public class SimpleProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(rebootTimes, memtableFlushOrderId);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new SimpleProgressIndex(rebootTimes, memtableFlushOrderId);
   }
 
   @Override
@@ -153,7 +159,7 @@ public class SimpleProgressIndex extends ProgressIndex {
         return this;
       }
       if (thisSimpleProgressIndex.rebootTimes < thatSimpleProgressIndex.rebootTimes) {
-        return progressIndex;
+        return progressIndex.deepCopy();
       }
       // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
       if (thisSimpleProgressIndex.memtableFlushOrderId
@@ -162,7 +168,7 @@ public class SimpleProgressIndex extends ProgressIndex {
       }
       if (thisSimpleProgressIndex.memtableFlushOrderId
           < thatSimpleProgressIndex.memtableFlushOrderId) {
-        return progressIndex;
+        return progressIndex.deepCopy();
       }
       // thisSimpleProgressIndex.memtableFlushOrderId ==
       // thatSimpleProgressIndex.memtableFlushOrderId

@@ -20,20 +20,16 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.TestOnly;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
-  private Function<String, IDeviceID> getDeviceIDFunction;
 
   // region DeviceIDFactory Singleton
   private static class DeviceIDFactoryHolder {
@@ -54,9 +50,7 @@ public class DeviceIDFactory {
     return DeviceIDFactoryHolder.INSTANCE;
   }
 
-  private DeviceIDFactory() {
-    getDeviceIDFunction = IDeviceID.Factory.DEFAULT_FACTORY::create;
-  }
+  private DeviceIDFactory() {}
 
   // endregion
 
@@ -67,7 +61,7 @@ public class DeviceIDFactory {
    * @return device id of the timeseries
    */
   public IDeviceID getDeviceID(final PartialPath devicePath) {
-    return getDeviceIDFunction.apply(devicePath.getFullPath());
+    return devicePath.getIDeviceID();
   }
 
   public static List<IDeviceID> convertRawDeviceIDs2PartitionKeys(
@@ -104,11 +98,5 @@ public class DeviceIDFactory {
     return lastNonNullIndex == device.length - 1
         ? device
         : Arrays.copyOf(device, lastNonNullIndex + 1);
-  }
-
-  /** reset id method */
-  @TestOnly
-  public void reset() {
-    getDeviceIDFunction = StringArrayDeviceID::new;
   }
 }

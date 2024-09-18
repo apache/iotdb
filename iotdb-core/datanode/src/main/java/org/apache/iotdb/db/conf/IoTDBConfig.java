@@ -244,6 +244,13 @@ public class IoTDBConfig {
   /** The period when outdated wal files are periodically deleted. Unit: millisecond */
   private volatile long deleteWalFilesPeriodInMs = 20 * 1000L;
 
+  /**
+   * Enables or disables the automatic clearing of the WAL cache when a memory compaction is
+   * triggered. When enabled, the WAL cache will be cleared to release memory during the compaction
+   * process.
+   */
+  private volatile boolean WALCacheShrinkClearEnabled = true;
+
   // endregion
   /**
    * The cycle when metadata log is periodically forced to be written to disk(in milliseconds) If
@@ -1136,6 +1143,8 @@ public class IoTDBConfig {
   private long loadTsFileAnalyzeSchemaMemorySizeInBytes =
       0L; // 0 means that the decision will be adaptive based on the number of sequences
 
+  private int loadTsFileMaxDeviceCountToUseDeviceTimeIndex = 10000;
+
   private long loadMemoryAllocateRetryIntervalMs = 1000L;
   private int loadMemoryAllocateMaxRetries = 5;
 
@@ -2000,6 +2009,14 @@ public class IoTDBConfig {
 
   void setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
     this.deleteWalFilesPeriodInMs = deleteWalFilesPeriodInMs;
+  }
+
+  public boolean getWALCacheShrinkClearEnabled() {
+    return WALCacheShrinkClearEnabled;
+  }
+
+  void setWALCacheShrinkClearEnabled(boolean WALCacheShrinkClearEnabled) {
+    this.WALCacheShrinkClearEnabled = WALCacheShrinkClearEnabled;
   }
 
   public boolean isChunkBufferPoolEnable() {
@@ -3956,6 +3973,16 @@ public class IoTDBConfig {
   public void setLoadTsFileAnalyzeSchemaMemorySizeInBytes(
       long loadTsFileAnalyzeSchemaMemorySizeInBytes) {
     this.loadTsFileAnalyzeSchemaMemorySizeInBytes = loadTsFileAnalyzeSchemaMemorySizeInBytes;
+  }
+
+  public int getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex() {
+    return loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
+  }
+
+  public void setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
+      int loadTsFileMaxDeviceCountToUseDeviceTimeIndex) {
+    this.loadTsFileMaxDeviceCountToUseDeviceTimeIndex =
+        loadTsFileMaxDeviceCountToUseDeviceTimeIndex;
   }
 
   public long getLoadMemoryAllocateRetryIntervalMs() {

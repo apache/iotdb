@@ -69,7 +69,7 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   }
 
   @Override
-  public synchronized boolean deregister(final String ignored) {
+  public synchronized boolean deregister(final String ignored, int regionId) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }

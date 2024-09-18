@@ -140,6 +140,9 @@ jobs:
     runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
 
     steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
       - uses: actions/checkout@v4
       - name: Cache Maven packages
         uses: actions/cache@v4
@@ -147,24 +150,26 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
       - name: Build IoTDB server distribution zip and python client
         run: mvn -B clean install -pl distribution,iotdb-client/client-py -am -DskipTests
       - name: Build IoTDB server docker image
         run: |
           docker build . -f docker/src/main/Dockerfile-1c1d -t "iotdb:dev"
           docker images
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
       - name: Install IoTDB python client requirements
         run: pip3 install -r iotdb-client/client-py/requirements_dev.txt
       - name: Check code style
         if: ${{ matrix.python == '3.x'}}
         shell: bash
         run: black iotdb-client/client-py/ --check --diff
-      - name: Integration test
+      - name: Integration test and test make package
         shell: bash
         run: |
           cd iotdb-client/client-py/ && pytest .
-
-
+          ./release.sh
