@@ -457,8 +457,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     private boolean canFlushChunk(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
         throws IOException {
       boolean largeEnough =
-          timeChunk.getHeader().getDataSize() > targetChunkSize
-              || timeChunk.getChunkMetadata().getNumOfPoints() > targetChunkPointNum;
+          timeChunk.getHeader().getDataSize() >= targetChunkSize
+              || timeChunk.getChunkMetadata().getNumOfPoints() >= targetChunkPointNum;
       if (timeSchema.getEncodingType() != timeChunk.getHeader().getEncodingType()
           || timeSchema.getCompressor() != timeChunk.getHeader().getCompressionType()) {
         return false;
