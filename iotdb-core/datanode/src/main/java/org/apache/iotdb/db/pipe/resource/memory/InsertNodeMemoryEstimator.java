@@ -182,6 +182,8 @@ public class InsertNodeMemoryEstimator {
       RamUsageEstimator.alignObjectSize(Float.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_BOOLEAN =
       RamUsageEstimator.alignObjectSize(1 + NUM_BYTES_OBJECT_HEADER);
+  private static final long SIZE_OF_SHORT =
+      RamUsageEstimator.alignObjectSize(Short.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
 
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different
@@ -273,7 +275,7 @@ public class InsertNodeMemoryEstimator {
     size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
     final List<Integer> range = node.getRange();
     if (range != null) {
-      size += NUM_BYTES_OBJECT_HEADER + (Integer.BYTES + NUM_BYTES_OBJECT_REF) * range.size();
+      size += NUM_BYTES_OBJECT_HEADER + SIZE_OF_INT * range.size();
     }
     return size;
   }
@@ -291,7 +293,7 @@ public class InsertNodeMemoryEstimator {
 
     final List<Integer> range = node.getRange();
     if (range != null) {
-      size += NUM_BYTES_OBJECT_HEADER + (NUM_BYTES_OBJECT_REF * Integer.BYTES) * range.size();
+      size += NUM_BYTES_OBJECT_HEADER + SIZE_OF_INT * range.size();
     }
     return size;
   }
@@ -325,9 +327,7 @@ public class InsertNodeMemoryEstimator {
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (long) indexList.size()
-              * (Integer.BYTES + Integer.BYTES + NUM_BYTES_OBJECT_REF + NUM_BYTES_OBJECT_HEADER);
+      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
     }
     return size;
   }
@@ -347,9 +347,7 @@ public class InsertNodeMemoryEstimator {
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (long) indexList.size()
-              * (Integer.BYTES + Integer.BYTES + NUM_BYTES_OBJECT_REF + NUM_BYTES_OBJECT_HEADER);
+      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
     }
     // results
     size += NUM_BYTES_OBJECT_HEADER;
@@ -382,9 +380,7 @@ public class InsertNodeMemoryEstimator {
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // ParentInsertTabletNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (long) indexList.size()
-              * (Integer.BYTES + Integer.BYTES + NUM_BYTES_OBJECT_REF + NUM_BYTES_OBJECT_HEADER);
+      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
     }
     // results
     if (node.getResults() != null) {
@@ -414,9 +410,7 @@ public class InsertNodeMemoryEstimator {
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (long) indexList.size()
-              * (Integer.BYTES + Integer.BYTES + NUM_BYTES_OBJECT_REF + NUM_BYTES_OBJECT_HEADER);
+      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
     }
     // ignore deviceIDs
     return size;
@@ -666,9 +660,11 @@ public class InsertNodeMemoryEstimator {
     // Memory calculation in reference type, cannot get exact value, roughly estimate
     size += REENTRANT_READ_WRITE_LOCK_SIZE;
     if (progressIndex.getType2Index() != null) {
+      // ignore ProgressIndex
       size +=
           NUM_BYTES_OBJECT_HEADER
-              + progressIndex.getType2Index().size() * (Short.BYTES + NUM_BYTES_OBJECT_REF);
+              + progressIndex.getType2Index().size()
+                  * (SIZE_OF_SHORT + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
     }
     return size;
   }
@@ -682,7 +678,8 @@ public class InsertNodeMemoryEstimator {
 
     size +=
         NUM_BYTES_OBJECT_HEADER
-            + progressIndex.getPeerId2SearchIndexSize() * (long) (Integer.BYTES + Long.BYTES);
+            + progressIndex.getPeerId2SearchIndexSize()
+                * (SIZE_OF_INT + SIZE_OF_LONG + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
 
     return size;
   }
@@ -690,11 +687,6 @@ public class InsertNodeMemoryEstimator {
   private static long sizeOfMetaProgressIndex() {
     // Memory alignment of basic types and reference types in structures
     return META_PROGRESS_INDEX_SIZE + REENTRANT_READ_WRITE_LOCK_SIZE;
-  }
-
-  private static long sizeOfMinimumProgressIndex() {
-    // Memory alignment of basic types and reference types in structures
-    return RamUsageEstimator.alignObjectSize(NUM_BYTES_OBJECT_HEADER);
   }
 
   private static long sizeOfRecoverProgressIndex(RecoverProgressIndex progressIndex) {
@@ -707,7 +699,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           NUM_BYTES_OBJECT_HEADER
               + progressIndex.getDataNodeId2LocalIndex().size()
-                  * (Integer.BYTES + Long.BYTES + 2 * NUM_BYTES_OBJECT_REF);
+                  * (SIZE_OF_INT + SIZE_OF_LONG + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
     }
     return size;
   }
@@ -748,7 +740,7 @@ public class InsertNodeMemoryEstimator {
           progressIndex.getTimeSeries2TimestampWindowBufferPairMap().entrySet()) {
         size +=
             sizeOfString(entry.getKey())
-                + Long.BYTES * 2
+                + SIZE_OF_LONG * 2
                 + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       }
     }
