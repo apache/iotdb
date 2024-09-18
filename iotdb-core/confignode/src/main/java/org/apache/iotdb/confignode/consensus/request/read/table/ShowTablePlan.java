@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.pipe.plugin;
+package org.apache.iotdb.confignode.consensus.request.read.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -27,41 +27,32 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
-public class GetPipePluginJarPlan extends ConfigPhysicalPlan {
-  private List<String> jarNames;
+public class ShowTablePlan extends ConfigPhysicalPlan {
 
-  public GetPipePluginJarPlan() {
-    super(ConfigPhysicalPlanType.GetPipePluginJar);
+  private String database;
+
+  public ShowTablePlan() {
+    super(ConfigPhysicalPlanType.ShowTable);
   }
 
-  public GetPipePluginJarPlan(final List<String> jarNames) {
-    super(ConfigPhysicalPlanType.GetPipePluginJar);
-    this.jarNames = jarNames;
+  public ShowTablePlan(final String database) {
+    super(ConfigPhysicalPlanType.ShowTable);
+    this.database = database;
   }
 
-  public List<String> getJarNames() {
-    return jarNames;
+  public String getDatabase() {
+    return database;
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-
-    ReadWriteIOUtils.write(jarNames.size(), stream);
-    for (final String jarName : jarNames) {
-      ReadWriteIOUtils.write(jarName, stream);
-    }
+    ReadWriteIOUtils.write(database, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    final int size = ReadWriteIOUtils.readInt(buffer);
-    jarNames = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      jarNames.add(ReadWriteIOUtils.readString(buffer));
-    }
+    database = ReadWriteIOUtils.readString(buffer);
   }
 }
