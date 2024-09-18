@@ -119,8 +119,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
-  private boolean hasBeenStarted = false;
-  private boolean hasConsumedAll = false;
+  private volatile boolean hasBeenStarted = false;
 
   private Queue<TsFileResource> pendingQueue;
 
@@ -371,17 +370,15 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
-
     if (!shouldExtractInsertion) {
       hasBeenStarted = true;
       return;
     }
-
     if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       return;
     }
-
     hasBeenStarted = true;
+
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
@@ -580,6 +577,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       start();
     }
+
     if (Objects.isNull(pendingQueue)) {
       return null;
     }
@@ -649,13 +647,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return hasConsumedAll
-        || (hasConsumedAll =
-            (Objects.isNull(pendingQueue)
-                    || pendingQueue.isEmpty()
-                        && (!shouldTerminatePipeOnAllHistoricalEventsConsumed
-                            || isTerminateSignalSent))
-                && hasBeenStarted);
+    return hasBeenStarted
+        && (Objects.isNull(pendingQueue)
+            || pendingQueue.isEmpty()
+                && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent));
   }
 
   @Override
