@@ -35,6 +35,9 @@ public class SqlConstant {
   public static final String NOW_FUNC = "now()";
 
   public static final String ROOT = "root";
+
+  public static final String ROOT_DOT = "root.";
+
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";
   public static final String BOOLEAN_TRUE = "true";

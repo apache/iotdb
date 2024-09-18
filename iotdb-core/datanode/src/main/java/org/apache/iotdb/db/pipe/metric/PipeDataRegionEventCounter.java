@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.metric;
 
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -35,22 +36,25 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
   private final AtomicInteger pipeHeartbeatEventCount = new AtomicInteger(0);
 
   @Override
-  public Integer getTsFileInsertionEventCount() {
+  public int getTsFileInsertionEventCount() {
     return tsFileInsertionEventCount.get();
   }
 
   @Override
-  public Integer getTabletInsertionEventCount() {
+  public int getTabletInsertionEventCount() {
     return tabletInsertionEventCount.get();
   }
 
   @Override
-  public Integer getPipeHeartbeatEventCount() {
+  public int getPipeHeartbeatEventCount() {
     return pipeHeartbeatEventCount.get();
   }
 
   @Override
   public void increaseEventCount(Event event) {
+    if (event instanceof PipeRealtimeEvent) {
+      event = ((PipeRealtimeEvent) event).getEvent();
+    }
     if (Objects.isNull(event)) {
       return;
     }
@@ -65,15 +69,18 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
 
   @Override
   public void decreaseEventCount(Event event) {
+    if (event instanceof PipeRealtimeEvent) {
+      event = ((PipeRealtimeEvent) event).getEvent();
+    }
     if (Objects.isNull(event)) {
       return;
     }
     if (event instanceof PipeHeartbeatEvent) {
-      pipeHeartbeatEventCount.decrementAndGet();
+      pipeHeartbeatEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
     } else if (event instanceof TabletInsertionEvent) {
-      tabletInsertionEventCount.decrementAndGet();
+      tabletInsertionEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
     } else if (event instanceof TsFileInsertionEvent) {
-      tsFileInsertionEventCount.decrementAndGet();
+      tsFileInsertionEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
     }
   }
 

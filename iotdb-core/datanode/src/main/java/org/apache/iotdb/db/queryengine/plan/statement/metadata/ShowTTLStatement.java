@@ -28,12 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ShowTTLStatement extends ShowStatement implements IConfigStatement {
-  private List<PartialPath> pathPatterns = new ArrayList<>();
-  private boolean isAll = false;
-
-  public boolean isAll() {
-    return isAll;
-  }
+  private final List<PartialPath> pathPatterns = new ArrayList<>();
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
@@ -52,9 +47,5 @@ public class ShowTTLStatement extends ShowStatement implements IConfigStatement 
 
   public void addPathPatterns(PartialPath pathPattern) {
     pathPatterns.add(pathPattern);
-  }
-
-  public void setAll(boolean all) {
-    isAll = all;
   }
 }

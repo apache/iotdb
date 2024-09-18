@@ -68,6 +68,11 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
     params.put(
         PipeTransferHandshakeConstant.HANDSHAKE_KEY_TIME_PRECISION,
         CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_CONVERT_ON_TYPE_MISMATCH,
+        Boolean.toString(shouldReceiverConvertOnTypeMismatch));
+    params.put(
+        PipeTransferHandshakeConstant.HANDSHAKE_KEY_LOAD_TSFILE_STRATEGY, loadTsFileStrategy);
 
     return PipeTransferConfigNodeHandshakeV2Req.toTPipeTransferBytes(params);
   }
@@ -132,12 +137,12 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       final AirGapSocket socket,
       final PipeConfigRegionWritePlanEvent pipeConfigRegionWritePlanEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBConfigRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBConfigRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeConfigRegionWritePlanEvent);
     } finally {
       pipeConfigRegionWritePlanEvent.decreaseReferenceCount(
@@ -151,6 +156,7 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       throws PipeException, IOException {
     if (!send(
         pipeConfigRegionWritePlanEvent.getPipeName(),
+        pipeConfigRegionWritePlanEvent.getCreationTime(),
         socket,
         PipeTransferConfigPlanReq.toTPipeTransferBytes(
             pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan()))) {
@@ -172,12 +178,12 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
   private void doTransferWrapper(
       final AirGapSocket socket, final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
+        IoTDBConfigRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeConfigRegionSnapshotEvent.increaseReferenceCount(
-          IoTDBConfigRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeConfigRegionSnapshotEvent);
     } finally {
       pipeConfigRegionSnapshotEvent.decreaseReferenceCount(
@@ -189,17 +195,19 @@ public class IoTDBConfigRegionAirGapConnector extends IoTDBAirGapConnector {
       final AirGapSocket socket, final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
       throws PipeException, IOException {
     final String pipeName = pipeConfigRegionSnapshotEvent.getPipeName();
+    final long creationTime = pipeConfigRegionSnapshotEvent.getCreationTime();
     final File snapshot = pipeConfigRegionSnapshotEvent.getSnapshotFile();
     final File templateFile = pipeConfigRegionSnapshotEvent.getTemplateFile();
 
     // 1. Transfer snapshotFile, and template file if exists
-    transferFilePieces(pipeName, snapshot, socket, true);
+    transferFilePieces(pipeName, creationTime, snapshot, socket, true);
     if (Objects.nonNull(templateFile)) {
-      transferFilePieces(pipeName, templateFile, socket, true);
+      transferFilePieces(pipeName, creationTime, templateFile, socket, true);
     }
     // 2. Transfer file seal signal, which means the snapshots are transferred completely
     if (!send(
         pipeName,
+        creationTime,
         socket,
         PipeTransferConfigSnapshotSealReq.toTPipeTransferBytes(
             // The pattern is surely Non-null

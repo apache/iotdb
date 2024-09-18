@@ -34,11 +34,12 @@ public class ProgressReportEvent extends EnrichedEvent {
 
   public ProgressReportEvent(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pipePattern,
       final long startTime,
       final long endTime) {
-    super(pipeName, pipeTaskMeta, pipePattern, startTime, endTime);
+    super(pipeName, creationTime, pipeTaskMeta, pipePattern, startTime, endTime);
   }
 
   @Override
@@ -64,11 +65,13 @@ public class ProgressReportEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
       final long endTime) {
-    return new ProgressReportEvent(pipeName, pipeTaskMeta, pattern, startTime, endTime);
+    return new ProgressReportEvent(
+        pipeName, creationTime, pipeTaskMeta, pattern, startTime, endTime);
   }
 
   @Override
@@ -79,5 +82,15 @@ public class ProgressReportEvent extends EnrichedEvent {
   @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     return true;
+  }
+
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return "ProgressReportEvent - " + super.toString();
   }
 }

@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
@@ -127,9 +127,10 @@ public class UDFManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations();
     final TCreateFunctionInstanceReq req =
         new TCreateFunctionInstanceReq(udfInformation.serialize()).setJarFile(jarFile);
-    AsyncClientHandler<TCreateFunctionInstanceReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TCreateFunctionInstanceReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.CREATE_FUNCTION, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 
@@ -160,9 +161,10 @@ public class UDFManager {
 
     final TDropFunctionInstanceReq request = new TDropFunctionInstanceReq(functionName, false);
 
-    AsyncClientHandler<TDropFunctionInstanceReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TDropFunctionInstanceReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.DROP_FUNCTION, request, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     return clientHandler.getResponseList();
   }
 

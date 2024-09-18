@@ -32,15 +32,21 @@ import java.util.List;
 
 public abstract class ChunkLoader {
 
+  protected String file;
   protected ChunkMetadata chunkMetadata;
   protected ModifiedStatus modifiedStatus;
 
-  protected ChunkLoader(ChunkMetadata chunkMetadata) {
+  protected ChunkLoader(String file, ChunkMetadata chunkMetadata) {
+    this.file = file;
     this.chunkMetadata = chunkMetadata;
     calculateModifiedStatus();
   }
 
   protected ChunkLoader() {}
+
+  public String getFile() {
+    return file;
+  }
 
   private void calculateModifiedStatus() {
     this.modifiedStatus = ModifiedStatus.NONE_DELETED;
@@ -70,6 +76,9 @@ public abstract class ChunkLoader {
       return this.modifiedStatus;
     }
     ModifiedStatus pageModifiedStatus = ModifiedStatus.NONE_DELETED;
+    if (pageHeader.getStatistics() == null || pageHeader.getStatistics().getCount() == 0) {
+      return pageModifiedStatus;
+    }
     List<TimeRange> deleteIntervalList = chunkMetadata.getDeleteIntervalList();
     long startTime = pageHeader.getStartTime();
     long endTime = pageHeader.getEndTime();

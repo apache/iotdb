@@ -169,11 +169,6 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
-  public List<PlanNode> getChildren() {
-    return null;
-  }
-
-  @Override
   public void addChild(PlanNode child) {}
 
   @Override
@@ -289,7 +284,7 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
+    this.progressIndex = progressIndex.deepCopy();
     insertTabletNodeList.forEach(node -> node.setProgressIndex(progressIndex));
   }
 }

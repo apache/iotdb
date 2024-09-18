@@ -98,8 +98,11 @@ public class SubscriptionConnectorSubtaskLifeCycle extends PipeConnectorSubtaskL
   public synchronized void close() {
     super.close();
 
+    // Here, the prefetching queue is not actually removed, because it's uncertain whether the
+    // corresponding underlying pipe is automatically terminated. The actual removal is carried out
+    // when dropping the subscription.
     final String consumerGroupId = ((SubscriptionConnectorSubtask) subtask).getConsumerGroupId();
     final String topicName = ((SubscriptionConnectorSubtask) subtask).getTopicName();
-    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName, true);
+    SubscriptionAgent.broker().unbindPrefetchingQueue(consumerGroupId, topicName);
   }
 }

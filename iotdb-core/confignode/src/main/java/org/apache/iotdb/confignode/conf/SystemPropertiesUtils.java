@@ -24,35 +24,25 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.file.SystemPropertiesHandler;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.CLUSTER_NAME;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.DEFAULT_CLUSTER_NAME;
-
 public class SystemPropertiesUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
 
-  private static File systemPropertiesFile =
-      new File(
-          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-              + File.separator
-              + ConfigNodeConstant.SYSTEM_FILE_NAME);
+  private static final SystemPropertiesHandler systemPropertiesHandler =
+      ConfigNodeSystemPropertiesHandler.getInstance();
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
@@ -66,6 +56,7 @@ public class SystemPropertiesUtils {
   private static final String SCHEMA_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol_class";
   private static final String SERIES_PARTITION_SLOT_NUM = "series_partition_slot_num";
   private static final String SERIES_PARTITION_EXECUTOR_CLASS = "series_partition_executor_class";
+  private static final String TIME_PARTITION_ORIGIN = "time_partition_origin";
   private static final String TIME_PARTITION_INTERVAL = "time_partition_interval";
 
   private SystemPropertiesUtils() {
@@ -74,11 +65,10 @@ public class SystemPropertiesUtils {
 
   // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
-    systemPropertiesFile =
-        new File(
-            ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-                + File.separator
-                + ConfigNodeConstant.SYSTEM_FILE_NAME);
+    systemPropertiesHandler.resetFilePath(
+        ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+            + File.separator
+            + ConfigNodeConstant.SYSTEM_FILE_NAME);
   }
 
   /**
@@ -87,7 +77,7 @@ public class SystemPropertiesUtils {
    * @return True if confignode-system.properties file exist.
    */
   public static boolean isRestarted() {
-    return systemPropertiesFile.exists();
+    return !systemPropertiesHandler.isFirstStart();
   }
 
   /**
@@ -97,32 +87,18 @@ public class SystemPropertiesUtils {
    * @throws IOException When read the confignode-system.properties file failed
    */
   public static void checkSystemProperties() throws IOException {
-    Properties systemProperties = getSystemProperties();
-    boolean needReWrite = false;
+    Properties systemProperties = systemPropertiesHandler.read();
     final String format =
         "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
             + " Your configuration: {} will be forced update to: {}";
 
-    // Cluster configuration
-    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName == null) {
-      needReWrite = true;
-    } else if (!clusterName.equals(conf.getClusterName())) {
-      LOGGER.warn(format, CLUSTER_NAME, conf.getClusterName(), clusterName);
-      conf.setClusterName(clusterName);
-    }
-
     String internalAddress = systemProperties.getProperty(CN_INTERNAL_ADDRESS, null);
-    if (internalAddress == null) {
-      needReWrite = true;
-    } else if (!internalAddress.equals(conf.getInternalAddress())) {
+    if (!internalAddress.equals(conf.getInternalAddress())) {
       LOGGER.warn(format, CN_INTERNAL_ADDRESS, conf.getInternalAddress(), internalAddress);
       conf.setInternalAddress(internalAddress);
     }
 
-    if (systemProperties.getProperty(CN_INTERNAL_PORT, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(CN_INTERNAL_PORT, null) != null) {
       int internalPort = Integer.parseInt(systemProperties.getProperty(CN_INTERNAL_PORT));
       if (internalPort != conf.getInternalPort()) {
         LOGGER.warn(format, CN_INTERNAL_PORT, conf.getInternalPort(), internalPort);
@@ -130,9 +106,7 @@ public class SystemPropertiesUtils {
       }
     }
 
-    if (systemProperties.getProperty(CN_CONSENSUS_PORT, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(CN_CONSENSUS_PORT, null) != null) {
       int consensusPort = Integer.parseInt(systemProperties.getProperty(CN_CONSENSUS_PORT));
       if (consensusPort != conf.getConsensusPort()) {
         LOGGER.warn(format, CN_CONSENSUS_PORT, conf.getConsensusPort(), consensusPort);
@@ -140,9 +114,7 @@ public class SystemPropertiesUtils {
       }
     }
 
-    if (systemProperties.getProperty(TIMESTAMP_PRECISION, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(TIMESTAMP_PRECISION, null) != null) {
       String timestampPrecision = systemProperties.getProperty(TIMESTAMP_PRECISION);
       if (!timestampPrecision.equals(COMMON_CONFIG.getTimestampPrecision())) {
         LOGGER.warn(
@@ -154,10 +126,7 @@ public class SystemPropertiesUtils {
     // Consensus protocol configuration
     String configNodeConsensusProtocolClass =
         systemProperties.getProperty(CN_CONSENSUS_PROTOCOL, null);
-    if (configNodeConsensusProtocolClass == null) {
-      needReWrite = true;
-    } else if (!configNodeConsensusProtocolClass.equals(
-        conf.getConfigNodeConsensusProtocolClass())) {
+    if (!configNodeConsensusProtocolClass.equals(conf.getConfigNodeConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           CN_CONSENSUS_PROTOCOL,
@@ -168,10 +137,7 @@ public class SystemPropertiesUtils {
 
     String dataRegionConsensusProtocolClass =
         systemProperties.getProperty(DATA_CONSENSUS_PROTOCOL, null);
-    if (dataRegionConsensusProtocolClass == null) {
-      needReWrite = true;
-    } else if (!dataRegionConsensusProtocolClass.equals(
-        conf.getDataRegionConsensusProtocolClass())) {
+    if (!dataRegionConsensusProtocolClass.equals(conf.getDataRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           DATA_CONSENSUS_PROTOCOL,
@@ -182,10 +148,7 @@ public class SystemPropertiesUtils {
 
     String schemaRegionConsensusProtocolClass =
         systemProperties.getProperty(SCHEMA_CONSENSUS_PROTOCOL, null);
-    if (schemaRegionConsensusProtocolClass == null) {
-      needReWrite = true;
-    } else if (!schemaRegionConsensusProtocolClass.equals(
-        conf.getSchemaRegionConsensusProtocolClass())) {
+    if (!schemaRegionConsensusProtocolClass.equals(conf.getSchemaRegionConsensusProtocolClass())) {
       LOGGER.warn(
           format,
           SCHEMA_CONSENSUS_PROTOCOL,
@@ -195,9 +158,7 @@ public class SystemPropertiesUtils {
     }
 
     // PartitionSlot configuration
-    if (systemProperties.getProperty(SERIES_PARTITION_SLOT_NUM, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(SERIES_PARTITION_SLOT_NUM, null) != null) {
       int seriesPartitionSlotNum =
           Integer.parseInt(systemProperties.getProperty(SERIES_PARTITION_SLOT_NUM));
       if (seriesPartitionSlotNum != conf.getSeriesSlotNum()) {
@@ -208,10 +169,7 @@ public class SystemPropertiesUtils {
 
     String seriesPartitionSlotExecutorClass =
         systemProperties.getProperty(SERIES_PARTITION_EXECUTOR_CLASS, null);
-    if (seriesPartitionSlotExecutorClass == null) {
-      needReWrite = true;
-    } else if (!Objects.equals(
-        seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
+    if (!Objects.equals(seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
       LOGGER.warn(
           format,
           SERIES_PARTITION_EXECUTOR_CLASS,
@@ -220,9 +178,20 @@ public class SystemPropertiesUtils {
       conf.setSeriesPartitionExecutorClass(seriesPartitionSlotExecutorClass);
     }
 
-    if (systemProperties.getProperty(TIME_PARTITION_INTERVAL, null) == null) {
-      needReWrite = true;
-    } else {
+    if (systemProperties.getProperty(TIME_PARTITION_ORIGIN, null) != null) {
+      long timePartitionOrigin =
+          Long.parseLong(systemProperties.getProperty(TIME_PARTITION_ORIGIN));
+      if (timePartitionOrigin != COMMON_CONFIG.getTimePartitionOrigin()) {
+        LOGGER.warn(
+            format,
+            TIME_PARTITION_ORIGIN,
+            COMMON_CONFIG.getTimePartitionOrigin(),
+            timePartitionOrigin);
+        COMMON_CONFIG.setTimePartitionOrigin(timePartitionOrigin);
+      }
+    }
+
+    if (systemProperties.getProperty(TIME_PARTITION_INTERVAL, null) != null) {
       long timePartitionInterval =
           Long.parseLong(systemProperties.getProperty(TIME_PARTITION_INTERVAL));
       if (timePartitionInterval != COMMON_CONFIG.getTimePartitionInterval()) {
@@ -233,11 +202,6 @@ public class SystemPropertiesUtils {
             timePartitionInterval);
         COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
       }
-    }
-
-    if (needReWrite) {
-      // Re-write special parameters if necessary
-      storeSystemParameters();
     }
   }
 
@@ -251,7 +215,7 @@ public class SystemPropertiesUtils {
    */
   public static List<TConfigNodeLocation> loadConfigNodeList()
       throws IOException, BadNodeUrlException {
-    Properties systemProperties = getSystemProperties();
+    Properties systemProperties = systemPropertiesHandler.read();
     String addresses = systemProperties.getProperty("config_node_list", null);
 
     if (addresses != null && !addresses.isEmpty()) {
@@ -265,17 +229,15 @@ public class SystemPropertiesUtils {
    * The system parameters can't be changed after the ConfigNode first started. Therefore, store
    * them in confignode-system.properties during the first startup.
    *
-   * @throws IOException getSystemProperties()
+   * @throws IOException systemPropertiesHandler.read()
    */
   public static void storeSystemParameters() throws IOException {
-    Properties systemProperties = getSystemProperties();
+    Properties systemProperties = systemPropertiesHandler.read();
 
     systemProperties.setProperty("iotdb_version", IoTDBConstant.VERSION);
     systemProperties.setProperty("commit_id", IoTDBConstant.BUILD_INFO);
 
     // Cluster configuration
-    systemProperties.setProperty("cluster_name", conf.getClusterName());
-    LOGGER.info("[SystemProperties] store cluster_name: {}", conf.getClusterName());
     systemProperties.setProperty("config_node_id", String.valueOf(conf.getConfigNodeId()));
     LOGGER.info("[SystemProperties] store config_node_id: {}", conf.getConfigNodeId());
     systemProperties.setProperty(
@@ -303,6 +265,8 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(
         SERIES_PARTITION_EXECUTOR_CLASS, conf.getSeriesPartitionExecutorClass());
     systemProperties.setProperty(
+        TIME_PARTITION_ORIGIN, String.valueOf(COMMON_CONFIG.getTimePartitionOrigin()));
+    systemProperties.setProperty(
         TIME_PARTITION_INTERVAL, String.valueOf(COMMON_CONFIG.getTimePartitionInterval()));
     systemProperties.setProperty(TIMESTAMP_PRECISION, COMMON_CONFIG.getTimestampPrecision());
 
@@ -311,7 +275,7 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty(
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
 
-    storeSystemProperties(systemProperties);
+    systemPropertiesHandler.overwrite(systemProperties);
   }
 
   /**
@@ -321,7 +285,7 @@ public class SystemPropertiesUtils {
    * @throws IOException When store confignode-system.properties file failed
    */
   public static void storeConfigNodeList(List<TConfigNodeLocation> configNodes) throws IOException {
-    if (!systemPropertiesFile.exists()) {
+    if (!systemPropertiesHandler.fileExist()) {
       // Avoid creating confignode-system.properties files during
       // synchronizing the ApplyConfigNode logs from the ConsensusLayer.
       // 1. For the Non-Seed-ConfigNode, We don't need to create confignode-system.properties file
@@ -330,32 +294,8 @@ public class SystemPropertiesUtils {
       // in which case the latest config_node_list will be updated.
       return;
     }
-
-    Properties systemProperties = getSystemProperties();
-    systemProperties.setProperty(
+    systemPropertiesHandler.put(
         "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
-
-    storeSystemProperties(systemProperties);
-  }
-
-  /**
-   * Load the cluster_name in confignode-system.properties file. We only invoke this interface when
-   * restarted.
-   *
-   * @return The property of cluster_name in confignode-system.properties file
-   * @throws IOException When load confignode-system.properties file failed
-   */
-  public static String loadClusterNameWhenRestarted() throws IOException {
-    Properties systemProperties = getSystemProperties();
-    String clusterName = systemProperties.getProperty(CLUSTER_NAME, null);
-    if (clusterName == null) {
-      LOGGER.warn(
-          "Lack cluster_name field in "
-              + "data/confignode/system/confignode-system.properties, set it as defaultCluster");
-      systemProperties.setProperty(CLUSTER_NAME, DEFAULT_CLUSTER_NAME);
-      return systemProperties.getProperty(CLUSTER_NAME, null);
-    }
-    return clusterName;
   }
 
   /**
@@ -366,7 +306,7 @@ public class SystemPropertiesUtils {
    * @throws IOException When load confignode-system.properties file failed
    */
   public static int loadConfigNodeIdWhenRestarted() throws IOException {
-    Properties systemProperties = getSystemProperties();
+    Properties systemProperties = systemPropertiesHandler.read();
     try {
       return Integer.parseInt(systemProperties.getProperty("config_node_id", null));
     } catch (NumberFormatException e) {
@@ -387,7 +327,7 @@ public class SystemPropertiesUtils {
    */
   public static boolean isSeedConfigNode() {
     try {
-      Properties systemProperties = getSystemProperties();
+      Properties systemProperties = systemPropertiesHandler.read();
       boolean isSeedConfigNode =
           Boolean.parseBoolean(systemProperties.getProperty("is_seed_config_node", null));
       if (isSeedConfigNode) {
@@ -397,39 +337,6 @@ public class SystemPropertiesUtils {
       }
     } catch (IOException ignore) {
       return false;
-    }
-  }
-
-  private static synchronized Properties getSystemProperties() throws IOException {
-    // Create confignode-system.properties file if necessary
-    if (!systemPropertiesFile.exists()) {
-      if (systemPropertiesFile.createNewFile()) {
-        LOGGER.info(
-            "System properties file {} for ConfigNode is created.",
-            systemPropertiesFile.getAbsolutePath());
-      } else {
-        LOGGER.error(
-            "Can't create the system properties file {} for ConfigNode. "
-                + "IoTDB-ConfigNode is shutdown.",
-            systemPropertiesFile.getAbsolutePath());
-        throw new IOException("Can't create system properties file");
-      }
-    }
-
-    Properties systemProperties = new Properties();
-    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
-      systemProperties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
-    }
-    return systemProperties;
-  }
-
-  private static synchronized void storeSystemProperties(Properties systemProperties)
-      throws IOException {
-    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
-      systemProperties.store(
-          new OutputStreamWriter(fileOutputStream, StandardCharsets.UTF_8),
-          " THIS FILE IS AUTOMATICALLY GENERATED. PLEASE DO NOT MODIFY THIS FILE !!!");
-      fileOutputStream.getFD().sync();
     }
   }
 }

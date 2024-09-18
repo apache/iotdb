@@ -52,6 +52,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 
+import org.apache.tsfile.enums.TSDataType;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -78,7 +80,13 @@ public class ExpressionUtils {
 
   public static Expression reconstructTimeSeriesOperand(
       TimeSeriesOperand rawExpression, PartialPath actualPath) {
-    Expression resultExpression = new TimeSeriesOperand(actualPath);
+    Expression resultExpression = new TimeSeriesOperand(actualPath, rawExpression.getType());
+    return cloneCommonFields(rawExpression, resultExpression);
+  }
+
+  public static Expression reconstructTimeSeriesOperand(
+      TimeSeriesOperand rawExpression, PartialPath actualPath, TSDataType dataType) {
+    Expression resultExpression = new TimeSeriesOperand(actualPath, dataType);
     return cloneCommonFields(rawExpression, resultExpression);
   }
 

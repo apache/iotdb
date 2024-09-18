@@ -59,12 +59,13 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
 
   private ISession session;
 
-  public IoTDBSessionSchemaTemplateIT(SchemaTestMode schemaTestMode) {
+  public IoTDBSessionSchemaTemplateIT(final SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
 
   @Before
   public void setUp() throws Exception {
+    setUpEnvironmentBeforeMethod();
     EnvFactory.getEnv().initClusterEnvironment();
     session = EnvFactory.getEnv().getSessionConnection();
   }
@@ -75,6 +76,7 @@ public class IoTDBSessionSchemaTemplateIT extends AbstractSchemaIT {
       session.close();
     }
     EnvFactory.getEnv().cleanClusterEnvironment();
+    tearDownEnvironment();
   }
 
   @Test

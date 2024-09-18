@@ -77,7 +77,7 @@ public class PipeDataNodePluginAgent {
 
       // register process from here
       checkIfRegistered(pipePluginMeta);
-      saveJarFileIfNeeded(pipePluginMeta.getJarName(), jarFile);
+      saveJarFileIfNeeded(pipePluginMeta.getPluginName(), pipePluginMeta.getJarName(), jarFile);
       doRegister(pipePluginMeta);
     } finally {
       lock.unlock();
@@ -102,7 +102,8 @@ public class PipeDataNodePluginAgent {
     }
 
     if (PipePluginExecutableManager.getInstance()
-            .hasFileUnderInstallDir(pipePluginMeta.getJarName())
+            .hasPluginFileUnderInstallDir(
+                pipePluginMeta.getPluginName(), pipePluginMeta.getJarName())
         && !PipePluginExecutableManager.getInstance().isLocalJarMatched(pipePluginMeta)) {
       String errMsg =
           String.format(
@@ -118,9 +119,11 @@ public class PipeDataNodePluginAgent {
     // we allow users to register the same pipe plugin multiple times without any error
   }
 
-  private void saveJarFileIfNeeded(String jarName, ByteBuffer byteBuffer) throws IOException {
+  private void saveJarFileIfNeeded(String pluginName, String jarName, ByteBuffer byteBuffer)
+      throws IOException {
     if (byteBuffer != null) {
-      PipePluginExecutableManager.getInstance().saveToInstallDir(byteBuffer, jarName);
+      PipePluginExecutableManager.getInstance()
+          .savePluginToInstallDir(byteBuffer, pluginName, jarName);
     }
   }
 
@@ -136,17 +139,19 @@ public class PipeDataNodePluginAgent {
     final String className = pipePluginMeta.getClassName();
 
     try {
-      final PipePluginClassLoader currentActiveClassLoader =
-          PipePluginClassLoaderManager.getInstance().updateAndGetActiveClassLoader();
-      updateAllRegisteredClasses(currentActiveClassLoader);
+      PipePluginClassLoaderManager classLoaderManager = PipePluginClassLoaderManager.getInstance();
+      String pluginDirPath =
+          PipePluginExecutableManager.getInstance().getPluginsDirPath(pluginName);
+      final PipePluginClassLoader pipePluginClassLoader =
+          classLoaderManager.createPipePluginClassLoader(pluginDirPath);
 
-      final Class<?> pluginClass = Class.forName(className, true, currentActiveClassLoader);
+      final Class<?> pluginClass = Class.forName(className, true, pipePluginClassLoader);
 
       @SuppressWarnings("unused") // ensure that it is a PipePlugin class
       final PipePlugin ignored = (PipePlugin) pluginClass.getDeclaredConstructor().newInstance();
 
       pipePluginMetaKeeper.addPipePluginMeta(pluginName, pipePluginMeta);
-      pipePluginMetaKeeper.addPluginAndClass(pluginName, pluginClass);
+      classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -164,13 +169,6 @@ public class PipeDataNodePluginAgent {
     }
   }
 
-  private void updateAllRegisteredClasses(PipePluginClassLoader activeClassLoader)
-      throws ClassNotFoundException {
-    for (PipePluginMeta information : pipePluginMetaKeeper.getAllPipePluginMeta()) {
-      pipePluginMetaKeeper.updatePluginClass(information, activeClassLoader);
-    }
-  }
-
   public void deregister(String pluginName, boolean needToDeleteJar) throws PipeException {
     lock.lock();
     try {
@@ -185,11 +183,12 @@ public class PipeDataNodePluginAgent {
 
       // remove anyway
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
-      pipePluginMetaKeeper.removePluginClass(pluginName);
+      PipePluginClassLoaderManager.getInstance().removePluginClassLoader(pluginName);
 
       // if it is needed to delete jar file of the pipe plugin, delete both jar file and md5
       if (information != null && needToDeleteJar) {
-        PipePluginExecutableManager.getInstance().removeFileUnderLibRoot(information.getJarName());
+        PipePluginExecutableManager.getInstance()
+            .removePluginFileUnderLibRoot(information.getPluginName(), information.getJarName());
         PipePluginExecutableManager.getInstance()
             .removeFileUnderTemporaryRoot(pluginName.toUpperCase() + ".txt");
       }

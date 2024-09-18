@@ -24,11 +24,13 @@ import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSeriesWindow;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
+import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.utils.Pair;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -47,22 +49,28 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
    * @return The added windows
    */
   public abstract Set<TimeSeriesWindow> mayAddWindow(
-      List<TimeSeriesWindow> windowList, long timeStamp, boolean value);
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final boolean value);
 
   public abstract Set<TimeSeriesWindow> mayAddWindow(
-      List<TimeSeriesWindow> windowList, long timeStamp, int value);
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final int value);
 
   public abstract Set<TimeSeriesWindow> mayAddWindow(
-      List<TimeSeriesWindow> windowList, long timeStamp, long value);
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final LocalDate value);
 
   public abstract Set<TimeSeriesWindow> mayAddWindow(
-      List<TimeSeriesWindow> windowList, long timeStamp, float value);
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final long value);
 
   public abstract Set<TimeSeriesWindow> mayAddWindow(
-      List<TimeSeriesWindow> windowList, long timeStamp, double value);
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final float value);
 
   public abstract Set<TimeSeriesWindow> mayAddWindow(
-      List<TimeSeriesWindow> windowList, long timeStamp, String value);
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final double value);
+
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final String value);
+
+  public abstract Set<TimeSeriesWindow> mayAddWindow(
+      final List<TimeSeriesWindow> windowList, final long timeStamp, final Binary value);
 
   /**
    * The {@link AbstractWindowingProcessor} may decide whether a {@link TimeSeriesWindow} shall be
@@ -76,24 +84,30 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
    *     restarted.
    */
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp, boolean value);
+      final TimeSeriesWindow window, final long timeStamp, final boolean value);
 
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp, int value);
+      final TimeSeriesWindow window, final long timeStamp, final int value);
 
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp, long value);
+      final TimeSeriesWindow window, final long timeStamp, final LocalDate value);
 
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp, float value);
+      final TimeSeriesWindow window, final long timeStamp, final long value);
 
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp, double value);
+      final TimeSeriesWindow window, final long timeStamp, final float value);
 
   public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
-      TimeSeriesWindow window, long timeStamp, String value);
+      final TimeSeriesWindow window, final long timeStamp, final double value);
 
-  public abstract WindowOutput forceOutput(TimeSeriesWindow window);
+  public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
+      final TimeSeriesWindow window, final long timeStamp, final String value);
+
+  public abstract Pair<WindowState, WindowOutput> updateAndMaySetWindowState(
+      final TimeSeriesWindow window, final long timeStamp, final Binary value);
+
+  public abstract WindowOutput forceOutput(final TimeSeriesWindow window);
 
   /**
    * Serialize the customized attributes in a window to an output stream
@@ -102,7 +116,7 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
    * @param outputStream the outputStream
    */
   public void serializeCustomizedAttributes(
-      TimeSeriesWindow window, DataOutputStream outputStream) {
+      final TimeSeriesWindow window, final DataOutputStream outputStream) {
     // Do nothing by default
   }
 
@@ -111,7 +125,8 @@ public abstract class AbstractWindowingProcessor extends AbstractFormalProcessor
    *
    * @param byteBuffer the customized attributes in one window
    */
-  public void deserializeCustomizedAttributes(TimeSeriesWindow window, ByteBuffer byteBuffer) {
+  public void deserializeCustomizedAttributes(
+      final TimeSeriesWindow window, final ByteBuffer byteBuffer) {
     // Do nothing by default
   }
 

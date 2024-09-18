@@ -51,6 +51,8 @@ public class UDTFTopK extends UDTFSelectK {
       case STRING:
         stringPQ = new PriorityQueue<>(k, Comparator.comparing(o -> o.right));
         break;
+      case BOOLEAN:
+      case BLOB:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

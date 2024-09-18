@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeE
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.event.common.row.PipeResetTabletRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
@@ -56,14 +56,17 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -185,10 +188,7 @@ public class AggregateProcessor implements PipeProcessor {
     databaseWithPathSeparator =
         StorageEngine.getInstance()
                 .getDataRegion(
-                    new DataRegionId(
-                        ((PipeTaskProcessorRuntimeEnvironment)
-                                configuration.getRuntimeEnvironment())
-                            .getRegionId()))
+                    new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()))
                 .getDatabaseName()
             + TsFileConstant.PATH_SEPARATOR;
 
@@ -247,7 +247,7 @@ public class AggregateProcessor implements PipeProcessor {
     // Load the useful aggregators' and their corresponding intermediate results' computational
     // logic.
     final Set<String> declaredIntermediateResultSet = new HashSet<>();
-    final PipeDataRegionPluginAgent agent = PipeAgent.plugin().dataRegion();
+    final PipeDataRegionPluginAgent agent = PipeDataNodeAgent.plugin().dataRegion();
     for (final String pipePluginName :
         agent.getSubProcessorNamesWithSpecifiedParent(AbstractOperatorProcessor.class)) {
       // Children are allowed to validate and configure the computational logic
@@ -450,7 +450,13 @@ public class AggregateProcessor implements PipeProcessor {
                   state.updateWindows(
                       timestamp, row.getInt(index), outputMinReportIntervalMilliseconds);
               break;
+            case DATE:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getDate(index), outputMinReportIntervalMilliseconds);
+              break;
             case INT64:
+            case TIMESTAMP:
               result =
                   state.updateWindows(
                       timestamp, row.getLong(index), outputMinReportIntervalMilliseconds);
@@ -466,9 +472,15 @@ public class AggregateProcessor implements PipeProcessor {
                       timestamp, row.getDouble(index), outputMinReportIntervalMilliseconds);
               break;
             case TEXT:
+            case STRING:
               result =
                   state.updateWindows(
                       timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
+              break;
+            case BLOB:
+              result =
+                  state.updateWindows(
+                      timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
               break;
             default:
               throw new UnsupportedOperationException(
@@ -620,7 +632,11 @@ public class AggregateProcessor implements PipeProcessor {
               case INT32:
                 valueColumns[columnIndex] = new int[distinctOutputs.size()];
                 break;
+              case DATE:
+                valueColumns[columnIndex] = new LocalDate[distinctOutputs.size()];
+                break;
               case INT64:
+              case TIMESTAMP:
                 valueColumns[columnIndex] = new long[distinctOutputs.size()];
                 break;
               case FLOAT:
@@ -630,7 +646,9 @@ public class AggregateProcessor implements PipeProcessor {
                 valueColumns[columnIndex] = new double[distinctOutputs.size()];
                 break;
               case TEXT:
-                valueColumns[columnIndex] = new String[distinctOutputs.size()];
+              case BLOB:
+              case STRING:
+                valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
                 break;
               default:
                 throw new UnsupportedOperationException(
@@ -649,7 +667,12 @@ public class AggregateProcessor implements PipeProcessor {
               ((int[]) valueColumns[columnIndex])[rowIndex] =
                   (int) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;
+            case DATE:
+              ((LocalDate[]) valueColumns[columnIndex])[rowIndex] =
+                  (LocalDate) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+              break;
             case INT64:
+            case TIMESTAMP:
               ((long[]) valueColumns[columnIndex])[rowIndex] =
                   (long) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;
@@ -662,8 +685,19 @@ public class AggregateProcessor implements PipeProcessor {
                   (double) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;
             case TEXT:
-              ((String[]) valueColumns[columnIndex])[rowIndex] =
-                  (String) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
+            case STRING:
+              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
+                  aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
+                          instanceof Binary
+                      ? (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight()
+                      : new Binary(
+                          (String)
+                              aggregatedResults.get(columnNameStringList[columnIndex]).getRight(),
+                          TSFileConfig.STRING_CHARSET);
+              break;
+            case BLOB:
+              ((Binary[]) valueColumns[columnIndex])[rowIndex] =
+                  (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;
             default:
               throw new UnsupportedOperationException(

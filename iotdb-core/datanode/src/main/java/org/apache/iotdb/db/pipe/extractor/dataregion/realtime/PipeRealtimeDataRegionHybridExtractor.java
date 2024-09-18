@@ -21,8 +21,9 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -30,7 +31,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionExtractorMetrics;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -57,7 +58,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
     } else if (eventToExtract instanceof PipeSchemaRegionWritePlanEvent) {
-      extractDeletion(event);
+      extractDirectly(event);
     } else {
       throw new UnsupportedOperationException(
           String.format(
@@ -113,7 +114,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "has reached capacity, discard tablet event %s, current state %s",
                   this, event, event.getTsFileEpoch().getState(this));
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tablet event.
@@ -184,7 +185,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "has reached capacity, discard TsFile event %s, current state %s",
                   this, event, event.getTsFileEpoch().getState(this));
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
           // Ignore the tsfile event.
@@ -222,7 +223,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayMemTablePinnedCountReachDangerousThreshold() {
-    return PipeResourceManager.wal().getPinnedWalCount()
+    return PipeDataNodeResourceManager.wal().getPinnedWalCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedPinnedMemTableCount();
   }
 
@@ -240,7 +241,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
   }
 
   private boolean mayTsFileLinkedCountReachDangerousThreshold() {
-    return PipeResourceManager.tsfile().getLinkedTsfileCount()
+    return PipeDataNodeResourceManager.tsfile().getLinkedTsfileCount()
         >= PipeConfig.getInstance().getPipeMaxAllowedLinkedTsFileCount();
   }
 
@@ -259,8 +260,9 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
         suppliedEvent = supplyTsFileInsertion(realtimeEvent);
       } else if (eventToSupply instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeletion(realtimeEvent);
+      } else if (eventToSupply instanceof PipeSchemaRegionWritePlanEvent
+          || eventToSupply instanceof ProgressReportEvent) {
+        suppliedEvent = supplyDirectly(realtimeEvent);
       } else {
         throw new UnsupportedOperationException(
             String.format(
@@ -360,7 +362,7 @@ public class PipeRealtimeDataRegionHybridExtractor extends PipeRealtimeDataRegio
                       + "the data represented by this event is lost",
                   event.getEvent());
           LOGGER.error(errorMessage);
-          PipeAgent.runtime()
+          PipeDataNodeAgent.runtime()
               .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
           return null;
         }

@@ -38,11 +38,14 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MonitorInfo;
+import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.net.MalformedURLException;
@@ -61,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CLUSTER_CONFIGURATIONS;
@@ -121,11 +125,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final MppJVMConfig jvmConfig;
   protected final int clusterIndex;
   protected final boolean isMultiCluster;
-  private Process instance;
+  protected Process instance;
   private final String nodeAddress;
   private int nodePort;
-  private int metricPort;
-  private long startTime;
+  private final int metricPort;
+  private final long startTime;
   private List<String> killPoints = new ArrayList<>();
 
   /**
@@ -519,7 +523,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
-  public final int getMetricPort() {
+  public int getMetricPort() {
     return this.metricPort;
   }
 
@@ -536,7 +540,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return getNodePath() + File.separator + dirName + File.separator + fileName;
   }
 
-  private String getLogPath() {
+  protected String getLogPath() {
     return getLogDirPath() + File.separator + getId() + ".log";
   }
 
@@ -566,7 +570,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return System.getProperty(USER_DIR) + File.separator + TARGET + File.separator + getId();
   }
 
-  @Override
   public void dumpJVMSnapshot(String testCaseName) {
     JMXServiceURL url;
     try {
@@ -642,7 +645,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     output.print(sb);
   }
 
-  private String getTestLogDirName() {
+  protected String getTestLogDirName() {
     if (testMethodName == null) {
       return testClassName;
     }
@@ -675,4 +678,72 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   public abstract String getSystemPropertiesPath();
 
   protected abstract MppJVMConfig initVMConfig();
+
+  @Override
+  public void executeJstack() {
+    executeJstack(logger::info);
+  }
+
+  @Override
+  public void executeJstack(final String testCaseName) {
+    final String fileName =
+        getLogDirPath() + File.separator + testCaseName + "_" + getId() + "-threads.jstack";
+    try (final PrintWriter output = new PrintWriter(fileName)) {
+      executeJstack(output::println);
+    } catch (final IOException e) {
+      logger.warn("IOException occurred when executing Jstack for {}", this.getId(), e);
+    }
+    logger.info("Jstack execution output can be found at {}", fileName);
+  }
+
+  private void executeJstack(final Consumer<String> consumer) {
+    final long pid = this.getPid();
+    if (pid == -1) {
+      logger.warn("Failed to get pid for {} before executing Jstack", this.getId());
+      return;
+    }
+    final String command = "jstack -l " + pid;
+    logger.info("Executing command {} for {}", command, this.getId());
+    try {
+      final Process process = Runtime.getRuntime().exec(command);
+      try (final BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          consumer.accept(line);
+        }
+      }
+      final int exitCode = process.waitFor();
+      logger.info("Command {} exited with code {}", command, exitCode);
+    } catch (final IOException e) {
+      logger.warn("IOException occurred when executing Jstack for {}", this.getId(), e);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("InterruptedException occurred when executing Jstack for {}", this.getId(), e);
+    }
+  }
+
+  /**
+   * @return The native process ID of the process, -1 if failure.
+   */
+  @Override
+  public long getPid() {
+    final JMXServiceURL url;
+    try {
+      url =
+          new JMXServiceURL(
+              String.format("service:jmx:rmi:///jndi/rmi://127.0.0.1:%d/jmxrmi", jmxPort));
+    } catch (final MalformedURLException ignored) {
+      return -1;
+    }
+    try (final JMXConnector connector = JMXConnectorFactory.connect(url)) {
+      final MBeanServerConnection mbsc = connector.getMBeanServerConnection();
+      final RuntimeMXBean rmbean =
+          ManagementFactory.newPlatformMXBeanProxy(
+              mbsc, ManagementFactory.RUNTIME_MXBEAN_NAME, RuntimeMXBean.class);
+      return Long.parseLong(rmbean.getName().split("@")[0]);
+    } catch (final Throwable ignored) {
+      return -1;
+    }
+  }
 }

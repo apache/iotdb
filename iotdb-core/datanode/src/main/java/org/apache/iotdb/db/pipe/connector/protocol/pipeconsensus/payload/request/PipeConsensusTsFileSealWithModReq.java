@@ -48,6 +48,7 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
       long modFileLength,
       String tsFileName,
       long tsFileLength,
+      long tsFilePointCount,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
       ProgressIndex progressIndex,
@@ -58,6 +59,7 @@ public class PipeConsensusTsFileSealWithModReq extends PipeConsensusTransferFile
             .convertToTPipeConsensusTransferReq(
                 Arrays.asList(modFileName, tsFileName),
                 Arrays.asList(modFileLength, tsFileLength),
+                Arrays.asList(0L, tsFilePointCount),
                 new HashMap<>(),
                 commitId,
                 consensusGroupId,

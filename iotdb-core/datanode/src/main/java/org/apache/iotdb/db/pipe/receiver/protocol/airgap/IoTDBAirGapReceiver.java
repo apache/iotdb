@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapPseudoTPipeTransferRequest;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,7 +63,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     this.socket = socket;
     this.receiverId = receiverId;
 
-    agent = PipeAgent.receiver().thrift();
+    agent = PipeDataNodeAgent.receiver().thrift();
   }
 
   @Override
@@ -90,7 +90,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           e);
       throw e;
     } finally {
-      PipeAgent.receiver().thrift().handleClientExit();
+      PipeDataNodeAgent.receiver().thrift().handleClientExit();
       socket.close();
     }
   }

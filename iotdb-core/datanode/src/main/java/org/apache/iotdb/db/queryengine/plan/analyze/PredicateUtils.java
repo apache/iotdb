@@ -40,6 +40,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.Convert
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicatePushIntoScanChecker;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.PredicateSimplifier;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.predicate.ReversePredicateVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -50,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -278,6 +281,17 @@ public class PredicateUtils {
     return predicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
   }
 
+  public static Filter convertPredicateToTimeFilter(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+    if (predicate == null) {
+      return null;
+    }
+    return predicate.accept(
+        new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .ConvertPredicateToTimeFilterVisitor(),
+        null);
+  }
+
   public static Filter convertPredicateToFilter(
       Expression predicate,
       List<String> allMeasurements,
@@ -291,6 +305,20 @@ public class PredicateUtils {
         new ConvertPredicateToFilterVisitor(),
         new ConvertPredicateToFilterVisitor.Context(
             allMeasurements, isBuildPlanUseTemplate, typeProvider, zoneId));
+  }
+
+  public static Filter convertPredicateToFilter(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      List<String> allMeasurements,
+      Map<Symbol, ColumnSchema> schemaMap) {
+    if (predicate == null) {
+      return null;
+    }
+    return predicate.accept(
+        new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .ConvertPredicateToFilterVisitor(),
+        new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .ConvertPredicateToFilterVisitor.Context(allMeasurements, schemaMap));
   }
 
   /**
@@ -398,5 +426,12 @@ public class PredicateUtils {
    */
   public static boolean predicateCanPushIntoScan(Expression predicate) {
     return new PredicatePushIntoScanChecker().process(predicate, null);
+  }
+
+  public static boolean predicateCanPushIntoScan(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+    return new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
+            .PredicatePushIntoScanChecker()
+        .process(predicate, null);
   }
 }

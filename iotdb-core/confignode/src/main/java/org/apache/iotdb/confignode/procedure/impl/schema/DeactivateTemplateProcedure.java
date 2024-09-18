@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -152,7 +152,7 @@ public class DeactivateTemplateProcedure
                 "construct schema black list",
                 env,
                 targetSchemaRegionGroup,
-                DataNodeRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                CnToDnRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TConstructSchemaBlackListWithTemplateReq(
                         consensusGroupIdList, dataNodeRequest))) {
@@ -198,12 +198,13 @@ public class DeactivateTemplateProcedure
     if (!timeSeriesPatternTree.isEmpty()) {
       Map<Integer, TDataNodeLocation> dataNodeLocationMap =
           env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-      AsyncClientHandler<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
-          new AsyncClientHandler<>(
-              DataNodeRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
+      DataNodeAsyncRequestContext<TInvalidateMatchedSchemaCacheReq, TSStatus> clientHandler =
+          new DataNodeAsyncRequestContext<>(
+              CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
               new TInvalidateMatchedSchemaCacheReq(timeSeriesPatternTreeBytes),
               dataNodeLocationMap);
-      AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+      CnToDnInternalServiceAsyncRequestManager.getInstance()
+          .sendAsyncRequestWithRetry(clientHandler);
       Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
       for (TSStatus status : statusMap.values()) {
         // all dataNodes must clear the related schema cache
@@ -232,7 +233,7 @@ public class DeactivateTemplateProcedure
               env,
               relatedDataRegionGroup,
               true,
-              DataNodeRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
+              CnToDnRequestType.DELETE_DATA_FOR_DELETE_SCHEMA,
               ((dataNodeLocation, consensusGroupIdList) ->
                   new TDeleteDataForDeleteSchemaReq(
                       new ArrayList<>(consensusGroupIdList), timeSeriesPatternTreeBytes)));
@@ -247,7 +248,7 @@ public class DeactivateTemplateProcedure
             "deactivate template schema",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
-            DataNodeRequestType.DEACTIVATE_TEMPLATE,
+            CnToDnRequestType.DEACTIVATE_TEMPLATE,
             ((dataNodeLocation, consensusGroupIdList) ->
                 new TDeactivateTemplateReq(consensusGroupIdList, dataNodeRequest)
                     .setIsGeneratedByPipe(isGeneratedByPipe)));
@@ -285,7 +286,7 @@ public class DeactivateTemplateProcedure
                   "roll back schema black list",
                   env,
                   env.getConfigManager().getRelatedSchemaRegionGroup(timeSeriesPatternTree),
-                  DataNodeRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
+                  CnToDnRequestType.ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
                   ((dataNodeLocation, consensusGroupIdList) ->
                       new TRollbackSchemaBlackListWithTemplateReq(
                           consensusGroupIdList, dataNodeRequest)));
@@ -347,7 +348,7 @@ public class DeactivateTemplateProcedure
     for (Map.Entry<PartialPath, List<Template>> entry : templateSetInfo.entrySet()) {
       for (Template template : entry.getValue()) {
         for (String measurement : template.getSchemaMap().keySet()) {
-          patternTree.appendPathPattern(entry.getKey().concatNode(measurement));
+          patternTree.appendPathPattern(entry.getKey().concatAsMeasurementPath(measurement));
         }
       }
     }
@@ -438,7 +439,7 @@ public class DeactivateTemplateProcedure
         String taskName,
         ConfigNodeProcedureEnv env,
         Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
-        DataNodeRequestType dataNodeRequestType,
+        CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(env, targetSchemaRegionGroup, false, dataNodeRequestType, dataNodeRequestGenerator);
       this.taskName = taskName;
@@ -447,13 +448,13 @@ public class DeactivateTemplateProcedure
     DeactivateTemplateRegionTaskExecutor(
         String taskName,
         ConfigNodeProcedureEnv env,
-        Map<TConsensusGroupId, TRegionReplicaSet> targetSchemaRegionGroup,
+        Map<TConsensusGroupId, TRegionReplicaSet> targetDataRegionGroup,
         boolean executeOnAllReplicaset,
-        DataNodeRequestType dataNodeRequestType,
+        CnToDnRequestType dataNodeRequestType,
         BiFunction<TDataNodeLocation, List<TConsensusGroupId>, Q> dataNodeRequestGenerator) {
       super(
           env,
-          targetSchemaRegionGroup,
+          targetDataRegionGroup,
           executeOnAllReplicaset,
           dataNodeRequestType,
           dataNodeRequestGenerator);
@@ -490,8 +491,12 @@ public class DeactivateTemplateProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s] because all replicaset of schemaRegion %s failed. %s",
-                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      requestMessage,
+                      taskName,
+                      consensusGroupId.type,
+                      consensusGroupId.id,
+                      dataNodeLocationSet))));
       interruptTask();
     }
   }

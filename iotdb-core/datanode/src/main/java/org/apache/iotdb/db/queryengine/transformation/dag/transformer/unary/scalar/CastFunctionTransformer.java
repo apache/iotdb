@@ -67,6 +67,10 @@ public class CastFunctionTransformer extends UnaryTransformer {
         return castBooleans(columns);
       case TEXT:
         return castBinaries(columns);
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported source dataType: %s", layerReaderDataType));
@@ -133,6 +137,11 @@ public class CastFunctionTransformer extends UnaryTransformer {
           }
         }
         break;
+      case STRING:
+      case BLOB:
+      case TIMESTAMP:
+      case DATE:
+      case INT32:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", layerReaderDataType));
@@ -203,6 +212,11 @@ public class CastFunctionTransformer extends UnaryTransformer {
           }
         }
         break;
+      case BLOB:
+      case STRING:
+      case DATE:
+      case TIMESTAMP:
+      case INT64:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", layerReaderDataType));
@@ -273,6 +287,11 @@ public class CastFunctionTransformer extends UnaryTransformer {
           }
         }
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
+      case FLOAT:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", layerReaderDataType));
@@ -343,6 +362,11 @@ public class CastFunctionTransformer extends UnaryTransformer {
           }
         }
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case DATE:
+      case DOUBLE:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", layerReaderDataType));
@@ -413,6 +437,11 @@ public class CastFunctionTransformer extends UnaryTransformer {
           }
         }
         break;
+      case STRING:
+      case BLOB:
+      case DATE:
+      case TIMESTAMP:
+      case BOOLEAN:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", layerReaderDataType));
@@ -488,6 +517,11 @@ public class CastFunctionTransformer extends UnaryTransformer {
           }
         }
         break;
+      case TIMESTAMP:
+      case DATE:
+      case STRING:
+      case BLOB:
+      case TEXT:
       default:
         throw new UnsupportedOperationException(
             String.format("Unsupported target dataType: %s", layerReaderDataType));

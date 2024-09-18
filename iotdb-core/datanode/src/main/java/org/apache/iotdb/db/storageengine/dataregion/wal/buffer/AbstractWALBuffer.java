@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -58,7 +57,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
 
   protected AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
-      throws FileNotFoundException {
+      throws IOException {
     this.identifier = identifier;
     this.logDirectory = logDirectory;
     File logDirFile = SystemFileFactory.INSTANCE.getFile(logDirectory);
@@ -85,8 +84,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   }
 
   @Override
-  public long getCurrentWALFileSize() {
-    return currentWALFileWriter.size();
+  public long getCurrentWALOriginalFileSize() {
+    return currentWALFileWriter.originalSize();
   }
 
   /**

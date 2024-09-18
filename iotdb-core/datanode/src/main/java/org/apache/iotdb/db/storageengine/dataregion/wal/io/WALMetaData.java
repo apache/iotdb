@@ -20,12 +20,17 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.utils.SerializedSize;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +41,8 @@ import java.util.Set;
  * entry and the number of entries.
  */
 public class WALMetaData implements SerializedSize {
+
+  private static final Logger logger = LoggerFactory.getLogger(WALMetaData.class);
   // search index 8 byte, wal entries' number 4 bytes
   private static final int FIXED_SERIALIZED_SIZE = Long.BYTES + Integer.BYTES;
 
@@ -45,6 +52,7 @@ public class WALMetaData implements SerializedSize {
   private final List<Integer> buffersSize;
   // memTable ids of this wal file
   private final Set<Long> memTablesId;
+  private long truncateOffSet = 0;
 
   public WALMetaData() {
     this(ConsensusReqReader.DEFAULT_SEARCH_INDEX, new ArrayList<>(), new HashSet<>());
@@ -123,40 +131,62 @@ public class WALMetaData implements SerializedSize {
   }
 
   public static WALMetaData readFromWALFile(File logFile, FileChannel channel) throws IOException {
-    if (channel.size() < WALWriter.MAGIC_STRING_BYTES
-        || !readTailMagic(channel).equals(WALWriter.MAGIC_STRING)) {
-      throw new IOException(String.format("Broken wal file %s", logFile));
+    if (channel.size() < WALFileVersion.V2.getVersionBytes().length
+        || !isValidMagicString(channel)) {
+      throw new BrokenWALFileException(logFile);
     }
+
     // load metadata size
-    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position = channel.size() - WALWriter.MAGIC_STRING_BYTES - Integer.BYTES;
-    channel.read(metadataSizeBuf, position);
-    metadataSizeBuf.flip();
-    // load metadata
-    int metadataSize = metadataSizeBuf.getInt();
-    ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
-    channel.read(metadataBuf, position - metadataSize);
-    metadataBuf.flip();
-    WALMetaData metaData = WALMetaData.deserialize(metadataBuf);
-    // versions before V1.3, should recover memTable ids from entries
-    if (metaData.memTablesId.isEmpty()) {
-      int offset = Byte.BYTES;
-      for (int size : metaData.buffersSize) {
-        channel.position(offset);
-        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        channel.read(buffer);
-        buffer.clear();
-        metaData.memTablesId.add(buffer.getLong());
-        offset += size;
+    WALMetaData metaData = null;
+    long position;
+    try {
+      ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
+      WALFileVersion version = WALFileVersion.getVersion(channel);
+      position = channel.size() - Integer.BYTES - (version.getVersionBytes().length);
+      channel.read(metadataSizeBuf, position);
+      metadataSizeBuf.flip();
+      // load metadata
+      int metadataSize = metadataSizeBuf.getInt();
+      ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
+      channel.read(metadataBuf, position - metadataSize);
+      metadataBuf.flip();
+      metaData = WALMetaData.deserialize(metadataBuf);
+      // versions before V1.3, should recover memTable ids from entries
+      if (metaData.memTablesId.isEmpty()) {
+        int offset = Byte.BYTES;
+        for (int size : metaData.buffersSize) {
+          channel.position(offset);
+          ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+          channel.read(buffer);
+          buffer.clear();
+          metaData.memTablesId.add(buffer.getLong());
+          offset += size;
+        }
       }
+    } catch (IllegalArgumentException e) {
+      throw new BrokenWALFileException(logFile);
+    } catch (IOException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new IOException("Unexpected exception", e);
     }
     return metaData;
   }
 
-  private static String readTailMagic(FileChannel channel) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALWriter.MAGIC_STRING_BYTES);
-    channel.read(magicStringBytes, channel.size() - WALWriter.MAGIC_STRING_BYTES);
+  private static boolean isValidMagicString(FileChannel channel) throws IOException {
+    ByteBuffer magicStringBytes = ByteBuffer.allocate(WALFileVersion.V2.getVersionBytes().length);
+    channel.read(magicStringBytes, channel.size() - WALFileVersion.V2.getVersionBytes().length);
     magicStringBytes.flip();
-    return new String(magicStringBytes.array());
+    String magicString = new String(magicStringBytes.array(), StandardCharsets.UTF_8);
+    return magicString.equals(WALFileVersion.V2.getVersionString())
+        || magicString.contains(WALFileVersion.V1.getVersionString());
+  }
+
+  public void setTruncateOffSet(long offset) {
+    this.truncateOffSet = offset;
+  }
+
+  public long getTruncateOffSet() {
+    return truncateOffSet;
   }
 }

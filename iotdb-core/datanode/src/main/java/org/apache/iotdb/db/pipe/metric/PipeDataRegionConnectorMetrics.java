@@ -43,6 +43,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PipeDataRegionConnectorMetrics.class);
 
+  @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
   private final Map<String, PipeConnectorSubtask> connectorMap = new HashMap<>();
@@ -280,7 +281,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     }
     final Rate rate = tabletRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe data region connector tablet event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;
@@ -294,7 +295,7 @@ public class PipeDataRegionConnectorMetrics implements IMetricSet {
     }
     final Rate rate = tsFileRateMap.get(taskID);
     if (rate == null) {
-      LOGGER.warn(
+      LOGGER.info(
           "Failed to mark pipe data region connector tsfile event, PipeConnectorSubtask({}) does not exist",
           taskID);
       return;

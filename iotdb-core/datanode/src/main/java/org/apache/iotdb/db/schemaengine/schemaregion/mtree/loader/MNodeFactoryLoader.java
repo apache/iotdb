@@ -40,7 +40,11 @@ public class MNodeFactoryLoader {
 
   private final List<String> scanPackages = new ArrayList<>();
   private String env;
+
+  @SuppressWarnings("java:S3077")
   private volatile IMNodeFactory<ICachedMNode> cachedMNodeIMNodeFactory;
+
+  @SuppressWarnings("java:S3077")
   private volatile IMNodeFactory<IMemMNode> memMNodeIMNodeFactory;
 
   private MNodeFactoryLoader() {

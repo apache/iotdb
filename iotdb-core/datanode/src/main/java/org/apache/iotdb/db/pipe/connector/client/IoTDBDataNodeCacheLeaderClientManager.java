@@ -21,7 +21,7 @@ package org.apache.iotdb.db.pipe.connector.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -50,21 +50,22 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
     private final ConcurrentHashMap<TEndPoint, TEndPoint> endPoints = new ConcurrentHashMap<>();
 
     public LeaderCacheManager() {
-      long initMemorySizeInBytes = PipeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
-      long maxMemorySizeInBytes =
+      final long initMemorySizeInBytes =
+          PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes() / 10;
+      final long maxMemorySizeInBytes =
           (long)
-              (PipeResourceManager.memory().getTotalMemorySizeInBytes()
+              (PipeDataNodeResourceManager.memory().getTotalMemorySizeInBytes()
                   * CONFIG.getPipeLeaderCacheMemoryUsagePercentage());
 
       // properties required by pipe memory control framework
-      PipeMemoryBlock allocatedMemoryBlock =
-          PipeResourceManager.memory()
+      final PipeMemoryBlock allocatedMemoryBlock =
+          PipeDataNodeResourceManager.memory()
               .tryAllocate(initMemorySizeInBytes)
               .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
               .setShrinkCallback(
                   (oldMemory, newMemory) -> {
-                    memoryUsageCheatFactor.set(
-                        memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
+                    memoryUsageCheatFactor.updateAndGet(
+                        factor -> factor * ((double) oldMemory / newMemory));
                     LOGGER.info(
                         "LeaderCacheManager.allocatedMemoryBlock has shrunk from {} to {}.",
                         oldMemory,
@@ -74,8 +75,8 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
                   oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, maxMemorySizeInBytes))
               .setExpandCallback(
                   (oldMemory, newMemory) -> {
-                    memoryUsageCheatFactor.set(
-                        memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
+                    memoryUsageCheatFactor.updateAndGet(
+                        factor -> factor / ((double) newMemory / oldMemory));
                     LOGGER.info(
                         "LeaderCacheManager.allocatedMemoryBlock has expanded from {} to {}.",
                         oldMemory,
@@ -100,16 +101,16 @@ public interface IoTDBDataNodeCacheLeaderClientManager {
               .build();
     }
 
-    public TEndPoint getLeaderEndPoint(String deviceId) {
+    public TEndPoint getLeaderEndPoint(final String deviceId) {
       return deviceId == null ? null : device2endpoint.getIfPresent(deviceId);
     }
 
-    public void updateLeaderEndPoint(String deviceId, TEndPoint endPoint) {
+    public void updateLeaderEndPoint(final String deviceId, final TEndPoint endPoint) {
       if (deviceId == null || endPoint == null) {
         return;
       }
 
-      TEndPoint endPointFromMap = endPoints.putIfAbsent(endPoint, endPoint);
+      final TEndPoint endPointFromMap = endPoints.putIfAbsent(endPoint, endPoint);
       if (endPointFromMap != null) {
         device2endpoint.put(deviceId, endPointFromMap);
       } else {

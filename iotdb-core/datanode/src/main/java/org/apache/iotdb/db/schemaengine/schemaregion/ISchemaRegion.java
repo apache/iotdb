@@ -27,6 +27,8 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.TableDeviceAttributeUpdateNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.rescon.ISchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
@@ -45,6 +47,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeact
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.template.Template;
+
+import org.apache.tsfile.utils.Pair;
 
 import java.io.File;
 import java.io.IOException;
@@ -110,7 +114,7 @@ public interface ISchemaRegion {
    * @param offset
    * @throws MetadataException
    */
-  void createTimeseries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
+  void createTimeSeries(ICreateTimeSeriesPlan plan, long offset) throws MetadataException;
 
   /**
    * Create aligned timeseries.
@@ -144,14 +148,16 @@ public interface ISchemaRegion {
       throws SchemaQuotaExceededException;
 
   /**
-   * Construct schema black list via setting matched timeseries to pre deleted.
+   * Construct schema black list via setting matched time series to preDeleted.
    *
-   * @param patternTree
-   * @throws MetadataException
-   * @return preDeletedNum. If there are intersections of patterns in the patternTree, there may be
-   *     more than are actually pre-deleted.
+   * @param patternTree the patterns to construct black list
+   * @throws MetadataException If write to mLog failed
+   * @return {@link Pair}{@literal <}preDeletedNum, isAllLogicalView{@literal >}. If there are
+   *     intersections of patterns in the patternTree, there may be more than are actually
+   *     pre-deleted.
    */
-  long constructSchemaBlackList(PathPatternTree patternTree) throws MetadataException;
+  Pair<Long, Boolean> constructSchemaBlackList(final PathPatternTree patternTree)
+      throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.
@@ -194,15 +200,28 @@ public interface ISchemaRegion {
 
   // region Interfaces for metadata info Query
 
-  // region Interfaces for timeseries, measurement and schema info Query
+  // region Interfaces for timeSeries, measurement and schema info Query
 
   MeasurementPath fetchMeasurementPath(PartialPath fullPath) throws MetadataException;
 
-  ClusterSchemaTree fetchSchema(
+  ClusterSchemaTree fetchSeriesSchema(
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
-      boolean withTemplate)
+      boolean withAttributes,
+      boolean withTemplate,
+      boolean withAliasForce)
+      throws MetadataException;
+
+  /**
+   * Fetch all the schema by the given patternTree in device level. Currently, devices with
+   * isAligned!=null will be filtered out.
+   *
+   * @param patternTree devices' pattern
+   * @param authorityScope the scope of the authority
+   * @return pattern tree with all leaves as device nodes
+   */
+  ClusterSchemaTree fetchDeviceSchema(PathPatternTree patternTree, PathPatternTree authorityScope)
       throws MetadataException;
 
   // endregion
@@ -297,6 +316,18 @@ public interface ISchemaRegion {
 
   // endregion
 
+  // region table device management
+
+  void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode createOrUpdateTableDeviceNode)
+      throws MetadataException;
+
+  void updateTableDeviceAttribute(final TableDeviceAttributeUpdateNode updateNode)
+      throws MetadataException;
+
+  void deleteTableDevice(String table) throws MetadataException;
+
+  // endregion
+
   // region Interfaces for SchemaReader
 
   ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
@@ -307,6 +338,13 @@ public interface ISchemaRegion {
 
   ISchemaReader<INodeSchemaInfo> getNodeReader(IShowNodesPlan showNodesPlan)
       throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(final PartialPath pathPattern)
+      throws MetadataException;
+
+  ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
+      final String table, final List<Object[]> devicePathList) throws MetadataException;
+  // endregion
 
   // endregion
 }

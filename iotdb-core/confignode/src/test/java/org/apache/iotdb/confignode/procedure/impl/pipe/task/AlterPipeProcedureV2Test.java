@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -39,16 +40,21 @@ public class AlterPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
+    Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
+
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
     connectorAttributes.put("port", "6667");
 
+    TAlterPipeReq req =
+        new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true);
+    req.setExtractorAttributes(extractorAttributes);
+    req.setIsReplaceAllExtractorAttributes(false);
     AlterPipeProcedureV2 proc =
-        new AlterPipeProcedureV2(
-            new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true));
+        new AlterPipeProcedureV2(req, ProcedureType.ALTER_PIPE_PROCEDURE_V2);
 
     try {
       proc.serialize(outputStream);

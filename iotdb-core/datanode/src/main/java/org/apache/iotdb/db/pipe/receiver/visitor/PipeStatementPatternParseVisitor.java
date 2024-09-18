@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
@@ -59,7 +60,7 @@ public class PipeStatementPatternParseVisitor
   public Optional<Statement> visitCreateTimeseries(
       final CreateTimeSeriesStatement statement, final IoTDBPipePattern pattern) {
     return pattern.matchesMeasurement(
-            statement.getPath().getDevice(), statement.getPath().getMeasurement())
+            statement.getPath().getIDeviceID(), statement.getPath().getMeasurement())
         ? Optional.of(statement)
         : Optional.empty();
   }
@@ -72,7 +73,7 @@ public class PipeStatementPatternParseVisitor
             .filter(
                 index ->
                     pattern.matchesMeasurement(
-                        statement.getDevicePath().getFullPath(),
+                        statement.getDevicePath().getIDeviceIDAsFullDevice(),
                         statement.getMeasurements().get(index)))
             .toArray();
     if (filteredIndexes.length == 0) {
@@ -92,6 +93,7 @@ public class PipeStatementPatternParseVisitor
                   statement.getEncodings().get(index));
               targetCreateAlignedTimeSeriesStatement.addCompressor(
                   statement.getCompressors().get(index));
+              // Non-null lists
               targetCreateAlignedTimeSeriesStatement.addTagsList(
                   statement.getTagsList().get(index));
               targetCreateAlignedTimeSeriesStatement.addAttributesList(
@@ -100,6 +102,17 @@ public class PipeStatementPatternParseVisitor
                   statement.getAliasList().get(index));
             });
     return Optional.of(targetCreateAlignedTimeSeriesStatement);
+  }
+
+  // For logical view with tags/attributes
+  @Override
+  public Optional<Statement> visitAlterTimeSeries(
+      final AlterTimeSeriesStatement alterTimeSeriesStatement, final IoTDBPipePattern pattern) {
+    return pattern.matchesMeasurement(
+            alterTimeSeriesStatement.getPath().getIDeviceID(),
+            alterTimeSeriesStatement.getPath().getMeasurement())
+        ? Optional.of(alterTimeSeriesStatement)
+        : Optional.empty();
   }
 
   @Override
@@ -118,7 +131,10 @@ public class PipeStatementPatternParseVisitor
             .filter(
                 index ->
                     pattern.matchesMeasurement(
-                        createLogicalViewStatement.getTargetPathList().get(index).getDevice(),
+                        createLogicalViewStatement
+                            .getTargetPathList()
+                            .get(index)
+                            .getIDeviceIDAsFullDevice(),
                         createLogicalViewStatement.getTargetPathList().get(index).getMeasurement()))
             .toArray();
     if (filteredIndexes.length == 0) {

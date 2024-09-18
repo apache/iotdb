@@ -34,6 +34,7 @@ import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -77,8 +78,13 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
             new PartialPath("root.sg.d1.GPS"), 3, templateId),
         template);
     ClusterSchemaTree schemaTree =
-        schemaRegion.fetchSchema(
-            ALL_MATCH_SCOPE, Collections.singletonMap(templateId, template), true, true);
+        schemaRegion.fetchSeriesSchema(
+            ALL_MATCH_SCOPE,
+            Collections.singletonMap(templateId, template),
+            true,
+            false,
+            true,
+            false);
     Assert.assertEquals(2, schemaTree.getAllDevices().size());
     for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getAllDevices()) {
       Assert.assertEquals(templateId, deviceSchemaInfo.getTemplateId());
@@ -187,7 +193,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
   @Test
   public void testFetchSchemaWithTemplate() throws Exception {
     ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
-    SchemaRegionTestUtil.createSimpleTimeseriesByList(
+    SchemaRegionTestUtil.createSimpleTimeSeriesByList(
         schemaRegion, Arrays.asList("root.sg.wf01.wt01.status", "root.sg.wf01.wt01.temperature"));
     int templateId = 1;
     Template template =
@@ -213,7 +219,7 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
     // check fetch schema
     ClusterSchemaTree schemaTree =
-        schemaRegion.fetchSchema(ALL_MATCH_SCOPE, templateMap, true, true);
+        schemaRegion.fetchSeriesSchema(ALL_MATCH_SCOPE, templateMap, true, false, true, false);
     schemaTree.setTemplateMap(templateMap);
     List<MeasurementPath> schemas = schemaTree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(expectedTimeseries.size(), schemas.size());
@@ -233,9 +239,9 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
 
   @Test
   public void testDeleteSchemaWithTemplate() throws Exception {
-    ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
-    int templateId = 1;
-    Template template =
+    final ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
+    final int templateId = 1;
+    final Template template =
         new Template(
             "t1",
             Arrays.asList("s1", "s2"),
@@ -250,24 +256,26 @@ public class SchemaRegionTemplateTest extends AbstractSchemaRegionTest {
         template);
 
     Assert.assertEquals(
-        0, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s1")));
+        new Pair<>(0L, true),
+        SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s1")));
     Assert.assertEquals(
-        0, SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s3")));
+        new Pair<>(0L, true),
+        SchemaRegionTestUtil.deleteTimeSeries(schemaRegion, new PartialPath("root.db.d1.s3")));
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(new PartialPath("root.db.d1.s1"));
 
     ClusterSchemaTree schemaTree =
-        schemaRegion.fetchSchema(
-            patternTree, Collections.singletonMap(templateId, template), false, true);
+        schemaRegion.fetchSeriesSchema(
+            patternTree, Collections.singletonMap(templateId, template), false, false, true, false);
     schemaTree.setTemplateMap(Collections.singletonMap(templateId, template));
     Assert.assertEquals(
         1, schemaTree.searchMeasurementPaths(new PartialPath("root.db.d1.s1")).left.size());
     patternTree = new PathPatternTree();
     patternTree.appendFullPath(new PartialPath("root.db.d1.s3"));
     schemaTree =
-        schemaRegion.fetchSchema(
-            patternTree, Collections.singletonMap(templateId, template), false, true);
+        schemaRegion.fetchSeriesSchema(
+            patternTree, Collections.singletonMap(templateId, template), false, false, true, false);
     schemaTree.setTemplateMap(Collections.singletonMap(templateId, template));
     Assert.assertEquals(
         0, schemaTree.searchMeasurementPaths(new PartialPath("root.db.d1.s3")).left.size());

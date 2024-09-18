@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.series;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -28,7 +28,6 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
@@ -46,9 +45,9 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
 
   private AlignedSeriesScanUtil getAlignedSeriesScanUtil(
       Filter globalTimeFilter, Filter pushDownFilter) throws IllegalPathException {
-    AlignedPath scanPath =
-        new AlignedPath(
-            ((PlainDeviceID) TEST_DEVICE).toStringID(),
+    AlignedFullPath scanPath =
+        new AlignedFullPath(
+            TEST_DEVICE,
             Arrays.asList("s1", "s2"),
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
@@ -188,7 +187,9 @@ public class AlignedSeriesScanPredicatePushDownTest extends AbstractAlignedSerie
     AlignedSeriesScanUtil seriesScanUtil =
         getAlignedSeriesScanUtil(
             TimeFilterApi.gt(10),
-            FilterFactory.and(ValueFilterApi.gtEq(0, 20), ValueFilterApi.lt(1, 30)));
+            FilterFactory.and(
+                ValueFilterApi.gtEq(0, 20, TSDataType.INT32),
+                ValueFilterApi.lt(1, 30, TSDataType.INT32)));
 
     // File 1 skipped
     // File 2 skipped

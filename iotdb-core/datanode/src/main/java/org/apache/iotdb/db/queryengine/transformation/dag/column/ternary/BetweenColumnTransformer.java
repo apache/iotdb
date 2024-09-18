@@ -24,8 +24,11 @@ import org.apache.iotdb.db.queryengine.transformation.dag.util.TransformUtils;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.Type;
+
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBlobType;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isBool;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isCharType;
 
 public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
   private final boolean isNotBetween;
@@ -50,7 +53,8 @@ public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
     for (int i = 0; i < positionCount; i++) {
       if (!firstColumn.isNull(i) && !secondColumn.isNull(i) && !thirdColumn.isNull(i)) {
         boolean flag;
-        if (firstColumnTransformer.getType() instanceof BinaryType) {
+        if (isCharType(firstColumnTransformer.getType())
+            || isBlobType(firstColumnTransformer.getType())) {
           flag =
               ((TransformUtils.compare(
                               firstColumnTransformer.getType().getBinary(firstColumn, i),
@@ -59,6 +63,18 @@ public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
                       && (TransformUtils.compare(
                               firstColumnTransformer.getType().getBinary(firstColumn, i),
                               thirdColumnTransformer.getType().getBinary(thirdColumn, i))
+                          <= 0))
+                  ^ isNotBetween;
+        } else if (isBool(firstColumnTransformer.getType())) {
+
+          flag =
+              ((Boolean.compare(
+                              firstColumnTransformer.getType().getBoolean(firstColumn, i),
+                              secondColumnTransformer.getType().getBoolean(secondColumn, i))
+                          >= 0)
+                      && (Boolean.compare(
+                              firstColumnTransformer.getType().getBoolean(firstColumn, i),
+                              thirdColumnTransformer.getType().getBoolean(thirdColumn, i))
                           <= 0))
                   ^ isNotBetween;
         } else {

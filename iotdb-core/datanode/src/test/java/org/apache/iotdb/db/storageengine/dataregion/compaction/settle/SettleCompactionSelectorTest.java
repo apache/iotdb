@@ -22,7 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.settle;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
@@ -66,7 +66,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileWithLightSelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -124,7 +124,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUnContinuousFileWithLightSelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -174,7 +174,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnModsSizeWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -198,7 +198,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnDirtyRateByModsWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -209,7 +209,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       for (TsFileResource resource : seqResources) {
         addFileMods(
             resource,
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + i + ".**"),
+            new MeasurementPath(
+                COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + i + ".**"),
             Long.MAX_VALUE,
             0,
             200);
@@ -282,7 +283,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (TsFileResource resource : unseqResources) {
       addFileMods(
           resource,
-          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+          new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
           Long.MAX_VALUE,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -302,7 +303,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (TsFileResource resource : seqResources) {
       addFileMods(
           resource,
-          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+          new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
           Long.MAX_VALUE,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -322,7 +323,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileBaseOnDirtyDataOutdatedTooLongWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, false, false);
@@ -381,7 +382,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUncontinuousFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -400,7 +401,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 1) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
@@ -418,7 +419,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
         for (int d = 1; d < 5; d++) {
           addFileMods(
               seqResources.get(i),
-              new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
+              new MeasurementPath(
+                  COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
               Long.MAX_VALUE,
               Long.MIN_VALUE,
               Long.MAX_VALUE);
@@ -436,7 +438,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 1) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
@@ -465,7 +467,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -478,13 +480,13 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 0) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
@@ -493,7 +495,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (int d = 0; d < 5; d++) {
       addFileMods(
           seqResources.get(1),
-          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
+          new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**"),
           Long.MAX_VALUE,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -534,7 +536,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect2()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, false, true);
 
@@ -547,21 +549,21 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 0) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
       }
     }
     for (int d = 0; d < 5; d++) {
-      PartialPath path =
-          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**");
+      MeasurementPath path =
+          new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + d + ".**");
       addFileMods(seqResources.get(2), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
       addFileMods(seqResources.get(3), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
       addFileMods(seqResources.get(7), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
@@ -600,7 +602,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileWithLightSelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -658,7 +660,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUnContinuousFileWithLightSelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(2);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(2);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -709,7 +711,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnModsSizeWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -733,7 +735,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFilesBaseOnDirtyRateByModsWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setInnerCompactionTaskSelectionModsFileThreshold(1);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -744,7 +746,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       for (TsFileResource resource : seqResources) {
         addFileMods(
             resource,
-            new PartialPath(
+            new MeasurementPath(
                 COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + (10000 + i) + ".**"),
             Long.MAX_VALUE,
             0,
@@ -818,7 +820,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (TsFileResource resource : unseqResources) {
       addFileMods(
           resource,
-          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
+          new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
           Long.MAX_VALUE,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -838,7 +840,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (TsFileResource resource : seqResources) {
       addFileMods(
           resource,
-          new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
+          new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
           Long.MAX_VALUE,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -858,7 +860,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectContinuousFileBaseOnDirtyDataOutdatedTooLongWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, true);
     createFiles(5, 5, 10, 200, 0, 0, 100, 100, true, false);
@@ -917,7 +919,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectUncontinuousFileBaseOnDirtyDataRateWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -936,7 +938,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 1) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
@@ -954,7 +956,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
         for (int d = 1; d < 5; d++) {
           addFileMods(
               seqResources.get(i),
-              new PartialPath(
+              new MeasurementPath(
                   COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + (10000 + d) + ".**"),
               Long.MAX_VALUE,
               Long.MIN_VALUE,
@@ -973,7 +975,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 1) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
@@ -1002,7 +1004,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelectAligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -1015,13 +1017,13 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 0) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
@@ -1030,7 +1032,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     for (int d = 0; d < 5; d++) {
       addFileMods(
           seqResources.get(1),
-          new PartialPath(
+          new MeasurementPath(
               COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + (10000 + d) + ".**"),
           Long.MAX_VALUE,
           Long.MIN_VALUE,
@@ -1072,7 +1074,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @Test
   public void testSelectFileBaseOnDirtyDataRateWithHeavySelect2Aligned()
       throws IOException, MetadataException, WriteProcessException {
-    IoTDBDescriptor.getInstance().getConfig().setFileLimitPerInnerTask(3);
+    IoTDBDescriptor.getInstance().getConfig().setInnerCompactionCandidateFileNum(3);
     IoTDBDescriptor.getInstance().getConfig().setMaxExpiredTime(Long.MAX_VALUE);
     createFiles(10, 5, 10, 200, 0, 0, 100, 100, true, true);
 
@@ -1085,21 +1087,21 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       if (i % 2 == 0) {
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
         addFileMods(
             seqResources.get(i),
-            new PartialPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001.**"),
+            new MeasurementPath(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001.**"),
             Long.MAX_VALUE,
             Long.MIN_VALUE,
             Long.MAX_VALUE);
       }
     }
     for (int d = 0; d < 5; d++) {
-      PartialPath path =
-          new PartialPath(
+      MeasurementPath path =
+          new MeasurementPath(
               COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d" + (10000 + d) + ".**");
       addFileMods(seqResources.get(2), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
       addFileMods(seqResources.get(3), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
@@ -1136,7 +1138,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   // endregion
 
   private void addFileMods(
-      TsFileResource resource, PartialPath path, long fileOffset, long startTime, long endTime)
+      TsFileResource resource, MeasurementPath path, long fileOffset, long startTime, long endTime)
       throws IOException {
     try (ModificationFile modificationFile = resource.getModFile()) {
       modificationFile.write(new Deletion(path, fileOffset, startTime, endTime));

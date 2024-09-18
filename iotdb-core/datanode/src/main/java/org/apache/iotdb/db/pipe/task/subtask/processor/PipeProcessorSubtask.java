@@ -27,10 +27,12 @@ import org.apache.iotdb.commons.pipe.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeProcessorMetrics;
+import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.utils.ErrorHandlingUtils;
@@ -86,6 +88,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     // Only register dataRegions
     if (StorageEngine.getInstance().getAllDataRegionIds().contains(new DataRegionId(regionId))) {
       PipeProcessorMetrics.getInstance().register(this);
+      PipeDataNodeRemainingEventAndTimeMetrics.getInstance().register(this);
     }
   }
 
@@ -126,16 +129,20 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       return false;
     }
 
-    outputEventCollector.resetCollectInvocationCount();
+    outputEventCollector.resetFlags();
     try {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
           pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
+          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof TsFileInsertionEvent) {
           pipeProcessor.process((TsFileInsertionEvent) event, outputEventCollector);
           PipeProcessorMetrics.getInstance().markTsFileEvent(taskID);
+          PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+              .markCollectInvocationCount(taskID, outputEventCollector.getCollectInvocationCount());
         } else if (event instanceof PipeHeartbeatEvent) {
           pipeProcessor.process(event, outputEventCollector);
           ((PipeHeartbeatEvent) event).onProcessed();
@@ -148,13 +155,37 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               outputEventCollector);
         }
       }
+
       final boolean shouldReport =
-          !isClosed.get() && outputEventCollector.hasNoCollectInvocationAfterReset();
-      if (shouldReport && event instanceof EnrichedEvent) {
+          !isClosed.get()
+              // If an event does not generate any events except itself at this stage, it is divided
+              // into two categories:
+              // 1. If the event is collected and passed to the connector, the reference count of
+              // the event may eventually be zero in the processor (the connector reduces the
+              // reference count first, and then the processor reduces the reference count), at this
+              // time, the progress of the event needs to be reported.
+              // 2. If the event is not collected (not passed to the connector), the reference count
+              // of the event must be zero in the processor stage, at this time, the progress of the
+              // event needs to be reported.
+              && outputEventCollector.hasNoGeneratedEvent()
+              // If the event's reference count cannot be increased, it means that the event has
+              // been released, and the progress of the event can not be reported.
+              && !outputEventCollector.isFailedToIncreaseReferenceCount()
+              // Events generated from consensusPipe's transferred data should never be reported.
+              && !(pipeProcessor instanceof PipeConsensusProcessor);
+      if (shouldReport
+          && event instanceof EnrichedEvent
+          && outputEventCollector.hasNoCollectInvocationAfterReset()) {
+        // An event should be reported here when it is not passed to the connector stage, and it
+        // does not generate any new events to be passed to the connector. In our system, before
+        // reporting an event, we need to enrich a commitKey and commitId, which is done in the
+        // collector stage. But for the event that not passed to the connector and not generate any
+        // new events, the collector stage is not triggered, so we need to enrich the commitKey and
+        // commitId here.
         PipeEventCommitManager.getInstance()
             .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
       }
-      decreaseReferenceCountAndReleaseLastEvent(shouldReport);
+      decreaseReferenceCountAndReleaseLastEvent(event, shouldReport);
     } catch (final PipeRuntimeOutOfMemoryCriticalException e) {
       LOGGER.info(
           "Temporarily out of memory in pipe event processing, will wait for the memory to release.",
@@ -173,7 +204,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
             e);
       } else {
         LOGGER.info("Exception in pipe event processing, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent();
+        clearReferenceCountAndReleaseLastEvent(event);
       }
     }
 
@@ -193,6 +224,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   @Override
   public void close() {
+    // Always deregister the metrics to avoid the deletion of the data region
     PipeProcessorMetrics.getInstance().deregister(taskID);
     try {
       isClosed.set(true);
@@ -244,6 +276,15 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
     return regionId;
   }
 
+  public int getEventCount(final boolean ignoreHeartbeat) {
+    // Avoid potential NPE in "getPipeName"
+    final EnrichedEvent event =
+        lastEvent instanceof EnrichedEvent ? (EnrichedEvent) lastEvent : null;
+    return Objects.nonNull(event) && !(ignoreHeartbeat && event instanceof PipeHeartbeatEvent)
+        ? 1
+        : 0;
+  }
+
   //////////////////////////// Error report ////////////////////////////
 
   @Override
@@ -253,6 +294,6 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
-    PipeAgent.runtime().report(event, exception);
+    PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

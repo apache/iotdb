@@ -22,12 +22,16 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class SubscriptionTopicAgent {
 
@@ -67,11 +71,12 @@ public class SubscriptionTopicAgent {
       return null;
     } catch (final Exception e) {
       final String topicName = topicMetaFromCoordinator.getTopicName();
+      LOGGER.warn(
+          "Exception occurred when handling single topic meta changes for topic {}", topicName, e);
       final String exceptionMessage =
           String.format(
               "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
               topicName, e);
-      LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
@@ -94,11 +99,14 @@ public class SubscriptionTopicAgent {
           handleSingleTopicMetaChangesInternal(topicMetaFromCoordinator);
         } catch (final Exception e) {
           final String topicName = topicMetaFromCoordinator.getTopicName();
+          LOGGER.warn(
+              "Exception occurred when handling single topic meta changes for topic {}",
+              topicName,
+              e);
           final String exceptionMessage =
               String.format(
                   "Subscription: Failed to handle single topic meta changes for topic %s, because %s",
                   topicName, e);
-          LOGGER.warn(exceptionMessage);
           return new TPushTopicMetaRespExceptionMessage(
               topicName, exceptionMessage, System.currentTimeMillis());
         }
@@ -115,9 +123,9 @@ public class SubscriptionTopicAgent {
       handleDropTopicInternal(topicName);
       return null;
     } catch (final Exception e) {
+      LOGGER.warn("Exception occurred when dropping topic {}", topicName, e);
       final String exceptionMessage =
           String.format("Subscription: Failed to drop topic %s, because %s", topicName, e);
-      LOGGER.warn(exceptionMessage);
       return new TPushTopicMetaRespExceptionMessage(
           topicName, exceptionMessage, System.currentTimeMillis());
     } finally {
@@ -145,6 +153,31 @@ public class SubscriptionTopicAgent {
           .getTopicMeta(topicName)
           .getConfig()
           .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public String getTopicMode(final String topicName) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper
+          .getTopicMeta(topicName)
+          .getConfig()
+          .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public Map<String, TopicConfig> getTopicConfigs(final Set<String> topicNames) {
+    acquireReadLock();
+    try {
+      return topicNames.stream()
+          .collect(
+              Collectors.toMap(
+                  topicName -> topicName,
+                  topicName -> topicMetaKeeper.getTopicMeta(topicName).getConfig()));
     } finally {
       releaseReadLock();
     }

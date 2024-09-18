@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.apache.iotdb</groupId>
+        <artifactId>iotdb-core</artifactId>
+        <version>2.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>iotdb-ainode</artifactId>
+    <name>IoTDB: Core: AINode</name>
+    <dependencies>
+        <!-- These dependencies are just added to ensure the other modules are built first -->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-confignode</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-ainode</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <!-- clean thrift folder -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>dist</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>iotdb</directory>
+                            <includes>
+                                <include>conf/</include>
+                                <include>thrift/</include>
+                            </includes>
+                        </fileset>
+                        <fileset>
+                            <directory>target</directory>
+                        </fileset>
+                        <fileset>
+                            <directory>venv</directory>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmaven</groupId>
+                <artifactId>groovy-maven-plugin</artifactId>
+                <executions>
+                    <!--
+                      The python versioning follows slightly different rules than Maven.
+                      This little script makes sure the python project file is always in
+                      sync with the maven module.
+                    -->
+                    <execution>
+                        <id>sync-python-version</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <configuration>
+                            <source>${project.basedir}/resources/syncPythonVersion.groovy</source>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.groovy</groupId>
+                        <artifactId>groovy</artifactId>
+                        <version>4.0.22</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.apache.groovy</groupId>
+                        <artifactId>groovy-toml</artifactId>
+                        <version>4.0.22</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <!-- Copy external resources and prepare the pom.properties file -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>copy-thrift-python-resources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/iotdb/thrift/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-commons/target/generated-sources-python/iotdb/thrift/</directory>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-confignode/target/generated-sources-python/iotdb/thrift/</directory>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-ainode/target/generated-sources-python/iotdb/thrift/</directory>
+                                </resource>
+                                <resource>
+                                    <directory>${basedir}/../../iotdb-protocol/thrift-datanode/target/generated-sources-python/iotdb/thrift/</directory>
+                                    <excludes>rpc/**</excludes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <!--
+                        Copy the template pom.properties from the resources directory and replace the
+                        version variable with the real one from this module.
+                    -->
+                    <execution>
+                        <id>copy-pom-properties</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/iotdb/conf/</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/resources/</directory>
+                                    <includes>pom.properties</includes>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Generate a file called git.properties to provide git version info -->
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-git-properties</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <configuration>
+                            <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                            <generateGitPropertiesFilename>${project.basedir}/iotdb/conf/git.properties</generateGitPropertiesFilename>
+                            <includeOnlyProperties>
+                                <includeOnlyProperty>^git.commit.id.abbrev$</includeOnlyProperty>
+                                <includeOnlyProperty>^git.dirty$</includeOnlyProperty>
+                            </includeOnlyProperties>
+                            <commitIdGenerationMode>full</commitIdGenerationMode>
+                            <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                            <offline>true</offline>
+                            <gitDescribe>
+                                <dirty>-dev</dirty>
+                            </gitDescribe>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <!-- Prepare a local installation of python -->
+                    <execution>
+                        <id>python-venv</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.exe.bin}</executable>
+                            <arguments>
+                                <argument>-m</argument>
+                                <argument>venv</argument>
+                                <argument>./venv</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Update pip in our local working environment -->
+                    <execution>
+                        <id>python-upgrade-pip</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}${python.exe.bin}</executable>
+                            <arguments>
+                                <argument>-m</argument>
+                                <argument>pip</argument>
+                                <argument>install</argument>
+                                <argument>--upgrade</argument>
+                                <argument>pip</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Install poetry in our local working environment -->
+                    <execution>
+                        <id>python-install-poetry</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}pip3</executable>
+                            <arguments>
+                                <argument>install</argument>
+                                <argument>poetry</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Refoemat code -->
+                    <!--execution>
+                        <id>python-black</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}${python.exe.bin}</executable>
+                            <arguments>
+                                <argument>-m</argument>
+                                <argument>black</argument>
+                                <argument>.</argument>
+                            </arguments>
+                        </configuration>
+                    </execution-->
+                    <execution>
+                        <id>python-compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}poetry</executable>
+                            <arguments>
+                                <argument>build</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!--execution>
+                        <id>python-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}${python.exe.bin}</executable>
+                            <arguments>
+                                <argument>-m</argument>
+                                <argument>pytest</argument>
+                                <argument>tests</argument>
+                            </arguments>
+                        </configuration>
+                    </execution-->
+                    <!--execution>
+                        <id>python-package</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${python.venv.bin}pip3</executable>
+                            <arguments>
+                                <argument>wheel</argument>
+                                <argument>.</argument>
+                                <argument>-w</argument>
+                                <argument>dist</argument>
+                                <argument>- -no-deps</argument>
+                            </arguments>
+                        </configuration>
+                    </execution-->
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>create-ainode-zip</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <finalName>apache-iotdb-ainode-${project.version}</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <descriptors>
+                                <descriptor>ainode.xml</descriptor>
+                            </descriptors>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Tell the dependency plugin that we indeed used these dependencies -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>check-dependencies</id>
+                        <goals>
+                            <goal>analyze-only</goal>
+                        </goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <usedDependencies combine.children="append">
+                                <usedDependency>org.apache.iotdb:iotdb-thrift-commons</usedDependency>
+                                <usedDependency>org.apache.iotdb:iotdb-thrift</usedDependency>
+                                <usedDependency>org.apache.iotdb:iotdb-thrift-confignode</usedDependency>
+                                <usedDependency>org.apache.iotdb:iotdb-thrift-ainode</usedDependency>
+                            </usedDependencies>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

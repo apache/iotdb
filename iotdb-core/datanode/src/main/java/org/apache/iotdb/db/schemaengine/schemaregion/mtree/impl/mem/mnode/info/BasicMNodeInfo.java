@@ -37,6 +37,6 @@ public class BasicMNodeInfo {
   public int estimateSize() {
     // object header, 8B
     // name reference, name length and name hash code, 8 + 4 + 4 = 16B
-    return 8 + 16 + 2 * name.length();
+    return 8 + 16 + 2 * (name == null ? 0 : name.length());
   }
 }

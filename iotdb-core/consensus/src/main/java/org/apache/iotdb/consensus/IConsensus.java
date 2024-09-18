@@ -151,11 +151,11 @@ public interface IConsensus {
    * so it will only be less but not more.
    *
    * @param groupId the consensus group
-   * @param peers the new peer list
+   * @param correctPeers the correct peer list
    * @throws ConsensusException when resetPeerList doesn't success with other reasons
    * @throws ConsensusGroupNotExistException when the specified consensus group doesn't exist
    */
-  void resetPeerList(ConsensusGroupId groupId, List<Peer> peers) throws ConsensusException;
+  void resetPeerList(ConsensusGroupId groupId, List<Peer> correctPeers) throws ConsensusException;
 
   // management API
 
@@ -210,6 +210,14 @@ public interface IConsensus {
    * @return return null if group doesn't exist or leader is undetermined, or return leader Peer
    */
   Peer getLeader(ConsensusGroupId groupId);
+
+  /**
+   * Return the replicationNum of the corresponding consensus group.
+   *
+   * @param groupId the consensus group
+   * @return return 0 if group doesn't exist, or return replicationNum
+   */
+  int getReplicationNum(ConsensusGroupId groupId);
 
   /**
    * Return all consensus group ids.

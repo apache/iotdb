@@ -20,6 +20,7 @@
 package org.apache.iotdb.rpc.subscription.payload.response;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeResp;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -29,16 +30,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
 
-  private transient Set<String> topicNames = new HashSet<>(); // subscribed topic names
+  private transient Map<String, TopicConfig> topics = new HashMap<>(); // subscribed topics
 
-  public Set<String> getTopicNames() {
-    return topicNames;
+  public Map<String, TopicConfig> getTopics() {
+    return topics;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
@@ -60,16 +61,16 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
    * server.
    */
   public static PipeSubscribeSubscribeResp toTPipeSubscribeResp(
-      final TSStatus status, final Set<String> topicNames) throws IOException {
-    final PipeSubscribeSubscribeResp resp = new PipeSubscribeSubscribeResp();
-
-    resp.status = status;
-    resp.version = PipeSubscribeResponseVersion.VERSION_1.getVersion();
-    resp.type = PipeSubscribeResponseType.ACK.getType();
+      final TSStatus status, final Map<String, TopicConfig> topics) throws IOException {
+    final PipeSubscribeSubscribeResp resp = toTPipeSubscribeResp(status);
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
-      ReadWriteIOUtils.writeObjectSet(topicNames, outputStream);
+      ReadWriteIOUtils.write(topics.size(), outputStream);
+      for (final Map.Entry<String, TopicConfig> entry : topics.entrySet()) {
+        ReadWriteIOUtils.write(entry.getKey(), outputStream);
+        entry.getValue().serialize(outputStream);
+      }
       resp.body =
           Collections.singletonList(
               ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
@@ -86,7 +87,14 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
     if (Objects.nonNull(subscribeResp.body)) {
       for (final ByteBuffer byteBuffer : subscribeResp.body) {
         if (Objects.nonNull(byteBuffer) && byteBuffer.hasRemaining()) {
-          resp.topicNames = ReadWriteIOUtils.readObjectSet(byteBuffer);
+          final int size = ReadWriteIOUtils.readInt(byteBuffer);
+          final Map<String, TopicConfig> topics = new HashMap<>();
+          for (int i = 0; i < size; i++) {
+            final String topicName = ReadWriteIOUtils.readString(byteBuffer);
+            final TopicConfig topicConfig = TopicConfig.deserialize(byteBuffer);
+            topics.put(topicName, topicConfig);
+          }
+          resp.topics = topics;
           break;
         }
       }
@@ -110,7 +118,7 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
       return false;
     }
     final PipeSubscribeSubscribeResp that = (PipeSubscribeSubscribeResp) obj;
-    return Objects.equals(this.topicNames, that.topicNames)
+    return Objects.equals(this.topics, that.topics)
         && Objects.equals(this.status, that.status)
         && this.version == that.version
         && this.type == that.type
@@ -119,6 +127,6 @@ public class PipeSubscribeSubscribeResp extends TPipeSubscribeResp {
 
   @Override
   public int hashCode() {
-    return Objects.hash(topicNames, status, version, type, body);
+    return Objects.hash(topics, status, version, type, body);
   }
 }

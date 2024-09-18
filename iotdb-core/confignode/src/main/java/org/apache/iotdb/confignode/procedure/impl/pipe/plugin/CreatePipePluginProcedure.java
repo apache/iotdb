@@ -66,14 +66,21 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
   private PipePluginMeta pipePluginMeta;
   private byte[] jarFile;
 
+  // This field will not be serialized. It may cause some problems
+  // when the procedure fails on one node and recovers on another node.
+  // Though it is not a good practice, it is acceptable here.
+  private boolean isSetIfNotExistsCondition;
+
   public CreatePipePluginProcedure() {
     super();
   }
 
-  public CreatePipePluginProcedure(PipePluginMeta pipePluginMeta, byte[] jarFile) {
+  public CreatePipePluginProcedure(
+      PipePluginMeta pipePluginMeta, byte[] jarFile, boolean isSetIfNotExistsCondition) {
     super();
     this.pipePluginMeta = pipePluginMeta;
     this.jarFile = jarFile;
+    this.isSetIfNotExistsCondition = isSetIfNotExistsCondition;
   }
 
   @Override
@@ -125,20 +132,25 @@ public class CreatePipePluginProcedure extends AbstractNodeProcedure<CreatePipeP
         env.getConfigManager().getPipeManager().getPipePluginCoordinator();
 
     pipePluginCoordinator.lock();
+    final String pluginName = pipePluginMeta.getPluginName();
 
     try {
-      pipePluginCoordinator
+      if (pipePluginCoordinator
           .getPipePluginInfo()
-          .validateBeforeCreatingPipePlugin(
-              pipePluginMeta.getPluginName(),
-              pipePluginMeta.getJarName(),
-              pipePluginMeta.getJarMD5());
+          .validateBeforeCreatingPipePlugin(pluginName, isSetIfNotExistsCondition)) {
+        LOGGER.info(
+            "Pipe plugin {} is already created and isSetIfNotExistsCondition is true, end the CreatePipePluginProcedure({})",
+            pluginName,
+            pluginName);
+        pipePluginCoordinator.unlock();
+        return Flow.NO_MORE_STATE;
+      }
     } catch (PipeException e) {
       // The pipe plugin has already created, we should end the procedure
       LOGGER.warn(
           "Pipe plugin {} is already created, end the CreatePipePluginProcedure({})",
-          pipePluginMeta.getPluginName(),
-          pipePluginMeta.getPluginName());
+          pluginName,
+          pluginName);
       setFailure(new ProcedureException(e.getMessage()));
       pipePluginCoordinator.unlock();
       return Flow.NO_MORE_STATE;

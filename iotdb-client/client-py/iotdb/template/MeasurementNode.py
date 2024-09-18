@@ -15,13 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import warnings
 
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from .TemplateNode import TemplateNode
 from ..tsfile.utils.ReadWriteIOUtils import ReadWriteUtils
 
+warnings.simplefilter("always", DeprecationWarning)
+
 
 class MeasurementNode(TemplateNode):
+
     def __init__(
         self,
         name: str,
@@ -29,6 +33,12 @@ class MeasurementNode(TemplateNode):
         encoding: TSEncoding,
         compression_type: Compressor,
     ):
+        super().__init__(name)
+        warnings.warn(
+            "The APIs about template are deprecated and will be removed in future versions. Use sql instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.name = name
         self.data_type = data_type
         self.encoding = encoding

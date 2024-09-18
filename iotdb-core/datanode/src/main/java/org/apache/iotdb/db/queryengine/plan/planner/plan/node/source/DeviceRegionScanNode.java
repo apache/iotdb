@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.source;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -45,21 +46,21 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DeviceRegionScanNode extends RegionScanNode {
-  private Map<PartialPath, Boolean> devicePathsToAligned;
+  private Map<PartialPath, DeviceContext> devicePathToContextMap;
 
   public DeviceRegionScanNode(
       PlanNodeId planNodeId,
-      Map<PartialPath, Boolean> devicePathsToAligned,
+      Map<PartialPath, DeviceContext> devicePathToContextMap,
       boolean outputCount,
       TRegionReplicaSet regionReplicaSet) {
     super(planNodeId);
-    this.devicePathsToAligned = devicePathsToAligned;
+    this.devicePathToContextMap = devicePathToContextMap;
     this.regionReplicaSet = regionReplicaSet;
     this.outputCount = outputCount;
   }
 
-  public Map<PartialPath, Boolean> getDevicePathsToAligned() {
-    return devicePathsToAligned;
+  public Map<PartialPath, DeviceContext> getDevicePathToContextMap() {
+    return devicePathToContextMap;
   }
 
   @Override
@@ -75,7 +76,7 @@ public class DeviceRegionScanNode extends RegionScanNode {
   @Override
   public PlanNode clone() {
     return new DeviceRegionScanNode(
-        getPlanNodeId(), getDevicePathsToAligned(), isOutputCount(), getRegionReplicaSet());
+        getPlanNodeId(), getDevicePathToContextMap(), isOutputCount(), getRegionReplicaSet());
   }
 
   @Override
@@ -101,24 +102,23 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   public static PlanNode deserialize(ByteBuffer buffer) {
     int size = ReadWriteIOUtils.readInt(buffer);
-    Map<PartialPath, Boolean> devicePathsToAligned = new HashMap<>();
+    Map<PartialPath, DeviceContext> devicePathToContextMap = new HashMap<>();
     for (int i = 0; i < size; i++) {
       PartialPath path = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-      boolean aligned = ReadWriteIOUtils.readBool(buffer);
-      devicePathsToAligned.put(path, aligned);
+      devicePathToContextMap.put(path, DeviceContext.deserialize(buffer));
     }
     boolean outputCount = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new DeviceRegionScanNode(planNodeId, devicePathsToAligned, outputCount, null);
+    return new DeviceRegionScanNode(planNodeId, devicePathToContextMap, outputCount, null);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_REGION_SCAN.serialize(byteBuffer);
-    ReadWriteIOUtils.write(devicePathsToAligned.size(), byteBuffer);
-    for (Map.Entry<PartialPath, Boolean> entry : devicePathsToAligned.entrySet()) {
+    ReadWriteIOUtils.write(devicePathToContextMap.size(), byteBuffer);
+    for (Map.Entry<PartialPath, DeviceContext> entry : devicePathToContextMap.entrySet()) {
       entry.getKey().serialize(byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
+      entry.getValue().serializeAttributes(byteBuffer);
     }
     ReadWriteIOUtils.write(outputCount, byteBuffer);
   }
@@ -126,10 +126,10 @@ public class DeviceRegionScanNode extends RegionScanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICE_REGION_SCAN.serialize(stream);
-    ReadWriteIOUtils.write(devicePathsToAligned.size(), stream);
-    for (Map.Entry<PartialPath, Boolean> entry : devicePathsToAligned.entrySet()) {
+    ReadWriteIOUtils.write(devicePathToContextMap.size(), stream);
+    for (Map.Entry<PartialPath, DeviceContext> entry : devicePathToContextMap.entrySet()) {
       entry.getKey().serialize(stream);
-      ReadWriteIOUtils.write(entry.getValue(), stream);
+      entry.getValue().serializeAttributes(stream);
     }
     ReadWriteIOUtils.write(outputCount, stream);
   }
@@ -145,23 +145,23 @@ public class DeviceRegionScanNode extends RegionScanNode {
 
   @Override
   public Set<PartialPath> getDevicePaths() {
-    return new HashSet<>(devicePathsToAligned.keySet());
+    return new HashSet<>(devicePathToContextMap.keySet());
   }
 
   @Override
   public void addDevicePath(PartialPath devicePath, RegionScanNode node) {
-    this.devicePathsToAligned.put(
-        devicePath, ((DeviceRegionScanNode) node).devicePathsToAligned.get(devicePath));
+    this.devicePathToContextMap.put(
+        devicePath, ((DeviceRegionScanNode) node).devicePathToContextMap.get(devicePath));
   }
 
   @Override
   public void clearPath() {
-    this.devicePathsToAligned = new HashMap<>();
+    this.devicePathToContextMap = new HashMap<>();
   }
 
   @Override
   public long getSize() {
-    return devicePathsToAligned.size();
+    return devicePathToContextMap.size();
   }
 
   @Override
@@ -170,12 +170,12 @@ public class DeviceRegionScanNode extends RegionScanNode {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     DeviceRegionScanNode that = (DeviceRegionScanNode) o;
-    return devicePathsToAligned.equals(that.devicePathsToAligned)
+    return devicePathToContextMap.equals(that.devicePathToContextMap)
         && outputCount == that.isOutputCount();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), devicePathsToAligned, outputCount);
+    return Objects.hash(super.hashCode(), devicePathToContextMap, outputCount);
   }
 }

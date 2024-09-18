@@ -23,18 +23,15 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.pipe.connector.util.PipeTabletEventSorter;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.session.util.SessionUtils;
 
-import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
-import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
@@ -43,9 +40,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Objects;
+
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
@@ -63,146 +60,41 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   }
 
   public InsertTabletStatement constructStatement() {
-    if (!checkSorted(tablet)) {
-      sortTablet(tablet);
-    }
+    new PipeTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
 
     try {
+      if (isTabletEmpty(tablet)) {
+        // Empty statement, will be filtered after construction
+        return new InsertTabletStatement();
+      }
+
       final TSInsertTabletReq request = new TSInsertTabletReq();
 
-      for (IMeasurementSchema measurementSchema : tablet.getSchemas()) {
+      for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
         request.addToMeasurements(measurementSchema.getMeasurementId());
         request.addToTypes(measurementSchema.getType().ordinal());
       }
 
-      request.setPrefixPath(tablet.deviceId);
+      request.setPrefixPath(tablet.getDeviceId());
       request.setIsAligned(isAligned);
       request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
       request.setValues(SessionUtils.getValueBuffer(tablet));
       request.setSize(tablet.rowSize);
+      // TODO: remove the check for table model
       request.setMeasurements(
           PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
 
       return StatementGenerator.createStatement(request);
-    } catch (MetadataException e) {
+    } catch (final MetadataException e) {
       LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
     }
   }
 
-  private static boolean checkSorted(Tablet tablet) {
-    for (int i = 1; i < tablet.rowSize; i++) {
-      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private static void sortTablet(Tablet tablet) {
-    /*
-     * following part of code sort the batch data by time,
-     * so we can insert continuous data in value list to get a better performance
-     */
-    // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[tablet.rowSize];
-    for (int i = 0; i < tablet.rowSize; i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
-    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
-    int columnIndex = 0;
-    for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema != null) {
-        tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
-        if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
-          tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);
-        }
-        columnIndex++;
-      }
-    }
-  }
-
-  /**
-   * Sort value list by index.
-   *
-   * @param valueList value list
-   * @param dataType data type
-   * @param index index
-   * @return sorted list
-   * @throws UnSupportedDataTypeException if dataType is illegal
-   */
-  private static Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[i] = boolValues[index[i]];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[i] = intValues[index[i]];
-        }
-        return sortedIntValues;
-      case INT64:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[i] = longValues[index[i]];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[i] = floatValues[index[i]];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[i] = doubleValues[index[i]];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[i] = binaryValues[index[i]];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType));
-    }
-  }
-
-  /**
-   * Sort BitMap by index.
-   *
-   * @param bitMap BitMap to be sorted
-   * @param index index
-   * @return sorted bitMap
-   */
-  private static BitMap sortBitMap(BitMap bitMap, Integer[] index) {
-    BitMap sortedBitMap = new BitMap(bitMap.getSize());
-    for (int i = 0; i < index.length; i++) {
-      if (bitMap.isMarked(index[i])) {
-        sortedBitMap.mark(i);
-      }
-    }
-    return sortedBitMap;
-  }
-
   /////////////////////////////// WriteBack & Batch ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferRawReq(Tablet tablet, boolean isAligned) {
+  public static PipeTransferTabletRawReq toTPipeTransferRawReq(
+      final Tablet tablet, final boolean isAligned) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = tablet;
@@ -213,8 +105,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTabletRawReq toTPipeTransferReq(Tablet tablet, boolean isAligned)
-      throws IOException {
+  public static PipeTransferTabletRawReq toTPipeTransferReq(
+      final Tablet tablet, final boolean isAligned) throws IOException {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = tablet;
@@ -233,7 +125,7 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
     return tabletReq;
   }
 
-  public static PipeTransferTabletRawReq fromTPipeTransferReq(TPipeTransferReq transferReq) {
+  public static PipeTransferTabletRawReq fromTPipeTransferReq(final TPipeTransferReq transferReq) {
     final PipeTransferTabletRawReq tabletReq = new PipeTransferTabletRawReq();
 
     tabletReq.tablet = Tablet.deserialize(transferReq.body);
@@ -248,7 +140,8 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
-  public static byte[] toTPipeTransferBytes(Tablet tablet, boolean isAligned) throws IOException {
+  public static byte[] toTPipeTransferBytes(final Tablet tablet, final boolean isAligned)
+      throws IOException {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       ReadWriteIOUtils.write(IoTDBConnectorRequestVersion.VERSION_1.getVersion(), outputStream);
@@ -262,14 +155,14 @@ public class PipeTransferTabletRawReq extends TPipeTransferReq {
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
+  public boolean equals(final Object obj) {
     if (this == obj) {
       return true;
     }
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
+    final PipeTransferTabletRawReq that = (PipeTransferTabletRawReq) obj;
     return Objects.equals(tablet, that.tablet)
         && isAligned == that.isAligned
         && version == that.version

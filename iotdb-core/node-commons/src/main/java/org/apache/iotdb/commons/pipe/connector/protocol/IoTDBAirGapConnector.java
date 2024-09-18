@@ -94,7 +94,8 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -144,6 +145,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   @Override
+  @SuppressWarnings("java:S2095")
   public void handshake() throws Exception {
     for (int i = 0; i < sockets.size(); i++) {
       if (Boolean.TRUE.equals(isSocketAlive.get(i))) {
@@ -157,7 +159,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       if (sockets.get(i) != null) {
         try {
           sockets.set(i, null).close();
-        } catch (Exception e) {
+        } catch (final Exception e) {
           LOGGER.warn(
               "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",
               ip,
@@ -173,7 +175,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         socket.setKeepAlive(true);
         sockets.set(i, socket);
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn(
             "Failed to connect to target server ip: {}, port: {}, because: {}. Ignore it.",
             ip,
@@ -195,7 +197,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         String.format("All target servers %s are not available.", nodeUrls));
   }
 
-  protected void sendHandshakeReq(AirGapSocket socket) throws IOException {
+  protected void sendHandshakeReq(final AirGapSocket socket) throws IOException {
     socket.setSoTimeout(handshakeTimeoutMs);
     // Try to handshake by PipeTransferHandshakeV2Req. If failed, retry to handshake by
     // PipeTransferHandshakeV1Req. If failed again, throw PipeConnectionException.
@@ -219,7 +221,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   public void heartbeat() {
     try {
       handshake();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Failed to reconnect to target server, because: {}. Try to reconnect later.",
           e.getMessage(),
@@ -228,7 +230,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   }
 
   protected void transferFilePieces(
-      String pipeName, File file, AirGapSocket socket, boolean isMultiFile)
+      final String pipeName,
+      final long creationTime,
+      final File file,
+      final AirGapSocket socket,
+      final boolean isMultiFile)
       throws PipeException, IOException {
     final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
@@ -246,6 +252,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
         if (!send(
             pipeName,
+            creationTime,
             socket,
             isMultiFile
                 ? getTransferMultiFilePieceBytes(file.getName(), position, payload)
@@ -272,23 +279,25 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
   protected abstract boolean mayNeedHandshakeWhenFail();
 
   protected abstract byte[] getTransferSingleFilePieceBytes(
-      String fileName, long position, byte[] payLoad) throws IOException;
+      final String fileName, final long position, final byte[] payLoad) throws IOException;
 
   protected abstract byte[] getTransferMultiFilePieceBytes(
-      String fileName, long position, byte[] payLoad) throws IOException;
+      final String fileName, final long position, final byte[] payLoad) throws IOException;
 
   protected int nextSocketIndex() {
     return loadBalancer.nextSocketIndex();
   }
 
-  protected boolean send(String pipeName, AirGapSocket socket, byte[] bytes) throws IOException {
+  protected boolean send(
+      final String pipeName, final long creationTime, final AirGapSocket socket, byte[] bytes)
+      throws IOException {
     if (!socket.isConnected()) {
       return false;
     }
 
     bytes = compressIfNeeded(bytes);
 
-    rateLimitIfNeeded(pipeName, socket.getEndPoint(), bytes.length);
+    rateLimitIfNeeded(pipeName, creationTime, socket.getEndPoint(), bytes.length);
 
     final BufferedOutputStream outputStream = new BufferedOutputStream(socket.getOutputStream());
     bytes = enrichWithLengthAndChecksum(bytes);
@@ -300,11 +309,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     return size > 0 && Arrays.equals(AirGapOneByteResponse.OK, response);
   }
 
-  protected boolean send(AirGapSocket socket, byte[] bytes) throws IOException {
-    return send(null, socket, bytes);
+  protected boolean send(final AirGapSocket socket, final byte[] bytes) throws IOException {
+    return send(null, 0, socket, bytes);
   }
 
-  private byte[] enrichWithLengthAndChecksum(byte[] bytes) {
+  private byte[] enrichWithLengthAndChecksum(final byte[] bytes) {
     // Length of checksum and bytes payload
     final byte[] length = BytesUtils.intToBytes(bytes.length + LONG_LEN);
 
@@ -316,7 +325,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         Arrays.asList(length, length, BytesUtils.longToBytes(crc32.getValue()), bytes));
   }
 
-  private byte[] enrichWithELanguage(byte[] bytes) {
+  private byte[] enrichWithELanguage(final byte[] bytes) {
     return BytesUtils.concatByteArrayList(
         Arrays.asList(
             AirGapELanguageConstant.E_LANGUAGE_PREFIX,
@@ -331,7 +340,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         if (sockets.get(i) != null) {
           sockets.set(i, null).close();
         }
-      } catch (Exception e) {
+      } catch (final Exception e) {
         LOGGER.warn("Failed to close client {}.", i, e);
       } finally {
         isSocketAlive.set(i, false);

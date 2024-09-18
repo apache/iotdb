@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.task.connection;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.metric.PipeEventCounter;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -39,14 +40,15 @@ public abstract class BlockingPendingQueue<E extends Event> {
 
   protected final BlockingQueue<E> pendingQueue;
 
-  private final PipeEventCounter eventCounter;
+  protected final PipeEventCounter eventCounter;
 
-  protected BlockingPendingQueue(BlockingQueue<E> pendingQueue, PipeEventCounter eventCounter) {
+  protected BlockingPendingQueue(
+      final BlockingQueue<E> pendingQueue, final PipeEventCounter eventCounter) {
     this.pendingQueue = pendingQueue;
     this.eventCounter = eventCounter;
   }
 
-  public boolean waitedOffer(E event) {
+  public boolean waitedOffer(final E event) {
     try {
       final boolean offered =
           pendingQueue.offer(event, MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
@@ -54,14 +56,14 @@ public abstract class BlockingPendingQueue<E extends Event> {
         eventCounter.increaseEventCount(event);
       }
       return offered;
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.info("pending queue offer is interrupted.", e);
       Thread.currentThread().interrupt();
       return false;
     }
   }
 
-  public boolean directOffer(E event) {
+  public boolean directOffer(final E event) {
     final boolean offered = pendingQueue.offer(event);
     if (offered) {
       eventCounter.increaseEventCount(event);
@@ -69,12 +71,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
     return offered;
   }
 
-  public boolean put(E event) {
+  public boolean put(final E event) {
     try {
       pendingQueue.put(event);
       eventCounter.increaseEventCount(event);
       return true;
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.info("pending queue put is interrupted.", e);
       Thread.currentThread().interrupt();
       return false;
@@ -92,7 +94,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     try {
       event = pendingQueue.poll(MAX_BLOCKING_TIME_MS, TimeUnit.MILLISECONDS);
       eventCounter.decreaseEventCount(event);
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       LOGGER.info("pending queue poll is interrupted.", e);
       Thread.currentThread().interrupt();
     }
@@ -104,8 +106,36 @@ public abstract class BlockingPendingQueue<E extends Event> {
     eventCounter.reset();
   }
 
-  public void forEach(Consumer<? super E> action) {
+  /** DO NOT FORGET to set eventCounter to new value after invoking this method. */
+  public void forEach(final Consumer<? super E> action) {
     pendingQueue.forEach(action);
+  }
+
+  public void discardAllEvents() {
+    pendingQueue.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+          }
+          return true;
+        });
+    eventCounter.reset();
+  }
+
+  public void discardEventsOfPipe(final String pipeNameToDrop) {
+    pendingQueue.removeIf(
+        event -> {
+          if (event instanceof EnrichedEvent
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+            if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
+              eventCounter.decreaseEventCount(event);
+            }
+            return true;
+          }
+          return false;
+        });
   }
 
   public boolean isEmpty() {

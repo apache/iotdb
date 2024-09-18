@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -79,11 +82,14 @@ public class MemUtils {
    * Function for obtaining the value size. For text values, their size has already been added to
    * memory before insertion
    */
-  public static long getAlignedRowRecordSize(List<TSDataType> dataTypes, Object[] value) {
+  public static long getAlignedRowRecordSize(
+      List<TSDataType> dataTypes, Object[] value, TsTableColumnCategory[] columnCategories) {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
-      if (value[i] == null || dataTypes.get(i).isBinary()) {
+      if (value[i] == null
+          || dataTypes.get(i).isBinary()
+          || columnCategories != null && columnCategories[i] != TsTableColumnCategory.MEASUREMENT) {
         continue;
       }
       memSize += dataTypes.get(i).getDataTypeSize();
@@ -95,11 +101,15 @@ public class MemUtils {
     return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator.sizeOf(value.getValues());
   }
 
-  public static long getBinaryColumnSize(Binary[] column, int start, int end) {
+  public static long getBinaryColumnSize(Binary[] column, int start, int end, TSStatus[] results) {
     long memSize = 0;
     memSize += (long) (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
-      memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      if (results == null
+          || results[i] == null
+          || results[i].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      }
     }
     return memSize;
   }
@@ -124,16 +134,26 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getAlignedTabletSize(InsertTabletNode insertTabletNode, int start, int end) {
+  public static long getAlignedTabletSize(
+      InsertTabletNode insertTabletNode, int start, int end, TSStatus[] results) {
     if (start >= end) {
       return 0L;
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletNode.getMeasurements().length; i++) {
-      if (insertTabletNode.getMeasurements()[i] == null) {
+      if (!insertTabletNode.isValidMeasurement(i)) {
         continue;
       }
-      memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      if (results == null) {
+        memSize += (long) (end - start) * insertTabletNode.getDataTypes()[i].getDataTypeSize();
+      } else {
+        for (int j = start; j < end; j++) {
+          if (results[j] == null
+              || results[j].code == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            memSize += insertTabletNode.getDataTypes()[i].getDataTypeSize();
+          }
+        }
+      }
     }
     // time and index column memSize for vector
     memSize += (end - start) * (8L + 4L);
@@ -144,7 +164,7 @@ public class MemUtils {
   public static long getTsRecordMem(TSRecord tsRecord) {
     long memUsed = 8; // time
     memUsed += 8; // deviceId reference
-    memUsed += getStringMem(tsRecord.deviceId);
+    memUsed += tsRecord.deviceId.ramBytesUsed();
     for (DataPoint dataPoint : tsRecord.dataPointList) {
       memUsed += 8; // dataPoint reference
       memUsed += getDataPointMem(dataPoint);

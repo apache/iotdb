@@ -41,6 +41,7 @@ import org.apache.iotdb.isession.pool.ISessionPool;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.*;
+import org.apache.iotdb.it.env.cluster.node.AINodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -58,6 +59,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.pool.SessionPool;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -80,6 +82,7 @@ public abstract class AbstractEnv implements BaseEnv {
   private final Random rand = new Random();
   protected List<ConfigNodeWrapper> configNodeWrapperList = Collections.emptyList();
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
+  protected List<AINodeWrapper> aiNodeWrapperList = Collections.emptyList();
   protected String testMethodName = null;
   protected int index = 0;
   protected long startTime;
@@ -143,7 +146,12 @@ public abstract class AbstractEnv implements BaseEnv {
     initEnvironment(configNodesNum, dataNodesNum, retryCount);
   }
 
-  protected void initEnvironment(int configNodesNum, int dataNodesNum, int retryCount) {
+  protected void initEnvironment(int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
+    initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, false);
+  }
+
+  protected void initEnvironment(
+      int configNodesNum, int dataNodesNum, int retryCount, boolean addAINode) {
     this.retryCount = retryCount;
     this.configNodeWrapperList = new ArrayList<>();
     this.dataNodeWrapperList = new ArrayList<>();
@@ -255,7 +263,43 @@ public abstract class AbstractEnv implements BaseEnv {
       throw new AssertionError();
     }
 
+    if (addAINode) {
+      this.aiNodeWrapperList = new ArrayList<>();
+      startAINode(seedConfigNode, testClassName);
+    }
+
     checkClusterStatusWithoutUnknown();
+  }
+
+  private void startAINode(String seedConfigNode, String testClassName) {
+    String aiNodeEndPoint;
+    AINodeWrapper aiNodeWrapper =
+        new AINodeWrapper(
+            seedConfigNode,
+            testClassName,
+            testMethodName,
+            index,
+            EnvUtils.searchAvailablePorts(),
+            startTime);
+    aiNodeWrapperList.add(aiNodeWrapper);
+    aiNodeEndPoint = aiNodeWrapper.getIpAndPortString();
+    aiNodeWrapper.createNodeDir();
+    aiNodeWrapper.createLogDir();
+    RequestDelegate<Void> AINodesDelegate =
+        new ParallelRequestDelegate<>(
+            Collections.singletonList(aiNodeEndPoint), NODE_START_TIMEOUT);
+
+    AINodesDelegate.addRequest(
+        () -> {
+          aiNodeWrapper.start();
+          return null;
+        });
+
+    try {
+      AINodesDelegate.requestAll();
+    } catch (SQLException e) {
+      logger.error("Start aiNodes failed", e);
+    }
   }
 
   public String getTestClassName() {
@@ -318,7 +362,9 @@ public abstract class AbstractEnv implements BaseEnv {
 
         // Check the number of nodes
         if (showClusterResp.getNodeStatus().size()
-            != configNodeWrapperList.size() + dataNodeWrapperList.size()) {
+            != configNodeWrapperList.size()
+                + dataNodeWrapperList.size()
+                + aiNodeWrapperList.size()) {
           flag = false;
         }
 
@@ -355,7 +401,9 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void cleanClusterEnvironment() {
     List<AbstractNodeWrapper> allNodeWrappers =
-        Stream.concat(this.dataNodeWrapperList.stream(), this.configNodeWrapperList.stream())
+        Stream.concat(
+                dataNodeWrapperList.stream(),
+                Stream.concat(configNodeWrapperList.stream(), aiNodeWrapperList.stream()))
             .collect(Collectors.toList());
     allNodeWrappers.stream()
         .findAny()
@@ -377,16 +425,19 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
-  public Connection getConnection(String username, String password) throws SQLException {
+  public Connection getConnection(String username, String password, String sqlDialect)
+      throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnection(null, username, password), getReadConnections(null, username, password));
+        getWriteConnection(null, username, password, sqlDialect),
+        getReadConnections(null, username, password, sqlDialect));
   }
 
   @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNode, null, username, password, TREE_SQL_DIALECT),
         Collections.emptyList());
   }
 
@@ -394,72 +445,123 @@ public abstract class AbstractEnv implements BaseEnv {
   public Connection getConnectionWithSpecifiedDataNode(
       DataNodeWrapper dataNode, String username, String password) throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
-        getReadConnections(null, username, password));
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNode, null, username, password, TREE_SQL_DIALECT),
+        getReadConnections(null, username, password, TREE_SQL_DIALECT));
   }
 
   @Override
-  public Connection getConnection(Constant.Version version, String username, String password)
+  public Connection getConnection(
+      Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
       return new ClusterTestConnection(
-          getWriteConnection(version, username, password),
-          getReadConnections(version, username, password));
+          getWriteConnection(version, username, password, sqlDialect),
+          getReadConnections(version, username, password, sqlDialect));
     } else {
-      return getWriteConnection(version, username, password).getUnderlyingConnecton();
+      return getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnecton();
     }
   }
 
   @Override
-  public ISession getSessionConnection() throws IoTDBConnectionException {
+  public ISession getSessionConnection(String sqlDialect) throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session = new Session(dataNode.getIp(), dataNode.getPort());
+    Session session =
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .sqlDialect(sqlDialect)
+            .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISession getSessionConnection(String userName, String password)
+  public ISession getSessionConnectionWithDB(String sqlDialect, String database)
       throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    Session session = new Session(dataNode.getIp(), dataNode.getPort(), userName, password);
-    session.open();
-    return session;
-  }
-
-  @Override
-  public ISession getSessionConnection(List<String> nodeUrls) throws IoTDBConnectionException {
     Session session =
-        new Session(
-            nodeUrls,
-            SessionConfig.DEFAULT_USER,
-            SessionConfig.DEFAULT_PASSWORD,
-            SessionConfig.DEFAULT_FETCH_SIZE,
-            null,
-            SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY,
-            SessionConfig.DEFAULT_MAX_FRAME_SIZE,
-            SessionConfig.DEFAULT_REDIRECTION_MODE,
-            SessionConfig.DEFAULT_VERSION);
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .sqlDialect(sqlDialect)
+            .database(database)
+            .build();
     session.open();
     return session;
   }
 
   @Override
-  public ISessionPool getSessionPool(int maxSize) {
+  public ISession getSessionConnection(String userName, String password, String sqlDialect)
+      throws IoTDBConnectionException {
     DataNodeWrapper dataNode =
         this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    return new SessionPool(
-        dataNode.getIp(),
-        dataNode.getPort(),
-        SessionConfig.DEFAULT_USER,
-        SessionConfig.DEFAULT_PASSWORD,
-        maxSize);
+    Session session =
+        new Session.Builder()
+            .host(dataNode.getIp())
+            .port(dataNode.getPort())
+            .username(userName)
+            .password(password)
+            .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISession getSessionConnection(List<String> nodeUrls, String sqlDialect)
+      throws IoTDBConnectionException {
+    Session session =
+        new Session.Builder()
+            .nodeUrls(nodeUrls)
+            .username(SessionConfig.DEFAULT_USER)
+            .password(SessionConfig.DEFAULT_PASSWORD)
+            .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
+            .zoneId(null)
+            .thriftDefaultBufferSize(SessionConfig.DEFAULT_INITIAL_BUFFER_CAPACITY)
+            .thriftMaxFrameSize(SessionConfig.DEFAULT_MAX_FRAME_SIZE)
+            .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
+            .version(SessionConfig.DEFAULT_VERSION)
+            .sqlDialect(sqlDialect)
+            .build();
+    session.open();
+    return session;
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool.Builder()
+        .host(dataNode.getIp())
+        .port(dataNode.getPort())
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .sqlDialect(sqlDialect)
+        .build();
+  }
+
+  @Override
+  public ISessionPool getSessionPool(int maxSize, String sqlDialect, String database) {
+    DataNodeWrapper dataNode =
+        this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
+    return new SessionPool.Builder()
+        .host(dataNode.getIp())
+        .port(dataNode.getPort())
+        .user(SessionConfig.DEFAULT_USER)
+        .password(SessionConfig.DEFAULT_PASSWORD)
+        .maxSize(maxSize)
+        .sqlDialect(sqlDialect)
+        .database(database)
+        .build();
   }
 
   protected NodeConnection getWriteConnection(
-      Constant.Version version, String username, String password) throws SQLException {
+      Constant.Version version, String username, String password, String sqlDialect)
+      throws SQLException {
     DataNodeWrapper dataNode;
 
     if (System.getProperty("RandomSelectWriteNode", "true").equalsIgnoreCase("true")) {
@@ -470,11 +572,15 @@ public abstract class AbstractEnv implements BaseEnv {
     }
 
     return getWriteConnectionFromDataNodeList(
-        this.dataNodeWrapperList, version, username, password);
+        this.dataNodeWrapperList, version, username, password, sqlDialect);
   }
 
   protected NodeConnection getWriteConnectionWithSpecifiedDataNode(
-      DataNodeWrapper dataNode, Constant.Version version, String username, String password)
+      DataNodeWrapper dataNode,
+      Constant.Version version,
+      String username,
+      String password,
+      String sqlDialect)
       throws SQLException {
     String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
     Connection writeConnection =
@@ -482,8 +588,7 @@ public abstract class AbstractEnv implements BaseEnv {
             Config.IOTDB_URL_PREFIX
                 + endpoint
                 + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-            System.getProperty("User", username),
-            System.getProperty("Password", password));
+            BaseEnv.constructProperties(username, password, sqlDialect));
     return new NodeConnection(
         endpoint,
         NodeConnection.NodeRole.DATA_NODE,
@@ -495,24 +600,29 @@ public abstract class AbstractEnv implements BaseEnv {
       List<DataNodeWrapper> dataNodeList,
       Constant.Version version,
       String username,
-      String password)
+      String password,
+      String sqlDialect)
       throws SQLException {
     List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeList);
     Collections.shuffle(dataNodeWrapperListCopy);
     SQLException lastException = null;
     for (DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
       try {
-        return getWriteConnectionWithSpecifiedDataNode(dataNode, version, username, password);
+        return getWriteConnectionWithSpecifiedDataNode(
+            dataNode, version, username, password, sqlDialect);
       } catch (SQLException e) {
         lastException = e;
       }
     }
-    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    if (!(lastException.getCause() instanceof TTransportException)) {
+      logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    }
     throw lastException;
   }
 
   protected List<NodeConnection> getReadConnections(
-      Constant.Version version, String username, String password) throws SQLException {
+      Constant.Version version, String username, String password, String sqlDialect)
+      throws SQLException {
     List<String> endpoints = new ArrayList<>();
     ParallelRequestDelegate<NodeConnection> readConnRequestDelegate =
         new ParallelRequestDelegate<>(endpoints, NODE_START_TIMEOUT);
@@ -526,8 +636,7 @@ public abstract class AbstractEnv implements BaseEnv {
                     Config.IOTDB_URL_PREFIX
                         + endpoint
                         + getParam(version, NODE_NETWORK_TIMEOUT_MS, ZERO_TIME_ZONE),
-                    System.getProperty("User", username),
-                    System.getProperty("Password", password));
+                    BaseEnv.constructProperties(username, password, sqlDialect));
             return new NodeConnection(
                 endpoint,
                 NodeConnection.NodeRole.DATA_NODE,
@@ -612,11 +721,18 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public void dumpTestJVMSnapshot() {
     for (ConfigNodeWrapper configNodeWrapper : configNodeWrapperList) {
-      configNodeWrapper.dumpJVMSnapshot(testMethodName);
+      configNodeWrapper.executeJstack(testMethodName);
     }
     for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
-      dataNodeWrapper.dumpJVMSnapshot(testMethodName);
+      dataNodeWrapper.executeJstack(testMethodName);
     }
+  }
+
+  @Override
+  public List<AbstractNodeWrapper> getNodeWrapperList() {
+    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
+    result.addAll(dataNodeWrapperList);
+    return result;
   }
 
   @Override
@@ -627,12 +743,6 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
-  }
-
-  public List<AbstractNodeWrapper> getNodeWrapperList() {
-    List<AbstractNodeWrapper> result = new ArrayList<>(configNodeWrapperList);
-    result.addAll(dataNodeWrapperList);
-    return result;
   }
 
   /**

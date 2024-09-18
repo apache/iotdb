@@ -31,7 +31,7 @@ import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.TsFileGeneratorUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -85,9 +85,12 @@ public class IoTDBSnapshotTest {
       Assert.assertTrue(new File(filePath).exists());
       resources.add(resource);
       for (int idx = 0; idx < 5; idx++) {
-        resource.updateStartTime(new PlainDeviceID(testSgName + PATH_SEPARATOR + "d" + i), i * 100);
+        resource.updateStartTime(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(testSgName + PATH_SEPARATOR + "d" + i),
+            i * 100);
         resource.updateEndTime(
-            new PlainDeviceID(testSgName + PATH_SEPARATOR + "d" + i), (i + 1) * 100);
+            IDeviceID.Factory.DEFAULT_FACTORY.create(testSgName + PATH_SEPARATOR + "d" + i),
+            (i + 1) * 100);
       }
       resource.updatePlanIndexes(i);
       resource.setStatusForTest(TsFileResourceStatus.NORMAL);

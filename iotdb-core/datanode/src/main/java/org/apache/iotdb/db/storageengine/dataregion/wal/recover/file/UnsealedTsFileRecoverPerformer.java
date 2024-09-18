@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
@@ -33,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALRecoverException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALRecoverListener;
@@ -188,12 +191,13 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
     try {
       switch (walEntry.getType()) {
         case MEMORY_TABLE_SNAPSHOT:
+        case OLD_MEMORY_TABLE_SNAPSHOT:
           IMemTable memTable = (IMemTable) walEntry.getValue();
           if (!memTable.isSignalMemTable()) {
             if (tsFileResource != null) {
               for (IDeviceID device : tsFileResource.getDevices()) {
                 memTable.delete(
-                    new PartialPath(device, "*"),
+                    new MeasurementPath(device, "*"),
                     new PartialPath(device),
                     tsFileResource.getStartTime(device),
                     tsFileResource.getEndTime(device));
@@ -214,11 +218,16 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         case DELETE_DATA_NODE:
           walRedoer.redoDelete((DeleteDataNode) walEntry.getValue());
           break;
+        case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+          // The CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE doesn't need redo
+          break;
         default:
           throw new RuntimeException("Unsupported type " + walEntry.getType());
       }
     } catch (Exception e) {
-      logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+      if (tsFileResource != null) {
+        logger.warn("meet error when redo wal of {}", tsFileResource.getTsFile(), e);
+      }
     }
   }
 
@@ -257,13 +266,32 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
         }
 
         // set recover progress index for pipe
-        PipeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
+        PipeDataNodeAgent.runtime().assignProgressIndexForTsFileRecovery(tsFileResource);
+
+        try {
+          long memTableSize = recoveryMemTable.memSize();
+          double compressionRatio = ((double) memTableSize) / writer.getPos();
+          logger.info(
+              "The compression ratio of tsfile {} is {}, totalMemTableSize: {}, the file size: {}",
+              writer.getFile().getAbsolutePath(),
+              String.format("%.2f", compressionRatio),
+              memTableSize,
+              writer.getPos());
+          CompressionRatio.getInstance().updateRatio(memTableSize, writer.getPos());
+        } catch (IOException e) {
+          logger.error(
+              "{}: {} update compression ratio failed",
+              databaseName,
+              tsFileResource.getTsFile().getName(),
+              e);
+        }
 
         // if we put following codes in the 'if' clause above, this file can be continued writing
         // into it
         // currently, we close this file anyway
         writer.endFile();
         tsFileResource.serialize();
+        FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
       } catch (IOException | ExecutionException e) {
         throw new WALRecoverException(e);
       } catch (InterruptedException e) {

@@ -104,14 +104,10 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
     } else if (context.getCode() == TSStatusCode.OUT_OF_TTL.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
-    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
-      if (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
-          && config.isEnablePartialInsert()) {
-        return new TSStatus(
-                TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
-            .setMessage(context.getMessage());
-      }
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+    } else if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()
+        && (context.getMessage().contains(DataTypeMismatchException.REGISTERED_TYPE_STRING)
+            && config.isEnablePartialInsert())) {
+      return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(context.getMessage());
     }
     return visitStatement(insertBaseStatement, context);
@@ -144,7 +140,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitCreateMultiTimeseries(
+  public TSStatus visitCreateMultiTimeSeries(
       final CreateMultiTimeSeriesStatement createMultiTimeSeriesStatement, final TSStatus context) {
     return visitGeneralCreateMultiTimeseries(createMultiTimeSeriesStatement, context);
   }
@@ -187,7 +183,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   }
 
   @Override
-  public TSStatus visitAlterTimeseries(
+  public TSStatus visitAlterTimeSeries(
       final AlterTimeSeriesStatement alterTimeSeriesStatement, final TSStatus context) {
     if (context.getCode() == TSStatusCode.METADATA_ERROR.getStatusCode()) {
       if (context.getMessage().contains("already")) {

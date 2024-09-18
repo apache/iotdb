@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.task.meta;
 
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,12 +27,13 @@ import java.util.concurrent.ConcurrentMap;
 
 public class PipeTemporaryMeta {
 
-  private final ConcurrentMap<Integer, Integer> completedDataNodeIds = new ConcurrentHashMap<>();
+  private final Set<Integer> completedDataNodeIds =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
   private final ConcurrentMap<Integer, Long> nodeId2RemainingEventMap = new ConcurrentHashMap<>();
   private final ConcurrentMap<Integer, Double> nodeId2RemainingTimeMap = new ConcurrentHashMap<>();
 
   public void markDataNodeCompleted(final int dataNodeId) {
-    completedDataNodeIds.put(dataNodeId, dataNodeId);
+    completedDataNodeIds.add(dataNodeId);
   }
 
   public void markDataNodeUncompleted(final int dataNodeId) {
@@ -47,7 +49,7 @@ public class PipeTemporaryMeta {
   }
 
   public Set<Integer> getCompletedDataNodeIds() {
-    return completedDataNodeIds.keySet();
+    return completedDataNodeIds;
   }
 
   public long getGlobalRemainingEvents() {

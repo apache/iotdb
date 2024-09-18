@@ -85,8 +85,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
     return this;
   }
 
@@ -167,6 +166,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setTimePartitionOrigin(long timePartitionOrigin) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setTimestampPrecision(String timestampPrecision) {
     return this;
   }
@@ -222,6 +226,11 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setQueryThreadCount(int queryThreadCount) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
     return this;
   }
 
@@ -311,6 +320,29 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setCnConnectionTimeoutMs(int connectionTimeoutMs) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeHeartbeatIntervalSecondsForCollectingPipeMeta(
+      int pipeHeartbeatIntervalSecondsForCollectingPipeMeta) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerInitialSyncDelayMinutes(
+      long pipeMetaSyncerInitialSyncDelayMinutes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
     return this;
   }
 }

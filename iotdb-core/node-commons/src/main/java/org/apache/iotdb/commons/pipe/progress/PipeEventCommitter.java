@@ -35,9 +35,7 @@ public class PipeEventCommitter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
 
-  private final String pipeName;
-  private final long creationTime;
-  private final int regionId;
+  private final CommitterKey committerKey;
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
   private final AtomicLong lastCommitId = new AtomicLong(0);
@@ -49,36 +47,31 @@ public class PipeEventCommitter {
               event ->
                   Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
 
-  PipeEventCommitter(final String pipeName, final long creationTime, final int regionId) {
+  PipeEventCommitter(final CommitterKey committerKey) {
     // make it package-private
-    this.pipeName = pipeName;
-    this.creationTime = creationTime;
-    this.regionId = regionId;
+    this.committerKey = committerKey;
   }
 
   public synchronized long generateCommitId() {
     return commitIdGenerator.incrementAndGet();
   }
 
+  @SuppressWarnings("java:S899")
   public synchronized void commit(final EnrichedEvent event) {
     commitQueue.offer(event);
 
     final int commitQueueSizeBeforeCommit = commitQueue.size();
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
-          pipeName,
-          creationTime,
-          regionId,
+          "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
+          committerKey,
           event.getCommitId(),
           lastCommitId.get(),
           commitQueueSizeBeforeCommit);
     } else if (commitQueueSizeBeforeCommit != 0 && commitQueueSizeBeforeCommit % 100 == 0) {
       LOGGER.info(
-          "COMMIT QUEUE OFFER: pipe name {}, creation time {}, region id {}, event commit id {}, last commit id {}, commit queue size {}",
-          pipeName,
-          creationTime,
-          regionId,
+          "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
+          committerKey,
           event.getCommitId(),
           lastCommitId.get(),
           commitQueueSizeBeforeCommit);
@@ -108,10 +101,8 @@ public class PipeEventCommitter {
 
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "COMMIT QUEUE POLL: pipe name {}, creation time {}, region id {}, last commit id {}, commit queue size after commit {}",
-            pipeName,
-            creationTime,
-            regionId,
+            "COMMIT QUEUE POLL: committer key {}, last commit id {}, commit queue size after commit {}",
+            committerKey,
             lastCommitId.get(),
             commitQueue.size());
       }
@@ -121,19 +112,23 @@ public class PipeEventCommitter {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public String getPipeName() {
-    return pipeName;
+    return committerKey.getPipeName();
   }
 
   // TODO: waiting called by PipeEventCommitMetrics
   public long getCreationTime() {
-    return creationTime;
+    return committerKey.getCreationTime();
   }
 
   public int getRegionId() {
-    return regionId;
+    return committerKey.getRegionId();
   }
 
   public long commitQueueSize() {
     return commitQueue.size();
+  }
+
+  public long getCurrentCommitId() {
+    return commitIdGenerator.get();
   }
 }

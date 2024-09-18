@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -31,12 +31,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class TransferLeaderRPCHandler extends AbstractAsyncRPCHandler<TRegionLeaderChangeResp> {
+public class TransferLeaderRPCHandler
+    extends DataNodeAsyncRequestRPCHandler<TRegionLeaderChangeResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TransferLeaderRPCHandler.class);
 
   public TransferLeaderRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -52,7 +53,7 @@ public class TransferLeaderRPCHandler extends AbstractAsyncRPCHandler<TRegionLea
 
     if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // Remove only if success
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.info("Successfully {} on DataNode: {}", requestType, formattedTargetLocation);
     } else {
       LOGGER.error(

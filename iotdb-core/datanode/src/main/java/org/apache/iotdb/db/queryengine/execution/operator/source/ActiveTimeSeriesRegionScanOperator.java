@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import org.apache.iotdb.db.queryengine.common.TimeseriesSchemaInfo;
+import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -29,7 +29,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
@@ -42,7 +41,7 @@ import java.util.stream.Collectors;
 
 public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSourceOperator {
   // Timeseries which need to be checked.
-  private final Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> timeSeriesToSchemasInfo;
+  private final Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo;
   private static final Binary VIEW_TYPE = new Binary("BASE".getBytes());
   private final Binary dataBaseName;
   private static final long INSTANCE_SIZE =
@@ -53,14 +52,15 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
   public ActiveTimeSeriesRegionScanOperator(
       OperatorContext operatorContext,
       PlanNodeId sourceId,
-      Map<IDeviceID, Map<String, TimeseriesSchemaInfo>> timeSeriesToSchemasInfo,
+      Map<IDeviceID, Map<String, TimeseriesContext>> timeSeriesToSchemasInfo,
       Filter timeFilter,
+      Map<IDeviceID, Long> ttlCache,
       boolean isOutputCount) {
     this.outputCount = isOutputCount;
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.timeSeriesToSchemasInfo = timeSeriesToSchemasInfo;
-    this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter);
+    this.regionScanUtil = new RegionScanForActiveTimeSeriesUtil(timeFilter, ttlCache);
     this.dataBaseName =
         new Binary(
             operatorContext
@@ -109,11 +109,11 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
 
     for (Map.Entry<IDeviceID, List<String>> entry : activeTimeSeries.entrySet()) {
       IDeviceID deviceID = entry.getKey();
-      String deviceStr = ((PlainDeviceID) deviceID).toStringID();
+      String deviceStr = deviceID.toString();
       List<String> timeSeriesList = entry.getValue();
-      Map<String, TimeseriesSchemaInfo> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
+      Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
       for (String timeSeries : timeSeriesList) {
-        TimeseriesSchemaInfo schemaInfo = timeSeriesInfo.get(timeSeries);
+        TimeseriesContext schemaInfo = timeSeriesInfo.get(timeSeries);
         timeColumnBuilder.writeLong(-1);
         columnBuilders[0].writeBinary(
             new Binary(contactDeviceAndMeasurement(deviceStr, timeSeries)));
@@ -124,7 +124,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
         checkAndAppend(schemaInfo.getEncoding(), columnBuilders[4]); // Encoding
         checkAndAppend(schemaInfo.getCompression(), columnBuilders[5]); // Compression
         checkAndAppend(schemaInfo.getTags(), columnBuilders[6]); // Tags
-        columnBuilders[7].appendNull(); // Attributes
+        checkAndAppend(schemaInfo.getAttributes(), columnBuilders[7]); // Attributes
         checkAndAppend(schemaInfo.getDeadband(), columnBuilders[8]); // Description
         checkAndAppend(schemaInfo.getDeadbandParameters(), columnBuilders[9]); // DeadbandParameters
         columnBuilders[10].writeBinary(VIEW_TYPE); // ViewType
@@ -135,7 +135,7 @@ public class ActiveTimeSeriesRegionScanOperator extends AbstractRegionScanDataSo
   }
 
   private void removeTimeseriesListFromDevice(IDeviceID deviceID, List<String> timeSeriesList) {
-    Map<String, TimeseriesSchemaInfo> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
+    Map<String, TimeseriesContext> timeSeriesInfo = timeSeriesToSchemasInfo.get(deviceID);
     for (String timeSeries : timeSeriesList) {
       timeSeriesInfo.remove(timeSeries);
     }

@@ -46,26 +46,32 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
   protected final IoTDBDataRegionAsyncConnector connector;
 
   protected PipeTransferTabletInsertionEventHandler(
-      TabletInsertionEvent event, TPipeTransferReq req, IoTDBDataRegionAsyncConnector connector) {
+      final TabletInsertionEvent event,
+      final TPipeTransferReq req,
+      final IoTDBDataRegionAsyncConnector connector) {
     this.event = event;
     this.req = req;
     this.connector = connector;
   }
 
-  public void transfer(AsyncPipeDataTransferServiceClient client) throws TException {
+  public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
     if (event instanceof EnrichedEvent) {
       connector.rateLimitIfNeeded(
-          ((EnrichedEvent) event).getPipeName(), client.getEndPoint(), req.getBody().length);
+          ((EnrichedEvent) event).getPipeName(),
+          ((EnrichedEvent) event).getCreationTime(),
+          client.getEndPoint(),
+          req.getBody().length);
     }
 
     doTransfer(client, req);
   }
 
   protected abstract void doTransfer(
-      AsyncPipeDataTransferServiceClient client, TPipeTransferReq req) throws TException;
+      final AsyncPipeDataTransferServiceClient client, final TPipeTransferReq req)
+      throws TException;
 
   @Override
-  public void onComplete(TPipeTransferResp response) {
+  public void onComplete(final TPipeTransferResp response) {
     // Just in case
     if (response == null) {
       onError(new PipeException("TPipeTransferResp is null"));
@@ -88,15 +94,15 @@ public abstract class PipeTransferTabletInsertionEventHandler<E extends TPipeTra
       if (status.isSetRedirectNode()) {
         updateLeaderCache(status);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       onError(e);
     }
   }
 
-  protected abstract void updateLeaderCache(TSStatus status);
+  protected abstract void updateLeaderCache(final TSStatus status);
 
   @Override
-  public void onError(Exception exception) {
+  public void onError(final Exception exception) {
     try {
       LOGGER.warn(
           "Failed to transfer TabletInsertionEvent {} (committer key={}, commit id={}).",

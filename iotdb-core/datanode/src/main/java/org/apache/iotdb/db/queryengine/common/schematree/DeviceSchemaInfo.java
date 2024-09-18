@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 
-import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,7 +64,7 @@ public class DeviceSchemaInfo {
     return templateId;
   }
 
-  public List<MeasurementSchema> getMeasurementSchemaList() {
+  public List<IMeasurementSchema> getMeasurementSchemaList() {
     return measurementSchemaInfoList.stream()
         .map(
             measurementSchemaInfo ->

@@ -21,11 +21,18 @@ package org.apache.iotdb.db.storageengine.rescon.disk.strategy;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+
+import java.io.File;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SequenceStrategy extends DirectoryStrategy {
 
+  private static final long PRINT_INTERVAL_MS = 3600 * 1000L;
   private int currentIndex;
+  private Map<Integer, Long> dirLastPrintTimeMap = new ConcurrentHashMap<>();
 
   @Override
   public void setFolders(List<String> folders) throws DiskSpaceInsufficientException {
@@ -52,11 +59,26 @@ public class SequenceStrategy extends DirectoryStrategy {
 
   private int tryGetNextIndex(int start) throws DiskSpaceInsufficientException {
     int index = (start + 1) % folders.size();
-    while (!JVMCommonUtils.hasSpace(folders.get(index))) {
+    String dir = folders.get(index);
+    while (!JVMCommonUtils.hasSpace(dir)) {
+      File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+
+      Long lastPrintTime = dirLastPrintTimeMap.computeIfAbsent(index, i -> -1L);
+      if (System.currentTimeMillis() - lastPrintTime > PRINT_INTERVAL_MS) {
+        long freeSpace = dirFile.getFreeSpace();
+        long totalSpace = dirFile.getTotalSpace();
+        LOGGER.warn(
+            "{} is above the warning threshold, free space {}, total space{}",
+            dir,
+            freeSpace,
+            totalSpace);
+        dirLastPrintTimeMap.put(index, System.currentTimeMillis());
+      }
       if (index == start) {
         throw new DiskSpaceInsufficientException(folders);
       }
       index = (index + 1) % folders.size();
+      dir = folders.get(index);
     }
     return index;
   }

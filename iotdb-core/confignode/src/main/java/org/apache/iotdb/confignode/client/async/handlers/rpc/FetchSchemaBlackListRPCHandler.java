@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -33,13 +33,13 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class FetchSchemaBlackListRPCHandler
-    extends AbstractAsyncRPCHandler<TFetchSchemaBlackListResp> {
+    extends DataNodeAsyncRequestRPCHandler<TFetchSchemaBlackListResp> {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(FetchSchemaBlackListRPCHandler.class);
 
   public FetchSchemaBlackListRPCHandler(
-      DataNodeRequestType requestType,
+      CnToDnRequestType requestType,
       int requestId,
       TDataNodeLocation targetDataNode,
       Map<Integer, TDataNodeLocation> dataNodeLocationMap,
@@ -53,15 +53,15 @@ public class FetchSchemaBlackListRPCHandler
     TSStatus tsStatus = tFetchSchemaBlackListResp.getStatus();
     responseMap.put(requestId, tFetchSchemaBlackListResp);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
-      LOGGER.info("Successfully fetch schemaengine black list on DataNode: {}", targetDataNode);
+      nodeLocationMap.remove(requestId);
+      LOGGER.info("Successfully fetch schemaengine black list on DataNode: {}", targetNode);
     } else if (tsStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      dataNodeLocationMap.remove(requestId);
+      nodeLocationMap.remove(requestId);
       LOGGER.error(
-          "Failed to fetch schemaengine black list on DataNode {}, {}", targetDataNode, tsStatus);
+          "Failed to fetch schemaengine black list on DataNode {}, {}", targetNode, tsStatus);
     } else {
       LOGGER.error(
-          "Failed to fetch schemaengine black list on DataNode {}, {}", targetDataNode, tsStatus);
+          "Failed to fetch schemaengine black list on DataNode {}, {}", targetNode, tsStatus);
     }
     countDownLatch.countDown();
   }
@@ -70,9 +70,9 @@ public class FetchSchemaBlackListRPCHandler
   public void onError(Exception e) {
     String errorMsg =
         "Fetch schemaengine black list error on DataNode: {id="
-            + targetDataNode.getDataNodeId()
+            + targetNode.getDataNodeId()
             + ", internalEndPoint="
-            + targetDataNode.getInternalEndPoint()
+            + targetNode.getInternalEndPoint()
             + "}"
             + e.getMessage();
     LOGGER.error(errorMsg);

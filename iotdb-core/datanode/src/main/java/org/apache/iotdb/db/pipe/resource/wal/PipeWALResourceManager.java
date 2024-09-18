@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.resource.wal;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
 import org.slf4j.Logger;
@@ -43,29 +43,30 @@ public abstract class PipeWALResourceManager {
   protected final Map<Long, PipeWALResource> memtableIdToPipeWALResourceMap;
 
   private static final int SEGMENT_LOCK_COUNT = 32;
-  private final ReentrantLock[] memtableIdSegmentLocks;
+  private final ReentrantLock[] memTableIdSegmentLocks;
 
   protected PipeWALResourceManager() {
-    // memtableIdToPipeWALResourceMap can be concurrently accessed by multiple threads
+    // memTableIdToPipeWALResourceMap can be concurrently accessed by multiple threads
     memtableIdToPipeWALResourceMap = new ConcurrentHashMap<>();
 
-    memtableIdSegmentLocks = new ReentrantLock[SEGMENT_LOCK_COUNT];
+    memTableIdSegmentLocks = new ReentrantLock[SEGMENT_LOCK_COUNT];
     for (int i = 0; i < SEGMENT_LOCK_COUNT; i++) {
-      memtableIdSegmentLocks[i] = new ReentrantLock();
+      memTableIdSegmentLocks[i] = new ReentrantLock();
     }
 
-    PipeAgent.runtime()
+    PipeDataNodeAgent.runtime()
         .registerPeriodicalJob(
             "PipeWALResourceManager#ttlCheck()",
             this::ttlCheck,
             Math.max(PipeWALResource.WAL_MIN_TIME_TO_LIVE_IN_MS / 1000, 1));
   }
 
+  @SuppressWarnings("java:S2222")
   private void ttlCheck() {
     final Iterator<Map.Entry<Long, PipeWALResource>> iterator =
         memtableIdToPipeWALResourceMap.entrySet().iterator();
     final Optional<Logger> logger =
-        PipeResourceManager.log()
+        PipeDataNodeResourceManager.log()
             .schedule(
                 PipeWALResourceManager.class,
                 PipeConfig.getInstance().getPipeWalPinMaxLogNumPerRound(),
@@ -76,7 +77,7 @@ public abstract class PipeWALResourceManager {
       while (iterator.hasNext()) {
         final Map.Entry<Long, PipeWALResource> entry = iterator.next();
         final ReentrantLock lock =
-            memtableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
+            memTableIdSegmentLocks[(int) (entry.getKey() % SEGMENT_LOCK_COUNT)];
 
         lock.lock();
         try {
@@ -94,7 +95,7 @@ public abstract class PipeWALResourceManager {
           lock.unlock();
         }
       }
-    } catch (ConcurrentModificationException e) {
+    } catch (final ConcurrentModificationException e) {
       LOGGER.error(
           "Concurrent modification issues happened, skipping the WAL in this round of ttl check",
           e);
@@ -102,34 +103,34 @@ public abstract class PipeWALResourceManager {
   }
 
   public final void pin(final WALEntryHandler walEntryHandler) throws IOException {
-    final long memtableId = walEntryHandler.getMemTableId();
-    final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
+    final long memTableId = walEntryHandler.getMemTableId();
+    final ReentrantLock lock = memTableIdSegmentLocks[(int) (memTableId % SEGMENT_LOCK_COUNT)];
 
     lock.lock();
     try {
-      pinInternal(memtableId, walEntryHandler);
+      pinInternal(memTableId, walEntryHandler);
     } finally {
       lock.unlock();
     }
   }
 
-  protected abstract void pinInternal(long memtableId, WALEntryHandler walEntryHandler)
+  protected abstract void pinInternal(final long memTableId, final WALEntryHandler walEntryHandler)
       throws IOException;
 
   public final void unpin(final WALEntryHandler walEntryHandler) throws IOException {
-    final long memtableId = walEntryHandler.getMemTableId();
-    final ReentrantLock lock = memtableIdSegmentLocks[(int) (memtableId % SEGMENT_LOCK_COUNT)];
+    final long memTableId = walEntryHandler.getMemTableId();
+    final ReentrantLock lock = memTableIdSegmentLocks[(int) (memTableId % SEGMENT_LOCK_COUNT)];
 
     lock.lock();
     try {
-      unpinInternal(memtableId, walEntryHandler);
+      unpinInternal(memTableId, walEntryHandler);
     } finally {
       lock.unlock();
     }
   }
 
-  protected abstract void unpinInternal(long memtableId, WALEntryHandler walEntryHandler)
-      throws IOException;
+  protected abstract void unpinInternal(
+      final long memTableId, final WALEntryHandler walEntryHandler) throws IOException;
 
   public int getPinnedWalCount() {
     return Objects.nonNull(memtableIdToPipeWALResourceMap)

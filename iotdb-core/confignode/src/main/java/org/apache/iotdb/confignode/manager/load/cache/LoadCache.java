@@ -34,6 +34,7 @@ import org.apache.iotdb.confignode.manager.ProcedureManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupCache;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupStatistics;
+import org.apache.iotdb.confignode.manager.load.cache.node.AINodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.BaseNodeCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.cache.node.DataNodeHeartbeatCache;
@@ -192,8 +193,10 @@ public class LoadCache {
         nodeCacheMap.put(nodeId, new ConfigNodeHeartbeatCache(nodeId));
         break;
       case DataNode:
-      default:
         nodeCacheMap.put(nodeId, new DataNodeHeartbeatCache(nodeId));
+        break;
+      case AINode:
+        nodeCacheMap.put(nodeId, new AINodeHeartbeatCache(nodeId));
         break;
     }
     heartbeatProcessingMap.put(nodeId, new AtomicBoolean(false));
@@ -223,6 +226,19 @@ public class LoadCache {
     Optional.ofNullable(nodeCacheMap.get(nodeId))
         .ifPresent(node -> node.cacheHeartbeatSample(sample));
     Optional.ofNullable(heartbeatProcessingMap.get(nodeId)).ifPresent(node -> node.set(false));
+  }
+
+  /**
+   * Cache the latest heartbeat sample of a AINode.
+   *
+   * @param nodeId the id of the AINode
+   * @param sample the latest heartbeat sample
+   */
+  public void cacheAINodeHeartbeatSample(int nodeId, NodeHeartbeatSample sample) {
+    nodeCacheMap
+        .computeIfAbsent(nodeId, empty -> new AINodeHeartbeatCache(nodeId))
+        .cacheHeartbeatSample(sample);
+    heartbeatProcessingMap.get(nodeId).set(false);
   }
 
   public void resetHeartbeatProcessing(int nodeId) {
@@ -665,6 +681,24 @@ public class LoadCache {
     consensusGroupCacheMap.forEach(
         (regionGroupId, consensusGroupCache) ->
             regionLeaderMap.put(regionGroupId, consensusGroupCache.getLeaderId()));
+    return regionLeaderMap;
+  }
+
+  /**
+   * Safely get the latest RegionLeaderMap.
+   *
+   * @param consensusGroupType DataRegion or SchemaRegion
+   * @return Map<RegionGroupId, leaderId>, leaderId will be -1 if the RegionGroup has no leader yet.
+   */
+  public Map<TConsensusGroupId, Integer> getRegionLeaderMap(
+      TConsensusGroupType consensusGroupType) {
+    Map<TConsensusGroupId, Integer> regionLeaderMap = new ConcurrentHashMap<>();
+    consensusGroupCacheMap.forEach(
+        (regionGroupId, consensusGroupCache) -> {
+          if (regionGroupId.getType().equals(consensusGroupType)) {
+            regionLeaderMap.put(regionGroupId, consensusGroupCache.getLeaderId());
+          }
+        });
     return regionLeaderMap;
   }
 

@@ -8,7 +8,7 @@ on:
     branches:
       - master
       - 'rel/*'
-      - pipe-meta-sync
+      - "rc/*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -16,7 +16,7 @@ on:
     branches:
       - master
       - 'rel/*'
-      - pipe-meta-sync
+      - "rc/*"
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -29,6 +29,7 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
   DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
@@ -37,16 +38,9 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        java: [ 8, 17 ]
+        java: [ 17 ]
         os: [ ubuntu-latest, windows-latest ]
         it_task: [ 'others', 'datanode' ]
-        include:
-          - java: 17
-            os: macos-latest
-            it_task: 'datanode'
-          - java: 17
-            os: macos-latest
-            it_task: 'others'
     runs-on: ${{ matrix.os }}
 
     steps:

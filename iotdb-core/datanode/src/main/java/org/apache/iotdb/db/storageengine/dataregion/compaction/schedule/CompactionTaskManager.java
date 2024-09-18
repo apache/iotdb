@@ -138,12 +138,14 @@ public class CompactionTaskManager implements IService {
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
+    this.taskExecutionPool.disableErrorLog();
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_TASK.getName());
+    this.subCompactionTaskExecutionPool.disableErrorLog();
     for (int i = 0; i < compactionThreadNum; ++i) {
       taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
     }
@@ -238,6 +240,14 @@ public class CompactionTaskManager implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.COMPACTION_SERVICE;
+  }
+
+  public boolean shouldSelectCrossSpaceCompactionTask() {
+    // If the queue size accounts for less than 0.8 of the total capacity, select cross space
+    // compaction task
+    int waitingQueueRestSize =
+        candidateCompactionTaskQueue.getMaxSize() - candidateCompactionTaskQueue.size();
+    return 5 * waitingQueueRestSize >= candidateCompactionTaskQueue.size();
   }
 
   public boolean isWaitingQueueFull() {

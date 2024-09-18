@@ -25,7 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.FakedTsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,8 +43,10 @@ public class SizeTieredCompactionSelectorTest {
     for (int i = 0; i < 100; ++i) {
       FakedTsFileResource resource =
           new FakedTsFileResource(1024, String.format("%d-%d-0-0.tsfile", i + 1, i + 1));
-      resource.timeIndex.updateStartTime(new PlainDeviceID("root.test.d"), i * 100);
-      resource.timeIndex.updateEndTime(new PlainDeviceID("root.test.d"), (i + 1) * 100);
+      resource.timeIndex.updateStartTime(
+          IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"), i * 100);
+      resource.timeIndex.updateEndTime(
+          IDeviceID.Factory.DEFAULT_FACTORY.create("root.test.d"), (i + 1) * 100);
       resource.timePartition = i / 10;
       resources.add(resource);
     }

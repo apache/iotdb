@@ -25,6 +25,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.TimeSer
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowOutput;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.datastructure.WindowState;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
+import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -33,6 +34,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -121,6 +123,52 @@ public class TimeSeriesRuntimeState {
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       final long timestamp, final int value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
+    Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
+
+    if (timestamp <= lastReportTimeStamp) {
+      return null;
+    }
+    final Set<TimeSeriesWindow> addedWindows =
+        windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
+    if (Objects.nonNull(addedWindows)) {
+      addedWindows.forEach(
+          window ->
+              window.initWindow(
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
+    }
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    while (windowIterator.hasNext()) {
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
+          window.updateIntermediateResult(timestamp, value);
+      if (Objects.isNull(stateWindowOutputPair)) {
+        continue;
+      }
+      if (stateWindowOutputPair.getLeft().isEmit()
+          && Objects.nonNull(stateWindowOutputPair.getRight())) {
+        outputList.add(stateWindowOutputPair.getRight());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+      }
+      if (stateWindowOutputPair.getLeft().isPurge()) {
+        windowIterator.remove();
+      }
+    }
+    if (!outputList.isEmpty()) {
+      output =
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+      outputList.clear();
+    }
+    return output;
+  }
+
+  public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
+      final long timestamp, final LocalDate value, final long outputMinReportIntervalMilliseconds)
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 
@@ -305,6 +353,52 @@ public class TimeSeriesRuntimeState {
 
   public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
       final long timestamp, final String value, final long outputMinReportIntervalMilliseconds)
+      throws IOException {
+    Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
+
+    if (timestamp <= lastReportTimeStamp) {
+      return null;
+    }
+    final Set<TimeSeriesWindow> addedWindows =
+        windowingProcessor.mayAddWindow(currentOpeningWindows, timestamp, value);
+    if (Objects.nonNull(addedWindows)) {
+      addedWindows.forEach(
+          window ->
+              window.initWindow(
+                  intermediateResultName2OperatorSupplierMap,
+                  aggregatorOutputName2OperatorMap,
+                  systemParameters));
+    }
+    final Iterator<TimeSeriesWindow> windowIterator = currentOpeningWindows.iterator();
+    while (windowIterator.hasNext()) {
+      final TimeSeriesWindow window = windowIterator.next();
+      final Pair<WindowState, WindowOutput> stateWindowOutputPair =
+          window.updateIntermediateResult(timestamp, value);
+      if (Objects.isNull(stateWindowOutputPair)) {
+        continue;
+      }
+      if (stateWindowOutputPair.getLeft().isEmit()
+          && Objects.nonNull(stateWindowOutputPair.getRight())) {
+        outputList.add(stateWindowOutputPair.getRight());
+        lastReportTimeStamp =
+            Math.max(lastReportTimeStamp, stateWindowOutputPair.getRight().getProgressTime());
+      }
+      if (stateWindowOutputPair.getLeft().isPurge()) {
+        windowIterator.remove();
+      }
+    }
+    if (!outputList.isEmpty()) {
+      output =
+          new Pair<>(
+              new ArrayList<>(outputList),
+              getTimestampWindowBufferPair(outputMinReportIntervalMilliseconds));
+      outputList.clear();
+    }
+    return output;
+  }
+
+  public Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> updateWindows(
+      final long timestamp, final Binary value, final long outputMinReportIntervalMilliseconds)
       throws IOException {
     Pair<List<WindowOutput>, Pair<Long, ByteBuffer>> output = null;
 

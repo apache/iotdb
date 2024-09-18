@@ -23,6 +23,7 @@ import org.apache.iotdb.db.pipe.processor.aggregate.operator.aggregatedresult.Ag
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.CustomizedReadableIntermediateResults;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult.IntermediateResultOperator;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.AbstractWindowingProcessor;
+import org.apache.iotdb.pipe.api.type.Binary;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -209,6 +211,61 @@ public class TimeSeriesWindow {
     }
     if (state.isEmitWithCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.INT32));
+    }
+    return state.isEmit() ? stateOutputPair : null;
+  }
+
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final LocalDate value) {
+    final Pair<WindowState, WindowOutput> stateOutputPair =
+        processor.updateAndMaySetWindowState(this, timestamp, value);
+    final WindowState state = stateOutputPair.getLeft();
+
+    if (state.isEmitWithoutCompute()) {
+      stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.DATE));
+    }
+
+    if (state.isCalculate()) {
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+          intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
+
+      while (iterator.hasNext()) {
+        entry = iterator.next();
+        final IntermediateResultOperator operator = entry.getValue().getRight();
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
+          if (!operator.initAndGetIsSupport(value, timestamp)) {
+            // Remove unsupported aggregated results
+            aggregatedOutputName2OperatorMap
+                .entrySet()
+                .removeIf(
+                    entry1 ->
+                        entry1
+                            .getValue()
+                            .getDeclaredIntermediateValueNames()
+                            .contains(operator.getName()));
+            // If no aggregated values can be calculated, purge the window
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
+              return new Pair<>(WindowState.PURGE, null);
+            }
+            // Remove unsupported intermediate values
+            iterator.remove();
+            continue;
+          }
+          entry.getValue().setLeft(TSDataType.DATE);
+        } else if (entry.getValue().getLeft() != TSDataType.DATE) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.DATE);
+          return new Pair<>(WindowState.PURGE, null);
+        } else {
+          operator.updateValue(value, timestamp);
+        }
+      }
+    }
+    if (state.isEmitWithCompute()) {
+      stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.DATE));
     }
     return state.isEmit() ? stateOutputPair : null;
   }
@@ -427,6 +484,60 @@ public class TimeSeriesWindow {
     }
     if (state.isEmitWithCompute()) {
       stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.TEXT));
+    }
+    return state.isEmit() ? stateOutputPair : null;
+  }
+
+  public Pair<WindowState, WindowOutput> updateIntermediateResult(
+      final long timestamp, final Binary value) {
+    final Pair<WindowState, WindowOutput> stateOutputPair =
+        processor.updateAndMaySetWindowState(this, timestamp, value);
+    final WindowState state = stateOutputPair.getLeft();
+
+    if (state.isEmitWithoutCompute()) {
+      stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.BLOB));
+    }
+    if (state.isCalculate()) {
+      final Iterator<Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>>> iterator =
+          intermediateResultName2tsTypeAndOperatorMap.entrySet().iterator();
+      Map.Entry<String, Pair<TSDataType, IntermediateResultOperator>> entry;
+
+      while (iterator.hasNext()) {
+        entry = iterator.next();
+        final IntermediateResultOperator operator = entry.getValue().getRight();
+        if (entry.getValue().getLeft() == TSDataType.UNKNOWN) {
+          if (!operator.initAndGetIsSupport(value, timestamp)) {
+            // Remove unsupported aggregated results
+            aggregatedOutputName2OperatorMap
+                .entrySet()
+                .removeIf(
+                    entry1 ->
+                        entry1
+                            .getValue()
+                            .getDeclaredIntermediateValueNames()
+                            .contains(operator.getName()));
+            // If no aggregated values can be calculated, purge the window
+            if (aggregatedOutputName2OperatorMap.isEmpty()) {
+              return new Pair<>(WindowState.PURGE, null);
+            }
+            // Remove unsupported intermediate values
+            iterator.remove();
+            continue;
+          }
+          entry.getValue().setLeft(TSDataType.BLOB);
+        } else if (entry.getValue().getLeft() != TSDataType.BLOB) {
+          LOGGER.warn(
+              "Different data type encountered in one window, will purge. Previous type: {}, now type: {}",
+              entry.getValue().getLeft(),
+              TSDataType.BLOB);
+          return new Pair<>(WindowState.PURGE, null);
+        } else {
+          operator.updateValue(value, timestamp);
+        }
+      }
+    }
+    if (state.isEmitWithCompute()) {
+      stateOutputPair.getRight().setAggregatedResults(getAggregatedResults(TSDataType.BLOB));
     }
     return state.isEmit() ? stateOutputPair : null;
   }

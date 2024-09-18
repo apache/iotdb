@@ -54,6 +54,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
@@ -158,13 +159,13 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
             new ResponseMessage(
                 new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
                     .setMessage("internal error. statemachine throws a runtime exception: " + rte));
-        if (Utils.stallApply()) {
+        if (Utils.stallApply(consensusGroupType)) {
           waitUntilSystemAllowApply();
         } else {
           break;
         }
       }
-    } while (Utils.stallApply());
+    } while (Utils.stallApply(consensusGroupType));
 
     if (isLeader) {
       // only record time cost for data region in Performance Overview Dashboard
@@ -183,7 +184,10 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   private void waitUntilSystemAllowApply() {
     try {
       Retriable.attemptUntilTrue(
-          () -> !Utils.stallApply(), TimeDuration.ONE_MINUTE, "waitUntilSystemAllowApply", logger);
+          () -> !Utils.stallApply(consensusGroupType),
+          TimeDuration.ONE_MINUTE,
+          "waitUntilSystemAllowApply",
+          logger);
     } catch (InterruptedException e) {
       logger.warn("{}: interrupted when waiting until system ready: ", this, e);
       Thread.currentThread().interrupt();
@@ -291,6 +295,11 @@ public class ApplicationStateMachineProxy extends BaseStateMachine {
   @Override
   public void notifyLeaderReady() {
     applicationStateMachine.event().notifyLeaderReady();
+  }
+
+  @Override
+  public void notifyNotLeader(Collection<TransactionContext> pendingEntries) throws IOException {
+    applicationStateMachine.event().notifyNotLeader();
   }
 
   @Override

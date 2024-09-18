@@ -20,22 +20,75 @@
 -->
 # Building C++ Client
 
-To compile cpp client, add "-P with-cpp" option to maven build command.
-
-The compiling requires the module "compile-tools" to be built first.
-For more information, please refer to "compile-tools/README.md".
-
-Explicitly using mvnw here as the build requires maven 3.9 and the default installation is older
-
 ## Compile and Test:
 
 ### Compile
+
+#### Unix
+To compile the cpp client, use the following command:
 `mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests`
 
-### Test
-First build IoTDB server
+#### Windows
+To compile on Windows, please install Boost first and add following Maven
+settings:
+```
+-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
+```
 
-Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
+The thrift dependency that the cpp client uses is incompatible with MinGW, please use Visual 
+Studio. It is highly recommended to use Visual Studio 2022 or later.
+
+##### Visual Studio 2022
+If you are using Visual Studio 2022, you can compile the cpp client with the following command:
+
+```
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+-D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+```
+
+##### Visual Studio 2019
+If you are using Visual Studio 2019, you can compile the cpp client with the following command:
+
+```
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+-D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+-Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
+```
+
+#### Visual Studio 2017 or older
+If you are using Visual Studio 2017 or older, the pre-built Thrift library is incompatible. You 
+will have to compile the thrift library manually:
+
+1. Install the dependencies of Thrift:
+* flex http://gnuwin32.sourceforge.net/packages/flex.htm
+* bison http://gnuwin32.sourceforge.net/packages/bison.htm
+* openssl https://slproweb.com/products/Win32OpenSSL.html
+
+2. Clone the repository: https://github.com/apache/iotdb-bin-resources.
+
+3. Enter the "iotdb-tools-thrift" folder in the cloned repository; use the following command to 
+   compile the thrift library:
+
+`mvn install`
+
+4. If you encounter a problem like "cannot find 'unistd.h'", please open the file
+"iotdb-bin-resources\iotdb-tools-thrift\target\build\compiler\cpp\thrift\thriftl.cc" and replace
+"#include <unistd.h>" with "#include <io.h>" and "#include <process.h>"; then, rerun the command 
+   in the third step;
+
+5. Return to the cpp client repository and compile it with:
+
+```
+mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTests
+-D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
+```
+
+
+### Test
+First build IoTDB server together with the cpp client.
+
+Explicitly using "install" instead of package in order to be sure we're using libs built on this 
+machine.
 
 `mvn clean install -P with-cpp -pl distribution,iotdb-client/client-cpp -am -DskipTests`
 
@@ -43,23 +96,12 @@ After run verify
 
 `mvn clean verify -P with-cpp -pl iotdb-client/client-cpp -am`
 
-To compile on Windows, please install Boost first and add following Maven settings:
-```
--Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
-```
-
-e.g.,
-```
-mvn clean package -P with-cpp -pl iotdb-client/client-cpp -am -DskipTest
--D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib"
-```
-
-## 
+## Package Hierarchy
 
 If the compilation finishes successfully, the packaged zip file will be placed under
 "client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip". 
 
-On Mac machines, the hierarchy of the package should look like this:
+On macOS, the hierarchy of the package should look like this:
 ```
 .
 +-- client
@@ -71,17 +113,22 @@ On Mac machines, the hierarchy of the package should look like this:
 |       +-- thrift
 |           +-- thrift_headers...
 |   +-- lib
-|       +-- libiotdb_session.dylib
+|       +-- Release
+|          +-- libiotdb_session.dylib
+|          +-- parser.dylib
+|          +-- thriftmd.dylib
+|          +-- tutorialgencpp.dylib
 ```
 
 ## Using C++ Client:
 ```
-1. Put the zip file "client-cpp-${project.version}-cpp-${os}.zip" wherever you want
+1. Put the zip file "client-cpp-${project.version}-cpp-${os}.zip" wherever you want;
 
-2. Unzip the archive using the following command, and then you can get the two directories mentioned above, the header file and the dynamic library
+2. Unzip the archive using the following command, and then you can get the two directories 
+mentioned above, the header file and the dynamic library:
     unzip client-cpp-${project.version}-cpp-${os}.zip
 
-3. Write C++ code to call the operation interface of cpp-client to operate IOTDB,
+3. Write C++ code to call the operation interface of the cpp client to operate IoTDB,
     for detail interface information, please refer to the link: https://iotdb.apache.org/zh/UserGuide/Master/API/Programming-Cpp-Native-API.html
 
    E.g:

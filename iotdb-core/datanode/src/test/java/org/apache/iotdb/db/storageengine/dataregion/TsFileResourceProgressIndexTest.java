@@ -29,17 +29,18 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.Spy;
 
 import javax.annotation.Nonnull;
 
@@ -59,7 +60,7 @@ public class TsFileResourceProgressIndexTest {
   private final File file =
       new File(
           TsFileNameGenerator.generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 1, 1, 1, 1));
-  private final TsFileResource tsFileResource = new TsFileResource(file);
+  @Spy private TsFileResource tsFileResource = Mockito.spy(new TsFileResource(file));
   private final Map<IDeviceID, Integer> deviceToIndex = new HashMap<>();
   private final long[] startTimes = new long[DEVICE_NUM];
   private final long[] endTimes = new long[DEVICE_NUM];
@@ -71,16 +72,21 @@ public class TsFileResourceProgressIndexTest {
   @Before
   public void setUp() {
     IntStream.range(0, DEVICE_NUM)
-        .forEach(i -> deviceToIndex.put(new PlainDeviceID("root.sg.d" + i), i));
-    DeviceTimeIndex deviceTimeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
+        .forEach(
+            i -> deviceToIndex.put(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i));
+    ArrayDeviceTimeIndex deviceTimeIndex =
+        new ArrayDeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     IntStream.range(0, DEVICE_NUM)
         .forEach(
             i -> {
-              deviceTimeIndex.updateStartTime(new PlainDeviceID("root.sg.d" + i), i);
-              deviceTimeIndex.updateEndTime(new PlainDeviceID("root.sg.d" + i), i + 1);
+              deviceTimeIndex.updateStartTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i);
+              deviceTimeIndex.updateEndTime(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d" + i), i + 1);
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    Mockito.doReturn("1").when(tsFileResource).getDataRegionId();
 
     IntStream.range(0, INDEX_NUM).forEach(i -> indexList.add(new MockProgressIndex(i)));
   }
@@ -186,6 +192,11 @@ public class TsFileResourceProgressIndexTest {
 
       MockProgressIndex that = (MockProgressIndex) progressIndex;
       return this.type == that.type && this.val == that.val;
+    }
+
+    @Override
+    public ProgressIndex deepCopy() {
+      return new MockProgressIndex(type, val);
     }
 
     @Override

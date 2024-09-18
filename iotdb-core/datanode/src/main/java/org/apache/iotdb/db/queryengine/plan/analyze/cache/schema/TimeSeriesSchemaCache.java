@@ -107,9 +107,10 @@ public class TimeSeriesSchemaCache {
           public void computeValue(int index, SchemaCacheEntry value) {
             if (value != null) {
               schemaTree.appendSingleMeasurement(
-                  devicePath.concatNode(value.getSchemaEntryId()),
+                  devicePath.concatAsMeasurementPath(value.getSchemaEntryId()),
                   value.getIMeasurementSchema(),
                   value.getTagMap(),
+                  null,
                   null,
                   value.isAligned());
               storageGroupSet.add(value.getStorageGroup());
@@ -129,6 +130,7 @@ public class TimeSeriesSchemaCache {
           fullPath,
           schemaCacheEntry.getIMeasurementSchema(),
           schemaCacheEntry.getTagMap(),
+          null,
           null,
           schemaCacheEntry.isAligned());
       schemaTree.setDatabases(Collections.singleton(schemaCacheEntry.getStorageGroup()));
@@ -180,7 +182,7 @@ public class TimeSeriesSchemaCache {
       final int recordMissingIndex = i;
       if (!logicalViewSchema.isWritable()) {
         PartialPath path = schemaComputation.getDevicePath();
-        path = path.concatNode(schemaComputation.getMeasurements()[realIndex]);
+        path = path.concatAsMeasurementPath(schemaComputation.getMeasurements()[realIndex]);
         throw new RuntimeException(new InsertNonWritableViewException(path.getFullPath()));
       }
       PartialPath fullPath = logicalViewSchema.getSourcePathIfWritable();
@@ -198,7 +200,6 @@ public class TimeSeriesSchemaCache {
 
             @Override
             public void computeValue(int index, SchemaCacheEntry value) {
-              index = realIndex;
               if (value == null) {
                 indexOfMissingMeasurements.add(recordMissingIndex);
               } else {
@@ -214,7 +215,7 @@ public class TimeSeriesSchemaCache {
                                   + "Please check it.",
                               fullPath)));
                 }
-                schemaComputation.computeMeasurementOfView(index, value, value.isAligned());
+                schemaComputation.computeMeasurementOfView(realIndex, value, value.isAligned());
               }
             }
           });
@@ -413,7 +414,7 @@ public class TimeSeriesSchemaCache {
 
             @Override
             public int updateValue(int index, SchemaCacheEntry value) {
-              return DataNodeLastCacheManager.invalidateLastCache(value);
+              return -DataNodeLastCacheManager.invalidateLastCache(value);
             }
           });
     } else {
@@ -425,7 +426,7 @@ public class TimeSeriesSchemaCache {
     dualKeyCache.invalidateDataRegionLastCache(database);
   }
 
-  public void invalidate(List<PartialPath> partialPathList) {
+  public void invalidate(List<? extends PartialPath> partialPathList) {
     dualKeyCache.invalidate(partialPathList);
   }
 

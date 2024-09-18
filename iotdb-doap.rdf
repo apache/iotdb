@@ -51,6 +51,7 @@
     <programming-language>Python</programming-language>
     <programming-language>C++</programming-language>
     <programming-language>Go</programming-language>
+    <programming-language>Csharp</programming-language>
 
     <category rdf:resource="http://projects.apache.org/category/database" />
     <category rdf:resource="http://projects.apache.org/category/iot"/>
@@ -62,7 +63,15 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
+        <created>2024-07-01</created>
+        <revision>1.3.2</revision>
+      </Version>
+    </release>
+
+    <release>
+      <Version>
+        <name>Apache IoTDB</name>
         <created>2024-04-22</created>
         <revision>1.3.1</revision>
       </Version>
@@ -70,7 +79,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2024-01-01</created>
         <revision>1.3.0</revision>
       </Version>
@@ -78,7 +87,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-10-15</created>
         <revision>1.2.2</revision>
       </Version>
@@ -86,7 +95,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-09-19</created>
         <revision>1.2.1</revision>
       </Version>
@@ -94,7 +103,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-09-08</created>
         <revision>1.2.0</revision>
       </Version>
@@ -102,7 +111,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-07-28</created>
         <revision>1.1.2</revision>
       </Version>
@@ -110,7 +119,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-06-14</created>
         <revision>1.1.1</revision>
       </Version>
@@ -118,7 +127,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-04-03</created>
         <revision>1.1.0</revision>
       </Version>
@@ -126,7 +135,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2023-02-22</created>
         <revision>1.0.1</revision>
       </Version>
@@ -134,7 +143,7 @@
 
     <release>
       <Version>
-        <name>apache-iotdb</name>
+        <name>Apache IoTDB</name>
         <created>2022-12-03</created>
         <revision>1.0.0</revision>
       </Version>

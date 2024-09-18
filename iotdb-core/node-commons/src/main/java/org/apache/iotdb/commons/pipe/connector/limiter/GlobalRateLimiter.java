@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.google.common.util.concurrent.RateLimiter;
 
+import java.util.concurrent.TimeUnit;
+
 /** This is a global rate limiter for all connectors. */
 public class GlobalRateLimiter {
 
@@ -42,6 +44,33 @@ public class GlobalRateLimiter {
   }
 
   public void acquire(long bytes) {
+    if (reloadParams()) {
+      return;
+    }
+
+    while (bytes > 0) {
+      if (bytes > Integer.MAX_VALUE) {
+        tryAcquireWithRateCheck(Integer.MAX_VALUE);
+        bytes -= Integer.MAX_VALUE;
+      } else {
+        tryAcquireWithRateCheck((int) bytes);
+        return;
+      }
+    }
+  }
+
+  private void tryAcquireWithRateCheck(final int bytes) {
+    while (!rateLimiter.tryAcquire(
+        bytes,
+        PipeConfig.getInstance().getRateLimiterHotReloadCheckIntervalMs(),
+        TimeUnit.MILLISECONDS)) {
+      if (reloadParams()) {
+        return;
+      }
+    }
+  }
+
+  private boolean reloadParams() {
     final double throughputBytesPerSecondLimit =
         CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
 
@@ -53,18 +82,6 @@ public class GlobalRateLimiter {
     }
 
     // For performance, we don't need to acquire rate limiter if throughput <= 0
-    if (throughputBytesPerSecondLimit <= 0) {
-      return;
-    }
-
-    while (bytes > 0) {
-      if (bytes > Integer.MAX_VALUE) {
-        rateLimiter.acquire(Integer.MAX_VALUE);
-        bytes -= Integer.MAX_VALUE;
-      } else {
-        rateLimiter.acquire((int) bytes);
-        return;
-      }
-    }
+    return throughputBytesPerSecondLimit <= 0;
   }
 }

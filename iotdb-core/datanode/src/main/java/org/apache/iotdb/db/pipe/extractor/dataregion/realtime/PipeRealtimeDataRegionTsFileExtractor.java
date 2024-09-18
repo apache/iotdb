@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -44,7 +45,7 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
     }
 
     if (event.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
-      extractDeletion(event);
+      extractDirectly(event);
       return;
     }
 
@@ -64,7 +65,8 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
                   + "has reached capacity, discard TsFile event %s, current state %s",
               this, event, event.getTsFileEpoch().getState(this));
       LOGGER.error(errorMessage);
-      PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+      PipeDataNodeAgent.runtime()
+          .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
 
       // Ignore the event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileExtractor.class.getName(), false);
@@ -90,8 +92,9 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
 
       if (realtimeEvent.getEvent() instanceof PipeHeartbeatEvent) {
         suppliedEvent = supplyHeartbeat(realtimeEvent);
-      } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent) {
-        suppliedEvent = supplyDeletion(realtimeEvent);
+      } else if (realtimeEvent.getEvent() instanceof PipeSchemaRegionWritePlanEvent
+          || realtimeEvent.getEvent() instanceof ProgressReportEvent) {
+        suppliedEvent = supplyDirectly(realtimeEvent);
       } else if (realtimeEvent.increaseReferenceCount(
           PipeRealtimeDataRegionTsFileExtractor.class.getName())) {
         suppliedEvent = realtimeEvent.getEvent();
@@ -106,7 +109,8 @@ public class PipeRealtimeDataRegionTsFileExtractor extends PipeRealtimeDataRegio
                     + "the data represented by this event is lost",
                 realtimeEvent.getEvent());
         LOGGER.error(errorMessage);
-        PipeAgent.runtime().report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
+        PipeDataNodeAgent.runtime()
+            .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
       }
 
       realtimeEvent.decreaseReferenceCount(

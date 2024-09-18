@@ -163,7 +163,7 @@ public class IoTDBSeriesPermissionIT {
         showStorageGroupsColumnHeaders.stream()
             .map(ColumnHeader::getColumnName)
             .toArray(String[]::new),
-        new String[] {"root.test,10000,1,1,604800000,"},
+        new String[] {"root.test,1,1,0,604800000,"},
         "test1",
         "test123");
     resultSetEqualTest(

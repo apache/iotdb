@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.db.pipe.processor.aggregate.operator.intermediateresult;
 
+import org.apache.iotdb.pipe.api.type.Binary;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -53,7 +56,7 @@ public interface IntermediateResultOperator {
    *
    * @param systemParams the system parameters
    */
-  void configureSystemParameters(Map<String, String> systemParams);
+  void configureSystemParameters(final Map<String, String> systemParams);
 
   /**
    * The operator may init its value and typically set the output intermediate value type by the
@@ -66,17 +69,21 @@ public interface IntermediateResultOperator {
    * @param initialInput the initial data
    * @return if the input type is supported
    */
-  boolean initAndGetIsSupport(boolean initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(final boolean initialInput, final long initialTimestamp);
 
-  boolean initAndGetIsSupport(int initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(final int initialInput, final long initialTimestamp);
 
-  boolean initAndGetIsSupport(long initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(final LocalDate initialInput, final long initialTimestamp);
 
-  boolean initAndGetIsSupport(float initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(final long initialInput, final long initialTimestamp);
 
-  boolean initAndGetIsSupport(double initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(final float initialInput, final long initialTimestamp);
 
-  boolean initAndGetIsSupport(String initialInput, long initialTimestamp);
+  boolean initAndGetIsSupport(final double initialInput, final long initialTimestamp);
+
+  boolean initAndGetIsSupport(final String initialInput, final long initialTimestamp);
+
+  boolean initAndGetIsSupport(final Binary initialInput, final long initialTimestamp);
 
   /**
    * Use the input to update the intermediate result. The input is all raw types instead of Object
@@ -84,17 +91,21 @@ public interface IntermediateResultOperator {
    *
    * @param input the inputs
    */
-  void updateValue(boolean input, long timestamp);
+  void updateValue(final boolean input, final long timestamp);
 
-  void updateValue(int input, long timestamp);
+  void updateValue(final int input, final long timestamp);
 
-  void updateValue(long input, long timestamp);
+  void updateValue(final LocalDate input, final long timestamp);
 
-  void updateValue(float input, long timestamp);
+  void updateValue(final long input, final long timestamp);
 
-  void updateValue(double input, long timestamp);
+  void updateValue(final float input, final long timestamp);
 
-  void updateValue(String input, long timestamp);
+  void updateValue(final double input, final long timestamp);
+
+  void updateValue(final String input, final long timestamp);
+
+  void updateValue(final Binary input, final long timestamp);
 
   /**
    * Get the result and its type to calculate the aggregated value. If the type is List, Map or
@@ -106,8 +117,8 @@ public interface IntermediateResultOperator {
    * Serialize its intermediate result to the outputStream to allow shutdown restart. The operator
    * may as well serialize its own status.
    */
-  void serialize(DataOutputStream outputStream) throws IOException;
+  void serialize(final DataOutputStream outputStream) throws IOException;
 
   /** Deserialize the object from byteBuffer to allow shutdown restart */
-  void deserialize(ByteBuffer byteBuffer) throws IOException;
+  void deserialize(final ByteBuffer byteBuffer) throws IOException;
 }

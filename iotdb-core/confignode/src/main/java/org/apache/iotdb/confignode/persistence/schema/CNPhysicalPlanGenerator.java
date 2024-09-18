@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -38,7 +39,6 @@ import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeF
 import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -60,7 +60,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Objects;
 import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -115,6 +114,7 @@ public class CNPhysicalPlanGenerator
   }
 
   @Override
+  @SuppressWarnings("java:S4348")
   public Iterator<ConfigPhysicalPlan> iterator() {
     return this;
   }
@@ -277,13 +277,11 @@ public class CNPhysicalPlanGenerator
       while (size > 0) {
         String path = ReadWriteIOUtils.readString(ttlInputStream);
         long ttl = ReadWriteIOUtils.readLong(ttlInputStream);
-        planDeque.add(
-            new SetTTLPlan(
-                Objects.requireNonNull(path).split(TsFileConstant.PATH_SEPARATER_NO_REGEX), ttl));
+        planDeque.add(new SetTTLPlan(PathUtils.splitPathToDetachedNodes(path), ttl));
         size--;
       }
-    } catch (IOException e) {
-      logger.error("Got IOException when deserializing ttl file", e);
+    } catch (IOException | IllegalPathException e) {
+      logger.error("Got exception when deserializing ttl file", e);
       latestException = e;
     }
   }

@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
@@ -210,9 +210,10 @@ public class SetTemplateProcedure
 
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -264,7 +265,7 @@ public class SetTemplateProcedure
     try {
       path = new PartialPath(templateSetPath);
       patternTree.appendPathPattern(path);
-      patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+      patternTree.appendPathPattern(path.concatAsMeasurementPath(MULTI_LEVEL_PATH_WILDCARD));
       patternTree.serialize(dataOutputStream);
     } catch (IllegalPathException | IOException ignored) {
     }
@@ -281,7 +282,7 @@ public class SetTemplateProcedure
                 env,
                 relatedSchemaRegionGroup,
                 false,
-                DataNodeRequestType.CHECK_TIMESERIES_EXISTENCE,
+                CnToDnRequestType.CHECK_TIMESERIES_EXISTENCE,
                 ((dataNodeLocation, consensusGroupIdList) ->
                     new TCheckTimeSeriesExistenceReq(patternTreeBytes, consensusGroupIdList))) {
 
@@ -318,7 +319,8 @@ public class SetTemplateProcedure
                     new ProcedureException(
                         new MetadataException(
                             String.format(
-                                "Set template %s to %s failed when [check timeseries existence on DataNode] because all replicaset of schemaRegion %s failed. %s",
+                                "Set template %s to %s failed when [check time series existence on DataNode] because "
+                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failure nodes: %s",
                                 templateName,
                                 templateSetPath,
                                 consensusGroupId.id,
@@ -382,9 +384,10 @@ public class SetTemplateProcedure
 
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         env.getConfigManager().getNodeManager().getRegisteredDataNodeLocations();
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(DataNodeRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.UPDATE_TEMPLATE, req, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       if (entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -486,10 +489,10 @@ public class SetTemplateProcedure
         TemplateInternalRPCUtil.generateInvalidateTemplateSetInfoBytes(
             template.getId(), templateSetPath));
 
-    AsyncClientHandler<TUpdateTemplateReq, TSStatus> clientHandler =
-        new AsyncClientHandler<>(
-            DataNodeRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
-    AsyncDataNodeClientPool.getInstance().sendAsyncRequestToDataNodeWithRetry(clientHandler);
+    DataNodeAsyncRequestContext<TUpdateTemplateReq, TSStatus> clientHandler =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnRequestType.UPDATE_TEMPLATE, invalidateTemplateSetInfoReq, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(clientHandler);
     Map<Integer, TSStatus> statusMap = clientHandler.getResponseMap();
     for (Map.Entry<Integer, TSStatus> entry : statusMap.entrySet()) {
       // all dataNodes must clear the related template cache

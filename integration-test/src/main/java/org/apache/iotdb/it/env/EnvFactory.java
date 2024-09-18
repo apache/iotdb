@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.it.env.cluster.env.AIEnv;
 import org.apache.iotdb.it.env.cluster.env.Cluster1Env;
 import org.apache.iotdb.it.env.cluster.env.SimpleEnv;
 import org.apache.iotdb.it.env.remote.env.RemoteServerEnv;
@@ -44,13 +45,18 @@ public class EnvFactory {
         EnvType envType = EnvType.getSystemEnvType();
         switch (envType) {
           case Simple:
+          case TABLE_SIMPLE:
             env = new SimpleEnv();
             break;
           case Cluster1:
+          case TABLE_CLUSTER1:
             env = new Cluster1Env();
             break;
           case Remote:
             env = new RemoteServerEnv();
+            break;
+          case AI:
+            env = new AIEnv();
             break;
           case MultiCluster:
             logger.warn(

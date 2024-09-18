@@ -181,7 +181,7 @@ public class MemoryPool {
    * @throws MemoryLeakException throw {@link MemoryLeakException}
    */
   public void deRegisterFragmentInstanceFromQueryMemoryMap(
-      String queryId, String fragmentInstanceId) {
+      String queryId, String fragmentInstanceId, boolean forceDeregister) {
     Map<String, Map<String, Long>> queryRelatedMemory = queryMemoryReservations.get(queryId);
     if (queryRelatedMemory != null) {
       Map<String, Long> fragmentRelatedMemory = queryRelatedMemory.get(fragmentInstanceId);
@@ -191,6 +191,13 @@ public class MemoryPool {
       if (fragmentRelatedMemory != null) {
         hasPotentialMemoryLeak =
             fragmentRelatedMemory.values().stream().anyMatch(value -> value != 0L);
+      }
+      if (!forceDeregister && hasPotentialMemoryLeak) {
+        // If hasPotentialMemoryLeak is true, it means that LocalSourceChannel/LocalSourceHandles
+        // have not been closed.
+        // We should wait for them to be closed. Make sure this method is called again with
+        // forceDeregister == true, after all LocalSourceChannel/LocalSourceHandles are closed.
+        return;
       }
       synchronized (queryMemoryReservations) {
         queryRelatedMemory.remove(fragmentInstanceId);

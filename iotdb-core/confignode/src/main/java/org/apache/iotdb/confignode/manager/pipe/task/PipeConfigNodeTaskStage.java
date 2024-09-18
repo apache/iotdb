@@ -32,12 +32,12 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
   private final PipeConfigNodeSubtask subtask;
 
   public PipeConfigNodeTaskStage(
-      String pipeName,
-      long creationTime,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes,
-      PipeTaskMeta pipeTaskMeta) {
+      final String pipeName,
+      final long creationTime,
+      final Map<String, String> extractorAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> connectorAttributes,
+      final PipeTaskMeta pipeTaskMeta) {
 
     try {
       subtask =
@@ -48,7 +48,7 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
               processorAttributes,
               connectorAttributes,
               pipeTaskMeta);
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new PipeException(
           String.format(
               "Failed to create subtask for pipe %s, creation time %d", pipeName, creationTime),
@@ -63,8 +63,6 @@ public class PipeConfigNodeTaskStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    // IoTDBConfigRegionExtractor is started by executor because starting
-    // here may cause deadlock when triggering snapshot
     PipeConfigNodeSubtaskExecutor.getInstance().start(subtask.getTaskID());
   }
 

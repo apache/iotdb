@@ -49,7 +49,10 @@ import org.eclipse.milo.opcua.stack.server.security.DefaultServerCertificateVali
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -57,6 +60,7 @@ import java.security.KeyPair;
 import java.security.cert.X509Certificate;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -69,7 +73,7 @@ import static org.eclipse.milo.opcua.stack.core.types.builtin.unsigned.Unsigned.
  * OPC UA Server builder for IoTDB to send data. The coding style referenced ExampleServer.java in
  * Eclipse Milo.
  */
-public class OpcUaServerBuilder {
+public class OpcUaServerBuilder implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaServerBuilder.class);
 
   private static final String WILD_CARD_ADDRESS = "0.0.0.0";
@@ -79,41 +83,50 @@ public class OpcUaServerBuilder {
   private String user;
   private String password;
   private Path securityDir;
+  private boolean enableAnonymousAccess;
+  private DefaultTrustListManager trustListManager;
 
-  public OpcUaServerBuilder() {
+  OpcUaServerBuilder() {
     tcpBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_TCP_BIND_PORT_DEFAULT_VALUE;
     httpsBindPort = PipeConnectorConstant.CONNECTOR_OPC_UA_HTTPS_BIND_PORT_DEFAULT_VALUE;
     user = PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
     password = PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
     securityDir = Paths.get(PipeConnectorConstant.CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE);
+    enableAnonymousAccess =
+        PipeConnectorConstant.CONNECTOR_OPC_UA_ENABLE_ANONYMOUS_ACCESS_DEFAULT_VALUE;
   }
 
-  public OpcUaServerBuilder setTcpBindPort(int tcpBindPort) {
+  OpcUaServerBuilder setTcpBindPort(final int tcpBindPort) {
     this.tcpBindPort = tcpBindPort;
     return this;
   }
 
-  public OpcUaServerBuilder setHttpsBindPort(int httpsBindPort) {
+  OpcUaServerBuilder setHttpsBindPort(final int httpsBindPort) {
     this.httpsBindPort = httpsBindPort;
     return this;
   }
 
-  public OpcUaServerBuilder setUser(String user) {
+  OpcUaServerBuilder setUser(final String user) {
     this.user = user;
     return this;
   }
 
-  public OpcUaServerBuilder setPassword(String password) {
+  OpcUaServerBuilder setPassword(final String password) {
     this.password = password;
     return this;
   }
 
-  public OpcUaServerBuilder setSecurityDir(String securityDir) {
+  OpcUaServerBuilder setSecurityDir(final String securityDir) {
     this.securityDir = Paths.get(securityDir);
     return this;
   }
 
-  public OpcUaServer build() throws Exception {
+  OpcUaServerBuilder setEnableAnonymousAccess(final boolean enableAnonymousAccess) {
+    this.enableAnonymousAccess = enableAnonymousAccess;
+    return this;
+  }
+
+  OpcUaServer build() throws Exception {
     Files.createDirectories(securityDir);
     if (!Files.exists(securityDir)) {
       throw new PipeException("Unable to create security dir: " + securityDir);
@@ -132,7 +145,10 @@ public class OpcUaServerBuilder {
     final DefaultCertificateManager certificateManager =
         new DefaultCertificateManager(loader.getServerKeyPair(), loader.getServerCertificate());
 
-    final DefaultTrustListManager trustListManager = new DefaultTrustListManager(pkiDir);
+    final OpcUaServerConfig serverConfig;
+
+    trustListManager = new DefaultTrustListManager(pkiDir);
+
     LOGGER.info(
         "Certificate directory is: {}, Please move certificates from the reject dir to the trusted directory to allow encrypted access",
         pkiDir.getAbsolutePath());
@@ -150,13 +166,10 @@ public class OpcUaServerBuilder {
 
     final UsernameIdentityValidator identityValidator =
         new UsernameIdentityValidator(
-            true,
-            authChallenge -> {
-              String inputUsername = authChallenge.getUsername();
-              String inputPassword = authChallenge.getPassword();
-
-              return inputUsername.equals(user) && inputPassword.equals(password);
-            });
+            enableAnonymousAccess,
+            authChallenge ->
+                authChallenge.getUsername().equals(user)
+                    && authChallenge.getPassword().equals(password));
 
     final X509IdentityValidator x509IdentityValidator = new X509IdentityValidator(c -> true);
 
@@ -179,7 +192,7 @@ public class OpcUaServerBuilder {
     final Set<EndpointConfiguration> endpointConfigurations =
         createEndpointConfigurations(certificate, tcpBindPort, httpsBindPort);
 
-    final OpcUaServerConfig serverConfig =
+    serverConfig =
         OpcUaServerConfig.builder()
             .setApplicationUri(applicationUri)
             .setApplicationName(LocalizedText.english("Apache IoTDB OPC UA server"))
@@ -212,7 +225,7 @@ public class OpcUaServerBuilder {
   }
 
   private Set<EndpointConfiguration> createEndpointConfigurations(
-      X509Certificate certificate, int tcpBindPort, int httpsBindPort) {
+      final X509Certificate certificate, final int tcpBindPort, final int httpsBindPort) {
     final Set<EndpointConfiguration> endpointConfigurations = new LinkedHashSet<>();
 
     final List<String> bindAddresses = newArrayList();
@@ -222,8 +235,8 @@ public class OpcUaServerBuilder {
     hostnames.add(HostnameUtil.getHostname());
     hostnames.addAll(HostnameUtil.getHostnames(WILD_CARD_ADDRESS));
 
-    for (String bindAddress : bindAddresses) {
-      for (String hostname : hostnames) {
+    for (final String bindAddress : bindAddresses) {
+      for (final String hostname : hostnames) {
         final EndpointConfiguration.Builder builder =
             EndpointConfiguration.newBuilder()
                 .setBindAddress(bindAddress)
@@ -276,7 +289,7 @@ public class OpcUaServerBuilder {
   }
 
   private EndpointConfiguration buildTcpEndpoint(
-      EndpointConfiguration.Builder base, int tcpBindPort) {
+      final EndpointConfiguration.Builder base, final int tcpBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
         .setBindPort(tcpBindPort)
@@ -284,10 +297,46 @@ public class OpcUaServerBuilder {
   }
 
   private EndpointConfiguration buildHttpsEndpoint(
-      EndpointConfiguration.Builder base, int httpsBindPort) {
+      final EndpointConfiguration.Builder base, final int httpsBindPort) {
     return base.copy()
         .setTransportProfile(TransportProfile.HTTPS_UABINARY)
         .setBindPort(httpsBindPort)
         .build();
+  }
+
+  /////////////////////////////// Conflict detection ///////////////////////////////
+
+  void checkEquals(
+      final String user,
+      final String password,
+      final Path securityDir,
+      final boolean enableAnonymousAccess) {
+    checkEquals("user", this.user, user);
+    checkEquals("password", this.password, password);
+    checkEquals(
+        "security dir",
+        FileSystems.getDefault().getPath(this.securityDir.toAbsolutePath().toString()),
+        FileSystems.getDefault().getPath(securityDir.toAbsolutePath().toString()));
+    checkEquals("enableAnonymousAccess option", this.enableAnonymousAccess, enableAnonymousAccess);
+  }
+
+  private void checkEquals(final String attrName, final Object thisAttr, final Object thatAttr) {
+    if (!Objects.equals(thisAttr, thatAttr)) {
+      throw new PipeException(
+          String.format(
+              "The existing server with tcp port %s and https port %s's %s %s conflicts to the new %s %s, reject reusing.",
+              tcpBindPort, httpsBindPort, attrName, thisAttr, attrName, thatAttr));
+    }
+  }
+
+  @Override
+  public void close() {
+    if (Objects.nonNull(trustListManager)) {
+      try {
+        trustListManager.close();
+      } catch (final IOException e) {
+        LOGGER.warn("Failed to close trustListManager, because {}.", e.getMessage());
+      }
+    }
   }
 }

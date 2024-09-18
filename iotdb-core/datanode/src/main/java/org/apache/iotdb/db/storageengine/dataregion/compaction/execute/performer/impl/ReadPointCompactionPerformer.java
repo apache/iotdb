@@ -19,17 +19,17 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.AlignedPath;
-import org.apache.iotdb.commons.path.MeasurementPath;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.IUnseqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.ReadPointPerformerSubTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.IDataBlockReader;
@@ -44,12 +44,13 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,6 +113,10 @@ public class ReadPointCompactionPerformer
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
           new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
+      List<Schema> schemas =
+          CompactionTableSchemaCollector.collectSchema(
+              seqFiles, unseqFiles, deviceIterator.getReaderMap());
+      compactionWriter.setSchemaForAllTargetFile(schemas);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -126,7 +131,7 @@ public class ReadPointCompactionPerformer
           compactNonAlignedSeries(
               device, deviceIterator, compactionWriter, fragmentInstanceContext, queryDataSource);
         }
-        summary.setTemporalFileSize(compactionWriter.getWriterSize());
+        summary.setTemporaryFileSize(compactionWriter.getWriterSize());
       }
 
       compactionWriter.endFile();
@@ -178,7 +183,10 @@ public class ReadPointCompactionPerformer
       // chunkgroup is serialized only when at least one timeseries under this device has data
       compactionWriter.startChunkGroup(device, true);
       measurementSchemas.add(0, timeSchema);
-      compactionWriter.startMeasurement(measurementSchemas, 0);
+      compactionWriter.startMeasurement(
+          TsFileConstant.TIME_COLUMN_ID,
+          new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+          0);
       writeWithReader(compactionWriter, dataBlockReader, device, 0, true);
       compactionWriter.endMeasurement(0);
       compactionWriter.endChunkGroup();
@@ -239,7 +247,6 @@ public class ReadPointCompactionPerformer
    *
    * @param measurementIds if device is aligned, then measurementIds contain all measurements. If
    *     device is not aligned, then measurementIds only contain one measurement.
-   * @throws IllegalPathException if the path is illegal
    */
   public static IDataBlockReader constructReader(
       IDeviceID deviceId,
@@ -248,15 +255,12 @@ public class ReadPointCompactionPerformer
       List<String> allSensors,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
-      boolean isAlign)
-      throws IllegalPathException {
-    PartialPath seriesPath;
+      boolean isAlign) {
+    IFullPath seriesPath;
     if (isAlign) {
-      seriesPath =
-          new AlignedPath(
-              ((PlainDeviceID) deviceId).toStringID(), measurementIds, measurementSchemas);
+      seriesPath = new AlignedFullPath(deviceId, measurementIds, measurementSchemas);
     } else {
-      seriesPath = new MeasurementPath(deviceId, measurementIds.get(0), measurementSchemas.get(0));
+      seriesPath = new NonAlignedFullPath(deviceId, measurementSchemas.get(0));
     }
     return new SeriesDataBlockReader(
         seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true);
@@ -293,7 +297,7 @@ public class ReadPointCompactionPerformer
       return new ReadPointCrossCompactionWriter(targetFileResources, seqFileResources);
     } else {
       // inner space
-      return new ReadPointInnerCompactionWriter(targetFileResources.get(0));
+      return new ReadPointInnerCompactionWriter(targetFileResources);
     }
   }
 

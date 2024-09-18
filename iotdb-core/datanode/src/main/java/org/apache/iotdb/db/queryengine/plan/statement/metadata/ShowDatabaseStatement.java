@@ -19,17 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseInfo;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -93,27 +90,14 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
     for (Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
       String storageGroup = entry.getKey();
       TDatabaseInfo storageGroupInfo = entry.getValue();
-      long ttl =
-          DataNodeTTLCache.getInstance()
-              .getNodeTTL(
-                  storageGroup
-                      + IoTDBConstant.PATH_SEPARATOR
-                      + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-      String ttlStr = String.valueOf(ttl);
-      if (ttl == TTLCache.NULL_TTL) {
-        ttlStr = "null";
-      } else if (ttl == Long.MAX_VALUE) {
-        ttlStr = IoTDBConstant.TTL_INFINITE;
-      }
+
       builder.getTimeColumnBuilder().writeLong(0L);
       builder
           .getColumnBuilder(0)
           .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
-
-      builder.getColumnBuilder(1).writeBinary(new Binary(ttlStr, TSFileConfig.STRING_CHARSET));
-
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(3).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionOrigin());
       builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
       if (isDetailed) {
         builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());

@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-core</artifactId>
-        <version>1.3.3-SNAPSHOT</version>
+        <version>2.0.0-SNAPSHOT</version>
     </parent>
     <artifactId>node-commons</artifactId>
     <name>IoTDB: Core: Node Commons</name>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -48,37 +48,37 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>udf-api</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>trigger-api</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>pipe-api</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-confignode</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-thrift-consensus</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tsfile</groupId>
@@ -88,12 +88,16 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-interface</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>metrics-core</artifactId>
-            <version>1.3.3-SNAPSHOT</version>
+            <version>2.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -114,6 +118,10 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
@@ -174,13 +182,23 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.ratis</groupId>
+            <artifactId>ratis-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-ainode</artifactId>
+            <version>2.0.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
     <build>
         <resources>
             <resource>
                 <directory>${project.basedir}/src/assembly/resources/conf</directory>
                 <includes>
-                    <include>iotdb-system.properties</include>
+                    <include>iotdb-system.properties.template</include>
                 </includes>
                 <filtering>false</filtering>
             </resource>
@@ -335,73 +353,6 @@
                                 </goals>
                                 <!-- this is used for inheritance merges -->
                                 <phase>package</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>generate-properties-unix</id>
-            <activation>
-                <os>
-                    <family>unix</family>
-                </os>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <!-- Unix execution -->
-                            <execution>
-                                <id>generate-config-unix</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <executable>sh</executable>
-                                    <arguments>
-                                        <argument>${project.basedir}/src/assembly/resources/conf/generate_properties.sh</argument>
-                                    </arguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>generate-properties-windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <!-- Windows execution -->
-                            <execution>
-                                <id>generate-properties-windows</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <executable>cmd</executable>
-                                    <arguments>
-                                        <argument>/c</argument>
-                                        <argument>${project.basedir}\src\assembly\resources\conf\generate_properties.bat</argument>
-                                    </arguments>
-                                </configuration>
                             </execution>
                         </executions>
                     </plugin>

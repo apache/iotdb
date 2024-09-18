@@ -26,8 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAligne
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.read.controller.IChunkMetadataLoader;
@@ -50,8 +50,15 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   // global time filter, only used to check time range
   private final Filter globalTimeFilter;
 
+  // time column's modifications, means deletion for entire row
+  private final List<Modification> timeColumnModifications;
+
   // all sub sensors' modifications
-  private final List<List<Modification>> pathModifications;
+  private final List<List<Modification>> valueColumnsModifications;
+
+  // for table model, it will be false
+  // for tree model, it will be true
+  private final boolean ignoreAllNullRows;
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
@@ -61,11 +68,15 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       TsFileResource resource,
       QueryContext context,
       Filter globalTimeFilter,
-      List<List<Modification>> pathModifications) {
+      List<Modification> timeModifications,
+      List<List<Modification>> valueColumnsModifications,
+      boolean ignoreAllNullRows) {
     this.resource = resource;
     this.context = context;
     this.globalTimeFilter = globalTimeFilter;
-    this.pathModifications = pathModifications;
+    this.timeColumnModifications = timeModifications;
+    this.valueColumnsModifications = valueColumnsModifications;
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override
@@ -73,7 +84,7 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
     final long t1 = System.nanoTime();
     try {
       List<AlignedChunkMetadata> alignedChunkMetadataList =
-          ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
+          ((AbstractAlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
       // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as
       // the time series metadata, so we don't need to filter it again.
@@ -99,13 +110,17 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       if (context.isDebug()) {
         DEBUG_LOGGER.info(
             "Modifications size is {} for file Path: {} ",
-            pathModifications.size(),
+            valueColumnsModifications.size(),
             resource.getTsFilePath());
-        pathModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
+        valueColumnsModifications.forEach(c -> DEBUG_LOGGER.info(c.toString()));
       }
 
       // remove ChunkMetadata that have been deleted
-      ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, pathModifications);
+      ModificationUtils.modifyAlignedChunkMetaData(
+          alignedChunkMetadataList,
+          timeColumnModifications,
+          valueColumnsModifications,
+          ignoreAllNullRows);
 
       if (context.isDebug()) {
         DEBUG_LOGGER.info("After modification Chunk meta data list is: ");
@@ -121,7 +136,8 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context, resource));
+              chunkMetadata.setChunkLoader(
+                  new DiskAlignedChunkLoader(context, resource, ignoreAllNullRows));
             }
           });
 

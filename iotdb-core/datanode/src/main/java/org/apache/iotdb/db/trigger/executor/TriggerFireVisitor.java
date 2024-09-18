@@ -43,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
@@ -52,6 +53,7 @@ import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.thrift.TException;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,12 +110,12 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
     long time = node.getTime();
     boolean hasFailedTrigger = false;
     for (Map.Entry<String, List<String>> entry : triggerNameToMeasurementList.entrySet()) {
-      List<MeasurementSchema> schemas =
+      List<IMeasurementSchema> schemas =
           entry.getValue().stream()
               .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
               .collect(Collectors.toList());
       // only one row
-      Tablet tablet = new Tablet(node.getDevicePath().getFullPath(), schemas, 1);
+      Tablet tablet = new Tablet(node.getTargetPath().getFullPath(), schemas, 1);
       // add one row
       tablet.rowSize++;
       tablet.addTimestamp(0, time);
@@ -130,6 +132,13 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
       }
     }
     return hasFailedTrigger ? TriggerFireResult.FAILED_NO_TERMINATION : TriggerFireResult.SUCCESS;
+  }
+
+  @Override
+  public TriggerFireResult visitRelationalInsertTablet(
+      RelationalInsertTabletNode node, TriggerEvent context) {
+    // TODO-Table: add support
+    return visitInsertTablet(node, context);
   }
 
   @Override
@@ -157,7 +166,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         // all measurements are included
         tablet =
             new Tablet(
-                node.getDevicePath().getFullPath(),
+                node.getTargetPath().getFullPath(),
                 Arrays.asList(measurementSchemas),
                 timestamps,
                 columns,
@@ -165,7 +174,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
                 rowCount);
       } else {
         // choose specified columns
-        List<MeasurementSchema> schemas =
+        List<IMeasurementSchema> schemas =
             entry.getValue().stream()
                 .map(
                     measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
@@ -183,7 +192,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         }
         tablet =
             new Tablet(
-                node.getDevicePath().getFullPath(),
+                node.getTargetPath().getFullPath(),
                 schemas,
                 timestamps,
                 columnsOfNewTablet,
@@ -282,7 +291,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(
       InsertNode node, TriggerEvent event) {
-    PartialPath device = node.getDevicePath();
+    PartialPath device = node.getTargetPath();
     List<String> measurements = new ArrayList<>();
     for (String measurement : node.getMeasurements()) {
       if (measurement != null) {

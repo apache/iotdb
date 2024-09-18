@@ -34,12 +34,15 @@ import org.apache.iotdb.db.pipe.metric.PipeDataNodeMetrics;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DataExchangeCountMetricSet;
 import org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet;
-import org.apache.iotdb.db.queryengine.metric.LoadTsFileMemMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryRelatedResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet;
+import org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileMemMetricSet;
 import org.apache.iotdb.db.subscription.metric.SubscriptionMetrics;
 import org.apache.iotdb.metrics.metricsets.UpTimeMetrics;
 import org.apache.iotdb.metrics.metricsets.disk.DiskMetrics;
@@ -93,6 +96,11 @@ public class DataNodeMetricsHelper {
 
     // bind subscription related metrics
     MetricService.getInstance().addMetricSet(SubscriptionMetrics.getInstance());
+
+    // bind load related metrics
+    MetricService.getInstance().addMetricSet(LoadTsFileCostMetricsSet.getInstance());
+    MetricService.getInstance().addMetricSet(ActiveLoadingFilesNumberMetricsSet.getInstance());
+    MetricService.getInstance().addMetricSet(ActiveLoadingFilesSizeMetricsSet.getInstance());
   }
 
   private static void initSystemMetrics() {

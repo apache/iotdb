@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -35,12 +36,17 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ConfigurationFileUtils {
 
@@ -48,24 +54,27 @@ public class ConfigurationFileUtils {
   private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
   private static Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
-  private static String license =
-      "#\n"
-          + "# Licensed to the Apache Software Foundation (ASF) under one\n"
-          + "# or more contributor license agreements.  See the NOTICE file\n"
-          + "# distributed with this work for additional information\n"
-          + "# regarding copyright ownership.  The ASF licenses this file\n"
-          + "# to you under the Apache License, Version 2.0 (the\n"
-          + "# \"License\"); you may not use this file except in compliance\n"
-          + "# with the License.  You may obtain a copy of the License at\n"
-          + "#\n"
-          + "#     http://www.apache.org/licenses/LICENSE-2.0\n"
-          + "#\n"
-          + "# Unless required by applicable law or agreed to in writing,\n"
-          + "# software distributed under the License is distributed on an\n"
-          + "# \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY\n"
-          + "# KIND, either express or implied.  See the License for the\n"
-          + "# specific language governing permissions and limitations\n"
-          + "# under the License.";
+  private static final String lineSeparator = "\n";
+  private static final String license =
+      new StringJoiner(lineSeparator)
+          .add("# Licensed to the Apache Software Foundation (ASF) under one")
+          .add("# or more contributor license agreements.  See the NOTICE file")
+          .add("# distributed with this work for additional information")
+          .add("# regarding copyright ownership.  The ASF licenses this file")
+          .add("# to you under the Apache License, Version 2.0 (the")
+          .add("# \"License\"); you may not use this file except in compliance")
+          .add("# with the License.  You may obtain a copy of the License at")
+          .add("#")
+          .add("#     http://www.apache.org/licenses/LICENSE-2.0")
+          .add("#")
+          .add("# Unless required by applicable law or agreed to in writing,")
+          .add("# software distributed under the License is distributed on an")
+          .add("# \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY")
+          .add("# KIND, either express or implied.  See the License for the")
+          .add("# specific language governing permissions and limitations")
+          .add("# under the License.")
+          .toString();
+  private static Map<String, String> configuration2DefaultValue;
 
   // This is a temporary implementations
   private static final Set<String> ignoreConfigKeys =
@@ -82,7 +91,6 @@ public class ConfigurationFileUtils {
               "dn_data_region_consensus_port",
               "dn_seed_config_node",
               "dn_session_timeout_threshold",
-              "cluster_name",
               "config_node_consensus_protocol_class",
               "schema_replication_factor",
               "data_replication_factor",
@@ -150,17 +158,65 @@ public class ConfigurationFileUtils {
     return readConfigLines(f);
   }
 
+  public static void getConfigurationDefaultValue() throws IOException {
+    if (configuration2DefaultValue != null) {
+      return;
+    }
+    configuration2DefaultValue = new HashMap<>();
+    try (InputStream inputStream =
+            ConfigurationFileUtils.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader reader = new BufferedReader(isr)) {
+      String line;
+      Pattern pattern = Pattern.compile("^[^#].*?=.*$");
+      while ((line = reader.readLine()) != null) {
+        Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+          String[] parts = line.split("=");
+          if (parts.length == 2) {
+            configuration2DefaultValue.put(parts[0].trim(), parts[1].trim());
+          } else if (parts.length == 1) {
+            configuration2DefaultValue.put(parts[0].trim(), null);
+          } else {
+            logger.error("Failed to parse configuration template: {}", line);
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read configuration template", e);
+      throw e;
+    }
+  }
+
+  // This function is used to get the default value for the configuration that enables hot
+  // modification.
+  public static String getConfigurationDefaultValue(String parameterName) throws IOException {
+    parameterName = parameterName.trim();
+    if (configuration2DefaultValue != null) {
+      return configuration2DefaultValue.get(parameterName);
+    } else {
+      getConfigurationDefaultValue();
+      return configuration2DefaultValue.getOrDefault(parameterName, null);
+    }
+  }
+
+  public static void releaseDefault() {
+    configuration2DefaultValue = null;
+  }
+
   public static String readConfigurationTemplateFile() throws IOException {
     StringBuilder content = new StringBuilder();
     try (InputStream inputStream =
             ConfigurationFileUtils.class
                 .getClassLoader()
-                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_NAME);
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
         InputStreamReader isr = new InputStreamReader(inputStream);
         BufferedReader reader = new BufferedReader(isr)) {
       String line;
       while ((line = reader.readLine()) != null) {
-        content.append(line).append("\n");
+        content.append(line).append(lineSeparator);
       }
     } catch (IOException e) {
       logger.warn("Failed to read configuration template", e);
@@ -182,50 +238,53 @@ public class ConfigurationFileUtils {
 
   public static void updateConfigurationFile(File file, Properties newConfigItems)
       throws IOException, InterruptedException {
-    // read configuration file
-    List<String> lines = new ArrayList<>();
-    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-      String line = null;
-      while ((line = reader.readLine()) != null) {
-        lines.add(line);
-      }
-    }
-    // generate new configuration file content in memory
-    StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
-    for (String currentLine : lines) {
-      if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
-        contentsOfNewConfigurationFile.append(currentLine).append("\n");
-        continue;
-      }
-      int equalsIndex = currentLine.indexOf('=');
-      // replace old config
-      if (equalsIndex != -1) {
-        String key = currentLine.substring(0, equalsIndex).trim();
-        String value = currentLine.substring(equalsIndex + 1).trim();
-        if (!newConfigItems.containsKey(key)) {
-          contentsOfNewConfigurationFile.append(currentLine).append("\n");
-          continue;
-        }
-        if (newConfigItems.getProperty(key).equals(value)) {
-          contentsOfNewConfigurationFile.append(currentLine).append("\n");
-          newConfigItems.remove(key);
-        } else {
-          contentsOfNewConfigurationFile.append("#").append(currentLine).append("\n");
-        }
-      }
-    }
-    if (newConfigItems.isEmpty()) {
-      // No configuration needs to be modified
-      return;
-    }
     File lockFile = new File(file.getPath() + lockFileSuffix);
     acquireTargetFileLock(lockFile);
-    logger.info("Updating configuration file {}", file.getAbsolutePath());
     try {
-      try (FileWriter writer = new FileWriter(lockFile)) {
+      // read configuration file
+      List<String> lines = new ArrayList<>();
+      try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+          lines.add(line);
+        }
+      }
+      // generate new configuration file content in memory
+      StringBuilder contentsOfNewConfigurationFile = new StringBuilder();
+      for (String currentLine : lines) {
+        if (currentLine.trim().isEmpty() || currentLine.trim().startsWith("#")) {
+          contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
+          continue;
+        }
+        int equalsIndex = currentLine.indexOf('=');
+        // replace old config
+        if (equalsIndex != -1) {
+          String key = currentLine.substring(0, equalsIndex).trim();
+          String value = currentLine.substring(equalsIndex + 1).trim();
+          if (!newConfigItems.containsKey(key)) {
+            contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
+            continue;
+          }
+          if (newConfigItems.getProperty(key).equals(value)) {
+            contentsOfNewConfigurationFile.append(currentLine).append(lineSeparator);
+            newConfigItems.remove(key);
+          } else {
+            contentsOfNewConfigurationFile.append("#").append(currentLine).append(lineSeparator);
+          }
+        }
+      }
+      if (newConfigItems.isEmpty()) {
+        // No configuration needs to be modified
+        return;
+      }
+      logger.info("Updating configuration file {}", file.getAbsolutePath());
+      try (BufferedWriter writer = new BufferedWriter(new FileWriter(lockFile))) {
         writer.write(contentsOfNewConfigurationFile.toString());
-        // add new config items
-        newConfigItems.store(writer, null);
+        // Properties.store is not used as Properties.store may generate '\' automatically
+        writer.write("#" + new Date().toString() + lineSeparator);
+        for (String key : newConfigItems.stringPropertyNames()) {
+          writer.write(key + "=" + newConfigItems.get(key) + lineSeparator);
+        }
         writer.flush();
       }
       Files.move(lockFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);

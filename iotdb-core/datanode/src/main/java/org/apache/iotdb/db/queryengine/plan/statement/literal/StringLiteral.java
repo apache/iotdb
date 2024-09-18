@@ -29,6 +29,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.iotdb.db.utils.CommonUtils.parseIntFromString;
+
 public class StringLiteral extends Literal {
   private final String value;
 
@@ -54,17 +56,32 @@ public class StringLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.TEXT;
+    if (dataType == TSDataType.TEXT || dataType == TSDataType.STRING) {
+      return true;
+    } else if (dataType == TSDataType.DATE) {
+      try {
+        parseIntFromString(value);
+        return true;
+      } catch (NumberFormatException e) {
+        return false;
+      }
+    }
+    return false;
   }
 
   @Override
   public String getDataTypeString() {
-    return TSDataType.TEXT.toString();
+    return TSDataType.STRING.toString();
   }
 
   @Override
   public Binary getBinary() {
     return new Binary(value, TSFileConfig.STRING_CHARSET);
+  }
+
+  @Override
+  public int getDate() {
+    return parseIntFromString(value);
   }
 
   @Override

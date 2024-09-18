@@ -129,6 +129,10 @@ CACHE
     : C A C H E
     ;
 
+CALL
+    : C A L L
+    ;
+
 CAST
     : C A S T
     ;
@@ -163,6 +167,10 @@ CONFIGNODES
 
 CONFIGURATION
     : C O N F I G U R A T I O N
+    ;
+
+CONNECTION
+    : C O N N E C T I O N
     ;
 
 CONNECTOR
@@ -282,6 +290,10 @@ EVERY
     : E V E R Y
     ;
 
+EXISTS
+    : E X I S T S
+    ;
+
 EXPLAIN
     : E X P L A I N
     ;
@@ -350,6 +362,10 @@ HAVING
     : H A V I N G
     ;
 
+HEAD
+    : H E A D
+    ;
+
 HYPERPARAMETERS
     : H Y P E R P A R A M E T E R S
     ;
@@ -360,6 +376,10 @@ IN
 
 INDEX
     : I N D E X
+    ;
+
+INFERENCE
+    : I N F E R E N C E
     ;
 
 INFO
@@ -440,6 +460,18 @@ METADATA
 
 MIGRATE
     : M I G R A T E
+    ;
+
+AINODES
+    : A I N O D E S
+    ;
+
+MODEL
+    : M O D E L
+    ;
+
+MODELS
+    : M O D E L S
     ;
 
 MODIFY
@@ -758,6 +790,10 @@ TAGS
     : T A G S
     ;
 
+TAIL
+    : T A I L
+    ;
+
 TASK
     : T A S K
     ;
@@ -938,9 +974,14 @@ ELSE
     : E L S E
     ;
 
+IF
+    : I F
+    ;
+
 INF
     : I N F
     ;
+
 
 // Privileges Keywords
 

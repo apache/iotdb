@@ -40,6 +40,7 @@ import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -196,15 +197,16 @@ public class SystemInfo {
   }
 
   public boolean addDirectBufferMemoryCost(long size) {
-    while (true) {
-      long memCost = directBufferMemoryCost.get();
-      if (memCost + size > totalDirectBufferMemorySizeLimit) {
-        return false;
-      }
-      if (directBufferMemoryCost.compareAndSet(memCost, memCost + size)) {
-        return true;
-      }
-    }
+    AtomicBoolean result = new AtomicBoolean(false);
+    directBufferMemoryCost.updateAndGet(
+        memCost -> {
+          if (memCost + size > totalDirectBufferMemorySizeLimit) {
+            return memCost;
+          }
+          result.set(true);
+          return memCost + size;
+        });
+    return result.get();
   }
 
   public void decreaseDirectBufferMemoryCost(long size) {

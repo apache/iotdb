@@ -22,13 +22,14 @@ package org.apache.iotdb.db.pipe.extractor;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.queue.ConcurrentIterableLinkedQueue;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ActivateTemplateNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.pipe.api.event.Event;
 
@@ -55,11 +56,13 @@ public class SchemaRegionListeningQueueTest {
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).open();
+    PipeDataNodeAgent.runtime().notifySchemaLeaderReady(new SchemaRegionId(0));
   }
 
   @AfterClass
   public static void cleanup() throws IOException {
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).close();
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).close();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
@@ -67,13 +70,10 @@ public class SchemaRegionListeningQueueTest {
 
   @Test
   public void testSnapshot() throws TException, IOException, AuthException, IllegalPathException {
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).open();
-    PipeAgent.runtime().notifySchemaLeaderReady(new SchemaRegionId(0));
-
-    CreateTimeSeriesNode node1 =
+    final CreateTimeSeriesNode node1 =
         new CreateTimeSeriesNode(
             new PlanNodeId("CreateTimeSeriesNode"),
-            new PartialPath("root.db.d1.s1"),
+            new MeasurementPath("root.db.d1.s1"),
             TSDataType.INT32,
             TSEncoding.PLAIN,
             CompressionType.GZIP,
@@ -82,29 +82,29 @@ public class SchemaRegionListeningQueueTest {
             null,
             "alias");
 
-    PipeEnrichedWritePlanNode node2 =
+    final PipeEnrichedWritePlanNode node2 =
         new PipeEnrichedWritePlanNode(
             new ActivateTemplateNode(
                 new PlanNodeId("ActivateTemplateNode"), new PartialPath("root.sg.d1.s1"), 2, 1));
 
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node1);
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node2);
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node1);
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).tryListenToNode(node2);
 
     // tryListenToSnapshots() cannot be tested here since we cannot operate the reference count of
     // the original or deserialized events
 
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).createSnapshot(snapshotDir);
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).close();
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).createSnapshot(snapshotDir);
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).close();
 
-    PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).loadSnapshot(snapshotDir);
-    Assert.assertTrue(PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).isOpened());
-    ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
-        PipeAgent.runtime().schemaListener(new SchemaRegionId(0)).newIterator(0);
+    PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).loadSnapshot(snapshotDir);
+    Assert.assertTrue(PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).isOpened());
+    final ConcurrentIterableLinkedQueue<Event>.DynamicIterator itr =
+        PipeDataNodeAgent.runtime().schemaListener(new SchemaRegionId(0)).newIterator(0);
 
-    Event event1 = itr.next(0);
+    final Event event1 = itr.next(0);
     Assert.assertEquals(node1, ((PipeSchemaRegionWritePlanEvent) event1).getPlanNode());
 
-    Event event2 = itr.next(0);
+    final Event event2 = itr.next(0);
     Assert.assertEquals(
         node2.getWritePlanNode(), ((PipeSchemaRegionWritePlanEvent) event2).getPlanNode());
     Assert.assertTrue(((PipeSchemaRegionWritePlanEvent) event2).isGeneratedByPipe());

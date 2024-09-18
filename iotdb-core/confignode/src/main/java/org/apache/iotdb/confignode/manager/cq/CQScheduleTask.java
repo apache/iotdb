@@ -24,7 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.cq.TimeoutPolicy;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.cq.CQInfo;
@@ -188,7 +188,8 @@ public class CQScheduleTask implements Runnable {
           new TExecuteCQ(queryBody, startTime, endTime, everyInterval, zoneId, cqId, username);
       try {
         AsyncDataNodeInternalServiceClient client =
-            AsyncDataNodeClientPool.getInstance().getAsyncClient(targetDataNode.get());
+            CnToDnInternalServiceAsyncRequestManager.getInstance()
+                .getAsyncClient(targetDataNode.get());
         client.executeCQ(executeCQReq, new AsyncExecuteCQCallback(startTime, endTime));
       } catch (Exception t) {
         LOGGER.warn("Execute CQ {} failed", cqId, t);

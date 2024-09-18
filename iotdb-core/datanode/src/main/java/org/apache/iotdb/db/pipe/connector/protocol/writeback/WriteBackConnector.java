@@ -22,13 +22,14 @@ package org.apache.iotdb.db.pipe.connector.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.agent.PipeAgent;
+import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
+import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -102,7 +103,7 @@ public class WriteBackConnector implements PipeConnector {
 
   @Override
   public void transfer(final Event event) throws Exception {
-    if (!(event instanceof PipeHeartbeatEvent)) {
+    if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
       LOGGER.warn("WriteBackConnector does not support transferring generic event: {}.", event);
     }
   }
@@ -110,12 +111,12 @@ public class WriteBackConnector implements PipeConnector {
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        WriteBackConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          WriteBackConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -132,7 +133,7 @@ public class WriteBackConnector implements PipeConnector {
         pipeInsertNodeTabletInsertionEvent.getInsertNodeViaCacheIfPossible();
     if (Objects.isNull(insertNode)) {
       status =
-          PipeAgent.receiver()
+          PipeDataNodeAgent.receiver()
               .thrift()
               .receive(
                   PipeTransferTabletBinaryReq.toTPipeTransferReq(
@@ -154,11 +155,11 @@ public class WriteBackConnector implements PipeConnector {
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(WriteBackConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(WriteBackConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeRawTabletInsertionEvent);
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(WriteBackConnector.class.getName(), false);

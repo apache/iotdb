@@ -38,7 +38,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
   private final String dataRegionId;
-  private String pipeName;
 
   private long timePublished;
   private long timeAssigned;
@@ -60,18 +59,19 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
-    super(null, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(null, 0, null, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
   }
 
   public PipeHeartbeatEvent(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final String dataRegionId,
       final long timePublished,
       final boolean shouldPrintMessage) {
-    super(pipeName, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(pipeName, creationTime, pipeTaskMeta, null, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.timePublished = timePublished;
     this.shouldPrintMessage = shouldPrintMessage;
@@ -100,6 +100,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public EnrichedEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,
+      final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
       final PipePattern pattern,
       final long startTime,
@@ -107,7 +108,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     // Should record PipeTaskMeta, for sometimes HeartbeatEvents should report exceptions.
     // Here we ignore parameters `pattern`, `startTime`, and `endTime`.
     return new PipeHeartbeatEvent(
-        pipeName, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
+        pipeName, creationTime, pipeTaskMeta, dataRegionId, timePublished, shouldPrintMessage);
   }
 
   @Override
@@ -120,6 +121,11 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     return true;
   }
 
+  @Override
+  public boolean mayEventPathsOverlappedWithPattern() {
+    return true;
+  }
+
   /////////////////////////////// Whether to print ///////////////////////////////
 
   public boolean isShouldPrintMessage() {
@@ -127,12 +133,6 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   }
 
   /////////////////////////////// Delay Reporting ///////////////////////////////
-
-  public void bindPipeName(final String pipeName) {
-    if (shouldPrintMessage) {
-      this.pipeName = pipeName;
-    }
-  }
 
   public void onPublished() {
     if (shouldPrintMessage) {

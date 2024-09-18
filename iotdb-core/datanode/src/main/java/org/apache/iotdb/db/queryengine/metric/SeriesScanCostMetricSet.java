@@ -377,16 +377,51 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   // read timeseries metadata aligned
   /////////////////////////////////////////////////////////////////////////////////////////////////
   private static final String TIMESERIES_METADATA_MODIFICATION = "timeseries_metadata_modification";
+  private static final String HISTOGRAM_TIMESERIES_METADATA_MODIFICATION =
+      "histogram_timeseries_metadata_modification";
   public static final String TIMESERIES_METADATA_MODIFICATION_ALIGNED =
       TIMESERIES_METADATA_MODIFICATION + "_" + ALIGNED;
   public static final String TIMESERIES_METADATA_MODIFICATION_NONALIGNED =
       TIMESERIES_METADATA_MODIFICATION + "_" + NON_ALIGNED;
+  private Histogram timeseriesMetadataModificationAlignedHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram timeseriesMetadataModificationNonAlignedHistogram =
+      DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Timer timeseriesMetadataModificationAlignedTimer =
       DoNothingMetricManager.DO_NOTHING_TIMER;
   private Timer timeseriesMetadataModificationNonAlignedTimer =
       DoNothingMetricManager.DO_NOTHING_TIMER;
 
+  public void recordTimeSeriesMetadataModification(
+      long alignedCount, long nonAlignedCount, long alignedTime, long nonAlignedTime) {
+    timeseriesMetadataModificationAlignedHistogram.update(alignedCount);
+    timeseriesMetadataModificationNonAlignedHistogram.update(nonAlignedCount);
+    timeseriesMetadataModificationAlignedTimer.updateNanos(alignedTime);
+    timeseriesMetadataModificationNonAlignedTimer.updateNanos(nonAlignedTime);
+  }
+
   private void bindTimeseriesMetadataModification(AbstractMetricService metricService) {
+    timeseriesMetadataModificationAlignedHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_TIMESERIES_METADATA_MODIFICATION,
+            Tag.TYPE.toString(),
+            ALIGNED,
+            Tag.FROM.toString(),
+            NULL);
+    timeseriesMetadataModificationNonAlignedHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.SERIES_SCAN_COST.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.STAGE.toString(),
+            HISTOGRAM_TIMESERIES_METADATA_MODIFICATION,
+            Tag.TYPE.toString(),
+            NON_ALIGNED,
+            Tag.FROM.toString(),
+            NULL);
+
     timeseriesMetadataModificationAlignedTimer =
         metricService.getOrCreateTimer(
             Metric.SERIES_SCAN_COST.toString(),
@@ -410,6 +445,8 @@ public class SeriesScanCostMetricSet implements IMetricSet {
   }
 
   private void unbindTimeseriesMetadataModification(AbstractMetricService metricService) {
+    timeseriesMetadataModificationAlignedHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    timeseriesMetadataModificationNonAlignedHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     timeseriesMetadataModificationAlignedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     timeseriesMetadataModificationNonAlignedTimer = DoNothingMetricManager.DO_NOTHING_TIMER;
     Arrays.asList(ALIGNED, NON_ALIGNED)
@@ -420,6 +457,18 @@ public class SeriesScanCostMetricSet implements IMetricSet {
                     Metric.SERIES_SCAN_COST.toString(),
                     Tag.STAGE.toString(),
                     TIMESERIES_METADATA_MODIFICATION,
+                    Tag.TYPE.toString(),
+                    type,
+                    Tag.FROM.toString(),
+                    NULL));
+    Arrays.asList(ALIGNED, NON_ALIGNED)
+        .forEach(
+            type ->
+                metricService.remove(
+                    MetricType.HISTOGRAM,
+                    Metric.SERIES_SCAN_COST.toString(),
+                    Tag.STAGE.toString(),
+                    HISTOGRAM_TIMESERIES_METADATA_MODIFICATION,
                     Tag.TYPE.toString(),
                     type,
                     Tag.FROM.toString(),

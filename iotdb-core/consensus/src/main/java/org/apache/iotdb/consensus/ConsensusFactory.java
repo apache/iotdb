@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus;
 import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
+import org.apache.iotdb.consensus.pipe.metric.PipeConsensusSyncLagManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,8 @@ public class ConsensusFactory {
         className = REAL_PIPE_CONSENSUS;
         // initialize pipeConsensus' thrift component
         PipeConsensusClientMgrContainer.build();
+        // initialize pipeConsensus's metric component
+        PipeConsensusSyncLagManager.build();
       }
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =

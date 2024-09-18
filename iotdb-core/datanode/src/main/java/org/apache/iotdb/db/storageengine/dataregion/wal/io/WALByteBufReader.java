@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryPosition;
 
 import java.io.Closeable;
+import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 
 /**
@@ -34,21 +34,32 @@ import java.util.Iterator;
  * {@link Iterator}.
  */
 public class WALByteBufReader implements Closeable {
-  private final File logFile;
-  private final FileChannel channel;
-  private final WALMetaData metaData;
-  private final Iterator<Integer> sizeIterator;
+  private WALMetaData metaData;
+  private DataInputStream logStream;
+  private Iterator<Integer> sizeIterator;
 
   public WALByteBufReader(File logFile) throws IOException {
-    this(logFile, FileChannel.open(logFile.toPath(), StandardOpenOption.READ));
+    WALInputStream walInputStream = new WALInputStream(logFile);
+    try {
+      this.logStream = new DataInputStream(walInputStream);
+      this.metaData = walInputStream.getWALMetaData();
+      this.sizeIterator = metaData.getBuffersSize().iterator();
+    } catch (Exception e) {
+      walInputStream.close();
+      throw e;
+    }
   }
 
-  public WALByteBufReader(File logFile, FileChannel channel) throws IOException {
-    this.logFile = logFile;
-    this.channel = channel;
-    this.metaData = WALMetaData.readFromWALFile(logFile, channel);
-    this.sizeIterator = metaData.getBuffersSize().iterator();
-    channel.position(0);
+  public WALByteBufReader(WALEntryPosition walEntryPosition) throws IOException {
+    WALInputStream walInputStream = walEntryPosition.openReadFileStream();
+    try {
+      this.logStream = new DataInputStream(walInputStream);
+      this.metaData = walInputStream.getWALMetaData();
+      this.sizeIterator = metaData.getBuffersSize().iterator();
+    } catch (Exception e) {
+      walInputStream.close();
+      throw e;
+    }
   }
 
   /** Like {@link Iterator#hasNext()}. */
@@ -63,9 +74,14 @@ public class WALByteBufReader implements Closeable {
    */
   public ByteBuffer next() throws IOException {
     int size = sizeIterator.next();
+    // TODO: Reuse this buffer
     ByteBuffer buffer = ByteBuffer.allocate(size);
-    channel.read(buffer);
-    buffer.clear();
+    /*
+     Notice, we don't need to flip the buffer after calling
+     logStream.readFully, since this function does not change
+     the position of the buffer.
+    */
+    logStream.readFully(buffer.array(), 0, size);
     return buffer;
   }
 
@@ -75,7 +91,7 @@ public class WALByteBufReader implements Closeable {
 
   @Override
   public void close() throws IOException {
-    channel.close();
+    logStream.close();
   }
 
   public long getFirstSearchIndex() {

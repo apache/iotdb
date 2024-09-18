@@ -20,6 +20,7 @@
 package org.apache.iotdb.it.env.cluster.node;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.it.env.cluster.EnvUtils;
 import org.apache.iotdb.it.env.cluster.config.MppBaseConfig;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
@@ -37,7 +38,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSEN
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_INIT_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_DIRECT_MEMORY_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_MAX_HEAP_SIZE;
-import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_SYSTEM_PROPERTIES_FILE;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REGION_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATA_REPLICATION_FACTOR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DEFAULT_CONFIG_NODE_COMMON_PROPERTIES;
@@ -105,7 +106,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   public String getSystemPropertiesPath() {
-    return workDirFilePath("data/confignode/system", CONFIG_NODE_SYSTEM_PROPERTIES_FILE);
+    return workDirFilePath("data/confignode/system", ConfigNodeConstant.SYSTEM_FILE_NAME);
   }
 
   @Override
@@ -160,6 +161,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
         IoTDBConstant.CN_CONSENSUS_PORT, String.valueOf(this.consensusPort));
     mutableNodeProperties.setProperty(
         IoTDBConstant.CN_METRIC_PROMETHEUS_REPORTER_PORT, String.valueOf(super.getMetricPort()));
+    mutableNodeProperties.setProperty(CONFIG_NODE_RATIS_LOG_APPENDER_BUFFER_SIZE_MAX, "8388608");
   }
 
   @Override

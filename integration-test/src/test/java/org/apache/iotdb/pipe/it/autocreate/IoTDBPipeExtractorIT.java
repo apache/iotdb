@@ -497,7 +497,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show devices",
-          "Device,IsAligned,Template,TTL,",
+          "Device,IsAligned,Template,TTL(ms),",
           new HashSet<>(
               Arrays.asList(
                   "root.nonAligned.1TS,false,null,INF,",
@@ -904,7 +904,7 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testLooseRange() throws Exception {
+  public void testHistoryLooseRange() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -961,6 +961,75 @@ public class IoTDBPipeExtractorIT extends AbstractPipeDualAutoIT {
           "select count(*) from root.** group by level=0",
           "count(root.*.*.*),",
           Collections.singleton("4,"));
+    }
+  }
+
+  @Test
+  public void testRealtimeLooseRange() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("source.path", "root.db.d1.at1");
+    extractorAttributes.put("source.inclusion", "data.insert");
+    extractorAttributes.put("source.realtime.loose-range", "time, path");
+    extractorAttributes.put("source.start-time", "2000");
+    extractorAttributes.put("source.end-time", "10000");
+    extractorAttributes.put("source.realtime.mode", "batch");
+
+    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
+              "flush"))) {
+        return;
+      }
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
+              "flush"))) {
+        return;
+      }
+
+      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",
+              "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)",
+              "flush"))) {
+        return;
+      }
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(at1) from root.db.d1 where time >= 2000 and time <= 10000",
+          new HashMap<String, String>() {
+            {
+              put("count(root.db.d1.at1)", "4");
+            }
+          });
     }
   }
 

@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -40,8 +41,8 @@ public interface IDataRegionForQuery {
 
   /** Get satisfied QueryDataSource from DataRegion for seriesScan */
   QueryDataSource query(
-      List<PartialPath> pathList,
-      String singleDeviceId,
+      List<IFullPath> pathList,
+      IDeviceID singleDeviceId,
       QueryContext context,
       Filter globalTimeFilter,
       List<Long> timePartitions)
@@ -49,14 +50,14 @@ public interface IDataRegionForQuery {
 
   /** Get satisfied QueryDataSource from DataRegion for regionScan */
   IQueryDataSource queryForDeviceRegionScan(
-      Map<IDeviceID, Boolean> devicePathToAligned,
+      Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       Filter globalTimeFilter,
       List<Long> timePartitions)
       throws QueryProcessException;
 
   IQueryDataSource queryForSeriesRegionScan(
-      List<PartialPath> pathList,
+      List<IFullPath> pathList,
       QueryContext queryContext,
       Filter globalTimeFilter,
       List<Long> timePartitions)

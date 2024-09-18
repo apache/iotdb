@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
+import java.util.List;
 
 public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEstimator {
 
@@ -38,12 +39,7 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
                 * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
-    long sizeForFileWriter =
-        (long)
-            ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
-                * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
-    cost += sizeForFileWriter;
+    cost += memoryBudgetForFileWriter;
 
     return cost;
   }
@@ -53,28 +49,57 @@ public class FastCompactionInnerCompactionEstimator extends AbstractInnerSpaceEs
     if (taskInfo.getTotalChunkNum() == 0) {
       return taskInfo.getModificationFileSize();
     }
+    int batchSize = config.getCompactionMaxAlignedSeriesNumInOneBatch();
     long maxConcurrentSeriesNum =
-        Math.max(config.getSubCompactionTaskNum(), taskInfo.getMaxConcurrentSeriesNum());
-    long averageUncompressedChunkSize =
-        taskInfo.getTotalFileSize() * compressionRatio / taskInfo.getTotalChunkNum();
+        Math.max(
+            config.getSubCompactionTaskNum(),
+            Math.min(
+                batchSize <= 0 ? Integer.MAX_VALUE : batchSize,
+                taskInfo.getMaxConcurrentSeriesNum()));
+    long averageChunkSize = taskInfo.getTotalFileSize() / taskInfo.getTotalChunkNum();
 
     long maxConcurrentSeriesSizeOfTotalFiles =
-        averageUncompressedChunkSize
-            * taskInfo.getFileInfoList().size()
-            * maxConcurrentSeriesNum
-            * taskInfo.getMaxChunkMetadataNumInSeries()
-            / compressionRatio;
+        averageChunkSize
+                * taskInfo.getFileInfoList().size()
+                * maxConcurrentSeriesNum
+                * taskInfo.getMaxChunkMetadataNumInSeries()
+            + maxConcurrentSeriesNum * tsFileConfig.getPageSizeInByte();
     long maxTargetChunkWriterSize = config.getTargetChunkSize() * maxConcurrentSeriesNum;
     long targetChunkWriterSize =
         Math.min(maxConcurrentSeriesSizeOfTotalFiles, maxTargetChunkWriterSize);
 
     long maxConcurrentChunkSizeFromSourceFile =
-        averageUncompressedChunkSize
+        (averageChunkSize + tsFileConfig.getPageSizeInByte())
             * maxConcurrentSeriesNum
             * calculatingMaxOverlapFileNumInSubCompactionTask(taskInfo.getResources());
 
     return targetChunkWriterSize
         + maxConcurrentChunkSizeFromSourceFile
         + taskInfo.getModificationFileSize();
+  }
+
+  @Override
+  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
+      throws IOException {
+    long metadataCost =
+        CompactionEstimateUtils.roughEstimateMetadataCostInCompaction(
+            resources,
+            resources.get(0).isSeq()
+                ? CompactionType.INNER_SEQ_COMPACTION
+                : CompactionType.INNER_UNSEQ_COMPACTION);
+    if (metadataCost < 0) {
+      return metadataCost;
+    }
+    int maxConcurrentSeriesNum =
+        Math.max(
+            config.getCompactionMaxAlignedSeriesNumInOneBatch(), config.getSubCompactionTaskNum());
+    long maxChunkSize = config.getTargetChunkSize();
+    long maxPageSize = tsFileConfig.getPageSizeInByte();
+    int maxOverlapFileNum = calculatingMaxOverlapFileNumInSubCompactionTask(resources);
+    // source files (chunk + uncompressed page) * overlap file num
+    // target file (chunk + unsealed page writer)
+    return (maxOverlapFileNum + 1) * maxConcurrentSeriesNum * (maxChunkSize + maxPageSize)
+        + memoryBudgetForFileWriter
+        + metadataCost;
   }
 }

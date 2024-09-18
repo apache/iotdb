@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -56,6 +57,11 @@ public class SchemaConstant {
   public static final String TAG_LOG_SNAPSHOT_TMP = "tlog.txt.snapshot.tmp";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";
   public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
+
+  public static final String DEVICE_ATTRIBUTE_SNAPSHOT = "device_attribute.snapshot";
+
+  public static final String DEVICE_ATTRIBUTE_SNAPSHOT_TMP = "device_attribute.snapshot.tmp";
+
   public static final String SYSTEM_DATABASE = "root.__system";
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(ALL_RESULT_NODES);
@@ -87,6 +93,8 @@ public class SchemaConstant {
 
   public static final byte LOGICAL_VIEW_MNODE_TYPE = 5;
 
+  public static final byte TABLE_MNODE_TYPE = 6;
+
   public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
   public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
   public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
@@ -94,6 +102,8 @@ public class SchemaConstant {
   public static final String STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME = "StorageGroupEntityMNode";
 
   public static final String LOGICAL_VIEW_MNODE_TYPE_NAME = "LogicalViewMNode";
+
+  public static final String TABLE_MNODE_TYPE_NAME = "TableMNode";
 
   public static final String SCHEMA_REGION_METRIC_NAME = "schema_region";
   public static final String SCHEMA_ENGINE_METRIC_NAME = "pbtree";
@@ -115,6 +125,8 @@ public class SchemaConstant {
         return STORAGE_GROUP_ENTITY_MNODE_TYPE_NAME;
       case LOGICAL_VIEW_MNODE_TYPE:
         return LOGICAL_VIEW_MNODE_TYPE_NAME;
+      case TABLE_MNODE_TYPE:
+        return TABLE_MNODE_TYPE_NAME;
       default:
         throw new RuntimeException("Undefined MNode type " + type);
     }

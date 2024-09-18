@@ -27,9 +27,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AsyncClientHandler;
+import org.apache.iotdb.confignode.client.CnToDnRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.write.database.PreDeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.OfferRegionMaintainTasksPlan;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
@@ -155,15 +155,15 @@ public class DeleteDatabaseProcedure
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // try sync delete schemaengine region
-          AsyncClientHandler<TConsensusGroupId, TSStatus> asyncClientHandler =
-              new AsyncClientHandler<>(DataNodeRequestType.DELETE_REGION);
+          DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
+              new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
           Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
           for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
             for (TDataNodeLocation dataNodeLocation :
                 schemaRegionReplicaSet.getDataNodeLocations()) {
               asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
-              asyncClientHandler.putDataNodeLocation(requestIndex, dataNodeLocation);
+              asyncClientHandler.putNodeLocation(requestIndex, dataNodeLocation);
               schemaRegionDeleteTaskMap.put(
                   requestIndex,
                   new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
@@ -171,8 +171,8 @@ public class DeleteDatabaseProcedure
             }
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
-            AsyncDataNodeClientPool.getInstance()
-                .sendAsyncRequestToDataNodeWithRetry(asyncClientHandler);
+            CnToDnInternalServiceAsyncRequestManager.getInstance()
+                .sendAsyncRequestWithRetry(asyncClientHandler);
             for (Map.Entry<Integer, TSStatus> entry :
                 asyncClientHandler.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -275,6 +275,10 @@ public class DeleteDatabaseProcedure
   @Override
   protected DeleteStorageGroupState getInitialState() {
     return DeleteStorageGroupState.PRE_DELETE_DATABASE;
+  }
+
+  public String getDatabase() {
+    return deleteDatabaseSchema.getName();
   }
 
   @Override

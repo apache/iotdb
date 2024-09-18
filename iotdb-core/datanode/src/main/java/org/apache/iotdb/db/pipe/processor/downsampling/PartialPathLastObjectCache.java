@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.processor.downsampling;
 
-import org.apache.iotdb.db.pipe.resource.PipeResourceManager;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.utils.MemUtils;
 
@@ -40,15 +40,15 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
 
   private final Cache<String, T> partialPath2ObjectCache;
 
-  public PartialPathLastObjectCache(long memoryLimitInBytes) {
+  protected PartialPathLastObjectCache(final long memoryLimitInBytes) {
     allocatedMemoryBlock =
-        PipeResourceManager.memory()
+        PipeDataNodeResourceManager.memory()
             .tryAllocate(memoryLimitInBytes)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
             .setShrinkCallback(
                 (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.set(
-                      memoryUsageCheatFactor.get() * ((double) oldMemory / newMemory));
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor * ((double) oldMemory / newMemory));
                   LOGGER.info(
                       "PartialPathLastObjectCache.allocatedMemoryBlock has shrunk from {} to {}.",
                       oldMemory,
@@ -57,8 +57,8 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
             .setExpandMethod(oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, memoryLimitInBytes))
             .setExpandCallback(
                 (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.set(
-                      memoryUsageCheatFactor.get() / ((double) newMemory / oldMemory));
+                  memoryUsageCheatFactor.updateAndGet(
+                      factor -> factor / ((double) newMemory / oldMemory));
                   LOGGER.info(
                       "PartialPathLastObjectCache.allocatedMemoryBlock has expanded from {} to {}.",
                       oldMemory,
@@ -87,15 +87,15 @@ public abstract class PartialPathLastObjectCache<T> implements AutoCloseable {
             .build();
   }
 
-  protected abstract long calculateMemoryUsage(T object);
+  protected abstract long calculateMemoryUsage(final T object);
 
   /////////////////////////// Getter & Setter ///////////////////////////
 
-  public T getPartialPathLastObject(String partialPath) {
+  public T getPartialPathLastObject(final String partialPath) {
     return partialPath2ObjectCache.getIfPresent(partialPath);
   }
 
-  public void setPartialPathLastObject(String partialPath, T object) {
+  public void setPartialPathLastObject(final String partialPath, final T object) {
     partialPath2ObjectCache.put(partialPath, object);
   }
 

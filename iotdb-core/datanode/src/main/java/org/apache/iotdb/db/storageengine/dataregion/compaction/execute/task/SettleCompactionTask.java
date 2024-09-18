@@ -35,8 +35,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * This settle task contains fully_dirty files and partially_dirty files. This task will do the
@@ -61,7 +63,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       boolean isSequence,
       ICompactionPerformer performer,
       long serialId) {
-    super(tsFileManager, timePartition, partiallyDirtyFiles, isSequence, performer, serialId);
+    super(timePartition, tsFileManager, partiallyDirtyFiles, isSequence, performer, serialId);
     this.fullyDirtyFiles = fullyDirtyFiles;
     fullyDirtyFiles.forEach(x -> fullyDirtyFileSize += x.getTsFileSize());
     partiallyDirtyFiles.forEach(
@@ -80,8 +82,20 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   @Override
   public List<TsFileResource> getAllSourceTsFiles() {
     List<TsFileResource> allSourceFiles = new ArrayList<>(fullyDirtyFiles);
-    allSourceFiles.addAll(selectedTsFileResourceList);
+    allSourceFiles.addAll(filesView.sourceFilesInCompactionPerformer);
     return allSourceFiles;
+  }
+
+  @Override
+  protected void calculateSourceFilesAndTargetFiles() throws IOException {
+    filesView.renamedTargetFiles = Collections.emptyList();
+    filesView.targetFilesInLog =
+        filesView.sourceFilesInCompactionPerformer.isEmpty()
+            ? Collections.emptyList()
+            : Collections.singletonList(
+                TsFileNameGenerator.getSettleCompactionTargetFileResources(
+                    filesView.sourceFilesInCompactionPerformer, filesView.sequence));
+    filesView.targetFilesInPerformer = filesView.targetFilesInLog;
   }
 
   @Override
@@ -92,7 +106,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     if (!tsFileManager.isAllowCompaction()) {
       return true;
     }
-    if (fullyDirtyFiles.isEmpty() && selectedTsFileResourceList.isEmpty()) {
+    if (fullyDirtyFiles.isEmpty() && filesView.sourceFilesInCompactionPerformer.isEmpty()) {
       LOGGER.info(
           "{}-{} [Compaction] Settle compaction file list is empty, end it",
           storageGroupName,
@@ -110,9 +124,9 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         storageGroupName,
         dataRegionId,
         fullyDirtyFiles.size(),
-        selectedTsFileResourceList.size(),
+        filesView.sourceFilesInCompactionPerformer.size(),
         fullyDirtyFiles,
-        selectedTsFileResourceList,
+        filesView.sourceFilesInCompactionPerformer,
         fullyDirtyFileSize / 1024 / 1024,
         partiallyDirtyFileSize / 1024 / 1024,
         memoryCost == 0 ? 0 : (double) memoryCost / 1024 / 1024);
@@ -123,15 +137,13 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             allSourceFiles.get(0).getTsFile().getAbsolutePath()
                 + CompactionLogger.SETTLE_COMPACTION_LOG_NAME_SUFFIX);
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
+      calculateSourceFilesAndTargetFiles();
+      isHoldingWriteLock = new boolean[this.filesView.sourceFilesInLog.size()];
+      Arrays.fill(isHoldingWriteLock, false);
       compactionLogger.logSourceFiles(fullyDirtyFiles);
       compactionLogger.logEmptyTargetFiles(fullyDirtyFiles);
-      compactionLogger.logSourceFiles(selectedTsFileResourceList);
-      if (!selectedTsFileResourceList.isEmpty()) {
-        targetTsFileResource =
-            TsFileNameGenerator.getSettleCompactionTargetFileResources(
-                selectedTsFileResourceList, sequence);
-        compactionLogger.logTargetFile(targetTsFileResource);
-      }
+      compactionLogger.logSourceFiles(filesView.sourceFilesInCompactionPerformer);
+      compactionLogger.logTargetFiles(filesView.targetFilesInLog);
       compactionLogger.force();
 
       isSuccess = settleWithFullyDirtyFiles();
@@ -154,7 +166,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
                 "%.2f",
                 (fullyDirtyFileSize + partiallyDirtyFileSize) / 1024.0d / 1024.0d / costTime),
             fullyDirtyFiles.size(),
-            selectedTsFileResourceList.size());
+            filesView.sourceFilesInCompactionPerformer.size());
       } else {
         LOGGER.info(
             "{}-{} [Compaction] SettleCompaction task finishes with some error, time cost is {} s."
@@ -177,8 +189,8 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         handleException(LOGGER, e);
       }
       // may fail to set status if the status of target resource is DELETED
-      if (targetTsFileResource != null) {
-        targetTsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+      for (TsFileResource resource : filesView.targetFilesInLog) {
+        resource.setStatus(TsFileResourceStatus.NORMAL);
       }
     }
     return isSuccess;
@@ -219,17 +231,17 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   /** Use inner compaction task to compact the partially_dirty files. */
   private void settleWithPartiallyDirtyFiles(SimpleCompactionLogger logger) throws Exception {
-    if (selectedTsFileResourceList.isEmpty()) {
+    if (filesView.sourceFilesInCompactionPerformer.isEmpty()) {
       return;
     }
     LOGGER.info(
-        "{}-{} [Compaction] Start to settle {} {} partially_dirty filess, "
+        "{}-{} [Compaction] Start to settle {} {} partially_dirty files, "
             + "total file size is {} MB",
         storageGroupName,
         dataRegionId,
-        selectedTsFileResourceList.size(),
-        sequence ? "Sequence" : "Unsequence",
-        selectedFileSize / 1024 / 1024);
+        filesView.sourceFilesInCompactionPerformer.size(),
+        filesView.sequence ? "Sequence" : "Unsequence",
+        filesView.selectedFileSize / 1024 / 1024);
     long startTime = System.currentTimeMillis();
     compact(logger);
     double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
@@ -240,11 +252,11 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
             + "compaction speed is {} MB/s, {}",
         storageGroupName,
         dataRegionId,
-        selectedTsFileResourceList.size(),
-        sequence ? "Sequence" : "Unsequence",
-        targetTsFileResource.getTsFile().getName(),
+        filesView.sourceFilesInCompactionPerformer.size(),
+        filesView.sequence ? "Sequence" : "Unsequence",
+        filesView.targetFilesInLog.get(0).getTsFile().getName(),
         String.format("%.2f", costTime),
-        String.format("%.2f", selectedFileSize / 1024.0d / 1024.0d / costTime),
+        String.format("%.2f", filesView.selectedFileSize / 1024.0d / 1024.0d / costTime),
         summary);
   }
 
@@ -256,7 +268,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         dataRegionId);
     try {
       if (needRecoverTaskInfoFromLogFile) {
-        recoverTaskInfoFromLogFile();
+        recoverSettleTaskInfoFromLogFile();
       }
       recoverFullyDirtyFiles();
       recoverPartiallyDirtyFiles();
@@ -286,7 +298,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
-  public void recoverTaskInfoFromLogFile() throws IOException {
+  public void recoverSettleTaskInfoFromLogFile() throws IOException {
     LOGGER.info(
         "{}-{} [Compaction][Recover] compaction log is {}",
         storageGroupName,
@@ -299,25 +311,25 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     List<TsFileIdentifier> deletedTargetFileIdentifiers = logAnalyzer.getDeletedTargetFileInfos();
 
     fullyDirtyFiles = new ArrayList<>();
-    selectedTsFileResourceList = new ArrayList<>();
+    List<TsFileResource> selectedTsFileResourceList = new ArrayList<>();
     // recover source files, including fully_dirty files and partially_dirty files
-    sourceFileIdentifiers.forEach(
-        x -> {
-          File sourceFile = x.getFileFromDataDirsIfAnyAdjuvantFileExists();
-          TsFileResource resource;
-          if (sourceFile == null) {
-            // source file has been deleted, create empty resource
-            resource = new TsFileResource(new File(x.getFilePath()));
-          } else {
-            resource = new TsFileResource(sourceFile);
-          }
-          if (deletedTargetFileIdentifiers.contains(x)) {
-            fullyDirtyFiles.add(resource);
-          } else {
-            selectedTsFileResourceList.add(resource);
-          }
-        });
+    for (TsFileIdentifier x : sourceFileIdentifiers) {
+      File sourceFile = x.getFileFromDataDirsIfAnyAdjuvantFileExists();
+      TsFileResource resource;
+      if (sourceFile == null) {
+        // source file has been deleted, create empty resource
+        resource = new TsFileResource(new File(x.getFilePath()));
+      } else {
+        resource = new TsFileResource(sourceFile);
+      }
+      if (deletedTargetFileIdentifiers.contains(x)) {
+        fullyDirtyFiles.add(resource);
+      } else {
+        selectedTsFileResourceList.add(resource);
+      }
+    }
 
+    filesView.setSourceFilesForRecover(selectedTsFileResourceList);
     // recover target file
     recoverTargetResource(targetFileIdentifiers, deletedTargetFileIdentifiers);
   }
@@ -332,7 +344,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   public List<TsFileResource> getPartiallyDirtyFiles() {
-    return selectedTsFileResourceList;
+    return filesView.sourceFilesInCompactionPerformer;
   }
 
   public double getFullyDirtyFileSize() {
@@ -348,6 +360,14 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
+  public long getEstimatedMemoryCost() {
+    if (filesView.sourceFilesInCompactionPerformer.isEmpty()) {
+      return 0;
+    }
+    return super.getEstimatedMemoryCost();
+  }
+
+  @Override
   public String toString() {
     return storageGroupName
         + "-"
@@ -357,11 +377,11 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
         + " fully_dirty file num is "
         + fullyDirtyFiles.size()
         + ", partially_dirty file num is "
-        + selectedTsFileResourceList.size()
+        + filesView.sourceFilesInCompactionPerformer.size()
         + ", fully_dirty files is "
         + fullyDirtyFiles
         + ", partially_dirty files is "
-        + selectedTsFileResourceList;
+        + filesView.sourceFilesInCompactionPerformer;
   }
 
   @Override
@@ -380,8 +400,13 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     }
     SettleCompactionTask otherSettleCompactionTask = (SettleCompactionTask) otherTask;
     return this.fullyDirtyFiles.equals(otherSettleCompactionTask.fullyDirtyFiles)
-        && this.selectedTsFileResourceList.equals(
-            otherSettleCompactionTask.selectedTsFileResourceList)
+        && filesView.sourceFilesInCompactionPerformer.equals(
+            otherSettleCompactionTask.filesView.sourceFilesInCompactionPerformer)
         && this.performer.getClass().isInstance(otherSettleCompactionTask.performer);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(fullyDirtyFiles, filesView.sourceFilesInCompactionPerformer, performer);
   }
 }
