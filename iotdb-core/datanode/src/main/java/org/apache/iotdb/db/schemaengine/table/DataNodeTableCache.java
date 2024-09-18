@@ -92,7 +92,7 @@ public class DataNodeTableCache implements ITableCache {
     tableMap.forEach(
         (key, value) ->
             localTableMap.put(
-                    PathUtils.unQualifyDatabaseName(key),
+                PathUtils.unQualifyDatabaseName(key),
                 value.stream()
                     .collect(
                         Collectors.toMap(
