@@ -1095,7 +1095,8 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                               .orElse(TTL_INFINITE)))
               .collect(Collectors.toList()));
     } catch (final MetadataException e) {
-      return null;
+      return new ShowTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
