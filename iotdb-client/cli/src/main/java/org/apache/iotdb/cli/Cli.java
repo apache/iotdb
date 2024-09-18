@@ -35,6 +35,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.thrift.TException;
 import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
 
 import java.io.IOException;
@@ -96,8 +97,11 @@ public class Cli extends AbstractCli {
       ctx.getPrinter().println(IOTDB_ERROR_PREFIX + "Exit cli with error " + e.getMessage());
       ctx.exit(CODE_ERROR);
     }
-
-    ctx.setLineReader(JlineUtils.getLineReader(ctx, username, host, port));
+    LineReader lineReader = JlineUtils.getLineReader(ctx, username, host, port);
+    if (ctx.isDisableCliHistory()) {
+      lineReader.getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
+    }
+    ctx.setLineReader(lineReader);
     serve(ctx);
   }
 

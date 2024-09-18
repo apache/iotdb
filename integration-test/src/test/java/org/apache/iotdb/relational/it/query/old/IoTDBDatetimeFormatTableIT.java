@@ -135,11 +135,11 @@ public class IoTDBDatetimeFormatTableIT {
       statement.execute("use " + DATABASE_NAME);
 
       statement.execute(
-          "insert into table1(time,device_id,s2) values (1618283005586000, 'd1',8.76)");
+          "insert into table1(time,device_id,s2) values (1618283005586000, 'd2',8.76)");
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select time, s2 from table1 where device_id='d1' and time=53251-05-07T17:06:26.000+08:00")) {
+              "select time, s2 from table1 where device_id='d2' and time=53251-05-07T17:06:26.000+08:00")) {
         Assert.assertNotNull(resultSet);
         int cnt = 0;
         while (resultSet.next()) {
