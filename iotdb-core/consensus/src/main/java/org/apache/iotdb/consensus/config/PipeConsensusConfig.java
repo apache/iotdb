@@ -32,15 +32,11 @@ public class PipeConsensusConfig {
   private final RPC rpc;
   private final Pipe pipe;
   // Use stream mode by default. User can configure it
-  private ReplicateMode replicateMode = ReplicateMode.STREAM;
+  private final ReplicateMode replicateMode;
 
   public PipeConsensusConfig(RPC rpc, Pipe pipe, ReplicateMode replicateMode) {
     this.rpc = rpc;
     this.pipe = pipe;
-    this.replicateMode = replicateMode;
-  }
-
-  public void setReplicateMode(ReplicateMode replicateMode) {
     this.replicateMode = replicateMode;
   }
 
