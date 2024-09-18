@@ -630,8 +630,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void removeDir(File regionDir) {
     if (regionDir.exists()) {
-        FileUtils.deleteDirectoryAndEmptyParent(regionDir);
-        logger.info("delete {} succeed.", regionDir.getAbsolutePath());
+      FileUtils.deleteDirectoryAndEmptyParent(regionDir);
+      logger.info("delete {} succeed.", regionDir.getAbsolutePath());
     } else {
       logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
