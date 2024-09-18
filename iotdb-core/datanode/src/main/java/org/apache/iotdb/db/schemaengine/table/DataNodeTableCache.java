@@ -32,6 +32,7 @@ import javax.annotation.Nonnull;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -47,7 +48,8 @@ public class DataNodeTableCache implements ITableCache {
 
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
-  private final Map<String, Map<String, TsTable>> preUpdateTableMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTableMap =
+      new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -76,28 +78,32 @@ public class DataNodeTableCache implements ITableCache {
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
       final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
-      saveUpdatedTableInfo(usingMap, databaseTableMap);
-      saveUpdatedTableInfo(preCreateMap, preUpdateTableMap);
+      usingMap.forEach(
+          (key, value) ->
+              databaseTableMap.put(
+                  PathUtils.unQualifyDatabaseName(key),
+                  value.stream()
+                      .collect(
+                          Collectors.toMap(
+                              TsTable::getTableName,
+                              Function.identity(),
+                              (v1, v2) -> v2,
+                              ConcurrentHashMap::new))));
+      preCreateMap.forEach(
+          (key, value) ->
+              preUpdateTableMap.put(
+                  PathUtils.unQualifyDatabaseName(key),
+                  value.stream()
+                      .collect(
+                          Collectors.toMap(
+                              TsTable::getTableName,
+                              table -> new Pair<>(table, 0L),
+                              (v1, v2) -> v2,
+                              ConcurrentHashMap::new))));
       LOGGER.info("Init DataNodeTableCache successfully");
     } finally {
       readWriteLock.writeLock().unlock();
     }
-  }
-
-  private void saveUpdatedTableInfo(
-      final Map<String, List<TsTable>> tableMap,
-      final Map<String, Map<String, TsTable>> localTableMap) {
-    tableMap.forEach(
-        (key, value) ->
-            localTableMap.put(
-                PathUtils.unQualifyDatabaseName(key),
-                value.stream()
-                    .collect(
-                        Collectors.toMap(
-                            TsTable::getTableName,
-                            Function.identity(),
-                            (v1, v2) -> v2,
-                            ConcurrentHashMap::new))));
   }
 
   @Override
@@ -107,7 +113,17 @@ public class DataNodeTableCache implements ITableCache {
     try {
       preUpdateTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-          .put(table.getTableName(), table);
+          .compute(
+              table.getTableName(),
+              (k, v) -> {
+                if (Objects.isNull(v)) {
+                  return new Pair<>(table, 0L);
+                } else {
+                  v.setLeft(table);
+                  v.setRight(v.getRight() + 1);
+                  return v;
+                }
+              });
       LOGGER.info("Pre-update table {}.{} successfully", database, table);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -147,10 +163,9 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable table = preUpdateTableMap.get(database).get(tableName);
       databaseTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-          .put(tableName, table);
+          .put(tableName, preUpdateTableMap.get(database).get(tableName).getLeft());
       removeTableFromPreUpdateMap(database, tableName);
       LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
     } finally {
@@ -246,9 +261,9 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private Pair<String, String> checkTableExistenceOnGivenPath(
-      final String path, final Map<String, Map<String, TsTable>> tableMap) {
+      final String path, final Map<String, ? extends Map<String, ?>> tableMap) {
     final int dbStartIndex = PATH_ROOT.length() + 1;
-    for (final Map.Entry<String, Map<String, TsTable>> dbEntry : tableMap.entrySet()) {
+    for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
       final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {
