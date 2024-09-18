@@ -119,7 +119,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
-  private boolean hasBeenStart = false;
+  private boolean hasBeenStarted = false;
   private boolean hasConsumedAll = false;
 
   private Queue<TsFileResource> pendingQueue;
@@ -373,7 +373,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   public synchronized void start() {
 
     if (!shouldExtractInsertion) {
-      hasBeenStart = true;
+      hasBeenStarted = true;
       return;
     }
 
@@ -381,7 +381,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return;
     }
 
-    hasBeenStart = true;
+    hasBeenStarted = true;
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.isNull(dataRegion)) {
@@ -577,7 +577,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized Event supply() {
-    if (!hasBeenStart && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+    if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       start();
     }
     if (Objects.isNull(pendingQueue)) {
@@ -655,7 +655,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
                     || pendingQueue.isEmpty()
                         && (!shouldTerminatePipeOnAllHistoricalEventsConsumed
                             || isTerminateSignalSent))
-                && hasBeenStart);
+                && hasBeenStarted);
   }
 
   @Override
