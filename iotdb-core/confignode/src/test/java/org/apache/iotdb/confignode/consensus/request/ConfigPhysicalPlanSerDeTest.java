@@ -1269,7 +1269,7 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void ShowPipePlanTest() throws IOException {
+  public void ShowPipePlanV1Test() throws IOException {
     final ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
     final ShowPipePlanV1 showPipePlan1 =
         (ShowPipePlanV1) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
@@ -1685,12 +1685,12 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetTriggerJarPlanTest() throws IOException {
-    List<String> jarNames = new ArrayList<>();
+    final List<String> jarNames = new ArrayList<>();
     jarNames.add("test1");
     jarNames.add("test2");
-    GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
+    final GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
 
-    GetTriggerJarPlan getTriggerJarPlan1 =
+    final GetTriggerJarPlan getTriggerJarPlan1 =
         (GetTriggerJarPlan)
             ConfigPhysicalPlan.Factory.create(getTriggerJarPlan0.serializeToByteBuffer());
     Assert.assertEquals(getTriggerJarPlan0.getJarNames(), getTriggerJarPlan1.getJarNames());
@@ -1698,8 +1698,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetRegionIdPlanTest() throws IOException {
-    GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
-    GetRegionIdPlan getRegionIdPlan1 =
+    final GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
+    final GetRegionIdPlan getRegionIdPlan1 =
         (GetRegionIdPlan)
             ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
     Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
@@ -1707,8 +1707,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetTimeSlotListPlanTest() throws IOException {
-    GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
-    GetTimeSlotListPlan getTimeSlotListPlan1 =
+    final GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
+    final GetTimeSlotListPlan getTimeSlotListPlan1 =
         (GetTimeSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getTimeSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getTimeSlotListPlan0, getTimeSlotListPlan1);
@@ -1716,8 +1716,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CountTimeSlotListPlanTest() throws IOException {
-    CountTimeSlotListPlan countTimeSlotListPlan0 = new CountTimeSlotListPlan(0, Long.MAX_VALUE);
-    CountTimeSlotListPlan countTimeSlotListPlan1 =
+    final CountTimeSlotListPlan countTimeSlotListPlan0 =
+        new CountTimeSlotListPlan(0, Long.MAX_VALUE);
+    final CountTimeSlotListPlan countTimeSlotListPlan1 =
         (CountTimeSlotListPlan)
             ConfigPhysicalPlan.Factory.create(countTimeSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(countTimeSlotListPlan0, countTimeSlotListPlan1);
@@ -1725,9 +1726,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetSeriesSlotListPlanTest() throws IOException {
-    GetSeriesSlotListPlan getSeriesSlotListPlan0 =
+    final GetSeriesSlotListPlan getSeriesSlotListPlan0 =
         new GetSeriesSlotListPlan("root.test", SchemaRegion);
-    GetSeriesSlotListPlan getSeriesSlotListPlan1 =
+    final GetSeriesSlotListPlan getSeriesSlotListPlan1 =
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
@@ -1735,11 +1736,11 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetPipePluginJarPlanTest() throws IOException {
-    List<String> jarNames = new ArrayList<>();
+    final List<String> jarNames = new ArrayList<>();
     jarNames.add("org.apache.testJar");
     jarNames.add("org.apache.testJar2");
-    GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
-    GetPipePluginJarPlan getPipePluginJarPlan1 =
+    final GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
+    final GetPipePluginJarPlan getPipePluginJarPlan1 =
         (GetPipePluginJarPlan)
             ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
     Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
@@ -1747,8 +1748,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetPipePluginTablePlanTest() throws IOException {
-    GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
-    GetPipePluginTablePlan getPipePluginTablePlan1 =
+    final GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
+    final GetPipePluginTablePlan getPipePluginTablePlan1 =
         (GetPipePluginTablePlan)
             ConfigPhysicalPlan.Factory.create(getPipePluginTablePlan0.serializeToByteBuffer());
     Assert.assertEquals(getPipePluginTablePlan0, getPipePluginTablePlan1);
@@ -1756,8 +1757,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ShowPipePlanV2Test() throws IOException {
-    ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
-    ShowPipePlanV2 showPipePlanV21 =
+    final ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
+    final ShowPipePlanV2 showPipePlanV21 =
         (ShowPipePlanV2) ConfigPhysicalPlan.Factory.create(showPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(showPipePlanV2, showPipePlanV21);
   }
