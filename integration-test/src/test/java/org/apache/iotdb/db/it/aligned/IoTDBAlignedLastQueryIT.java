@@ -345,33 +345,33 @@ public class IoTDBAlignedLastQueryIT {
   public void testNullInMemtable() {
     String[] sqls =
         new String[] {
-          "create aligned timeseries root.ln_1.tb_6141(风机退出_BOOLEAN BOOLEAN encoding=RLE,`出水NH4-N_DOUBLE` DOUBLE encoding=GORILLA,膜产水状态_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,产水间歇运行时间设置_DOUBLE DOUBLE encoding=GORILLA,文本_TEXT TEXT encoding=PLAIN, 风机投入_BOOLEAN BOOLEAN encoding=RLE,枚举_INT32 INT32 encoding=RLE,出水TP_DOUBLE DOUBLE encoding=GORILLA,水管流速_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`开关量-运行_BOOLEAN` BOOLEAN encoding=RLE,功能码_DOUBLE DOUBLE encoding=GORILLA);",
-          "alter timeseries root.ln_1.tb_6141.风机退出_BOOLEAN upsert alias=风机退出;",
-          "alter timeseries root.ln_1.tb_6141.水管流速_DOUBLE upsert alias=水管流速;",
+          "create aligned timeseries root.ln_1.tb_6141(fengjituichu_BOOLEAN BOOLEAN encoding=RLE,`chushuiNH4-N_DOUBLE` DOUBLE encoding=GORILLA,mochanshuizhuangtai_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,chanshuijianxieyunxingshijianshezhi_DOUBLE DOUBLE encoding=GORILLA,wenben_TEXT TEXT encoding=PLAIN, fengjitouru_BOOLEAN BOOLEAN encoding=RLE,meiju_INT32 INT32 encoding=RLE,chushuiTP_DOUBLE DOUBLE encoding=GORILLA,shuiguanliusu_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`kaiguanliang-yunxing_BOOLEAN` BOOLEAN encoding=RLE,gongnengma_DOUBLE DOUBLE encoding=GORILLA);",
+          "alter timeseries root.ln_1.tb_6141.fengjituichu_BOOLEAN upsert alias=fengjituichu;",
+          "alter timeseries root.ln_1.tb_6141.shuiguanliusu_DOUBLE upsert alias=shuiguanliusu;",
           "alter timeseries root.ln_1.tb_6141.CO2_DOUBLE upsert alias=CO2;",
-          "alter timeseries root.ln_1.tb_6141.风机投入_BOOLEAN upsert alias=风机投入;",
-          "alter timeseries root.ln_1.tb_6141.产水间歇运行时间设置_DOUBLE upsert alias=产水间歇运行时间设置;",
-          "alter timeseries root.ln_1.tb_6141.膜产水状态_BOOLEAN upsert alias=膜产水状态;",
-          "alter timeseries root.ln_1.tb_6141.枚举_INT32 upsert alias=枚举;",
-          "alter timeseries root.ln_1.tb_6141.出水TP_DOUBLE upsert alias=出水TP;",
-          "alter timeseries root.ln_1.tb_6141.文本_TEXT upsert alias=文本;",
-          "alter timeseries root.ln_1.tb_6141.`出水NH4-N_DOUBLE` upsert alias=`出水NH4-N`;",
-          "alter timeseries root.ln_1.tb_6141.功能码_DOUBLE upsert alias=功能码;",
+          "alter timeseries root.ln_1.tb_6141.fengjitouru_BOOLEAN upsert alias=fengjitouru;",
+          "alter timeseries root.ln_1.tb_6141.chanshuijianxieyunxingshijianshezhi_DOUBLE upsert alias=chanshuijianxieyunxingshijianshezhi;",
+          "alter timeseries root.ln_1.tb_6141.mochanshuizhuangtai_BOOLEAN upsert alias=mochanshuizhuangtai;",
+          "alter timeseries root.ln_1.tb_6141.meiju_INT32 upsert alias=meiju;",
+          "alter timeseries root.ln_1.tb_6141.chushuiTP_DOUBLE upsert alias=chushuiTP;",
+          "alter timeseries root.ln_1.tb_6141.wenben_TEXT upsert alias=wenben;",
+          "alter timeseries root.ln_1.tb_6141.`chushuiNH4-N_DOUBLE` upsert alias=`chushuiNH4-N`;",
+          "alter timeseries root.ln_1.tb_6141.gongnengma_DOUBLE upsert alias=gongnengma;",
           "alter timeseries root.ln_1.tb_6141.11_TEXT upsert alias=`11`;",
-          "alter timeseries root.ln_1.tb_6141.`开关量-运行_BOOLEAN` upsert alias=`开关量-运行`;",
-          "insert into root.ln_1.tb_6141(time,产水间歇运行时间设置_DOUBLE) aligned values(1679365910000,10.0);",
-          "insert into root.ln_1.tb_6141(time,出水TP_DOUBLE) aligned values(1679365910000,15.0);",
-          "insert into root.ln_1.tb_6141(time,功能码_DOUBLE) aligned values(1679477545000,2.0);",
-          "insert into root.ln_1.tb_6141(time,文本_TEXT) aligned values(1675995566000,52);",
-          "insert into root.ln_1.tb_6141(time,枚举_INT32) aligned values(1675995566000,2);",
-          "insert into root.ln_1.tb_6141(time,水管流速_DOUBLE) aligned values(1679365910000,15.0);",
-          "insert into root.ln_1.tb_6141(time,膜产水状态_BOOLEAN) aligned values(1677033625000,true);",
-          "insert into root.ln_1.tb_6141(time,风机投入_BOOLEAN) aligned values(1675995566000,true);",
-          "insert into root.ln_1.tb_6141(time,风机退出_BOOLEAN) aligned values(1675995566000,false);",
+          "alter timeseries root.ln_1.tb_6141.`kaiguanliang-yunxing_BOOLEAN` upsert alias=`kaiguanliang-yunxing`;",
+          "insert into root.ln_1.tb_6141(time,chanshuijianxieyunxingshijianshezhi_DOUBLE) aligned values(1679365910000,10.0);",
+          "insert into root.ln_1.tb_6141(time,chushuiTP_DOUBLE) aligned values(1679365910000,15.0);",
+          "insert into root.ln_1.tb_6141(time,gongnengma_DOUBLE) aligned values(1679477545000,2.0);",
+          "insert into root.ln_1.tb_6141(time,wenben_TEXT) aligned values(1675995566000,52);",
+          "insert into root.ln_1.tb_6141(time,meiju_INT32) aligned values(1675995566000,2);",
+          "insert into root.ln_1.tb_6141(time,shuiguanliusu_DOUBLE) aligned values(1679365910000,15.0);",
+          "insert into root.ln_1.tb_6141(time,mochanshuizhuangtai_BOOLEAN) aligned values(1677033625000,true);",
+          "insert into root.ln_1.tb_6141(time,fengjitouru_BOOLEAN) aligned values(1675995566000,true);",
+          "insert into root.ln_1.tb_6141(time,fengjituichu_BOOLEAN) aligned values(1675995566000,false);",
           "insert into root.ln_1.tb_6141(time,11_TEXT) aligned values(1679365910000,13);",
           "insert into root.ln_1.tb_6141(time,CO2_DOUBLE) aligned values(1679365910000,12.0);",
-          "insert into root.ln_1.tb_6141(time,`出水NH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
-          "insert into root.ln_1.tb_6141(time,`开关量-运行_BOOLEAN`) aligned values(1675995566000,false);",
+          "insert into root.ln_1.tb_6141(time,`chushuiNH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
+          "insert into root.ln_1.tb_6141(time,`kaiguanliang-yunxing_BOOLEAN`) aligned values(1675995566000,false);",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -390,14 +390,14 @@ public class IoTDBAlignedLastQueryIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "1679477545000,root.ln_1.tb_6141.功能码_DOUBLE,2.0,DOUBLE",
-                "1675995566000,root.ln_1.tb_6141.文本_TEXT,52,TEXT"));
+                "1679477545000,root.ln_1.tb_6141.gongnengma_DOUBLE,2.0,DOUBLE",
+                "1675995566000,root.ln_1.tb_6141.wenben_TEXT,52,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last 功能码,文本 from root.ln_1.tb_6141;")) {
+          statement.executeQuery("select last gongnengma,wenben from root.ln_1.tb_6141;")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -422,15 +422,16 @@ public class IoTDBAlignedLastQueryIT {
     retSet =
         new HashSet<>(
             Arrays.asList(
-                "1679477545000,root.ln_1.tb_6141.功能码_DOUBLE,2.0,DOUBLE",
-                "1677033625000,root.ln_1.tb_6141.膜产水状态_BOOLEAN,true,BOOLEAN",
-                "1675995566000,root.ln_1.tb_6141.文本_TEXT,52,TEXT"));
+                "1679477545000,root.ln_1.tb_6141.gongnengma_DOUBLE,2.0,DOUBLE",
+                "1677033625000,root.ln_1.tb_6141.mochanshuizhuangtai_BOOLEAN,true,BOOLEAN",
+                "1675995566000,root.ln_1.tb_6141.wenben_TEXT,52,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last 功能码,膜产水状态,文本 from root.ln_1.tb_6141;")) {
+          statement.executeQuery(
+              "select last gongnengma,mochanshuizhuangtai,wenben from root.ln_1.tb_6141;")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
