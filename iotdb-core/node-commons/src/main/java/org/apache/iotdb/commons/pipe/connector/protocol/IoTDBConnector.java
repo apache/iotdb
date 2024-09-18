@@ -476,7 +476,7 @@ public abstract class IoTDBConnector implements PipeConnector {
    * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
    * its batched or queued events in the output pipe connector.
    */
-  public synchronized void discardEventsOfPipe(final String pipeName) {
+  public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
     // Do nothing by default
   }
 
