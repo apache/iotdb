@@ -217,7 +217,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
-import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConstant;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -2019,7 +2019,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
                     .trim()
                     .toLowerCase();
 
-            LoadTsFileConstant.validateLoadTsFileParam(key, value);
+            LoadTsFileConfigurator.validateParameters(key, value);
             loadTsFileAttributes.put(key, value);
           }
         }
