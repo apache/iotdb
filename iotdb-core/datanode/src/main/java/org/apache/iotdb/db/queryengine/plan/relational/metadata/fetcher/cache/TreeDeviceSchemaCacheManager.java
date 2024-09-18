@@ -419,7 +419,8 @@ public class TreeDeviceSchemaCacheManager {
    *
    * <p>If the query has ended abnormally, it shall call this to invalidate the entry it has pushed
    * in the first time, to avoid the stale writing damaging the eventual consistency. The input
-   * {@link TimeValuePair} shall be {@code null} in this case.
+   * {@link TimeValuePair} shall be {@code null} in this case and the "isCommit" shall be {@code
+   * true}.
    *
    * @param database the device's database, WITH "root"
    * @param measurementPath the fetched {@link MeasurementPath}

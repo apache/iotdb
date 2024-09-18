@@ -207,7 +207,7 @@ public class TreeDeviceSchemaCacheManagerTest {
         database,
         IDeviceID.Factory.DEFAULT_FACTORY.create(
             StringArrayDeviceID.splitDeviceIdString(device.getNodes())),
-        measurements,
+        new String[] {"s1"},
         new TimeValuePair[] {
           new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         },
