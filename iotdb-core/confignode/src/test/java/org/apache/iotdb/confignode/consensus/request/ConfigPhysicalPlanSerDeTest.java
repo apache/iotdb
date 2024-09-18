@@ -78,6 +78,7 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePlu
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -1542,6 +1543,15 @@ public class ConfigPhysicalPlanSerDeTest {
         setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
         setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
+  }
+
+  @Test
+  public void showTablePlanTest() throws IOException {
+    final ShowTablePlan showTablePlan = new ShowTablePlan("database");
+    Assert.assertEquals(
+        showTablePlan.getDatabase(),
+        ((ShowTablePlan) ConfigPhysicalPlan.Factory.create(showTablePlan.serializeToByteBuffer()))
+            .getDatabase());
   }
 
   @Test
