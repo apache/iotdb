@@ -579,11 +579,8 @@ connectorAttributesClause
     ;
 
 connectorAttributesWithoutWithClause
-     : (CONNECTOR | SINK)
-        LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
-        RR_BRACKET
-        ;
+    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+    ;
 
 connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
