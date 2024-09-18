@@ -312,7 +312,7 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfInsertRowsNode(final InsertRowsNode node) {
     long size = INSERT_ROWS_NODE_SIZE;
-
+    size += calculateFullInsertNodeSize(node);
     final List<InsertRowNode> rows = node.getInsertRowNodeList();
     final List<Integer> indexList = node.getInsertRowNodeIndexList();
     if (rows != null && !rows.isEmpty()) {
@@ -334,7 +334,7 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfInsertRowsOfOneDeviceNode(final InsertRowsOfOneDeviceNode node) {
     long size = INSERT_ROWS_OF_ONE_DEVICE_NODE_SIZE;
-
+    size += calculateFullInsertNodeSize(node);
     final List<InsertRowNode> rows = node.getInsertRowNodeList();
     final List<Integer> indexList = node.getInsertRowNodeIndexList();
     if (rows != null && !rows.isEmpty()) {
@@ -364,6 +364,7 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfInsertMultiTabletsNode(final InsertMultiTabletsNode node) {
     long size = INSERT_MULTI_TABLETS_NODE_SIZE;
+    size += calculateFullInsertNodeSize(node);
     // dataTypes
     size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
     // columnCategories
@@ -400,7 +401,7 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfRelationalInsertRowsNode(final RelationalInsertRowsNode node) {
     long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
-
+    size += calculateFullInsertNodeSize(node);
     final List<InsertRowNode> rows = node.getInsertRowNodeList();
     final List<Integer> indexList = node.getInsertRowNodeIndexList();
     if (rows != null && !rows.isEmpty()) {
@@ -423,11 +424,8 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {
     long size = RELATIONAL_INSERT_ROW_NODE_SIZE;
-
+    size += calculateFullInsertNodeSize(node);
     size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
-    if (node.isDeviceIDPresentInRelationalInsertRowNode()) {
-      size += sizeOfIDeviceID(node.getDeviceID());
-    }
     return size;
   }
 
