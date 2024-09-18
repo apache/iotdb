@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -84,9 +86,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES_2_DEFAULT_VALUE_MAP;
+import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REPLICATION_FACTOR_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REGION_GROUP_NUM_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.SCHEMA_REPLICATION_FACTOR_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TIME_PARTITION_INTERVAL_KEY;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.TTL_KEY;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR_CHAR;
 
 public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryContext> {
 
@@ -110,7 +123,67 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateDB(final CreateDB node, final MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
-    return new CreateDBTask(node);
+
+    final TDatabaseSchema schema = new TDatabaseSchema();
+
+    final String dbName = node.getDbName();
+    // Check database length here
+    // We need to calculate the database name without "root."
+    if (dbName.contains(PATH_SEPARATOR) || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
+      throw new SemanticException(
+          new IllegalPathException(
+              node.getDbName(),
+              dbName.contains(PATH_SEPARATOR)
+                  ? "The database name shall not contain '.'"
+                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH));
+    }
+    schema.setName(ROOT + PATH_SEPARATOR_CHAR + node.getDbName());
+
+    for (final Property property : node.getProperties()) {
+      final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
+      if (property.isSetToDefault()) {
+        switch (key) {
+          case TTL_KEY:
+          case SCHEMA_REPLICATION_FACTOR_KEY:
+          case DATA_REPLICATION_FACTOR_KEY:
+          case TIME_PARTITION_INTERVAL_KEY:
+          case SCHEMA_REGION_GROUP_NUM_KEY:
+          case DATA_REGION_GROUP_NUM_KEY:
+            break;
+          default:
+            throw new SemanticException("Unsupported database property key: " + key);
+        }
+        continue;
+      }
+
+      final Object value = property.getNonDefaultValue();
+
+      switch (key) {
+        case TTL_KEY:
+          schema.setTTL(parseLongFromLiteral(value, TTL_KEY));
+          break;
+        case SCHEMA_REPLICATION_FACTOR_KEY:
+          schema.setSchemaReplicationFactor(
+              parseIntFromLiteral(value, SCHEMA_REPLICATION_FACTOR_KEY));
+          break;
+        case DATA_REPLICATION_FACTOR_KEY:
+          schema.setDataReplicationFactor(parseIntFromLiteral(value, DATA_REPLICATION_FACTOR_KEY));
+          break;
+        case TIME_PARTITION_INTERVAL_KEY:
+          schema.setTimePartitionInterval(parseLongFromLiteral(value, TIME_PARTITION_INTERVAL_KEY));
+          break;
+        case SCHEMA_REGION_GROUP_NUM_KEY:
+          schema.setMinSchemaRegionGroupNum(
+              parseIntFromLiteral(value, SCHEMA_REGION_GROUP_NUM_KEY));
+          break;
+        case DATA_REGION_GROUP_NUM_KEY:
+          schema.setMinDataRegionGroupNum(parseIntFromLiteral(value, DATA_REGION_GROUP_NUM_KEY));
+          break;
+        default:
+          throw new SemanticException("Unsupported database property key: " + key);
+      }
+    }
+    return new CreateDBTask(schema, node.isSetIfNotExists());
   }
 
   @Override
@@ -252,19 +325,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
             continue;
           }
           // TODO: support validation for other properties
-          if (!(value instanceof LongLiteral)) {
-            throw new SemanticException(
-                "TTL' value must be a LongLiteral, but now is "
-                    + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
-                    + ", value: "
-                    + value);
-          }
-          final long parsedValue = ((LongLiteral) value).getParsedValue();
-          if (parsedValue < 0) {
-            throw new SemanticException(
-                "TTL' value must be equal to or greater than 0, but now is: " + value);
-          }
-          map.put(key, String.valueOf(parsedValue));
+          map.put(
+              key,
+              String.valueOf(
+                  parseLongFromLiteral(value, TTL_PROPERTY.toLowerCase(Locale.ENGLISH))));
         } else if (serializeDefault) {
           map.put(key, null);
         }
@@ -329,5 +393,42 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitSetConfiguration(SetConfiguration node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
     return new SetConfigurationTask(((SetConfigurationStatement) node.getInnerTreeStatement()));
+  }
+
+  private long parseLongFromLiteral(final Object value, final String name) {
+    if (!(value instanceof LongLiteral)) {
+      throw new SemanticException(
+          name
+              + " value must be a LongLiteral, but now is "
+              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
+              + ", value: "
+              + value);
+    }
+    final long parsedValue = ((LongLiteral) value).getParsedValue();
+    if (parsedValue < 0) {
+      throw new SemanticException(
+          name + " value must be equal to or greater than 0, but now is: " + value);
+    }
+    return parsedValue;
+  }
+
+  private int parseIntFromLiteral(final Object value, final String name) {
+    if (!(value instanceof LongLiteral)) {
+      throw new SemanticException(
+          name
+              + " value must be a LongLiteral, but now is "
+              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
+              + ", value: "
+              + value);
+    }
+    final long parsedValue = ((LongLiteral) value).getParsedValue();
+    if (parsedValue < 0) {
+      throw new SemanticException(
+          name + " value must be equal to or greater than 0, but now is: " + value);
+    } else if (parsedValue > Integer.MAX_VALUE) {
+      throw new SemanticException(
+          name + " value must be lower than " + Integer.MAX_VALUE + ", but now is: " + value);
+    }
+    return (int) parsedValue;
   }
 }

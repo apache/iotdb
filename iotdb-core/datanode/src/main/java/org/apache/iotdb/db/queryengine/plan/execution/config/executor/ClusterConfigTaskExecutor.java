@@ -181,7 +181,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.sys.subscription.Sh
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewExpressionVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
@@ -3078,28 +3077,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> createDatabase(final CreateDB createDB) {
+  public SettableFuture<ConfigTaskResult> createDatabase(
+      final TDatabaseSchema databaseSchema, final boolean ifNotExists) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
-    final String dbName = createDB.getDbName();
-    // Check database length here
-    // We need to calculate the database name without "root."
-    if (dbName.contains(".") || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
-      final IllegalPathException illegalPathException =
-          new IllegalPathException(
-              createDB.getDbName(),
-              dbName.contains(".")
-                  ? "The database name shall not contain '.'"
-                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH);
-      future.setException(
-          new IoTDBException(
-              illegalPathException.getMessage(), illegalPathException.getErrorCode()));
-      return future;
-    }
-
     // Construct request using statement
-    final TDatabaseSchema databaseSchema = new TDatabaseSchema();
-    databaseSchema.setName(ROOT + PATH_SEPARATOR_CHAR + createDB.getDbName());
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       // Send request to some API server
@@ -3108,20 +3090,21 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       } else if (TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode() == tsStatus.getCode()) {
-        if (createDB.isSetIfNotExists()) {
+        if (ifNotExists) {
           future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
         } else {
           LOGGER.info(
-              "Failed to CREATE DATABASE {}, because it already exists", createDB.getDbName());
+              "Failed to CREATE DATABASE {}, because it already exists", databaseSchema.getName());
           future.setException(
               new IoTDBException(
-                  String.format("Database %s already exists", createDB.getDbName()),
+                  String.format(
+                      "Database %s already exists", databaseSchema.getName().substring(5)),
                   TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()));
         }
       } else {
         LOGGER.warn(
             "Failed to execute create database {} in config node, status is {}.",
-            createDB.getDbName(),
+            databaseSchema.getName(),
             tsStatus);
         future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       }
