@@ -73,6 +73,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
   private static final String TABLET_INSERTION_NODE_SCENARIO = "transfer insertionNode tablet";
   private static final String TSFILE_SCENARIO = "transfer tsfile";
   private static final String TABLET_BATCH_SCENARIO = "transfer tablet batch";
+  private static final String DELETION_SCENARIO = "transfer deletion";
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncRetryClientManager;
   private final List<TEndPoint> peers;
   private final int thisDataNodeId;
@@ -263,7 +264,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
               PIPE_CONSENSUS_SYNC_CONNECTION_FAILED_FORMAT,
               getFollowerUrl().getIp(),
               getFollowerUrl().getPort(),
-              TABLET_INSERTION_NODE_SCENARIO,
+              DELETION_SCENARIO,
               e.getMessage()),
           e);
     }

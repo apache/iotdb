@@ -146,7 +146,7 @@ public class PipeInsertionDataNodeListener {
   }
 
   public DeletionResource listenToDeleteData(DeleteDataNode node, String regionId) {
-    PipeRealtimeEvent realtimeEvent = PipeRealtimeEventFactory.createRealtimeEvent(node, regionId);
+    PipeRealtimeEvent realtimeEvent = PipeRealtimeEventFactory.createRealtimeEvent(node);
     dataRegionId2Assigner.forEach((key, value) -> value.publishToAssign(realtimeEvent));
     // log deletion to DAL
     DeletionResourceManager mgr = DeletionResourceManager.getInstance(regionId);

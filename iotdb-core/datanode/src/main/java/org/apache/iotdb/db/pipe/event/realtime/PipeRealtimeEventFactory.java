@@ -61,11 +61,9 @@ public class PipeRealtimeEventFactory {
         new PipeHeartbeatEvent(dataRegionId, shouldPrintMessage), null, null, null);
   }
 
-  public static PipeRealtimeEvent createRealtimeEvent(
-      final DeleteDataNode node, final String regionId) {
-    PipeSchemaRegionWritePlanEvent deletionEvent =
-        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe());
-    return new PipeRealtimeEvent(deletionEvent, null, null, null);
+  public static PipeRealtimeEvent createRealtimeEvent(final DeleteDataNode node) {
+    return new PipeRealtimeEvent(
+        new PipeSchemaRegionWritePlanEvent(node, node.isGeneratedByPipe()), null, null, null);
   }
 
   public static PipeRealtimeEvent createRealtimeEvent(final ProgressReportEvent event) {
