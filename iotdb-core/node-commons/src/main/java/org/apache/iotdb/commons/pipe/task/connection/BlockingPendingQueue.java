@@ -124,7 +124,7 @@ public abstract class BlockingPendingQueue<E extends Event> {
     eventCounter.reset();
   }
 
-  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
+  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
