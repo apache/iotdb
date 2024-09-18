@@ -41,8 +41,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class RelationalInsertRowNode extends InsertRowNode {
-  // deviceId cache for Table-view insertion
-  private IDeviceID deviceID;
 
   public RelationalInsertRowNode(
       PlanNodeId id,
@@ -86,6 +84,7 @@ public class RelationalInsertRowNode extends InsertRowNode {
     setColumnCategories(columnCategories);
   }
 
+  @Override
   public IDeviceID getDeviceID() {
     if (deviceID == null) {
       String[] deviceIdSegments = new String[idColumnIndices.size() + 1];

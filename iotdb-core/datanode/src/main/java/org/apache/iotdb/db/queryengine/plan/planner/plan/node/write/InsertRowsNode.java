@@ -65,6 +65,8 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   /** The {@link InsertRowNode} list */
   private List<InsertRowNode> insertRowNodeList;
 
+  private boolean isMixingAlignment = false;
+
   public InsertRowsNode(PlanNodeId id) {
     super(id);
     insertRowNodeList = new ArrayList<>();
@@ -100,6 +102,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   public void addOneInsertRowNode(InsertRowNode node, int index) {
     insertRowNodeList.add(node);
     insertRowNodeIndexList.add(index);
+  }
+
+  public boolean isMixingAlignment() {
+    return isMixingAlignment;
+  }
+
+  public void setMixingAlignment(boolean mixingAlignment) {
+    isMixingAlignment = mixingAlignment;
   }
 
   @Override
@@ -283,7 +293,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
+    this.progressIndex = progressIndex.deepCopy();
     insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
 
@@ -294,7 +304,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
     this.progressIndex =
         (this.progressIndex == null)
-            ? progressIndex
+            ? progressIndex.deepCopy()
             : this.progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
   }
 
@@ -375,5 +385,6 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   public InsertRowsNode emptyClone() {
     return new InsertRowsNode(this.getPlanNodeId());
   }
+
   // endregion
 }

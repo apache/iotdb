@@ -85,16 +85,17 @@ public class PipeConnectorSubtaskLifeCycle implements AutoCloseable {
    * connector scheduling.
    *
    * @param pipeNameToDeregister pipe name
+   * @param regionId region id
    * @return {@code true} if the {@link PipeConnectorSubtask} is out of life cycle, indicating that
    *     the {@link PipeConnectorSubtask} should never be used again
    * @throws IllegalStateException if {@link PipeConnectorSubtaskLifeCycle#registeredTaskCount} <= 0
    */
-  public synchronized boolean deregister(final String pipeNameToDeregister) {
+  public synchronized boolean deregister(final String pipeNameToDeregister, int regionId) {
     if (registeredTaskCount <= 0) {
       throw new IllegalStateException("registeredTaskCount <= 0");
     }
 
-    subtask.discardEventsOfPipe(pipeNameToDeregister);
+    subtask.discardEventsOfPipe(pipeNameToDeregister, regionId);
 
     try {
       if (registeredTaskCount > 1) {

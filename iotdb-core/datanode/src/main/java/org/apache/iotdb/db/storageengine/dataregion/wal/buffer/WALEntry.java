@@ -125,6 +125,9 @@ public abstract class WALEntry implements SerializedSize {
       case DELETE_DATA_NODE:
         value = (DeleteDataNode) PlanNodeType.deserializeFromWAL(stream);
         break;
+      case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
+        value = (ContinuousSameSearchIndexSeparatorNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
       default:
         throw new RuntimeException("Unknown WALEntry type " + type);
     }

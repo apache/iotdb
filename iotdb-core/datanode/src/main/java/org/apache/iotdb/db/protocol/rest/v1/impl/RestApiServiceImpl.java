@@ -79,7 +79,7 @@ public class RestApiServiceImpl extends RestApiService {
   @Override
   public Response executeNonQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     boolean finish = false;
     Statement statement = null;
     try {
@@ -93,7 +93,6 @@ public class RestApiServiceImpl extends RestApiService {
                     .message("This operation type is not supported"))
             .build();
       }
-      startTime = System.nanoTime();
       if (!ExecuteStatementHandler.validateStatement(statement)) {
         return Response.ok()
             .entity(
@@ -154,12 +153,11 @@ public class RestApiServiceImpl extends RestApiService {
   @Override
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext) {
     Long queryId = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     boolean finish = false;
     Statement statement = null;
     try {
       RequestValidationHandler.validateSQL(sql);
-      startTime = System.nanoTime();
       statement = StatementGenerator.createStatement(sql.getSql(), ZoneId.systemDefault());
       if (statement == null) {
         return Response.ok()
@@ -236,7 +234,7 @@ public class RestApiServiceImpl extends RestApiService {
   public Response insertTablet(
       InsertTabletRequest insertTabletRequest, SecurityContext securityContext) {
     Long queryId = null;
-    long startTime = 0;
+    long startTime = System.nanoTime();
     InsertTabletStatement insertTabletStatement = null;
     try {
       RequestValidationHandler.validateInsertTabletRequest(insertTabletRequest);

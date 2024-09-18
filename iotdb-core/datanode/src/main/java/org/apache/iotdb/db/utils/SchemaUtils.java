@@ -28,62 +28,13 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
 
   private SchemaUtils() {}
-
-  private static final Map<TSDataType, Set<TSEncoding>> schemaChecker =
-      new EnumMap<>(TSDataType.class);
-
-  static {
-    Set<TSEncoding> booleanSet = new HashSet<>();
-    booleanSet.add(TSEncoding.PLAIN);
-    booleanSet.add(TSEncoding.RLE);
-    schemaChecker.put(TSDataType.BOOLEAN, booleanSet);
-
-    Set<TSEncoding> intSet = new HashSet<>();
-    intSet.add(TSEncoding.PLAIN);
-    intSet.add(TSEncoding.RLE);
-    intSet.add(TSEncoding.TS_2DIFF);
-    intSet.add(TSEncoding.GORILLA);
-    intSet.add(TSEncoding.ZIGZAG);
-    intSet.add(TSEncoding.CHIMP);
-    intSet.add(TSEncoding.SPRINTZ);
-    intSet.add(TSEncoding.RLBE);
-
-    schemaChecker.put(TSDataType.INT32, intSet);
-    schemaChecker.put(TSDataType.INT64, intSet);
-    schemaChecker.put(TSDataType.TIMESTAMP, intSet);
-    schemaChecker.put(TSDataType.DATE, intSet);
-
-    Set<TSEncoding> floatSet = new HashSet<>();
-    floatSet.add(TSEncoding.PLAIN);
-    floatSet.add(TSEncoding.RLE);
-    floatSet.add(TSEncoding.TS_2DIFF);
-    floatSet.add(TSEncoding.GORILLA_V1);
-    floatSet.add(TSEncoding.GORILLA);
-    floatSet.add(TSEncoding.CHIMP);
-    floatSet.add(TSEncoding.SPRINTZ);
-    floatSet.add(TSEncoding.RLBE);
-
-    schemaChecker.put(TSDataType.FLOAT, floatSet);
-    schemaChecker.put(TSDataType.DOUBLE, floatSet);
-
-    Set<TSEncoding> textSet = new HashSet<>();
-    textSet.add(TSEncoding.PLAIN);
-    textSet.add(TSEncoding.DICTIONARY);
-    schemaChecker.put(TSDataType.TEXT, textSet);
-    schemaChecker.put(TSDataType.BLOB, textSet);
-    schemaChecker.put(TSDataType.STRING, textSet);
-  }
 
   /**
    * If the datatype of 'aggregation' depends on 'measurementDataType' (min_value, max_value),
@@ -256,7 +207,7 @@ public class SchemaUtils {
 
   public static void checkDataTypeWithEncoding(TSDataType dataType, TSEncoding encoding)
       throws MetadataException {
-    if (!schemaChecker.get(dataType).contains(encoding)) {
+    if (!encoding.isSupported(dataType)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
     }

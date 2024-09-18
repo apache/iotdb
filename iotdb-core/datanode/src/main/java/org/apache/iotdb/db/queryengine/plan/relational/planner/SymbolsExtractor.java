@@ -16,6 +16,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
@@ -76,11 +77,11 @@ public final class SymbolsExtractor {
     return unique.build();
   }
 
-  /*public static Set<Symbol> extractUnique(Aggregation aggregation)
-  {
-      return ImmutableSet.copyOf(extractAll(aggregation));
+  public static Set<Symbol> extractUnique(AggregationNode.Aggregation aggregation) {
+    return ImmutableSet.copyOf(extractAll(aggregation));
   }
 
+  /*
   public static Set<Symbol> extractUnique(WindowNode.Function function)
   {
       return ImmutableSet.copyOf(extractAll(function));
@@ -92,18 +93,18 @@ public final class SymbolsExtractor {
     return builder.build();
   }
 
-  /*public static List<Symbol> extractAll(Aggregation aggregation)
-  {
-      ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
-      for (Expression argument : aggregation.getArguments()) {
-          builder.addAll(extractAll(argument));
-      }
-      aggregation.getFilter().ifPresent(builder::add);
-      aggregation.getOrderingScheme().ifPresent(orderBy -> builder.addAll(orderBy.getOrderBy()));
-      aggregation.getMask().ifPresent(builder::add);
-      return builder.build();
+  public static List<Symbol> extractAll(AggregationNode.Aggregation aggregation) {
+    ImmutableList.Builder<Symbol> builder = ImmutableList.builder();
+    for (Expression argument : aggregation.getArguments()) {
+      builder.addAll(extractAll(argument));
+    }
+    aggregation.getFilter().ifPresent(builder::add);
+    aggregation.getOrderingScheme().ifPresent(orderBy -> builder.addAll(orderBy.getOrderBy()));
+    aggregation.getMask().ifPresent(builder::add);
+    return builder.build();
   }
 
+  /*
   public static List<Symbol> extractAll(WindowNode.Function function)
   {
       ImmutableList.Builder<Symbol> builder = ImmutableList.builder();

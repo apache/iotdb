@@ -33,6 +33,7 @@ import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.reader.IChunkReader;
 import org.apache.tsfile.read.reader.chunk.AlignedChunkReader;
+import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,13 +48,19 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
   private final TsFileResource resource;
 
+  // for table model, it will be false
+  // for tree model, it will be true
+  private final boolean ignoreAllNullRows;
+
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
 
-  public DiskAlignedChunkLoader(QueryContext context, TsFileResource resource) {
+  public DiskAlignedChunkLoader(
+      QueryContext context, TsFileResource resource, boolean ignoreAllNullRows) {
     this.context = context;
     this.debug = context.isDebug();
     this.resource = resource;
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override
@@ -103,7 +110,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
 
       long t2 = System.nanoTime();
       IChunkReader chunkReader =
-          new AlignedChunkReader(timeChunk, valueChunkList, globalTimeFilter);
+          ignoreAllNullRows
+              ? new AlignedChunkReader(timeChunk, valueChunkList, globalTimeFilter)
+              : new TableChunkReader(timeChunk, valueChunkList, globalTimeFilter);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 

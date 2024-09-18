@@ -53,20 +53,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class BatchedReadChunkAlignedSeriesCompactionExecutor
     extends ReadChunkAlignedSeriesCompactionExecutor {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  private final Set<String> compactedMeasurements;
   private final BatchCompactionPlan batchCompactionPlan = new BatchCompactionPlan();
   private final int batchSize =
       IoTDBDescriptor.getInstance().getConfig().getCompactionMaxAlignedSeriesNumInOneBatch();
+  private final AlignedSeriesBatchCompactionUtils.BatchColumnSelection batchColumnSelection;
   private final LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       originReaderAndChunkMetadataList;
 
@@ -79,7 +76,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       throws IOException {
     super(device, targetResource, readerAndChunkMetadataList, writer, summary);
     this.originReaderAndChunkMetadataList = readerAndChunkMetadataList;
-    compactedMeasurements = new HashSet<>();
+    this.batchColumnSelection =
+        new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(schemaList, batchSize);
   }
 
   @Override
@@ -97,17 +95,16 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   }
 
   private void compactFirstBatch() throws IOException, PageException {
-    List<IMeasurementSchema> firstBatchMeasurements =
-        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-            schemaList, compactedMeasurements, batchSize);
+    if (!batchColumnSelection.hasNext()) {
+      return;
+    }
+    batchColumnSelection.next();
 
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
         batchedReaderAndChunkMetadataList =
             filterAlignedChunkMetadataList(
-                readerAndChunkMetadataList,
-                firstBatchMeasurements.stream()
-                    .map(IMeasurementSchema::getMeasurementId)
-                    .collect(Collectors.toList()));
+                readerAndChunkMetadataList, batchColumnSelection.getSelectedColumnIndexList());
+
     FirstBatchedReadChunkAlignedSeriesCompactionExecutor executor =
         new FirstBatchedReadChunkAlignedSeriesCompactionExecutor(
             device,
@@ -116,7 +113,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             writer,
             summary,
             timeSchema,
-            firstBatchMeasurements);
+            batchColumnSelection.getCurrentSelectedColumnSchemaList());
     executor.execute();
     LOGGER.debug(
         "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
@@ -125,17 +122,12 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   }
 
   private void compactLeftBatches() throws PageException, IOException {
-    while (compactedMeasurements.size() < schemaList.size()) {
-      List<IMeasurementSchema> selectedColumnBatch =
-          AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-              schemaList, compactedMeasurements, batchSize);
+    while (batchColumnSelection.hasNext()) {
+      batchColumnSelection.next();
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
           groupReaderAndChunkMetadataList =
               filterAlignedChunkMetadataList(
-                  readerAndChunkMetadataList,
-                  selectedColumnBatch.stream()
-                      .map(IMeasurementSchema::getMeasurementId)
-                      .collect(Collectors.toList()));
+                  readerAndChunkMetadataList, batchColumnSelection.getSelectedColumnIndexList());
       FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor executor =
           new FollowingBatchedReadChunkAlignedSeriesGroupCompactionExecutor(
               device,
@@ -144,7 +136,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
               writer,
               summary,
               timeSchema,
-              selectedColumnBatch);
+              batchColumnSelection.getCurrentSelectedColumnSchemaList());
       executor.execute();
     }
   }
@@ -152,7 +144,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   private LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
       filterAlignedChunkMetadataList(
           List<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
-          List<String> selectedMeasurements) {
+          List<Integer> selectedMeasurementIndexs) {
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
         groupReaderAndChunkMetadataList = new LinkedList<>();
     for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
@@ -160,8 +152,8 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
       List<AlignedChunkMetadata> selectedColumnAlignedChunkMetadataList = new LinkedList<>();
       for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
         selectedColumnAlignedChunkMetadataList.add(
-            AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadata(
-                alignedChunkMetadata, selectedMeasurements));
+            AlignedSeriesBatchCompactionUtils.filterAlignedChunkMetadataByIndex(
+                alignedChunkMetadata, selectedMeasurementIndexs));
       }
       groupReaderAndChunkMetadataList.add(
           new Pair<>(pair.getLeft(), selectedColumnAlignedChunkMetadataList));

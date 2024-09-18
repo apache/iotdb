@@ -360,6 +360,14 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   }
 
   @Override
+  public long getEstimatedMemoryCost() {
+    if (filesView.sourceFilesInCompactionPerformer.isEmpty()) {
+      return 0;
+    }
+    return super.getEstimatedMemoryCost();
+  }
+
+  @Override
   public String toString() {
     return storageGroupName
         + "-"

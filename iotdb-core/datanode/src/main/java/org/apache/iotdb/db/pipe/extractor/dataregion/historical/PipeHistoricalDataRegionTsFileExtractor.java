@@ -260,7 +260,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    startIndex = environment.getPipeTaskMeta().getProgressIndex().deepCopy();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -533,10 +533,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
       return true;
     }
 
-    return deviceSet.stream()
-        .anyMatch(
-            // TODO: use IDeviceID
-            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
+    return deviceSet.stream().anyMatch(deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {

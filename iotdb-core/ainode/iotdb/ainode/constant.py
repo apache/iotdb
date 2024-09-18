@@ -242,6 +242,5 @@ class AttributeName(Enum):
     SIZE_THRESHOLD = "size_threshold"
     OUTLIER_TAIL = "outlier_tail"
 
-
     def name(self) -> str:
         return self.value

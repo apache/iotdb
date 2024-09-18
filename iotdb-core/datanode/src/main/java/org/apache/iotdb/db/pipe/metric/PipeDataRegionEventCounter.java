@@ -76,11 +76,11 @@ public class PipeDataRegionEventCounter extends PipeEventCounter {
       return;
     }
     if (event instanceof PipeHeartbeatEvent) {
-      pipeHeartbeatEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
+      pipeHeartbeatEventCount.decrementAndGet();
     } else if (event instanceof TabletInsertionEvent) {
-      tabletInsertionEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
+      tabletInsertionEventCount.decrementAndGet();
     } else if (event instanceof TsFileInsertionEvent) {
-      tsFileInsertionEventCount.getAndUpdate(count -> count > 0 ? count - 1 : 0);
+      tsFileInsertionEventCount.decrementAndGet();
     }
   }
 

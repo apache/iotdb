@@ -23,12 +23,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.Divis
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.ModulusResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.MultiplicationResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.DoubleNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.FloatNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IntNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LongNegationColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.TimestampNegationColumnTransformer;
 
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -63,13 +63,20 @@ public class ArithmeticColumnTransformerApi {
   public static ColumnTransformer getNegationTransformer(ColumnTransformer columnTransformer) {
     switch (columnTransformer.getType().getTypeEnum()) {
       case INT32:
-        return new IntNegationColumnTransformer(columnTransformer.getType(), columnTransformer);
+        return new IntNegationColumnTransformer(
+            columnTransformer.getType(), columnTransformer);
       case INT64:
-        return new LongNegationColumnTransformer(columnTransformer.getType(), columnTransformer);
+        return new LongNegationColumnTransformer(
+            columnTransformer.getType(), columnTransformer);
       case FLOAT:
-        return new FloatNegationColumnTransformer(columnTransformer.getType(), columnTransformer);
+        return new FloatNegationColumnTransformer(
+            columnTransformer.getType(), columnTransformer);
       case DOUBLE:
-        return new DoubleNegationColumnTransformer(columnTransformer.getType(), columnTransformer);
+        return new DoubleNegationColumnTransformer(
+            columnTransformer.getType(), columnTransformer);
+      case TIMESTAMP:
+        return new TimestampNegationColumnTransformer(
+            columnTransformer.getType(), columnTransformer);
       default:
         throw new UnsupportedOperationException("Unsupported Type");
     }
