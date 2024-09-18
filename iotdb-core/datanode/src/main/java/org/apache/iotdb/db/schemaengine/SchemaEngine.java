@@ -155,7 +155,7 @@ public class SchemaEngine {
 
       final PartialPath database;
       try {
-        database = PartialPath.getDatabasePath(file.getName());
+        database = new PartialPath(file.getName());
       } catch (IllegalPathException illegalPathException) {
         // not a legal sg dir
         continue;
