@@ -59,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -148,7 +149,7 @@ public class InsertNodeMemoryEstimator {
   private static final long HYBRID_PROGRESS_INDEX_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(HybridProgressIndex.class);
 
-  private static final long IO_T_PROGRESS_INDEX_SIZE =
+  private static final long IOT_PROGRESS_INDEX_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(IoTProgressIndex.class);
 
   private static final long META_PROGRESS_INDEX_SIZE =
@@ -185,6 +186,9 @@ public class InsertNodeMemoryEstimator {
   private static final long SIZE_OF_SHORT =
       RamUsageEstimator.alignObjectSize(Short.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
+
+  private static final long SIZE_OF_ARRAYLIST =
+      RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
 
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different
   // from the actual result because the properties of the parent class are not added.
@@ -506,12 +510,12 @@ public class InsertNodeMemoryEstimator {
     if (columnCategories == null) {
       return 0L;
     }
-    long size =
-        RamUsageEstimator.alignObjectSize(
-            NUM_BYTES_OBJECT_HEADER + NUM_BYTES_OBJECT_REF * columnCategories.length);
+    // ArrayList<Integer>
+    long size = SIZE_OF_ARRAYLIST;
+    size += NUM_BYTES_ARRAY_HEADER;
     for (TsTableColumnCategory columnCategory : columnCategories) {
       if (columnCategory != null && columnCategory.equals(TsTableColumnCategory.ID)) {
-        size += Integer.BYTES + NUM_BYTES_OBJECT_REF;
+        size += SIZE_OF_INT + NUM_BYTES_OBJECT_REF;
       }
     }
     return size;
@@ -534,17 +538,6 @@ public class InsertNodeMemoryEstimator {
     if (id != null) {
       // Estimate the sum of the table and segment lengths to be the size of the id
       size += sizeOfString(id) * 2;
-      // Ignore, this calculation will trigger the lazy loading mechanism
-      //      // table
-      //      size += sizeOfString(deviceID.getTableName());
-      //      // segments[]
-      //      int num = deviceID.segmentNum();
-      //      size +=
-      //          RamUsageEstimator.alignObjectSize(
-      //              NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * deviceID.segmentNum());
-      //      while (num > 0) {
-      //        size += sizeOfString(deviceID.segment(--num));
-      //      }
     }
 
     return size;
@@ -671,7 +664,7 @@ public class InsertNodeMemoryEstimator {
 
   private static long sizeOfIoTProgressIndex(IoTProgressIndex progressIndex) {
     // Memory alignment of basic types and reference types in structures
-    long size = IO_T_PROGRESS_INDEX_SIZE;
+    long size = IOT_PROGRESS_INDEX_SIZE;
 
     // Memory calculation in reference type, cannot get exact value, roughly estimate
     size += REENTRANT_READ_WRITE_LOCK_SIZE;
