@@ -28,6 +28,8 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -90,7 +92,7 @@ public class DataNodeTableCache implements ITableCache {
     tableMap.forEach(
         (key, value) ->
             localTableMap.put(
-                key,
+                PathUtils.unQualifyDatabaseName(key),
                 value.stream()
                     .collect(
                         Collectors.toMap(
@@ -102,7 +104,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void preUpdateTable(String database, final TsTable table) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preUpdateTableMap
@@ -116,7 +118,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void rollbackUpdateTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
@@ -144,7 +146,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void commitUpdateTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       final TsTable table = preUpdateTableMap.get(database).get(tableName);
@@ -160,7 +162,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void invalid(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
@@ -171,7 +173,7 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public TsTable getTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       if (databaseTableMap.containsKey(database)) {
@@ -184,13 +186,32 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   public Optional<List<TsTable>> getTables(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.readLock().lock();
     try {
       final Map<String, TsTable> tableMap = databaseTableMap.get(database);
       return tableMap != null ? Optional.of(new ArrayList<>(tableMap.values())) : Optional.empty();
     } finally {
       readWriteLock.readLock().unlock();
+    }
+  }
+
+  // Database shall not start with "root"
+  public String tryGetInternColumnName(
+      final @Nonnull String database,
+      final @Nonnull String tableName,
+      final @Nonnull String columnName) {
+    if (columnName.isEmpty()) {
+      return columnName;
+    }
+    try {
+      return databaseTableMap
+          .get(database)
+          .get(tableName)
+          .getColumnSchema(columnName)
+          .getColumnName();
+    } catch (final Exception e) {
+      return columnName;
     }
   }
 
