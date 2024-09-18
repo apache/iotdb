@@ -580,7 +580,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void removeInvalidSchemaRegions(List<ConsensusGroupId> schemaConsensusGroupIds) {
     Map<String, List<SchemaRegionId>> localSchemaRegionInfo =
         SchemaEngine.getLocalSchemaRegionInfo();
-    logger.info("local: {}", localSchemaRegionInfo);
     localSchemaRegionInfo.forEach(
         (database, schemaRegionIds) -> {
           for (SchemaRegionId schemaRegionId : schemaRegionIds) {
