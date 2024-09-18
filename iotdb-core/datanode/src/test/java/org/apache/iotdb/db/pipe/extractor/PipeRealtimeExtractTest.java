@@ -274,6 +274,13 @@ public class PipeRealtimeExtractTest {
                     String.join(TsFileConstant.PATH_SEPARATOR, device)),
                 0);
 
+            try {
+              resource.close();
+            } catch (IOException e) {
+              e.printStackTrace();
+              throw new RuntimeException(e);
+            }
+
             PipeInsertionDataNodeListener.getInstance()
                 .listenToInsertNode(
                     dataRegionId,

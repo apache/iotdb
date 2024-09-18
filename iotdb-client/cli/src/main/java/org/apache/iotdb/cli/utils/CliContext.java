@@ -36,14 +36,26 @@ public class CliContext {
 
   private final ExitType exitType;
 
+  private final boolean disableCliHistory;
+
   private LineReader lineReader;
 
   public CliContext(InputStream in, PrintStream out, PrintStream err, ExitType exitType) {
+    this(in, out, err, exitType, false);
+  }
+
+  public CliContext(
+      InputStream in,
+      PrintStream out,
+      PrintStream err,
+      ExitType exitType,
+      boolean disableCliHistory) {
     this.in = in;
     this.out = out;
     this.err = err;
     this.exitType = exitType;
     this.printer = new IoTPrinter(out);
+    this.disableCliHistory = disableCliHistory;
   }
 
   public InputStream getIn() {
@@ -64,6 +76,10 @@ public class CliContext {
 
   public ExitType getExitType() {
     return exitType;
+  }
+
+  public boolean isDisableCliHistory() {
+    return disableCliHistory;
   }
 
   public LineReader getLineReader() {

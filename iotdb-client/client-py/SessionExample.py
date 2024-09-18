@@ -18,7 +18,7 @@
 
 # Uncomment the following line to use apache-iotdb module installed by pip3
 import numpy as np
-
+from datetime import date
 from iotdb.Session import Session
 from iotdb.utils.BitMap import BitMap
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
@@ -359,6 +359,57 @@ with session.execute_last_data_query(
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())
+
+# insert tablet with new data types
+measurements_new_type = ["s_01", "s_02", "s_03", "s_04"]
+data_types_new_type = [
+    TSDataType.DATE,
+    TSDataType.TIMESTAMP,
+    TSDataType.BLOB,
+    TSDataType.STRING,
+]
+values_new_type = [
+    [date(2024, 1, 1), 1, b"\x12\x34", "test01"],
+    [date(2024, 1, 2), 2, b"\x12\x34", "test02"],
+    [date(2024, 1, 3), 3, b"\x12\x34", "test03"],
+    [date(2024, 1, 4), 4, b"\x12\x34", "test04"],
+]
+timestamps_new_type = [1, 2, 3, 4]
+tablet_new_type = Tablet(
+    "root.sg_test_01.d_04",
+    measurements_new_type,
+    data_types_new_type,
+    values_new_type,
+    timestamps_new_type,
+)
+session.insert_tablet(tablet_new_type)
+np_values_new_type = [
+    np.array([date(2024, 2, 4), date(2024, 3, 4), date(2024, 4, 4), date(2024, 5, 4)]),
+    np.array([5, 6, 7, 8], TSDataType.INT64.np_dtype()),
+    np.array([b"\x12\x34", b"\x12\x34", b"\x12\x34", b"\x12\x34"]),
+    np.array(["test01", "test02", "test03", "test04"]),
+]
+np_timestamps_new_type = np.array([5, 6, 7, 8], TSDataType.INT64.np_dtype())
+np_tablet_new_type = NumpyTablet(
+    "root.sg_test_01.d_04",
+    measurements_new_type,
+    data_types_new_type,
+    np_values_new_type,
+    np_timestamps_new_type,
+)
+session.insert_tablet(np_tablet_new_type)
+with session.execute_query_statement(
+    "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+) as dataset:
+    print(dataset.get_column_names())
+    while dataset.has_next():
+        print(dataset.next())
+
+with session.execute_query_statement(
+    "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+) as dataset:
+    df = dataset.todf()
+    print(df.to_string())
 
 # delete database
 session.delete_storage_group("root.sg_test_01")

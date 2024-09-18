@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.TsFileInsertionDataContainerProvider;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimePartitionProgressIndexKeeper;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
@@ -74,6 +75,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   // The point count of the TsFile. Used for metrics on PipeConsensus' receiver side.
   // May be updated after it is flushed. Should be negative if not set.
   private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
+
+  private ProgressIndex overridingProgressIndex;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
@@ -231,6 +234,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
     return flushPointCount;
   }
 
+  public long getTimePartitionId() {
+    return resource.getTimePartition();
+  }
+
   /////////////////////////// EnrichedEvent ///////////////////////////
 
   @Override
@@ -270,6 +277,11 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   }
 
   @Override
+  public void bindProgressIndex(final ProgressIndex overridingProgressIndex) {
+    this.overridingProgressIndex = overridingProgressIndex;
+  }
+
+  @Override
   public ProgressIndex getProgressIndex() {
     try {
       if (!waitForTsFileClose()) {
@@ -278,6 +290,9 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
             tsFile);
         return MinimumProgressIndex.INSTANCE;
       }
+      if (Objects.nonNull(overridingProgressIndex)) {
+        return overridingProgressIndex;
+      }
       return resource.getMaxProgressIndexAfterClose();
     } catch (final InterruptedException e) {
       LOGGER.warn(
@@ -285,6 +300,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
               "Interrupted when waiting for closing TsFile %s.", resource.getTsFilePath()));
       Thread.currentThread().interrupt();
       return MinimumProgressIndex.INSTANCE;
+    }
+  }
+
+  @Override
+  protected void reportProgress() {
+    super.reportProgress();
+    if (Objects.isNull(overridingProgressIndex)) {
+      PipeTimePartitionProgressIndexKeeper.getInstance()
+          .eliminateProgressIndex(
+              resource.getDataRegionId(),
+              resource.getTimePartition(),
+              resource.getMaxProgressIndexAfterClose());
     }
   }
 
@@ -339,7 +366,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
       final Set<IDeviceID> deviceSet =
           Objects.nonNull(deviceIsAlignedMap) ? deviceIsAlignedMap.keySet() : resource.getDevices();
       return deviceSet.stream().anyMatch(pipePattern::mayOverlapWithDevice);
-    } catch (final IOException e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Pipe {}: failed to get devices from TsFile {}, extract it anyway",
           pipeName,

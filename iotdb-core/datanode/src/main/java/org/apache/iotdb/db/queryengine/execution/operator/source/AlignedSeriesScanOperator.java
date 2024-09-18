@@ -64,7 +64,8 @@ public class AlignedSeriesScanOperator extends AbstractSeriesScanOperator {
             seriesScanOptions,
             context.getInstanceContext(),
             queryAllSensors,
-            dataTypes);
+            dataTypes,
+            true);
     this.valueColumnCount = seriesPath.getColumnNum();
     this.maxReturnSize =
         Math.min(

@@ -738,16 +738,17 @@ public class DateTimeUtils {
         ZoneId.systemDefault());
   }
 
-  public static String convertLongToDate(long timestamp, ZoneId zoneId) {
+  public static String convertLongToDate(final long timestamp, final ZoneId zoneId) {
     return convertLongToDate(
         timestamp, CommonDescriptor.getInstance().getConfig().getTimestampPrecision(), zoneId);
   }
 
-  public static String convertLongToDate(long timestamp, String sourcePrecision) {
+  public static String convertLongToDate(final long timestamp, final String sourcePrecision) {
     return convertLongToDate(timestamp, sourcePrecision, ZoneId.systemDefault());
   }
 
-  public static String convertLongToDate(long timestamp, String sourcePrecision, ZoneId zoneId) {
+  public static String convertLongToDate(
+      long timestamp, final String sourcePrecision, final ZoneId zoneId) {
     switch (sourcePrecision) {
       case "ns":
       case "nanosecond":
@@ -756,6 +757,8 @@ public class DateTimeUtils {
       case "us":
       case "microsecond":
         timestamp /= 1000;
+        break;
+      default:
         break;
     }
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), zoneId).toString();
