@@ -546,7 +546,7 @@ createPipe
         ((extractorAttributesClause?
         processorAttributesClause?
         connectorAttributesClause)
-        |connectorAttributesWithoutWithClause)
+        |connectorAttributesWithoutWithSinkClause)
     ;
 
 extractorAttributesClause
@@ -578,7 +578,7 @@ connectorAttributesClause
         RR_BRACKET
     ;
 
-connectorAttributesWithoutWithClause
+connectorAttributesWithoutWithSinkClause
     : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
     ;
 
