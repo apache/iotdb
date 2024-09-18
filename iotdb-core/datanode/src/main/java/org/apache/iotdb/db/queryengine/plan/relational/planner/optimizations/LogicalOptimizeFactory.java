@@ -148,9 +148,8 @@ public class LogicalOptimizeFactory {
             ruleStats,
             ImmutableSet.<Rule<?>>builder()
                 .addAll(columnPruningRules)
-                //                    .addAll(projectionPushdownRules)
-                //                    .addAll(new UnwrapRowSubscript().rules())
-                //                    .addAll(new PushCastIntoRow().rules())
+                // .addAll(projectionPushdownRules).addAll(new
+                // UnwrapRowSubscript().rules()).addAll(new PushCastIntoRow().rules())
                 .addAll(
                     ImmutableSet.of(
                         new MergeFilters(),
@@ -184,13 +183,13 @@ public class LogicalOptimizeFactory {
             plannerContext,
             ruleStats,
             ImmutableSet.<Rule<?>>builder()
-                //                    .addAll(projectionPushdownRules)
+                // .addAll(projectionPushdownRules)
                 .addAll(columnPruningRules)
                 .addAll(limitPushdownRules)
                 .addAll(
                     ImmutableSet.of(
-                        //                        new MergeUnion(),
-                        //                        new RemoveEmptyUnionBranches(),
+                        // new MergeUnion(),
+                        // new RemoveEmptyUnionBranches(),
                         new MergeFilters(),
                         new RemoveTrivialFilters(),
                         new MergeLimits(),
