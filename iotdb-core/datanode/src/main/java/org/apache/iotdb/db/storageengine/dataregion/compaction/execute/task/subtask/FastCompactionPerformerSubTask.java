@@ -159,7 +159,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 deviceId,
                 subTaskId,
                 measurementSchemas,
-                summary);
+                summary,
+                ignoreAllNullRows);
       } else {
         seriesCompactionExecutor =
             new FastAlignedSeriesCompactionExecutor(

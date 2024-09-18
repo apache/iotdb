@@ -664,7 +664,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
       for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
         ChunkMetadata timeChunkMetadata =
             (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
@@ -712,7 +712,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(target.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
       Assert.assertEquals(3, chunkMetadataList.size());
     }
   }

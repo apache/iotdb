@@ -390,7 +390,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
-              currentDevice.left, firstMeasurementNodeOfCurrentDevice);
+              currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }

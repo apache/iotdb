@@ -193,7 +193,7 @@ public class FastCompactionPerformer
     // end offset of each timeseries metadata, in order to facilitate the reading of chunkMetadata
     // directly by this offset later. Instead of deserializing chunk metadata later, we need to
     // deserialize chunk metadata here to get the schemas of all value measurements, because we
-    // should get schemas of all value measurement to startMeasruement() and compaction process is
+    // should get schemas of all value measurement to startMeasurement() and compaction process is
     // to read a batch of overlapped files each time, and we cannot make sure if the first batch of
     // overlapped tsfiles contain all the value measurements.
     for (Map.Entry<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>> entry :

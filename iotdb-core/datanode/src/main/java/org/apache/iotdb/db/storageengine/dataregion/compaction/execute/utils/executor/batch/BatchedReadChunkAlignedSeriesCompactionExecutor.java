@@ -97,15 +97,23 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
   }
 
   private void compactFirstBatch() throws IOException, PageException {
+    List<Integer> selectedColumnIndexList;
+    List<IMeasurementSchema> selectedColumnSchemaList;
     if (!batchColumnSelection.hasNext()) {
-      return;
+      if (ignoreAllNullRows) {
+        return;
+      }
+      selectedColumnIndexList = Collections.emptyList();
+      selectedColumnSchemaList = Collections.emptyList();
+    } else {
+      batchColumnSelection.next();
+      selectedColumnIndexList = batchColumnSelection.getSelectedColumnIndexList();
+      selectedColumnSchemaList = batchColumnSelection.getCurrentSelectedColumnSchemaList();
     }
-    batchColumnSelection.next();
 
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
         batchedReaderAndChunkMetadataList =
-            filterAlignedChunkMetadataList(
-                readerAndChunkMetadataList, batchColumnSelection.getSelectedColumnIndexList());
+            filterAlignedChunkMetadataList(readerAndChunkMetadataList, selectedColumnIndexList);
 
     FirstBatchedReadChunkAlignedSeriesCompactionExecutor executor =
         new FirstBatchedReadChunkAlignedSeriesCompactionExecutor(
@@ -115,7 +123,7 @@ public class BatchedReadChunkAlignedSeriesCompactionExecutor
             writer,
             summary,
             timeSchema,
-            batchColumnSelection.getCurrentSelectedColumnSchemaList(),
+            selectedColumnSchemaList,
             ignoreAllNullRows);
     executor.execute();
     LOGGER.debug(

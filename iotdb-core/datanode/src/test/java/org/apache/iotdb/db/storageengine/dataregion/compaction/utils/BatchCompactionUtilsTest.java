@@ -108,7 +108,8 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         new TsFileSequenceReader(seqResource1.getTsFile().getAbsolutePath())) {
       AlignedChunkMetadata alignedChunkMetadata =
           reader
-              .getAlignedChunkMetadata(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"))
+              .getAlignedChunkMetadata(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"), true)
               .get(0);
       ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       List<IChunkMetadata> valueChunkMetadataList =

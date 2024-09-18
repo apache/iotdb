@@ -306,8 +306,7 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
         seriesScanOptions,
         operatorContext.getInstanceContext(),
         true,
-        measurementColumnTSDataTypes,
-        false);
+        measurementColumnTSDataTypes);
   }
 
   public static AlignedFullPath constructAlignedPath(
