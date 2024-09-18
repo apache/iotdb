@@ -543,9 +543,10 @@ verifyConnection
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
-        extractorAttributesClause?
+        ((extractorAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause
+        connectorAttributesClause)
+        |connectorAttributesWithoutWithClause)
     ;
 
 extractorAttributesClause
@@ -576,6 +577,13 @@ connectorAttributesClause
         (connectorAttributeClause COMMA)* connectorAttributeClause?
         RR_BRACKET
     ;
+
+connectorAttributesWithoutWithClause
+     : (CONNECTOR | SINK)
+        LR_BRACKET
+        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        RR_BRACKET
+        ;
 
 connectorAttributeClause
     : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
