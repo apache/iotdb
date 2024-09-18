@@ -65,6 +65,8 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   /** The {@link InsertRowNode} list */
   private List<InsertRowNode> insertRowNodeList;
 
+  private boolean isMixingAlignment = false;
+
   public InsertRowsNode(PlanNodeId id) {
     super(id);
     insertRowNodeList = new ArrayList<>();
@@ -100,6 +102,14 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
   public void addOneInsertRowNode(InsertRowNode node, int index) {
     insertRowNodeList.add(node);
     insertRowNodeIndexList.add(index);
+  }
+
+  public boolean isMixingAlignment() {
+    return isMixingAlignment;
+  }
+
+  public void setMixingAlignment(boolean mixingAlignment) {
+    isMixingAlignment = mixingAlignment;
   }
 
   @Override
