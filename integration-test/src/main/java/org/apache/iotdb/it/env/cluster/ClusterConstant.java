@@ -115,9 +115,6 @@ public class ClusterConstant {
       "strongConsistencyClusterMode.dataRegionReplicaNumber";
 
   // Property file names
-  public static final String CONFIG_NODE_PROPERTIES_FILE = "iotdb-confignode.properties";
-  public static final String DATA_NODE_PROPERTIES_FILE = "iotdb-datanode.properties";
-  public static final String COMMON_PROPERTIES_FILE = "iotdb-common.properties";
   public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
 
   // Properties' keys
@@ -142,10 +139,7 @@ public class ClusterConstant {
   // ConfigNode
   public static final String CN_SYSTEM_DIR = "cn_system_dir";
   public static final String CN_CONSENSUS_DIR = "cn_consensus_dir";
-  public static final String CN_METRIC_PROMETHEUS_REPORTER_PORT =
-      "cn_metric_prometheus_reporter_port";
   public static final String CN_METRIC_IOTDB_REPORTER_HOST = "cn_metric_iotdb_reporter_host";
-  public static final String CN_METRIC_IOTDB_REPORTER_PORT = "cn_metric_iotdb_reporter_port";
 
   public static final String CN_CONNECTION_TIMEOUT_MS = "cn_connection_timeout_ms";
 
@@ -157,13 +151,10 @@ public class ClusterConstant {
   public static final String DN_TRACING_DIR = "dn_tracing_dir";
   public static final String DN_SYNC_DIR = "dn_sync_dir";
   public static final String DN_METRIC_IOTDB_REPORTER_HOST = "dn_metric_iotdb_reporter_host";
-  public static final String DN_METRIC_PROMETHEUS_REPORTER_PORT =
-      "dn_metric_prometheus_reporter_port";
 
   public static final String DN_MPP_DATA_EXCHANGE_PORT = "dn_mpp_data_exchange_port";
   public static final String DN_DATA_REGION_CONSENSUS_PORT = "dn_data_region_consensus_port";
   public static final String DN_SCHEMA_REGION_CONSENSUS_PORT = "dn_schema_region_consensus_port";
-  public static final String PIPE_AIR_GAP_RECEIVER_ENABLED = "pipe_air_gap_receiver_enabled";
   public static final String PIPE_AIR_GAP_RECEIVER_PORT = "pipe_air_gap_receiver_port";
   public static final String MAX_TSBLOCK_SIZE_IN_BYTES = "max_tsblock_size_in_bytes";
   public static final String PAGE_SIZE_IN_BYTE = "page_size_in_byte";
@@ -205,7 +196,6 @@ public class ClusterConstant {
 
   // Env Constant
   public static final int NODE_START_TIMEOUT = 100;
-  public static final int PROBE_TIMEOUT_MS = 2000;
   public static final int NODE_NETWORK_TIMEOUT_MS = 0;
   public static final String ZERO_TIME_ZONE = "GMT+0";
 

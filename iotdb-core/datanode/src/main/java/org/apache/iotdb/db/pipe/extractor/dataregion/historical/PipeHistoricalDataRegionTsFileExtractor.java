@@ -536,7 +536,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     return deviceSet.stream()
         .anyMatch(
-            // TODO: use IDeviceID
             deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
   }
 
