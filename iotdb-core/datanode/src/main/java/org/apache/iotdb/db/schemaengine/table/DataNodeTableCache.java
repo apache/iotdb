@@ -149,12 +149,8 @@ public class DataNodeTableCache implements ITableCache {
           if (v == null) {
             throw new IllegalStateException();
           }
-          v.remove(tableName);
-          if (v.isEmpty()) {
-            return null;
-          } else {
-            return v;
-          }
+          v.get(tableName).setLeft(null);
+          return v;
         });
   }
 
