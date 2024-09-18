@@ -30,10 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
@@ -172,25 +170,42 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  /**
+   * The following logic can handle the cases when configNode failed to clear some table in {@link
+   * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
+   */
   public TsTable getTable(String database, final String tableName) {
     database = PathUtils.unQualifyDatabaseName(database);
+    if (isTableInPreUpdateMap(database, tableName)) {}
+
+    return getTableInCache(database, tableName);
+  }
+
+  private boolean isTableInPreUpdateMap(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      if (databaseTableMap.containsKey(database)) {
-        return databaseTableMap.get(database).get(tableName);
-      }
-      return null;
+      return preUpdateTableMap.containsKey(database)
+          && preUpdateTableMap.get(database).containsKey(tableName);
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
-  public Optional<List<TsTable>> getTables(String database) {
-    database = PathUtils.unQualifyDatabaseName(database);
+  private void updateTable(final List<TsTable> tsTables) {
+    readWriteLock.writeLock().lock();
+    try {
+
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      final Map<String, TsTable> tableMap = databaseTableMap.get(database);
-      return tableMap != null ? Optional.of(new ArrayList<>(tableMap.values())) : Optional.empty();
+      return databaseTableMap.containsKey(database)
+          ? databaseTableMap.get(database).get(tableName)
+          : null;
     } finally {
       readWriteLock.readLock().unlock();
     }
