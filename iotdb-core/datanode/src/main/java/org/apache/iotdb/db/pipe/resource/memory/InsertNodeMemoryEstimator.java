@@ -33,22 +33,17 @@ import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.PlainDeviceID;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
@@ -59,7 +54,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -73,9 +67,7 @@ public class InsertNodeMemoryEstimator {
   private static final String INSERT_ROWS_NODE = "InsertRowsNode";
   private static final String INSERT_ROWS_OF_ONE_DEVICE_NODE = "InsertRowsOfOneDeviceNode";
   private static final String INSERT_MULTI_TABLETS_NODE = "InsertMultiTabletsNode";
-  private static final String RELATIONAL_INSERT_ROWS_NODE = "RelationalInsertRowsNode";
   private static final String RELATIONAL_INSERT_ROW_NODE = "RelationalInsertRowNode";
-  private static final String RELATIONAL_INSERT_TABLET_NODE = "RelationalInsertTabletNode";
 
   private static final long NUM_BYTES_OBJECT_REF = RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   private static final long NUM_BYTES_OBJECT_HEADER = RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
@@ -104,15 +96,6 @@ public class InsertNodeMemoryEstimator {
   private static final long INSERT_MULTI_TABLETS_NODE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(InsertMultiTabletsNode.class);
 
-  private static final long RELATIONAL_INSERT_ROWS_NODE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertRowsNode.class);
-
-  private static final long RELATIONAL_INSERT_ROW_NODE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertRowNode.class);
-
-  private static final long RELATIONAL_INSERT_TABLET_NODE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(RelationalInsertTabletNode.class);
-
   // ============================Device And Measurement===================================
 
   private static final long PARTIAL_PATH_SIZE =
@@ -123,9 +106,6 @@ public class InsertNodeMemoryEstimator {
 
   private static final long PLAIN_DEVICE_ID_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(PlainDeviceID.class);
-
-  private static final long STRING_ARRAY_DEVICE_ID_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(StringArrayDeviceID.class);
 
   // =============================Thrift==================================
 
@@ -187,8 +167,6 @@ public class InsertNodeMemoryEstimator {
       RamUsageEstimator.alignObjectSize(Short.BYTES + NUM_BYTES_OBJECT_HEADER);
   private static final long SIZE_OF_STRING = RamUsageEstimator.shallowSizeOfInstance(String.class);
 
-  private static final long SIZE_OF_ARRAYLIST =
-      RamUsageEstimator.shallowSizeOfInstance(ArrayList.class);
 
   // The calculated result needs to be magnified by 1.3 times, which is 1.3 times different
   // from the actual result because the properties of the parent class are not added.
@@ -209,12 +187,6 @@ public class InsertNodeMemoryEstimator {
           return sizeOfInsertRowsOfOneDeviceNode((InsertRowsOfOneDeviceNode) insertNode);
         case INSERT_MULTI_TABLETS_NODE:
           return sizeOfInsertMultiTabletsNode((InsertMultiTabletsNode) insertNode);
-        case RELATIONAL_INSERT_ROWS_NODE:
-          return sizeOfRelationalInsertRowsNode((RelationalInsertRowsNode) insertNode);
-        case RELATIONAL_INSERT_ROW_NODE:
-          return sizeOfRelationalInsertRowNode((RelationalInsertRowNode) insertNode);
-        case RELATIONAL_INSERT_TABLET_NODE:
-          return sizeOfRelationalInsertTabletNode((RelationalInsertTabletNode) insertNode);
         default:
           return 0L;
       }
@@ -229,17 +201,13 @@ public class InsertNodeMemoryEstimator {
   private static long calculateFullInsertNodeSize(final InsertNode node) {
     long size = 0;
     // PartialPath
-    size += sizeOfPartialPath(node.getTargetPath());
+    size += sizeOfPartialPath(node.getDevicePath());
     // MeasurementSchemas
     size += sizeOfMeasurementSchemas(node.getMeasurementSchemas());
     // Measurement
     size += sizeOfMeasurement(node.getMeasurements());
     // dataTypes
     size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
-    // columnCategories
-    size += RamUsageEstimator.shallowSizeOf(node.getColumnCategories());
-    // idColumnIndices
-    size += sizeOfColumnIndices(node.getColumnCategories());
     // deviceID
     if (node.isDeviceIDExists()) {
       size += sizeOfIDeviceID(node.getDeviceID());
@@ -256,10 +224,6 @@ public class InsertNodeMemoryEstimator {
     long size = 2 * RamUsageEstimator.shallowSizeOf(node.getMeasurementSchemas());
     // dataTypes
     size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
-    // columnCategories
-    size += RamUsageEstimator.shallowSizeOf(node.getColumnCategories());
-    // idColumnIndices
-    size += sizeOfColumnIndices(node.getColumnCategories());
     // deviceID
     if (node.isDeviceIDExists()) {
       size += sizeOfIDeviceID(node.getDeviceID());
@@ -327,7 +291,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
+      size += sizeOfPartialPath(rows.get(0).getDevicePath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
@@ -347,7 +311,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
+      size += sizeOfPartialPath(rows.get(0).getDevicePath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // InsertRowNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
@@ -369,8 +333,6 @@ public class InsertNodeMemoryEstimator {
     size += calculateFullInsertNodeSize(node);
     // dataTypes
     size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
-    // columnCategories
-    size += RamUsageEstimator.shallowSizeOf(node.getColumnCategories());
 
     final List<InsertTabletNode> rows = node.getInsertTabletNodeList();
     final List<Integer> indexList = node.getParentInsertTabletNodeIndexList();
@@ -380,7 +342,7 @@ public class InsertNodeMemoryEstimator {
       size +=
           (calculateInsertTabletNodeSizeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
               * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
+      size += sizeOfPartialPath(rows.get(0).getDevicePath());
       size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
       // ParentInsertTabletNodeIndexList
       size += NUM_BYTES_OBJECT_HEADER;
@@ -396,53 +358,6 @@ public class InsertNodeMemoryEstimator {
                 + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
       }
     }
-    return size;
-  }
-
-  private static long sizeOfRelationalInsertRowsNode(final RelationalInsertRowsNode node) {
-    long size = RELATIONAL_INSERT_ROWS_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    final List<InsertRowNode> rows = node.getInsertRowNodeList();
-    final List<Integer> indexList = node.getInsertRowNodeIndexList();
-    if (rows != null && !rows.isEmpty()) {
-      // InsertRowNodeList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size +=
-          (calculateInsertRowNodeExcludingSchemas(rows.get(0)) + NUM_BYTES_OBJECT_REF)
-              * rows.size();
-      size += sizeOfPartialPath(rows.get(0).getTargetPath());
-      size += sizeOfMeasurementSchemas(rows.get(0).getMeasurementSchemas());
-      // InsertRowNodeIndexList
-      size += NUM_BYTES_OBJECT_HEADER;
-      size += (long) indexList.size() * (SIZE_OF_INT + NUM_BYTES_OBJECT_REF);
-    }
-    // ignore deviceIDs
-    return size;
-  }
-
-  private static long sizeOfRelationalInsertRowNode(final RelationalInsertRowNode node) {
-    long size = RELATIONAL_INSERT_ROW_NODE_SIZE;
-    size += calculateFullInsertNodeSize(node);
-    size += sizeOfValues(node.getValues(), node.getMeasurementSchemas());
-    return size;
-  }
-
-  private static long sizeOfRelationalInsertTabletNode(final RelationalInsertTabletNode node) {
-    long size = RELATIONAL_INSERT_TABLET_NODE_SIZE;
-
-    size += calculateFullInsertNodeSize(node);
-
-    size += sizeOfTimes(node.getTimes());
-
-    size += sizeOfBitMapArray(node.getBitMaps());
-
-    size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
-
-    final List<Integer> range = node.getRange();
-    if (range != null) {
-      size += NUM_BYTES_OBJECT_HEADER + (NUM_BYTES_OBJECT_REF + Integer.BYTES) * range.size();
-    }
-    // ignore deviceIDs
     return size;
   }
 
@@ -506,29 +421,12 @@ public class InsertNodeMemoryEstimator {
     return sizeOfStringArray(measurement);
   }
 
-  private static long sizeOfColumnIndices(final TsTableColumnCategory[] columnCategories) {
-    if (columnCategories == null) {
-      return 0L;
-    }
-    // ArrayList<Integer>
-    long size = SIZE_OF_ARRAYLIST;
-    size += NUM_BYTES_ARRAY_HEADER;
-    for (TsTableColumnCategory columnCategory : columnCategories) {
-      if (columnCategory != null && columnCategory.equals(TsTableColumnCategory.ID)) {
-        size += SIZE_OF_INT + NUM_BYTES_OBJECT_REF;
-      }
-    }
-    return size;
-  }
 
   private static long sizeOfIDeviceID(final IDeviceID deviceID) {
     if (deviceID == null) {
       return 0L;
     }
-    if (deviceID instanceof PlainDeviceID) {
-      return sizeOfPlainDeviceID((PlainDeviceID) deviceID);
-    }
-    return sizeOfStringArrayDeviceID((StringArrayDeviceID) deviceID);
+    return sizeOfPlainDeviceID((PlainDeviceID) deviceID);
   }
 
   private static long sizeOfPlainDeviceID(final PlainDeviceID deviceID) {
@@ -540,13 +438,6 @@ public class InsertNodeMemoryEstimator {
       size += sizeOfString(id) * 2;
     }
 
-    return size;
-  }
-
-  private static long sizeOfStringArrayDeviceID(final StringArrayDeviceID deviceID) {
-    // Memory alignment of basic types and reference types in structures
-    long size = STRING_ARRAY_DEVICE_ID_SIZE;
-    size += sizeOfStringArray(deviceID.getSegments());
     return size;
   }
 
