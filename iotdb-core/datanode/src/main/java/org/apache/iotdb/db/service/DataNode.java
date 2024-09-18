@@ -563,14 +563,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
               removeDataDirRegion(database, dataRegionId, allLocalFilesFolders);
             }
           }
-          allLocalFilesFolders.forEach(
-              folder -> {
-                File dir = new File(folder + File.separator + database);
-                String[] files = dir.list();
-                if (files != null && files.length == 0) {
-                  dir.delete();
-                }
-              });
         });
   }
 
@@ -598,11 +590,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
             if (!schemaConsensusGroupIds.contains(schemaRegionId)) {
               removeInvalidSchemaDir(database, schemaRegionId);
             }
-          }
-          File dir = new File(config.getSystemDir() + File.separator + database);
-          String[] files = dir.list();
-          if (dir != null && files.length == 0) {
-            dir.delete();
           }
         });
   }
@@ -643,12 +630,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void removeDir(File regionDir) {
     if (regionDir.exists()) {
-      try {
-        FileUtils.recursivelyDeleteFolder(regionDir.getPath());
+        FileUtils.deleteDirectoryAndEmptyParent(regionDir);
         logger.info("delete {} succeed.", regionDir.getAbsolutePath());
-      } catch (IOException e) {
-        logger.error("delete {} failed.", regionDir.getAbsolutePath());
-      }
     } else {
       logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
