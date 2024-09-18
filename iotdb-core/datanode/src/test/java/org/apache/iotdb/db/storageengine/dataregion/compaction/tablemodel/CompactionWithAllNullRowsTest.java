@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
@@ -33,9 +35,11 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -238,5 +242,33 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     TsFileResource target2 = tsFileManager.getTsFileList(true).get(0);
     Assert.assertEquals(100000, target2.getFileStartTime());
     Assert.assertEquals(199999, target2.getFileEndTime());
+  }
+
+  @Test
+  public void testCompactionWithAllDeletion() throws IOException, IllegalPathException {
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    IDeviceID deviceID = null;
+    try (CompactionTableModelTestFileWriter writer =
+        new CompactionTableModelTestFileWriter(resource1)) {
+      writer.registerTableSchema("t1", Arrays.asList("id1", "id2"));
+      deviceID = writer.startChunkGroup("t1", Arrays.asList("id_field1", "id_field2"));
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9"),
+          new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, true, true, true, true, true, true, true, true, true));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource1
+        .getModFile()
+        .write(new Deletion(new MeasurementPath(deviceID, "*"), Long.MAX_VALUE, Long.MAX_VALUE));
+    resource1.getModFile().close();
+    seqResources.add(resource1);
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, getPerformer(), 0);
+    Assert.assertTrue(task.start());
+    Assert.assertTrue(tsFileManager.getTsFileList(true).isEmpty());
   }
 }

@@ -116,7 +116,7 @@ public class FastCompactionPerformer
   public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
-            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap, false);
+            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap, ignoreAllNullRows);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
