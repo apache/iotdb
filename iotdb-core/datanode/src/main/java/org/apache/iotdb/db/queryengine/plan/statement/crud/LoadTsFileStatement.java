@@ -71,7 +71,7 @@ public class LoadTsFileStatement extends Statement {
     this.file = new File(filePath);
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.verifySchema = true;
-    this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultDeleteOnSuccess(loadAttributes);
+    this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();

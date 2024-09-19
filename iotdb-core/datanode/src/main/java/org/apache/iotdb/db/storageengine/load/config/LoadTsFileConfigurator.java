@@ -89,7 +89,7 @@ public class LoadTsFileConfigurator {
     }
   }
 
-  public static boolean parseOrGetDefaultDeleteOnSuccess(final Map<String, String> loadAttributes) {
+  public static boolean parseOrGetDefaultOnSuccess(final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(ON_SUCCESS_KEY);
     return StringUtils.isEmpty(value) || ON_SUCCESS_DELETE_VALUE.equals(value);
   }

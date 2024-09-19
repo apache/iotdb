@@ -2009,19 +2009,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       // if sql have with, return new load sql statement
       if (ctx.loadFileWithAttributeClauses() != null) {
         final Map<String, String> loadTsFileAttributes = new HashMap<>();
-        if (ctx.loadFileWithAttributeClauses() != null) {
-          for (IoTDBSqlParser.LoadFileWithAttributeClauseContext attributeContext :
-              ctx.loadFileWithAttributeClauses().loadFileWithAttributeClause()) {
-            final String key =
-                parseStringLiteral(attributeContext.loadFileWithKey.getText()).trim().toLowerCase();
-            final String value =
-                parseStringLiteral(attributeContext.loadFileWithValue.getText())
-                    .trim()
-                    .toLowerCase();
+        for (IoTDBSqlParser.LoadFileWithAttributeClauseContext attributeContext :
+            ctx.loadFileWithAttributeClauses().loadFileWithAttributeClause()) {
+          final String key =
+              parseStringLiteral(attributeContext.loadFileWithKey.getText()).trim().toLowerCase();
+          final String value =
+              parseStringLiteral(attributeContext.loadFileWithValue.getText()).trim().toLowerCase();
 
-            LoadTsFileConfigurator.validateParameters(key, value);
-            loadTsFileAttributes.put(key, value);
-          }
+          LoadTsFileConfigurator.validateParameters(key, value);
+          loadTsFileAttributes.put(key, value);
         }
 
         return new LoadTsFileStatement(
