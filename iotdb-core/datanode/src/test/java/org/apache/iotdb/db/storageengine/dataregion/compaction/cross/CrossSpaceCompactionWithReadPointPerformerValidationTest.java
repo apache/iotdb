@@ -121,7 +121,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     Assert.assertEquals(1, selected.get(0).getSeqFiles().size());
@@ -163,7 +163,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -207,7 +207,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -257,7 +257,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -305,7 +305,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -354,7 +354,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -402,7 +402,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -451,7 +451,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -503,7 +503,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -553,7 +553,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -604,7 +604,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -653,7 +653,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -704,7 +704,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -756,7 +756,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -807,7 +807,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -860,7 +860,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -914,7 +914,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -967,7 +967,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1021,7 +1021,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1075,7 +1075,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1129,7 +1129,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1179,7 +1179,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1229,7 +1229,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1280,7 +1280,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1329,7 +1329,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1380,7 +1380,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1432,7 +1432,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1483,7 +1483,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1536,7 +1536,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1590,7 +1590,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1643,7 +1643,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1697,7 +1697,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1751,7 +1751,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1805,7 +1805,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1859,7 +1859,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -1912,7 +1912,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
     // Assert.assertEquals(0, result.length);
@@ -1958,7 +1958,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -2010,7 +2010,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -2064,7 +2064,7 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
     CrossSpaceCompactionCandidate resource =
         new CrossSpaceCompactionCandidate(seqResources, unseqResources);
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("", "", 0, null);
+        new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
     List<CrossCompactionTaskResource> selected =
         selector.selectCrossSpaceTask(seqResources, unseqResources);
 
@@ -2128,7 +2128,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     // In the process of getting the file list and starting to select files, the file list is
     // updated (the file is deleted or the status is updated)
     List<CrossCompactionTaskResource> selected =
@@ -2187,7 +2188,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2261,7 +2263,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2336,7 +2339,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2412,7 +2416,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2494,7 +2499,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2575,7 +2581,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2657,7 +2664,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
@@ -2740,7 +2748,8 @@ public class CrossSpaceCompactionWithReadPointPerformerValidationTest
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getCrossCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     CrossCompactionTaskResource sourceFiles =
         crossSpaceCompactionSelector
             .selectCrossSpaceTask(
