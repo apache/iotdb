@@ -29,7 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALInfoEntry;
@@ -177,7 +177,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     generateCrashedFile(file);
     assertTrue(file.exists());
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
+    assertFalse(new File(FILE_NAME.concat(ModificationFileV1.FILE_SUFFIX)).exists());
     // generate InsertRowPlan
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
@@ -225,7 +225,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     // check file existence
     assertTrue(file.exists());
     assertTrue(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertTrue(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
+    assertTrue(new File(FILE_NAME.concat(ModificationFileV1.FILE_SUFFIX)).exists());
   }
 
   private void generateCrashedFile(File tsFile) throws IOException, WriteProcessException {
@@ -280,7 +280,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     generateCrashedFile(file);
     assertTrue(file.exists());
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
+    assertFalse(new File(FILE_NAME.concat(ModificationFileV1.FILE_SUFFIX)).exists());
     // generate InsertRowNode with null
     long time = 4;
     InsertRowNode insertRowNode =
@@ -341,7 +341,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     generateCrashedFile(file);
     assertTrue(file.exists());
     assertFalse(new File(FILE_NAME.concat(TsFileResource.RESOURCE_SUFFIX)).exists());
-    assertFalse(new File(FILE_NAME.concat(ModificationFile.FILE_SUFFIX)).exists());
+    assertFalse(new File(FILE_NAME.concat(ModificationFileV1.FILE_SUFFIX)).exists());
     tsFileResource = new TsFileResource(file);
 
     int fakeMemTableId = 1;

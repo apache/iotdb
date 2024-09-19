@@ -40,7 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -453,8 +453,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           new File(oldFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
       if (oldFile.modFileExists()) {
         Files.createLink(
-            new File(newFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath(),
-            new File(oldFile.getTsFilePath() + ModificationFile.FILE_SUFFIX).toPath());
+            new File(newFile.getTsFilePath() + ModificationFileV1.FILE_SUFFIX).toPath(),
+            new File(oldFile.getTsFilePath() + ModificationFileV1.FILE_SUFFIX).toPath());
       }
       newFile.deserialize();
     }

@@ -174,15 +174,18 @@ public class DeletionExprMain {
     void configure(DeletionExprMain exprMain, int i);
   }
 
-  public static ExprReport oneExpr(Configurer configurer, int exprNum) {
+  public static ExprReport oneExpr(Configurer configurer, int exprNum, boolean runBaseLine) {
 
     DeletionExprMain expr = new DeletionExprMain();
-// baseline, each TsFile has one Mod File
-//    initExpr(expr);
-//    configurer.configure(expr, exprNum);
-//    expr.config.modFileCntThreshold = Integer.MAX_VALUE;
-//    expr.config.modFileSizeThreshold = 0;
-//    expr.doExpr(true);
+
+    if (runBaseLine) {
+      // baseline, each TsFile has one Mod File
+      initExpr(expr);
+      configurer.configure(expr, exprNum);
+      expr.config.modFileCntThreshold = Integer.MAX_VALUE;
+      expr.config.modFileSizeThreshold = 0;
+      expr.doExpr(true);
+    }
 
     // use modFileCntThreshold as the x-axis
     for (int i = 1; i < maxFileCntThreshold; i++) {
@@ -223,14 +226,14 @@ public class DeletionExprMain {
         * expr.config.tsfileRange;
   }
 
-  private static void parallelExpr(Configurer configurer, int exprNum, Function<Integer, String> argsToString)
+  private static void parallelExpr(Configurer configurer, int exprNum, Function<Integer, String> argsToString, boolean runBaseline)
       throws ExecutionException, InterruptedException {
     ExecutorService service = Executors.newCachedThreadPool();
     List<Future<ExprReport>> asyncReports = new ArrayList<>();
     for (int i = 0; i < exprNum; i++) {
       int finalI = i;
       asyncReports.add(service.submit(() -> oneExpr(configurer,
-          finalI)));
+          finalI, runBaseline)));
     }
 
     for (Future<ExprReport> asyncReport : asyncReports) {
@@ -256,7 +259,7 @@ public class DeletionExprMain {
     Configurer configurer = (expr, j) -> {
       expr.config.modFileSizeThreshold = exprArgs[j];
     };
-    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i]);
+    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], true);
   }
 
   private static void testQueryInterval() throws ExecutionException, InterruptedException {
@@ -273,22 +276,46 @@ public class DeletionExprMain {
       expr.config.rangeQueryInterval = exprArgs[j];
       expr.config.fullQueryInterval = exprArgs[j];
     };
-    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i]);
+    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], true);
   }
 
   private static void testSimulationTime() throws ExecutionException, InterruptedException {
     String argName = "simulationTime";
     long[] exprArgs = new long[]{
-//        24 * 60 * 60 * 1000 * 1000L,
-//        2 * 24 * 60 * 60 * 1000 * 1000L,
-//        3 * 24 * 60 * 60 * 1000 * 1000L,
-//        4 * 24 * 60 * 60 * 1000 * 1000L,
+        24 * 60 * 60 * 1000 * 1000L,
+        2 * 24 * 60 * 60 * 1000 * 1000L,
+        3 * 24 * 60 * 60 * 1000 * 1000L,
+        4 * 24 * 60 * 60 * 1000 * 1000L,
         5 * 24 * 60 * 60 * 1000 * 1000L
     };
     Configurer configurer = (expr, j) -> {
       expr.maxTimestamp = exprArgs[j];
     };
-    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i]);
+    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], false);
+  }
+
+  private static void testDeletionRatio() throws ExecutionException, InterruptedException {
+    String argName1 = "fullDeletionInterval";
+    long[] exprArgs1 = new long[]{
+        200_000_000,
+        20_000_000,
+        2_000_000,
+        2_000_000,
+        2_000_000
+    };
+    String argName2 = "partialDeletionInterval";
+    long[] exprArgs2 = new long[]{
+        2_000_000,
+        2_000_000,
+        2_000_000,
+        20_000_000,
+        200_000_000,
+    };
+    Configurer configurer = (expr, j) -> {
+      expr.config.generateFullDeletionInterval = exprArgs2[j];
+      expr.config.generatePartialDeletionInterval = exprArgs2[j];
+    };
+    parallelExpr(configurer, exprArgs1.length, (i) -> argName1 + ":" + exprArgs1[i] +";" + argName2 + ":" + exprArgs2[i], true);
   }
 
   public static void main(String[] args) throws ExecutionException, InterruptedException {
@@ -296,6 +323,7 @@ public class DeletionExprMain {
 
 //    testSizeThreshold();
 //    testQueryInterval();
-    testSimulationTime();
+//    testSimulationTime();
+    testDeletionRatio();
   }
 }

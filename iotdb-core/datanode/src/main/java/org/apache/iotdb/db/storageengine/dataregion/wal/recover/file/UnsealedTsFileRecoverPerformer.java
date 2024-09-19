@@ -32,7 +32,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -161,7 +161,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   // load modifications for recovering tsFileResource
   private Map<IDeviceID, Map<String, List<Deletion>>> loadModificationsForResource() {
     Map<IDeviceID, Map<String, List<Deletion>>> modificationsForResource = new HashMap<>();
-    ModificationFile modificationFile = tsFileResource.getModFile();
+    ModificationFileV1 modificationFile = tsFileResource.getOldModFile();
     if (modificationFile.exists()) {
       List<Modification> modifications = (List<Modification>) modificationFile.getModifications();
       for (Modification modification : modifications) {

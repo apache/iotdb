@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -83,7 +83,7 @@ public class QueryContext {
       return false;
     }
 
-    ModificationFile modFile = tsFileResource.getModFile();
+    ModificationFileV1 modFile = tsFileResource.getOldModFile();
     if (!modFile.exists()) {
       nonExistentModFiles.add(tsFileResource.getTsFileID());
       return false;
@@ -92,7 +92,7 @@ public class QueryContext {
   }
 
   private PatternTreeMap<Modification, ModsSerializer> getAllModifications(
-      ModificationFile modFile) {
+      ModificationFileV1 modFile) {
     return fileModCache.computeIfAbsent(
         modFile.getFilePath(),
         k -> {
@@ -113,8 +113,8 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile())
+    return ModificationFileV1.sortAndMerge(
+        getAllModifications(tsFileResource.getOldModFile())
             .getOverlapped(new PartialPath(deviceID, measurement)));
   }
 
@@ -125,8 +125,8 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile())
+    return ModificationFileV1.sortAndMerge(
+        getAllModifications(tsFileResource.getOldModFile())
             .getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
@@ -140,8 +140,8 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile()).getOverlapped(path));
+    return ModificationFileV1.sortAndMerge(
+        getAllModifications(tsFileResource.getOldModFile()).getOverlapped(path));
   }
 
   /**

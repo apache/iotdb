@@ -1330,13 +1330,13 @@ public class DataRegionTest {
     for (int i = 0; i < dataRegion.getSequenceFileList().size(); i++) {
       TsFileResource resource = dataRegion.getSequenceFileList().get(i);
       if (i == 1) {
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(2, resource.getModFile().getModifications().size());
+        Assert.assertTrue(resource.getOldModFile().exists());
+        Assert.assertEquals(2, resource.getOldModFile().getModifications().size());
       } else if (i == 3) {
-        Assert.assertTrue(resource.getModFile().exists());
-        Assert.assertEquals(1, resource.getModFile().getModifications().size());
+        Assert.assertTrue(resource.getOldModFile().exists());
+        Assert.assertEquals(1, resource.getOldModFile().getModifications().size());
       } else {
-        Assert.assertFalse(resource.getModFile().exists());
+        Assert.assertFalse(resource.getOldModFile().exists());
       }
     }
 
@@ -1377,7 +1377,7 @@ public class DataRegionTest {
     dataRegion.deleteByDevice(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
   }
 
   @Test
@@ -1402,8 +1402,8 @@ public class DataRegionTest {
     dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 190, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-    Assert.assertTrue(tsFileResource.getModFile().exists());
-    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+    Assert.assertTrue(tsFileResource.getOldModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getOldModFile().getModifications().size());
   }
 
   @Test
@@ -1426,7 +1426,7 @@ public class DataRegionTest {
     dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 100, 190, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
 
     // insert unseq data points
     for (int j = 50; j < 100; j++) {
@@ -1441,7 +1441,7 @@ public class DataRegionTest {
     // delete data which is in work memtable
     dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0);
 
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
 
     tsFileResource = dataRegion.getTsFileManager().getTsFileList(false).get(0);
     TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
@@ -1458,8 +1458,8 @@ public class DataRegionTest {
     dataRegion.deleteByDevice(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-    Assert.assertTrue(tsFileResource.getModFile().exists());
-    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+    Assert.assertTrue(tsFileResource.getOldModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getOldModFile().getModifications().size());
   }
 
   @Test
@@ -1485,7 +1485,7 @@ public class DataRegionTest {
     dataRegion.deleteByDevice(new PartialPath("root.vehicle.d199.*"), 50, 500, 0);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
     Assert.assertFalse(
         tsFileResource.getDevices().contains(new PlainDeviceID("root.vehicle.d199")));
   }
@@ -1505,7 +1505,7 @@ public class DataRegionTest {
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.getTsFile().exists());
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
     Assert.assertFalse(dataRegion.getTsFileManager().contains(tsFileResource, true));
     Assert.assertFalse(
         dataRegion.getWorkSequenceTsFileProcessors().contains(tsFileResource.getProcessor()));
@@ -1539,19 +1539,19 @@ public class DataRegionTest {
     // delete data in work mem, no mods.
     dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 50, 100, 0);
     Assert.assertTrue(tsFileResource.getTsFile().exists());
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     // delete data in closed file, but time not match
     dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 120, 0);
     Assert.assertTrue(tsFileResource.getTsFile().exists());
-    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertTrue(tsFileResource.getOldModFile().exists());
 
     // delete data in closed file, and time all match
     dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 100, 199, 0);
     Assert.assertFalse(tsFileResource.getTsFile().exists());
-    Assert.assertFalse(tsFileResource.getModFile().exists());
+    Assert.assertFalse(tsFileResource.getOldModFile().exists());
   }
 
   @Test
@@ -1586,13 +1586,13 @@ public class DataRegionTest {
     // delete data in mem table, there is no mods
     Assert.assertTrue(tsFileResourceSeq.getTsFile().exists());
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
-    Assert.assertTrue(tsFileResourceSeq.getModFile().exists());
-    Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
+    Assert.assertTrue(tsFileResourceSeq.getOldModFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getOldModFile().exists());
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     dataRegion.deleteDataDirectly(new PartialPath("root.vehicle.d0.**"), 40, 80, 0);
     Assert.assertTrue(tsFileResourceUnSeq.getTsFile().exists());
-    Assert.assertTrue(tsFileResourceUnSeq.getModFile().exists());
+    Assert.assertTrue(tsFileResourceUnSeq.getOldModFile().exists());
 
     // seq file and unseq file have data file and mod file now,
     // this deletion will remove data file and mod file.
@@ -1601,7 +1601,7 @@ public class DataRegionTest {
 
     Assert.assertFalse(tsFileResourceSeq.getTsFile().exists());
     Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());
-    Assert.assertFalse(tsFileResourceSeq.getModFile().exists());
-    Assert.assertFalse(tsFileResourceUnSeq.getModFile().exists());
+    Assert.assertFalse(tsFileResourceSeq.getOldModFile().exists());
+    Assert.assertFalse(tsFileResourceUnSeq.getOldModFile().exists());
   }
 }

@@ -111,7 +111,7 @@ public class CompactionEstimateUtils {
     try {
       for (TsFileResource resource : resources) {
         if (resource.modFileExists()) {
-          cost += resource.getModFile().getSize();
+          cost += resource.getOldModFile().getSize();
         }
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {

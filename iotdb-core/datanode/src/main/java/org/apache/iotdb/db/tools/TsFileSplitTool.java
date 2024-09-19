@@ -21,7 +21,7 @@ package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -103,7 +103,7 @@ public class TsFileSplitTool {
   /* entry of tool */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void run() throws IOException {
-    if (fsFactory.getFile(filename + ModificationFile.FILE_SUFFIX).exists()) {
+    if (fsFactory.getFile(filename + ModificationFileV1.FILE_SUFFIX).exists()) {
       throw new IOException("Unsupported to split TsFile with modification currently.");
     }
 

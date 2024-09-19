@@ -31,7 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -180,7 +180,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private FileDirtyInfo selectFileBaseOnModSize(TsFileResource resource) {
-    ModificationFile modFile = resource.getModFile();
+    ModificationFileV1 modFile = resource.getOldModFile();
     if (modFile == null || !modFile.exists()) {
       return new FileDirtyInfo(DirtyStatus.NOT_SATISFIED);
     }
@@ -200,7 +200,7 @@ public class SettleSelectorImpl implements ISettleSelector {
    */
   private FileDirtyInfo selectFileBaseOnDirtyData(TsFileResource resource)
       throws IOException, IllegalPathException {
-    ModificationFile modFile = resource.getModFile();
+    ModificationFileV1 modFile = resource.getOldModFile();
     ITimeIndex timeIndex = resource.getTimeIndex();
     if (timeIndex instanceof FileTimeIndex) {
       timeIndex = CompactionUtils.buildDeviceTimeIndex(resource);

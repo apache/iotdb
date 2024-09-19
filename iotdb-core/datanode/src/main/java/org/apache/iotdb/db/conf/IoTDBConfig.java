@@ -1197,6 +1197,9 @@ public class IoTDBConfig {
 
   private CompressionType WALCompressionAlgorithm = CompressionType.LZ4;
 
+  private int levelModFileCntThreshold = 30;
+  private long singleModFileSizeThreshold = 64 * 1024;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4197,5 +4200,21 @@ public class IoTDBConfig {
 
   public void setWALCompressionAlgorithm(CompressionType WALCompressionAlgorithm) {
     this.WALCompressionAlgorithm = WALCompressionAlgorithm;
+  }
+
+  public long getSingleModFileSizeThreshold() {
+    return singleModFileSizeThreshold;
+  }
+
+  public void setSingleModFileSizeThreshold(long singleModFileSizeThreshold) {
+    this.singleModFileSizeThreshold = singleModFileSizeThreshold;
+  }
+
+  public int getLevelModFileCntThreshold() {
+    return levelModFileCntThreshold;
+  }
+
+  public void setLevelModFileCntThreshold(int levelModFileCntThreshold) {
+    this.levelModFileCntThreshold = levelModFileCntThreshold;
   }
 }

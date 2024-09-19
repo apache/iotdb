@@ -774,7 +774,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
       clearModificationsAndTimeIndex();
 
-      currentModifications = resource.getModFile().getModifications();
+      currentModifications = resource.getOldModFile().getModifications();
       for (final Modification modification : currentModifications) {
         currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
       }

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -158,16 +158,16 @@ public class TsFileAndModSettleToolTest {
     createOneTsFile(deviceSensorsMap);
     createlModificationFile(timeseriesPath);
     TsFileResource tsFileResource = new TsFileResource(new File(path));
-    tsFileResource.setModFile(
-        new ModificationFile(tsFileResource.getTsFilePath() + ModificationFile.FILE_SUFFIX));
+    tsFileResource.setOldModFile(
+        new ModificationFileV1(tsFileResource.getTsFilePath() + ModificationFileV1.FILE_SUFFIX));
     tsFileResource.serialize();
     tsFileResource.close();
     resourcesToBeSettled.add(tsFileResource);
   }
 
   public void createlModificationFile(String timeseriesPath) {
-    String modFilePath = path + ModificationFile.FILE_SUFFIX;
-    ModificationFile modificationFile = new ModificationFile(modFilePath);
+    String modFilePath = path + ModificationFileV1.FILE_SUFFIX;
+    ModificationFileV1 modificationFile = new ModificationFileV1(modFilePath);
     List<Modification> mods = new ArrayList<>();
     try {
       PartialPath partialPath = new PartialPath(timeseriesPath);

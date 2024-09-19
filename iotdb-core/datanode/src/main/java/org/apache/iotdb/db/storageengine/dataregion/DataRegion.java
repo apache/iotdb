@@ -83,7 +83,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceForRegionScan;
@@ -477,9 +477,9 @@ public class DataRegion implements IDataRegionForQuery {
                     resource.getTsFile().length(),
                     true,
                     resource.getTsFile().getName());
-            if (resource.getModFile().exists()) {
+            if (resource.getOldModFile().exists()) {
               FileMetrics.getInstance().increaseModFileNum(1);
-              FileMetrics.getInstance().increaseModFileSize(resource.getModFile().getSize());
+              FileMetrics.getInstance().increaseModFileSize(resource.getOldModFile().getSize());
             }
           }
         }
@@ -509,9 +509,9 @@ public class DataRegion implements IDataRegionForQuery {
                     false,
                     resource.getTsFile().getName());
           }
-          if (resource.getModFile().exists()) {
+          if (resource.getOldModFile().exists()) {
             FileMetrics.getInstance().increaseModFileNum(1);
-            FileMetrics.getInstance().increaseModFileSize(resource.getModFile().getSize());
+            FileMetrics.getInstance().increaseModFileSize(resource.getOldModFile().getSize());
           }
         }
         while (!value.isEmpty()) {
@@ -1734,9 +1734,9 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileResourceList.forEach(
           x -> {
             FileMetrics.getInstance().deleteTsFile(x.isSeq(), Collections.singletonList(x));
-            if (x.getModFile().exists()) {
+            if (x.getOldModFile().exists()) {
               FileMetrics.getInstance().decreaseModFileNum(1);
-              FileMetrics.getInstance().decreaseModFileSize(x.getModFile().getSize());
+              FileMetrics.getInstance().decreaseModFileSize(x.getOldModFile().getSize());
             }
           });
       deleteAllSGFolders(TierManager.getInstance().getAllFilesFolders());
@@ -2392,7 +2392,7 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
-      ModificationFile modFile = tsFileResource.getModFile();
+      ModificationFileV1 modFile = tsFileResource.getOldModFile();
       if (tsFileResource.isClosed()) {
         long originSize = -1;
         synchronized (modFile) {
@@ -2469,7 +2469,7 @@ public class DataRegion implements IDataRegionForQuery {
     Deletion deletion = new Deletion(pathToDelete, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
     // can be deleted by mods.
     for (TsFileResource tsFileResource : deletedByMods) {
-      ModificationFile modFile = tsFileResource.getModFile();
+      ModificationFileV1 modFile = tsFileResource.getOldModFile();
       if (tsFileResource.isClosed()) {
         long originSize = -1;
         synchronized (modFile) {
@@ -2536,9 +2536,9 @@ public class DataRegion implements IDataRegionForQuery {
       try {
         FileMetrics.getInstance()
             .deleteTsFile(tsFileResource.isSeq(), Collections.singletonList(tsFileResource));
-        if (tsFileResource.getModFile().exists()) {
+        if (tsFileResource.getOldModFile().exists()) {
           FileMetrics.getInstance().decreaseModFileNum(1);
-          FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getModFile().getSize());
+          FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getOldModFile().getSize());
         }
         tsFileResource.remove();
         logger.info("Remove tsfile {} directly when delete data", tsFileResource.getTsFilePath());
@@ -3117,12 +3117,12 @@ public class DataRegion implements IDataRegionForQuery {
     }
 
     final File modFileToLoad =
-        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+        fsFactory.getFile(tsFileToLoad.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX);
     if (modFileToLoad.exists()) {
       // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
       // dir, so we can add a suffix to find the old modification file.
       final File targetModFile =
-          fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+          fsFactory.getFile(targetFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX);
       try {
         Files.deleteIfExists(targetModFile.toPath());
       } catch (final IOException e) {
@@ -3146,7 +3146,7 @@ public class DataRegion implements IDataRegionForQuery {
                 modFileToLoad.getAbsolutePath(), targetModFile.getAbsolutePath(), e.getMessage()));
       } finally {
         // ModFile will be updated during the next call to `getModFile`
-        tsFileResource.setModFile(null);
+        tsFileResource.setOldModFile(null);
       }
     }
 

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.lo
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
@@ -194,8 +194,8 @@ public class TsFileIdentifier {
       File file = FSFactoryProducer.getFSFactory().getFile(dataDir, partialFileString);
       if (file.exists()
           || new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
-          || new File(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX).exists()
-          || new File(file.getAbsolutePath() + ModificationFile.COMPACTION_FILE_SUFFIX).exists()) {
+          || new File(file.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).exists()
+          || new File(file.getAbsolutePath() + ModificationFileV1.COMPACTION_FILE_SUFFIX).exists()) {
         return file;
       }
     }

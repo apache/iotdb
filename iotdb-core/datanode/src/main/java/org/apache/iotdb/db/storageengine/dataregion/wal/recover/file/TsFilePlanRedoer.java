@@ -62,7 +62,7 @@ public class TsFilePlanRedoer {
           deleteDataNode.getDeleteStartTime(),
           deleteDataNode.getDeleteEndTime());
       tsFileResource
-          .getModFile()
+          .getOldModFile()
           .write(
               new Deletion(
                   path,

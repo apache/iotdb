@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,14 +35,22 @@ import org.slf4j.LoggerFactory;
 /**
  * A ModFileManager manages the ModificationFiles of a Time Partition.
  */
-@SuppressWarnings({"resource", "SynchronizationOnLocalVariableOrMethodParameter"})
+@SuppressWarnings({"SynchronizationOnLocalVariableOrMethodParameter"})
 public class ModFileManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ModFileManager.class);
   // levelNum -> modFileNum -> modFile
   private final Map<Long, TreeMap<Long, ModificationFile>> allLevelModsFileMap = new ConcurrentHashMap<>();
 
-  public void recoverModFile(String modFilePath, TsFileResource resource) {
+  private final int levelModFileCntThreshold;
+  private final long singleModFileSizeThreshold;
+
+  public ModFileManager(int levelModFileCntThreshold, long singleModFileSizeThreshold) {
+    this.levelModFileCntThreshold = levelModFileCntThreshold;
+    this.singleModFileSizeThreshold = singleModFileSizeThreshold;
+  }
+
+  public ModificationFile recoverModFile(String modFilePath, TsFileResource resource) {
     File file = new File(modFilePath);
     String name = file.getName();
     long[] levelNumAndModNum = ModificationFile.parseFileName(name);
@@ -49,6 +58,7 @@ public class ModFileManager {
     ModificationFile modificationFile = allLevelModsFileMap.computeIfAbsent(levelNumAndModNum[0],
         k -> new TreeMap<>()).computeIfAbsent(levelNumAndModNum[1], k -> new ModificationFile(file, resource));
     modificationFile.addReference(resource);
+    return modificationFile;
   }
 
   private long maxModNum(long levelNum) {
@@ -59,6 +69,57 @@ public class ModFileManager {
     } else {
       return levelModFileMap.lastKey();
     }
+  }
+
+  @SuppressWarnings("DuplicatedCode")
+  public void allocate(TsFileResource resource) throws IOException {
+    TsFileID tsFileID = resource.getTsFileID();
+    long levelNum = tsFileID.getInnerCompactionCount();
+
+    // find the nearest TsFile that has a mod, i.e, share candidate
+    TsFileResource prev = resource.getPrev();
+    TsFileResource next = resource.getNext();
+    while (prev != null || next != null) {
+      if (prev != null) {
+        ModificationFile prevModFile = prev.getModFile();
+        if (prevModFile != null) {
+          if (shouldAllocateNew(prevModFile, levelNum)) {
+            ModificationFile newModFile = allocateNew(resource);
+            resource.setModFile(newModFile);
+          } else {
+            resource.setModFile(prevModFile);
+          }
+          return;
+        }
+        prev = prev.getPrev();
+      }
+
+      if (next != null) {
+        ModificationFile nextModFile = next.getModFile();
+        if (nextModFile != null) {
+          if (shouldAllocateNew(nextModFile, levelNum)) {
+            ModificationFile newModFile = allocateNew(resource);
+            resource.setModFile(newModFile);
+          } else {
+            resource.setModFile(nextModFile);
+          }
+          return;
+        }
+        next = next.getNext();
+      }
+    }
+  }
+
+  private boolean shouldAllocateNew(ModificationFile modificationFile, long levelNum) {
+    int modFileCnt = allLevelModsFileMap.computeIfAbsent(levelNum, k -> new TreeMap<>()).size();
+    if (modFileCnt >= levelModFileCntThreshold) {
+      // too many mod files already, do not allocate new
+      return false;
+    }
+
+    // if the mod file is large enough, allocate a new one
+    long fileLength = modificationFile.getFile().length();
+    return fileLength > singleModFileSizeThreshold;
   }
 
   public ModificationFile allocateNew(TsFileResource resource) {

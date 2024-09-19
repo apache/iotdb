@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -105,8 +105,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     String file = oldTsFile.getAbsolutePath();
     reader = new TsFileSequenceReader(file);
     partitionWriterMap = new HashMap<>();
-    if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFile.FILE_SUFFIX).exists()) {
-      oldModification = (List<Modification>) resourceToBeRewritten.getModFile().getModifications();
+    if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFileV1.FILE_SUFFIX).exists()) {
+      oldModification = (List<Modification>) resourceToBeRewritten.getOldModFile().getModifications();
       modsIterator = oldModification.iterator();
     }
   }

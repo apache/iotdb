@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator.TsFileName;
@@ -277,11 +277,11 @@ public class CompactionFileGeneratorUtils {
       TsFileResource targetTsFileResource,
       boolean isCompactionMods)
       throws IllegalPathException, IOException {
-    ModificationFile modificationFile;
+    ModificationFileV1 modificationFile;
     if (isCompactionMods) {
-      modificationFile = ModificationFile.getCompactionMods(targetTsFileResource);
+      modificationFile = ModificationFileV1.getCompactionMods(targetTsFileResource);
     } else {
-      modificationFile = ModificationFile.getNormalMods(targetTsFileResource);
+      modificationFile = ModificationFileV1.getNormalMods(targetTsFileResource);
     }
     for (Entry<String, Pair<Long, Long>> toDeleteTimeseriesAndTimeEntry :
         toDeleteTimeseriesAndTime.entrySet()) {

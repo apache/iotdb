@@ -330,13 +330,13 @@ public class FastCompactionPerformer
 
   private void readModification(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
-      if (resource.getModFile() == null || !resource.getModFile().exists()) {
+      if (resource.getOldModFile() == null || !resource.getOldModFile().exists()) {
         continue;
       }
       // read mods
       PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
           PatternTreeMapFactory.getModsPatternTreeMap();
-      for (Modification modification : resource.getModFile().getModificationsIter()) {
+      for (Modification modification : resource.getOldModFile().getModificationsIter()) {
         modifications.append(modification.getPath(), modification);
       }
       modificationCache.put(resource.getTsFile().getName(), modifications);

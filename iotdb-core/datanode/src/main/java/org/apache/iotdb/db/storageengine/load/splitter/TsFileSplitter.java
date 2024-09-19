@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -374,8 +374,8 @@ public class TsFileSplitter {
   }
 
   private void getAllModification(Map<Long, List<Deletion>> offset2Deletions) throws IOException {
-    try (ModificationFile modificationFile =
-        new ModificationFile(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX)) {
+    try (ModificationFileV1 modificationFile =
+        new ModificationFileV1(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX)) {
       for (Modification modification : modificationFile.getModifications()) {
         offset2Deletions
             .computeIfAbsent(modification.getFileOffset(), o -> new ArrayList<>())

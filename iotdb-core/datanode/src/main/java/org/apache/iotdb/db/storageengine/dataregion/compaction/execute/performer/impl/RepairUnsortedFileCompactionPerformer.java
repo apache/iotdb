@@ -72,7 +72,7 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
     if (seqSourceFile.modFileExists()) {
       Files.createLink(
           new File(seqSourceFile.getCompactionModFile().getFilePath()).toPath(),
-          new File(seqSourceFile.getModFile().getFilePath()).toPath());
+          new File(seqSourceFile.getOldModFile().getFilePath()).toPath());
     }
   }
 

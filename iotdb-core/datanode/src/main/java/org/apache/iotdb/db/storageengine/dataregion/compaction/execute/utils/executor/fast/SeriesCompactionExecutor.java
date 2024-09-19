@@ -31,7 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.reader.PointPriorityReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -478,7 +478,7 @@ public abstract class SeriesCompactionExecutor {
     if (allModifications == null) {
       return Collections.emptyList();
     }
-    return ModificationFile.sortAndMerge(allModifications.getOverlapped(path));
+    return ModificationFileV1.sortAndMerge(allModifications.getOverlapped(path));
   }
 
   @SuppressWarnings("squid:S3776")
