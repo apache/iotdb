@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -52,6 +53,7 @@ public class DataNodeTableCache implements ITableCache {
       new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+  private final Semaphore fetchTableSemaphore = new Semaphore(5);
 
   private DataNodeTableCache() {
     // Do nothing
@@ -187,18 +189,45 @@ public class DataNodeTableCache implements ITableCache {
    */
   public TsTable getTable(String database, final String tableName) {
     database = PathUtils.unQualifyDatabaseName(database);
-    if (isTableInPreUpdateMap(database, tableName)) {}
+    if (mayGetTableInPreUpdateMap(database, tableName)) {}
 
     return getTableInCache(database, tableName);
   }
 
-  private boolean isTableInPreUpdateMap(final String database, final String tableName) {
+  private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(
+      final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
       return preUpdateTableMap.containsKey(database)
-          && preUpdateTableMap.get(database).containsKey(tableName);
+              && preUpdateTableMap.get(database).containsKey(tableName)
+          ? null
+          : preUpdateTableMap.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          entry.getValue().entrySet().stream()
+                              .collect(
+                                  Collectors.toMap(
+                                      Map.Entry::getKey,
+                                      innerEntry -> innerEntry.getValue().getRight()))));
     } finally {
       readWriteLock.readLock().unlock();
+    }
+  }
+
+  private Map<String, Map<String, TsTable>> getTablesInConfigNode() {
+    try {
+      fetchTableSemaphore.acquire();
+      return null;
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.");
+      return null;
+    } catch (final Exception e) {
+      fetchTableSemaphore.release();
+      throw e;
     }
   }
 
