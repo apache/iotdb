@@ -282,8 +282,8 @@ public class DeletionExprMain {
 //        24 * 60 * 60 * 1000 * 1000L,
 //        2 * 24 * 60 * 60 * 1000 * 1000L,
 //        3 * 24 * 60 * 60 * 1000 * 1000L,
-        4 * 24 * 60 * 60 * 1000 * 1000L,
-//        5 * 24 * 60 * 60 * 1000 * 1000L
+//        4 * 24 * 60 * 60 * 1000 * 1000L,
+        5 * 24 * 60 * 60 * 1000 * 1000L
     };
     Configurer configurer = (expr, j) -> {
       expr.maxTimestamp = exprArgs[j];

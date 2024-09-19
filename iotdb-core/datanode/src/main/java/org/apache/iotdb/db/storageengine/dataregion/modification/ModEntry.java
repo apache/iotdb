@@ -43,7 +43,15 @@ public abstract class ModEntry implements StreamSerializable {
 
   @Override
   public void deserialize(InputStream stream) throws IOException {
+    this.timeRange = new TimeRange(ReadWriteIOUtils.readLong(stream),
+    ReadWriteIOUtils.readLong(stream));
+  }
 
+  public static ModEntry createFrom(InputStream stream) throws IOException {
+    ModType modType = ModType.deserialize(stream);
+    ModEntry entry = modType.newEntry();
+    entry.deserialize(stream);
+    return entry;
   }
 
   public enum ModType {
@@ -60,8 +68,35 @@ public abstract class ModEntry implements StreamSerializable {
       return typeNum;
     }
 
+    public ModEntry newEntry() {
+      ModEntry entry;
+      switch (this) {
+        case TREE_DELETION:
+          entry = new TreeDeletionEntry();
+          break;
+        case TABLE_DELETION:
+          entry = new TableDeletionEntry();
+          break;
+        default:
+          throw new IllegalArgumentException("Unsupported mod type: " + this);
+      }
+      return entry;
+    }
+
     public static ModType deserialize(ByteBuffer buffer) {
       byte typeNum = buffer.get();
+      switch (typeNum) {
+        case 0x00:
+          return TABLE_DELETION;
+        case 0x01:
+          return TREE_DELETION;
+        default:
+          throw new IllegalArgumentException("Unknown ModType: " + typeNum);
+      }
+    }
+
+    public static ModType deserialize(InputStream stream) throws IOException {
+      byte typeNum = ReadWriteIOUtils.readByte(stream);
       switch (typeNum) {
         case 0x00:
           return TABLE_DELETION;
