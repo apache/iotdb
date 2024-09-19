@@ -37,6 +37,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * NOTE: Currently, {@link StateProgressIndex} does not perform deep copies of the {@link Binary}
+ * during construction or when exposed through accessors, which may lead to unintended shared state
+ * or modifications. This behavior should be reviewed and adjusted as necessary to ensure the
+ * integrity and independence of the progress index instances.
+ */
 public class StateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
