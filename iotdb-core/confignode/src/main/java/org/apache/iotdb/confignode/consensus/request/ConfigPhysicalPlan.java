@@ -26,10 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
@@ -247,14 +243,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetOrCreateSchemaPartition:
           plan = new GetOrCreateSchemaPartitionPlan();
           break;
-        case GetDataPartition:
-          plan = new GetDataPartitionPlan();
-          break;
         case CreateDataPartition:
           plan = new CreateDataPartitionPlan();
-          break;
-        case GetOrCreateDataPartition:
-          plan = new GetOrCreateDataPartitionPlan();
           break;
         case DeleteProcedure:
           plan = new DeleteProcedurePlan();
@@ -374,9 +364,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetTableProperties:
           plan = new SetTablePropertiesPlan();
           break;
-        case GetNodePathsPartition:
-          plan = new GetNodePathsPartitionPlan();
-          break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();
           break;
@@ -466,9 +453,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetTimeSlotList:
           plan = new GetTimeSlotListPlan();
-          break;
-        case CountTimeSlotList:
-          plan = new CountTimeSlotListPlan();
           break;
         case GetSeriesSlotList:
           plan = new GetSeriesSlotListPlan();

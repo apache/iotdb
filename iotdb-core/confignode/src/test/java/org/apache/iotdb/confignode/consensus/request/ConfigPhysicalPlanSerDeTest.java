@@ -67,7 +67,6 @@ import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTa
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
@@ -962,17 +961,6 @@ public class ConfigPhysicalPlanSerDeTest {
                 Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN),
                 Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY)));
     Assert.assertEquals(plan, ConfigPhysicalPlan.Factory.create(plan.serializeToByteBuffer()));
-  }
-
-  @Test
-  public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
-    final GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
-    getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
-    getNodePathsPartitionPlan0.setScope(ALL_MATCH_SCOPE);
-    final GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
-        (GetNodePathsPartitionPlan)
-            ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getNodePathsPartitionPlan0, getNodePathsPartitionPlan1);
   }
 
   @Test
