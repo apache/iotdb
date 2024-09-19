@@ -1064,11 +1064,8 @@ public class ClusterSchemaManager {
 
   public TShowTableResp showTables(final String database) {
     try {
-      return ((ShowTableResp)
-              configManager
-                  .getConsensusManager()
-                  .read(new ShowTablePlan(Collections.singletonList(database))))
-          .convertToTShowTableResp(database);
+      return ((ShowTableResp) configManager.getConsensusManager().read(new ShowTablePlan(database)))
+          .convertToTShowTableResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
       final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
