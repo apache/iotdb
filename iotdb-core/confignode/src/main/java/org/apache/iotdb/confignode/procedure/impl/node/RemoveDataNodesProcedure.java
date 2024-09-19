@@ -73,7 +73,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
-          if (env.checkEnoughDataNodeAfterRemoving(removedDataNodes)) {
+          if (manager.checkEnoughDataNodeAfterRemoving(removedDataNodes)) {
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
@@ -85,7 +85,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           }
         case REMOVE_DATA_NODE_PREPARE:
           // mark the DataNodes as removing status and broadcast region route map
-          env.markDataNodesAsRemovingAndBroadcast(removedDataNodes);
+          manager.markDataNodesAsRemovingAndBroadcast(removedDataNodes);
           regionMigrationPlans = manager.getRegionMigrationPlans(removedDataNodes);
           LOG.info(
               "{}, DataNode regions to be removed is {}",

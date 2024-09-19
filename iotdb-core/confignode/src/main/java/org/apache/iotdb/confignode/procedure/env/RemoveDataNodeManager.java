@@ -30,6 +30,8 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.cluster.NodeType;
+import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
@@ -39,6 +41,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
@@ -50,8 +54,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
@@ -79,10 +86,222 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * check if the remove datanode request illegal
+   * Check if the data nodes are sufficient after removing.
    *
-   * @param removeDataNodePlan RemoveDataNodeReq
-   * @return SUCCEED_STATUS when request is legal.
+   * @param removedDataNodes List<TDataNodeLocation>
+   * @return true if the number of DataNodes is enough, false otherwise
+   */
+  public boolean checkEnoughDataNodeAfterRemoving(List<TDataNodeLocation> removedDataNodes) {
+    final int existedDataNodeNum =
+        configManager
+            .getNodeManager()
+            .filterDataNodeThroughStatus(
+                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
+            .size();
+
+    int dataNodeNumAfterRemoving = existedDataNodeNum;
+    for (TDataNodeLocation removedDatanode : removedDataNodes) {
+      if (configManager.getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
+          != NodeStatus.Unknown) {
+        dataNodeNumAfterRemoving = existedDataNodeNum - 1;
+      }
+    }
+
+    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
+  }
+
+  /**
+   * Marks the given batch of DataNodes with the 'removing' status to prevent read or write requests
+   * from being routed to these nodes.
+   *
+   * @param removedDataNodes the DataNodes to be marked as in 'removing' status
+   */
+  public void markDataNodesAsRemovingAndBroadcast(List<TDataNodeLocation> removedDataNodes) {
+    removedDataNodes.parallelStream().forEach(this::markDataNodeAsRemovingAndBroadcast);
+  }
+
+  /**
+   * Marks the given DataNode as being in the 'removing' status to prevent read or write requests
+   * from being routed to this node.
+   *
+   * @param dataNodeLocation the DataNode to be marked as in 'removing' status
+   */
+  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
+    // Send request to update NodeStatus on the DataNode to be removed
+    if (configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
+        == NodeStatus.Unknown) {
+      SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithGivenRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              NodeStatus.Removing.getStatus(),
+              CnToDnRequestType.SET_SYSTEM_STATUS,
+              1);
+    } else {
+      SyncDataNodeClientPool.getInstance()
+          .sendSyncRequestToDataNodeWithRetry(
+              dataNodeLocation.getInternalEndPoint(),
+              NodeStatus.Removing.getStatus(),
+              CnToDnRequestType.SET_SYSTEM_STATUS);
+    }
+
+    long currentTime = System.nanoTime();
+    // Force updating NodeStatus to NodeStatus.Removing
+    configManager
+        .getLoadManager()
+        .forceUpdateNodeCache(
+            NodeType.DataNode,
+            dataNodeLocation.getDataNodeId(),
+            new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
+    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
+        new TreeMap<>();
+    // Force update RegionStatus to NodeStatus.Removing
+    configManager
+        .getPartitionManager()
+        .getAllReplicaSets(dataNodeLocation.getDataNodeId())
+        .forEach(
+            replicaSet ->
+                removingHeartbeatSampleMap.put(
+                    replicaSet.getRegionId(),
+                    Collections.singletonMap(
+                        dataNodeLocation.getDataNodeId(),
+                        new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
+    configManager.getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
+  }
+
+  /**
+   * Retrieves all region migration plans for the specified removed DataNodes.
+   *
+   * @param removedDataNodes the list of DataNodes from which to obtain migration plans
+   * @return a list of region migration plans associated with the removed DataNodes
+   */
+  public List<RegionMigrationPlan> getRegionMigrationPlans(
+      List<TDataNodeLocation> removedDataNodes) {
+    List<RegionMigrationPlan> regionMigrationPlans = new ArrayList<>();
+    for (TDataNodeLocation removedDataNode : removedDataNodes) {
+      List<TConsensusGroupId> migratedDataNodeRegions = getMigratedDataNodeRegions(removedDataNode);
+      regionMigrationPlans.addAll(
+          migratedDataNodeRegions.stream()
+              .map(regionId -> RegionMigrationPlan.create(regionId, removedDataNode))
+              .collect(Collectors.toList()));
+    }
+    return regionMigrationPlans;
+  }
+
+  /**
+   * Broadcasts a batch of disabled DataNodes to notify other components or services.
+   *
+   * @param removedDataNodes the list of DataNodes to be broadcasted as disabled
+   */
+  public void broadcastDisableDataNodes(List<TDataNodeLocation> removedDataNodes) {
+    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
+      broadcastDisableDataNode(dataNodeLocation);
+    }
+  }
+
+  /**
+   * Broadcasts that the specified DataNode in the RemoveDataNodeReq is disabled, preventing it from
+   * accepting read or write requests.
+   *
+   * @param disabledDataNode the DataNode to be broadcasted as disabled
+   */
+  public void broadcastDisableDataNode(TDataNodeLocation disabledDataNode) {
+    LOGGER.info(
+        "DataNodeRemoveService start broadcastDisableDataNode to cluster, disabledDataNode: {}",
+        getIdWithRpcEndpoint(disabledDataNode));
+
+    List<TDataNodeConfiguration> otherOnlineDataNodes =
+        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
+            .filter(node -> !node.getLocation().equals(disabledDataNode))
+            .collect(Collectors.toList());
+
+    for (TDataNodeConfiguration node : otherOnlineDataNodes) {
+      TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
+      TSStatus status =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      node.getLocation().getInternalEndPoint(),
+                      disableReq,
+                      CnToDnRequestType.DISABLE_DATA_NODE);
+      if (!isSucceed(status)) {
+        LOGGER.error(
+            "{}, BroadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
+            REMOVE_DATANODE_PROCESS,
+            getIdWithRpcEndpoint(disabledDataNode),
+            status);
+        return;
+      }
+    }
+
+    LOGGER.info(
+        "{}, DataNodeRemoveService finished broadcastDisableDataNode to cluster, disabledDataNode: {}",
+        REMOVE_DATANODE_PROCESS,
+        getIdWithRpcEndpoint(disabledDataNode));
+  }
+
+  /**
+   * Removes a batch of DataNodes from the node information.
+   *
+   * @param removedDataNodes the list of DataNodeLocations to be removed
+   */
+  public void removeDataNodePersistence(List<TDataNodeLocation> removedDataNodes) {
+    // Remove consensus record
+    try {
+      configManager.getConsensusManager().write(new RemoveDataNodePlan(removedDataNodes));
+    } catch (ConsensusException e) {
+      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
+    }
+
+    // Adjust maxRegionGroupNum
+    configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
+
+    // Remove metrics
+    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
+      PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
+          MetricService.getInstance(),
+          NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
+    }
+  }
+
+  /**
+   * Stops the specified old DataNodes.
+   *
+   * @param removedDataNodes the list of DataNodeLocations to be stopped
+   */
+  public void stopDataNodes(List<TDataNodeLocation> removedDataNodes) {
+    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
+      stopDataNode(dataNodeLocation);
+    }
+  }
+
+  /**
+   * Stops the specified old DataNode.
+   *
+   * @param dataNode the old DataNode to be stopped
+   */
+  public void stopDataNode(TDataNodeLocation dataNode) {
+    LOGGER.info(
+        "{}, Begin to stop DataNode and kill the DataNode process {}",
+        REMOVE_DATANODE_PROCESS,
+        dataNode);
+    TSStatus status =
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithGivenRetry(
+                    dataNode.getInternalEndPoint(), dataNode, CnToDnRequestType.STOP_DATA_NODE, 2);
+    configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
+    LOGGER.info(
+        "{}, Stop Data Node result: {}, stoppedDataNode: {}",
+        REMOVE_DATANODE_PROCESS,
+        status,
+        dataNode);
+  }
+
+  /**
+   * Checks if the RemoveDataNode request is valid.
+   *
+   * @param removeDataNodePlan the RemoveDataNodeReq to be validated
+   * @return SUCCEED_STATUS if the request is valid
    */
   public DataNodeToStatusResp checkRemoveDataNodeRequest(RemoveDataNodePlan removeDataNodePlan) {
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
@@ -115,21 +334,9 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * check if allow to remove the DataNodes from the cluster
+   * Checks the cluster protocol. Removing a DataNode is not supported in standalone mode.
    *
-   * @param removeDataNodePlan RemoveDataNodeReq
-   * @return SUCCEED_STATUS when request is legal.
-   */
-  public TSStatus checkAllowRemoveDataNodes(RemoveDataNodePlan removeDataNodePlan) {
-    return configManager
-        .getProcedureManager()
-        .checkRemoveDataNodes(removeDataNodePlan.getDataNodeLocations());
-  }
-
-  /**
-   * Check the protocol of the cluster, standalone is not supported to remove data node currently
-   *
-   * @return SUCCEED_STATUS if the Cluster is not standalone protocol, REMOVE_DATANODE_FAILED
+   * @return SUCCEED_STATUS if the cluster is not in standalone mode, REMOVE_DATANODE_FAILED
    *     otherwise
    */
   private TSStatus checkClusterProtocol() {
@@ -143,10 +350,11 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * Check whether the cluster has enough DataNodes to maintain RegionReplicas
+   * Checks whether the cluster has enough DataNodes to maintain the required number of
+   * RegionReplicas.
    *
-   * @param removeDataNodePlan RemoveDataNodeReq
-   * @return SUCCEED_STATUS if the number of DataNodes is enough, LACK_REPLICATION otherwise
+   * @param removeDataNodePlan the RemoveDataNodeReq to be evaluated
+   * @return SUCCEED_STATUS if the number of DataNodes is sufficient, LACK_REPLICATION otherwise
    */
   private TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -199,43 +407,10 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * Get all region migration plans in removedDataNodes
+   * Checks whether all DataNodes specified for deletion exist in the cluster.
    *
-   * @param removedDataNodes List<TDataNodeLocation>
-   * @return List<RegionMigrationPlan>
-   */
-  public List<RegionMigrationPlan> getRegionMigrationPlans(
-      List<TDataNodeLocation> removedDataNodes) {
-    List<RegionMigrationPlan> regionMigrationPlans = new ArrayList<>();
-    for (TDataNodeLocation removedDataNode : removedDataNodes) {
-      List<TConsensusGroupId> migratedDataNodeRegions = getMigratedDataNodeRegions(removedDataNode);
-      regionMigrationPlans.addAll(
-          migratedDataNodeRegions.stream()
-              .map(regionId -> RegionMigrationPlan.create(regionId, removedDataNode))
-              .collect(Collectors.toList()));
-    }
-    return regionMigrationPlans;
-  }
-
-  /**
-   * Get all consensus group id in removedDataNodes
-   *
-   * @param removedDataNodes List
-   * @return Set<TConsensusGroupId>
-   */
-  public Set<TConsensusGroupId> getRemovedDataNodesRegionSet(
-      List<TDataNodeLocation> removedDataNodes) {
-    return removedDataNodes.stream()
-        .map(this::getMigratedDataNodeRegions)
-        .flatMap(List::stream)
-        .collect(Collectors.toSet());
-  }
-
-  /**
-   * Check whether all DataNodes to be deleted exist in the cluster
-   *
-   * @param removeDataNodePlan RemoveDataNodeReq
-   * @return SUCCEED_STATUS if all DataNodes to be deleted exist in the cluster, DATANODE_NOT_EXIST
+   * @param removeDataNodePlan the RemoveDataNodeReq containing the DataNodes to be checked
+   * @return SUCCEED_STATUS if all specified DataNodes exist in the cluster, DATANODE_NOT_EXIST
    *     otherwise
    */
   private TSStatus checkDataNodeExist(RemoveDataNodePlan removeDataNodePlan) {
@@ -256,10 +431,37 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * Get all consensus group id in this node
+   * Checks if it is allowed to remove the specified DataNodes from the cluster.
+   *
+   * @param removeDataNodePlan the RemoveDataNodeReq to be evaluated
+   * @return SUCCEED_STATUS if the request is valid, otherwise an appropriate error status
+   */
+  public TSStatus checkAllowRemoveDataNodes(RemoveDataNodePlan removeDataNodePlan) {
+    return configManager
+        .getProcedureManager()
+        .checkRemoveDataNodes(removeDataNodePlan.getDataNodeLocations());
+  }
+
+  /**
+   * Retrieves all consensus group IDs from the specified removed DataNodes.
+   *
+   * @param removedDataNodes the list of removed DataNodes
+   * @return a set of TConsensusGroupId representing the consensus groups associated with the
+   *     removed DataNodes
+   */
+  public Set<TConsensusGroupId> getRemovedDataNodesRegionSet(
+      List<TDataNodeLocation> removedDataNodes) {
+    return removedDataNodes.stream()
+        .map(this::getMigratedDataNodeRegions)
+        .flatMap(List::stream)
+        .collect(Collectors.toSet());
+  }
+
+  /**
+   * Retrieves all consensus group IDs from the specified DataNode.
    *
    * @param removedDataNode the DataNode to be removed
-   * @return group id list to be migrated
+   * @return a list of group IDs that need to be migrated
    */
   public List<TConsensusGroupId> getMigratedDataNodeRegions(TDataNodeLocation removedDataNode) {
     return configManager.getPartitionManager().getAllReplicaSets().stream()
@@ -269,115 +471,5 @@ public class RemoveDataNodeManager {
                     && replicaSet.regionId.getType() != TConsensusGroupType.ConfigRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
-  }
-
-  /**
-   * broadcast a batch of disabled DataNodes
-   *
-   * @param removedDataNodes List<TDataNodeLocation>
-   */
-  public void broadcastDisableDataNodes(List<TDataNodeLocation> removedDataNodes) {
-    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-      broadcastDisableDataNode(dataNodeLocation);
-    }
-  }
-
-  /**
-   * broadcast the datanode in RemoveDataNodeReq are disabled, so they will not accept read/write
-   * request
-   *
-   * @param disabledDataNode TDataNodeLocation
-   */
-  public void broadcastDisableDataNode(TDataNodeLocation disabledDataNode) {
-    LOGGER.info(
-        "DataNodeRemoveService start broadcastDisableDataNode to cluster, disabledDataNode: {}",
-        getIdWithRpcEndpoint(disabledDataNode));
-
-    List<TDataNodeConfiguration> otherOnlineDataNodes =
-        configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
-            .filter(node -> !node.getLocation().equals(disabledDataNode))
-            .collect(Collectors.toList());
-
-    for (TDataNodeConfiguration node : otherOnlineDataNodes) {
-      TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
-      TSStatus status =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      node.getLocation().getInternalEndPoint(),
-                      disableReq,
-                      CnToDnRequestType.DISABLE_DATA_NODE);
-      if (!isSucceed(status)) {
-        LOGGER.error(
-            "{}, BroadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
-            REMOVE_DATANODE_PROCESS,
-            getIdWithRpcEndpoint(disabledDataNode),
-            status);
-        return;
-      }
-    }
-
-    LOGGER.info(
-        "{}, DataNodeRemoveService finished broadcastDisableDataNode to cluster, disabledDataNode: {}",
-        REMOVE_DATANODE_PROCESS,
-        getIdWithRpcEndpoint(disabledDataNode));
-  }
-
-  /**
-   * Remove a batch of DataNodes in node info
-   *
-   * @param removedDataNodes List of DataNodeLocation
-   */
-  public void removeDataNodePersistence(List<TDataNodeLocation> removedDataNodes) {
-    // Remove consensus record
-    try {
-      configManager.getConsensusManager().write(new RemoveDataNodePlan(removedDataNodes));
-    } catch (ConsensusException e) {
-      LOGGER.warn("Failed in the write API executing the consensus layer due to: ", e);
-    }
-
-    // Adjust maxRegionGroupNum
-    configManager.getClusterSchemaManager().adjustMaxRegionGroupNum();
-
-    // Remove metrics
-    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-      PartitionMetrics.unbindDataNodePartitionMetricsWhenUpdate(
-          MetricService.getInstance(),
-          NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint()));
-    }
-  }
-
-  /**
-   * Stop old data nodes
-   *
-   * @param removedDataNodes List of DataNodeLocation
-   */
-  public void stopDataNodes(List<TDataNodeLocation> removedDataNodes) {
-    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-      stopDataNode(dataNodeLocation);
-    }
-  }
-
-  /**
-   * Stop old data node
-   *
-   * @param dataNode old data node
-   */
-  public void stopDataNode(TDataNodeLocation dataNode) {
-    LOGGER.info(
-        "{}, Begin to stop DataNode and kill the DataNode process {}",
-        REMOVE_DATANODE_PROCESS,
-        dataNode);
-    TSStatus status =
-        (TSStatus)
-            SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithGivenRetry(
-                    dataNode.getInternalEndPoint(), dataNode, CnToDnRequestType.STOP_DATA_NODE, 2);
-    configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
-    LOGGER.info(
-        "{}, Stop Data Node result: {}, stoppedDataNode: {}",
-        REMOVE_DATANODE_PROCESS,
-        status,
-        dataNode);
   }
 }

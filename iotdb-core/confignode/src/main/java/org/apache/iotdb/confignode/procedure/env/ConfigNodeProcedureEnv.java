@@ -28,7 +28,6 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
-import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -47,12 +46,10 @@ import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
-import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.cache.region.RegionHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
-import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -92,11 +89,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -218,23 +213,6 @@ public class ConfigNodeProcedureEnv {
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
-  }
-
-  public boolean checkEnoughDataNodeAfterRemoving(List<TDataNodeLocation> removedDataNodes) {
-    final int existedDataNodeNum =
-        getNodeManager()
-            .filterDataNodeThroughStatus(
-                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
-            .size();
-
-    int dataNodeNumAfterRemoving = existedDataNodeNum;
-    for (TDataNodeLocation removedDatanode : removedDataNodes) {
-      if (getLoadManager().getNodeStatus(removedDatanode.getDataNodeId()) != NodeStatus.Unknown) {
-        dataNodeNumAfterRemoving = existedDataNodeNum - 1;
-      }
-    }
-
-    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -380,62 +358,6 @@ public class ConfigNodeProcedureEnv {
   public void createConfigNodeHeartbeatCache(int nodeId) {
     getLoadManager().getLoadCache().createNodeHeartbeatCache(NodeType.ConfigNode, nodeId);
     // TODO: invoke a force heartbeat to update new ConfigNode's status immediately
-  }
-
-  /**
-   * Mark the given batch of DataNodes as removing status to avoid read or write request routing to
-   * these nodes.
-   *
-   * @param removedDataNodes the DataNodes to be marked as removing status
-   */
-  public void markDataNodesAsRemovingAndBroadcast(List<TDataNodeLocation> removedDataNodes) {
-    for (TDataNodeLocation removedDataNode : removedDataNodes) {
-      markDataNodeAsRemovingAndBroadcast(removedDataNode);
-    }
-  }
-
-  /**
-   * Mark the given datanode as removing status to avoid read or write request routing to this node.
-   *
-   * @param dataNodeLocation the datanode to be marked as removing status
-   */
-  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
-    // Send request to update NodeStatus on the DataNode to be removed
-    if (getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId()) == NodeStatus.Unknown) {
-      SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithGivenRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              NodeStatus.Removing.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS,
-              1);
-    } else {
-      SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              NodeStatus.Removing.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS);
-    }
-
-    long currentTime = System.nanoTime();
-    // Force updating NodeStatus to Removing
-    getLoadManager()
-        .forceUpdateNodeCache(
-            NodeType.DataNode,
-            dataNodeLocation.getDataNodeId(),
-            new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
-    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
-        new TreeMap<>();
-    // Force update RegionStatus to Removing
-    getPartitionManager()
-        .getAllReplicaSets(dataNodeLocation.getDataNodeId())
-        .forEach(
-            replicaSet ->
-                removingHeartbeatSampleMap.put(
-                    replicaSet.getRegionId(),
-                    Collections.singletonMap(
-                        dataNodeLocation.getDataNodeId(),
-                        new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
-    getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
   }
 
   /**
