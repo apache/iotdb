@@ -189,8 +189,12 @@ public class DataNodeTableCache implements ITableCache {
    */
   public TsTable getTable(String database, final String tableName) {
     database = PathUtils.unQualifyDatabaseName(database);
-    if (mayGetTableInPreUpdateMap(database, tableName)) {}
-
+    final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTables =
+        mayGetTableInPreUpdateMap(database, tableName);
+    if (Objects.nonNull(preUpdateTables)) {
+      getTablesInConfigNode(preUpdateTables);
+      updateTable(preUpdateTables);
+    }
     return getTableInCache(database, tableName);
   }
 
