@@ -41,9 +41,9 @@ import java.util.stream.Collectors;
 
 /**
  * NOTE: Currently, {@link TimeWindowStateProgressIndex} does not perform deep copies of the {@link
- * ByteBuffer} during construction or when exposed through accessors, which may lead to unintended
- * shared state or modifications. This behavior should be reviewed and adjusted as necessary to
- * ensure the integrity and independence of the progress index instances.
+ * ByteBuffer} and {@link Pair} during construction or when exposed through accessors, which may
+ * lead to unintended shared state or modifications. This behavior should be reviewed and adjusted
+ * as necessary to ensure the integrity and independence of the progress index instances.
  */
 public class TimeWindowStateProgressIndex extends ProgressIndex {
 
