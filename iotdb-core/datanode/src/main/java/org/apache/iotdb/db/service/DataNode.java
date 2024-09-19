@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -123,6 +125,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -215,7 +218,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       // Pull and check system configurations from ConfigNode-leader
       pullAndCheckSystemConfigurations();
-
       if (isFirstStart) {
         sendRegisterRequestToConfigNode(true);
         IoTDBStartCheck.getInstance().generateOrOverwriteSystemPropertiesFile();
@@ -544,49 +546,92 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void removeInvalidRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+    removeInvalidConsensusDataRegions(dataNodeConsensusGroupIds);
+    removeInvalidDataRegions(dataNodeConsensusGroupIds);
+    removeInvalidConsensusSchemaRegions(dataNodeConsensusGroupIds);
+    removeInvalidSchemaRegions(dataNodeConsensusGroupIds);
+  }
+
+  private void removeInvalidDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+    Map<String, List<DataRegionId>> localDataRegionInfo =
+        StorageEngine.getInstance().getLocalDataRegionInfo();
+    List<String> allLocalFilesFolders = TierManager.getInstance().getAllLocalFilesFolders();
+    localDataRegionInfo.forEach(
+        (database, dataRegionIds) -> {
+          for (DataRegionId dataRegionId : dataRegionIds) {
+            if (!dataNodeConsensusGroupIds.contains(dataRegionId)) {
+              removeDataDirRegion(database, dataRegionId, allLocalFilesFolders);
+            }
+          }
+        });
+  }
+
+  private void removeInvalidConsensusDataRegions(List<ConsensusGroupId> dataNodeConsensusGroupIds) {
     List<ConsensusGroupId> invalidDataRegionConsensusGroupIds =
         DataRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
             .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
             .collect(Collectors.toList());
-
-    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
-        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
-            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
-            .collect(Collectors.toList());
-    removeInvalidDataRegions(invalidDataRegionConsensusGroupIds);
-    removeInvalidSchemaRegions(invalidSchemaRegionConsensusGroupIds);
-  }
-
-  private void removeInvalidDataRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
-    logger.info("Remove invalid dataRegion directories... {}", invalidConsensusGroupId);
-    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+    logger.info("Remove invalid dataRegion directories... {}", invalidDataRegionConsensusGroupIds);
+    for (ConsensusGroupId consensusGroupId : invalidDataRegionConsensusGroupIds) {
       File oldDir =
           new File(
               DataRegionConsensusImpl.getInstance()
                   .getRegionDirFromConsensusGroupId(consensusGroupId));
-      removeRegionsDir(oldDir);
+      removeDir(oldDir);
     }
   }
 
-  private void removeInvalidSchemaRegions(List<ConsensusGroupId> invalidConsensusGroupId) {
-    logger.info("Remove invalid schemaRegion directories... {}", invalidConsensusGroupId);
-    for (ConsensusGroupId consensusGroupId : invalidConsensusGroupId) {
+  private void removeInvalidSchemaRegions(List<ConsensusGroupId> schemaConsensusGroupIds) {
+    Map<String, List<SchemaRegionId>> localSchemaRegionInfo =
+        SchemaEngine.getLocalSchemaRegionInfo();
+    localSchemaRegionInfo.forEach(
+        (database, schemaRegionIds) -> {
+          for (SchemaRegionId schemaRegionId : schemaRegionIds) {
+            if (!schemaConsensusGroupIds.contains(schemaRegionId)) {
+              removeInvalidSchemaDir(database, schemaRegionId);
+            }
+          }
+        });
+  }
+
+  private void removeDataDirRegion(
+      String database, DataRegionId dataRegionId, List<String> fileFolders) {
+    fileFolders.forEach(
+        folder -> {
+          String regionDir =
+              folder + File.separator + database + File.separator + dataRegionId.getId();
+          removeDir(new File(regionDir));
+        });
+  }
+
+  private void removeInvalidConsensusSchemaRegions(
+      List<ConsensusGroupId> dataNodeConsensusGroupIds) {
+    List<ConsensusGroupId> invalidSchemaRegionConsensusGroupIds =
+        SchemaRegionConsensusImpl.getInstance().getAllConsensusGroupIdsWithoutStarting().stream()
+            .filter(consensusGroupId -> !dataNodeConsensusGroupIds.contains(consensusGroupId))
+            .collect(Collectors.toList());
+    logger.info(
+        "Remove invalid schemaRegion directories... {}", invalidSchemaRegionConsensusGroupIds);
+
+    for (ConsensusGroupId consensusGroupId : invalidSchemaRegionConsensusGroupIds) {
       File oldDir =
           new File(
               SchemaRegionConsensusImpl.getInstance()
                   .getRegionDirFromConsensusGroupId(consensusGroupId));
-      removeRegionsDir(oldDir);
+      removeDir(oldDir);
     }
   }
 
-  private void removeRegionsDir(File regionDir) {
+  private void removeInvalidSchemaDir(String database, SchemaRegionId schemaRegionId) {
+    String systemSchemaDir =
+        config.getSystemDir() + File.separator + database + File.separator + schemaRegionId.getId();
+    removeDir(new File(systemSchemaDir));
+  }
+
+  private void removeDir(File regionDir) {
     if (regionDir.exists()) {
-      try {
-        FileUtils.recursivelyDeleteFolder(regionDir.getPath());
-        logger.info("delete {} succeed.", regionDir.getAbsolutePath());
-      } catch (IOException e) {
-        logger.error("delete {} failed.", regionDir.getAbsolutePath());
-      }
+      FileUtils.deleteDirectoryAndEmptyParent(regionDir);
+      logger.info("delete {} succeed.", regionDir.getAbsolutePath());
     } else {
       logger.info("delete {} failed, because it does not exist.", regionDir.getAbsolutePath());
     }
@@ -645,12 +690,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           (endTime - startTime));
 
       List<TConsensusGroupId> consensusGroupIds = dataNodeRestartResp.getConsensusGroupIds();
-      List<ConsensusGroupId> dataNodeConsensusGroupIds =
+      removeInvalidRegions(
           consensusGroupIds.stream()
               .map(ConsensusGroupId.Factory::createFromTConsensusGroupId)
-              .collect(Collectors.toList());
-
-      removeInvalidRegions(dataNodeConsensusGroupIds);
+              .collect(Collectors.toList()));
     } else {
       /* Throw exception when restart is rejected */
       throw new StartupException(dataNodeRestartResp.getStatus().getMessage());

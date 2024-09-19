@@ -511,14 +511,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   //////////////////////////// Operations for close ////////////////////////////
 
   @Override
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     if (isTabletBatchModeEnabled) {
-      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop);
+      tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
     }
     retryEventQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
+              && regionId == ((EnrichedEvent) event).getRegionId()) {
             ((EnrichedEvent) event)
                 .clearReferenceCount(IoTDBDataRegionAsyncConnector.class.getName());
             return true;

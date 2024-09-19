@@ -133,40 +133,27 @@ public class SchemaEngine {
     }
   }
 
-  /**
-   * Scan the database and schema region directories to recover schema regions and return the
-   * collected local schema partition info for localSchemaPartitionTable recovery.
-   */
-  @SuppressWarnings("java:S2142")
-  private void initSchemaRegion() {
+  public static Map<String, List<SchemaRegionId>> getLocalSchemaRegionInfo() {
     final File schemaDir = new File(config.getSchemaDir());
     final File[] sgDirList = schemaDir.listFiles();
-
+    final Map<String, List<SchemaRegionId>> localSchemaPartitionTable = new HashMap<>();
     if (sgDirList == null) {
-      return;
+      return localSchemaPartitionTable;
     }
-
-    // recover SchemaRegion concurrently
-    final ExecutorService schemaRegionRecoverPools =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(),
-            ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
-    final List<Future<ISchemaRegion>> futures = new ArrayList<>();
-
     for (File file : sgDirList) {
       if (!file.isDirectory()) {
         continue;
       }
 
-      final PartialPath storageGroup;
+      final PartialPath database;
       try {
-        storageGroup = PartialPath.getDatabasePath(file.getName());
+        database = PartialPath.getDatabasePath(file.getName());
       } catch (IllegalPathException illegalPathException) {
         // not a legal sg dir
         continue;
       }
 
-      final File sgDir = new File(config.getSchemaDir(), storageGroup.getFullPath());
+      final File sgDir = new File(config.getSchemaDir(), database.getFullPath());
 
       if (!sgDir.exists()) {
         continue;
@@ -176,7 +163,7 @@ public class SchemaEngine {
       if (schemaRegionDirs == null) {
         continue;
       }
-
+      List<SchemaRegionId> schemaRegionIds = new ArrayList<>();
       for (final File schemaRegionDir : schemaRegionDirs) {
         final SchemaRegionId schemaRegionId;
         try {
@@ -185,11 +172,38 @@ public class SchemaEngine {
           // the dir/file is not schemaRegionDir, ignore this.
           continue;
         }
-        futures.add(
-            schemaRegionRecoverPools.submit(recoverSchemaRegionTask(storageGroup, schemaRegionId)));
+        schemaRegionIds.add(schemaRegionId);
       }
+      localSchemaPartitionTable.put(database.getFullPath(), schemaRegionIds);
     }
+    return localSchemaPartitionTable;
+  }
 
+  /**
+   * Scan the database and schema region directories to recover schema regions and return the
+   * collected local schema partition info for localSchemaPartitionTable recovery.
+   */
+  @SuppressWarnings("java:S2142")
+  private void initSchemaRegion() {
+    // recover SchemaRegion concurrently
+    Map<String, List<SchemaRegionId>> localSchemaRegionInfo = getLocalSchemaRegionInfo();
+    final ExecutorService schemaRegionRecoverPools =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(),
+            ThreadName.SCHEMA_REGION_RECOVER_TASK.getName());
+    final List<Future<ISchemaRegion>> futures = new ArrayList<>();
+    localSchemaRegionInfo.forEach(
+        (k, v) -> {
+          for (SchemaRegionId schemaRegionId : v) {
+            try {
+              futures.add(
+                  schemaRegionRecoverPools.submit(
+                      recoverSchemaRegionTask(new PartialPath(k), schemaRegionId)));
+            } catch (IllegalPathException e) {
+              throw new RuntimeException(e);
+            }
+          }
+        });
     for (final Future<ISchemaRegion> future : futures) {
       try {
         final ISchemaRegion schemaRegion = future.get();

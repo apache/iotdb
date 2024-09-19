@@ -179,7 +179,7 @@ public class PipeConnectorSubtaskManager {
   public synchronized void deregister(
       final String pipeName,
       final long creationTime,
-      final int dataRegionId,
+      final int regionId,
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(FAILED_TO_DEREGISTER_EXCEPTION_MESSAGE + attributeSortedString);
@@ -187,13 +187,13 @@ public class PipeConnectorSubtaskManager {
 
     final List<PipeConnectorSubtaskLifeCycle> lifeCycles =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
-    lifeCycles.removeIf(o -> o.deregister(pipeName));
+    lifeCycles.removeIf(o -> o.deregister(pipeName, regionId));
 
     if (lifeCycles.isEmpty()) {
       attributeSortedString2SubtaskLifeCycleMap.remove(attributeSortedString);
     }
 
-    PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, dataRegionId);
+    PipeEventCommitManager.getInstance().deregister(pipeName, creationTime, regionId);
   }
 
   public synchronized void start(final String attributeSortedString) {
