@@ -194,7 +194,8 @@ public class DataNodeTableCache implements ITableCache {
     return getTableInCache(database, tableName);
   }
 
-  private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(
+  // Here we reserve space for fetched tables to avoid unnecessary instance creation
+  private Map<String, Map<String, Pair<TsTable, Long>>> mayGetTableInPreUpdateMap(
       final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
@@ -210,31 +211,48 @@ public class DataNodeTableCache implements ITableCache {
                               .collect(
                                   Collectors.toMap(
                                       Map.Entry::getKey,
-                                      innerEntry -> innerEntry.getValue().getRight()))));
+                                      innerEntry ->
+                                          new Pair<>(null, innerEntry.getValue().getRight())))));
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
-  private Map<String, Map<String, TsTable>> getTablesInConfigNode() {
+  private void getTablesInConfigNode(
+      final Map<String, Map<String, Pair<TsTable, Long>>> tableInput) {
     try {
       fetchTableSemaphore.acquire();
-      return null;
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
           "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.");
-      return null;
     } catch (final Exception e) {
       fetchTableSemaphore.release();
       throw e;
     }
   }
 
-  private void updateTable(final List<TsTable> tsTables) {
+  private void updateTable(final Map<String, Map<String, Pair<TsTable, Long>>> fetchedTables) {
     readWriteLock.writeLock().lock();
     try {
-
+      fetchedTables.forEach(
+          (database, tableMap) -> {
+            if (preUpdateTableMap.containsKey(database)) {
+              tableMap.forEach(
+                  (tableName, pair) -> {
+                    final Pair<TsTable, Long> existingPair =
+                        preUpdateTableMap.get(database).get(tableName);
+                    if (Objects.nonNull(existingPair)
+                        && Objects.equals(existingPair.getRight(), pair.getRight())) {
+                      existingPair.setLeft(null);
+                      existingPair.setRight(pair.getRight() + 1);
+                      databaseTableMap
+                          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+                          .put(tableName, pair.getLeft());
+                    }
+                  });
+            }
+          });
     } finally {
       readWriteLock.writeLock().unlock();
     }
