@@ -458,6 +458,10 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
     return pipePattern;
   }
 
+  public final String getDataRegionId() {
+    return dataRegionId;
+  }
+
   public final long getRealtimeDataExtractionStartTime() {
     return realtimeDataExtractionStartTime;
   }

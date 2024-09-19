@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
@@ -36,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
+import java.util.Optional;
 
 public class PipeDataRegionAssigner implements Closeable {
 
@@ -126,6 +129,17 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
+              // Log deletion event to DAL
+              if (copiedEvent.getEvent() instanceof PipeDeleteDataNodeEvent) {
+                Optional.ofNullable(
+                        DeletionResourceManager.getInstance(extractor.getDataRegionId()))
+                    .ifPresent(
+                        mgr ->
+                            mgr.enrichDeletionResourceAndPersist(
+                                (PipeDeleteDataNodeEvent) event.getEvent(),
+                                (PipeDeleteDataNodeEvent) copiedEvent.getEvent()));
+              }
+
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 ((PipeTsFileInsertionEvent) innerEvent)

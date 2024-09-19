@@ -32,7 +32,7 @@ import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
@@ -664,7 +664,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {
-    PipeSchemaRegionWritePlanEvent event = deletionResource.getDeletionEvent();
+    PipeDeleteDataNodeEvent event = deletionResource.getCorrespondingPipeTaskEvent();
     event.increaseReferenceCount(
         PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
     return event;

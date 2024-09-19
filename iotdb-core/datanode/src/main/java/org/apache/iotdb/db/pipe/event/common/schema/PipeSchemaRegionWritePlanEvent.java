@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.PipeWritePlanEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
@@ -34,7 +33,6 @@ import java.nio.ByteBuffer;
 public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
 
   private PlanNode planNode;
-  private DeletionResource deletionResource;
 
   public PipeSchemaRegionWritePlanEvent() {
     // Used for deserialization
@@ -58,26 +56,6 @@ public class PipeSchemaRegionWritePlanEvent extends PipeWritePlanEvent {
 
   public PlanNode getPlanNode() {
     return planNode;
-  }
-
-  public DeletionResource getDeletionResource() {
-    return deletionResource;
-  }
-
-  public void setDeletionResource(DeletionResource deletionResource) {
-    this.deletionResource = deletionResource;
-  }
-
-  @Override
-  public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
-    if (deletionResource != null) {
-      // Trigger hook function.
-      deletionResource.removeSelf();
-      // Resolve circular reference to let GC reclaim them all.
-      deletionResource.releaseSelf();
-      deletionResource = null;
-    }
-    return true;
   }
 
   @Override

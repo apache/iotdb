@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 /**
@@ -40,20 +39,28 @@ import java.util.function.Consumer;
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
-  private final AtomicLong latestUpdateTime;
-  private PipeDeleteDataNodeEvent deletionEvent;
+  private PipeDeleteDataNodeEvent correspondingPipeTaskEvent;
   private volatile Status currentStatus;
 
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile Exception cause;
 
-  public DeletionResource(
-      PipeDeleteDataNodeEvent deletionEvent, Consumer<DeletionResource> removeHook) {
-    this.deletionEvent = deletionEvent;
+  // For first register in DataRegion
+  public DeletionResource(Consumer<DeletionResource> removeHook) {
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
-    latestUpdateTime = new AtomicLong(System.currentTimeMillis());
+  }
+
+  // For deserialize
+  public DeletionResource(PipeDeleteDataNodeEvent event, Consumer<DeletionResource> removeHook) {
+    this.correspondingPipeTaskEvent = event;
+    this.removeHook = removeHook;
+    this.currentStatus = Status.RUNNING;
+  }
+
+  public void setCorrespondingPipeTaskEvent(PipeDeleteDataNodeEvent correspondingPipeTaskEvent) {
+    this.correspondingPipeTaskEvent = correspondingPipeTaskEvent;
   }
 
   /**
@@ -62,28 +69,15 @@ public class DeletionResource implements PersistentResource {
    * deletionResource and deletionEvent so that GC can reclaim them.
    */
   public void releaseSelf() {
-    deletionEvent = null;
+    correspondingPipeTaskEvent = null;
   }
 
   public void removeSelf() {
     removeHook.accept(this);
   }
 
-  public void increaseReferenceCount() {
-    deletionEvent.increaseReferenceCount(DeletionResource.class.getSimpleName());
-    updateLatestUpdateTime();
-  }
-
-  public void decreaseReferenceCount() {
-    deletionEvent.decreaseReferenceCount(DeletionResource.class.getSimpleName(), false);
-  }
-
   public long getReferenceCount() {
-    return deletionEvent.getReferenceCount();
-  }
-
-  public long getLatestUpdateTime() {
-    return latestUpdateTime.get();
+    return correspondingPipeTaskEvent.getReferenceCount();
   }
 
   public synchronized void onPersistFailed(Exception e) {
@@ -116,7 +110,7 @@ public class DeletionResource implements PersistentResource {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return deletionEvent.getDeleteDataNode().getProgressIndex();
+    return correspondingPipeTaskEvent.getDeleteDataNode().getProgressIndex();
   }
 
   @Override
@@ -129,12 +123,12 @@ public class DeletionResource implements PersistentResource {
     return 0;
   }
 
-  public PipeDeleteDataNodeEvent getDeletionEvent() {
-    return deletionEvent;
+  public PipeDeleteDataNodeEvent getCorrespondingPipeTaskEvent() {
+    return correspondingPipeTaskEvent;
   }
 
   public ByteBuffer serialize() {
-    return deletionEvent.serializeToByteBuffer();
+    return correspondingPipeTaskEvent.serializeToByteBuffer();
   }
 
   public static DeletionResource deserialize(
@@ -143,15 +137,10 @@ public class DeletionResource implements PersistentResource {
     return new DeletionResource(event, removeHook);
   }
 
-  private void updateLatestUpdateTime() {
-    latestUpdateTime.set(System.currentTimeMillis());
-  }
-
   @Override
   public String toString() {
     return String.format(
-        "DeletionResource[%s]{referenceCount=%s, latestUpdateTime=%s}",
-        deletionEvent, getReferenceCount(), getLatestUpdateTime());
+        "DeletionResource[%s]{referenceCount=%s}", correspondingPipeTaskEvent, getReferenceCount());
   }
 
   @Override
@@ -163,13 +152,12 @@ public class DeletionResource implements PersistentResource {
       return false;
     }
     final DeletionResource otherEvent = (DeletionResource) o;
-    return Objects.equals(deletionEvent, otherEvent.deletionEvent)
-        && latestUpdateTime.get() == otherEvent.latestUpdateTime.get();
+    return Objects.equals(correspondingPipeTaskEvent, otherEvent.correspondingPipeTaskEvent);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(deletionEvent, latestUpdateTime);
+    return Objects.hash(correspondingPipeTaskEvent);
   }
 
   public Exception getCause() {

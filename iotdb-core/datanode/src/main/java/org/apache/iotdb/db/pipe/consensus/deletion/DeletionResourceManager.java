@@ -43,6 +43,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.Condition;
@@ -65,6 +66,8 @@ public class DeletionResourceManager implements AutoCloseable {
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
+  private final Map<Integer, DeletionResource> eventHash2DeletionResources =
+      new ConcurrentHashMap<>();
   private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
   private final Lock recoverLock = new ReentrantLock();
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
@@ -140,12 +143,31 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  public DeletionResource registerDeletionResource(PipeDeleteDataNodeEvent event) {
-    DeletionResource deletionResource = new DeletionResource(event, this::removeDeletionResource);
-    event.setDeletionResource(deletionResource);
+  /**
+   * In this method, we only new an instance and return it to DataRegion and not persist
+   * deletionResource. Because currently deletionResource can not bind corresponding pipe task's
+   * deletionEvent.
+   */
+  public DeletionResource registerDeletionResource(PipeDeleteDataNodeEvent originEvent) {
+    DeletionResource deletionResource =
+        eventHash2DeletionResources.computeIfAbsent(
+            Objects.hash(originEvent, dataRegionId),
+            key -> new DeletionResource(this::removeDeletionResource));
     this.deletionResources.add(deletionResource);
-    deletionBuffer.registerDeletionResource(deletionResource);
     return deletionResource;
+  }
+
+  /** This method will bind event for deletionResource and persist it. */
+  public void enrichDeletionResourceAndPersist(
+      PipeDeleteDataNodeEvent originEvent, PipeDeleteDataNodeEvent copiedEvent) {
+    int key = Objects.hash(originEvent, dataRegionId);
+    DeletionResource deletionResource = eventHash2DeletionResources.get(key);
+    // Bind real deletion event
+    deletionResource.setCorrespondingPipeTaskEvent(copiedEvent);
+    // Register a persist task for current deletionResource
+    deletionBuffer.registerDeletionResource(deletionResource);
+    // Now, we can safely remove this entry from map. Since this entry will not be used anymore.
+    eventHash2DeletionResources.remove(key);
   }
 
   public List<DeletionResource> getAllDeletionResources() {
@@ -174,6 +196,7 @@ public class DeletionResourceManager implements AutoCloseable {
   private synchronized void removeDeletionResource(DeletionResource deletionResource) {
     // Clean memory
     deletionResources.remove(deletionResource);
+    eventHash2DeletionResources.remove(deletionResource.getCorrespondingPipeTaskEvent());
     // Clean disk
     ProgressIndex currentProgressIndex =
         ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
@@ -63,9 +63,9 @@ public class DeletionRecoverTest {
           new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
       deleteDataNode.setProgressIndex(
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
-      PipeSchemaRegionWritePlanEvent deletionEvent =
-          new PipeSchemaRegionWritePlanEvent(deleteDataNode, true);
+      PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionResourceManager.registerDeletionResource(deletionEvent);
+      deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
     }
     // Manually close for further test
     deletionResourceManager.close();
