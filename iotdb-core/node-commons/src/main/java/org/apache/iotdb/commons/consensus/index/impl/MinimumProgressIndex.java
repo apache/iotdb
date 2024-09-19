@@ -73,13 +73,8 @@ public class MinimumProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex deepCopy() {
-    return INSTANCE;
-  }
-
-  @Override
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
-    return progressIndex == null ? this : progressIndex.deepCopy();
+    return progressIndex == null ? this : progressIndex;
   }
 
   @Override
