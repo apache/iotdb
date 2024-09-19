@@ -314,6 +314,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeEventReferenceTrackingEnabled();
   }
 
+  public long getPipeEventReferenceEliminateIntervalSeconds() {
+    return COMMON_CONFIG.getPipeEventReferenceEliminateIntervalSeconds();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConfig.class);
@@ -451,6 +455,9 @@ public class PipeConfig {
         getTwoStageAggregateSenderEndPointsCacheInMs());
 
     LOGGER.info("PipeEventReferenceTrackingEnabled: {}", getPipeEventReferenceTrackingEnabled());
+    LOGGER.info(
+        "PipeEventReferenceEliminateIntervalSeconds: {}",
+        getPipeEventReferenceEliminateIntervalSeconds());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.resource.ref;
 
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 
@@ -28,6 +29,9 @@ public class PipeDataNodePhantomReferenceManager extends PipePhantomReferenceMan
     super();
 
     PipeDataNodeAgent.runtime()
-        .registerPeriodicalJob("PipePhantomReferenceManager#gcHook()", super::gcHook, 10);
+        .registerPeriodicalJob(
+            "PipePhantomReferenceManager#gcHook()",
+            super::gcHook,
+            PipeConfig.getInstance().getPipeEventReferenceEliminateIntervalSeconds());
   }
 }
