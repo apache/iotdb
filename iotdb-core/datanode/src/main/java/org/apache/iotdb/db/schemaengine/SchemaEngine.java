@@ -199,6 +199,7 @@ public class SchemaEngine {
             try {
               database = new PartialPath(k);
             } catch (IllegalPathException e) {
+              logger.warn("Illegal database path: {}", k);
               continue;
             }
             futures.add(
