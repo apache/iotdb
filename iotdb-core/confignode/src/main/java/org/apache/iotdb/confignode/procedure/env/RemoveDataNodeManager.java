@@ -92,18 +92,17 @@ public class RemoveDataNodeManager {
    * @return true if the number of DataNodes is enough, false otherwise
    */
   public boolean checkEnoughDataNodeAfterRemoving(List<TDataNodeLocation> removedDataNodes) {
-    final int existedDataNodeNum =
+    final int availableDatanodeSize =
         configManager
             .getNodeManager()
-            .filterDataNodeThroughStatus(
-                NodeStatus.Running, NodeStatus.ReadOnly, NodeStatus.Removing)
+            .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
             .size();
 
-    int dataNodeNumAfterRemoving = existedDataNodeNum;
+    int dataNodeNumAfterRemoving = availableDatanodeSize;
     for (TDataNodeLocation removedDatanode : removedDataNodes) {
       if (configManager.getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
           != NodeStatus.Unknown) {
-        dataNodeNumAfterRemoving = existedDataNodeNum - 1;
+        dataNodeNumAfterRemoving = availableDatanodeSize - 1;
       }
     }
 
@@ -356,7 +355,7 @@ public class RemoveDataNodeManager {
    * @param removeDataNodePlan the RemoveDataNodeReq to be evaluated
    * @return SUCCEED_STATUS if the number of DataNodes is sufficient, LACK_REPLICATION otherwise
    */
-  private TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
+  public TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TDataNodeLocation> removedDataNodes = removeDataNodePlan.getDataNodeLocations();
 

@@ -105,6 +105,8 @@ public class ConfigNodeProcedureEnv {
 
   private final ReentrantLock schedulerLock = new ReentrantLock(true);
 
+  private final ReentrantLock submitRegionMigrateLock = new ReentrantLock(true);
+
   private final ConfigManager configManager;
 
   private final ProcedureScheduler scheduler;
@@ -824,6 +826,10 @@ public class ConfigNodeProcedureEnv {
 
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
+  }
+
+  public ReentrantLock getSubmitRegionMigrateLock() {
+    return submitRegionMigrateLock;
   }
 
   public RegionMaintainHandler getRegionMaintainHandler() {

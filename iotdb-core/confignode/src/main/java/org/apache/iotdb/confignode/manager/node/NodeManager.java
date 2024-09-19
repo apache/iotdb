@@ -62,7 +62,6 @@ import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeConfigura
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.datanode.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.ClusterManager;
-import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
@@ -371,16 +370,19 @@ public class NodeManager {
   }
 
   /**
-   * Remove DataNodes.
+   * Removes the specified DataNodes.
    *
-   * @param removeDataNodePlan removeDataNodePlan
-   * @return DataNodeToStatusResp, The TSStatus will be SUCCEED_STATUS if the request is accepted,
-   *     DATANODE_NOT_EXIST when some datanode does not exist.
+   * @param removeDataNodePlan the plan detailing which DataNodes to remove
+   * @return DataNodeToStatusResp, where the TSStatus will be SUCCEED_STATUS if the request is
+   *     accepted, or DATANODE_NOT_EXIST if any DataNode does not exist.
    */
   public synchronized DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
 
-    RemoveDataNodeManager manager = new RemoveDataNodeManager((ConfigManager) configManager);
+    // Checks if the RemoveDataNode request is valid
+    RemoveDataNodeManager manager =
+        configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
     DataNodeToStatusResp preCheckStatus = manager.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
@@ -400,17 +402,22 @@ public class NodeManager {
       return dataSet;
     }
 
-    // Add request to queue, then return to client
-    boolean removeSucceed = configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
-    TSStatus status;
-    if (removeSucceed) {
-      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Server accepted the request");
-    } else {
-      status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
-      status.setMessage("Server rejected the request, maybe requests are too many");
+    try {
+      // Add request to queue, then return to client
+      boolean removeSucceed =
+          configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
+      TSStatus status;
+      if (removeSucceed) {
+        status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        status.setMessage("Server accepted the request");
+      } else {
+        status = new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode());
+        status.setMessage("Server rejected the request, maybe requests are too many");
+      }
+      dataSet.setStatus(status);
+    } finally {
+      configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().unlock();
     }
-    dataSet.setStatus(status);
 
     LOGGER.info(
         "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",

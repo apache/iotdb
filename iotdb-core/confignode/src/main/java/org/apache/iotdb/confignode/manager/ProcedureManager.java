@@ -625,7 +625,7 @@ public class ProcedureManager {
     }
 
     // 2. Check if the RemoveDataNodesProcedure has conflict with RegionMigrateProcedure
-    RemoveDataNodeManager manager = new RemoveDataNodeManager(configManager);
+    RemoveDataNodeManager manager = env.getRemoveDataNodeManager();
     Set<TConsensusGroupId> removedDataNodesRegionSet =
         manager.getRemovedDataNodesRegionSet(dataNodeLocations);
     Optional<Procedure<ConfigNodeProcedureEnv>> conflictRegionMigrateProcedure =
@@ -666,7 +666,16 @@ public class ProcedureManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  /** Check if allow to migrate region or not. */
+  /**
+   * Checks whether region migration is allowed.
+   *
+   * @param migrateRegionReq the migration request details
+   * @param regionGroupId the ID of the consensus group for the region
+   * @param originalDataNode the original DataNode location from which the region is being migrated
+   * @param destDataNode the destination DataNode location to which the region is being migrated
+   * @param coordinatorForAddPeer the DataNode location acting as the coordinator for adding a peer
+   * @return the status of the migration request (TSStatus)
+   */
   private TSStatus checkRegionMigrate(
       TMigrateRegionReq migrateRegionReq,
       TConsensusGroupId regionGroupId,
@@ -674,6 +683,7 @@ public class ProcedureManager {
       TDataNodeLocation destDataNode,
       TDataNodeLocation coordinatorForAddPeer) {
     String failMessage = null;
+    // 1. Check if the RegionMigrateProcedure has conflict with another RegionMigrateProcedure
     Optional<Procedure<ConfigNodeProcedureEnv>> anotherMigrateProcedure =
         this.executor.getProcedures().values().stream()
             .filter(
@@ -753,6 +763,49 @@ public class ProcedureManager {
               "Submit RegionMigrateProcedure failed, because the destDataNode %s is ReadOnly or Unknown.",
               migrateRegionReq.getToId());
     }
+
+    // 2. Check if the RegionMigrateProcedure has conflict with RemoveDataNodesProcedure
+    Optional<Procedure<ConfigNodeProcedureEnv>> conflictRemoveDataNodesProcedure =
+        this.executor.getProcedures().values().stream()
+            .filter(
+                procedure -> {
+                  if (procedure instanceof RemoveDataNodesProcedure) {
+                    return !procedure.isFinished();
+                  }
+                  return false;
+                })
+            .findAny();
+
+    if (conflictRemoveDataNodesProcedure.isPresent()) {
+      RemoveDataNodeManager manager = env.getRemoveDataNodeManager();
+      List<TDataNodeLocation> removedDataNodes =
+          ((RemoveDataNodesProcedure) conflictRemoveDataNodesProcedure.get()).getRemovedDataNodes();
+      Set<TConsensusGroupId> removedDataNodesRegionSet =
+          manager.getRemovedDataNodesRegionSet(removedDataNodes);
+      if (removedDataNodesRegionSet.contains(regionGroupId)) {
+        failMessage =
+            String.format(
+                "Submit RegionMigrateProcedure failed, "
+                    + "because another RemoveDataNodesProcedure %s is already in processing which conflicts with this RegionMigrateProcedure. "
+                    + "The RemoveDataNodesProcedure is removing the DataNodes %s which contains the region %s. "
+                    + "For further information, please search [pid%d] in log. ",
+                conflictRemoveDataNodesProcedure.get().getProcId(),
+                removedDataNodes,
+                regionGroupId,
+                conflictRemoveDataNodesProcedure.get().getProcId());
+      } else if (removedDataNodes.contains(destDataNode)) {
+        failMessage =
+            String.format(
+                "Submit RegionMigrateProcedure failed, "
+                    + "because another RemoveDataNodesProcedure %s is already in processing which conflicts with this RegionMigrateProcedure. "
+                    + "The RemoveDataNodesProcedure is removing the target DataNode %s. "
+                    + "For further information, please search [pid%d] in log. ",
+                conflictRemoveDataNodesProcedure.get().getProcId(),
+                destDataNode,
+                conflictRemoveDataNodesProcedure.get().getProcId());
+      }
+    }
+
     if (failMessage != null) {
       LOGGER.warn(failMessage);
       TSStatus failStatus = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
@@ -763,6 +816,7 @@ public class ProcedureManager {
   }
 
   public synchronized TSStatus migrateRegion(TMigrateRegionReq migrateRegionReq) {
+    env.getSubmitRegionMigrateLock().lock();
     TConsensusGroupId regionGroupId;
     Optional<TConsensusGroupId> optional =
         configManager
@@ -788,7 +842,7 @@ public class ProcedureManager {
             .getRegisteredDataNode(migrateRegionReq.getToId())
             .getLocation();
     // select coordinator for adding peer
-    RegionMaintainHandler handler = new RegionMaintainHandler(configManager);
+    RegionMaintainHandler handler = env.getRegionMaintainHandler();
     // TODO: choose the DataNode which has lowest load
     final TDataNodeLocation coordinatorForAddPeer =
         handler
@@ -810,21 +864,25 @@ public class ProcedureManager {
       return status;
     }
 
-    // finally, submit procedure
-    this.executor.submitProcedure(
-        new RegionMigrateProcedure(
-            regionGroupId,
-            originalDataNode,
-            destDataNode,
-            coordinatorForAddPeer,
-            coordinatorForRemovePeer));
-    LOGGER.info(
-        "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
-        regionGroupId,
-        originalDataNode,
-        destDataNode,
-        coordinatorForAddPeer,
-        coordinatorForRemovePeer);
+    try {
+      // finally, submit procedure
+      this.executor.submitProcedure(
+          new RegionMigrateProcedure(
+              regionGroupId,
+              originalDataNode,
+              destDataNode,
+              coordinatorForAddPeer,
+              coordinatorForRemovePeer));
+      LOGGER.info(
+          "Submit RegionMigrateProcedure successfully, Region: {}, Origin DataNode: {}, Dest DataNode: {}, Add Coordinator: {}, Remove Coordinator: {}",
+          regionGroupId,
+          originalDataNode,
+          destDataNode,
+          coordinatorForAddPeer,
+          coordinatorForRemovePeer);
+    } finally {
+      env.getSubmitRegionMigrateLock().unlock();
+    }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
