@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -189,17 +190,15 @@ public class DataNodeTableCache implements ITableCache {
    */
   public TsTable getTable(String database, final String tableName) {
     database = PathUtils.unQualifyDatabaseName(database);
-    final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTables =
+    final Map<String, Map<String, Long>> preUpdateTables =
         mayGetTableInPreUpdateMap(database, tableName);
     if (Objects.nonNull(preUpdateTables)) {
-      getTablesInConfigNode(preUpdateTables);
-      updateTable(preUpdateTables);
+      updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
     }
     return getTableInCache(database, tableName);
   }
 
-  // Here we reserve space for fetched tables to avoid unnecessary instance creation
-  private Map<String, Map<String, Pair<TsTable, Long>>> mayGetTableInPreUpdateMap(
+  private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(
       final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
@@ -214,16 +213,15 @@ public class DataNodeTableCache implements ITableCache {
                               .collect(
                                   Collectors.toMap(
                                       Map.Entry::getKey,
-                                      innerEntry ->
-                                          new Pair<>(null, innerEntry.getValue().getRight())))))
+                                      innerEntry -> innerEntry.getValue().getRight()))))
           : null;
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
-  private void getTablesInConfigNode(
-      final Map<String, Map<String, Pair<TsTable, Long>>> tableInput) {
+  private Map<String, Map<String, TsTable>> getTablesInConfigNode(
+      final Map<String, Map<String, Long>> tableInput) {
     try {
       fetchTableSemaphore.acquire();
     } catch (final InterruptedException e) {
@@ -235,24 +233,34 @@ public class DataNodeTableCache implements ITableCache {
       throw e;
     }
     fetchTableSemaphore.release();
+    return Collections.emptyMap();
   }
 
-  private void updateTable(final Map<String, Map<String, Pair<TsTable, Long>>> fetchedTables) {
+  private void updateTable(
+      final Map<String, Map<String, TsTable>> fetchedTables,
+      final Map<String, Map<String, Long>> previousVersions) {
     readWriteLock.writeLock().lock();
     try {
       fetchedTables.forEach(
-          (database, tableMap) -> {
+          (database, tableInfoMap) -> {
             if (preUpdateTableMap.containsKey(database)) {
-              tableMap.forEach(
-                  (tableName, pair) -> {
+              tableInfoMap.forEach(
+                  (tableName, tsTable) -> {
                     final Pair<TsTable, Long> existingPair =
                         preUpdateTableMap.get(database).get(tableName);
-                    if (Objects.nonNull(existingPair)
-                        && Objects.equals(existingPair.getRight(), pair.getRight())) {
-                      existingPair.setLeft(null);
+                    if (Objects.isNull(existingPair)
+                        || !Objects.equals(
+                            existingPair.getRight(),
+                            previousVersions.get(database).get(tableName))) {
+                      return;
+                    }
+                    existingPair.setLeft(null);
+                    if (Objects.nonNull(tsTable)) {
                       databaseTableMap
                           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-                          .put(tableName, pair.getLeft());
+                          .put(tableName, tsTable);
+                    } else if (databaseTableMap.containsKey(database)) {
+                      databaseTableMap.get(database).remove(tableName);
                     }
                   });
             }
