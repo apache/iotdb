@@ -42,6 +42,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -61,39 +62,34 @@ public class PipeTableResp implements DataSet {
   }
 
   public PipeTableResp filter(final Boolean whereClause, final String pipeName) {
+    if (Objects.isNull(pipeName)) {
+      return this;
+    }
     if (whereClause == null || !whereClause) {
-      if (pipeName == null) {
-        return this;
-      } else {
-        return new PipeTableResp(
-            status,
-            allPipeMeta.stream()
-                .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
-                .collect(Collectors.toList()));
-      }
+      return new PipeTableResp(
+          status,
+          allPipeMeta.stream()
+              .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
+              .collect(Collectors.toList()));
     } else {
-      if (pipeName == null) {
-        return this;
-      } else {
-        final String sortedConnectorParametersString =
-            allPipeMeta.stream()
-                .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
-                .findFirst()
-                .map(pipeMeta -> pipeMeta.getStaticMeta().getConnectorParameters().toString())
-                .orElse(null);
+      final String sortedConnectorParametersString =
+          allPipeMeta.stream()
+              .filter(pipeMeta -> pipeMeta.getStaticMeta().getPipeName().equals(pipeName))
+              .findFirst()
+              .map(pipeMeta -> pipeMeta.getStaticMeta().getConnectorParameters().toString())
+              .orElse(null);
 
-        return new PipeTableResp(
-            status,
-            allPipeMeta.stream()
-                .filter(
-                    pipeMeta ->
-                        pipeMeta
-                            .getStaticMeta()
-                            .getConnectorParameters()
-                            .toString()
-                            .equals(sortedConnectorParametersString))
-                .collect(Collectors.toList()));
-      }
+      return new PipeTableResp(
+          status,
+          allPipeMeta.stream()
+              .filter(
+                  pipeMeta ->
+                      pipeMeta
+                          .getStaticMeta()
+                          .getConnectorParameters()
+                          .toString()
+                          .equals(sortedConnectorParametersString))
+              .collect(Collectors.toList()));
     }
   }
 

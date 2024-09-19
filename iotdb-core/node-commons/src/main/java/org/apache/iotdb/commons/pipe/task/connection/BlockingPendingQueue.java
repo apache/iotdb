@@ -124,11 +124,12 @@ public abstract class BlockingPendingQueue<E extends Event> {
     eventCounter.reset();
   }
 
-  public void discardEventsOfPipe(final String pipeNameToDrop) {
+  public void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
     pendingQueue.removeIf(
         event -> {
           if (event instanceof EnrichedEvent
-              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())) {
+              && pipeNameToDrop.equals(((EnrichedEvent) event).getPipeName())
+              && regionId == ((EnrichedEvent) event).getRegionId()) {
             if (((EnrichedEvent) event).clearReferenceCount(BlockingPendingQueue.class.getName())) {
               eventCounter.decreaseEventCount(event);
             }

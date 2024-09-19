@@ -17,28 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.pipe.task;
+package org.apache.iotdb.confignode.consensus.response.table;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.consensus.common.DataSet;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.List;
 
-public class ShowPipePlanV2 extends ConfigPhysicalPlan {
+public class ShowTableResp implements DataSet {
+  private final TSStatus status;
+  private final List<TTableInfo> tableInfoList;
 
-  public ShowPipePlanV2() {
-    super(ConfigPhysicalPlanType.ShowPipeV2);
+  public ShowTableResp(final TSStatus status, final List<TTableInfo> tableInfoList) {
+    this.status = status;
+    this.tableInfoList = tableInfoList;
   }
 
-  @Override
-  protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-  }
-
-  @Override
-  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    // Empty method, since it is not needed now
+  public TShowTableResp convertToTShowTableResp() {
+    return new TShowTableResp(status).setTableInfoList(tableInfoList);
   }
 }
