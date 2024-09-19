@@ -110,7 +110,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
   private List<AlignedChunkMetadata> getAlignedChunkMetadataListBySelectedValueColumn(
       TsFileResource tsFileResource, List<IMeasurementSchema> selectedValueMeasurementSchemas)
-      throws IOException {
+      throws IOException, IllegalPathException {
     // 1. get Full AlignedChunkMetadata from cache
     List<AlignedChunkMetadata> alignedChunkMetadataList = null;
     if (alignedChunkMetadataCache.containsKey(tsFileResource)) {
@@ -263,7 +263,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
-        throws IOException {
+        throws IOException, IllegalPathException {
       return getAlignedChunkMetadataListBySelectedValueColumn(resource, measurementSchemas);
     }
 
@@ -371,7 +371,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
 
     @Override
     protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
-        throws IOException {
+        throws IOException, IllegalPathException {
       return getAlignedChunkMetadataListBySelectedValueColumn(resource, measurementSchemas);
     }
 

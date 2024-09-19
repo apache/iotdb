@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -174,7 +175,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   }
 
   protected List<AlignedChunkMetadata> getAlignedChunkMetadataList(TsFileResource resource)
-      throws IOException {
+      throws IOException, IllegalPathException {
     // read time chunk metadatas and value chunk metadatas in the current file
     List<IChunkMetadata> timeChunkMetadatas = null;
     List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
@@ -233,6 +234,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         alignedChunkMetadataList.add(alignedChunkMetadata);
       }
 
+      // get time modifications of this file
+      List<Modification> timeModifications =
+          getModificationsFromCache(
+              resource, CompactionPathUtils.getPath(deviceId, AlignedPath.VECTOR_PLACEHOLDER));
       // get value modifications of this file
       List<List<Modification>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -255,7 +260,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
               });
 
       // modify aligned chunk metadatas
-      ModificationUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, valueModifications);
+      ModificationUtils.modifyAlignedChunkMetaData(
+          alignedChunkMetadataList, timeModifications, valueModifications, ignoreAllNullRows);
     }
     return alignedChunkMetadataList;
   }

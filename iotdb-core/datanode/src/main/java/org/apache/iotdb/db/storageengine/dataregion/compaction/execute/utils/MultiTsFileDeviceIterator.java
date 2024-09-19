@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -434,7 +435,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // match time column modifications
     List<Modification> modificationForTimeColumn = new ArrayList<>();
     for (Modification modification : modifications) {
-      if (modification.getPath().matchFullPath(device, alignedChunkMetadata.getMeasurementUid())) {
+      if (modification.getPath().matchFullPath(device, AlignedPath.VECTOR_PLACEHOLDER)) {
         modificationForTimeColumn.add(modification);
       }
     }
