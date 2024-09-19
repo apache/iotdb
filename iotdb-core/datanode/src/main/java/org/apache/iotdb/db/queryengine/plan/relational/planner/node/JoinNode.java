@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -29,10 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -52,10 +55,8 @@ public class JoinNode extends TwoChildProcessNode {
   private final Optional<Expression> filter;
   private final Optional<Boolean> spillable;
 
-  public int leftTimeColumnIdx;
-  public int rightTimeColumnIdx;
-  public int[] leftOutputSymbolIdx;
-  public int[] rightOutputSymbolIdx;
+  private int[] leftOutputSymbolIdx;
+  private int[] rightOutputSymbolIdx;
 
   // private final boolean maySkipOutputDuplicates;
   // private final Optional<Symbol> leftHashSymbol;
@@ -73,8 +74,6 @@ public class JoinNode extends TwoChildProcessNode {
       List<Symbol> rightOutputSymbols,
       Optional<Expression> filter,
       Optional<Boolean> spillable,
-      int leftTimeColumnIdx,
-      int rightTimeColumnIdx,
       int[] leftOutputSymbolIdx,
       int[] rightOutputSymbolIdx) {
     super(id);
@@ -107,9 +106,7 @@ public class JoinNode extends TwoChildProcessNode {
     // this.maySkipOutputDuplicates = maySkipOutputDuplicates;
     // this.leftHashSymbol = leftHashSymbol;
     // this.rightHashSymbol = rightHashSymbol;
-    this.leftTimeColumnIdx = leftTimeColumnIdx;
     this.leftOutputSymbolIdx = leftOutputSymbolIdx;
-    this.rightTimeColumnIdx = rightTimeColumnIdx;
     this.rightOutputSymbolIdx = rightOutputSymbolIdx;
 
     Set<Symbol> leftSymbols = ImmutableSet.copyOf(leftChild.getOutputSymbols());
@@ -156,8 +153,6 @@ public class JoinNode extends TwoChildProcessNode {
         rightOutputSymbols,
         filter,
         spillable,
-        leftTimeColumnIdx,
-        rightTimeColumnIdx,
         leftOutputSymbolIdx,
         rightOutputSymbolIdx);
   }
@@ -183,8 +178,6 @@ public class JoinNode extends TwoChildProcessNode {
             rightOutputSymbols,
             filter,
             spillable,
-            leftTimeColumnIdx,
-            rightTimeColumnIdx,
             leftOutputSymbolIdx,
             rightOutputSymbolIdx);
     joinNode.setLeftChild(null);
@@ -198,10 +191,92 @@ public class JoinNode extends TwoChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_JOIN_NODE.serialize(byteBuffer);
+
+    ReadWriteIOUtils.write(joinType.ordinal(), byteBuffer);
+
+    ReadWriteIOUtils.write(criteria.size(), byteBuffer);
+    for (EquiJoinClause equiJoinClause : criteria) {
+      Symbol.serialize(equiJoinClause.getLeft(), byteBuffer);
+      Symbol.serialize(equiJoinClause.getRight(), byteBuffer);
+    }
+
+    //    ReadWriteIOUtils.write(leftOutputSymbols.size(), byteBuffer);
+    //    for (Symbol leftOutputSymbol : leftOutputSymbols) {
+    //      Symbol.serialize(leftOutputSymbol, byteBuffer);
+    //    }
+    //    ReadWriteIOUtils.write(rightOutputSymbols.size(), byteBuffer);
+    //    for (Symbol rightOutputSymbol : rightOutputSymbols) {
+    //      Symbol.serialize(rightOutputSymbol, byteBuffer);
+    //    }
+
+    ReadWriteIOUtils.write(leftOutputSymbolIdx.length, byteBuffer);
+    for (int idx : leftOutputSymbolIdx) {
+      ReadWriteIOUtils.write(idx, byteBuffer);
+    }
+    ReadWriteIOUtils.write(rightOutputSymbolIdx.length, byteBuffer);
+    for (int idx : rightOutputSymbolIdx) {
+      ReadWriteIOUtils.write(idx, byteBuffer);
+    }
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_JOIN_NODE.serialize(stream);
+
+    ReadWriteIOUtils.write(joinType.ordinal(), stream);
+
+    ReadWriteIOUtils.write(criteria.size(), stream);
+    for (EquiJoinClause equiJoinClause : criteria) {
+      Symbol.serialize(equiJoinClause.getLeft(), stream);
+      Symbol.serialize(equiJoinClause.getRight(), stream);
+    }
+
+    ReadWriteIOUtils.write(leftOutputSymbolIdx.length, stream);
+    for (int idx : leftOutputSymbolIdx) {
+      ReadWriteIOUtils.write(idx, stream);
+    }
+    ReadWriteIOUtils.write(rightOutputSymbolIdx.length, stream);
+    for (int idx : rightOutputSymbolIdx) {
+      ReadWriteIOUtils.write(idx, stream);
+    }
+  }
+
+  public static JoinNode deserialize(ByteBuffer byteBuffer) {
+    JoinType joinType = JoinType.values()[ReadWriteIOUtils.read(byteBuffer)];
+    int size = ReadWriteIOUtils.read(byteBuffer);
+    List<EquiJoinClause> criteria = new ArrayList<>(size);
+    while (size-- > 0) {
+      criteria.add(
+          new EquiJoinClause(Symbol.deserialize(byteBuffer), Symbol.deserialize(byteBuffer)));
+    }
+
+    size = ReadWriteIOUtils.read(byteBuffer);
+    int[] leftOutputSymbolIdx = new int[size];
+    for (int i = 0; i < size; i++) {
+      leftOutputSymbolIdx[i] = ReadWriteIOUtils.read(byteBuffer);
+    }
+    size = ReadWriteIOUtils.read(byteBuffer);
+    int[] rightOutputSymbolIdx = new int[size];
+    for (int i = 0; i < size; i++) {
+      rightOutputSymbolIdx[i] = ReadWriteIOUtils.read(byteBuffer);
+    }
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new JoinNode(
+        planNodeId,
+        joinType,
+        null,
+        null,
+        criteria,
+        null,
+        null,
+        Optional.empty(),
+        Optional.empty(),
+        leftOutputSymbolIdx,
+        rightOutputSymbolIdx);
+  }
 
   public JoinType getJoinType() {
     return joinType;
@@ -225,6 +300,22 @@ public class JoinNode extends TwoChildProcessNode {
 
   public Optional<Boolean> isSpillable() {
     return spillable;
+  }
+
+  public int[] getLeftOutputSymbolIdx() {
+    return leftOutputSymbolIdx;
+  }
+
+  public void setLeftOutputSymbolIdx(int[] leftOutputSymbolIdx) {
+    this.leftOutputSymbolIdx = leftOutputSymbolIdx;
+  }
+
+  public int[] getRightOutputSymbolIdx() {
+    return rightOutputSymbolIdx;
+  }
+
+  public void setRightOutputSymbolIdx(int[] rightOutputSymbolIdx) {
+    this.rightOutputSymbolIdx = rightOutputSymbolIdx;
   }
 
   @Override

@@ -48,14 +48,14 @@ public class InnerJoinOperator implements ProcessOperator {
   private final Operator leftChild;
   private TsBlock leftBlock;
   private int leftIndex; // start index of leftTsBlock
-  private final int leftTimeColumnPosition;
+  private final int leftTimeColumnPosition = 0;
   private final int[] leftOutputSymbolIdx;
 
   private final Operator rightChild;
   private final List<TsBlock> rightBlockList = new ArrayList<>();
   private int rightBlockListIdx;
   private int rightIndex; // start index of rightTsBlock
-  private final int rightTimeColumnPosition;
+  private final int rightTimeColumnPosition = 0;
   private final int[] rightOutputSymbolIdx;
   private TsBlock cachedNextRightBlock;
   private boolean hasCachedNextRightBlock;
@@ -71,19 +71,15 @@ public class InnerJoinOperator implements ProcessOperator {
   public InnerJoinOperator(
       OperatorContext operatorContext,
       Operator leftChild,
-      int leftTimeColumnPosition,
       int[] leftOutputSymbolIdx,
       Operator rightChild,
-      int rightTimeColumnPosition,
       int[] rightOutputSymbolIdx,
       TimeComparator timeComparator,
       List<TSDataType> dataTypes) {
     this.operatorContext = operatorContext;
     this.leftChild = leftChild;
-    this.leftTimeColumnPosition = leftTimeColumnPosition;
     this.leftOutputSymbolIdx = leftOutputSymbolIdx;
     this.rightChild = rightChild;
-    this.rightTimeColumnPosition = rightTimeColumnPosition;
     this.rightOutputSymbolIdx = rightOutputSymbolIdx;
 
     this.comparator = timeComparator;

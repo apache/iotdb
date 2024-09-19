@@ -81,25 +81,22 @@ public class JoinTest {
     assertInnerJoinTest1(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6",
-        false);
+            + "FROM table1 t1 JOIN table1 t2 ON t1.time = t2.time OFFSET 3 LIMIT 6");
 
     // implicit join
     assertInnerJoinTest1(
         "SELECT t1.time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6",
-        false);
+            + "FROM table1 t1, table1 t2 WHERE t1.time = t2.time OFFSET 3 LIMIT 6");
 
     // join using
     assertInnerJoinTest1(
         "SELECT time, t1.tag1, t1.tag2, t1.attr2, t1.s1, t1.s2,"
             + "t2.tag1, t2.tag3, t2.attr2, t2.s1, t2.s3 "
-            + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6",
-        true);
+            + "FROM table1 t1 JOIN table1 t2 USING(time) OFFSET 3 LIMIT 6");
   }
 
-  private void assertInnerJoinTest1(String sql, boolean joinUsing) {
+  private void assertInnerJoinTest1(String sql) {
     analysis = analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
     logicalQueryPlan =
         new TableLogicalPlanner(QUERY_CONTEXT, TEST_MATADATA, SESSION_INFO, DEFAULT_WARNING)
@@ -107,23 +104,10 @@ public class JoinTest {
 
     // LogicalPlan: `Output-Offset-Limit-Join-(Left + Right)-Sort-(Project)-TableScan`
     logicalPlanNode = logicalQueryPlan.getRootNode();
-    if (joinUsing) {
-      assertNodeMatches(
-          logicalPlanNode,
-          OutputNode.class,
-          OffsetNode.class,
-          ProjectNode.class,
-          LimitNode.class,
-          JoinNode.class);
-    } else {
-      assertNodeMatches(
-          logicalPlanNode, OutputNode.class, OffsetNode.class, LimitNode.class, JoinNode.class);
-    }
+    assertNodeMatches(
+        logicalPlanNode, OutputNode.class, OffsetNode.class, LimitNode.class, JoinNode.class);
 
-    joinNode =
-        joinUsing
-            ? (JoinNode) getChildrenNode(logicalPlanNode, 4)
-            : (JoinNode) getChildrenNode(logicalPlanNode, 3);
+    joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 3);
     List<JoinNode.EquiJoinClause> joinCriteria =
         Collections.singletonList(
             new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
@@ -182,8 +166,8 @@ public class JoinTest {
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
-    assertTrue(getChildrenNode(outputNode, joinUsing ? 4 : 3) instanceof JoinNode);
-    joinNode = (JoinNode) getChildrenNode(outputNode, joinUsing ? 4 : 3);
+    assertTrue(getChildrenNode(outputNode, 3) instanceof JoinNode);
+    joinNode = (JoinNode) getChildrenNode(outputNode, 3);
     assertTrue(joinNode.getLeftChild() instanceof MergeSortNode);
     MergeSortNode mergeSortNode = (MergeSortNode) joinNode.getLeftChild();
     assertMergeSortNode(mergeSortNode);

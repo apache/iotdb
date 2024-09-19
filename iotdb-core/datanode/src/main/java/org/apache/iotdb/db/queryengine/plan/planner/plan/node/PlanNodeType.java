@@ -250,6 +250,7 @@ public enum PlanNodeType {
   TABLE_TOPK_NODE((short) 1008),
   TABLE_COLLECT_NODE((short) 1009),
   TABLE_STREAM_SORT_NODE((short) 1010),
+  TABLE_JOIN_NODE((short) 1011),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),

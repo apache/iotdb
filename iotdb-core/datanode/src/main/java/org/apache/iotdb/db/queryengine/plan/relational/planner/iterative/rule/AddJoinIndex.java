@@ -37,21 +37,20 @@ public class AddJoinIndex implements Rule<JoinNode> {
 
   @Override
   public Result apply(JoinNode node, Captures captures, Context context) {
-    node.leftTimeColumnIdx =
-        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
-    node.rightTimeColumnIdx =
-        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
-
-    node.leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
-    for (int i = 0; i < node.leftOutputSymbolIdx.length; i++) {
-      node.leftOutputSymbolIdx[i] =
+    int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
+    for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+      leftOutputSymbolIdx[i] =
           node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
     }
-    node.rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
-    for (int i = 0; i < node.rightOutputSymbolIdx.length; i++) {
-      node.rightOutputSymbolIdx[i] =
+    node.setLeftOutputSymbolIdx(leftOutputSymbolIdx);
+
+    int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
+    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+      rightOutputSymbolIdx[i] =
           node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
     }
+    node.setRightOutputSymbolIdx(rightOutputSymbolIdx);
+
     return Result.empty();
   }
 }

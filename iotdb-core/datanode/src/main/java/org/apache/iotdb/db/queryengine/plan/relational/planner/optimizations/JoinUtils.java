@@ -112,10 +112,8 @@ public class JoinUtils {
             node.getRightOutputSymbols(),
             node.getFilter(),
             node.isSpillable(),
-            node.leftTimeColumnIdx,
-            node.rightTimeColumnIdx,
-            node.leftOutputSymbolIdx,
-            node.rightOutputSymbolIdx);
+            node.getLeftOutputSymbolIdx(),
+            node.getRightOutputSymbolIdx());
       }
       return new JoinNode(
           node.getPlanNodeId(),
@@ -127,10 +125,8 @@ public class JoinUtils {
           node.getRightOutputSymbols(),
           node.getFilter(),
           node.isSpillable(),
-          node.leftTimeColumnIdx,
-          node.rightTimeColumnIdx,
-          node.leftOutputSymbolIdx,
-          node.rightOutputSymbolIdx);
+          node.getLeftOutputSymbolIdx(),
+          node.getRightOutputSymbolIdx());
     }
 
     if (node.getJoinType() == JoinNode.JoinType.LEFT
@@ -150,10 +146,8 @@ public class JoinUtils {
         node.getRightOutputSymbols(),
         node.getFilter(),
         node.isSpillable(),
-        node.leftTimeColumnIdx,
-        node.rightTimeColumnIdx,
-        node.leftOutputSymbolIdx,
-        node.rightOutputSymbolIdx);
+        node.getLeftOutputSymbolIdx(),
+        node.getRightOutputSymbolIdx());
   }
 
   static boolean canConvertOuterToInner(

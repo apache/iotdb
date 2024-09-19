@@ -662,10 +662,8 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
                 node.isSpillable(),
-                node.leftTimeColumnIdx,
-                node.rightTimeColumnIdx,
-                node.leftOutputSymbolIdx,
-                node.rightOutputSymbolIdx);
+                node.getLeftOutputSymbolIdx(),
+                node.getRightOutputSymbolIdx());
       }
 
       JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);

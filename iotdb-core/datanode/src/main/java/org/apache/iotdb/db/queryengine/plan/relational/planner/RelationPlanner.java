@@ -319,8 +319,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
             Optional.empty(),
-            0,
-            0,
             null,
             null);
 
@@ -486,8 +484,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
             Optional.empty(),
-            0,
-            0,
             null,
             null);
 
@@ -541,8 +537,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
               Optional.empty(),
-              0,
-              0,
               null,
               null);
     }

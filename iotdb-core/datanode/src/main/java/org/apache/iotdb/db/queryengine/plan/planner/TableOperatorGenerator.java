@@ -778,11 +778,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return new InnerJoinOperator(
           operatorContext,
           leftChild,
-          node.leftTimeColumnIdx,
-          node.leftOutputSymbolIdx,
+          node.getLeftOutputSymbolIdx(),
           rightChild,
-          node.rightTimeColumnIdx,
-          node.rightOutputSymbolIdx,
+          node.getRightOutputSymbolIdx(),
           ASC_TIME_COMPARATOR,
           dataTypes);
     }
