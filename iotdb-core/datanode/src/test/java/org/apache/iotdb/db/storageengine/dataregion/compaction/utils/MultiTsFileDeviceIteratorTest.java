@@ -845,7 +845,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true), true);
     ReadPointCompactionPerformer performer =
         new ReadPointCompactionPerformer(
-            tsFileManager.getTsFileList(true), Collections.emptyList());
+            tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 
@@ -1005,7 +1005,7 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true), true);
     ReadPointCompactionPerformer performer =
         new ReadPointCompactionPerformer(
-            tsFileManager.getTsFileList(true), Collections.emptyList());
+            tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
 

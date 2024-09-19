@@ -72,7 +72,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private long timeLowerBoundForCurrentDevice;
-  private boolean ignoreAllNullRows = false;
+  private boolean ignoreAllNullRows = true;
 
   /**
    * Used for compaction with read chunk performer.
@@ -104,6 +104,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       throw e;
     }
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**

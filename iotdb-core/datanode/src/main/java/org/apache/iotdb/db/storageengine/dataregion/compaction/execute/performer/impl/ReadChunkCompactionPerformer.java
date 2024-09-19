@@ -55,7 +55,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private CompactionTsFileWriter currentWriter;
   private long endedFileSize = 0;
   private int currentTargetFileIndex = 0;
-  private boolean ignoreAllNullRows = false;
+  private boolean ignoreAllNullRows = true;
   // memory budget for file writer is 5% of per compaction task memory budget
   private final long memoryBudgetForFileWriter =
       (long)

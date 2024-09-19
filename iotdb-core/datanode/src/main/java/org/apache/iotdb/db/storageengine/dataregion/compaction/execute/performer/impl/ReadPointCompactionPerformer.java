@@ -113,7 +113,7 @@ public class ReadPointCompactionPerformer
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
-          new MultiTsFileDeviceIterator(seqFiles, unseqFiles, false);
+          new MultiTsFileDeviceIterator(seqFiles, unseqFiles, ignoreAllNullRows);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles, unseqFiles, deviceIterator.getReaderMap());
