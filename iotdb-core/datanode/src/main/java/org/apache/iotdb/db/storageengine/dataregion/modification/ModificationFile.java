@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 public class ModificationFile implements AutoCloseable {
 
+  public static final String FILE_SUFFIX = ".mods2";
   private static final Logger LOGGER = LoggerFactory.getLogger(ModificationFile.class);
 
   private final File file;
@@ -49,8 +50,8 @@ public class ModificationFile implements AutoCloseable {
   private final Set<TsFileResource> tsFileRefs = new ConcurrentSkipListSet<>(Comparator.comparing(
       TsFileResource::getTsFilePath));
 
-  public ModificationFile(String filePath, TsFileResource firstResource) throws IOException {
-    this.file = new File(filePath);
+  public ModificationFile(File file, TsFileResource firstResource) {
+    this.file = file;
     tsFileRefs.add(firstResource);
   }
 
@@ -73,6 +74,10 @@ public class ModificationFile implements AutoCloseable {
     fileOutputStream = null;
     channel.close();
     channel = null;
+  }
+
+  public File getFile() {
+    return file;
   }
 
   /**
@@ -107,6 +112,22 @@ public class ModificationFile implements AutoCloseable {
     } finally {
       lock.writeLock().unlock();
     }
+  }
+
+  public boolean hasReference() {
+    return !tsFileRefs.isEmpty();
+  }
+
+  public static String composeFileName(long levelNum, long modFileNum) {
+    return levelNum + "-" + modFileNum + "." + FILE_SUFFIX;
+  }
+
+  public static long[] parseFileName(String name) {
+    name = name.substring(0, name.lastIndexOf(ModificationFile.FILE_SUFFIX));
+    String[] split = name.split("-");
+    long levelNum = Long.parseLong(split[0]);
+    long modNum = Long.parseLong(split[1]);
+    return new long[] {levelNum, modNum};
   }
 
   public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
