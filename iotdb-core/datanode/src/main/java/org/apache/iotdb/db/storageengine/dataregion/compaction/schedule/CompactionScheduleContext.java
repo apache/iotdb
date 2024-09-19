@@ -175,4 +175,8 @@ public class CompactionScheduleContext {
     crossCompactionPerformer.setIgnoreAllNullRows(isTreeModel);
     return crossCompactionPerformer;
   }
+
+  public boolean isIgnoreAllNullRows() {
+    return isTreeModel;
+  }
 }
