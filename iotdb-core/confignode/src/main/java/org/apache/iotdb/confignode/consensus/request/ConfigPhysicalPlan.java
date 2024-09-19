@@ -37,11 +37,9 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
-import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -380,9 +378,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case SetTableProperties:
           plan = new SetTablePropertiesPlan();
           break;
-        case ShowTable:
-          plan = new ShowTablePlan();
-          break;
         case GetNodePathsPartition:
           plan = new GetNodePathsPartitionPlan();
           break;
@@ -478,9 +473,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
-          break;
-        case GetRegionId:
-          plan = new GetRegionIdPlan();
           break;
         case GetTimeSlotList:
           plan = new GetTimeSlotListPlan();

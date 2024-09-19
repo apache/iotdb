@@ -22,22 +22,16 @@ package org.apache.iotdb.confignode.consensus.request.read.region;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetRegionIdPlan extends ConfigPhysicalPlan {
+public class GetRegionIdPlan extends ConfigPhysicalReadPlan {
 
   private String database;
 
-  private TConsensusGroupType partitionType;
+  private final TConsensusGroupType partitionType;
 
   private TTimePartitionSlot startTimeSlotId;
 
@@ -45,12 +39,8 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
 
   private TSeriesPartitionSlot seriesSlotId;
 
-  public GetRegionIdPlan() {
+  public GetRegionIdPlan(final TConsensusGroupType partitionType) {
     super(ConfigPhysicalPlanType.GetRegionId);
-  }
-
-  public GetRegionIdPlan(TConsensusGroupType partitionType) {
-    this();
     this.partitionType = partitionType;
     this.database = "";
     this.seriesSlotId = new TSeriesPartitionSlot(-1);
@@ -62,11 +52,11 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     return database;
   }
 
-  public void setDatabase(String database) {
+  public void setDatabase(final String database) {
     this.database = database;
   }
 
-  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
+  public void setSeriesSlotId(final TSeriesPartitionSlot seriesSlotId) {
     this.seriesSlotId = seriesSlotId;
   }
 
@@ -78,7 +68,7 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     return startTimeSlotId;
   }
 
-  public void setStartTimeSlotId(TTimePartitionSlot startTimeSlotId) {
+  public void setStartTimeSlotId(final TTimePartitionSlot startTimeSlotId) {
     this.startTimeSlotId = startTimeSlotId;
   }
 
@@ -86,7 +76,7 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
     return endTimeSlotId;
   }
 
-  public void setEndTimeSlotId(TTimePartitionSlot endTimeSlotId) {
+  public void setEndTimeSlotId(final TTimePartitionSlot endTimeSlotId) {
     this.endTimeSlotId = endTimeSlotId;
   }
 
@@ -95,33 +85,14 @@ public class GetRegionIdPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    stream.writeInt(partitionType.ordinal());
-    ReadWriteIOUtils.write(database, stream);
-    ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
-    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(startTimeSlotId, stream);
-    ThriftCommonsSerDeUtils.serializeTTimePartitionSlot(endTimeSlotId, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.partitionType = TConsensusGroupType.findByValue(buffer.getInt());
-    this.database = ReadWriteIOUtils.readString(buffer);
-    this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-    this.startTimeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
-    this.endTimeSlotId = ThriftCommonsSerDeUtils.deserializeTTimePartitionSlot(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetRegionIdPlan that = (GetRegionIdPlan) o;
+    final GetRegionIdPlan that = (GetRegionIdPlan) o;
     return database.equals(that.database)
         && partitionType.equals(that.partitionType)
         && seriesSlotId.equals(that.seriesSlotId)
