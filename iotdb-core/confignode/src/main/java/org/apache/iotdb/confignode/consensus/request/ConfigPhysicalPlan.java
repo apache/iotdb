@@ -26,9 +26,6 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -232,9 +229,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PollSpecificRegionMaintainTask:
           plan = new PollSpecificRegionMaintainTaskPlan();
-          break;
-        case GetSchemaPartition:
-          plan = new GetSchemaPartitionPlan();
           break;
         case CreateSchemaPartition:
           plan = new CreateSchemaPartitionPlan();
@@ -446,12 +440,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case PipeDeactivateTemplate:
           plan = new PipeDeactivateTemplatePlan();
-          break;
-        case GetTimeSlotList:
-          plan = new GetTimeSlotListPlan();
-          break;
-        case GetSeriesSlotList:
-          plan = new GetSeriesSlotListPlan();
           break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();

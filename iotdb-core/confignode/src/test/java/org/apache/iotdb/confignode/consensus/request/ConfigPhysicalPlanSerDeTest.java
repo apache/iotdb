@@ -65,17 +65,11 @@ import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePl
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -192,7 +186,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
@@ -1608,69 +1601,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
 
     Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
-  }
-
-  @Test
-  public void GetTriggerJarPlanTest() throws IOException {
-    final List<String> jarNames = new ArrayList<>();
-    jarNames.add("test1");
-    jarNames.add("test2");
-    final GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
-
-    final GetTriggerJarPlan getTriggerJarPlan1 =
-        (GetTriggerJarPlan)
-            ConfigPhysicalPlan.Factory.create(getTriggerJarPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getTriggerJarPlan0.getJarNames(), getTriggerJarPlan1.getJarNames());
-  }
-
-  @Test
-  public void GetRegionIdPlanTest() throws IOException {
-    final GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
-    final GetRegionIdPlan getRegionIdPlan1 =
-        (GetRegionIdPlan)
-            ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
-  }
-
-  @Test
-  public void GetTimeSlotListPlanTest() throws IOException {
-    final GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
-    final GetTimeSlotListPlan getTimeSlotListPlan1 =
-        (GetTimeSlotListPlan)
-            ConfigPhysicalPlan.Factory.create(getTimeSlotListPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getTimeSlotListPlan0, getTimeSlotListPlan1);
-  }
-
-  @Test
-  public void CountTimeSlotListPlanTest() throws IOException {
-    final CountTimeSlotListPlan countTimeSlotListPlan0 =
-        new CountTimeSlotListPlan(0, Long.MAX_VALUE);
-    final CountTimeSlotListPlan countTimeSlotListPlan1 =
-        (CountTimeSlotListPlan)
-            ConfigPhysicalPlan.Factory.create(countTimeSlotListPlan0.serializeToByteBuffer());
-    Assert.assertEquals(countTimeSlotListPlan0, countTimeSlotListPlan1);
-  }
-
-  @Test
-  public void GetSeriesSlotListPlanTest() throws IOException {
-    final GetSeriesSlotListPlan getSeriesSlotListPlan0 =
-        new GetSeriesSlotListPlan("root.test", SchemaRegion);
-    final GetSeriesSlotListPlan getSeriesSlotListPlan1 =
-        (GetSeriesSlotListPlan)
-            ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
-  }
-
-  @Test
-  public void GetPipePluginJarPlanTest() throws IOException {
-    final List<String> jarNames = new ArrayList<>();
-    jarNames.add("org.apache.testJar");
-    jarNames.add("org.apache.testJar2");
-    final GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
-    final GetPipePluginJarPlan getPipePluginJarPlan1 =
-        (GetPipePluginJarPlan)
-            ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
   }
 
   @Test
