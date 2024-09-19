@@ -365,7 +365,10 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
                             && timeValuePair.getTimestamp() <= 300L);
               }
               ICompactionPerformer performer =
-                  new ReadPointCompactionPerformer(Collections.emptyList(), toMergeResources);
+                  new ReadPointCompactionPerformer(
+                      Collections.emptyList(),
+                      toMergeResources,
+                      Collections.singletonList(targetTsFileResource));
               performer.setSummary(new CompactionTaskSummary());
               performer.perform();
               CompactionUtils.moveTargetFile(
