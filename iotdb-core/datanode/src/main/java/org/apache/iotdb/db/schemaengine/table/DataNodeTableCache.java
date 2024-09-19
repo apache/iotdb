@@ -224,6 +224,7 @@ public class DataNodeTableCache implements ITableCache {
       final Map<String, Map<String, Long>> tableInput) {
     try {
       fetchTableSemaphore.acquire();
+
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(

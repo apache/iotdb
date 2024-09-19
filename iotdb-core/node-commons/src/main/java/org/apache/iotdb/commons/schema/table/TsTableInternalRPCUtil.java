@@ -37,18 +37,18 @@ public class TsTableInternalRPCUtil {
     // do nothing
   }
 
-  public static byte[] serializeBatchTsTable(Map<String, List<TsTable>> tableMap) {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+  public static byte[] serializeBatchTsTable(final Map<String, List<TsTable>> tableMap) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(tableMap.size(), outputStream);
-      for (Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
+      for (final Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
         ReadWriteIOUtils.write(entry.getValue().size(), outputStream);
-        for (TsTable table : entry.getValue()) {
+        for (final TsTable table : entry.getValue()) {
           table.serialize(outputStream);
         }
       }
-    } catch (IOException ignored) {
+    } catch (final IOException ignored) {
       // won't happen
     }
     return outputStream.toByteArray();
@@ -89,29 +89,34 @@ public class TsTableInternalRPCUtil {
   }
 
   public static Pair<String, TsTable> deserializeSingleTsTable(final byte[] bytes) {
-    InputStream inputStream = new ByteArrayInputStream(bytes);
+    final InputStream inputStream = new ByteArrayInputStream(bytes);
     try {
-      String database = ReadWriteIOUtils.readString(inputStream);
-      TsTable table = TsTable.deserialize(inputStream);
-      return new Pair<>(database, table);
-    } catch (IOException ignored) {
+      return new Pair<>(ReadWriteIOUtils.readString(inputStream), TsTable.deserialize(inputStream));
+    } catch (final IOException ignored) {
       // ByteArrayInputStream won't throw IOException
     }
     throw new IllegalStateException();
   }
 
   public static byte[] serializeTableInitializationInfo(
-      Map<String, List<TsTable>> usingTableMap, Map<String, List<TsTable>> preCreateTableMap) {
-    byte[] usingBytes = serializeBatchTsTable(usingTableMap);
-    byte[] preCreateBytes = serializeBatchTsTable(preCreateTableMap);
-    byte[] result = new byte[usingBytes.length + preCreateBytes.length];
+      final Map<String, List<TsTable>> usingTableMap,
+      final Map<String, List<TsTable>> preCreateTableMap) {
+    final byte[] usingBytes = serializeBatchTsTable(usingTableMap);
+    final byte[] preCreateBytes = serializeBatchTsTable(preCreateTableMap);
+    final byte[] result = new byte[usingBytes.length + preCreateBytes.length];
     System.arraycopy(usingBytes, 0, result, 0, usingBytes.length);
     System.arraycopy(preCreateBytes, 0, result, usingBytes.length, preCreateBytes.length);
     return result;
   }
 
   public static Pair<Map<String, List<TsTable>>, Map<String, List<TsTable>>>
-      deserializeTableInitializationInfo(byte[] bytes) {
+      deserializeTableInitializationInfo(final byte[] bytes) {
     return new Pair<>(deserializeBatchTsTable(bytes), deserializeBatchTsTable(bytes));
+  }
+
+  public static byte[] serializeTableFetchResult(
+      final Map<String, Map<String, TsTable>> fetchTableMap) {
+
+    return null;
   }
 }
