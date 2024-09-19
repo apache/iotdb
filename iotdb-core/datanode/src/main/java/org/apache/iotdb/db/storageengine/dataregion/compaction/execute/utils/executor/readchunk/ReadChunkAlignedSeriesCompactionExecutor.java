@@ -476,7 +476,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         if (valueChunk.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
           return false;
         }
-        if (valueChunk.getHeader().getDataSize() > targetChunkSize) {
+        if (valueChunk.getHeader().getDataSize() >= targetChunkSize) {
           largeEnough = true;
         }
       }
