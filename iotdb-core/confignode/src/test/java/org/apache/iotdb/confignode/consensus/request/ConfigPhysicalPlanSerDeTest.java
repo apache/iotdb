@@ -63,8 +63,6 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
@@ -1678,26 +1676,6 @@ public class ConfigPhysicalPlanSerDeTest {
 
     Assert.assertEquals(plan0.getTriggerName(), plan1.getTriggerName());
     Assert.assertEquals(plan0.getDataNodeLocation(), plan1.getDataNodeLocation());
-  }
-
-  @Test
-  public void GetUDFTablePlanTest() throws IOException {
-    GetFunctionTablePlan getUDFTablePlan0 = new GetFunctionTablePlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getUDFTablePlan0.serializeToByteBuffer())
-            instanceof GetFunctionTablePlan);
-  }
-
-  @Test
-  public void GetUDFJarPlanTest() throws IOException {
-    List<String> jarNames = new ArrayList<>();
-    jarNames.add("test1");
-    jarNames.add("test2");
-    GetUDFJarPlan getUDFJarPlan0 = new GetUDFJarPlan(jarNames);
-
-    GetUDFJarPlan getUDFJarPlan1 =
-        (GetUDFJarPlan) ConfigPhysicalPlan.Factory.create(getUDFJarPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getUDFJarPlan0.getJarNames(), getUDFJarPlan1.getJarNames());
   }
 
   @Test

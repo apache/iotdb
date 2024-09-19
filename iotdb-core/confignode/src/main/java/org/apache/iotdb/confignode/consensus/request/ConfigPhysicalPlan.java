@@ -24,8 +24,6 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -461,12 +459,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case SHOW_CQ:
           plan = new ShowCQPlan();
-          break;
-        case GetFunctionTable:
-          plan = new GetFunctionTablePlan();
-          break;
-        case GetFunctionJar:
-          plan = new GetUDFJarPlan();
           break;
         case CreatePipePlugin:
           plan = new CreatePipePluginPlan();
