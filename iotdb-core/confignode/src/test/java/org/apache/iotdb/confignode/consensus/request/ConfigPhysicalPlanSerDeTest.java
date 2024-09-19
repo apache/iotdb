@@ -1547,11 +1547,11 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void showTablePlanTest() throws IOException {
-    final ShowTablePlan showTablePlan = new ShowTablePlan("database");
+    final ShowTablePlan showTablePlan = new ShowTablePlan(Collections.singletonList("database"));
     Assert.assertEquals(
-        showTablePlan.getDatabase(),
+        showTablePlan.getDatabases(),
         ((ShowTablePlan) ConfigPhysicalPlan.Factory.create(showTablePlan.serializeToByteBuffer()))
-            .getDatabase());
+            .getDatabases());
   }
 
   @Test

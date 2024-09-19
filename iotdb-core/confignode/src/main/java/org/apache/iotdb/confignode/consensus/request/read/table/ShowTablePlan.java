@@ -61,7 +61,7 @@ public class ShowTablePlan extends ConfigPhysicalPlan {
     final int size = ReadWriteIOUtils.readInt(buffer);
     databases = new ArrayList<>(size);
     for (int i = 0; i < size; ++i) {
-      databases.set(i, ReadWriteIOUtils.readString(buffer));
+      databases.add(ReadWriteIOUtils.readString(buffer));
     }
   }
 }

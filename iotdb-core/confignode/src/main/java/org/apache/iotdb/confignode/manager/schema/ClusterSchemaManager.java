@@ -98,6 +98,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -1063,7 +1064,10 @@ public class ClusterSchemaManager {
 
   public TShowTableResp showTables(final String database) {
     try {
-      return ((ShowTableResp) configManager.getConsensusManager().read(new ShowTablePlan(database)))
+      return ((ShowTableResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new ShowTablePlan(Collections.singletonList(database))))
           .convertToTShowTableResp(database);
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
