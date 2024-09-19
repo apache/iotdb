@@ -2263,7 +2263,8 @@ public class CrossSpaceCompactionWithFastPerformerValidationTest extends Abstrac
         IoTDBDescriptor.getInstance()
             .getConfig()
             .getInnerSequenceCompactionSelector()
-            .createInstance(COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
+            .createInstance(
+                COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     Assert.assertEquals(0, innerSelector.selectInnerSpaceTask(targetResources).size());
 
     // first compaction task finishes successfully
