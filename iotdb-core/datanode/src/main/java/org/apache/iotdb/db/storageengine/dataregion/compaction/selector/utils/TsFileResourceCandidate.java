@@ -76,6 +76,7 @@ public class TsFileResourceCandidate {
     if (deviceInfoMap == null && compactionScheduleContext != null) {
       // get device info from cache
       deviceInfoMap = compactionScheduleContext.getResourceDeviceInfo(this.resource);
+      hasDetailedDeviceInfo = true;
     }
     if (deviceInfoMap != null) {
       return;
