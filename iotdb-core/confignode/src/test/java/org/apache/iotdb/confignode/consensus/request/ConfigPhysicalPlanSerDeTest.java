@@ -79,10 +79,7 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlan
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
@@ -991,33 +988,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetSchemaTemplatePlanTest() throws IOException {
-    final GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan("template1");
-    final GetSchemaTemplatePlan deserializedPlan =
-        (GetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan.serializeToByteBuffer());
-    Assert.assertEquals("template1", deserializedPlan.getTemplateName());
-  }
-
-  @Test
-  public void GetAllSchemaTemplatePlanTest() throws IOException {
-    final GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer())
-            instanceof GetAllSchemaTemplatePlan);
-  }
-
-  @Test
-  public void GetNodesInSchemaTemplatePlanTest() throws IOException {
-    final GetSchemaTemplatePlan getSchemaTemplatePlan0 =
-        new GetSchemaTemplatePlan("template_name_test");
-    final GetSchemaTemplatePlan getSchemaTemplatePlan1 =
-        (GetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
-  }
-
-  @Test
   public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
     final GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
     getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
@@ -1026,14 +996,6 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetNodePathsPartitionPlan)
             ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
     Assert.assertEquals(getNodePathsPartitionPlan0, getNodePathsPartitionPlan1);
-  }
-
-  @Test
-  public void GetAllTemplateSetInfoPlanTest() throws IOException {
-    final GetAllTemplateSetInfoPlan getAllTemplateSetInfoPlan = new GetAllTemplateSetInfoPlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getAllTemplateSetInfoPlan.serializeToByteBuffer())
-            instanceof GetAllTemplateSetInfoPlan);
   }
 
   @Test

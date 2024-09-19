@@ -42,11 +42,6 @@ import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoLi
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -346,18 +341,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateSchemaTemplate:
           plan = new CreateSchemaTemplatePlan();
           break;
-        case GetAllSchemaTemplate:
-          plan = new GetAllSchemaTemplatePlan();
-          break;
-        case CheckTemplateSettable:
-          plan = new CheckTemplateSettablePlan();
-          break;
-        case GetPathsSetTemplate:
-          plan = new GetPathsSetTemplatePlan();
-          break;
-        case GetAllTemplateSetInfo:
-          plan = new GetAllTemplateSetInfoPlan();
-          break;
         case SetSchemaTemplate:
           plan = new SetSchemaTemplatePlan();
           break;
@@ -366,9 +349,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case CommitSetSchemaTemplate:
           plan = new CommitSetSchemaTemplatePlan();
-          break;
-        case GetTemplateSetInfo:
-          plan = new GetTemplateSetInfoPlan();
           break;
         case DropSchemaTemplate:
           plan = new DropSchemaTemplatePlan();
