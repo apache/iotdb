@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
@@ -140,7 +140,7 @@ public class DeletionResourceManager implements AutoCloseable {
     }
   }
 
-  public DeletionResource registerDeletionResource(PipeSchemaRegionWritePlanEvent event) {
+  public DeletionResource registerDeletionResource(PipeDeleteDataNodeEvent event) {
     DeletionResource deletionResource = new DeletionResource(event, this::removeDeletionResource);
     event.setDeletionResource(deletionResource);
     this.deletionResources.add(deletionResource);

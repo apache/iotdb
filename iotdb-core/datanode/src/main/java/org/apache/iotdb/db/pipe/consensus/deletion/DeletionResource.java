@@ -21,9 +21,7 @@ package org.apache.iotdb.db.pipe.consensus.deletion;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaSerializableEventType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +35,13 @@ import java.util.function.Consumer;
 /**
  * DeletionResource is designed for IoTConsensusV2 to manage the lifecycle of all deletion
  * operations including realtime deletion and historical deletion. In order to be compatible with
- * user pipe framework, PipeConsensus will use {@link PipeSchemaRegionWritePlanEvent}
+ * user pipe framework, PipeConsensus will use {@link PipeDeleteDataNodeEvent}
  */
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
   private final AtomicLong latestUpdateTime;
-  private PipeSchemaRegionWritePlanEvent deletionEvent;
+  private PipeDeleteDataNodeEvent deletionEvent;
   private volatile Status currentStatus;
 
   // it's safe to use volatile here to make this reference thread-safe.
@@ -51,7 +49,7 @@ public class DeletionResource implements PersistentResource {
   private volatile Exception cause;
 
   public DeletionResource(
-      PipeSchemaRegionWritePlanEvent deletionEvent, Consumer<DeletionResource> removeHook) {
+      PipeDeleteDataNodeEvent deletionEvent, Consumer<DeletionResource> removeHook) {
     this.deletionEvent = deletionEvent;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
@@ -118,7 +116,7 @@ public class DeletionResource implements PersistentResource {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return ((DeleteDataNode) deletionEvent.getPlanNode()).getProgressIndex();
+    return deletionEvent.getDeleteDataNode().getProgressIndex();
   }
 
   @Override
@@ -131,7 +129,7 @@ public class DeletionResource implements PersistentResource {
     return 0;
   }
 
-  public PipeSchemaRegionWritePlanEvent getDeletionEvent() {
+  public PipeDeleteDataNodeEvent getDeletionEvent() {
     return deletionEvent;
   }
 
@@ -141,8 +139,7 @@ public class DeletionResource implements PersistentResource {
 
   public static DeletionResource deserialize(
       final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) throws IOException {
-    PipeSchemaRegionWritePlanEvent event =
-        (PipeSchemaRegionWritePlanEvent) PipeSchemaSerializableEventType.deserialize(buffer);
+    PipeDeleteDataNodeEvent event = PipeDeleteDataNodeEvent.deserialize(buffer);
     return new DeletionResource(event, removeHook);
   }
 

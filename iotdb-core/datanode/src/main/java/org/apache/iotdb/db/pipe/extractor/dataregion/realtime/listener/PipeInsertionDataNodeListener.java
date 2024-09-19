@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
@@ -152,7 +152,7 @@ public class PipeInsertionDataNodeListener {
     DeletionResourceManager mgr = DeletionResourceManager.getInstance(regionId);
     return mgr == null
         ? null
-        : mgr.registerDeletionResource((PipeSchemaRegionWritePlanEvent) realtimeEvent.getEvent());
+        : mgr.registerDeletionResource((PipeDeleteDataNodeEvent) realtimeEvent.getEvent());
   }
 
   /////////////////////////////// singleton ///////////////////////////////

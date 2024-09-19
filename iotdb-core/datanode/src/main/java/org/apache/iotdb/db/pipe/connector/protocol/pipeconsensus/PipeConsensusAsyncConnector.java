@@ -46,8 +46,8 @@ import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.builder
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.consensus.metric.PipeConsensusConnectorMetrics;
+import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
-import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
@@ -402,7 +402,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
     transferBatchedEventsIfNecessary();
 
     // Transfer deletion
-    if (event instanceof PipeSchemaRegionWritePlanEvent) {
+    if (event instanceof PipeDeleteDataNodeEvent) {
       retryConnector.transfer(event);
       return;
     }

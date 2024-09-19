@@ -25,8 +25,7 @@ import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.Pip
 import org.apache.iotdb.commons.pipe.connector.payload.pipeconsensus.request.PipeConsensusRequestVersion;
 import org.apache.iotdb.consensus.pipe.thrift.TCommitId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.slf4j.Logger;
@@ -37,36 +36,36 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class PipeConsensusPlanNodeReq extends TPipeConsensusTransferReq {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusPlanNodeReq.class);
-  private transient PlanNode planNode;
+public class PipeConsensusDeleteNodeReq extends TPipeConsensusTransferReq {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensusDeleteNodeReq.class);
+  private transient DeleteDataNode deleteDataNode;
 
-  private PipeConsensusPlanNodeReq() {
+  private PipeConsensusDeleteNodeReq() {
     // Do nothing
   }
 
-  public PlanNode getPlanNode() {
-    return planNode;
+  public DeleteDataNode getDeleteDataNode() {
+    return deleteDataNode;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeConsensusPlanNodeReq toTPipeConsensusTransferReq(
-      PlanNode planNode,
+  public static PipeConsensusDeleteNodeReq toTPipeConsensusTransferReq(
+      DeleteDataNode deleteDataNode,
       TCommitId commitId,
       TConsensusGroupId consensusGroupId,
       ProgressIndex progressIndex,
       int thisDataNodeId) {
-    final PipeConsensusPlanNodeReq req = new PipeConsensusPlanNodeReq();
+    final PipeConsensusDeleteNodeReq req = new PipeConsensusDeleteNodeReq();
 
-    req.planNode = planNode;
+    req.deleteDataNode = deleteDataNode;
 
     req.commitId = commitId;
     req.consensusGroupId = consensusGroupId;
     req.dataNodeId = thisDataNodeId;
     req.version = PipeConsensusRequestVersion.VERSION_1.getVersion();
     req.type = PipeConsensusRequestType.TRANSFER_DELETION.getType();
-    req.body = planNode.serializeToByteBuffer();
+    req.body = deleteDataNode.serializeToByteBuffer();
 
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -80,21 +79,21 @@ public class PipeConsensusPlanNodeReq extends TPipeConsensusTransferReq {
     return req;
   }
 
-  public static PipeConsensusPlanNodeReq fromTPipeConsensusTransferReq(
+  public static PipeConsensusDeleteNodeReq fromTPipeConsensusTransferReq(
       TPipeConsensusTransferReq transferReq) {
-    final PipeConsensusPlanNodeReq planNodeReq = new PipeConsensusPlanNodeReq();
+    final PipeConsensusDeleteNodeReq deleteNodeReq = new PipeConsensusDeleteNodeReq();
 
-    planNodeReq.planNode = PlanNodeType.deserialize(transferReq.body);
+    deleteNodeReq.deleteDataNode = DeleteDataNode.deserialize(transferReq.body);
 
-    planNodeReq.version = transferReq.version;
-    planNodeReq.type = transferReq.type;
-    planNodeReq.body = transferReq.body;
-    planNodeReq.commitId = transferReq.commitId;
-    planNodeReq.dataNodeId = transferReq.dataNodeId;
-    planNodeReq.consensusGroupId = transferReq.consensusGroupId;
-    planNodeReq.progressIndex = transferReq.progressIndex;
+    deleteNodeReq.version = transferReq.version;
+    deleteNodeReq.type = transferReq.type;
+    deleteNodeReq.body = transferReq.body;
+    deleteNodeReq.commitId = transferReq.commitId;
+    deleteNodeReq.dataNodeId = transferReq.dataNodeId;
+    deleteNodeReq.consensusGroupId = transferReq.consensusGroupId;
+    deleteNodeReq.progressIndex = transferReq.progressIndex;
 
-    return planNodeReq;
+    return deleteNodeReq;
   }
 
   /////////////////////////////// Object ///////////////////////////////
@@ -107,8 +106,8 @@ public class PipeConsensusPlanNodeReq extends TPipeConsensusTransferReq {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    PipeConsensusPlanNodeReq that = (PipeConsensusPlanNodeReq) obj;
-    return planNode.equals(that.planNode)
+    PipeConsensusDeleteNodeReq that = (PipeConsensusDeleteNodeReq) obj;
+    return deleteDataNode.equals(that.deleteDataNode)
         && version == that.version
         && type == that.type
         && Objects.equals(body, that.body)
@@ -121,6 +120,6 @@ public class PipeConsensusPlanNodeReq extends TPipeConsensusTransferReq {
   @Override
   public int hashCode() {
     return Objects.hash(
-        planNode, version, type, body, commitId, consensusGroupId, dataNodeId, progressIndex);
+        deleteDataNode, version, type, body, commitId, consensusGroupId, dataNodeId, progressIndex);
   }
 }

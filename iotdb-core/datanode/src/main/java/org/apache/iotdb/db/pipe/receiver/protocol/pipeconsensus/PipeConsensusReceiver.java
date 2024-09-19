@@ -42,7 +42,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusPlanNodeReq;
+import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusDeleteNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletBinaryReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.connector.protocol.pipeconsensus.payload.request.PipeConsensusTsFilePieceReq;
@@ -256,7 +256,7 @@ public class PipeConsensusReceiver {
                 PipeConsensusTabletBinaryReq.fromTPipeConsensusTransferReq(req));
           case TRANSFER_DELETION:
             return handleTransferDeletion(
-                PipeConsensusPlanNodeReq.fromTPipeConsensusTransferReq(req));
+                PipeConsensusDeleteNodeReq.fromTPipeConsensusTransferReq(req));
           case TRANSFER_TS_FILE_PIECE:
             return handleTransferFilePiece(
                 PipeConsensusTsFilePieceReq.fromTPipeConsensusTransferReq(req), true);
@@ -317,12 +317,12 @@ public class PipeConsensusReceiver {
     return new TPipeConsensusTransferResp(impl.writeOnFollowerReplica(insertNode));
   }
 
-  private TPipeConsensusTransferResp handleTransferDeletion(final PipeConsensusPlanNodeReq req)
+  private TPipeConsensusTransferResp handleTransferDeletion(final PipeConsensusDeleteNodeReq req)
       throws ConsensusGroupNotExistException {
     PipeConsensusServerImpl impl =
         Optional.ofNullable(pipeConsensus.getImpl(consensusGroupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(consensusGroupId));
-    final DeleteDataNode planNode = (DeleteDataNode) req.getPlanNode();
+    final DeleteDataNode planNode = req.getDeleteDataNode();
     planNode.markAsGeneratedByRemoteConsensusLeader();
     planNode.setProgressIndex(
         ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex())));
