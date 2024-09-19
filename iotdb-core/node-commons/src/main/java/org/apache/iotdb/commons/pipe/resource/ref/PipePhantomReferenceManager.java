@@ -45,6 +45,10 @@ public abstract class PipePhantomReferenceManager {
     // Do nothing now.
   }
 
+  public int getPhantomReferenceCount() {
+    return PIPE_EVENT_PHANTOM_REFERENCES.size();
+  }
+
   protected void gcHook() {
     Reference<? extends EnrichedEvent> reference;
     try {
@@ -56,7 +60,6 @@ public abstract class PipePhantomReferenceManager {
       while ((reference = REFERENCE_QUEUE.poll()) != null) {
         finalizeResource((PipeEventPhantomReference) reference);
       }
-      PIPE_EVENT_PHANTOM_REFERENCES.clear();
     } catch (final Exception e) {
       // Nowhere to really log this.
     }
