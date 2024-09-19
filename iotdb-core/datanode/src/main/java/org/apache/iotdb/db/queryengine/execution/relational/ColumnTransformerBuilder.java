@@ -1055,16 +1055,21 @@ public class ColumnTransformerBuilder
         }
         return new InInt32MultiColumnTransformer(dateSet, valueColumnTransformerList);
       case INT64:
-      case TIMESTAMP:
         Set<Long> longSet = new HashSet<>();
         for (Literal value : values) {
+          longSet.add(((LongLiteral) value).getParsedValue());
+        }
+        return new InInt64MultiColumnTransformer(longSet, valueColumnTransformerList);
+      case TIMESTAMP:
+        Set<Long> timestampSet = new HashSet<>();
+        for (Literal value : values) {
           try {
-            longSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
+            timestampSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }
         }
-        return new InInt64MultiColumnTransformer(longSet, valueColumnTransformerList);
+        return new InInt64MultiColumnTransformer(timestampSet, valueColumnTransformerList);
       case FLOAT:
         Set<Float> floatSet = new HashSet<>();
         for (Literal value : values) {

@@ -292,6 +292,11 @@ public abstract class EnrichedEvent implements Event {
     return creationTime;
   }
 
+  public final int getRegionId() {
+    // TODO: persist regionId in EnrichedEvent
+    return committerKey == null ? -1 : committerKey.getRegionId();
+  }
+
   public final boolean isDataRegionEvent() {
     return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
   }

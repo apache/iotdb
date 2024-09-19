@@ -30,6 +30,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Me
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
@@ -66,6 +68,10 @@ public class LogicalOptimizeFactory {
 
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
+            new PruneAggregationColumns(),
+            // TODO After ValuesNode introduced
+            // new RemoveEmptyGlobalAggregation(),
+            new PruneAggregationSourceColumns(),
             new PruneFilterColumns(),
             new PruneLimitColumns(),
             new PruneOffsetColumns(),
@@ -121,6 +127,14 @@ public class LogicalOptimizeFactory {
         ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject());
     IterativeOptimizer limitPushdownOptimizer =
         new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules);
+
+    PlanOptimizer unAliasSymbolReferences =
+        new UnaliasSymbolReferences(plannerContext.getMetadata());
+
+    PlanOptimizer transformAggregationToStreamableOptimizer =
+        new TransformAggregationToStreamable();
+
+    PlanOptimizer pushAggregationIntoTableScanOptimizer = new PushAggregationIntoTableScan();
 
     PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
 
@@ -187,6 +201,7 @@ public class LogicalOptimizeFactory {
                             new RemoveRedundantIdentityProjections()))
                     .build()),
             simplifyOptimizer,
+            unAliasSymbolReferences,
             columnPruningOptimizer,
             inlineProjectionLimitFiltersOptimizer,
             pushPredicateIntoTableScanOptimizer,
@@ -195,6 +210,8 @@ public class LogicalOptimizeFactory {
             inlineProjectionLimitFiltersOptimizer,
             limitPushdownOptimizer,
             pushLimitOffsetIntoTableScanOptimizer,
+            transformAggregationToStreamableOptimizer,
+            pushAggregationIntoTableScanOptimizer,
             transformSortToStreamSortOptimizer,
             topKOptimizer);
   }

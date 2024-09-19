@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,6 +37,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * NOTE: Currently, {@link StateProgressIndex} does not perform deep copies of the {@link Binary}
+ * during construction or updates, which may lead to unintended shared state or modifications. This
+ * behavior should be reviewed and adjusted as necessary to ensure the integrity and independence of
+ * the progress index instances.
+ */
 public class StateProgressIndex extends ProgressIndex {
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
@@ -47,8 +54,8 @@ public class StateProgressIndex extends ProgressIndex {
   public StateProgressIndex(
       long version, Map<String, Binary> state, ProgressIndex innerProgressIndex) {
     this.version = version;
-    this.state = state;
-    this.innerProgressIndex = innerProgressIndex;
+    this.state = new HashMap<>(state);
+    this.innerProgressIndex = innerProgressIndex.deepCopy();
   }
 
   public long getVersion() {
@@ -56,11 +63,13 @@ public class StateProgressIndex extends ProgressIndex {
   }
 
   public ProgressIndex getInnerProgressIndex() {
-    return innerProgressIndex == null ? MinimumProgressIndex.INSTANCE : innerProgressIndex;
+    return innerProgressIndex == null
+        ? MinimumProgressIndex.INSTANCE
+        : innerProgressIndex.deepCopy();
   }
 
   public Map<String, Binary> getState() {
-    return state;
+    return ImmutableMap.copyOf(state);
   }
 
   @Override
@@ -156,6 +165,11 @@ public class StateProgressIndex extends ProgressIndex {
   @Override
   public int hashCode() {
     return Objects.hash(innerProgressIndex, version);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new StateProgressIndex(version, state, innerProgressIndex);
   }
 
   @Override

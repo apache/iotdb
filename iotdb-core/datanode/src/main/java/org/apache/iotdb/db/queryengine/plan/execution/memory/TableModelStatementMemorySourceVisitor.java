@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanGenerator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
@@ -60,6 +61,7 @@ public class TableModelStatementMemorySourceVisitor
   public StatementMemorySource visitExplain(
       final Explain node, final TableModelStatementMemorySourceContext context) {
     context.getAnalysis().setStatement(node.getStatement());
+    final SymbolAllocator symbolAllocator = new SymbolAllocator();
     final DatasetHeader header =
         new DatasetHeader(
             Collections.singletonList(
@@ -70,6 +72,7 @@ public class TableModelStatementMemorySourceVisitor
                 context.getQueryContext(),
                 LocalExecutionPlanner.getInstance().metadata,
                 context.getQueryContext().getSession(),
+                symbolAllocator,
                 NOOP)
             .plan(context.getAnalysis());
     if (context.getAnalysis().isEmptyDataSource()) {
@@ -80,7 +83,7 @@ public class TableModelStatementMemorySourceVisitor
     final TableDistributedPlanGenerator.PlanContext planContext =
         new TableDistributedPlanGenerator.PlanContext();
     final PlanNode outputNodeWithExchange =
-        new TableDistributedPlanner(context.getAnalysis(), logicalPlan)
+        new TableDistributedPlanner(context.getAnalysis(), symbolAllocator, logicalPlan)
             .generateDistributedPlanWithOptimize(planContext);
 
     final List<String> lines =

@@ -57,23 +57,17 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   private final String defaultCommonPropertiesFile;
 
   public ConfigNodeWrapper(
-      boolean isSeed,
-      String targetCNs,
-      String testClassName,
-      String testMethodName,
-      int[] portList,
-      int clusterIndex,
-      boolean isMultiCluster,
-      long startTime) {
+      final boolean isSeed,
+      final String targetCNs,
+      final String testClassName,
+      final String testMethodName,
+      final int[] portList,
+      final int clusterIndex,
+      final boolean isMultiCluster,
+      final long startTime) {
     super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster, startTime);
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
-    String seedConfigNodes;
-    if (isSeed) {
-      seedConfigNodes = getIpAndPortString();
-    } else {
-      seedConfigNodes = targetCNs;
-    }
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_CONFIG_NODE_PROPERTIES, clusterIndex);
     this.defaultCommonPropertiesFile =
@@ -83,7 +77,8 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     reloadMutableFields();
 
     // initialize immutable properties
-    immutableNodeProperties.setProperty(IoTDBConstant.CN_SEED_CONFIG_NODE, seedConfigNodes);
+    immutableNodeProperties.setProperty(
+        IoTDBConstant.CN_SEED_CONFIG_NODE, isSeed ? getIpAndPortString() : targetCNs);
     immutableNodeProperties.setProperty(CN_SYSTEM_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_CONSENSUS_DIR, MppBaseConfig.NULL_VALUE);
     immutableNodeProperties.setProperty(CN_METRIC_IOTDB_REPORTER_HOST, MppBaseConfig.NULL_VALUE);
@@ -129,7 +124,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected void addStartCmdParams(List<String> params) {
+  protected void addStartCmdParams(final List<String> params) {
     final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
@@ -166,14 +161,14 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void renameFile() {
-    String configNodeName = isSeed ? "SeedConfigNode" : "ConfigNode";
+    final String configNodeName = isSeed ? "SeedConfigNode" : "ConfigNode";
     // rename log file
-    File oldLogFile =
+    final File oldLogFile =
         new File(getLogDirPath() + File.separator + configNodeName + portList[0] + ".log");
     oldLogFile.renameTo(new File(getLogDirPath() + File.separator + getId() + ".log"));
 
     // rename node dir
-    File oldNodeDir =
+    final File oldNodeDir =
         new File(
             System.getProperty(USER_DIR)
                 + File.separator
@@ -184,7 +179,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     oldNodeDir.renameTo(new File(getNodePath()));
   }
 
-  public void setConsensusPort(int consensusPort) {
+  public void setConsensusPort(final int consensusPort) {
     this.consensusPort = consensusPort;
   }
 

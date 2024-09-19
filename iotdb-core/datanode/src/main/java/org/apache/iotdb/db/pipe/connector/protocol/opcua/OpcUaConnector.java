@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -137,31 +138,41 @@ public class OpcUaConnector implements PipeConnector {
 
       nameSpace =
           SERVER_KEY_TO_REFERENCE_COUNT_AND_NAME_SPACE_MAP
-              .computeIfAbsent(
+              .compute(
                   serverKey,
-                  key -> {
+                  (key, oldValue) -> {
                     try {
-                      final OpcUaServer newServer =
-                          new OpcUaServerBuilder()
-                              .setTcpBindPort(tcpBindPort)
-                              .setHttpsBindPort(httpsBindPort)
-                              .setUser(user)
-                              .setPassword(password)
-                              .setSecurityDir(securityDir)
-                              .setEnableAnonymousAccess(enableAnonymousAccess)
-                              .build();
-                      nameSpace =
-                          new OpcUaNameSpace(
-                              newServer,
-                              parameters
-                                  .getStringOrDefault(
-                                      Arrays.asList(
-                                          CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
-                                      CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
-                                  .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE));
-                      nameSpace.startup();
-                      newServer.startup().get();
-                      return new Pair<>(new AtomicInteger(0), nameSpace);
+                      if (Objects.isNull(oldValue)) {
+                        final OpcUaServerBuilder builder =
+                            new OpcUaServerBuilder()
+                                .setTcpBindPort(tcpBindPort)
+                                .setHttpsBindPort(httpsBindPort)
+                                .setUser(user)
+                                .setPassword(password)
+                                .setSecurityDir(securityDir)
+                                .setEnableAnonymousAccess(enableAnonymousAccess);
+                        final OpcUaServer newServer = builder.build();
+                        nameSpace =
+                            new OpcUaNameSpace(
+                                newServer,
+                                parameters
+                                    .getStringOrDefault(
+                                        Arrays.asList(
+                                            CONNECTOR_OPC_UA_MODEL_KEY, SINK_OPC_UA_MODEL_KEY),
+                                        CONNECTOR_OPC_UA_MODEL_DEFAULT_VALUE)
+                                    .equals(CONNECTOR_OPC_UA_MODEL_CLIENT_SERVER_VALUE),
+                                builder);
+                        nameSpace.startup();
+                        newServer.startup().get();
+                        return new Pair<>(new AtomicInteger(0), nameSpace);
+                      } else {
+                        oldValue
+                            .getRight()
+                            .checkEquals(user, password, securityDir, enableAnonymousAccess);
+                        return oldValue;
+                      }
+                    } catch (final PipeException e) {
+                      throw e;
                     } catch (final Exception e) {
                       throw new PipeException("Failed to build and startup OpcUaServer", e);
                     }

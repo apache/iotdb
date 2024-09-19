@@ -42,6 +42,9 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
   private final AlignedFullPath seriesPath;
   private final QueryContext context;
   private final Filter globalTimeFilter;
+  // for table model, it will be false
+  // for tree model, it will be true
+  private final boolean ignoreAllNullRows;
 
   private static final SeriesScanCostMetricSet SERIES_SCAN_COST_METRIC_SET =
       SeriesScanCostMetricSet.getInstance();
@@ -50,11 +53,13 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       TsFileResource resource,
       AlignedFullPath seriesPath,
       QueryContext context,
-      Filter globalTimeFilter) {
+      Filter globalTimeFilter,
+      boolean ignoreAllNullRows) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
     this.globalTimeFilter = globalTimeFilter;
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override
@@ -70,7 +75,8 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
             if (chunkMetadata.needSetChunkLoader()) {
               chunkMetadata.setVersion(resource.getVersion());
               chunkMetadata.setClosed(resource.isClosed());
-              chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context, resource));
+              chunkMetadata.setChunkLoader(
+                  new DiskAlignedChunkLoader(context, resource, ignoreAllNullRows));
             }
           });
 

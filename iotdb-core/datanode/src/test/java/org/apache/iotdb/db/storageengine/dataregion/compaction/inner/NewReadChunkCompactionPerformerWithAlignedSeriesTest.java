@@ -573,6 +573,38 @@ public class NewReadChunkCompactionPerformerWithAlignedSeriesTest extends Abstra
   }
 
   @Test
+  public void testCompactOnePoint() throws Exception {
+    long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1);
+    try {
+      TsFileResource seqResource1 =
+          generateSingleAlignedSeriesFile(
+              "d0",
+              Arrays.asList("s0", "s1", "s2"),
+              new TimeRange[] {new TimeRange(1, 1)},
+              TSEncoding.PLAIN,
+              CompressionType.LZ4,
+              Arrays.asList(false, false, false),
+              true);
+      seqResources.add(seqResource1);
+
+      CompactionTaskSummary summary = new CompactionTaskSummary();
+      TsFileResource targetResource = performCompaction(summary);
+      Assert.assertEquals(4, summary.getDirectlyFlushChunkNum());
+      Assert.assertEquals(0, summary.getDirectlyFlushPageCount());
+      Assert.assertEquals(0, summary.getRewritePointNum());
+      TsFileResourceUtils.validateTsFileDataCorrectness(targetResource);
+      Assert.assertTrue(
+          CompactionCheckerUtils.compareSourceDataAndTargetData(
+              CompactionCheckerUtils.getAllDataByQuery(seqResources, unseqResources),
+              CompactionCheckerUtils.getAllDataByQuery(
+                  Collections.singletonList(targetResource), Collections.emptyList())));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(targetChunkSize);
+    }
+  }
+
+  @Test
   public void testCompactionWithDifferentCompressionTypeOrEncoding() throws Exception {
     TsFileResource seqResource1 =
         generateSingleAlignedSeriesFile(

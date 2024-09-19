@@ -210,6 +210,10 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     this.deviceID = deviceID;
   }
 
+  public boolean isDeviceIDExists() {
+    return deviceID != null;
+  }
+
   public boolean isGeneratedByRemoteConsensusLeader() {
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:
@@ -332,7 +336,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex;
+    this.progressIndex = progressIndex.deepCopy();
   }
 
   // endregion

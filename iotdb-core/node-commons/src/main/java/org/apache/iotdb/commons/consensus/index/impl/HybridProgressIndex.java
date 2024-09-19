@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -32,6 +33,8 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -47,16 +50,19 @@ public class HybridProgressIndex extends ProgressIndex {
 
   public HybridProgressIndex(ProgressIndex progressIndex) {
     short type = progressIndex.getType().getType();
+    this.type2Index = new HashMap<>();
     if (ProgressIndexType.HYBRID_PROGRESS_INDEX.getType() != type) {
-      this.type2Index = new HashMap<>();
-      type2Index.put(type, progressIndex);
+      this.type2Index.put(type, progressIndex.deepCopy());
     } else {
-      this.type2Index = ((HybridProgressIndex) progressIndex).type2Index;
+      for (Entry<Short, ProgressIndex> entry :
+          ((HybridProgressIndex) progressIndex).type2Index.entrySet()) {
+        this.type2Index.put(entry.getKey(), entry.getValue().deepCopy());
+      }
     }
   }
 
   public Map<Short, ProgressIndex> getType2Index() {
-    return type2Index;
+    return ImmutableMap.copyOf(((HybridProgressIndex) deepCopy()).type2Index);
   }
 
   @Override
@@ -166,7 +172,12 @@ public class HybridProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(type2Index);
+  }
+
+  @Override
+  public ProgressIndex deepCopy() {
+    return new HybridProgressIndex(this);
   }
 
   @Override
@@ -178,7 +189,7 @@ public class HybridProgressIndex extends ProgressIndex {
       }
 
       if (progressIndex instanceof StateProgressIndex) {
-        return progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(this);
+        return progressIndex.deepCopy().updateToMinimumEqualOrIsAfterProgressIndex(this);
       }
 
       if (!(progressIndex instanceof HybridProgressIndex)) {
@@ -186,7 +197,7 @@ public class HybridProgressIndex extends ProgressIndex {
             progressIndex.getType().getType(),
             (thisK, thisV) ->
                 (thisV == null
-                    ? progressIndex
+                    ? progressIndex.deepCopy()
                     : thisV.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex)));
         return this;
       }
@@ -199,7 +210,7 @@ public class HybridProgressIndex extends ProgressIndex {
                   thatK,
                   (thisK, thisV) ->
                       (thisV == null
-                          ? thatV
+                          ? thatV.deepCopy()
                           : thisV.updateToMinimumEqualOrIsAfterProgressIndex(thatV))));
       return this;
     } finally {

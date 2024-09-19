@@ -25,6 +25,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class SymbolAllocator {
@@ -33,6 +34,15 @@ public class SymbolAllocator {
 
   public SymbolAllocator() {
     symbolMap = new HashMap<>();
+  }
+
+  public Symbol newSymbol(Symbol symbolHint) {
+    return newSymbol(symbolHint, null);
+  }
+
+  public Symbol newSymbol(Symbol symbolHint, String suffix) {
+    checkArgument(symbolMap.containsKey(symbolHint), "symbolHint not in symbols map");
+    return newSymbol(symbolHint.getName(), symbolMap.get(symbolHint), suffix);
   }
 
   public Symbol newSymbol(String symbolHint, Type type) {

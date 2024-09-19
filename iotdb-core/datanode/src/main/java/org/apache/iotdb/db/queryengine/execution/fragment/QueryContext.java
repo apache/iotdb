@@ -61,6 +61,10 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
+  // for table model, it will be false
+  // for tree model, it will be true
+  private boolean ignoreAllNullRows = true;
+
   private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
   public QueryContext() {}
@@ -182,5 +186,13 @@ public class QueryContext {
 
   public void setQueryStatistics(QueryStatistics queryStatistics) {
     this.queryStatistics = queryStatistics;
+  }
+
+  public boolean isIgnoreAllNullRows() {
+    return ignoreAllNullRows;
+  }
+
+  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 }

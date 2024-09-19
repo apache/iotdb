@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
@@ -85,13 +87,17 @@ public class DataNodeTableCache implements ITableCache {
   private void saveUpdatedTableInfo(
       final Map<String, List<TsTable>> tableMap,
       final Map<String, Map<String, TsTable>> localTableMap) {
-    for (final Map.Entry<String, List<TsTable>> entry : tableMap.entrySet()) {
-      final Map<String, TsTable> map = new ConcurrentHashMap<>();
-      for (final TsTable table : entry.getValue()) {
-        map.put(table.getTableName(), table);
-      }
-      localTableMap.put(entry.getKey(), map);
-    }
+    tableMap.forEach(
+        (key, value) ->
+            localTableMap.put(
+                key,
+                value.stream()
+                    .collect(
+                        Collectors.toMap(
+                            TsTable::getTableName,
+                            Function.identity(),
+                            (v1, v2) -> v2,
+                            ConcurrentHashMap::new))));
   }
 
   @Override

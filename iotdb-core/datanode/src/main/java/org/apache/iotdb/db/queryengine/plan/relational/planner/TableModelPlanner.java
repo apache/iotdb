@@ -53,6 +53,7 @@ public class TableModelPlanner implements IPlanner {
 
   private final SqlParser sqlParser;
   private final Metadata metadata;
+  private final SymbolAllocator symbolAllocator = new SymbolAllocator();
 
   // TODO access control
   private final AccessControl accessControl = new NopAccessControl();
@@ -107,13 +108,14 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public LogicalQueryPlan doLogicalPlan(IAnalysis analysis, MPPQueryContext context) {
-    return new TableLogicalPlanner(context, metadata, context.getSession(), warningCollector)
+    return new TableLogicalPlanner(
+            context, metadata, context.getSession(), symbolAllocator, warningCollector)
         .plan((Analysis) analysis);
   }
 
   @Override
   public DistributedQueryPlan doDistributionPlan(IAnalysis analysis, LogicalQueryPlan logicalPlan) {
-    return new TableDistributedPlanner((Analysis) analysis, logicalPlan).plan();
+    return new TableDistributedPlanner((Analysis) analysis, symbolAllocator, logicalPlan).plan();
   }
 
   @Override
