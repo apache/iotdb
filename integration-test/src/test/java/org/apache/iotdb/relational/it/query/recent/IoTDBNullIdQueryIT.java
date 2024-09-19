@@ -309,4 +309,55 @@ public class IoTDBNullIdQueryIT {
         retArray,
         DATABASE_NAME);
   }
+
+  @Test
+  public void limitOffsetTest() {
+    String[] expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 OFFSET 2 limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 limit 1 OFFSET 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,d1,null,null,",
+          "1970-01-01T00:00:00.004Z,d1,true,44,",
+          "1970-01-01T00:00:00.005Z,d1,null,null,",
+          "1970-01-01T00:00:00.006Z,d1,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,false,77,"
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 OFFSET 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,false,11,", "1970-01-01T00:00:00.002Z,d1,null,null,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, s2, s3 from table1 limit 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
 }
