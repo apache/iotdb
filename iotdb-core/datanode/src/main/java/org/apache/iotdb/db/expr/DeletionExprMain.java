@@ -175,17 +175,17 @@ public class DeletionExprMain {
   }
 
   public static ExprReport oneExpr(Configurer configurer, int exprNum) {
-    // baseline, each TsFile has one Mod File
-    DeletionExprMain expr = new DeletionExprMain();
 
-    initExpr(expr);
-    configurer.configure(expr, exprNum);
-    expr.config.modFileCntThreshold = Integer.MAX_VALUE;
-    expr.config.modFileSizeThreshold = 0;
-    expr.doExpr(true);
+    DeletionExprMain expr = new DeletionExprMain();
+// baseline, each TsFile has one Mod File
+//    initExpr(expr);
+//    configurer.configure(expr, exprNum);
+//    expr.config.modFileCntThreshold = Integer.MAX_VALUE;
+//    expr.config.modFileSizeThreshold = 0;
+//    expr.doExpr(true);
 
     // use modFileCntThreshold as the x-axis
-    for (int i = 1; i < expr.maxFileCntThreshold; i++) {
+    for (int i = 1; i < maxFileCntThreshold; i++) {
       initExpr(expr);
       configurer.configure(expr, exprNum);
       expr.config.modFileCntThreshold = i;
@@ -281,8 +281,8 @@ public class DeletionExprMain {
     long[] exprArgs = new long[]{
 //        24 * 60 * 60 * 1000 * 1000L,
 //        2 * 24 * 60 * 60 * 1000 * 1000L,
-        3 * 24 * 60 * 60 * 1000 * 1000L,
-//        4 * 24 * 60 * 60 * 1000 * 1000L,
+//        3 * 24 * 60 * 60 * 1000 * 1000L,
+        4 * 24 * 60 * 60 * 1000 * 1000L,
 //        5 * 24 * 60 * 60 * 1000 * 1000L
     };
     Configurer configurer = (expr, j) -> {

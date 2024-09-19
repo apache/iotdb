@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.modification;
+package org.apache.iotdb.db.storageengine.dataregion.modification.v1;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.io.LocalTextModificationAccessor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationReader;
-import org.apache.iotdb.db.storageengine.dataregion.modification.io.ModificationWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.LocalTextModificationAccessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.ModificationReader;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.io.ModificationWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.constant.TsFileConstant;

@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.modification.io;
+package org.apache.iotdb.db.storageengine.dataregion.modification.v1.io;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 
 import java.io.IOException;
 
