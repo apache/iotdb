@@ -250,7 +250,6 @@ public class DataNodeTableCache implements ITableCache {
                     if (Objects.nonNull(existingPair)
                         && Objects.equals(existingPair.getRight(), pair.getRight())) {
                       existingPair.setLeft(null);
-                      existingPair.setRight(pair.getRight() + 1);
                       databaseTableMap
                           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
                           .put(tableName, pair.getLeft());
