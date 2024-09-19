@@ -27,41 +27,32 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ShowTablePlan extends ConfigPhysicalPlan {
 
-  private List<String> databases;
+  private String database;
 
   public ShowTablePlan() {
     super(ConfigPhysicalPlanType.ShowTable);
   }
 
-  public ShowTablePlan(final List<String> databases) {
+  public ShowTablePlan(final String database) {
     super(ConfigPhysicalPlanType.ShowTable);
-    this.databases = databases;
+    this.database = database;
   }
 
-  public List<String> getDatabases() {
-    return databases;
+  public String getDatabase() {
+    return database;
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(databases.size(), stream);
-    for (final String database : databases) {
-      ReadWriteIOUtils.write(database, stream);
-    }
+    ReadWriteIOUtils.write(database, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    final int size = ReadWriteIOUtils.readInt(buffer);
-    databases = new ArrayList<>(size);
-    for (int i = 0; i < size; ++i) {
-      databases.add(ReadWriteIOUtils.readString(buffer));
-    }
+    database = ReadWriteIOUtils.readString(buffer);
   }
 }
