@@ -234,6 +234,7 @@ public class DataNodeTableCache implements ITableCache {
       fetchTableSemaphore.release();
       throw e;
     }
+    fetchTableSemaphore.release();
   }
 
   private void updateTable(final Map<String, Map<String, Pair<TsTable, Long>>> fetchedTables) {
