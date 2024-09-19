@@ -158,7 +158,7 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   /** This method will bind event for deletionResource and persist it. */
-  public void enrichDeletionResourceAndPersist(
+  public DeletionResource enrichDeletionResourceAndPersist(
       PipeDeleteDataNodeEvent originEvent, PipeDeleteDataNodeEvent copiedEvent) {
     int key = Objects.hash(originEvent, dataRegionId);
     DeletionResource deletionResource = eventHash2DeletionResources.get(key);
@@ -168,6 +168,7 @@ public class DeletionResourceManager implements AutoCloseable {
     deletionBuffer.registerDeletionResource(deletionResource);
     // Now, we can safely remove this entry from map. Since this entry will not be used anymore.
     eventHash2DeletionResources.remove(key);
+    return deletionResource;
   }
 
   public List<DeletionResource> getAllDeletionResources() {

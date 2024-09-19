@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -38,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
-import java.util.Optional;
+import java.util.Objects;
 
 public class PipeDataRegionAssigner implements Closeable {
 
@@ -131,13 +133,19 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getRealtimeDataExtractionEndTime());
               // Log deletion event to DAL
               if (copiedEvent.getEvent() instanceof PipeDeleteDataNodeEvent) {
-                Optional.ofNullable(
-                        DeletionResourceManager.getInstance(extractor.getDataRegionId()))
-                    .ifPresent(
-                        mgr ->
-                            mgr.enrichDeletionResourceAndPersist(
-                                (PipeDeleteDataNodeEvent) event.getEvent(),
-                                (PipeDeleteDataNodeEvent) copiedEvent.getEvent()));
+                DeletionResourceManager mgr =
+                    DeletionResourceManager.getInstance(extractor.getDataRegionId());
+                if (Objects.nonNull(mgr)) {
+                  DeletionResource deletionResource =
+                      mgr.enrichDeletionResourceAndPersist(
+                          (PipeDeleteDataNodeEvent) event.getEvent(),
+                          (PipeDeleteDataNodeEvent) copiedEvent.getEvent());
+                  // if persist failed, skip sending this event to keep consistency with the
+                  // behavior of storage engine.
+                  if (deletionResource.waitForResult() == Status.FAILURE) {
+                    return;
+                  }
+                }
               }
 
               final EnrichedEvent innerEvent = copiedEvent.getEvent();

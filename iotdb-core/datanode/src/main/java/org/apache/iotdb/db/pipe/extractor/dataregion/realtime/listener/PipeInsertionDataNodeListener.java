@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALEntryHandler;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -147,12 +148,21 @@ public class PipeInsertionDataNodeListener {
 
   public DeletionResource listenToDeleteData(DeleteDataNode node, String regionId) {
     PipeRealtimeEvent realtimeEvent = PipeRealtimeEventFactory.createRealtimeEvent(node);
-    dataRegionId2Assigner.forEach((key, value) -> value.publishToAssign(realtimeEvent));
-    // log deletion to DAL
+    final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(regionId);
+    // only events from registered data region will be extracted
+    if (assigner == null) {
+      return null;
+    }
+    // register a deletionResource and return it to DataRegion
     DeletionResourceManager mgr = DeletionResourceManager.getInstance(regionId);
-    return mgr == null
-        ? null
-        : mgr.registerDeletionResource((PipeDeleteDataNodeEvent) realtimeEvent.getEvent());
+    DeletionResource deletionResource = null;
+    if (Objects.nonNull(mgr)) {
+      deletionResource =
+          mgr.registerDeletionResource((PipeDeleteDataNodeEvent) realtimeEvent.getEvent());
+    }
+    // register first, then publish.
+    assigner.publishToAssign(realtimeEvent);
+    return deletionResource;
   }
 
   /////////////////////////////// singleton ///////////////////////////////
