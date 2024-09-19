@@ -87,6 +87,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
               @Override
               public void shutdown() {
                 getServer().shutdown();
+                builder.close();
               }
             });
   }

@@ -184,9 +184,9 @@ public class PipeTransferBatchReqBuilder implements AutoCloseable {
         && endPointToBatch.values().stream().allMatch(PipeTabletEventPlainBatch::isEmpty);
   }
 
-  public synchronized void discardEventsOfPipe(final String pipeNameToDrop) {
-    defaultBatch.discardEventsOfPipe(pipeNameToDrop);
-    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop));
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+    defaultBatch.discardEventsOfPipe(pipeNameToDrop, regionId);
+    endPointToBatch.values().forEach(batch -> batch.discardEventsOfPipe(pipeNameToDrop, regionId));
   }
 
   @Override

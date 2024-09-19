@@ -120,6 +120,8 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
+  private volatile boolean hasBeenStarted = false;
+
   private Queue<TsFileResource> pendingQueue;
 
   @Override
@@ -261,7 +263,7 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    startIndex = environment.getPipeTaskMeta().getProgressIndex().deepCopy();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -369,12 +371,18 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized void start() {
-    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-      return;
-    }
     if (!shouldExtractInsertion) {
+      hasBeenStarted = true;
       return;
     }
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      LOGGER.info(
+          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
+          pipeName,
+          dataRegionId);
+      return;
+    }
+    hasBeenStarted = true;
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -536,7 +544,6 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
     return deviceSet.stream()
         .anyMatch(
-            // TODO: use IDeviceID
             deviceID -> pipePattern.mayOverlapWithDevice(((PlainDeviceID) deviceID).toStringID()));
   }
 
@@ -571,6 +578,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
 
   @Override
   public synchronized Event supply() {
+    if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      start();
+    }
+
     if (Objects.isNull(pendingQueue)) {
       return null;
     }
@@ -640,9 +651,10 @@ public class PipeHistoricalDataRegionTsFileExtractor implements PipeHistoricalDa
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return Objects.isNull(pendingQueue)
-        || pendingQueue.isEmpty()
-            && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
+    return hasBeenStarted
+        && (Objects.isNull(pendingQueue)
+            || pendingQueue.isEmpty()
+                && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent));
   }
 
   @Override

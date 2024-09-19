@@ -165,4 +165,18 @@ public class IoTDBLastQueryLastCacheIT {
     testLastQueryOrderByTimeDesc();
     testLastQuery1();
   }
+
+  @Test
+  public void testLastQuerySortWithLimit() {
+    String[] expectedHeader =
+        new String[] {TIMESTAMP_STR, TIMESEIRES_STR, VALUE_STR, DATA_TYPE_STR};
+    String[] retArray =
+        new String[] {
+          "1679477545000,root.ln_1.tb_6141.code_DOUBLE,2.0,DOUBLE,",
+        };
+    resultSetEqualTest(
+        "select last * from root.ln_1.tb_6141 order by time desc, timeseries desc limit 1;",
+        expectedHeader,
+        retArray);
+  }
 }

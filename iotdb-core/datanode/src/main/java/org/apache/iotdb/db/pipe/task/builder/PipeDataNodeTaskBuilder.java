@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.pipe.task.builder;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
@@ -27,12 +29,17 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeType;
 import org.apache.iotdb.db.pipe.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.execution.PipeSubtaskExecutorManager;
+import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
 import org.apache.iotdb.db.pipe.task.PipeDataNodeTask;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskConnectorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskExtractorStage;
 import org.apache.iotdb.db.pipe.task.stage.PipeTaskProcessorStage;
 import org.apache.iotdb.db.subscription.task.stage.SubscriptionTaskConnectorStage;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+
+import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -45,6 +52,8 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_FORMAT_KEY;
 
 public class PipeDataNodeTaskBuilder {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataNodeTaskBuilder.class);
 
   private final PipeStaticMeta pipeStaticMeta;
   private final int regionId;
@@ -77,23 +86,31 @@ public class PipeDataNodeTaskBuilder {
   public PipeDataNodeTask build() {
     // Event flow: extractor -> processor -> connector
 
+    // Analyzes the PipeParameters to identify potential conflicts.
+    final PipeParameters extractorParameters =
+        blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters());
+    final PipeParameters connectorParameters =
+        blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters());
+    checkConflict(extractorParameters, connectorParameters);
+
     // We first build the extractor and connector, then build the processor.
     final PipeTaskExtractorStage extractorStage =
         new PipeTaskExtractorStage(
             pipeStaticMeta.getPipeName(),
             pipeStaticMeta.getCreationTime(),
-            blendUserAndSystemParameters(pipeStaticMeta.getExtractorParameters()),
+            extractorParameters,
             regionId,
             pipeTaskMeta);
 
     final PipeTaskConnectorStage connectorStage;
     final PipeType pipeType = pipeStaticMeta.getPipeType();
+
     if (PipeType.SUBSCRIPTION.equals(pipeType)) {
       connectorStage =
           new SubscriptionTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
-              blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
+              connectorParameters,
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
     } else { // user pipe or consensus pipe
@@ -101,7 +118,7 @@ public class PipeDataNodeTaskBuilder {
           new PipeTaskConnectorStage(
               pipeStaticMeta.getPipeName(),
               pipeStaticMeta.getCreationTime(),
-              blendUserAndSystemParameters(pipeStaticMeta.getConnectorParameters()),
+              connectorParameters,
               regionId,
               CONNECTOR_EXECUTOR_MAP.get(pipeType));
     }
@@ -140,5 +157,39 @@ public class PipeDataNodeTaskBuilder {
     final Map<String, String> blendedParameters = new HashMap<>(userParameters.getAttribute());
     blendedParameters.putAll(systemParameters);
     return new PipeParameters(blendedParameters);
+  }
+
+  private void checkConflict(
+      final PipeParameters extractorParameters, final PipeParameters connectorParameters) {
+
+    try {
+      final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
+          DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(extractorParameters);
+      if (!insertionDeletionListeningOptionPair.right) {
+        return;
+      }
+    } catch (IllegalPathException e) {
+      LOGGER.warn(
+          "PipeDataNodeTaskBuilder failed to parse 'inclusion' and 'exclusion' parameters: {}",
+          e.getMessage(),
+          e);
+      return;
+    }
+
+    final Boolean isRealtime =
+        connectorParameters.getBooleanByKeys(
+            PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY,
+            PipeConnectorConstant.SINK_REALTIME_FIRST_KEY);
+    if (isRealtime == null) {
+      connectorParameters.addAttribute(PipeConnectorConstant.CONNECTOR_REALTIME_FIRST_KEY, "false");
+      LOGGER.info(
+          "PipeDataNodeTaskBuilder: When 'inclusion' contains 'data.delete', 'realtime-first' is defaulted to 'false' to prevent sync issues after deletion.");
+      return;
+    }
+
+    if (isRealtime) {
+      LOGGER.warn(
+          "PipeDataNodeTaskBuilder: When 'inclusion' includes 'data.delete', 'realtime-first' set to 'true' may result in data synchronization issues after deletion.");
+    }
   }
 }

@@ -71,6 +71,10 @@ public class PipeParameters {
     return false;
   }
 
+  public void addAttribute(final String key, String values) {
+    attributes.put(KeyReducer.reduce(key), values);
+  }
+
   public String getString(final String key) {
     final String value = attributes.get(key);
     return value != null ? value : attributes.get(KeyReducer.reduce(key));

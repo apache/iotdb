@@ -407,4 +407,18 @@ public class TsFileManager {
       readUnlock();
     }
   }
+
+  public long getMaxFileTimestampOfUnSequenceFile() {
+    long maxFileTimestamp = -1;
+    resourceListLock.readLock().lock();
+    try {
+      for (TsFileResourceList resourceList : unsequenceFiles.values()) {
+        TsFileResource lastResource = resourceList.get(resourceList.size() - 1);
+        maxFileTimestamp = Math.max(maxFileTimestamp, lastResource.getTimePartition());
+      }
+    } finally {
+      resourceListLock.readLock().unlock();
+    }
+    return maxFileTimestamp;
+  }
 }

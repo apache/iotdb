@@ -70,22 +70,22 @@ public class EnvUtils {
     while (true) {
       int randomPortStart = 1000 + (int) (Math.random() * (1999 - 1000));
       randomPortStart = randomPortStart * (length + 1) + 1;
-      String lockFilePath = getLockFilePath(randomPortStart);
-      File lockFile = new File(lockFilePath);
+      final String lockFilePath = getLockFilePath(randomPortStart);
+      final File lockFile = new File(lockFilePath);
       try {
         // Lock the ports first to avoid to be occupied by other ForkedBooters during ports
         // available detecting
         if (!lockFile.createNewFile()) {
           continue;
         }
-        List<Integer> requiredPorts =
+        final List<Integer> requiredPorts =
             IntStream.rangeClosed(randomPortStart, randomPortStart + length)
                 .boxed()
                 .collect(Collectors.toList());
         if (checkPortsAvailable(requiredPorts)) {
           return requiredPorts.stream().mapToInt(Integer::intValue).toArray();
         }
-      } catch (IOException e) {
+      } catch (final IOException ignore) {
         // ignore
       }
       // Delete the lock file if the ports can't be used or some error happens
@@ -95,39 +95,35 @@ public class EnvUtils {
     }
   }
 
-  private static boolean checkPortsAvailable(List<Integer> ports) {
-    String cmd = getSearchAvailablePortCmd(ports);
+  private static boolean checkPortsAvailable(final List<Integer> ports) {
+    final String cmd = getSearchAvailablePortCmd(ports);
     try {
-      Process proc = Runtime.getRuntime().exec(cmd);
-      return proc.waitFor() == 1;
-    } catch (IOException e) {
+      return Runtime.getRuntime().exec(cmd).waitFor() == 1;
+    } catch (final IOException ignore) {
       // ignore
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
     }
     return false;
   }
 
-  private static String getSearchAvailablePortCmd(List<Integer> ports) {
-    if (SystemUtils.IS_OS_WINDOWS) {
-      return getWindowsSearchPortCmd(ports);
-    }
-    return getUnixSearchPortCmd(ports);
+  private static String getSearchAvailablePortCmd(final List<Integer> ports) {
+    return SystemUtils.IS_OS_WINDOWS ? getWindowsSearchPortCmd(ports) : getUnixSearchPortCmd(ports);
   }
 
-  private static String getWindowsSearchPortCmd(List<Integer> ports) {
-    String cmd = "netstat -aon -p tcp | findStr ";
-    return cmd
+  private static String getWindowsSearchPortCmd(final List<Integer> ports) {
+    return "netstat -aon -p tcp | findStr "
         + ports.stream().map(v -> "/C:'127.0.0.1:" + v + "'").collect(Collectors.joining(" "));
   }
 
-  private static String getUnixSearchPortCmd(List<Integer> ports) {
-    String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E ";
-    return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
+  private static String getUnixSearchPortCmd(final List<Integer> ports) {
+    return "lsof -iTCP -sTCP:LISTEN -P -n | awk '{print $9}' | grep -E "
+        + ports.stream().map(String::valueOf).collect(Collectors.joining("|"))
+        + "\"";
   }
 
-  private static Pair<Integer, Integer> getClusterNodesNum(int index) {
-    String valueStr = System.getProperty(CLUSTER_CONFIGURATIONS);
+  private static Pair<Integer, Integer> getClusterNodesNum(final int index) {
+    final String valueStr = System.getProperty(CLUSTER_CONFIGURATIONS);
     if (valueStr == null) {
       return null;
     }
@@ -154,17 +150,17 @@ public class EnvUtils {
           // Print nothing to avoid polluting test outputs
           return null;
       }
-    } catch (NumberFormatException ignore) {
+    } catch (final NumberFormatException ignore) {
       return null;
     }
   }
 
-  public static String getLockFilePath(int port) {
+  public static String getLockFilePath(final int port) {
     return LOCK_FILE_PATH + port;
   }
 
   public static Pair<Integer, Integer> getNodeNum() {
-    Pair<Integer, Integer> nodesNum = getClusterNodesNum(0);
+    final Pair<Integer, Integer> nodesNum = getClusterNodesNum(0);
     if (nodesNum != null) {
       return nodesNum;
     }
@@ -173,8 +169,8 @@ public class EnvUtils {
         getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, 0));
   }
 
-  public static Pair<Integer, Integer> getNodeNum(int index) {
-    Pair<Integer, Integer> nodesNum = getClusterNodesNum(index);
+  public static Pair<Integer, Integer> getNodeNum(final int index) {
+    final Pair<Integer, Integer> nodesNum = getClusterNodesNum(index);
     if (nodesNum != null) {
       return nodesNum;
     }
@@ -183,38 +179,38 @@ public class EnvUtils {
         getIntFromSysVar(DEFAULT_DATA_NODE_NUM, 3, index));
   }
 
-  public static String getFilePathFromSysVar(String key, int index) {
-    String valueStr = System.getProperty(key);
+  public static String getFilePathFromSysVar(final String key, final int index) {
+    final String valueStr = System.getProperty(key);
     if (valueStr == null) {
       return null;
     }
     return System.getProperty(USER_DIR) + getValueOfIndex(valueStr, index);
   }
 
-  public static int getIntFromSysVar(String key, int defaultValue, int index) {
-    String valueStr = System.getProperty(key);
+  public static int getIntFromSysVar(final String key, final int defaultValue, final int index) {
+    final String valueStr = System.getProperty(key);
     if (valueStr == null) {
       return defaultValue;
     }
 
-    String value = getValueOfIndex(valueStr, index);
+    final String value = getValueOfIndex(valueStr, index);
     try {
       return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
+    } catch (final NumberFormatException e) {
       throw new IllegalArgumentException("Invalid property value: " + value + " of key " + key);
     }
   }
 
-  public static String getValueOfIndex(String valueStr, int index) {
-    String[] values = valueStr.split(DELIMITER);
+  public static String getValueOfIndex(final String valueStr, final int index) {
+    final String[] values = valueStr.split(DELIMITER);
     return index <= values.length - 1 ? values[index] : values[values.length - 1];
   }
 
-  public static String getTimeForLogDirectory(long startTime) {
+  public static String getTimeForLogDirectory(final long startTime) {
     return convertLongToDate(startTime, "ms").replace(":", DIR_TIME_REPLACEMENT);
   }
 
-  public static String fromConsensusFullNameToAbbr(String consensus) {
+  public static String fromConsensusFullNameToAbbr(final String consensus) {
     switch (consensus) {
       case SIMPLE_CONSENSUS:
         return SIMPLE_CONSENSUS_STR;
@@ -233,7 +229,7 @@ public class EnvUtils {
     }
   }
 
-  public static String fromConsensusAbbrToFullName(String consensus) {
+  public static String fromConsensusAbbrToFullName(final String consensus) {
     switch (consensus) {
       case SIMPLE_CONSENSUS_STR:
         return SIMPLE_CONSENSUS;
