@@ -60,16 +60,6 @@ import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -155,7 +145,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -186,7 +175,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
@@ -232,15 +220,6 @@ public class ConfigPhysicalPlanSerDeTest {
     UpdateDataNodePlan plan0 = new UpdateDataNodePlan(dataNodeConfiguration);
     UpdateDataNodePlan plan1 =
         (UpdateDataNodePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
-    Assert.assertEquals(plan0, plan1);
-  }
-
-  @Test
-  public void QueryDataNodeInfoPlanTest() throws IOException {
-    GetDataNodeConfigurationPlan plan0 = new GetDataNodeConfigurationPlan(-1);
-    GetDataNodeConfigurationPlan plan1 =
-        (GetDataNodeConfigurationPlan)
-            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
   }
 
@@ -335,22 +314,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void CountStorageGroupPlanTest() throws IOException {
-    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
-    CountDatabasePlan req1 =
-        (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetStorageGroupPlanTest() throws IOException {
-    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
-    CountDatabasePlan req1 =
-        (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
   public void CreateRegionsPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
@@ -440,35 +403,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetSchemaPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
-
-    GetSchemaPartitionPlan req0 = new GetSchemaPartitionPlan(partitionSlotsMap);
-    GetSchemaPartitionPlan req1 =
-        (GetSchemaPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetOrCreateSchemaPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
-
-    GetOrCreateSchemaPartitionPlan req0 = new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
-    GetOrCreateSchemaPartitionPlan req1 =
-        (GetOrCreateSchemaPartitionPlan)
-            ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
   public void CreateDataPartitionPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
@@ -499,53 +433,6 @@ public class ConfigPhysicalPlanSerDeTest {
     req0.setAssignedDataPartition(assignedDataPartition);
     CreateDataPartitionPlan req1 =
         (CreateDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetDataPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
-
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap
-        .get(storageGroup)
-        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
-    partitionSlotsMap
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .getTimePartitionSlots()
-        .add(timePartitionSlot);
-
-    GetDataPartitionPlan req0 = new GetDataPartitionPlan(partitionSlotsMap);
-    GetDataPartitionPlan req1 =
-        (GetDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetOrCreateDataPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
-
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap
-        .get(storageGroup)
-        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
-    partitionSlotsMap
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .getTimePartitionSlots()
-        .add(timePartitionSlot);
-
-    GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan(partitionSlotsMap);
-    GetOrCreateDataPartitionPlan req1 =
-        (GetOrCreateDataPartitionPlan)
-            ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -964,16 +851,6 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         setSchemaTemplatePlanPlan0.getName().equalsIgnoreCase(setSchemaTemplatePlanPlan1.getName()),
         setSchemaTemplatePlanPlan0.getPath().equals(setSchemaTemplatePlanPlan1.getPath()));
-  }
-
-  @Test
-  public void ShowPathSetTemplatePlanTest() throws IOException {
-    final GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
-        new GetPathsSetTemplatePlan("template_name_test", ALL_MATCH_SCOPE);
-    final GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
-        (GetPathsSetTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
   }
 
   @Test
@@ -1460,26 +1337,6 @@ public class ConfigPhysicalPlanSerDeTest {
         setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
         setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
-  }
-
-  @Test
-  public void GetTriggerTablePlanTest() throws IOException {
-    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan(true);
-    GetTriggerTablePlan getTriggerTablePlan1 =
-        (GetTriggerTablePlan)
-            ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer());
-    Assert.assertEquals(
-        getTriggerTablePlan0.isOnlyStateful(), getTriggerTablePlan1.isOnlyStateful());
-  }
-
-  @Test
-  public void GetTriggerLocationPlanTest() throws IOException {
-    GetTriggerLocationPlan getTriggerLocationPlan0 = new GetTriggerLocationPlan("test1");
-    GetTriggerLocationPlan getTriggerLocationPlan1 =
-        (GetTriggerLocationPlan)
-            ConfigPhysicalPlan.Factory.create(getTriggerLocationPlan0.serializeToByteBuffer());
-    Assert.assertEquals(
-        getTriggerLocationPlan0.getTriggerName(), getTriggerLocationPlan1.getTriggerName());
   }
 
   @Test

@@ -21,9 +21,6 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -177,9 +174,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RemoveDataNode:
           plan = new RemoveDataNodePlan();
           break;
-        case GetDataNodeConfiguration:
-          plan = new GetDataNodeConfigurationPlan();
-          break;
         case CreateDatabase:
           plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase);
           break;
@@ -200,12 +194,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case AdjustMaxRegionGroupNum:
           plan = new AdjustMaxRegionGroupNumPlan();
-          break;
-        case CountDatabase:
-          plan = new CountDatabasePlan();
-          break;
-        case GetDatabase:
-          plan = new GetDatabasePlan();
           break;
         case CreateRegionGroups:
           plan = new CreateRegionGroupsPlan();
