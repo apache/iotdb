@@ -237,8 +237,7 @@ loadTsFileStatement
 showDevicesStatement
     : SHOW DEVICES FROM tableName=qualifiedName
         (WHERE where=booleanExpression)?
-        (OFFSET offset=rowCount (ROW | ROWS)?)?
-        (LIMIT limit=limitRowCount)?
+        limitOffsetClause
     ;
 
 countDevicesStatement
@@ -322,8 +321,7 @@ showQueriesStatement
     : SHOW (QUERIES | QUERY PROCESSLIST)
         (WHERE where=booleanExpression)?
         (ORDER BY sortItem (',' sortItem)*)?
-        (OFFSET offset=rowCount (ROW | ROWS)?)?
-        (LIMIT limit=limitRowCount)?
+        limitOffsetClause
     ;
 
 
@@ -383,9 +381,14 @@ queryNoWith
     : queryTerm
       (ORDER BY sortItem (',' sortItem)*)?
       (FILL '(' (LINEAR | PREVIOUS | literalExpression) (',' duration=timeDuration)? ')')?
-      (OFFSET offset=rowCount)?
-      (LIMIT limit=limitRowCount)?
+      limitOffsetClause
     ;
+
+limitOffsetClause
+    : (OFFSET offset=rowCount)? (LIMIT limit=limitRowCount)?
+    | (LIMIT limit=limitRowCount)? (OFFSET offset=rowCount)?
+    ;
+
 
 limitRowCount
     : ALL
