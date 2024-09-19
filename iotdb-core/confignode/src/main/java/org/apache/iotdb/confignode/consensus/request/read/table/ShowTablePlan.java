@@ -60,7 +60,7 @@ public class ShowTablePlan extends ConfigPhysicalPlan {
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     final int size = ReadWriteIOUtils.readInt(buffer);
     databases = new ArrayList<>(size);
-    for (int i=0; i<size; ++i) {
+    for (int i = 0; i < size; ++i) {
       databases.set(i, ReadWriteIOUtils.readString(buffer));
     }
   }

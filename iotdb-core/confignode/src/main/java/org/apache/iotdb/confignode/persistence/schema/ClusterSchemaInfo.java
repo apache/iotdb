@@ -1080,23 +1080,26 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   public ShowTableResp showTables(final ShowTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return new ShowTableResp(
-          StatusUtils.OK,
-          mTree
-              .getAllUsingTablesUnderSpecificDatabase(
-                  getQualifiedDatabasePartialPath(plan.getDatabase()))
-              .stream()
-              .map(
-                  tsTable ->
-                      new TTableInfo(
-                          tsTable.getTableName(),
-                          tsTable
-                              .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                              .orElse(TTL_INFINITE)))
-              .collect(Collectors.toList()));
+      final Map<String, List<TTableInfo>> result = new HashMap<>();
+      for (final String database : plan.getDatabases()) {
+        result.put(
+            database,
+            mTree
+                .getAllUsingTablesUnderSpecificDatabase(getQualifiedDatabasePartialPath(database))
+                .stream()
+                .map(
+                    tsTable ->
+                        new TTableInfo(
+                            tsTable.getTableName(),
+                            tsTable
+                                .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                                .orElse(TTL_INFINITE)))
+                .collect(Collectors.toList()));
+      }
+      return new ShowTableResp(StatusUtils.OK, result);
     } catch (final MetadataException e) {
       return new ShowTableResp(
-          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyMap());
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

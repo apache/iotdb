@@ -25,17 +25,18 @@ import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import java.util.List;
+import java.util.Map;
 
 public class ShowTableResp implements DataSet {
   private final TSStatus status;
-  private final List<TTableInfo> tableInfoList;
+  private final Map<String, List<TTableInfo>> tableInfoMap;
 
-  public ShowTableResp(final TSStatus status, final List<TTableInfo> tableInfoList) {
+  public ShowTableResp(final TSStatus status, final Map<String, List<TTableInfo>> tableInfoMap) {
     this.status = status;
-    this.tableInfoList = tableInfoList;
+    this.tableInfoMap = tableInfoMap;
   }
 
-  public TShowTableResp convertToTShowTableResp() {
-    return new TShowTableResp(status).setTableInfoList(tableInfoList);
+  public TShowTableResp convertToTShowTableResp(final String database) {
+    return new TShowTableResp(status).setTableInfoList(tableInfoMap.get(database));
   }
 }
