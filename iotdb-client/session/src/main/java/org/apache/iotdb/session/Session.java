@@ -63,6 +63,7 @@ import org.apache.iotdb.session.util.ThreadUtils;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.Binary;
@@ -163,6 +164,9 @@ public class Session implements ISession {
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
+
+  @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
+  protected volatile Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint;
 
   @SuppressWarnings("squid:S3077") // Non-primitive fields should not be "volatile"
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
@@ -535,6 +539,7 @@ public class Session implements ISession {
     isClosed = false;
     if (enableRedirection || enableQueryRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
+      tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
     }
@@ -1321,6 +1326,18 @@ public class Session implements ISession {
     }
   }
 
+  private SessionConnection getSessionConnection(IDeviceID deviceId) {
+    TEndPoint endPoint;
+    if (enableRedirection
+        && tableModelDeviceIdToEndpoint != null
+        && (endPoint = tableModelDeviceIdToEndpoint.get(deviceId)) != null
+        && endPointToSessionConnection.containsKey(endPoint)) {
+      return endPointToSessionConnection.get(endPoint);
+    } else {
+      return defaultSessionConnection;
+    }
+  }
+
   @Override
   public String getTimestampPrecision() throws TException {
     return defaultSessionConnection.getClient().getProperties().getTimestampPrecision();
@@ -1380,6 +1397,34 @@ public class Session implements ISession {
               });
       if (connection == null) {
         deviceIdToEndpoint.remove(deviceId);
+      }
+    }
+  }
+
+  private void handleRedirection(IDeviceID deviceId, TEndPoint endpoint) {
+    if (enableRedirection) {
+      // no need to redirection
+      if (endpoint.ip.equals("0.0.0.0")) {
+        return;
+      }
+      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
+      if (!tableModelDeviceIdToEndpoint.containsKey(deviceId)
+          || !tableModelDeviceIdToEndpoint.get(deviceId).equals(endpoint)) {
+        tableModelDeviceIdToEndpoint.put(deviceId, endpoint);
+      }
+      SessionConnection connection =
+          endPointToSessionConnection.computeIfAbsent(
+              endpoint,
+              k -> {
+                try {
+                  return constructSessionConnection(this, endpoint, zoneId);
+                } catch (IoTDBConnectionException ex) {
+                  exceptionReference.set(ex);
+                  return null;
+                }
+              });
+      if (connection == null) {
+        tableModelDeviceIdToEndpoint.remove(deviceId);
       }
     }
   }
@@ -2679,11 +2724,20 @@ public class Session implements ISession {
   @Override
   public void insertRelationalTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
-    request.setWriteToTable(true);
-    request.setColumnCategories(
-        tablet.getColumnTypes().stream().map(t -> (byte) t.ordinal()).collect(Collectors.toList()));
-    insertTabletInternal(tablet, request);
+    if (enableRedirection) {
+      insertRelationalTabletWithLeaderCache(tablet);
+    } else {
+      TSInsertTabletReq request = genTSInsertTabletReq(tablet, sorted, false);
+      request.setWriteToTable(true);
+      request.setColumnCategories(
+          tablet.getColumnTypes().stream()
+              .map(t -> (byte) t.ordinal())
+              .collect(Collectors.toList()));
+      try {
+        defaultSessionConnection.insertTablet(request);
+      } catch (RedirectException ignored) {
+      }
+    }
   }
 
   /**
@@ -2695,6 +2749,106 @@ public class Session implements ISession {
   public void insertRelationalTablet(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     insertRelationalTablet(tablet, false);
+  }
+
+  private void insertRelationalTabletWithLeaderCache(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
+
+    for (int i = 0; i < tablet.rowSize; i++) {
+      IDeviceID iDeviceID = tablet.getDeviceID(i);
+      final SessionConnection connection = getSessionConnection(iDeviceID);
+      int finalI = i;
+      relationalTabletGroup.compute(
+          connection,
+          (k, v) -> {
+            if (v == null) {
+              v =
+                  new Tablet(
+                      tablet.getTableName(),
+                      tablet.getSchemas(),
+                      tablet.getColumnTypes(),
+                      tablet.rowSize);
+            }
+            for (int j = 0; j < v.getSchemas().size(); j++) {
+              v.addValue(
+                  v.getSchemas().get(j).getMeasurementId(), finalI, tablet.getValue(finalI, j));
+            }
+            v.addTimestamp(finalI, tablet.timestamps[finalI]);
+            v.rowSize++;
+            return v;
+          });
+    }
+    insertRelationalTabletByGroup(relationalTabletGroup);
+  }
+
+  @SuppressWarnings({
+    "squid:S3776"
+  }) // ignore Cognitive Complexity of methods should not be too high
+  private <T> void insertRelationalTabletByGroup(
+      Map<SessionConnection, Tablet> relationalTabletGroup)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<CompletableFuture<Void>> completableFutures =
+        relationalTabletGroup.entrySet().stream()
+            .map(
+                entry -> {
+                  SessionConnection connection = entry.getKey();
+                  Tablet subTablet = entry.getValue();
+                  return CompletableFuture.runAsync(
+                      () -> {
+                        TSInsertTabletReq request = genTSInsertTabletReq(subTablet, false, false);
+                        request.setWriteToTable(true);
+                        request.setColumnCategories(
+                            subTablet.getColumnTypes().stream()
+                                .map(t -> (byte) t.ordinal())
+                                .collect(Collectors.toList()));
+                        InsertConsumer<TSInsertTabletReq> insertConsumer =
+                            SessionConnection::insertTablet;
+                        try {
+                          insertConsumer.insert(connection, request);
+                        } catch (RedirectException e) {
+                          List<TEndPoint> endPointList = e.getDeviceEndPointList();
+                          Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
+                          for (int i = 0; i < endPointList.size(); i++) {
+                            if (endPointList.get(i) != null) {
+                              endPointMap.put(subTablet.getDeviceID(i), endPointList.get(i));
+                            }
+                          }
+                          endPointMap.forEach(this::handleRedirection);
+                        } catch (StatementExecutionException e) {
+                          throw new CompletionException(e);
+                        } catch (IoTDBConnectionException e) {
+                          // remove the broken session
+                          removeBrokenSessionConnection(connection);
+                          try {
+                            insertConsumer.insert(defaultSessionConnection, request);
+                          } catch (IoTDBConnectionException | StatementExecutionException ex) {
+                            throw new CompletionException(ex);
+                          } catch (RedirectException ignored) {
+                          }
+                        }
+                      },
+                      OPERATION_EXECUTOR);
+                })
+            .collect(Collectors.toList());
+
+    StringBuilder errMsgBuilder = new StringBuilder();
+    for (CompletableFuture<Void> completableFuture : completableFutures) {
+      try {
+        completableFuture.join();
+      } catch (CompletionException completionException) {
+        Throwable cause = completionException.getCause();
+        logger.error("Meet error when async insert!", cause);
+        if (cause instanceof IoTDBConnectionException) {
+          throw (IoTDBConnectionException) cause;
+        } else {
+          errMsgBuilder.append(cause.getMessage());
+        }
+      }
+    }
+    if (errMsgBuilder.length() > 0) {
+      throw new StatementExecutionException(errMsgBuilder.toString());
+    }
   }
 
   /**

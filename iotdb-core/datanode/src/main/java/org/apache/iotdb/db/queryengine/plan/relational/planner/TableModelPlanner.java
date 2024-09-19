@@ -157,8 +157,9 @@ public class TableModelPlanner implements IPlanner {
   public void setRedirectInfo(
       IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
     Analysis analysis = (Analysis) iAnalysis;
-
-    assert analysis.getStatement() instanceof WrappedInsertStatement;
+    if (!(analysis.getStatement() instanceof WrappedInsertStatement)) {
+      return;
+    }
     InsertBaseStatement insertStatement =
         ((WrappedInsertStatement) analysis.getStatement()).getInnerTreeStatement();
 

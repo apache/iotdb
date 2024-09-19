@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -111,6 +112,17 @@ public class RpcUtils {
     verifySuccess(status);
     if (status.isSetRedirectNode()) {
       throw new RedirectException(status.getRedirectNode());
+    }
+    if (status.isSetSubStatus()) { // insertRelationalTablet may set subStatus
+      List<TSStatus> statusSubStatus = status.getSubStatus();
+      List<TEndPoint> deviceEndPointList = new ArrayList<>(statusSubStatus.size());
+      for (int i = 0; i < statusSubStatus.size(); i++) {
+        TSStatus subStatus = statusSubStatus.get(i);
+        if (subStatus.isSetRedirectNode()) {
+          deviceEndPointList.set(i, subStatus.getRedirectNode());
+        }
+      }
+      throw new RedirectException(deviceEndPointList);
     }
   }
 
