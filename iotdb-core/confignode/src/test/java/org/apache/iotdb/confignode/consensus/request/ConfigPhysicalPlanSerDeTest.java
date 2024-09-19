@@ -119,7 +119,6 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
@@ -1061,20 +1060,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(operateMultiplePipesPlanV2.serializeToByteBuffer());
     Assert.assertEquals(
         operateMultiplePipesPlanV2.getSubPlans(), operateMultiplePipesPlanV21.getSubPlans());
-  }
-
-  @Test
-  public void ShowPipePlanV1Test() throws IOException {
-    final ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
-    final ShowPipePlanV1 showPipePlan1 =
-        (ShowPipePlanV1) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
-    Assert.assertEquals(showPipePlan.getPipeName(), showPipePlan1.getPipeName());
-    final ShowPipePlanV1 showPipePlanWithNullName = new ShowPipePlanV1();
-    final ShowPipePlanV1 showPipePlanWithNullName1 =
-        (ShowPipePlanV1)
-            ConfigPhysicalPlan.Factory.create(showPipePlanWithNullName.serializeToByteBuffer());
-    Assert.assertEquals(
-        showPipePlanWithNullName.getPipeName(), showPipePlanWithNullName1.getPipeName());
   }
 
   @Test

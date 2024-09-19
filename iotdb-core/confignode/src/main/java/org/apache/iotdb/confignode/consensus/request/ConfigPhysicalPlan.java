@@ -86,7 +86,6 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
@@ -109,8 +108,6 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 
 import org.apache.tsfile.utils.PublicBAOS;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -119,11 +116,9 @@ import java.util.Objects;
 
 public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigPhysicalPlan.class);
-
   private final ConfigPhysicalPlanType type;
 
-  protected ConfigPhysicalPlan(ConfigPhysicalPlanType type) {
+  protected ConfigPhysicalPlan(final ConfigPhysicalPlanType type) {
     this.type = type;
   }
 
@@ -133,37 +128,37 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       serializeImpl(outputStream);
       return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new SerializationRunTimeException(e);
     }
   }
 
-  protected abstract void serializeImpl(DataOutputStream stream) throws IOException;
+  protected abstract void serializeImpl(final DataOutputStream stream) throws IOException;
 
-  protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
+  protected abstract void deserializeImpl(final ByteBuffer buffer) throws IOException;
 
   public int getSerializedSize() throws IOException {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS();
-    DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
+    final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+    final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
     serializeImpl(outputStream);
     return byteArrayOutputStream.size();
   }
 
   public static class Factory {
 
-    public static ConfigPhysicalPlan create(ByteBuffer buffer) throws IOException {
-      short planType = buffer.getShort();
-      ConfigPhysicalPlanType configPhysicalPlanType =
+    public static ConfigPhysicalPlan create(final ByteBuffer buffer) throws IOException {
+      final short planType = buffer.getShort();
+      final ConfigPhysicalPlanType configPhysicalPlanType =
           ConfigPhysicalPlanType.convertToConfigPhysicalPlanType(planType);
       if (configPhysicalPlanType == null) {
         throw new IOException("Unrecognized log configPhysicalPlanType: " + planType);
       }
 
-      ConfigPhysicalPlan plan;
+      final ConfigPhysicalPlan plan;
       switch (configPhysicalPlanType) {
         case RegisterDataNode:
           plan = new RegisterDataNodePlan();
@@ -357,9 +352,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DropPipeV1:
           plan = new DropPipePlanV1();
-          break;
-        case ShowPipeV1:
-          plan = new ShowPipePlanV1();
           break;
         case RecordPipeMessageV1:
           plan = new RecordPipeMessagePlan();
