@@ -205,8 +205,7 @@ public class DataNodeTableCache implements ITableCache {
     try {
       return preUpdateTableMap.containsKey(database)
               && preUpdateTableMap.get(database).containsKey(tableName)
-          ? null
-          : preUpdateTableMap.entrySet().stream()
+          ? preUpdateTableMap.entrySet().stream()
               .collect(
                   Collectors.toMap(
                       Map.Entry::getKey,
@@ -216,7 +215,8 @@ public class DataNodeTableCache implements ITableCache {
                                   Collectors.toMap(
                                       Map.Entry::getKey,
                                       innerEntry ->
-                                          new Pair<>(null, innerEntry.getValue().getRight())))));
+                                          new Pair<>(null, innerEntry.getValue().getRight())))))
+          : null;
     } finally {
       readWriteLock.readLock().unlock();
     }
