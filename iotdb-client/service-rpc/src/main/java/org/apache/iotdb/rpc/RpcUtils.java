@@ -116,13 +116,12 @@ public class RpcUtils {
     if (status.isSetSubStatus()) { // insertRelationalTablet may set subStatus
       List<TSStatus> statusSubStatus = status.getSubStatus();
       List<TEndPoint> deviceEndPointList = new ArrayList<>(statusSubStatus.size());
-      for (int i = 0; i < statusSubStatus.size(); i++) {
-        TSStatus subStatus = statusSubStatus.get(i);
-        if (subStatus.isSetRedirectNode()) {
-          deviceEndPointList.set(i, subStatus.getRedirectNode());
-        }
+      for (TSStatus subStatus : statusSubStatus) {
+        deviceEndPointList.add(subStatus.isSetRedirectNode() ? subStatus.getRedirectNode() : null);
       }
-      throw new RedirectException(deviceEndPointList);
+      if (!deviceEndPointList.isEmpty()) {
+        throw new RedirectException(deviceEndPointList);
+      }
     }
   }
 
