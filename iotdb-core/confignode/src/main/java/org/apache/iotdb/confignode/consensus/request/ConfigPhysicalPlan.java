@@ -34,10 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateS
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -381,9 +377,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case GetNodePathsPartition:
           plan = new GetNodePathsPartitionPlan();
           break;
-        case GetRegionInfoList:
-          plan = new GetRegionInfoListPlan();
-          break;
         case CreatePipeSinkV1:
           plan = new CreatePipeSinkPlanV1();
           break;
@@ -419,9 +412,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case AlterPipeV2:
           plan = new AlterPipePlanV2();
-          break;
-        case ShowPipeV2:
-          plan = new ShowPipePlanV2();
           break;
         case OperateMultiplePipesV2:
           plan = new OperateMultiplePipesPlanV2();
@@ -515,12 +505,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case DropPipePlugin:
           plan = new DropPipePluginPlan();
-          break;
-        case GetPipePluginTable:
-          plan = new GetPipePluginTablePlan();
-          break;
-        case GetPipePluginJar:
-          plan = new GetPipePluginJarPlan();
           break;
         case setSpaceQuota:
           plan = new SetSpaceQuotaPlan();

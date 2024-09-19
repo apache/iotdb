@@ -74,10 +74,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPar
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
@@ -167,7 +164,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -934,24 +930,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetRegionLocationsPlanTest() throws IOException {
-    final GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
-    final TShowRegionReq showRegionReq = new TShowRegionReq();
-    req0.setShowRegionReq(showRegionReq);
-    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
-    final GetRegionInfoListPlan req1 =
-        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
-    final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
-    showRegionReq.setDatabases(new ArrayList<>(sgList));
-    final GetRegionInfoListPlan req2 =
-        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getShowRegionReq(), req2.getShowRegionReq());
-  }
-
-  @Test
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
     final Template template = newSchemaTemplate("template_name");
     final CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
@@ -1705,23 +1683,6 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetPipePluginJarPlan)
             ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
     Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
-  }
-
-  @Test
-  public void GetPipePluginTablePlanTest() throws IOException {
-    final GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
-    final GetPipePluginTablePlan getPipePluginTablePlan1 =
-        (GetPipePluginTablePlan)
-            ConfigPhysicalPlan.Factory.create(getPipePluginTablePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getPipePluginTablePlan0, getPipePluginTablePlan1);
-  }
-
-  @Test
-  public void ShowPipePlanV2Test() throws IOException {
-    final ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
-    final ShowPipePlanV2 showPipePlanV21 =
-        (ShowPipePlanV2) ConfigPhysicalPlan.Factory.create(showPipePlanV2.serializeToByteBuffer());
-    Assert.assertEquals(showPipePlanV2, showPipePlanV21);
   }
 
   @Test
