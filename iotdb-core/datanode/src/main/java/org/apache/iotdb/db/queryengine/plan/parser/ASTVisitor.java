@@ -2006,6 +2006,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
     try {
+      final LoadTsFileStatement loadTsFileStatement =
+          new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
+
       // if sql have with, return new load sql statement
       if (ctx.loadFileWithAttributeClauses() != null) {
         final Map<String, String> loadTsFileAttributes = new HashMap<>();
@@ -2020,12 +2023,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           loadTsFileAttributes.put(key, value);
         }
 
-        return new LoadTsFileStatement(
-            loadTsFileAttributes, parseStringLiteral(ctx.fileName.getText()));
+        loadTsFileStatement.setLoadAttributes(loadTsFileAttributes);
+        return loadTsFileStatement;
       }
 
-      LoadTsFileStatement loadTsFileStatement =
-          new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
       if (ctx.loadFileAttributeClauses() != null) {
         for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
             ctx.loadFileAttributeClauses().loadFileAttributeClause()) {

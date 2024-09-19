@@ -47,6 +47,8 @@ public class LoadTsFileStatement extends Statement {
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
 
+  private Map<String, String> loadAttributes;
+
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
   private final List<Long> writePointCountList;
@@ -56,22 +58,6 @@ public class LoadTsFileStatement extends Statement {
     this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
-    this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
-    this.tsFiles = new ArrayList<>();
-    this.resources = new ArrayList<>();
-    this.writePointCountList = new ArrayList<>();
-    this.statementType = StatementType.MULTI_BATCH_INSERT;
-
-    processTsFile(filePath);
-  }
-
-  public LoadTsFileStatement(final Map<String, String> loadAttributes, final String filePath)
-      throws FileNotFoundException {
-
-    this.file = new File(filePath);
-    this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
-    this.verifySchema = true;
-    this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
     this.autoCreateDatabase = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     this.tsFiles = new ArrayList<>();
     this.resources = new ArrayList<>();
@@ -185,6 +171,16 @@ public class LoadTsFileStatement extends Statement {
 
   public long getWritePointCount(int resourceIndex) {
     return writePointCountList.get(resourceIndex);
+  }
+
+  public void setLoadAttributes(final Map<String, String> loadAttributes) {
+    this.loadAttributes = loadAttributes;
+    initAttributes();
+  }
+
+  private void initAttributes() {
+    this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
+    this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
   }
 
   @Override
