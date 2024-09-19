@@ -46,12 +46,7 @@ import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplate
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -348,23 +343,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case UpdateTriggerStateInTable:
           plan = new UpdateTriggerStateInTablePlan();
           break;
-        case GetTriggerTable:
-          plan = new GetTriggerTablePlan();
-          break;
-        case GetTriggerLocation:
-          plan = new GetTriggerLocationPlan();
-          break;
-        case GetTriggerJar:
-          plan = new GetTriggerJarPlan();
-          break;
         case CreateSchemaTemplate:
           plan = new CreateSchemaTemplatePlan();
           break;
         case GetAllSchemaTemplate:
           plan = new GetAllSchemaTemplatePlan();
-          break;
-        case GetSchemaTemplate:
-          plan = new GetSchemaTemplatePlan();
           break;
         case CheckTemplateSettable:
           plan = new CheckTemplateSettablePlan();
@@ -533,9 +516,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UpdateTriggerLocation:
           plan = new UpdateTriggerLocationPlan();
-          break;
-        case GetTransferringTriggers:
-          plan = new GetTransferringTriggersPlan();
           break;
         case ACTIVE_CQ:
           plan = new ActiveCQPlan();

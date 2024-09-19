@@ -83,7 +83,6 @@ import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaT
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
@@ -1848,14 +1847,6 @@ public class ConfigPhysicalPlanSerDeTest {
 
     Assert.assertEquals(plan0.getTriggerName(), plan1.getTriggerName());
     Assert.assertEquals(plan0.getDataNodeLocation(), plan1.getDataNodeLocation());
-  }
-
-  @Test
-  public void GetTransferringTriggersPlanTest() throws IOException {
-    GetTransferringTriggersPlan getTransferringTriggerPlan0 = new GetTransferringTriggersPlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getTransferringTriggerPlan0.serializeToByteBuffer())
-            instanceof GetTransferringTriggersPlan);
   }
 
   @Test

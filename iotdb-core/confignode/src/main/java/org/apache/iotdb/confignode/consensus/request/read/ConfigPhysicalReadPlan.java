@@ -17,26 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.ttl;
+package org.apache.iotdb.confignode.consensus.request.read;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
-import org.apache.iotdb.db.utils.constant.SqlConstant;
 
-public class ShowTTLPlan extends ConfigPhysicalReadPlan {
-  private final String[] pathPattern;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  public String[] getPathPattern() {
-    return pathPattern;
+public abstract class ConfigPhysicalReadPlan extends ConfigPhysicalPlan {
+
+  protected ConfigPhysicalReadPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
-  public ShowTTLPlan() {
-    super(ConfigPhysicalPlanType.ShowTTL);
-    this.pathPattern = SqlConstant.getSingleRootArray();
+  @Override
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException("Read request does not need to be serialized.");
   }
 
-  public ShowTTLPlan(final String[] pathPattern) {
-    super(ConfigPhysicalPlanType.ShowTTL);
-    this.pathPattern = pathPattern;
+  @Override
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    throw new UnsupportedOperationException("Read request does not need to be deserialized.");
   }
 }

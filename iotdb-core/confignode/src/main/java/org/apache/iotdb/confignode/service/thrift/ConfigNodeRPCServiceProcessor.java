@@ -595,7 +595,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return showTTLResp.convertToRPCTShowTTLResp();
   }
 
-  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
+  public TSStatus callSpecialProcedure(TTestOperation operation) {
     switch (operation) {
       case TEST_PROCEDURE_RECOVER:
         return configManager.getProcedureManager().createManyDatabases();
