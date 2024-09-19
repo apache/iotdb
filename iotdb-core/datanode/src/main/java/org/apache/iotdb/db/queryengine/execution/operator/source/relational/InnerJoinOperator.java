@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.TimeComparator;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
@@ -33,6 +34,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -44,22 +46,27 @@ public class InnerJoinOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
 
   private final Operator leftChild;
-  private TsBlock leftTsBlock;
+  private TsBlock leftBlock;
   private int leftIndex; // start index of leftTsBlock
   private final int leftTimeColumnPosition;
   private final int[] leftOutputSymbolIdx;
 
   private final Operator rightChild;
-  private TsBlock rightTsBlock;
+  private final List<TsBlock> rightBlockList = new ArrayList<>();
+  private int rightBlockListIdx;
   private int rightIndex; // start index of rightTsBlock
   private final int rightTimeColumnPosition;
   private final int[] rightOutputSymbolIdx;
+  private TsBlock cachedNextRightBlock;
+  private boolean hasCachedNextRightBlock;
 
   private final TimeComparator comparator;
   private final TsBlockBuilder resultBuilder;
 
   private final long maxReturnSize =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+  protected MemoryReservationManager memoryReservationManager;
 
   public InnerJoinOperator(
       OperatorContext operatorContext,
@@ -81,6 +88,12 @@ public class InnerJoinOperator implements ProcessOperator {
 
     this.comparator = timeComparator;
     this.resultBuilder = new TsBlockBuilder(dataTypes);
+
+    this.memoryReservationManager =
+        operatorContext
+            .getDriverContext()
+            .getFragmentInstanceContext()
+            .getMemoryReservationContext();
   }
 
   @Override
@@ -98,45 +111,59 @@ public class InnerJoinOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() throws Exception {
-    return (tsBlockIsNotEmpty(leftTsBlock, leftIndex) || leftChild.hasNextWithTimer())
-        && (tsBlockIsNotEmpty(rightTsBlock, rightIndex) || rightChild.hasNextWithTimer());
+    return (leftBlockNotEmpty() || leftChild.hasNextWithTimer())
+        && (rightBlockNotEmpty() || rightChild.hasNextWithTimer());
   }
 
   @Override
   public TsBlock next() throws Exception {
-    // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
+    // prepare leftBlock and rightBlockList with cachedNextRightBlock
     if (!prepareInput(start, maxRuntime)) {
       return null;
     }
 
-    // all the rightTsBlock is less than leftTsBlock, just skip it
-    if (comparator.largerThan(getCurrentLeftTime(), getRightEndTime())) {
-      // clean rightTsBlock
-      rightTsBlock = null;
+    // all the rightTsBlock is less than leftTsBlock, just skip right
+    if (comparator.lessThan(getRightEndTime(), getCurrentLeftTime())) {
+      for (int i = 1; i < rightBlockList.size(); i++) {
+        memoryReservationManager.releaseMemoryCumulatively(
+            rightBlockList.get(i).getRetainedSizeInBytes());
+      }
+      rightBlockList.clear();
+      rightBlockListIdx = 0;
       rightIndex = 0;
       return null;
     }
 
-    // all the leftTsBlock is less than rightTsBlock, just skip it
-    else if (comparator.largerThan(getCurrentRightTime(), getLeftEndTime())) {
-      // clean rightTsBlock
-      leftTsBlock = null;
+    // all the leftTsBlock is less than rightTsBlock, just skip left
+    else if (comparator.lessThan(getLeftEndTime(), getCurrentRightTime())) {
+      leftBlock = null;
       leftIndex = 0;
       return null;
     }
 
     long leftProbeTime = getCurrentLeftTime();
-    long currentEndTime = comparator.getCurrentEndTime(getLeftEndTime(), getRightEndTime());
-    while (!resultBuilder.isFull()
-        && comparator.canContinueInclusive(leftProbeTime, currentEndTime)) {
-      appendTableRows(leftProbeTime);
+    while (!resultBuilder.isFull()) {
+
+      // all right block time is not matched
+      if (!comparator.canContinueInclusive(leftProbeTime, getRightEndTime())) {
+        for (int i = 1; i < rightBlockList.size(); i++) {
+          memoryReservationManager.releaseMemoryCumulatively(
+              rightBlockList.get(i).getRetainedSizeInBytes());
+        }
+        rightBlockList.clear();
+        rightBlockListIdx = 0;
+        rightIndex = 0;
+        break;
+      }
+
+      appendResult(leftProbeTime);
+
       leftIndex++;
 
-      // all left tsblock has been consumed
-      if (leftIndex >= leftTsBlock.getPositionCount()) {
-        leftTsBlock = null;
+      if (leftIndex >= leftBlock.getPositionCount()) {
+        leftBlock = null;
         leftIndex = 0;
         break;
       }
@@ -144,18 +171,18 @@ public class InnerJoinOperator implements ProcessOperator {
       leftProbeTime = getCurrentLeftTime();
     }
 
-    // TODO if will return empty tsblock?
+    if (resultBuilder.isEmpty()) {
+      return null;
+    }
 
     Column[] valueColumns = new Column[resultBuilder.getValueColumnBuilders().length];
-
-    int declaredPositions = resultBuilder.getPositionCount();
     for (int i = 0; i < valueColumns.length; ++i) {
       valueColumns[i] = resultBuilder.getValueColumnBuilders()[i].build();
-      if (valueColumns[i].getPositionCount() != declaredPositions) {
+      if (valueColumns[i].getPositionCount() != resultBuilder.getPositionCount()) {
         throw new IllegalStateException(
             String.format(
                 "Declared positions (%s) does not match column %s's number of entries (%s)",
-                declaredPositions, i, valueColumns[i].getPositionCount()));
+                resultBuilder.getPositionCount(), i, valueColumns[i].getPositionCount()));
       }
     }
 
@@ -168,68 +195,159 @@ public class InnerJoinOperator implements ProcessOperator {
     return result;
   }
 
+  private boolean prepareInput(long start, long maxRuntime) throws Exception {
+    if ((leftBlock == null || leftBlock.getPositionCount() == leftIndex)
+        && leftChild.hasNextWithTimer()) {
+      leftBlock = leftChild.nextWithTimer();
+      leftIndex = 0;
+    }
+
+    if (rightBlockList.isEmpty()) {
+      if (hasCachedNextRightBlock && cachedNextRightBlock != null) {
+        rightBlockList.add(cachedNextRightBlock);
+        hasCachedNextRightBlock = false;
+        cachedNextRightBlock = null;
+        tryCachedNextRightTsBlock();
+      } else if (rightChild.hasNextWithTimer()) {
+        TsBlock block = rightChild.nextWithTimer();
+        if (block != null) {
+          rightBlockList.add(block);
+          tryCachedNextRightTsBlock();
+        }
+      } else {
+        hasCachedNextRightBlock = true;
+        cachedNextRightBlock = null;
+      }
+    } else {
+      if (!hasCachedNextRightBlock) {
+        tryCachedNextRightTsBlock();
+      }
+    }
+
+    return leftBlockNotEmpty() && rightBlockNotEmpty() && hasCachedNextRightBlock;
+  }
+
+  private void tryCachedNextRightTsBlock() throws Exception {
+    if (rightChild.hasNextWithTimer()) {
+      TsBlock block = rightChild.nextWithTimer();
+      if (block != null) {
+        if (block.getColumn(rightTimeColumnPosition).getLong(0) == getRightEndTime()) {
+          memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
+          rightBlockList.add(block);
+        } else {
+          hasCachedNextRightBlock = true;
+          cachedNextRightBlock = block;
+        }
+      }
+    } else {
+      hasCachedNextRightBlock = true;
+      cachedNextRightBlock = null;
+    }
+  }
+
   private long getCurrentLeftTime() {
-    return leftTsBlock.getColumn(leftTimeColumnPosition).getLong(leftIndex);
-  }
-
-  private long getCurrentRightTime() {
-    return rightTsBlock.getColumn(rightTimeColumnPosition).getLong(rightIndex);
-  }
-
-  private long getRightTime(int idx) {
-    return rightTsBlock.getColumn(rightTimeColumnPosition).getLong(idx);
+    return leftBlock.getColumn(leftTimeColumnPosition).getLong(leftIndex);
   }
 
   private long getLeftEndTime() {
-    return leftTsBlock
-        .getColumn(leftTimeColumnPosition)
-        .getLong(leftTsBlock.getPositionCount() - 1);
+    return leftBlock.getColumn(leftTimeColumnPosition).getLong(leftBlock.getPositionCount() - 1);
+  }
+
+  private long getCurrentRightTime() {
+    return rightBlockList
+        .get(rightBlockListIdx)
+        .getColumn(rightTimeColumnPosition)
+        .getLong(rightIndex);
+  }
+
+  private long getRightTime(int idx1, int idx2) {
+    return rightBlockList.get(idx1).getColumn(rightTimeColumnPosition).getLong(idx2);
   }
 
   private long getRightEndTime() {
-    return rightTsBlock
+    TsBlock lastRightTsBlock = rightBlockList.get(rightBlockList.size() - 1);
+    return lastRightTsBlock
         .getColumn(rightTimeColumnPosition)
-        .getLong(rightTsBlock.getPositionCount() - 1);
+        .getLong(lastRightTsBlock.getPositionCount() - 1);
   }
 
-  private void appendTableRows(long leftTime) {
-    while (rightIndex < rightTsBlock.getPositionCount()
-        && comparator.lessThan(getCurrentRightTime(), leftTime)) {
+  private void appendResult(long leftTime) {
+
+    while (comparator.lessThan(getCurrentRightTime(), leftTime)) {
       rightIndex++;
-    }
 
-    if (rightIndex >= rightTsBlock.getPositionCount()) {
-      rightTsBlock = null;
-      rightIndex = 0;
-      return;
-    }
-
-    int idx = rightIndex;
-    while (idx < rightTsBlock.getPositionCount() && leftTime == getRightTime(idx)) {
-
-      for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
-        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
-        if (leftTsBlock.getColumn(leftOutputSymbolIdx[i]).isNull(leftIndex)) {
-          columnBuilder.appendNull();
-        } else {
-          columnBuilder.write(leftTsBlock.getColumn(leftOutputSymbolIdx[i]), leftIndex);
-        }
+      if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
+        rightBlockListIdx++;
+        rightIndex = 0;
       }
 
-      for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-        ColumnBuilder columnBuilder =
-            resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
-
-        if (rightTsBlock.getColumn(rightOutputSymbolIdx[i]).isNull(idx)) {
-          columnBuilder.appendNull();
-        } else {
-          columnBuilder.write(rightTsBlock.getColumn(rightOutputSymbolIdx[i]), idx);
-        }
+      if (rightBlockListIdx >= rightBlockList.size()) {
+        rightBlockListIdx = 0;
+        rightIndex = 0;
+        return;
       }
+    }
+
+    int tmpRightBlockListIdx = rightBlockListIdx, tmpRightIndex = rightIndex;
+    while (leftTime == getRightTime(tmpRightBlockListIdx, tmpRightIndex)) {
+      appendValueToResult(tmpRightBlockListIdx, tmpRightIndex);
 
       resultBuilder.declarePosition();
-      idx++;
+
+      tmpRightIndex++;
+      if (tmpRightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
+        tmpRightIndex = 0;
+        tmpRightBlockListIdx++;
+      }
+
+      if (tmpRightBlockListIdx >= rightBlockList.size()) {
+        break;
+      }
     }
+  }
+
+  private boolean leftBlockNotEmpty() {
+    return leftBlock != null && leftIndex < leftBlock.getPositionCount();
+  }
+
+  private boolean rightBlockNotEmpty() {
+    return !rightBlockList.isEmpty()
+        && rightBlockListIdx < rightBlockList.size()
+        && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount();
+  }
+
+  private void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {
+    for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+      if (leftBlock.getColumn(leftOutputSymbolIdx[i]).isNull(leftIndex)) {
+        columnBuilder.appendNull();
+      } else {
+        columnBuilder.write(leftBlock.getColumn(leftOutputSymbolIdx[i]), leftIndex);
+      }
+    }
+
+    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
+
+      if (rightBlockList
+          .get(tmpRightBlockListIdx)
+          .getColumn(rightOutputSymbolIdx[i])
+          .isNull(tmpRightIndex)) {
+        columnBuilder.appendNull();
+      } else {
+        columnBuilder.write(
+            rightBlockList.get(tmpRightBlockListIdx).getColumn(rightOutputSymbolIdx[i]),
+            tmpRightIndex);
+      }
+    }
+  }
+
+  @Override
+  public boolean isFinished() throws Exception {
+    return !leftBlockNotEmpty()
+        && leftChild.isFinished()
+        && !rightBlockNotEmpty()
+        && rightChild.isFinished();
   }
 
   @Override
@@ -240,49 +358,12 @@ public class InnerJoinOperator implements ProcessOperator {
     if (rightChild != null) {
       rightChild.close();
     }
-  }
 
-  @Override
-  public boolean isFinished() throws Exception {
-    return !tsBlockIsNotEmpty(leftTsBlock, leftIndex)
-        && leftChild.isFinished()
-        && !tsBlockIsNotEmpty(rightTsBlock, rightIndex)
-        && rightChild.isFinished();
-  }
-
-  private boolean prepareInput(long start, long maxRuntime) throws Exception {
-    if ((leftTsBlock == null || leftTsBlock.getPositionCount() == leftIndex)
-        && leftChild.hasNextWithTimer()) {
-      leftTsBlock = leftChild.nextWithTimer();
-      leftIndex = 0;
-    }
-
-    if ((rightTsBlock == null || rightTsBlock.getPositionCount() == rightIndex)
-        && rightChild.hasNextWithTimer()) {
-      rightTsBlock = rightChild.nextWithTimer();
-      rightIndex = 0;
-      if (rightTsBlock != null) {
-        System.out.println("===");
+    if (!rightBlockList.isEmpty()) {
+      for (TsBlock block : rightBlockList) {
+        memoryReservationManager.reserveMemoryCumulatively(block.getRetainedSizeInBytes());
       }
     }
-
-    // TODO use maxRunTime
-    //    if ((System.nanoTime() - start < maxRuntime)
-    //        && (rightTsBlock == null || rightTsBlock.getPositionCount() == rightIndex)) {
-    //      if (rightChild.hasNextWithTimer()) {
-    //        rightTsBlock = rightChild.nextWithTimer();
-    //        rightIndex = 0;
-    //        if (rightTsBlock != null) {
-    //          System.out.println("===");
-    //        }
-    //      }
-    //    }
-
-    return tsBlockIsNotEmpty(leftTsBlock, leftIndex) && tsBlockIsNotEmpty(rightTsBlock, rightIndex);
-  }
-
-  private boolean tsBlockIsNotEmpty(TsBlock tsBlock, int index) {
-    return tsBlock != null && index < tsBlock.getPositionCount();
   }
 
   @Override

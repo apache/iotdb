@@ -78,6 +78,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -613,6 +614,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    if (node.getTimePredicate().isPresent()) {
+      boxValue.add(String.format("TimePredicate: %s", node.getTimePredicate().get()));
+    }
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
     }
@@ -620,6 +624,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
     boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
     boxValue.add(String.format("RegionId: %s", node.getRegionReplicaSet().getRegionId().getId()));
+    boxValue.add(
+        String.format(
+            "DeviceEntry: %s",
+            node.getDeviceEntries().stream()
+                .map(entry -> entry.getDeviceID().toString())
+                .collect(Collectors.toList())));
     return render(node, boxValue, context);
   }
 
