@@ -1115,7 +1115,11 @@ public abstract class AlignedTVList extends TVList {
       Column column = previousTsBlock.getColumn(columnIndex);
       for (int i = 0; i < previousValidRowCount; i++) {
         if (hasAnyNonNullValue[i]) {
-          columnBuilder.write(column, i);
+          if (column.isNull(i)) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.write(column, i);
+          }
         }
       }
     }

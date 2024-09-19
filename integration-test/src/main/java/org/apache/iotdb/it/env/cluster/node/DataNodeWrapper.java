@@ -83,13 +83,13 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final String defaultCommonPropertiesFile;
 
   public DataNodeWrapper(
-      String seedConfigNode,
-      String testClassName,
-      String testMethodName,
-      int[] portList,
-      int clusterIndex,
-      boolean isMultiCluster,
-      long startTime) {
+      final String seedConfigNode,
+      final String testClassName,
+      final String testMethodName,
+      final int[] portList,
+      final int clusterIndex,
+      final boolean isMultiCluster,
+      final long startTime) {
     super(testClassName, testMethodName, portList, clusterIndex, isMultiCluster, startTime);
     this.internalAddress = super.getIp();
     this.mppDataExchangePort = portList[1];
@@ -161,7 +161,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected void addStartCmdParams(List<String> params) {
+  protected void addStartCmdParams(final List<String> params) {
     final String workDir = getNodePath();
     final String confDir = workDir + File.separator + "conf";
     params.addAll(
@@ -214,22 +214,22 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   @Override
   public void renameFile() {
     // Rename log file
-    String oldLogFilePath =
+    final String oldLogFilePath =
         getLogDirPath() + File.separator + DATA_NODE_NAME + portList[0] + ".log";
-    String newLogFilePath = getLogDirPath() + File.separator + getId() + ".log";
-    File oldLogFile = new File(oldLogFilePath);
+    final String newLogFilePath = getLogDirPath() + File.separator + getId() + ".log";
+    final File oldLogFile = new File(oldLogFilePath);
     oldLogFile.renameTo(new File(newLogFilePath));
 
     // Rename node dir
-    String oldNodeDirPath =
+    final String oldNodeDirPath =
         System.getProperty(USER_DIR)
             + File.separator
             + TARGET
             + File.separator
             + DATA_NODE_NAME
             + portList[0];
-    String newNodeDirPath = getNodePath();
-    File oldNodeDir = new File(oldNodeDirPath);
+    final String newNodeDirPath = getNodePath();
+    final File oldNodeDir = new File(oldNodeDirPath);
     oldNodeDir.renameTo(new File(newNodeDirPath));
   }
 
@@ -237,7 +237,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return mppDataExchangePort;
   }
 
-  public void setMppDataExchangePort(int mppDataExchangePort) {
+  public void setMppDataExchangePort(final int mppDataExchangePort) {
     this.mppDataExchangePort = mppDataExchangePort;
   }
 
@@ -249,7 +249,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return internalPort;
   }
 
-  public void setInternalPort(int internalPort) {
+  public void setInternalPort(final int internalPort) {
     this.internalPort = internalPort;
   }
 

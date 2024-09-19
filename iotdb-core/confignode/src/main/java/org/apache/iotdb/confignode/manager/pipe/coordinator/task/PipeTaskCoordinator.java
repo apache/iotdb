@@ -181,14 +181,14 @@ public class PipeTaskCoordinator {
                 "Failed to drop pipe %s. Failures: %s does not exist.", pipeName, pipeName));
   }
 
-  public TShowPipeResp showPipes(TShowPipeReq req) {
+  public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
           .filter(req.whereClause, req.pipeName)
           .convertToTShowPipeResp();
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new PipeTableResp(res, Collections.emptyList()).convertToTShowPipeResp();
     }
