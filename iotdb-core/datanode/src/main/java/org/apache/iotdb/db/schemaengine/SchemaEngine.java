@@ -195,13 +195,15 @@ public class SchemaEngine {
     localSchemaRegionInfo.forEach(
         (k, v) -> {
           for (SchemaRegionId schemaRegionId : v) {
+            PartialPath database;
             try {
-              futures.add(
-                  schemaRegionRecoverPools.submit(
-                      recoverSchemaRegionTask(new PartialPath(k), schemaRegionId)));
+              database = new PartialPath(k);
             } catch (IllegalPathException e) {
-              throw new RuntimeException(e);
+              logger.warn("Illegal database path: {}", k);
+              continue;
             }
+            futures.add(
+                schemaRegionRecoverPools.submit(recoverSchemaRegionTask(database, schemaRegionId)));
           }
         });
     for (final Future<ISchemaRegion> future : futures) {
