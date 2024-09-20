@@ -1375,16 +1375,12 @@ public class ProcedureManager {
       }
     }
     final List<TSStatus> procedureStatus = new ArrayList<>();
-    final boolean isSucceed =
-        waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus);
-    if (isSucceed) {
-      return StatusUtils.OK;
-    } else {
-      return procedureStatus.get(0);
-    }
+    return waitingProcedureFinished(Collections.singletonList(procedureId), procedureStatus)
+        ? StatusUtils.OK
+        : procedureStatus.get(0);
   }
 
-  private Pair<Long, Boolean> checkDuplicateTableTask(
+  public Pair<Long, Boolean> checkDuplicateTableTask(
       final String database,
       final TsTable table,
       final String tableName,
