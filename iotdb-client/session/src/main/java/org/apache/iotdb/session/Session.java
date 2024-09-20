@@ -2780,30 +2780,35 @@ public class Session implements ISession {
   private void insertRelationalTabletWithLeaderCache(Tablet tablet)
       throws IoTDBConnectionException, StatementExecutionException {
     Map<SessionConnection, Tablet> relationalTabletGroup = new HashMap<>();
-
-    for (int i = 0; i < tablet.rowSize; i++) {
-      IDeviceID iDeviceID = tablet.getDeviceID(i);
-      final SessionConnection connection = getSessionConnection(iDeviceID);
-      int finalI = i;
-      relationalTabletGroup.compute(
-          connection,
-          (k, v) -> {
-            if (v == null) {
-              v =
-                  new Tablet(
-                      tablet.getTableName(),
-                      tablet.getSchemas(),
-                      tablet.getColumnTypes(),
-                      tablet.rowSize);
-            }
-            for (int j = 0; j < v.getSchemas().size(); j++) {
-              v.addValue(
-                  v.getSchemas().get(j).getMeasurementId(), v.rowSize, tablet.getValue(finalI, j));
-            }
-            v.addTimestamp(v.rowSize, tablet.timestamps[finalI]);
-            v.rowSize++;
-            return v;
-          });
+    if (tableModelDeviceIdToEndpoint.isEmpty()) {
+      relationalTabletGroup.put(defaultSessionConnection, tablet);
+    } else {
+      for (int i = 0; i < tablet.rowSize; i++) {
+        IDeviceID iDeviceID = tablet.getDeviceID(i);
+        final SessionConnection connection = getSessionConnection(iDeviceID);
+        int finalI = i;
+        relationalTabletGroup.compute(
+            connection,
+            (k, v) -> {
+              if (v == null) {
+                v =
+                    new Tablet(
+                        tablet.getTableName(),
+                        tablet.getSchemas(),
+                        tablet.getColumnTypes(),
+                        tablet.rowSize);
+              }
+              for (int j = 0; j < v.getSchemas().size(); j++) {
+                v.addValue(
+                    v.getSchemas().get(j).getMeasurementId(),
+                    v.rowSize,
+                    tablet.getValue(finalI, j));
+              }
+              v.addTimestamp(v.rowSize, tablet.timestamps[finalI]);
+              v.rowSize++;
+              return v;
+            });
+      }
     }
     insertRelationalTabletByGroup(relationalTabletGroup);
   }
