@@ -135,6 +135,30 @@ public class JoinNode extends TwoChildProcessNode {
                 equiJoinClause));
   }
 
+  // only used for deserialize
+  public JoinNode(
+      PlanNodeId id,
+      JoinType joinType,
+      List<EquiJoinClause> criteria,
+      List<Symbol> leftOutputSymbols,
+      List<Symbol> rightOutputSymbols,
+      int[] leftOutputSymbolIdx,
+      int[] rightOutputSymbolIdx) {
+    super(id);
+    requireNonNull(joinType, "type is null");
+    requireNonNull(criteria, "criteria is null");
+
+    this.leftOutputSymbols = leftOutputSymbols;
+    this.rightOutputSymbols = rightOutputSymbols;
+    this.filter = Optional.empty();
+    this.spillable = Optional.empty();
+
+    this.joinType = joinType;
+    this.criteria = criteria;
+    this.leftOutputSymbolIdx = leftOutputSymbolIdx;
+    this.rightOutputSymbolIdx = rightOutputSymbolIdx;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitJoin(this, context);
@@ -202,14 +226,14 @@ public class JoinNode extends TwoChildProcessNode {
       Symbol.serialize(equiJoinClause.getRight(), byteBuffer);
     }
 
-    //    ReadWriteIOUtils.write(leftOutputSymbols.size(), byteBuffer);
-    //    for (Symbol leftOutputSymbol : leftOutputSymbols) {
-    //      Symbol.serialize(leftOutputSymbol, byteBuffer);
-    //    }
-    //    ReadWriteIOUtils.write(rightOutputSymbols.size(), byteBuffer);
-    //    for (Symbol rightOutputSymbol : rightOutputSymbols) {
-    //      Symbol.serialize(rightOutputSymbol, byteBuffer);
-    //    }
+    ReadWriteIOUtils.write(leftOutputSymbols.size(), byteBuffer);
+    for (Symbol leftOutputSymbol : leftOutputSymbols) {
+      Symbol.serialize(leftOutputSymbol, byteBuffer);
+    }
+    ReadWriteIOUtils.write(rightOutputSymbols.size(), byteBuffer);
+    for (Symbol rightOutputSymbol : rightOutputSymbols) {
+      Symbol.serialize(rightOutputSymbol, byteBuffer);
+    }
 
     ReadWriteIOUtils.write(leftOutputSymbolIdx.length, byteBuffer);
     for (int idx : leftOutputSymbolIdx) {
@@ -233,6 +257,15 @@ public class JoinNode extends TwoChildProcessNode {
       Symbol.serialize(equiJoinClause.getRight(), stream);
     }
 
+    ReadWriteIOUtils.write(leftOutputSymbols.size(), stream);
+    for (Symbol leftOutputSymbol : leftOutputSymbols) {
+      Symbol.serialize(leftOutputSymbol, stream);
+    }
+    ReadWriteIOUtils.write(rightOutputSymbols.size(), stream);
+    for (Symbol rightOutputSymbol : rightOutputSymbols) {
+      Symbol.serialize(rightOutputSymbol, stream);
+    }
+
     ReadWriteIOUtils.write(leftOutputSymbolIdx.length, stream);
     for (int idx : leftOutputSymbolIdx) {
       ReadWriteIOUtils.write(idx, stream);
@@ -244,36 +277,44 @@ public class JoinNode extends TwoChildProcessNode {
   }
 
   public static JoinNode deserialize(ByteBuffer byteBuffer) {
-    JoinType joinType = JoinType.values()[ReadWriteIOUtils.read(byteBuffer)];
-    int size = ReadWriteIOUtils.read(byteBuffer);
+    JoinType joinType = JoinType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<EquiJoinClause> criteria = new ArrayList<>(size);
     while (size-- > 0) {
       criteria.add(
           new EquiJoinClause(Symbol.deserialize(byteBuffer), Symbol.deserialize(byteBuffer)));
     }
 
-    size = ReadWriteIOUtils.read(byteBuffer);
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> leftOutputSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      leftOutputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> rightOutputSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      rightOutputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     int[] leftOutputSymbolIdx = new int[size];
     for (int i = 0; i < size; i++) {
-      leftOutputSymbolIdx[i] = ReadWriteIOUtils.read(byteBuffer);
+      leftOutputSymbolIdx[i] = ReadWriteIOUtils.readInt(byteBuffer);
     }
-    size = ReadWriteIOUtils.read(byteBuffer);
+    size = ReadWriteIOUtils.readInt(byteBuffer);
     int[] rightOutputSymbolIdx = new int[size];
     for (int i = 0; i < size; i++) {
-      rightOutputSymbolIdx[i] = ReadWriteIOUtils.read(byteBuffer);
+      rightOutputSymbolIdx[i] = ReadWriteIOUtils.readInt(byteBuffer);
     }
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new JoinNode(
         planNodeId,
         joinType,
-        null,
-        null,
         criteria,
-        null,
-        null,
-        Optional.empty(),
-        Optional.empty(),
+        leftOutputSymbols,
+        rightOutputSymbols,
         leftOutputSymbolIdx,
         rightOutputSymbolIdx);
   }

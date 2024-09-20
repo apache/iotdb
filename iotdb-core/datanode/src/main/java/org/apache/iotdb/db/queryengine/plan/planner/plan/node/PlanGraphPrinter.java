@@ -624,12 +624,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
     boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
     boxValue.add(String.format("RegionId: %s", node.getRegionReplicaSet().getRegionId().getId()));
-    boxValue.add(
-        String.format(
-            "DeviceEntry: %s",
-            node.getDeviceEntries().stream()
-                .map(entry -> entry.getDeviceID().toString())
-                .collect(Collectors.toList())));
     return render(node, boxValue, context);
   }
 

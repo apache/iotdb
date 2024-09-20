@@ -234,9 +234,6 @@ public class TableScanOperator extends AbstractSeriesScanOperator {
             positionCount,
             new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount),
             valueColumns);
-    if (this.resultTsBlock.getPositionCount() > 0) {
-      this.resultTsBlock.toString();
-    }
   }
 
   private RunLengthEncodedColumn getIdOrAttributeValueColumn(String value, int positionCount) {

@@ -564,6 +564,9 @@ public enum PlanNodeType {
       case 1010:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode
             .deserialize(buffer);
+      case 1011:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.deserialize(
+            buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
