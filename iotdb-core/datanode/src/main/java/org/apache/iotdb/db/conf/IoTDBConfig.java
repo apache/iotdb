@@ -1045,6 +1045,8 @@ public class IoTDBConfig {
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
 
+  private int dataNodeTableCacheSemaphorePermitNum = 5;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -3456,6 +3458,14 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public int getDataNodeTableCacheSemaphorePermitNum() {
+    return dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
+    this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
   }
 
   public String getReadConsistencyLevel() {

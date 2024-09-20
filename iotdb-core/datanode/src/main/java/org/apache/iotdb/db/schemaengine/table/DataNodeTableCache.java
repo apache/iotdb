@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -57,7 +58,9 @@ public class DataNodeTableCache implements ITableCache {
       new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-  private final Semaphore fetchTableSemaphore = new Semaphore(5);
+  private final Semaphore fetchTableSemaphore =
+      new Semaphore(
+          IoTDBDescriptor.getInstance().getConfig().getDataNodeTableCacheSemaphorePermitNum());
 
   private DataNodeTableCache() {
     // Do nothing
