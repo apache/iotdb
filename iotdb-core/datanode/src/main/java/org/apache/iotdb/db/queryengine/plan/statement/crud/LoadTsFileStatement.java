@@ -197,7 +197,7 @@ public class LoadTsFileStatement extends Statement {
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
 
     this.shouldConvertDataTypeOnTypeMismatch =
-        LoadTsFileConfigurator.getOrDefaultConvertOnTypeMismatch(loadAttributes);
+        LoadTsFileConfigurator.parseOrGetDefaultConvertOnTypeMismatch(loadAttributes);
   }
 
   @Override

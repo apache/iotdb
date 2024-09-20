@@ -118,10 +118,10 @@ public class LoadTsFileConfigurator {
   // param convert-on-type-mismatch (boolean)
   private static final String CONVERT_ON_TYPE_MISMATCH_KEY = "convert-on-type-mismatch";
 
-  public static boolean getOrDefaultConvertOnTypeMismatch(
+  public static boolean parseOrGetDefaultConvertOnTypeMismatch(
       final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(CONVERT_ON_TYPE_MISMATCH_KEY);
-    return StringUtils.isEmpty(value) || Boolean.parseBoolean(value);
+    return StringUtils.isEmpty(value) || BOOLEAN_TRUE_VALUE.equals(value);
   }
 
   private LoadTsFileConfigurator() {
