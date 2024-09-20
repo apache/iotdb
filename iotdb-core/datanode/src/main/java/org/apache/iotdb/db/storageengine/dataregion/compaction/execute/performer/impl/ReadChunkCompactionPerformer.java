@@ -55,6 +55,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private CompactionTsFileWriter currentWriter;
   private long endedFileSize = 0;
   private int currentTargetFileIndex = 0;
+  private boolean ignoreAllNullRows = true;
   // memory budget for file writer is 5% of per compaction task memory budget
   private final long memoryBudgetForFileWriter =
       (long)
@@ -86,7 +87,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           InterruptedException,
           StorageEngineException,
           PageException {
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
+    try (MultiTsFileDeviceIterator deviceIterator =
+        new MultiTsFileDeviceIterator(seqFiles, ignoreAllNullRows)) {
       schema =
           CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap());
       while (deviceIterator.hasNextDevice()) {
@@ -172,6 +174,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.summary = summary;
   }
 
+  @Override
+  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
+  }
+
   private void compactAlignedSeries(
       IDeviceID device,
       TsFileResource targetResource,
@@ -187,7 +194,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     writer.startChunkGroup(device);
     BatchedReadChunkAlignedSeriesCompactionExecutor compactionExecutor =
         new BatchedReadChunkAlignedSeriesCompactionExecutor(
-            device, targetResource, readerAndChunkMetadataList, writer, summary);
+            device, targetResource, readerAndChunkMetadataList, writer, summary, ignoreAllNullRows);
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {

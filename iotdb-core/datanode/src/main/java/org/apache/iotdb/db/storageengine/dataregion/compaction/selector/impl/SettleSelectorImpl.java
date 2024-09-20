@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ISettleSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -68,18 +69,21 @@ public class SettleSelectorImpl implements ISettleSelector {
   private final long timePartition;
   private final TsFileManager tsFileManager;
   private boolean isSeq;
+  private final CompactionScheduleContext context;
 
   public SettleSelectorImpl(
       boolean heavySelect,
       String storageGroupName,
       String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     this.heavySelect = heavySelect;
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
+    this.context = context;
   }
 
   static class FileDirtyInfo {
@@ -307,15 +311,7 @@ public class SettleSelectorImpl implements ISettleSelector {
   }
 
   private ICompactionPerformer createCompactionPerformer() {
-    return isSeq
-        ? IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getInnerSeqCompactionPerformer()
-            .createInstance()
-        : IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getInnerUnseqCompactionPerformer()
-            .createInstance();
+    return isSeq ? context.getSeqCompactionPerformer() : context.getUnseqCompactionPerformer();
   }
 
   enum DirtyStatus {

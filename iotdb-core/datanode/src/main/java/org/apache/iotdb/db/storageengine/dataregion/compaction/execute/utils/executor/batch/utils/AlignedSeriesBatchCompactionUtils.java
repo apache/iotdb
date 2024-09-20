@@ -105,7 +105,19 @@ public class AlignedSeriesBatchCompactionUtils {
   }
 
   public static ModifiedStatus calculateAlignedPageModifiedStatus(
-      long startTime, long endTime, AlignedChunkMetadata originAlignedChunkMetadata) {
+      long startTime,
+      long endTime,
+      AlignedChunkMetadata originAlignedChunkMetadata,
+      boolean ignoreAllNullRows) {
+    ModifiedStatus timePageModifiedStatus =
+        checkIsModified(
+            startTime,
+            endTime,
+            originAlignedChunkMetadata.getTimeChunkMetadata().getDeleteIntervalList());
+    if (timePageModifiedStatus != ModifiedStatus.NONE_DELETED) {
+      return timePageModifiedStatus;
+    }
+
     ModifiedStatus lastPageStatus = null;
     for (IChunkMetadata valueChunkMetadata :
         originAlignedChunkMetadata.getValueChunkMetadataList()) {
@@ -128,7 +140,11 @@ public class AlignedSeriesBatchCompactionUtils {
         lastPageStatus = ModifiedStatus.NONE_DELETED;
       }
     }
-    return lastPageStatus;
+
+    // keep the aligned table page with deletion only in value page
+    return (!ignoreAllNullRows && lastPageStatus == ModifiedStatus.ALL_DELETED)
+        ? ModifiedStatus.PARTIAL_DELETED
+        : lastPageStatus;
   }
 
   public static ModifiedStatus checkIsModified(
