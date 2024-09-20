@@ -48,6 +48,8 @@ public class LoadTsFileStatement extends Statement {
   private boolean autoCreateDatabase;
 
   private Map<String, String> loadAttributes;
+  private boolean shouldConvertDataTypeOnTypeMismatch;
+  private boolean secondLoad;
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
@@ -173,6 +175,18 @@ public class LoadTsFileStatement extends Statement {
     return writePointCountList.get(resourceIndex);
   }
 
+  public boolean isShouldConvertDataTypeOnTypeMismatch() {
+    return shouldConvertDataTypeOnTypeMismatch;
+  }
+
+  public boolean isSecondLoad() {
+    return this.secondLoad;
+  }
+
+  public void setSecondLoad(final boolean secondLoad) {
+    this.secondLoad = secondLoad;
+  }
+
   public void setLoadAttributes(final Map<String, String> loadAttributes) {
     this.loadAttributes = loadAttributes;
     initAttributes();
@@ -181,6 +195,9 @@ public class LoadTsFileStatement extends Statement {
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
+
+    this.shouldConvertDataTypeOnTypeMismatch =
+        LoadTsFileConfigurator.getOrDefaultConvertOnTypeMismatch(loadAttributes);
   }
 
   @Override
@@ -210,6 +227,8 @@ public class LoadTsFileStatement extends Statement {
         + databaseLevel
         + ", verifySchema="
         + verifySchema
+        + ", shouldConvertDataTypeOnTypeMismatch="
+        + shouldConvertDataTypeOnTypeMismatch
         + ", tsFiles Size="
         + tsFiles.size()
         + '}';

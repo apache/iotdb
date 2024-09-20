@@ -209,14 +209,28 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     } catch (AuthException e) {
       return createFailAnalysisForAuthException(e);
     } catch (Exception e) {
-      final String exceptionMessage =
-          String.format(
-              "Auto create or verify schema error when executing statement %s. Detail: %s.",
-              loadTsFileStatement,
-              e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+      final String exceptionMessage;
+
+      if (loadTsFileStatement.isShouldConvertDataTypeOnTypeMismatch()) {
+        analysis.setFinishQueryAfterAnalyze(false);
+        analysis.setRealStatement(loadTsFileStatement);
+
+        exceptionMessage =
+            String.format(
+                "Auto create or verify schema error when executing statement %s. Will try to auto convert data type",
+                loadTsFileStatement);
+      } else {
+        exceptionMessage =
+            String.format(
+                "Auto create or verify schema error when executing statement %s. Detail: %s.",
+                loadTsFileStatement,
+                e.getMessage() == null ? e.getClass().getName() : e.getMessage());
+
+        analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+
       LOGGER.warn(exceptionMessage, e);
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
     }
 
@@ -661,7 +675,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           }
 
           // check datatype
-          if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          if (!loadTsFileStatement.isShouldConvertDataTypeOnTypeMismatch()
+              && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
             throw new VerifyMetadataException(
                 String.format(
                     "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",

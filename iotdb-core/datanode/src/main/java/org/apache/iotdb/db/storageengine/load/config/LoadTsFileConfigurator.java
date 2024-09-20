@@ -32,6 +32,7 @@ import java.util.Set;
 
 public class LoadTsFileConfigurator {
 
+  // param validate
   public static void validateParameters(final String key, final String value) {
     switch (key) {
       case DATABASE_LEVEL_KEY:
@@ -40,11 +41,30 @@ public class LoadTsFileConfigurator {
       case ON_SUCCESS_KEY:
         validateOnSuccessParam(value);
         break;
+      case CONVERT_ON_TYPE_MISMATCH_KEY:
+        validateBooleanParam(key, value);
+        break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
     }
   }
 
+  // all boolean param validate
+  private static final String BOOLEAN_TRUE_VALUE = "true";
+  private static final String BOOLEAN_FALSE_VALUE = "false";
+  private static final Set<String> BOOLEAN_VALUE_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(Arrays.asList(BOOLEAN_TRUE_VALUE, BOOLEAN_FALSE_VALUE)));
+
+  public static void validateBooleanParam(final String key, final String value) {
+    if (!BOOLEAN_VALUE_SET.contains(value)) {
+      throw new SemanticException(
+          String.format(
+              "Given %s value '%s' is not supported, please input 'true' or 'false'.", key, value));
+    }
+  }
+
+  // param database-level
   private static final String DATABASE_LEVEL_KEY = "database-level";
   private static final int DATABASE_LEVEL_DEFAULT_VALUE =
       IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
@@ -73,6 +93,7 @@ public class LoadTsFileConfigurator {
             DATABASE_LEVEL_KEY, String.valueOf(DATABASE_LEVEL_DEFAULT_VALUE)));
   }
 
+  // param on-success
   private static final String ON_SUCCESS_KEY = "on-success";
   private static final String ON_SUCCESS_DELETE_VALUE = "delete";
   private static final String ON_SUCCESS_NONE_VALUE = "none";
@@ -92,6 +113,15 @@ public class LoadTsFileConfigurator {
   public static boolean parseOrGetDefaultOnSuccess(final Map<String, String> loadAttributes) {
     final String value = loadAttributes.get(ON_SUCCESS_KEY);
     return StringUtils.isEmpty(value) || ON_SUCCESS_DELETE_VALUE.equals(value);
+  }
+
+  // param convert-on-type-mismatch (boolean)
+  private static final String CONVERT_ON_TYPE_MISMATCH_KEY = "convert-on-type-mismatch";
+
+  public static boolean getOrDefaultConvertOnTypeMismatch(
+      final Map<String, String> loadAttributes) {
+    final String value = loadAttributes.get(CONVERT_ON_TYPE_MISMATCH_KEY);
+    return StringUtils.isEmpty(value) || Boolean.parseBoolean(value);
   }
 
   private LoadTsFileConfigurator() {

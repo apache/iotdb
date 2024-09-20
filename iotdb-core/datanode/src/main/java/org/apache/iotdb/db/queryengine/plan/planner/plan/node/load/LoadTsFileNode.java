@@ -42,10 +42,12 @@ import java.util.Objects;
 public class LoadTsFileNode extends WritePlanNode {
 
   private final List<TsFileResource> resources;
+  private final LoadTsFileStatement loadTsFileStatement;
 
-  public LoadTsFileNode(PlanNodeId id, List<TsFileResource> resources) {
+  public LoadTsFileNode(PlanNodeId id, LoadTsFileStatement loadTsFileStatement) {
     super(id);
-    this.resources = resources;
+    this.resources = loadTsFileStatement.getResources();
+    this.loadTsFileStatement = loadTsFileStatement;
   }
 
   @Override
@@ -104,7 +106,8 @@ public class LoadTsFileNode extends WritePlanNode {
               getPlanNodeId(),
               resources.get(i),
               statement.isDeleteAfterLoad(),
-              statement.getWritePointCount(i)));
+              statement.getWritePointCount(i),
+              loadTsFileStatement));
     }
     return res;
   }

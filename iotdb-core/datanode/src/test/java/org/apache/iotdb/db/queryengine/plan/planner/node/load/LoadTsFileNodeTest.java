@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -30,6 +31,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,9 +39,15 @@ import java.util.Collections;
 public class LoadTsFileNodeTest {
 
   @Test
-  public void testLoadSingleTsFileNode() {
+  public void testLoadSingleTsFileNode() throws FileNotFoundException {
     TsFileResource resource = new TsFileResource(new File("1"));
-    LoadSingleTsFileNode node = new LoadSingleTsFileNode(new PlanNodeId(""), resource, true, 0L);
+    LoadSingleTsFileNode node =
+        new LoadSingleTsFileNode(
+            new PlanNodeId(""),
+            resource,
+            true,
+            0L,
+            new LoadTsFileStatement(resource.getTsFilePath()));
     Assert.assertTrue(node.isDeleteAfterLoad());
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertNull(node.getLocalRegionReplicaSet());

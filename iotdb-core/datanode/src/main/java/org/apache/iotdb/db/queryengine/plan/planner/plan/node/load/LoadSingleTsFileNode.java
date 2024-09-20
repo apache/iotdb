@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -60,15 +61,22 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final long writePointCount;
   private boolean needDecodeTsFile;
 
+  private final LoadTsFileStatement loadTsFileStatement;
+
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id, TsFileResource resource, boolean deleteAfterLoad, long writePointCount) {
+      PlanNodeId id,
+      TsFileResource resource,
+      boolean deleteAfterLoad,
+      long writePointCount,
+      LoadTsFileStatement loadTsFileStatement) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.loadTsFileStatement = loadTsFileStatement;
   }
 
   public boolean isTsFileEmpty() {
@@ -132,6 +140,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public long getWritePointCount() {
     return writePointCount;
+  }
+
+  public LoadTsFileStatement getLoadTsFileStatement() {
+    return loadTsFileStatement;
   }
 
   /**
