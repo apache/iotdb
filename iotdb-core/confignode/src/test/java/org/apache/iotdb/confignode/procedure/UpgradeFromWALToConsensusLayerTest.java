@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -48,7 +49,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class UpgradeFromWALToConsensusLayerTest {
   private static final Logger LOGGER =
@@ -108,8 +111,11 @@ public class UpgradeFromWALToConsensusLayerTest {
                 new TEndPoint("127.0.0.1", 11001)));
 
     // prepare procedures
+    Map<Integer, NodeStatus> nodeStatusMap = new HashMap<>();
+    nodeStatusMap.put(10000, NodeStatus.Running);
+    nodeStatusMap.put(10001, NodeStatus.Running);
     RemoveDataNodesProcedure removeDataNodesProcedure =
-        new RemoveDataNodesProcedure(removedDataNodes);
+        new RemoveDataNodesProcedure(removedDataNodes, nodeStatusMap);
     removeDataNodesProcedure.setProcId(10086);
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(

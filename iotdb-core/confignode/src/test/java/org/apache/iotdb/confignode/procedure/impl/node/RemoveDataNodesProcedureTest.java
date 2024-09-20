@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.procedure.impl.node;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.apache.tsfile.utils.PublicBAOS;
@@ -30,7 +31,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class RemoveDataNodesProcedureTest {
 
@@ -45,8 +48,10 @@ public class RemoveDataNodesProcedureTest {
                 new TEndPoint("127.0.0.1", 6669),
                 new TEndPoint("127.0.0.1", 6670),
                 new TEndPoint("127.0.0.1", 6671)));
-    RemoveDataNodesProcedure procedure0 = new RemoveDataNodesProcedure(removedDataNodes);
-
+    Map<Integer, NodeStatus> nodeStatusMap = new HashMap<>();
+    nodeStatusMap.put(10, NodeStatus.Running);
+    RemoveDataNodesProcedure procedure0 =
+        new RemoveDataNodesProcedure(removedDataNodes, nodeStatusMap);
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       procedure0.serialize(outputStream);

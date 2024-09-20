@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.node;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -54,13 +56,17 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
 
   private List<RegionMigrationPlan> regionMigrationPlans = new ArrayList<>();
 
+  private Map<Integer, NodeStatus> nodeStatusMap;
+
   public RemoveDataNodesProcedure() {
     super();
   }
 
-  public RemoveDataNodesProcedure(List<TDataNodeLocation> removedDataNodes) {
+  public RemoveDataNodesProcedure(
+      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap) {
     super();
     this.removedDataNodes = removedDataNodes;
+    this.nodeStatusMap = nodeStatusMap;
   }
 
   @Override
@@ -94,7 +100,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:
-          manager.broadcastDisableDataNodes(removedDataNodes);
+          manager.broadcastDataNodeStatusChange(removedDataNodes);
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
@@ -102,11 +108,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
-          if (isAllRegionMigratedSuccessfully(env)) {
-            LOG.info("{}, Begin to stop DataNode: {}", REMOVE_DATANODE_PROCESS, removedDataNodes);
-            manager.removeDataNodePersistence(removedDataNodes);
-            manager.stopDataNodes(removedDataNodes);
-          }
+          checkRegionStatusAndStopDataNode(env);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -160,28 +162,31 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         });
   }
 
-  private boolean isAllRegionMigratedSuccessfully(ConfigNodeProcedureEnv env) {
+  private void checkRegionStatusAndStopDataNode(ConfigNodeProcedureEnv env) {
     List<TRegionReplicaSet> replicaSets =
         env.getConfigManager().getPartitionManager().getAllReplicaSets();
-    List<TConsensusGroupId> migratedFailedRegions =
-        replicaSets.stream()
-            .filter(
-                replica ->
-                    removedDataNodes.stream()
-                        .anyMatch(
-                            removedDataNode ->
-                                replica.getDataNodeLocations().contains(removedDataNode)))
-            .map(TRegionReplicaSet::getRegionId)
-            .collect(Collectors.toList());
-    if (!migratedFailedRegions.isEmpty()) {
-      LOG.warn(
-          "{}, Some regions are migrated failed, the StopDataNode process should not be executed, migratedFailedRegions: {}",
-          REMOVE_DATANODE_PROCESS,
-          migratedFailedRegions);
-      return false;
+    for (TDataNodeLocation dataNode : removedDataNodes) {
+      List<TConsensusGroupId> migratedFailedRegions =
+          replicaSets.stream()
+              .filter(replica -> replica.getDataNodeLocations().contains(dataNode))
+              .map(TRegionReplicaSet::getRegionId)
+              .collect(Collectors.toList());
+      if (!migratedFailedRegions.isEmpty()) {
+        LOG.warn(
+            "{}, Some regions are migrated failed in DataNode: {}, migratedFailedRegions: {}."
+                + "Regions that have been successfully migrated will not roll back, you can submit the RemoveDataNodes task again later.",
+            REMOVE_DATANODE_PROCESS,
+            dataNode,
+            migratedFailedRegions);
+      } else {
+        LOG.info(
+            "{}, Region all migrated successfully, start to stop DataNode: {}",
+            REMOVE_DATANODE_PROCESS,
+            dataNode);
+        env.getRemoveDataNodeManager().removeDataNodePersistence(removedDataNodes);
+        env.getRemoveDataNodeManager().stopDataNodes(removedDataNodes);
+      }
     }
-
-    return true;
   }
 
   @Override

@@ -47,7 +47,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -62,7 +62,6 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REMOVE_DATANODE_PROCESS;
-import static org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler.getIdWithRpcEndpoint;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
 import static org.apache.iotdb.db.service.RegionMigrateService.isSucceed;
@@ -187,55 +186,49 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * Broadcasts a batch of disabled DataNodes to notify other components or services.
+   * Broadcasts DataNodes' status change, preventing disabled DataNodes from accepting read or write
+   * requests.
    *
-   * @param removedDataNodes the list of DataNodes to be broadcasted as disabled
+   * @param dataNodes the list of DataNodes that require broadcast status changes
    */
-  public void broadcastDisableDataNodes(List<TDataNodeLocation> removedDataNodes) {
-    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-      broadcastDisableDataNode(dataNodeLocation);
-    }
-  }
-
-  /**
-   * Broadcasts that the specified DataNode in the RemoveDataNodeReq is disabled, preventing it from
-   * accepting read or write requests.
-   *
-   * @param disabledDataNode the DataNode to be broadcasted as disabled
-   */
-  public void broadcastDisableDataNode(TDataNodeLocation disabledDataNode) {
+  public void broadcastDataNodeStatusChange(List<TDataNodeLocation> dataNodes) {
+    String dataNodesString =
+        dataNodes.stream()
+            .map(RegionMaintainHandler::getIdWithRpcEndpoint)
+            .collect(Collectors.joining(", "));
     LOGGER.info(
-        "DataNodeRemoveService start broadcastDisableDataNode to cluster, disabledDataNode: {}",
-        getIdWithRpcEndpoint(disabledDataNode));
+        "{}, BroadcastDataNodeStatusChange start, dataNode: {}",
+        REMOVE_DATANODE_PROCESS,
+        dataNodesString);
 
     List<TDataNodeConfiguration> otherOnlineDataNodes =
         configManager.getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running).stream()
-            .filter(node -> !node.getLocation().equals(disabledDataNode))
+            .filter(node -> !dataNodes.contains(node.getLocation()))
             .collect(Collectors.toList());
 
     for (TDataNodeConfiguration node : otherOnlineDataNodes) {
-      TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
+      TCleanDataNodeCacheReq disableReq = new TCleanDataNodeCacheReq(dataNodes);
       TSStatus status =
           (TSStatus)
               SyncDataNodeClientPool.getInstance()
                   .sendSyncRequestToDataNodeWithRetry(
                       node.getLocation().getInternalEndPoint(),
                       disableReq,
-                      CnToDnRequestType.DISABLE_DATA_NODE);
+                      CnToDnRequestType.CLEAN_DATA_NODE_CACHE);
       if (!isSucceed(status)) {
         LOGGER.error(
-            "{}, BroadcastDisableDataNode meets error, disabledDataNode: {}, error: {}",
+            "{}, BroadcastDataNodeStatusChange meets error, dataNode: {}, error: {}",
             REMOVE_DATANODE_PROCESS,
-            getIdWithRpcEndpoint(disabledDataNode),
+            dataNodesString,
             status);
         return;
       }
     }
 
     LOGGER.info(
-        "{}, DataNodeRemoveService finished broadcastDisableDataNode to cluster, disabledDataNode: {}",
+        "{}, BroadcastDataNodeStatusChange finished, dataNode: {}",
         REMOVE_DATANODE_PROCESS,
-        getIdWithRpcEndpoint(disabledDataNode));
+        dataNodesString);
   }
 
   /**
@@ -268,9 +261,7 @@ public class RemoveDataNodeManager {
    * @param removedDataNodes the list of DataNodeLocations to be stopped
    */
   public void stopDataNodes(List<TDataNodeLocation> removedDataNodes) {
-    for (TDataNodeLocation dataNodeLocation : removedDataNodes) {
-      stopDataNode(dataNodeLocation);
-    }
+    removedDataNodes.parallelStream().forEach(this::stopDataNode);
   }
 
   /**
