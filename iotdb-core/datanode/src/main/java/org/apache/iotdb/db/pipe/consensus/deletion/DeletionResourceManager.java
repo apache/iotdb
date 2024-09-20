@@ -185,7 +185,6 @@ public class DeletionResourceManager implements AutoCloseable {
   private synchronized void removeDeletionResource(DeletionResource deletionResource) {
     // Clean memory
     deletionResources.remove(deletionResource);
-    eventHash2DeletionResources.remove(deletionResource.getCorrespondingPipeTaskEvent());
     // Clean disk
     ProgressIndex currentProgressIndex =
         ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(
