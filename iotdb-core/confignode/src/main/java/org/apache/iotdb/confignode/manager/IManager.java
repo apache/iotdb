@@ -148,6 +148,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A subset of services provided by {@link ConfigManager}. For use internally only, passed to
@@ -834,5 +835,5 @@ public interface IManager {
 
   TShowTableResp showTables(final String database);
 
-  TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap);
+  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 }

@@ -25,19 +25,19 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class FetchTablePlan extends ConfigPhysicalPlan {
 
-  private final Map<String, List<String>> fetchTableMap;
+  private final Map<String, Set<String>> fetchTableMap;
 
-  public FetchTablePlan(final Map<String, List<String>> fetchTableMap) {
+  public FetchTablePlan(final Map<String, Set<String>> fetchTableMap) {
     super(ConfigPhysicalPlanType.FetchTable);
     this.fetchTableMap = fetchTableMap;
   }
 
-  public Map<String, List<String>> getFetchTableMap() {
+  public Map<String, Set<String>> getFetchTableMap() {
     return fetchTableMap;
   }
 

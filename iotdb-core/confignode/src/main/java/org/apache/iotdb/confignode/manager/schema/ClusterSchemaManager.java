@@ -1076,7 +1076,7 @@ public class ClusterSchemaManager {
     }
   }
 
-  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     try {
       return ((FetchTableResp)
               configManager.getConsensusManager().read(new FetchTablePlan(fetchTableMap)))

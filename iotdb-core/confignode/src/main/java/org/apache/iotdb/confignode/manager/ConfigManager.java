@@ -2583,7 +2583,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterSchemaManager.fetchTables(fetchTableMap)
