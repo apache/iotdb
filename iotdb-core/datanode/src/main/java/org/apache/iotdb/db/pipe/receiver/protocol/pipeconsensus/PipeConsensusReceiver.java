@@ -92,7 +92,7 @@ public class PipeConsensusReceiver {
   private static final long PIPE_CONSENSUS_RECEIVER_MAX_WAITING_TIME_IN_MS =
       (long) IOTDB_CONFIG.getConnectionTimeoutInMS()
           / 6
-          * IOTDB_CONFIG.getPipeConsensusPipelineSize();
+          * IOTDB_CONFIG.getIotConsensusV2PipelineSize();
   private static final long CLOSE_TSFILE_WRITER_MAX_WAIT_TIME_IN_MS = 5000;
   private static final long RETRY_WAIT_TIME = 500;
   private final RequestExecutor requestExecutor;
@@ -1041,7 +1041,7 @@ public class PipeConsensusReceiver {
     public PipeConsensusTsFileWriterPool(
         ConsensusPipeName consensusPipeName, String receiverBasePath) throws IOException {
       this.consensusPipeName = consensusPipeName;
-      for (int i = 0; i < IOTDB_CONFIG.getPipeConsensusPipelineSize(); i++) {
+      for (int i = 0; i < IOTDB_CONFIG.getIotConsensusV2PipelineSize(); i++) {
         PipeConsensusTsFileWriter tsFileWriter =
             new PipeConsensusTsFileWriter(i, consensusPipeName);
         tsFileWriter.setFilePath(receiverBasePath);
@@ -1359,7 +1359,7 @@ public class PipeConsensusReceiver {
           return null;
         }
 
-        if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getPipeConsensusPipelineSize()
+        if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
             && !reqExecutionOrderBuffer.first().equals(requestMeta)) {
           // If reqBuffer is full and current thread do not hold the reqBuffer's peek, this req
           // is not supposed to be processed. So current thread should notify the corresponding
@@ -1389,7 +1389,7 @@ public class PipeConsensusReceiver {
             return resp;
           }
 
-          if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getPipeConsensusPipelineSize()
+          if (reqExecutionOrderBuffer.size() >= IOTDB_CONFIG.getIotConsensusV2PipelineSize()
               && reqExecutionOrderBuffer.first().equals(requestMeta)) {
             long startApplyNanos = System.nanoTime();
             metric.recordDispatchWaitingTimer(startApplyNanos - startDispatchNanos);
@@ -1417,7 +1417,7 @@ public class PipeConsensusReceiver {
               // not send any more events at this time, that is, the sender has sent all events. At
               // this point we apply the event at reqBuffer's peek
               if (timeout
-                  && reqExecutionOrderBuffer.size() < IOTDB_CONFIG.getPipeConsensusPipelineSize()
+                  && reqExecutionOrderBuffer.size() < IOTDB_CONFIG.getIotConsensusV2PipelineSize()
                   && reqExecutionOrderBuffer.first() != null
                   && reqExecutionOrderBuffer.first().equals(requestMeta)) {
                 long startApplyNanos = System.nanoTime();

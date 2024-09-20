@@ -398,7 +398,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
       config.setDataRegionConsensusProtocolClass(
           configurationResp.globalConfig.getDataRegionConsensusProtocolClass());
-      config.setIotConsensusV2Mode(configurationResp.globalConfig.getIotConsensusV2Mode());
     }
 
     if (!IoTDBStartCheck.getInstance()

@@ -170,7 +170,6 @@ public class NodeManager {
     globalConfig.setTimestampPrecision(commonConfig.getTimestampPrecision());
     globalConfig.setSchemaEngineMode(commonConfig.getSchemaEngineMode());
     globalConfig.setTagAttributeTotalSize(commonConfig.getTagAttributeTotalSize());
-    globalConfig.setIotConsensusV2Mode(configNodeConfig.getIotConsensusV2Mode());
     dataSet.setGlobalConfig(globalConfig);
   }
 

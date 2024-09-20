@@ -42,7 +42,6 @@ struct TGlobalConfig {
   10: optional i32 tagAttributeTotalSize
   11: optional bool isEnterprise
   12: optional i64 timePartitionOrigin
-  13: optional string iotConsensusV2Mode
 }
 
 struct TRatisConfig {

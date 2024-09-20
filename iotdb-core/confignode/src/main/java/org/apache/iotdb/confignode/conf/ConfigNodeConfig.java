@@ -68,9 +68,6 @@ public class ConfigNodeConfig {
   /** Data region consensus protocol. */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
-  /** iotConsensusV2 protocol mode. */
-  private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
-
   /** Default number of DataRegion replicas. */
   private int dataReplicationFactor = 1;
 
@@ -498,14 +495,6 @@ public class ConfigNodeConfig {
 
   public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
-  }
-
-  public String getIotConsensusV2Mode() {
-    return iotConsensusV2Mode;
-  }
-
-  public void setIotConsensusV2Mode(String iotConsensusV2Mode) {
-    this.iotConsensusV2Mode = iotConsensusV2Mode;
   }
 
   public double getDataRegionPerDataNode() {

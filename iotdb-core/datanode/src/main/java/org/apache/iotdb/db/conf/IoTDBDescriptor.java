@@ -1074,12 +1074,12 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1126,16 +1126,18 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  private void loadPipeConsensusProps(Properties properties) throws IOException {
-    conf.setPipeConsensusPipelineSize(
+  private void loadIoTConsensusV2Props(Properties properties) throws IOException {
+    conf.setIotConsensusV2PipelineSize(
         Integer.parseInt(
             properties.getProperty(
                 "iot_consensus_v2_pipeline_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
                     "iot_consensus_v2_pipeline_size"))));
-    if (conf.getPipeConsensusPipelineSize() <= 0) {
-      conf.setPipeConsensusPipelineSize(5);
+    if (conf.getIotConsensusV2PipelineSize() <= 0) {
+      conf.setIotConsensusV2PipelineSize(5);
     }
+    conf.setIotConsensusV2Mode(
+        properties.getProperty("iot_consensus_v2_mode", conf.getIotConsensusV2Mode()).trim());
   }
 
   private void loadAuthorCache(Properties properties) {

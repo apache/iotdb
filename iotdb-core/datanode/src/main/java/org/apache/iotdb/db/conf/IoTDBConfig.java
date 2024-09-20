@@ -936,13 +936,6 @@ public class IoTDBConfig {
   private String dataRegionConsensusProtocolClass = ConsensusFactory.IOT_CONSENSUS;
 
   /**
-   * The mode of iotConsensusV2 protocol. The Datanode should communicate with ConfigNode on startup
-   * and set this variable so that the correct class name can be obtained later when the data region
-   * consensus layer singleton is initialized
-   */
-  private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
-
-  /**
    * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
    * on startup and set this variable so that the correct class name can be obtained later when the
    * schema region consensus layer singleton is initialized
@@ -1133,8 +1126,9 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
-  // PipeConsensus Config
-  private int pipeConsensusPipelineSize = 5;
+  // IoTConsensusV2 Config
+  private int iotConsensusV2PipelineSize = 5;
+  private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1228,12 +1222,12 @@ public class IoTDBConfig {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
   }
 
-  public int getPipeConsensusPipelineSize() {
-    return pipeConsensusPipelineSize;
+  public int getIotConsensusV2PipelineSize() {
+    return iotConsensusV2PipelineSize;
   }
 
-  public void setPipeConsensusPipelineSize(int pipeConsensusPipelineSize) {
-    this.pipeConsensusPipelineSize = pipeConsensusPipelineSize;
+  public void setIotConsensusV2PipelineSize(int iotConsensusV2PipelineSize) {
+    this.iotConsensusV2PipelineSize = iotConsensusV2PipelineSize;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
