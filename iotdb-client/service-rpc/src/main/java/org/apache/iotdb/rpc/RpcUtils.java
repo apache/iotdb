@@ -124,7 +124,6 @@ public class RpcUtils {
         } else {
           endPointList.add(null);
         }
-        endPointList.add(subStatus.isSetRedirectNode() ? subStatus.getRedirectNode() : null);
       }
       if (!endPointList.isEmpty() && count != 0) {
         throw new RedirectException(endPointList);
