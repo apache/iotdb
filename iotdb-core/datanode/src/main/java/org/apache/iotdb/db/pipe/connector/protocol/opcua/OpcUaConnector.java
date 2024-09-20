@@ -120,13 +120,14 @@ public class OpcUaConnector implements PipeConnector {
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
     final String securityDir =
-        parameters.getStringOrDefault(
-            Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
-            CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
-                + File.separatorChar
-                + httpsBindPort
-                + "_"
-                + tcpBindPort);
+        IoTDBConfig.addDataHomeDir(
+            parameters.getStringOrDefault(
+                Arrays.asList(CONNECTOR_OPC_UA_SECURITY_DIR_KEY, SINK_OPC_UA_SECURITY_DIR_KEY),
+                CONNECTOR_OPC_UA_SECURITY_DIR_DEFAULT_VALUE
+                    + File.separatorChar
+                    + httpsBindPort
+                    + "_"
+                    + tcpBindPort));
     final boolean enableAnonymousAccess =
         parameters.getBooleanOrDefault(
             Arrays.asList(
@@ -150,7 +151,7 @@ public class OpcUaConnector implements PipeConnector {
                                 .setHttpsBindPort(httpsBindPort)
                                 .setUser(user)
                                 .setPassword(password)
-                                .setSecurityDir(IoTDBConfig.addDataHomeDir(securityDir))
+                                .setSecurityDir(securityDir)
                                 .setEnableAnonymousAccess(enableAnonymousAccess);
                         final OpcUaServer newServer = builder.build();
                         nameSpace =
