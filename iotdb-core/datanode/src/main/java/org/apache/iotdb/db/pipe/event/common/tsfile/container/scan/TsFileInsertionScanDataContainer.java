@@ -222,7 +222,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       }
 
       if (tablet == null) {
-        tablet = new Tablet(currentDevice.toString(), currentMeasurements, 1);
+        tablet = new Tablet(currentDevice, currentMeasurements, 1);
         tablet.initBitMaps();
         // Ignore the memory cost of tablet
         PipeDataNodeResourceManager.memory().forceResize(allocatedMemoryBlockForTablet, 0);
@@ -437,7 +437,6 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           if (recordAlignedChunk(valueChunkList, marker)) {
             return;
           }
-          // TODO: Replace it by IDeviceID
           final String deviceID =
               ((PlainDeviceID) tsFileSequenceReader.readChunkGroupHeader().getDeviceID())
                   .toStringID();
