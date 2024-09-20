@@ -294,11 +294,12 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
   public void testMapAlignedChunkMetadata1() {
     List<IChunkMetadata> valueChunkMetadatas =
         Arrays.asList(
-            new ChunkMetadata("s0", TSDataType.INT32, 0, null),
-            new ChunkMetadata("s1", TSDataType.INT32, 0, null),
-            new ChunkMetadata("s2", TSDataType.INT32, 0, null),
+            new ChunkMetadata("s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
             null,
-            new ChunkMetadata("s4", TSDataType.INT32, 0, null));
+            new ChunkMetadata(
+                "s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
     AlignedChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
     List<IMeasurementSchema> measurementSchemas =
@@ -320,7 +321,9 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
   @Test
   public void testMapAlignedChunkMetadata2() {
     List<IChunkMetadata> valueChunkMetadatas =
-        Arrays.asList(new ChunkMetadata("s4", TSDataType.INT32, 0, null), null);
+        Arrays.asList(
+            new ChunkMetadata("s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            null);
     AlignedChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
     List<IMeasurementSchema> measurementSchemas =
@@ -341,16 +344,18 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
   public void testMapAlignedChunkMetadata3() {
     List<IChunkMetadata> valueChunkMetadatas =
         Arrays.asList(
-            new ChunkMetadata("s0", TSDataType.INT32, 0, null),
-            new ChunkMetadata("s1", TSDataType.INT32, 0, null),
-            new ChunkMetadata("s2", TSDataType.INT32, 0, null));
+            new ChunkMetadata("s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata(
+                "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
     AlignedChunkMetadata alignedChunkMetadata1 =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
 
     valueChunkMetadatas =
         Arrays.asList(
-            new ChunkMetadata("s3", TSDataType.INT32, 0, null),
-            new ChunkMetadata("s4", TSDataType.INT32, 0, null));
+            new ChunkMetadata("s3", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata(
+                "s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
     AlignedChunkMetadata alignedChunkMetadata2 =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
     List<IMeasurementSchema> measurementSchemas =
@@ -382,12 +387,21 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
   @Test
   public void testMapAlignedChunkMetadata4() {
     List<IChunkMetadata> valueChunkMetadatas =
-        Arrays.asList(null, new ChunkMetadata("s2", TSDataType.INT32, 0, null));
+        Arrays.asList(
+            null,
+            new ChunkMetadata(
+                "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
     AlignedChunkMetadata alignedChunkMetadata1 =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
 
     valueChunkMetadatas =
-        Arrays.asList(null, null, null, null, new ChunkMetadata("s4", TSDataType.INT32, 0, null));
+        Arrays.asList(
+            null,
+            null,
+            null,
+            null,
+            new ChunkMetadata(
+                "s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
     AlignedChunkMetadata alignedChunkMetadata2 =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
     List<IMeasurementSchema> measurementSchemas =
