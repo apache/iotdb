@@ -70,13 +70,15 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private IChunkReader chunkReader;
   private BatchData data;
 
-  private boolean isMultiPage;
+  private boolean currentIsMultiPage;
   private String currentDevice;
   private boolean currentIsAligned;
   private final List<MeasurementSchema> currentMeasurements = new ArrayList<>();
 
   // Cached time chunk
   private final List<Chunk> timeChunkList = new ArrayList<>();
+  private final List<Boolean> isMultiPageList = new ArrayList<>();
+
   private final Map<String, Integer> measurementIndexMap = new HashMap<>();
   private int lastIndex = -1;
   private ChunkHeader firstChunkHeader4NextSequentialValueChunks;
@@ -187,7 +189,8 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
 
       boolean isFirstRow = true;
       while (data.hasCurrent()) {
-        if (isMultiPage || data.currentTime() >= startTime && data.currentTime() <= endTime) {
+        if (currentIsMultiPage
+            || data.currentTime() >= startTime && data.currentTime() <= endTime) {
           if (isFirstRow) {
             // Calculate row count and memory size of the tablet based on the first row
             Pair<Integer, Integer> rowCountAndMemorySize =
@@ -346,7 +349,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
           // Notice that the data in one chunk group is either aligned or non-aligned
           // There is no need to consider non-aligned chunks when there are value chunks
-          isMultiPage = marker == MetaMarker.CHUNK_HEADER || marker == MetaMarker.TIME_CHUNK_HEADER;
+          currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
 
           chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
@@ -361,6 +364,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
             timeChunkList.add(
                 new Chunk(
                     chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+            isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
             break;
           }
 
@@ -371,7 +375,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           }
 
           chunkReader =
-              isMultiPage
+              currentIsMultiPage
                   ? new ChunkReader(
                       new Chunk(
                           chunkHeader,
@@ -440,6 +444,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
           // Clear because the cached data will never be used in the next chunk group
           lastIndex = -1;
           timeChunkList.clear();
+          isMultiPageList.clear();
           measurementIndexMap.clear();
 
           currentDevice = pattern.mayOverlapWithDevice(deviceID) ? deviceID : null;
@@ -461,8 +466,9 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
   private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
       throws IOException {
     if (!valueChunkList.isEmpty()) {
+      currentIsMultiPage = isMultiPageList.get(lastIndex);
       chunkReader =
-          isMultiPage
+          currentIsMultiPage
               ? new AlignedChunkReader(timeChunkList.get(lastIndex), valueChunkList, filter)
               : new AlignedSinglePageWholeChunkReader(timeChunkList.get(lastIndex), valueChunkList);
       currentIsAligned = true;
