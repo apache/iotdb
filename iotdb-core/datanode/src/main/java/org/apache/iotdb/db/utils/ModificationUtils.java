@@ -87,22 +87,7 @@ public class ModificationUtils {
   public static void modifyAlignedChunkMetaData(
       List<AlignedChunkMetadata> chunkMetaData, List<List<Modification>> modifications) {
     for (AlignedChunkMetadata metaData : chunkMetaData) {
-      List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
-      // deal with each sub sensor
-      for (int i = 0; i < valueChunkMetadataList.size(); i++) {
-        IChunkMetadata v = valueChunkMetadataList.get(i);
-        if (v != null) {
-          List<Modification> modificationList = modifications.get(i);
-          for (Modification modification : modificationList) {
-            // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
-            // is not supposed to exist as getFileOffset() is offset containing full chunk,
-            // while getOffsetOfChunkHeader() returns the chunk header offset
-            if (modification.getFileOffset() > v.getOffsetOfChunkHeader()) {
-              doModifyChunkMetaData(modification, v);
-            }
-          }
-        }
-      }
+      modifyValueColumns(metaData, modifications);
     }
     // if all sub sensors' chunk metadata are deleted, then remove the aligned chunk metadata
     // otherwise, set the deleted chunk metadata of some sensors to null
@@ -110,43 +95,121 @@ public class ModificationUtils {
         alignedChunkMetadata -> {
           // the whole aligned path need to be removed, only set to be true if all the sub sensors
           // are deleted
-          boolean removed = true;
+          // the whole aligned path is modified, set to be true if any sub sensor is modified
+          return areAllValueColumnsDeleted(alignedChunkMetadata, false);
+        });
+  }
+
+  private static void modifyValueColumns(
+      AlignedChunkMetadata metaData, List<List<Modification>> valueColumnsModifications) {
+    List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
+    // deal with each sub sensor
+    for (int j = 0; j < valueChunkMetadataList.size(); j++) {
+      IChunkMetadata v = valueChunkMetadataList.get(j);
+      if (v != null) {
+        List<Modification> modificationList = valueColumnsModifications.get(j);
+        for (Modification modification : modificationList) {
+          // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+          // is not supposed to exist as getFileOffset() is offset containing full chunk,
+          // while getOffsetOfChunkHeader() returns the chunk header offset
+          if (modification.getFileOffset() > v.getOffsetOfChunkHeader()) {
+            doModifyChunkMetaData(modification, v);
+          }
+        }
+      }
+    }
+  }
+
+  private static boolean areAllValueColumnsDeleted(
+      AlignedChunkMetadata alignedChunkMetadata, boolean modified) {
+
+    // the whole aligned path need to be removed, only set to be true if all the sub sensors
+    // are deleted and ignoreAllNullRows is true
+    boolean allValueColumnsAreDeleted = true;
+    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+    for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+      IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
+      if (valueChunkMetadata == null) {
+        continue;
+      }
+      // current sub sensor's chunk metadata is completely removed
+      boolean currentRemoved = false;
+      if (valueChunkMetadata.getDeleteIntervalList() != null) {
+        for (TimeRange range : valueChunkMetadata.getDeleteIntervalList()) {
+          if (range.contains(valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime())) {
+            valueChunkMetadataList.set(i, null);
+            currentRemoved = true;
+            break;
+          } else {
+            if (range.overlaps(
+                new TimeRange(
+                    valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime()))) {
+              valueChunkMetadata.setModified(true);
+              modified = true;
+            }
+          }
+        }
+      }
+      // current sub sensor's chunk metadata is not completely removed,
+      // so the whole aligned path don't need to be removed from list
+      if (!currentRemoved) {
+        allValueColumnsAreDeleted = false;
+      }
+    }
+    alignedChunkMetadata.setModified(modified);
+    return allValueColumnsAreDeleted;
+  }
+
+  public static void modifyAlignedChunkMetaData(
+      List<AlignedChunkMetadata> chunkMetaData,
+      List<Modification> timeColumnModifications,
+      List<List<Modification>> valueColumnsModifications,
+      boolean ignoreAllNullRows) {
+    for (AlignedChunkMetadata metaData : chunkMetaData) {
+      IChunkMetadata timeColumnChunkMetadata = metaData.getTimeChunkMetadata();
+
+      for (Modification modification : timeColumnModifications) {
+        // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+        // is not supposed to exist as getFileOffset() is offset containing full chunk,
+        // while getOffsetOfChunkHeader() returns the chunk header offset
+        if (modification.getFileOffset() > timeColumnChunkMetadata.getOffsetOfChunkHeader()) {
+          doModifyChunkMetaData(modification, timeColumnChunkMetadata);
+        }
+      }
+      modifyValueColumns(metaData, valueColumnsModifications);
+    }
+
+    // if all sub sensors' chunk metadata are deleted and ignoreAllNullRows is true, then remove the
+    // aligned chunk metadata
+    // otherwise, set the deleted chunk metadata of some sensors to null
+    chunkMetaData.removeIf(
+        alignedChunkMetadata -> {
           // the whole aligned path is modified, set to be true if any sub sensor is modified
           boolean modified = false;
-          List<IChunkMetadata> valueChunkMetadataList =
-              alignedChunkMetadata.getValueChunkMetadataList();
-          for (int i = 0; i < valueChunkMetadataList.size(); i++) {
-            IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
-            if (valueChunkMetadata == null) {
-              continue;
-            }
-            // current sub sensor's chunk metadata is completely removed
-            boolean currentRemoved = false;
-            if (valueChunkMetadata.getDeleteIntervalList() != null) {
-              for (TimeRange range : valueChunkMetadata.getDeleteIntervalList()) {
-                if (range.contains(
-                    valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime())) {
-                  valueChunkMetadataList.set(i, null);
-                  currentRemoved = true;
-                  break;
-                } else {
-                  if (range.overlaps(
-                      new TimeRange(
-                          valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime()))) {
-                    valueChunkMetadata.setModified(true);
-                    modified = true;
-                  }
+
+          // deal with time column
+          IChunkMetadata timeColumnChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+          if (timeColumnChunkMetadata.getDeleteIntervalList() != null) {
+            for (TimeRange range : timeColumnChunkMetadata.getDeleteIntervalList()) {
+              if (range.contains(
+                  timeColumnChunkMetadata.getStartTime(), timeColumnChunkMetadata.getEndTime())) {
+                // all rows are deleted
+                return true;
+              } else {
+                if (range.overlaps(
+                    new TimeRange(
+                        timeColumnChunkMetadata.getStartTime(),
+                        timeColumnChunkMetadata.getEndTime()))) {
+                  timeColumnChunkMetadata.setModified(true);
+                  modified = true;
                 }
               }
             }
-            // current sub sensor's chunk metadata is not completely removed,
-            // so the whole aligned path don't need to be removed from list
-            if (!currentRemoved) {
-              removed = false;
-            }
           }
-          alignedChunkMetadata.setModified(modified);
-          return removed;
+
+          boolean allValueColumnsAreDeleted =
+              areAllValueColumnsDeleted(alignedChunkMetadata, modified);
+          return ignoreAllNullRows && allValueColumnsAreDeleted;
         });
   }
 
@@ -191,7 +254,7 @@ public class ModificationUtils {
    * Check whether the device with start time and end time is completely deleted by mods or not.
    * There are some slight differences from that in {@link SettleSelectorImpl}.
    */
-  public static boolean isDeviceDeletedByMods(
+  public static boolean isAllDeletedByMods(
       Collection<Modification> modifications, IDeviceID device, long startTime, long endTime)
       throws IllegalPathException {
     final MeasurementPath deviceWithWildcard = new MeasurementPath(device, ONE_LEVEL_PATH_WILDCARD);
@@ -199,6 +262,19 @@ public class ModificationUtils {
       MeasurementPath path = modification.getPath();
       if (path.matchFullPath(deviceWithWildcard)
           && ((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static boolean isAllDeletedByMods(
+      Collection<Modification> modifications, long startTime, long endTime) {
+    if (modifications == null || modifications.isEmpty()) {
+      return false;
+    }
+    for (Modification modification : modifications) {
+      if (((Deletion) modification).getTimeRange().contains(startTime, endTime)) {
         return true;
       }
     }
@@ -237,12 +313,13 @@ public class ModificationUtils {
       IMemTable memTable,
       List<Pair<Modification, IMemTable>> modsToMemtable,
       long timeLowerBound) {
+    List<Modification> modifications =
+        ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable);
     List<List<TimeRange>> deletionList = new ArrayList<>();
     for (String measurement : measurementList) {
       List<TimeRange> columnDeletionList = new ArrayList<>();
       columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-      for (Modification modification :
-          ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable)) {
+      for (Modification modification : modifications) {
         if (modification instanceof Deletion) {
           Deletion deletion = (Deletion) modification;
           if (deletion.getPath().matchFullPath(deviceID, measurement)

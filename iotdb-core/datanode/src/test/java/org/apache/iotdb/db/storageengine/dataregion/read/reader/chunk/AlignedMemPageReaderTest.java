@@ -115,7 +115,7 @@ public class AlignedMemPageReaderTest {
 
     MemAlignedPageReader alignedPageReader2 = generateSingleColumnAlignedPageReader();
     TsBlock tsBlock2 = alignedPageReader2.getAllSatisfiedData();
-    Assert.assertEquals(80, tsBlock2.getPositionCount());
+    Assert.assertEquals(100, tsBlock2.getPositionCount());
   }
 
   @Test
@@ -131,8 +131,8 @@ public class AlignedMemPageReaderTest {
     alignedPageReader2.setLimitOffset(new PaginationController(10, 10));
     TsBlock tsBlock2 = alignedPageReader2.getAllSatisfiedData();
     Assert.assertEquals(10, tsBlock2.getPositionCount());
-    Assert.assertEquals(20, tsBlock2.getTimeByIndex(0));
-    Assert.assertEquals(29, tsBlock2.getTimeByIndex(9));
+    Assert.assertEquals(10, tsBlock2.getTimeByIndex(0));
+    Assert.assertEquals(19, tsBlock2.getTimeByIndex(9));
   }
 
   @Test

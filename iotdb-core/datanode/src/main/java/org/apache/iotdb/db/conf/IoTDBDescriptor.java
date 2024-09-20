@@ -1177,6 +1177,15 @@ public class IoTDBDescriptor {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
     }
 
+    boolean WALInsertNodeCacheShrinkClearEnabled =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_cache_shrink_clear_enabled",
+                Boolean.toString(conf.getWALCacheShrinkClearEnabled())));
+    if (conf.getWALCacheShrinkClearEnabled() != WALInsertNodeCacheShrinkClearEnabled) {
+      conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
+    }
+
     loadWALHotModifiedProps(properties);
   }
 
@@ -2282,19 +2291,30 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
-    conf.setLoadActiveListeningCheckIntervalSeconds(
+
+    final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
             properties.getProperty(
                 "load_active_listening_check_interval_seconds",
-                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
-    conf.setLoadActiveListeningMaxThreadNum(
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds())));
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        loadActiveListeningCheckIntervalSeconds <= 0
+            ? conf.getLoadActiveListeningCheckIntervalSeconds()
+            : loadActiveListeningCheckIntervalSeconds);
+
+    final int defaultLoadActiveListeningMaxThreadNum =
+        Math.min(
+            conf.getLoadActiveListeningMaxThreadNum(),
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    final int loadActiveListeningMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
                 "load_active_listening_max_thread_num",
-                Integer.toString(
-                    Math.min(
-                        conf.getLoadActiveListeningMaxThreadNum(),
-                        Math.max(1, Runtime.getRuntime().availableProcessors() / 2))))));
+                Integer.toString(defaultLoadActiveListeningMaxThreadNum)));
+    conf.setLoadActiveListeningMaxThreadNum(
+        loadActiveListeningMaxThreadNum <= 0
+            ? defaultLoadActiveListeningMaxThreadNum
+            : loadActiveListeningMaxThreadNum);
   }
 
   private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {

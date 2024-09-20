@@ -58,7 +58,8 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       QueryContext context,
       IMeasurementSchema schema,
       TVList tvList,
-      List<List<TimeRange>> deletionList)
+      List<TimeRange> timeColumnDeletion,
+      List<List<TimeRange>> valueColumnsDeletionList)
       throws QueryProcessException {
     super(context);
     this.timeChunkName = schema.getMeasurementId();
@@ -67,7 +68,13 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     int floatPrecision = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
     List<TSEncoding> encodingList = schema.getSubMeasurementsTSEncodingList();
     this.tsBlock =
-        ((AlignedTVList) tvList).buildTsBlock(floatPrecision, encodingList, deletionList);
+        ((AlignedTVList) tvList)
+            .buildTsBlock(
+                floatPrecision,
+                encodingList,
+                timeColumnDeletion,
+                valueColumnsDeletionList,
+                context.isIgnoreAllNullRows());
     initAlignedChunkMetaFromTsBlock();
   }
 

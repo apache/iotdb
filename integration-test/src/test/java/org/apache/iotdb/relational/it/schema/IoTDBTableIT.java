@@ -210,7 +210,7 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: TTL' value must be a LongLiteral, but now is NullLiteral, value: null",
+            "701: ttl value must be a LongLiteral, but now is NullLiteral, value: null",
             e.getMessage());
       }
 
@@ -220,7 +220,7 @@ public class IoTDBTableIT {
         fail();
       } catch (final SQLException e) {
         assertEquals(
-            "701: TTL' value must be equal to or greater than 0, but now is: -1", e.getMessage());
+            "701: ttl value must be equal to or greater than 0, but now is: -1", e.getMessage());
       }
 
       try {
