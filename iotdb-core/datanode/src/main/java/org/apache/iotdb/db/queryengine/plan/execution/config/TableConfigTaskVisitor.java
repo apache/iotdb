@@ -131,7 +131,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // Check database length here
     // We need to calculate the database name without "root."
     if (dbName.contains(PATH_SEPARATOR)
-        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(schema.getName()).matches()
+        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(node.getDbName()).matches()
         || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
       throw new SemanticException(
           new IllegalPathException(
