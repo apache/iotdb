@@ -34,6 +34,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -313,6 +314,9 @@ public class ModificationUtils {
       IMemTable memTable,
       List<Pair<Modification, IMemTable>> modsToMemtable,
       long timeLowerBound) {
+    if (measurementList.isEmpty()) {
+      return Collections.emptyList();
+    }
     List<Modification> modifications =
         ModificationUtils.getModificationsForMemtable(memTable, modsToMemtable);
     List<List<TimeRange>> deletionList = new ArrayList<>();

@@ -43,6 +43,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -254,7 +255,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         array,
         types,
         encodings,
-        alignedFullPath.getSchemaList().get(0).getCompressor());
+        // considering that compressor won't be used in memtable scan, so here passing
+        // CompressionType.UNCOMPRESSED just as a placeholder
+        CompressionType.UNCOMPRESSED);
   }
 
   @Override
