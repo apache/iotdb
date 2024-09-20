@@ -2586,7 +2586,21 @@ public class ConfigManager implements IManager {
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     final TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.fetchTables(fetchTableMap)
+        ? clusterSchemaManager.fetchTables(
+            fetchTableMap.entrySet().stream()
+                .filter(
+                    entry -> {
+                      entry
+                          .getValue()
+                          .removeIf(
+                              table ->
+                                  procedureManager
+                                      .checkDuplicateTableTask(
+                                          entry.getKey(), null, table, null, null)
+                                      .getRight());
+                      return !entry.getValue().isEmpty();
+                    })
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
         : new TFetchTableResp(status);
   }
 
