@@ -50,7 +50,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
-  private final CompactionScheduleContext context;
   private boolean isActiveTimePartition;
 
   public NewSizeTieredCompactionSelector(
@@ -60,7 +59,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       boolean sequence,
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
-    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager);
+    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager, context);
     double availableDiskSpaceInByte =
         MetricService.getInstance()
             .getAutoGauge(
@@ -80,7 +79,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         Math.min(config.getInnerCompactionTotalFileSizeThresholdInByte(), maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
-    this.context = context;
   }
 
   @Override

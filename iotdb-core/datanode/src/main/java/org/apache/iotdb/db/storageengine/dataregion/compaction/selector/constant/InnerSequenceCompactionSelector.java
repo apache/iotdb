@@ -54,7 +54,7 @@ public enum InnerSequenceCompactionSelector {
       case SIZE_TIERED_SINGLE_TARGET:
       default:
         return new SizeTieredCompactionSelector(
-            storageGroupName, dataRegionId, timePartition, true, tsFileManager);
+            storageGroupName, dataRegionId, timePartition, true, tsFileManager, context);
     }
   }
 }
