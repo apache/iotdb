@@ -61,6 +61,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
   private static final double FSYNC_BUFFER_RATIO = 0.95;
   private static final int QUEUE_CAPACITY = config.getWalBufferQueueCapacity();
+  private static final long MAX_WAIT_CLOSE_TIME_IN_MS = 10000;
 
   // DeletionResources
   private final BlockingQueue<DeletionResource> deletionResources =
@@ -316,11 +317,25 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     isClosed = true;
     // Force sync existing data in memory to disk.
     // first waiting serialize and sync tasks finished, then release all resources
+    waitUntilFlushAllDeletionsOrTimeOut();
     if (persistThread != null) {
       shutdownThread(persistThread, ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE);
     }
     // clean buffer
     MmapUtil.clean(serializeBuffer);
+  }
+
+  private void waitUntilFlushAllDeletionsOrTimeOut() {
+    long currentTime = System.currentTimeMillis();
+    while (!isAllDeletionFlushed()
+        && System.currentTimeMillis() - currentTime < MAX_WAIT_CLOSE_TIME_IN_MS) {
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted when waiting for all deletions flushed.");
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {

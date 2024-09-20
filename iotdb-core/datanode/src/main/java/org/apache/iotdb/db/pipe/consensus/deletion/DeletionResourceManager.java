@@ -128,19 +128,7 @@ public class DeletionResourceManager implements AutoCloseable {
     LOGGER.info("Closing deletion resource manager for {}...", dataRegionId);
     this.deletionResources.clear();
     this.deletionBuffer.close();
-    waitUntilFlushAllDeletions();
     LOGGER.info("Deletion resource manager for {} has been successfully closed!", dataRegionId);
-  }
-
-  private void waitUntilFlushAllDeletions() {
-    while (!deletionBuffer.isAllDeletionFlushed()) {
-      try {
-        Thread.sleep(50);
-      } catch (InterruptedException e) {
-        LOGGER.error("Interrupted when waiting for all deletions flushed.");
-        Thread.currentThread().interrupt();
-      }
-    }
   }
 
   /**
@@ -210,7 +198,7 @@ public class DeletionResourceManager implements AutoCloseable {
               .filter(path -> path.getFileName().toString().matches(DELETION_FILE_NAME_PATTERN))
               .filter(
                   path ->
-                      isFileProgressBehindGivenProgress(
+                      isFileProgressCoveredByGivenProgress(
                           path.getFileName().toString(), currentProgressIndex))
               .sorted(this::compareFileProgressIndex)
               .toArray(Path[]::new);
@@ -252,7 +240,7 @@ public class DeletionResourceManager implements AutoCloseable {
     return 0;
   }
 
-  private boolean isFileProgressBehindGivenProgress(
+  private boolean isFileProgressCoveredByGivenProgress(
       String fileName, ProgressIndex currentProgressIndex) {
     if (currentProgressIndex instanceof SimpleProgressIndex) {
       SimpleProgressIndex simpleProgressIndex = (SimpleProgressIndex) currentProgressIndex;
