@@ -131,16 +131,16 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     // Check database length here
     // We need to calculate the database name without "root."
     if (dbName.contains(PATH_SEPARATOR)
-        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(node.getDbName()).matches()
+        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
         || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
       throw new SemanticException(
           new IllegalPathException(
-              node.getDbName(),
+              dbName,
               dbName.length() > MAX_DATABASE_NAME_LENGTH
                   ? "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH
                   : "the database name can only contain english or chinese characters, numbers, backticks and underscores."));
     }
-    schema.setName(ROOT + PATH_SEPARATOR_CHAR + node.getDbName());
+    schema.setName(ROOT + PATH_SEPARATOR_CHAR + dbName);
 
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
