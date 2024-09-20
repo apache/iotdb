@@ -28,9 +28,10 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import java.io.IOException;
 import java.util.List;
 
-public class BatchedCompactionAlignedPagePointReader implements IPointReader {
+public class CompactionAlignedPageLazyLoadPointReader implements IPointReader {
   private final TimePageReader timeReader;
   private final List<ValuePageReader> valueReaders;
+  private final boolean ignoreAllNullRows;
 
   private boolean hasNextRow = false;
 
@@ -38,31 +39,43 @@ public class BatchedCompactionAlignedPagePointReader implements IPointReader {
   private long currentTime;
   private TsPrimitiveType currentRow;
 
-  public BatchedCompactionAlignedPagePointReader(
-      TimePageReader timeReader, List<ValuePageReader> valueReaders) throws IOException {
+  public CompactionAlignedPageLazyLoadPointReader(
+      TimePageReader timeReader, List<ValuePageReader> valueReaders, boolean ignoreAllNullRows)
+      throws IOException {
     this.timeIndex = -1;
     this.timeReader = timeReader;
     this.valueReaders = valueReaders;
+    this.ignoreAllNullRows = ignoreAllNullRows;
     prepareNextRow();
   }
 
   private void prepareNextRow() throws IOException {
-    if (!timeReader.hasNextTime()) {
-      hasNextRow = false;
-      return;
+    while (timeReader.hasNextTime()) {
+      currentTime = timeReader.nextTime();
+      ++this.timeIndex;
+      boolean someValueNotNull = false;
+      TsPrimitiveType[] valuesInThisRow = new TsPrimitiveType[this.valueReaders.size()];
+
+      for (int i = 0; i < valueReaders.size(); ++i) {
+        TsPrimitiveType value =
+            valueReaders.get(i) == null
+                ? null
+                : this.valueReaders.get(i).nextValue(currentTime, timeIndex);
+        someValueNotNull = someValueNotNull || value != null;
+        valuesInThisRow[i] = value;
+      }
+      if (timeReader.isDeleted(currentTime)) {
+        continue;
+      }
+
+      if (!ignoreAllNullRows || someValueNotNull) {
+        currentRow = new TsPrimitiveType.TsVector(valuesInThisRow);
+        hasNextRow = true;
+        return;
+      }
     }
-    currentTime = timeReader.nextTime();
-    timeIndex++;
-    TsPrimitiveType[] valuesInThisRow = new TsPrimitiveType[valueReaders.size()];
-    for (int i = 0; i < valueReaders.size(); i++) {
-      TsPrimitiveType value =
-          valueReaders.get(i) == null
-              ? null
-              : valueReaders.get(i).nextValue(currentTime, timeIndex);
-      valuesInThisRow[i] = value;
-    }
-    currentRow = new TsPrimitiveType.TsVector(valuesInThisRow);
-    hasNextRow = true;
+
+    hasNextRow = false;
   }
 
   @Override

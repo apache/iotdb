@@ -619,7 +619,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
     boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
     boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
-    boxValue.add(String.format("RegionId: %s", node.getRegionReplicaSet().getRegionId().getId()));
+    boxValue.add(
+        String.format(
+            "RegionId: %s",
+            node.getRegionReplicaSet() == null
+                ? ""
+                : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
   }
 
@@ -630,9 +635,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    if (node.isStreamable()) {
-      boxValue.add("Streamable: true");
-    }
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
         aggregation : node.getAggregations().values()) {
@@ -640,6 +642,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
     }
     boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    if (node.isStreamable()) {
+      boxValue.add("Streamable: true");
+      boxValue.add(String.format("PreGroupedSymbols: %s", node.getPreGroupedSymbols()));
+    }
     boxValue.add(String.format("Step: %s", node.getStep()));
     return render(node, boxValue, context);
   }
@@ -652,9 +658,6 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("AggregationTableScan-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
-    if (node.isStreamable()) {
-      boxValue.add("Streamable: true");
-    }
     int i = 0;
     for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
         aggregation : node.getAggregations().values()) {
@@ -662,6 +665,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
           String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
     }
     boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    if (node.isStreamable()) {
+      boxValue.add("Streamable: true");
+      boxValue.add(String.format("PreGroupedSymbols: %s", node.getPreGroupedSymbols()));
+    }
     boxValue.add(String.format("Step: %s", node.getStep()));
 
     if (node.getProjection() != null) {
@@ -677,7 +684,12 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
     boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
     boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
-    boxValue.add(String.format("RegionId: %s", node.getRegionReplicaSet().getRegionId().getId()));
+    boxValue.add(
+        String.format(
+            "RegionId: %s",
+            node.getRegionReplicaSet() == null
+                ? ""
+                : node.getRegionReplicaSet().getRegionId().getId()));
     return render(node, boxValue, context);
   }
 
