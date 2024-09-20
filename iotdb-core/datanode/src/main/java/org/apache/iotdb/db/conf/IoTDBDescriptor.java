@@ -1137,7 +1137,9 @@ public class IoTDBDescriptor {
       conf.setIotConsensusV2PipelineSize(5);
     }
     conf.setIotConsensusV2Mode(
-        properties.getProperty("iot_consensus_v2_mode", conf.getIotConsensusV2Mode()).trim());
+        properties.getProperty(
+            "iot_consensus_v2_mode",
+            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -2448,12 +2450,12 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setPipeConsensusReceiverFileDirs(
+    conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
                     .getProperty(
-                        "pipe_consensus_receiver_file_dirs",
-                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
+                        "iot_consensus_v2_receiver_file_dirs",
+                        String.join(",", conf.getIotConsensusV2ReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())

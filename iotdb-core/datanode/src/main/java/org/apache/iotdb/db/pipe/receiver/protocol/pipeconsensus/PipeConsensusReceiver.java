@@ -119,7 +119,8 @@ public class PipeConsensusReceiver {
     // Each pipeConsensusReceiver has its own base directories. for example, a default dir path is
     // data/datanode/system/pipe/consensus/receiver/__consensus.{consensusGroupId}_{leaderDataNodeId}_{followerDataNodeId}
     receiverBaseDirsName =
-        Arrays.asList(IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs());
+        Arrays.asList(
+            IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2ReceiverFileDirs());
 
     try {
       this.folderManager =
