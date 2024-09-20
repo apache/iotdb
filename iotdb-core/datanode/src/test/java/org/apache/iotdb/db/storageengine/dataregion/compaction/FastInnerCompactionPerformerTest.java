@@ -2049,7 +2049,7 @@ public class FastInnerCompactionPerformerTest extends AbstractCompactionTest {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(targetResource.getTsFilePath())) {
       List<AlignedChunkMetadata> chunkMetadataList =
           reader.getAlignedChunkMetadata(
-              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"));
+              IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"), true);
       for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
         ChunkMetadata timeChunkMetadata =
             (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();

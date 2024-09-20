@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -71,13 +72,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private long timeLowerBoundForCurrentDevice;
+  private boolean ignoreAllNullRows = true;
 
   /**
    * Used for compaction with read chunk performer.
    *
    * @throws IOException if io error occurred
    */
-  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
+  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources, boolean ignoreAllNullRows)
+      throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
@@ -101,6 +104,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       throw e;
     }
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -109,7 +113,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public MultiTsFileDeviceIterator(
-      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources,
+      boolean ignoreAllNullRows)
+      throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     // sort the files from the newest to the oldest
@@ -121,6 +128,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -131,7 +139,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      Map<TsFileResource, TsFileSequenceReader> readerMap)
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      boolean ignoreAllNullRows)
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
@@ -139,6 +148,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
+    this.ignoreAllNullRows = ignoreAllNullRows;
 
     CompactionType type = null;
     if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
@@ -382,7 +392,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
-              currentDevice.left, firstMeasurementNodeOfCurrentDevice);
+              currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
@@ -422,10 +432,23 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
     AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
     List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
-    List<List<Modification>> modificationForCurDevice = new ArrayList<>();
+
+    // match time column modifications
+    List<Modification> modificationForTimeColumn = new ArrayList<>();
+    for (Modification modification : modifications) {
+      if (modification.getPath().matchFullPath(device, AlignedPath.VECTOR_PLACEHOLDER)) {
+        modificationForTimeColumn.add(modification);
+      }
+    }
+    if (ttlDeletion != null) {
+      modificationForTimeColumn.add(ttlDeletion);
+    }
+
+    // match value column modifications
+    List<List<Modification>> modificationForValueColumns = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
       if (valueChunkMetadata == null) {
-        modificationForCurDevice.add(Collections.emptyList());
+        modificationForValueColumns.add(Collections.emptyList());
         continue;
       }
       List<Modification> modificationList = new ArrayList<>();
@@ -440,12 +463,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (ttlDeletion != null) {
         modificationList.add(ttlDeletion);
       }
-      modificationForCurDevice.add(
+      modificationForValueColumns.add(
           modificationList.isEmpty() ? Collections.emptyList() : modificationList);
     }
 
     ModificationUtils.modifyAlignedChunkMetaData(
-        alignedChunkMetadataList, modificationForCurDevice);
+        alignedChunkMetadataList,
+        modificationForTimeColumn,
+        modificationForValueColumns,
+        ignoreAllNullRows);
   }
 
   public Map<TsFileResource, TsFileSequenceReader> getReaderMap() {

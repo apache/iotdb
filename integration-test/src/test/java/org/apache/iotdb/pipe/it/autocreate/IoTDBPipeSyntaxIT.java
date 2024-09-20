@@ -718,4 +718,15 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
       Assert.assertEquals(1, showPipeResult.size());
     }
   }
+
+  @Test
+  public void testValidPipeWithoutWithSink() {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("create pipe p1('sink'='do-nothing-sink')");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

@@ -217,6 +217,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.SetThrottleQuota
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowSpaceQuotaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.quota.ShowThrottleQuotaStatement;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
@@ -2005,8 +2006,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
     try {
-      LoadTsFileStatement loadTsFileStatement =
+      final LoadTsFileStatement loadTsFileStatement =
           new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
+
+      // if sql have with, return new load sql statement
+      if (ctx.loadFileWithAttributeClauses() != null) {
+        final Map<String, String> loadTsFileAttributes = new HashMap<>();
+        for (IoTDBSqlParser.LoadFileWithAttributeClauseContext attributeContext :
+            ctx.loadFileWithAttributeClauses().loadFileWithAttributeClause()) {
+          final String key =
+              parseStringLiteral(attributeContext.loadFileWithKey.getText()).trim().toLowerCase();
+          final String value =
+              parseStringLiteral(attributeContext.loadFileWithValue.getText()).trim().toLowerCase();
+
+          LoadTsFileConfigurator.validateParameters(key, value);
+          loadTsFileAttributes.put(key, value);
+        }
+
+        loadTsFileStatement.setLoadAttributes(loadTsFileAttributes);
+        return loadTsFileStatement;
+      }
+
       if (ctx.loadFileAttributeClauses() != null) {
         for (IoTDBSqlParser.LoadFileAttributeClauseContext attributeContext :
             ctx.loadFileAttributeClauses().loadFileAttributeClause()) {
@@ -3791,8 +3811,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    createPipeStatement.setConnectorAttributes(
-        parseConnectorAttributesClause(ctx.connectorAttributesClause().connectorAttributeClause()));
+    if (ctx.connectorAttributesClause() != null) {
+      createPipeStatement.setConnectorAttributes(
+          parseConnectorAttributesClause(
+              ctx.connectorAttributesClause().connectorAttributeClause()));
+    } else {
+      createPipeStatement.setConnectorAttributes(
+          parseConnectorAttributesClause(
+              ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
+    }
     return createPipeStatement;
   }
 
