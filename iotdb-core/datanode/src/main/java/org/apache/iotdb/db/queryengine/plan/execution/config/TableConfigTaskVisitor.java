@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -129,13 +130,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String dbName = node.getDbName();
     // Check database length here
     // We need to calculate the database name without "root."
-    if (dbName.contains(PATH_SEPARATOR) || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
+    if (dbName.contains(PATH_SEPARATOR)
+        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(schema.getName()).matches()
+        || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
       throw new SemanticException(
           new IllegalPathException(
               node.getDbName(),
-              dbName.contains(PATH_SEPARATOR)
-                  ? "The database name shall not contain '.'"
-                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH));
+              dbName.length() > MAX_DATABASE_NAME_LENGTH
+                  ? "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH
+                  : "the database name can only contain english or chinese characters, numbers, backticks and underscores."));
     }
     schema.setName(ROOT + PATH_SEPARATOR_CHAR + node.getDbName());
 
