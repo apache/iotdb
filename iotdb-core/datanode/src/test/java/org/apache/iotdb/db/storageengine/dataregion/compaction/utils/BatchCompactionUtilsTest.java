@@ -321,7 +321,6 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         Arrays.asList(new ChunkMetadata("s4", TSDataType.INT32, 0, null), null);
     AlignedChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
-    alignedChunkMetadata.setModified(true);
     List<IMeasurementSchema> measurementSchemas =
         Arrays.asList(
             new MeasurementSchema("s0", TSDataType.INT32),
@@ -384,13 +383,11 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         Arrays.asList(null, new ChunkMetadata("s2", TSDataType.INT32, 0, null));
     AlignedChunkMetadata alignedChunkMetadata1 =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
-    alignedChunkMetadata1.setModified(true);
 
     valueChunkMetadatas =
         Arrays.asList(null, null, null, null, new ChunkMetadata("s4", TSDataType.INT32, 0, null));
     AlignedChunkMetadata alignedChunkMetadata2 =
         new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
-    alignedChunkMetadata2.setModified(true);
     List<IMeasurementSchema> measurementSchemas =
         Arrays.asList(
             new MeasurementSchema("s2", TSDataType.INT32),
