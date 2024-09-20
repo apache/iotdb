@@ -172,10 +172,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
             : ((PipeRawTabletInsertionEvent) event).count();
     localCount.accumulateAndGet(count, Long::sum);
 
-    localCommitProgressIndex.set(
-        localCommitProgressIndex
-            .get()
-            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+    localCommitProgressIndex.updateAndGet(
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
@@ -199,10 +197,8 @@ public class TwoStageCountProcessor implements PipeProcessor {
     final long count = event.count(true);
     localCount.accumulateAndGet(count, Long::sum);
 
-    localCommitProgressIndex.set(
-        localCommitProgressIndex
-            .get()
-            .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+    localCommitProgressIndex.updateAndGet(
+        index -> index.updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
   }
 
   @Override
