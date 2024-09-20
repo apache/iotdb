@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -129,10 +130,14 @@ public class PipeStatementDataTypeConvertExecutionVisitor
         loadTsFileStatement
             .getTsFiles()
             .forEach(
-                file ->
-                    FileUtils.deleteQuietly(
-                        FSFactoryProducer.getFSFactory()
-                            .getFile(file.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX)));
+                file -> {
+                  FileUtils.deleteQuietly(
+                      FSFactoryProducer.getFSFactory()
+                          .getFile(file.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX));
+                  FileUtils.deleteQuietly(
+                      FSFactoryProducer.getFSFactory()
+                          .getFile(file.getAbsoluteFile() + ModificationFile.FILE_SUFFIX));
+                });
       }
     }
 

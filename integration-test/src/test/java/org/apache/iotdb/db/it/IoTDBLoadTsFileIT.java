@@ -544,7 +544,7 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(
           String.format(
-              "load \"%s\" with ('database-level'='2', 'on-success'='none')",
+              "load \"%s\" with ('database-level'='2', 'on-success'='none', 'convert-on-type-mismatch'='true')",
               file1.getAbsolutePath()));
 
       try (final ResultSet resultSet =
@@ -564,7 +564,7 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(
           String.format(
-              "load \"%s\" with ('database-level'='2', 'on-success'='delete')",
+              "load \"%s\" with ('database-level'='2', 'on-success'='delete', 'convert-on-type-mismatch'='false')",
               file2.getAbsolutePath()));
 
       try (final ResultSet resultSet =
