@@ -589,6 +589,32 @@ public class Session implements ISession {
     isClosed = false;
     if (enableRedirection || enableQueryRedirection) {
       this.deviceIdToEndpoint = deviceIdToEndpoint;
+      this.tableModelDeviceIdToEndpoint = new ConcurrentHashMap<>();
+      endPointToSessionConnection = new ConcurrentHashMap<>();
+      endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
+    }
+  }
+
+  @Override
+  public synchronized void open(
+      boolean enableRPCCompression,
+      int connectionTimeoutInMs,
+      INodeSupplier nodesSupplier,
+      Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint)
+      throws IoTDBConnectionException {
+    if (!isClosed) {
+      return;
+    }
+
+    this.availableNodes = nodesSupplier;
+    this.enableRPCCompression = enableRPCCompression;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+    defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
+    defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
+    isClosed = false;
+    if (enableRedirection || enableQueryRedirection) {
+      this.deviceIdToEndpoint = new ConcurrentHashMap<>();
+      this.tableModelDeviceIdToEndpoint = tableModelDeviceIdToEndpoint;
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
     }
