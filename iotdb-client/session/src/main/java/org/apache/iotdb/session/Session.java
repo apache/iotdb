@@ -2798,9 +2798,9 @@ public class Session implements ISession {
             }
             for (int j = 0; j < v.getSchemas().size(); j++) {
               v.addValue(
-                  v.getSchemas().get(j).getMeasurementId(), finalI, tablet.getValue(finalI, j));
+                  v.getSchemas().get(j).getMeasurementId(), v.rowSize, tablet.getValue(finalI, j));
             }
-            v.addTimestamp(finalI, tablet.timestamps[finalI]);
+            v.addTimestamp(v.rowSize, tablet.timestamps[finalI]);
             v.rowSize++;
             return v;
           });
