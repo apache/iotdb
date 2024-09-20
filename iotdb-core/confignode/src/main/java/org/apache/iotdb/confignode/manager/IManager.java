@@ -834,5 +834,5 @@ public interface IManager {
 
   TShowTableResp showTables(final String database);
 
-  TFetchTableResp fetchTables(final Map<String, String> fetchTableMap);
+  TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap);
 }

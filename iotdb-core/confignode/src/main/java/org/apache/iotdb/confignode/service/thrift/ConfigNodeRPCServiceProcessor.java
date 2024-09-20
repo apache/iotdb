@@ -1306,7 +1306,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, String> fetchTableMap) {
+  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap) {
     return configManager.fetchTables(fetchTableMap);
   }
 }

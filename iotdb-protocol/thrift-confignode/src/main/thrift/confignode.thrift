@@ -1791,6 +1791,6 @@ service IConfigNodeRPCService {
 
   TShowTableResp showTables(string database)
 
-  TFetchTableResp fetchTables(map<string, string> fetchTableMap)
+  TFetchTableResp fetchTables(map<string, list<string>> fetchTableMap)
 }
 

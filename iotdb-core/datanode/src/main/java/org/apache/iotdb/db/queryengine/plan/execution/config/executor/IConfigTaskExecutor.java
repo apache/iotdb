@@ -298,7 +298,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTables(final String database);
 
-  TFetchTableResp fetchTables(final Map<String, String> fetchTableMap);
+  TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,

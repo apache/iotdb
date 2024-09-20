@@ -3199,7 +3199,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, String> fetchTableMap) {
+  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TFetchTableResp fetchTableResp = configNodeClient.fetchTables(fetchTableMap);

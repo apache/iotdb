@@ -1280,7 +1280,8 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, String> fetchTableMap) throws TException {
+  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap)
+      throws TException {
     return executeRemoteCallWithRetry(
         () -> client.fetchTables(fetchTableMap), resp -> !updateConfigNodeLeader(resp.status));
   }
