@@ -30,27 +30,27 @@ public class RedirectException extends IOException {
   private final TEndPoint endPoint;
 
   private final Map<String, TEndPoint> deviceEndPointMap;
-  private final List<TEndPoint> deviceEndPointList;
+  private final List<TEndPoint> endPointList;
 
   public RedirectException(TEndPoint endPoint) {
     super("later request in same group will be redirected to " + endPoint.toString());
     this.endPoint = endPoint;
     this.deviceEndPointMap = null;
-    this.deviceEndPointList = null;
+    this.endPointList = null;
   }
 
   public RedirectException(Map<String, TEndPoint> deviceEndPointMap) {
     super("later request in same group will be redirected to " + deviceEndPointMap);
     this.endPoint = null;
     this.deviceEndPointMap = deviceEndPointMap;
-    this.deviceEndPointList = null;
+    this.endPointList = null;
   }
 
-  public RedirectException(List<TEndPoint> deviceEndPointList) {
-    super("later request in same group will be redirected to " + deviceEndPointList);
+  public RedirectException(List<TEndPoint> endPointList) {
+    super("later request in same group will be redirected to " + endPointList);
     this.endPoint = null;
     this.deviceEndPointMap = null;
-    this.deviceEndPointList = deviceEndPointList;
+    this.endPointList = endPointList;
   }
 
   public TEndPoint getEndPoint() {
@@ -61,7 +61,7 @@ public class RedirectException extends IOException {
     return deviceEndPointMap;
   }
 
-  public List<TEndPoint> getDeviceEndPointList() {
-    return deviceEndPointList;
+  public List<TEndPoint> getEndPointList() {
+    return endPointList;
   }
 }

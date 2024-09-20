@@ -2807,7 +2807,7 @@ public class Session implements ISession {
                         try {
                           insertConsumer.insert(connection, request);
                         } catch (RedirectException e) {
-                          List<TEndPoint> endPointList = e.getDeviceEndPointList();
+                          List<TEndPoint> endPointList = e.getEndPointList();
                           Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
                           for (int i = 0; i < endPointList.size(); i++) {
                             if (endPointList.get(i) != null) {
