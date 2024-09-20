@@ -200,6 +200,15 @@ public class IoTProgressIndex extends ProgressIndex {
     }
   }
 
+  public int getPeerId2SearchIndexSize() {
+    lock.readLock().lock();
+    try {
+      return peerId2SearchIndex.size();
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public static IoTProgressIndex deserializeFrom(ByteBuffer byteBuffer) {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex();
     final int size = ReadWriteIOUtils.readInt(byteBuffer);

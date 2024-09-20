@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class LoadTsFileStatement extends Statement {
 
@@ -44,6 +46,8 @@ public class LoadTsFileStatement extends Statement {
   private boolean verifySchema;
   private boolean deleteAfterLoad;
   private boolean autoCreateDatabase;
+
+  private Map<String, String> loadAttributes;
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
@@ -60,6 +64,10 @@ public class LoadTsFileStatement extends Statement {
     this.writePointCountList = new ArrayList<>();
     this.statementType = StatementType.MULTI_BATCH_INSERT;
 
+    processTsFile(filePath);
+  }
+
+  private void processTsFile(final String filePath) throws FileNotFoundException {
     if (file.isFile()) {
       tsFiles.add(file);
     } else {
@@ -163,6 +171,16 @@ public class LoadTsFileStatement extends Statement {
 
   public long getWritePointCount(int resourceIndex) {
     return writePointCountList.get(resourceIndex);
+  }
+
+  public void setLoadAttributes(final Map<String, String> loadAttributes) {
+    this.loadAttributes = loadAttributes;
+    initAttributes();
+  }
+
+  private void initAttributes() {
+    this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
+    this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
   }
 
   @Override

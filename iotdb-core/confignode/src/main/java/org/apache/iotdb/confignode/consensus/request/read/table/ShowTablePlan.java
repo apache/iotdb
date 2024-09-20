@@ -17,28 +17,42 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.pipe.task;
+package org.apache.iotdb.confignode.consensus.request.read.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class ShowPipePlanV2 extends ConfigPhysicalPlan {
+public class ShowTablePlan extends ConfigPhysicalPlan {
 
-  public ShowPipePlanV2() {
-    super(ConfigPhysicalPlanType.ShowPipeV2);
+  private String database;
+
+  public ShowTablePlan() {
+    super(ConfigPhysicalPlanType.ShowTable);
+  }
+
+  public ShowTablePlan(final String database) {
+    super(ConfigPhysicalPlanType.ShowTable);
+    this.database = database;
+  }
+
+  public String getDatabase() {
+    return database;
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
+    ReadWriteIOUtils.write(database, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    // Empty method, since it is not needed now
+    database = ReadWriteIOUtils.readString(buffer);
   }
 }

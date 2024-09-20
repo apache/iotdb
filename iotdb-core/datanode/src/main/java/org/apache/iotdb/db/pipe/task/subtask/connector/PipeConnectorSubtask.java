@@ -218,9 +218,9 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
    * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
    * its queued events in the output pipe connector.
    */
-  public void discardEventsOfPipe(final String pipeNameToDrop) {
+  public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
     // Try to remove the events as much as possible
-    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop);
+    inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
 
     // synchronized to use the lastEvent & lastExceptionEvent
     synchronized (this) {
@@ -230,7 +230,8 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       // Note that since we use a new thread to stop all the pipes, we will not encounter deadlock
       // here. Or else we will.
       if (lastEvent instanceof EnrichedEvent
-          && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())) {
+          && pipeNameToDrop.equals(((EnrichedEvent) lastEvent).getPipeName())
+          && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
         // Do not clear last event's reference count because it may be on transferring
         lastEvent = null;
         // Submit self to avoid that the lastEvent has been retried "max times" times and has
@@ -252,13 +253,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
       // clear the lastExceptionEvent. It's safe to potentially clear it twice because we have the
       // "nonnull" detection.
       if (lastExceptionEvent instanceof EnrichedEvent
-          && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())) {
+          && pipeNameToDrop.equals(((EnrichedEvent) lastExceptionEvent).getPipeName())
+          && regionId == ((EnrichedEvent) lastEvent).getRegionId()) {
         clearReferenceCountAndReleaseLastExceptionEvent();
       }
     }
 
     if (outputPipeConnector instanceof IoTDBConnector) {
-      ((IoTDBConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop);
+      ((IoTDBConnector) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop, regionId);
     }
   }
 
