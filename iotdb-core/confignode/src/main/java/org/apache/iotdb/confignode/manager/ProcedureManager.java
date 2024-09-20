@@ -231,7 +231,7 @@ public class ProcedureManager {
         while (executor.isRunning()
             && System.currentTimeMillis() - startCheckTimeForProcedures < PROCEDURE_WAIT_TIME_OUT) {
           final Pair<Long, Boolean> procedureIdDuplicatePair =
-              awaitDuplicateTableTask(
+              checkDuplicateTableTask(
                   database, null, null, null, ProcedureType.CREATE_TABLE_PROCEDURE);
           hasOverlappedTask = procedureIdDuplicatePair.getRight();
 
@@ -1362,7 +1362,7 @@ public class ProcedureManager {
     long procedureId;
     synchronized (this) {
       final Pair<Long, Boolean> procedureIdDuplicatePair =
-          awaitDuplicateTableTask(database, table, tableName, queryId, thisType);
+          checkDuplicateTableTask(database, table, tableName, queryId, thisType);
       procedureId = procedureIdDuplicatePair.getLeft();
 
       if (procedureId == -1) {
@@ -1384,7 +1384,7 @@ public class ProcedureManager {
     }
   }
 
-  private Pair<Long, Boolean> awaitDuplicateTableTask(
+  private Pair<Long, Boolean> checkDuplicateTableTask(
       final String database,
       final TsTable table,
       final String tableName,
