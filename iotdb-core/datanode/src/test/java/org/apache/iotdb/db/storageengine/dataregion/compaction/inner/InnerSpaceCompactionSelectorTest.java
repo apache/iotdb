@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.FileCannotTransitToCompactingException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
@@ -81,7 +82,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the file is deleted before selection
                 cd.await();
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new CompactionScheduleContext());
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
                 List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
@@ -145,7 +147,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new CompactionScheduleContext());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -251,7 +254,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new CompactionScheduleContext());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -373,7 +377,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new CompactionScheduleContext());
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
                 List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
@@ -441,7 +446,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new CompactionScheduleContext());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -550,7 +556,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new CompactionScheduleContext());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -665,7 +672,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     mockModiFicationFile.write(new Deletion(new MeasurementPath("root.a.b"), 1, 1));
     seqResources.get(0).setModFile(mockModiFicationFile);
     SizeTieredCompactionSelector selector =
-        new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+        new SizeTieredCompactionSelector(
+            "", "", 0, true, tsFileManager, new CompactionScheduleContext());
     // copy candidate source file list
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
@@ -689,7 +697,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
     seqResources.get(0).setModFile(mockModiFicationFile);
     seqResources.get(0).setStatusForTest(TsFileResourceStatus.COMPACTING);
     SizeTieredCompactionSelector selector =
-        new SizeTieredCompactionSelector("", "", 0, true, tsFileManager);
+        new SizeTieredCompactionSelector(
+            "", "", 0, true, tsFileManager, new CompactionScheduleContext());
     // copy candidate source file list
     List<TsFileResource> resources = tsFileManager.getOrCreateSequenceListByTimePartition(0);
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =

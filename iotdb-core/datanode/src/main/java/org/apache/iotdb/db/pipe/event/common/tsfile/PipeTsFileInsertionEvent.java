@@ -76,7 +76,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   // May be updated after it is flushed. Should be negative if not set.
   private long flushPointCount = TsFileProcessor.FLUSH_POINT_COUNT_NOT_SET;
 
-  private ProgressIndex overridingProgressIndex;
+  private volatile ProgressIndex overridingProgressIndex;
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
@@ -306,6 +306,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent
   @Override
   protected void reportProgress() {
     super.reportProgress();
+    this.eliminateProgressIndex();
+  }
+
+  public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)) {
       PipeTimePartitionProgressIndexKeeper.getInstance()
           .eliminateProgressIndex(
