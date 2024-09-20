@@ -205,7 +205,7 @@ public class SchemaEngine {
           for (SchemaRegionId schemaRegionId : v) {
             PartialPath database;
             try {
-              database = PartialPath.getDatabasePath(k);
+              database = new PartialPath(k);
             } catch (IllegalPathException e) {
               logger.warn("Illegal database path: {}", k);
               continue;
