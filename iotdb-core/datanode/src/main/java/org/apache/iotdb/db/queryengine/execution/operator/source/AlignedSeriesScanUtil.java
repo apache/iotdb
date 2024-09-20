@@ -59,7 +59,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context) {
-    this(seriesPath, scanOrder, scanOptions, context, false, null, true);
+    this(seriesPath, scanOrder, scanOptions, context, false, null);
   }
 
   public AlignedSeriesScanUtil(
@@ -68,8 +68,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
       boolean queryAllSensors,
-      List<TSDataType> givenDataTypes,
-      boolean ignoreAllNullRows) {
+      List<TSDataType> givenDataTypes) {
     super(seriesPath, scanOrder, scanOptions, context);
     isAligned = true;
     this.dataTypes =
@@ -79,7 +78,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
                 .map(IMeasurementSchema::getType)
                 .collect(Collectors.toList());
     this.queryAllSensors = queryAllSensors;
-    this.ignoreAllNullRows = ignoreAllNullRows;
+    this.ignoreAllNullRows = context.isIgnoreAllNullRows();
   }
 
   @Override

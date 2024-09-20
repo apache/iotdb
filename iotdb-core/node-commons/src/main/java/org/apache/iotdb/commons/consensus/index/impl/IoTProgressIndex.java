@@ -22,7 +22,6 @@ package org.apache.iotdb.commons.consensus.index.impl;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -31,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -43,11 +43,11 @@ public class IoTProgressIndex extends ProgressIndex {
   private final Map<Integer, Long> peerId2SearchIndex;
 
   private IoTProgressIndex() {
-    peerId2SearchIndex = new HashMap<>();
+    this(Collections.emptyMap());
   }
 
   public IoTProgressIndex(Integer peerId, Long searchIndex) {
-    this(ImmutableMap.of(peerId, searchIndex));
+    this(Collections.singletonMap(peerId, searchIndex));
   }
 
   public IoTProgressIndex(Map<Integer, Long> peerId2SearchIndex) {
@@ -160,11 +160,6 @@ public class IoTProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex deepCopy() {
-    return new IoTProgressIndex(peerId2SearchIndex);
-  }
-
-  @Override
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
@@ -174,11 +169,13 @@ public class IoTProgressIndex extends ProgressIndex {
 
       final IoTProgressIndex thisIoTProgressIndex = this;
       final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
+      final Map<Integer, Long> peerId2SearchIndex =
+          new HashMap<>(thisIoTProgressIndex.peerId2SearchIndex);
       thatIoTProgressIndex.peerId2SearchIndex.forEach(
           (thatK, thatV) ->
-              thisIoTProgressIndex.peerId2SearchIndex.compute(
+              peerId2SearchIndex.compute(
                   thatK, (thisK, thisV) -> (thisV == null ? thatV : Math.max(thisV, thatV))));
-      return this;
+      return new IoTProgressIndex(peerId2SearchIndex);
     } finally {
       lock.writeLock().unlock();
     }
