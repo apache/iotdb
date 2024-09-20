@@ -55,9 +55,6 @@ public class JoinNode extends TwoChildProcessNode {
   private final Optional<Expression> filter;
   private final Optional<Boolean> spillable;
 
-  private int[] leftOutputSymbolIdx;
-  private int[] rightOutputSymbolIdx;
-
   // private final boolean maySkipOutputDuplicates;
   // private final Optional<Symbol> leftHashSymbol;
   // private final Optional<Symbol> rightHashSymbol;
@@ -73,9 +70,7 @@ public class JoinNode extends TwoChildProcessNode {
       List<Symbol> leftOutputSymbols,
       List<Symbol> rightOutputSymbols,
       Optional<Expression> filter,
-      Optional<Boolean> spillable,
-      int[] leftOutputSymbolIdx,
-      int[] rightOutputSymbolIdx) {
+      Optional<Boolean> spillable) {
     super(id);
     requireNonNull(joinType, "type is null");
     requireNonNull(leftChild, "left is null");
@@ -106,8 +101,6 @@ public class JoinNode extends TwoChildProcessNode {
     // this.maySkipOutputDuplicates = maySkipOutputDuplicates;
     // this.leftHashSymbol = leftHashSymbol;
     // this.rightHashSymbol = rightHashSymbol;
-    this.leftOutputSymbolIdx = leftOutputSymbolIdx;
-    this.rightOutputSymbolIdx = rightOutputSymbolIdx;
 
     Set<Symbol> leftSymbols = ImmutableSet.copyOf(leftChild.getOutputSymbols());
     Set<Symbol> rightSymbols = ImmutableSet.copyOf(rightChild.getOutputSymbols());
@@ -155,8 +148,6 @@ public class JoinNode extends TwoChildProcessNode {
 
     this.joinType = joinType;
     this.criteria = criteria;
-    this.leftOutputSymbolIdx = leftOutputSymbolIdx;
-    this.rightOutputSymbolIdx = rightOutputSymbolIdx;
   }
 
   @Override
@@ -176,9 +167,7 @@ public class JoinNode extends TwoChildProcessNode {
         leftOutputSymbols,
         rightOutputSymbols,
         filter,
-        spillable,
-        leftOutputSymbolIdx,
-        rightOutputSymbolIdx);
+        spillable);
   }
 
   @Override
@@ -201,9 +190,7 @@ public class JoinNode extends TwoChildProcessNode {
             leftOutputSymbols,
             rightOutputSymbols,
             filter,
-            spillable,
-            leftOutputSymbolIdx,
-            rightOutputSymbolIdx);
+            spillable);
     joinNode.setLeftChild(null);
     joinNode.setRightChild(null);
     return joinNode;
@@ -234,15 +221,6 @@ public class JoinNode extends TwoChildProcessNode {
     for (Symbol rightOutputSymbol : rightOutputSymbols) {
       Symbol.serialize(rightOutputSymbol, byteBuffer);
     }
-
-    ReadWriteIOUtils.write(leftOutputSymbolIdx.length, byteBuffer);
-    for (int idx : leftOutputSymbolIdx) {
-      ReadWriteIOUtils.write(idx, byteBuffer);
-    }
-    ReadWriteIOUtils.write(rightOutputSymbolIdx.length, byteBuffer);
-    for (int idx : rightOutputSymbolIdx) {
-      ReadWriteIOUtils.write(idx, byteBuffer);
-    }
   }
 
   @Override
@@ -264,15 +242,6 @@ public class JoinNode extends TwoChildProcessNode {
     ReadWriteIOUtils.write(rightOutputSymbols.size(), stream);
     for (Symbol rightOutputSymbol : rightOutputSymbols) {
       Symbol.serialize(rightOutputSymbol, stream);
-    }
-
-    ReadWriteIOUtils.write(leftOutputSymbolIdx.length, stream);
-    for (int idx : leftOutputSymbolIdx) {
-      ReadWriteIOUtils.write(idx, stream);
-    }
-    ReadWriteIOUtils.write(rightOutputSymbolIdx.length, stream);
-    for (int idx : rightOutputSymbolIdx) {
-      ReadWriteIOUtils.write(idx, stream);
     }
   }
 
@@ -341,22 +310,6 @@ public class JoinNode extends TwoChildProcessNode {
 
   public Optional<Boolean> isSpillable() {
     return spillable;
-  }
-
-  public int[] getLeftOutputSymbolIdx() {
-    return leftOutputSymbolIdx;
-  }
-
-  public void setLeftOutputSymbolIdx(int[] leftOutputSymbolIdx) {
-    this.leftOutputSymbolIdx = leftOutputSymbolIdx;
-  }
-
-  public int[] getRightOutputSymbolIdx() {
-    return rightOutputSymbolIdx;
-  }
-
-  public void setRightOutputSymbolIdx(int[] rightOutputSymbolIdx) {
-    this.rightOutputSymbolIdx = rightOutputSymbolIdx;
   }
 
   @Override

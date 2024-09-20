@@ -47,8 +47,6 @@ public class PruneJoinColumns extends ProjectOffPushDownRule<JoinNode> {
             filteredCopy(joinNode.getLeftOutputSymbols(), referencedOutputs::contains),
             filteredCopy(joinNode.getRightOutputSymbols(), referencedOutputs::contains),
             joinNode.getFilter(),
-            joinNode.isSpillable(),
-            joinNode.getLeftOutputSymbolIdx(),
-            joinNode.getRightOutputSymbolIdx()));
+            joinNode.isSpillable()));
   }
 }
