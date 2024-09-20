@@ -3811,8 +3811,15 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
-    createPipeStatement.setConnectorAttributes(
-        parseConnectorAttributesClause(ctx.connectorAttributesClause().connectorAttributeClause()));
+    if (ctx.connectorAttributesClause() != null) {
+      createPipeStatement.setConnectorAttributes(
+          parseConnectorAttributesClause(
+              ctx.connectorAttributesClause().connectorAttributeClause()));
+    } else {
+      createPipeStatement.setConnectorAttributes(
+          parseConnectorAttributesClause(
+              ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
+    }
     return createPipeStatement;
   }
 

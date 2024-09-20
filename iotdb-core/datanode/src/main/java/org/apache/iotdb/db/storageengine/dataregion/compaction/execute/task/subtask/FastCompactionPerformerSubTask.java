@@ -67,6 +67,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private final boolean isAligned;
 
+  private final boolean ignoreAllNullRows;
+
   private IDeviceID deviceId;
 
   private List<String> measurements;
@@ -96,6 +98,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.sortedSourceFiles = sortedSourceFiles;
     this.measurements = measurements;
     this.summary = summary;
+    this.ignoreAllNullRows = true;
   }
 
   /** Used for aligned timeseries. */
@@ -108,7 +111,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
       IDeviceID deviceId,
-      FastCompactionTaskSummary summary) {
+      FastCompactionTaskSummary summary,
+      boolean ignoreAllNullRows) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
@@ -119,6 +123,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.sortedSourceFiles = sortedSourceFiles;
     this.measurementSchemas = measurementSchemas;
     this.summary = summary;
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override
@@ -154,7 +159,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 deviceId,
                 subTaskId,
                 measurementSchemas,
-                summary);
+                summary,
+                ignoreAllNullRows);
       } else {
         seriesCompactionExecutor =
             new FastAlignedSeriesCompactionExecutor(
@@ -166,7 +172,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 deviceId,
                 subTaskId,
                 measurementSchemas,
-                summary);
+                summary,
+                ignoreAllNullRows);
       }
       seriesCompactionExecutor.execute();
     }
