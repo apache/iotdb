@@ -65,8 +65,6 @@ public class LogicalOptimizeFactory {
     Metadata metadata = plannerContext.getMetadata();
     RuleStatsRecorder ruleStats = new RuleStatsRecorder();
 
-    PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();
-
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
             new PruneAggregationColumns(),
@@ -127,18 +125,6 @@ public class LogicalOptimizeFactory {
 
     Set<Rule<?>> limitPushdownRules =
         ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject());
-    IterativeOptimizer limitPushdownOptimizer =
-        new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules);
-
-    PlanOptimizer unAliasSymbolReferences =
-        new UnaliasSymbolReferences(plannerContext.getMetadata());
-
-    PlanOptimizer transformAggregationToStreamableOptimizer =
-        new TransformAggregationToStreamable();
-
-    PlanOptimizer pushAggregationIntoTableScanOptimizer = new PushAggregationIntoTableScan();
-
-    PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
 
     ImmutableList.Builder<PlanOptimizer> optimizerBuilder = ImmutableList.builder();
 
@@ -148,8 +134,9 @@ public class LogicalOptimizeFactory {
             ruleStats,
             ImmutableSet.<Rule<?>>builder()
                 .addAll(columnPruningRules)
-                // .addAll(projectionPushdownRules).addAll(new
-                // UnwrapRowSubscript().rules()).addAll(new PushCastIntoRow().rules())
+                // .addAll(projectionPushdownRules).
+                // addAll(newUnwrapRowSubscript().rules()).
+                // addAll(new PushCastIntoRow().rules())
                 .addAll(
                     ImmutableSet.of(
                         new MergeFilters(),
@@ -197,17 +184,17 @@ public class LogicalOptimizeFactory {
                         new RemoveRedundantIdentityProjections()))
                 .build()),
         simplifyOptimizer,
-        unAliasSymbolReferences,
+        new UnaliasSymbolReferences(plannerContext.getMetadata()),
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
-        pushPredicateIntoTableScanOptimizer,
+        new PushPredicateIntoTableScan(),
         // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
         columnPruningOptimizer,
         inlineProjectionLimitFiltersOptimizer,
-        limitPushdownOptimizer,
-        pushLimitOffsetIntoTableScanOptimizer,
-        transformAggregationToStreamableOptimizer,
-        pushAggregationIntoTableScanOptimizer,
+        new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules),
+        new PushLimitOffsetIntoTableScan(),
+        new TransformAggregationToStreamable(),
+        new PushAggregationIntoTableScan(),
         new TransformSortToStreamSort(),
         new IterativeOptimizer(
             plannerContext,

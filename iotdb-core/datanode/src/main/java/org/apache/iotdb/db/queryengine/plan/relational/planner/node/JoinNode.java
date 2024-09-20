@@ -134,9 +134,7 @@ public class JoinNode extends TwoChildProcessNode {
       JoinType joinType,
       List<EquiJoinClause> criteria,
       List<Symbol> leftOutputSymbols,
-      List<Symbol> rightOutputSymbols,
-      int[] leftOutputSymbolIdx,
-      int[] rightOutputSymbolIdx) {
+      List<Symbol> rightOutputSymbols) {
     super(id);
     requireNonNull(joinType, "type is null");
     requireNonNull(criteria, "criteria is null");
@@ -266,26 +264,8 @@ public class JoinNode extends TwoChildProcessNode {
       rightOutputSymbols.add(Symbol.deserialize(byteBuffer));
     }
 
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    int[] leftOutputSymbolIdx = new int[size];
-    for (int i = 0; i < size; i++) {
-      leftOutputSymbolIdx[i] = ReadWriteIOUtils.readInt(byteBuffer);
-    }
-    size = ReadWriteIOUtils.readInt(byteBuffer);
-    int[] rightOutputSymbolIdx = new int[size];
-    for (int i = 0; i < size; i++) {
-      rightOutputSymbolIdx[i] = ReadWriteIOUtils.readInt(byteBuffer);
-    }
-
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new JoinNode(
-        planNodeId,
-        joinType,
-        criteria,
-        leftOutputSymbols,
-        rightOutputSymbols,
-        leftOutputSymbolIdx,
-        rightOutputSymbolIdx);
+    return new JoinNode(planNodeId, joinType, criteria, leftOutputSymbols, rightOutputSymbols);
   }
 
   public JoinType getJoinType() {

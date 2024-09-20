@@ -25,7 +25,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 
-/** <b>Optimization phase:</b> Logical plan planning. */
+/**
+ * <b>Optimization phase:</b> Logical plan planning.
+ *
+ * <p>Only when exist JoinNode need execute this optimize rule before
+ * TableModelTypeProviderExtractor.
+ */
 public class AddTableScanColumnsToTypeProviderOptimizer implements PlanOptimizer {
 
   @Override
