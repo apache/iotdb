@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.connector.protocol.opcua;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -149,7 +150,7 @@ public class OpcUaConnector implements PipeConnector {
                                 .setHttpsBindPort(httpsBindPort)
                                 .setUser(user)
                                 .setPassword(password)
-                                .setSecurityDir(securityDir)
+                                .setSecurityDir(IoTDBConfig.addDataHomeDir(securityDir))
                                 .setEnableAnonymousAccess(enableAnonymousAccess);
                         final OpcUaServer newServer = builder.build();
                         nameSpace =
