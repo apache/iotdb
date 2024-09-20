@@ -1046,7 +1046,7 @@ struct TShowTableResp {
 
 struct TFetchTableResp {
    1: required common.TSStatus status
-   2: optional map<string, list<TTableInfo>> tableInfoMap
+   2: optional binary tableInfoMap
 }
 
 struct TTableInfo {
@@ -1790,5 +1790,7 @@ service IConfigNodeRPCService {
   common.TSStatus alterTable(TAlterTableReq req)
 
   TShowTableResp showTables(string database)
+
+  TFetchTableResp fetchTables(map<string, string> fetchTableMap)
 }
 

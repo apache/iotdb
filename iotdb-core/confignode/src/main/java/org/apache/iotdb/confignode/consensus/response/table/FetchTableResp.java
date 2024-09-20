@@ -17,37 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.table;
+package org.apache.iotdb.confignode.consensus.response.table;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.consensus.common.DataSet;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.List;
 import java.util.Map;
 
-public class FetchTablePlan extends ConfigPhysicalPlan {
+public class FetchTableResp implements DataSet {
+  private final TSStatus status;
+  private final Map<String, Map<String, TsTable>> fetchTableMap;
 
-  private final Map<String, List<String>> fetchTableMap;
-
-  public FetchTablePlan(final Map<String, List<String>> fetchTableMap) {
-    super(ConfigPhysicalPlanType.FetchTable);
+  public FetchTableResp(
+      final TSStatus status, final Map<String, Map<String, TsTable>> fetchTableMap) {
+    this.status = status;
     this.fetchTableMap = fetchTableMap;
   }
 
-  public Map<String, List<String>> getFetchTableMap() {
-    return fetchTableMap;
-  }
-
-  @Override
-  protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    // Do nothing
-  }
-
-  @Override
-  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    // Do nothing
+  public TFetchTableResp convertToTFetchTableResp() {
+    return new TFetchTableResp(status)
+        .setTableInfoMap(TsTableInternalRPCUtil.serializeTableFetchResult(fetchTableMap));
   }
 }

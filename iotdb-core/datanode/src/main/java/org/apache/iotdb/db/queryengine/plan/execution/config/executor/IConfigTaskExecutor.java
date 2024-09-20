@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSpaceQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -296,6 +297,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> describeTable(final String database, final String tableName);
 
   SettableFuture<ConfigTaskResult> showTables(final String database);
+
+  TFetchTableResp fetchTables(final Map<String, String> fetchTableMap);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,

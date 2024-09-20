@@ -96,6 +96,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -1276,6 +1277,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowTableResp showTables(final String database) throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showTables(database), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TFetchTableResp fetchTables(final Map<String, String> fetchTableMap) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.fetchTables(fetchTableMap), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   public static class Factory extends ThriftClientFactory<ConfigRegionId, ConfigNodeClient> {
