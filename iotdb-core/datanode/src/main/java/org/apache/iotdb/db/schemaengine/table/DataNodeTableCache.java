@@ -23,6 +23,9 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -222,9 +225,18 @@ public class DataNodeTableCache implements ITableCache {
 
   private Map<String, Map<String, TsTable>> getTablesInConfigNode(
       final Map<String, Map<String, Long>> tableInput) {
+    Map<String, Map<String, TsTable>> result = Collections.emptyMap();
     try {
       fetchTableSemaphore.acquire();
-
+      final TFetchTableResp resp =
+          ClusterConfigTaskExecutor.getInstance()
+              .fetchTables(
+                  tableInput.entrySet().stream()
+                      .collect(
+                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+        result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
+      }
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
@@ -234,7 +246,7 @@ public class DataNodeTableCache implements ITableCache {
       throw e;
     }
     fetchTableSemaphore.release();
-    return Collections.emptyMap();
+    return result;
   }
 
   private void updateTable(

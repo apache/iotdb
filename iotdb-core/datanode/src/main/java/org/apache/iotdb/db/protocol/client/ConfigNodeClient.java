@@ -181,6 +181,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClient, AutoCloseable {
@@ -1280,7 +1281,7 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap)
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap)
       throws TException {
     return executeRemoteCallWithRetry(
         () -> client.fetchTables(fetchTableMap), resp -> !updateConfigNodeLeader(resp.status));

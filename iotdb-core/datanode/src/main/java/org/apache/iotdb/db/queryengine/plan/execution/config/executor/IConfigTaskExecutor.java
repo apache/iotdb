@@ -96,6 +96,7 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface IConfigTaskExecutor {
 
@@ -298,7 +299,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTables(final String database);
 
-  TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap);
+  TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap);
 
   SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,

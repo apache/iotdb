@@ -286,6 +286,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -3199,7 +3200,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public TFetchTableResp fetchTables(final Map<String, List<String>> fetchTableMap) {
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TFetchTableResp fetchTableResp = configNodeClient.fetchTables(fetchTableMap);
