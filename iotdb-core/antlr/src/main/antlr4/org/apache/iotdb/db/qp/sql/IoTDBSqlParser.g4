@@ -1128,7 +1128,7 @@ loadTimeseries
 
 // Load TsFile
 loadFile
-    : LOAD fileName=STRING_LITERAL loadFileAttributeClauses?
+    : LOAD fileName=STRING_LITERAL ((loadFileAttributeClauses?) | (loadFileWithAttributeClauses))
     ;
 
 loadFileAttributeClauses
@@ -1139,6 +1139,17 @@ loadFileAttributeClause
     : SGLEVEL operator_eq INTEGER_LITERAL
     | VERIFY operator_eq boolean_literal
     | ONSUCCESS operator_eq (DELETE|NONE)
+    ;
+
+loadFileWithAttributeClauses
+    : WITH
+        LR_BRACKET
+        (loadFileWithAttributeClause COMMA)* loadFileWithAttributeClause?
+        RR_BRACKET
+    ;
+
+loadFileWithAttributeClause
+    : loadFileWithKey=STRING_LITERAL OPERATOR_SEQ loadFileWithValue=STRING_LITERAL
     ;
 
 // Remove TsFile
