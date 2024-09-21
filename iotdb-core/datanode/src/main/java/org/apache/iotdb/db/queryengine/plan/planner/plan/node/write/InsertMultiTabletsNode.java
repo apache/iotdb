@@ -284,7 +284,7 @@ public class InsertMultiTabletsNode extends InsertNode {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex.deepCopy();
+    this.progressIndex = progressIndex;
     insertTabletNodeList.forEach(node -> node.setProgressIndex(progressIndex));
   }
 }
