@@ -206,13 +206,16 @@ public class StatusUtils {
   }
 
   public static boolean needRetry(TSStatus status) {
+    // succeed operation should never retry
+    if (status == null || status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return false;
+    }
     // always retry while node is in not running case
     if (!COMMON_CONFIG.isRunning()) {
       return true;
-    } else if (status == null) {
-      return false;
+    } else {
+      return needRetryHelper(status);
     }
-    return needRetryHelper(status);
   }
 
   public static boolean needRetryHelper(TSStatus status) {
