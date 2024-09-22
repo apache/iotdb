@@ -368,4 +368,24 @@ public class SubscriptionBroker {
     }
     prefetchingQueue.executePrefetch();
   }
+
+  public int getPipeEventCount(final String topicName) {
+    final SubscriptionPrefetchingQueue prefetchingQueue =
+        topicNameToPrefetchingQueue.get(topicName);
+    if (Objects.isNull(prefetchingQueue)) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] does not exist",
+          topicName,
+          brokerId);
+      return 0;
+    }
+    if (prefetchingQueue.isClosed()) {
+      LOGGER.warn(
+          "Subscription: prefetching queue bound to topic [{}] for consumer group [{}] is closed",
+          topicName,
+          brokerId);
+      return 0;
+    }
+    return prefetchingQueue.getPipeEventCount();
+  }
 }

@@ -58,6 +58,8 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
     }
   }
 
+  /////////////////////////////// stringify ///////////////////////////////
+
   @Override
   public String toString() {
     return "SubscriptionPipeTsFileBatchEvents{batch="
@@ -67,5 +69,16 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
         + ", referenceCount="
         + referenceCount
         + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    // Since multiple events will share the same batch, equal division is performed here.
+    final int dividend = batch.getPipeEventCount();
+    final int divisor = referenceCount.get();
+    // If it is not exact, round up to remain pessimistic.
+    return (dividend + divisor - 1) / divisor;
   }
 }

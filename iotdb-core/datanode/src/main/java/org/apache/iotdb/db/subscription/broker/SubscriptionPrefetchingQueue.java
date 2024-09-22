@@ -539,6 +539,13 @@ public abstract class SubscriptionPrefetchingQueue {
     return commitIdGenerator.get();
   }
 
+  public int getPipeEventCount() {
+    return inFlightEvents.values().stream()
+        .map(SubscriptionEvent::getPipeEventCount)
+        .reduce(Integer::sum)
+        .orElse(0);
+  }
+
   /////////////////////////////// close & termination ///////////////////////////////
 
   public boolean isClosed() {
