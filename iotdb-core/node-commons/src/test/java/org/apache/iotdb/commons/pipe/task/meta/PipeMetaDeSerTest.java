@@ -68,8 +68,14 @@ public class PipeMetaDeSerTest {
 
     HybridProgressIndex hybridProgressIndex =
         new HybridProgressIndex(new SimpleProgressIndex(1, 2));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new SimpleProgressIndex(2, 4));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new IoTProgressIndex(3, 6L));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new SimpleProgressIndex(2, 4));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new IoTProgressIndex(3, 6L));
 
     Map<String, Pair<Long, ByteBuffer>> timeSeries2TimestampWindowBufferPairMap = new HashMap<>();
     ByteBuffer buffer;
@@ -80,6 +86,7 @@ public class PipeMetaDeSerTest {
     }
     timeSeries2TimestampWindowBufferPairMap.put("root.test.a1", new Pair<>(123L, buffer));
 
+    final HybridProgressIndex finalHybridProgressIndex = hybridProgressIndex;
     PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
@@ -87,7 +94,7 @@ public class PipeMetaDeSerTest {
                 put(123, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 987));
                 put(234, new PipeTaskMeta(new IoTProgressIndex(1, 2L), 789));
                 put(345, new PipeTaskMeta(new SimpleProgressIndex(3, 4), 789));
-                put(456, new PipeTaskMeta(hybridProgressIndex, 789));
+                put(456, new PipeTaskMeta(finalHybridProgressIndex, 789));
                 put(
                     567,
                     new PipeTaskMeta(

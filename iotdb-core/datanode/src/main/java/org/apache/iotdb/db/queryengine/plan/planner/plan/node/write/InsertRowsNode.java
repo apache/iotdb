@@ -286,7 +286,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex.deepCopy();
+    this.progressIndex = progressIndex;
     insertRowNodeList.forEach(insertRowNode -> insertRowNode.setProgressIndex(progressIndex));
   }
 
@@ -297,7 +297,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
 
     this.progressIndex =
         (this.progressIndex == null)
-            ? progressIndex.deepCopy()
+            ? progressIndex
             : this.progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex);
   }
 
