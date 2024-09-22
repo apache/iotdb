@@ -83,7 +83,9 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
-    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
+        // Ignore the error if it is caused by insufficient memory
+        || (status.getMessage() != null && status.getMessage().contains("memory"))) {
       return Optional.empty();
     }
 
