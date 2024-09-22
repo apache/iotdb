@@ -76,6 +76,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.recover.CompactionRecoverManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
@@ -312,6 +313,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
+  private boolean isTreeModel;
+
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
 
@@ -332,6 +335,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    this.isTreeModel = this.databaseName.startsWith("root.");
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
@@ -382,6 +386,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = id;
     this.tsFileManager = new TsFileManager(databaseName, id, "");
     this.partitionMaxFileVersions = new HashMap<>();
+    this.isTreeModel = this.databaseName.startsWith("root.");
     partitionMaxFileVersions.put(0L, 0L);
   }
 
@@ -689,6 +694,8 @@ public class DataRegion implements IDataRegionForQuery {
         && !config.isEnableCrossSpaceCompaction()) {
       return;
     }
+    RepairUnsortedFileCompactionTask.recoverAllocatedFileTimestamp(
+        tsFileManager.getMaxFileTimestampOfUnSequenceFile());
     CompactionScheduleTaskManager.getInstance().registerDataRegion(this);
   }
 
@@ -1451,6 +1458,9 @@ public class DataRegion implements IDataRegionForQuery {
               if (insertRowNode.isGeneratedByRemoteConsensusLeader()) {
                 v.markAsGeneratedByRemoteConsensusLeader();
               }
+            }
+            if (v.isAligned() != insertRowNode.isAligned()) {
+              v.setMixingAlignment(true);
             }
             v.addOneInsertRowNode(insertRowNode, finalI);
             v.updateProgressIndex(insertRowNode.getProgressIndex());
@@ -2759,7 +2769,7 @@ public class DataRegion implements IDataRegionForQuery {
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleContext context = new CompactionScheduleContext();
+      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
 
       // schedule insert compaction
       trySubmitCount += executeInsertionCompaction(timePartitions, context);
@@ -2802,7 +2812,7 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
-      CompactionScheduleContext context = new CompactionScheduleContext();
+      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -3514,7 +3524,7 @@ public class DataRegion implements IDataRegionForQuery {
           TimePartitionManager.getInstance()
               .registerTimePartitionInfo(
                   new TimePartitionInfo(
-                      new DataRegionId(Integer.valueOf(dataRegionId)),
+                      new DataRegionId(Integer.parseInt(dataRegionId)),
                       timePartitionId,
                       true,
                       Long.MAX_VALUE,

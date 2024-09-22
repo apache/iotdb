@@ -711,7 +711,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
 
     AlignedTVList alignedTVListCopy =
-        (AlignedTVList) alignedMemChunk.getSortedTvListForQuery(schemaList);
+        (AlignedTVList) alignedMemChunk.getSortedTvListForQuery(schemaList, true);
 
     buildAlignedMemChunkHandle(
         deviceID,
@@ -728,13 +728,13 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, List<IChunkMetadata>> chunkMetadataList,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
-      throws IllegalPathException {
+      List<Pair<Modification, IMemTable>> modsToMemTabled) {
 
     AlignedWritableMemChunk memChunk = writableMemChunkGroup.getAlignedMemChunk();
     List<IMeasurementSchema> schemaList = memChunk.getSchemaList();
 
-    AlignedTVList alignedTVListCopy = (AlignedTVList) memChunk.getSortedTvListForQuery(schemaList);
+    AlignedTVList alignedTVListCopy =
+        (AlignedTVList) memChunk.getSortedTvListForQuery(schemaList, true);
 
     List<List<TimeRange>> deletionList = new ArrayList<>();
     if (modsToMemTabled != null) {
@@ -759,8 +759,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
-      throws IllegalPathException {
+      List<Pair<Modification, IMemTable>> modsToMemTabled) {
 
     for (Entry<String, IWritableMemChunk> entry :
         writableMemChunkGroup.getMemChunkMap().entrySet()) {

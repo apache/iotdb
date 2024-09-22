@@ -18,6 +18,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.Map;
@@ -60,10 +61,11 @@ public class ColumnReference implements RvalueMatcher {
       return Optional.empty();
     }
 
-    return getAssignedSymbol(assignments);
+    return getAssignedSymbol(assignments, node instanceof AggregationTableScanNode);
   }
 
-  private Optional<Symbol> getAssignedSymbol(Map<Symbol, ColumnSchema> assignments) {
+  private Optional<Symbol> getAssignedSymbol(
+      Map<Symbol, ColumnSchema> assignments, boolean isAggregationTableScan) {
     Optional<Symbol> result = Optional.empty();
     for (Map.Entry<Symbol, ColumnSchema> entry : assignments.entrySet()) {
       if (entry.getValue().getName().equals(columnName)) {
@@ -74,6 +76,10 @@ public class ColumnReference implements RvalueMatcher {
             columnName);
         result = Optional.of(entry.getKey());
       }
+    }
+    // we don't check the existence of column in AggregationTableScan
+    if (isAggregationTableScan && !result.isPresent()) {
+      result = Optional.of(Symbol.of(columnName));
     }
     return result;
   }

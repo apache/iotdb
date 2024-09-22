@@ -37,7 +37,7 @@ public class GetPipePluginJarPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.GetPipePluginJar);
   }
 
-  public GetPipePluginJarPlan(List<String> jarNames) {
+  public GetPipePluginJarPlan(final List<String> jarNames) {
     super(ConfigPhysicalPlanType.GetPipePluginJar);
     this.jarNames = jarNames;
   }
@@ -47,18 +47,18 @@ public class GetPipePluginJarPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
 
     ReadWriteIOUtils.write(jarNames.size(), stream);
-    for (String jarName : jarNames) {
+    for (final String jarName : jarNames) {
       ReadWriteIOUtils.write(jarName, stream);
     }
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    int size = ReadWriteIOUtils.readInt(buffer);
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    final int size = ReadWriteIOUtils.readInt(buffer);
     jarNames = new ArrayList<>();
     for (int i = 0; i < size; i++) {
       jarNames.add(ReadWriteIOUtils.readString(buffer));

@@ -39,6 +39,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.Spy;
 
 import javax.annotation.Nonnull;
 
@@ -58,7 +60,7 @@ public class TsFileResourceProgressIndexTest {
   private final File file =
       new File(
           TsFileNameGenerator.generateNewTsFilePath(TestConstant.BASE_OUTPUT_PATH, 1, 1, 1, 1));
-  private final TsFileResource tsFileResource = new TsFileResource(file);
+  @Spy private TsFileResource tsFileResource = Mockito.spy(new TsFileResource(file));
   private final Map<IDeviceID, Integer> deviceToIndex = new HashMap<>();
   private final long[] startTimes = new long[DEVICE_NUM];
   private final long[] endTimes = new long[DEVICE_NUM];
@@ -84,6 +86,7 @@ public class TsFileResourceProgressIndexTest {
             });
     tsFileResource.setTimeIndex(deviceTimeIndex);
     tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
+    Mockito.doReturn("1").when(tsFileResource).getDataRegionId();
 
     IntStream.range(0, INDEX_NUM).forEach(i -> indexList.add(new MockProgressIndex(i)));
   }
@@ -104,15 +107,26 @@ public class TsFileResourceProgressIndexTest {
   public void testProgressIndexRecorder() {
     HybridProgressIndex hybridProgressIndex =
         new HybridProgressIndex(new SimpleProgressIndex(3, 4));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(new SimpleProgressIndex(6, 6));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-        new RecoverProgressIndex(1, new SimpleProgressIndex(1, 3)));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-        new RecoverProgressIndex(2, new SimpleProgressIndex(4, 3)));
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-        new RecoverProgressIndex(3, new SimpleProgressIndex(5, 5)));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new SimpleProgressIndex(6, 6));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new RecoverProgressIndex(1, new SimpleProgressIndex(1, 2)));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new RecoverProgressIndex(1, new SimpleProgressIndex(1, 3)));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new RecoverProgressIndex(2, new SimpleProgressIndex(4, 3)));
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                new RecoverProgressIndex(3, new SimpleProgressIndex(5, 5)));
     Assert.assertTrue(hybridProgressIndex.isAfter(new SimpleProgressIndex(6, 5)));
     Assert.assertTrue(
         hybridProgressIndex.isAfter(new RecoverProgressIndex(3, new SimpleProgressIndex(5, 4))));
@@ -220,9 +234,11 @@ public class TsFileResourceProgressIndexTest {
     final IoTProgressIndex ioTProgressIndex = new IoTProgressIndex(1, 123L);
     final RecoverProgressIndex recoverProgressIndex =
         new RecoverProgressIndex(1, new SimpleProgressIndex(2, 2));
-    final HybridProgressIndex hybridProgressIndex = new HybridProgressIndex(ioTProgressIndex);
+    HybridProgressIndex hybridProgressIndex = new HybridProgressIndex(ioTProgressIndex);
 
-    hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(recoverProgressIndex);
+    hybridProgressIndex =
+        (HybridProgressIndex)
+            hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(recoverProgressIndex);
 
     Assert.assertTrue(hybridProgressIndex.isAfter(new IoTProgressIndex(1, 100L)));
     Assert.assertTrue(
@@ -326,18 +342,22 @@ public class TsFileResourceProgressIndexTest {
                       new IoTProgressIndex(
                           random.nextInt(peerIdRange), (long) random.nextInt(searchIndexRange)));
               if (random.nextInt(2) == 1) {
-                hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-                    new SimpleProgressIndex(
-                        random.nextInt(rebootTimesRange),
-                        random.nextInt(memtableFlushOrderIdRange)));
+                hybridProgressIndex =
+                    (HybridProgressIndex)
+                        hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                            new SimpleProgressIndex(
+                                random.nextInt(rebootTimesRange),
+                                random.nextInt(memtableFlushOrderIdRange)));
               }
               if (random.nextInt(2) == 1) {
-                hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-                    new RecoverProgressIndex(
-                        random.nextInt(dataNodeIdRange),
-                        new SimpleProgressIndex(
-                            random.nextInt(rebootTimesRange),
-                            random.nextInt(memtableFlushOrderIdRange))));
+                hybridProgressIndex =
+                    (HybridProgressIndex)
+                        hybridProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
+                            new RecoverProgressIndex(
+                                random.nextInt(dataNodeIdRange),
+                                new SimpleProgressIndex(
+                                    random.nextInt(rebootTimesRange),
+                                    random.nextInt(memtableFlushOrderIdRange))));
               }
               progressIndexList.add(hybridProgressIndex);
             });

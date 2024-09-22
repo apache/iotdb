@@ -33,12 +33,12 @@ public class ShowPipePlanV2 extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
     stream.writeShort(getType().getPlanType());
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     // Empty method, since it is not needed now
   }
 }

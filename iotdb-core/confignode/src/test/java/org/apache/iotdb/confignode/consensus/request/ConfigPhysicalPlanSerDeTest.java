@@ -78,6 +78,7 @@ import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePlu
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -939,17 +940,17 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetRegionLocationsPlanTest() throws IOException {
-    GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
-    TShowRegionReq showRegionReq = new TShowRegionReq();
+    final GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
+    final TShowRegionReq showRegionReq = new TShowRegionReq();
     req0.setShowRegionReq(showRegionReq);
     showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
-    GetRegionInfoListPlan req1 =
+    final GetRegionInfoListPlan req1 =
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
     Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
     final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
     showRegionReq.setDatabases(new ArrayList<>(sgList));
-    GetRegionInfoListPlan req2 =
+    final GetRegionInfoListPlan req2 =
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
     Assert.assertEquals(req0.getShowRegionReq(), req2.getShowRegionReq());
@@ -957,20 +958,21 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
-    Template template = newSchemaTemplate("template_name");
-    CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
+    final Template template = newSchemaTemplate("template_name");
+    final CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
         new CreateSchemaTemplatePlan(template.serialize().array());
-    CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
+    final CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
         (CreateSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(createSchemaTemplatePlan0, createSchemaTemplatePlan1);
   }
 
   private Template newSchemaTemplate(String name) throws IllegalPathException {
-    List<String> measurements = Arrays.asList(name + "_" + "temperature", name + "_" + "status");
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
-    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN);
-    List<CompressionType> compressors =
+    final List<String> measurements =
+        Arrays.asList(name + "_" + "temperature", name + "_" + "status");
+    final List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.BOOLEAN);
+    final List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.PLAIN);
+    final List<CompressionType> compressors =
         Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY);
     return new Template(name, measurements, dataTypes, encodings, compressors);
   }
@@ -991,8 +993,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetSchemaTemplatePlanTest() throws IOException {
-    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan("template1");
-    GetSchemaTemplatePlan deserializedPlan =
+    final GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan("template1");
+    final GetSchemaTemplatePlan deserializedPlan =
         (GetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan.serializeToByteBuffer());
     Assert.assertEquals("template1", deserializedPlan.getTemplateName());
@@ -1000,7 +1002,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetAllSchemaTemplatePlanTest() throws IOException {
-    GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
+    final GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer())
             instanceof GetAllSchemaTemplatePlan);
@@ -1008,8 +1010,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetNodesInSchemaTemplatePlanTest() throws IOException {
-    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan("template_name_test");
-    GetSchemaTemplatePlan getSchemaTemplatePlan1 =
+    final GetSchemaTemplatePlan getSchemaTemplatePlan0 =
+        new GetSchemaTemplatePlan("template_name_test");
+    final GetSchemaTemplatePlan getSchemaTemplatePlan1 =
         (GetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
@@ -1017,10 +1020,10 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
-    GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
+    final GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
     getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
     getNodePathsPartitionPlan0.setScope(ALL_MATCH_SCOPE);
-    GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
+    final GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
         (GetNodePathsPartitionPlan)
             ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
     Assert.assertEquals(getNodePathsPartitionPlan0, getNodePathsPartitionPlan1);
@@ -1028,7 +1031,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetAllTemplateSetInfoPlanTest() throws IOException {
-    GetAllTemplateSetInfoPlan getAllTemplateSetInfoPlan = new GetAllTemplateSetInfoPlan();
+    final GetAllTemplateSetInfoPlan getAllTemplateSetInfoPlan = new GetAllTemplateSetInfoPlan();
     Assert.assertTrue(
         ConfigPhysicalPlan.Factory.create(getAllTemplateSetInfoPlan.serializeToByteBuffer())
             instanceof GetAllTemplateSetInfoPlan);
@@ -1036,9 +1039,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetSchemaTemplatePlanTest() throws IOException {
-    SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
+    final SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
         new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
-    SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
+    final SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
         (SetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1048,9 +1051,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ShowPathSetTemplatePlanTest() throws IOException {
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
+    final GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
         new GetPathsSetTemplatePlan("template_name_test", ALL_MATCH_SCOPE);
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
+    final GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
         (GetPathsSetTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
@@ -1058,8 +1061,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropSchemaTemplateTest() throws IOException {
-    DropSchemaTemplatePlan dropSchemaTemplatePlan = new DropSchemaTemplatePlan("template");
-    DropSchemaTemplatePlan deserializedPlan =
+    final DropSchemaTemplatePlan dropSchemaTemplatePlan = new DropSchemaTemplatePlan("template");
+    final DropSchemaTemplatePlan deserializedPlan =
         (DropSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(dropSchemaTemplatePlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1068,16 +1071,16 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreatePipeSinkPlanTest() throws IOException {
-    Map<String, String> attributes = new HashMap<>();
+    final Map<String, String> attributes = new HashMap<>();
     attributes.put("ip", "127.0.0.1");
     attributes.put("port", "6667");
-    TPipeSinkInfo pipeSinkInfo =
+    final TPipeSinkInfo pipeSinkInfo =
         new TPipeSinkInfo()
             .setPipeSinkName("demo")
             .setPipeSinkType("IoTDB")
             .setAttributes(attributes);
-    CreatePipeSinkPlanV1 createPipeSinkPlan = new CreatePipeSinkPlanV1(pipeSinkInfo);
-    CreatePipeSinkPlanV1 createPipeSinkPlan1 =
+    final CreatePipeSinkPlanV1 createPipeSinkPlan = new CreatePipeSinkPlanV1(pipeSinkInfo);
+    final CreatePipeSinkPlanV1 createPipeSinkPlan1 =
         (CreatePipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(createPipeSinkPlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1086,8 +1089,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropPipeSinkPlanTest() throws IOException {
-    DropPipeSinkPlanV1 dropPipeSinkPlan = new DropPipeSinkPlanV1("demo");
-    DropPipeSinkPlanV1 dropPipeSinkPlan1 =
+    final DropPipeSinkPlanV1 dropPipeSinkPlan = new DropPipeSinkPlanV1("demo");
+    final DropPipeSinkPlanV1 dropPipeSinkPlan1 =
         (DropPipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(dropPipeSinkPlan.serializeToByteBuffer());
     Assert.assertEquals(dropPipeSinkPlan.getPipeSinkName(), dropPipeSinkPlan1.getPipeSinkName());
@@ -1095,13 +1098,13 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetPipeSinkPlanTest() throws IOException {
-    GetPipeSinkPlanV1 getPipeSinkPlan = new GetPipeSinkPlanV1("demo");
-    GetPipeSinkPlanV1 getPipeSinkPlan1 =
+    final GetPipeSinkPlanV1 getPipeSinkPlan = new GetPipeSinkPlanV1("demo");
+    final GetPipeSinkPlanV1 getPipeSinkPlan1 =
         (GetPipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(getPipeSinkPlan.serializeToByteBuffer());
     Assert.assertEquals(getPipeSinkPlan.getPipeSinkName(), getPipeSinkPlan1.getPipeSinkName());
-    GetPipeSinkPlanV1 getPipeSinkPlanWithNullName = new GetPipeSinkPlanV1();
-    GetPipeSinkPlanV1 getPipeSinkPlanWithNullName1 =
+    final GetPipeSinkPlanV1 getPipeSinkPlanWithNullName = new GetPipeSinkPlanV1();
+    final GetPipeSinkPlanV1 getPipeSinkPlanWithNullName1 =
         (GetPipeSinkPlanV1)
             ConfigPhysicalPlan.Factory.create(getPipeSinkPlanWithNullName.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1111,11 +1114,11 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void PreCreatePipePlanTest() throws IOException {
-    PipeInfo pipeInfo =
+    final PipeInfo pipeInfo =
         new TsFilePipeInfo(
             "name", "demo", PipeStatus.PARTIAL_CREATE, System.currentTimeMillis(), 999, false);
-    PreCreatePipePlanV1 PreCreatePipePlan = new PreCreatePipePlanV1(pipeInfo);
-    PreCreatePipePlanV1 PreCreatePipePlan1 =
+    final PreCreatePipePlanV1 PreCreatePipePlan = new PreCreatePipePlanV1(pipeInfo);
+    final PreCreatePipePlanV1 PreCreatePipePlan1 =
         (PreCreatePipePlanV1)
             ConfigPhysicalPlan.Factory.create(PreCreatePipePlan.serializeToByteBuffer());
     Assert.assertEquals(PreCreatePipePlan.getPipeInfo(), PreCreatePipePlan1.getPipeInfo());
@@ -1123,10 +1126,10 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void RecordPipeMessagePlanTest() throws IOException {
-    RecordPipeMessagePlan recordPipeMessagePlan =
+    final RecordPipeMessagePlan recordPipeMessagePlan =
         new RecordPipeMessagePlan(
             "testPipe", new PipeMessage(PipeMessage.PipeMessageType.ERROR, "testError"));
-    RecordPipeMessagePlan recordPipeMessagePlan1 =
+    final RecordPipeMessagePlan recordPipeMessagePlan1 =
         (RecordPipeMessagePlan)
             ConfigPhysicalPlan.Factory.create(recordPipeMessagePlan.serializeToByteBuffer());
     Assert.assertEquals(recordPipeMessagePlan.getPipeName(), recordPipeMessagePlan1.getPipeName());
@@ -1140,9 +1143,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlanTest() throws IOException {
-    SetPipeStatusPlanV1 setPipeStatusPlan =
+    final SetPipeStatusPlanV1 setPipeStatusPlan =
         new SetPipeStatusPlanV1("pipe", PipeStatus.PARTIAL_CREATE);
-    SetPipeStatusPlanV1 setPipeStatusPlan1 =
+    final SetPipeStatusPlanV1 setPipeStatusPlan1 =
         (SetPipeStatusPlanV1)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlan.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlan.getPipeName(), setPipeStatusPlan1.getPipeName());
@@ -1151,21 +1154,21 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreatePipePlanV2Test() throws IOException {
-    Map<String, String> extractorAttributes = new HashMap<>();
-    Map<String, String> processorAttributes = new HashMap<>();
-    Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
     extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
-    PipeStaticMeta pipeStaticMeta =
+    final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
-    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
-    CreatePipePlanV2 createPipePlanV21 =
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+    final CreatePipePlanV2 createPipePlanV21 =
         (CreatePipePlanV2)
             ConfigPhysicalPlan.Factory.create(createPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1176,21 +1179,21 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void AlterPipePlanV2Test() throws IOException {
-    Map<String, String> extractorAttributes = new HashMap<>();
-    Map<String, String> processorAttributes = new HashMap<>();
-    Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
     extractorAttributes.put("pattern", "root.db");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("batch.enable", "false");
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
-    PipeStaticMeta pipeStaticMeta =
+    final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
-    AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
-    AlterPipePlanV2 alterPipePlanV21 =
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+    final AlterPipePlanV2 alterPipePlanV21 =
         (AlterPipePlanV2)
             ConfigPhysicalPlan.Factory.create(alterPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(alterPipePlanV2.getPipeStaticMeta(), alterPipePlanV21.getPipeStaticMeta());
@@ -1200,9 +1203,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetPipeStatusPlanV2Test() throws IOException {
-    SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2("pipe", org.apache.iotdb.commons.pipe.task.meta.PipeStatus.RUNNING);
-    SetPipeStatusPlanV2 setPipeStatusPlanV21 =
+    final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
     Assert.assertEquals(setPipeStatusPlanV2.getPipeName(), setPipeStatusPlanV21.getPipeName());
@@ -1211,55 +1214,55 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropPipePlanV2Test() throws IOException {
-    DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo");
-    DropPipePlanV2 dropPipePlanV21 =
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("demo");
+    final DropPipePlanV2 dropPipePlanV21 =
         (DropPipePlanV2) ConfigPhysicalPlan.Factory.create(dropPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(dropPipePlanV2.getPipeName(), dropPipePlanV21.getPipeName());
   }
 
   @Test
   public void OperateMultiplePipesPlanV2Test() throws IOException {
-    PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
-    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
+    final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
-    PipeStaticMeta pipeStaticMeta =
+    final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "testCreate",
             5,
             Collections.singletonMap("k1", "v1"),
             Collections.singletonMap("k2", "v2"),
             Collections.singletonMap("k3", "v3"));
-    PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
-    CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
+    final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
+    final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
 
-    PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
-    ConcurrentMap<Integer, PipeTaskMeta> pipeTasks1 = new ConcurrentHashMap<>();
+    final PipeTaskMeta pipeTaskMeta1 = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 2);
+    final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks1 = new ConcurrentHashMap<>();
     pipeTasks.put(2, pipeTaskMeta1);
-    PipeStaticMeta pipeStaticMeta1 =
+    final PipeStaticMeta pipeStaticMeta1 =
         new PipeStaticMeta(
             "testAlter",
             6,
             Collections.singletonMap("k4", "v4"),
             Collections.singletonMap("k5", "v5"),
             Collections.singletonMap("k6", "v6"));
-    PipeRuntimeMeta pipeRuntimeMeta1 = new PipeRuntimeMeta(pipeTasks1);
-    AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta1, pipeRuntimeMeta1);
+    final PipeRuntimeMeta pipeRuntimeMeta1 = new PipeRuntimeMeta(pipeTasks1);
+    final AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta1, pipeRuntimeMeta1);
 
-    DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("testDrop");
+    final DropPipePlanV2 dropPipePlanV2 = new DropPipePlanV2("testDrop");
 
-    SetPipeStatusPlanV2 setPipeStatusPlanV2 =
+    final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
             "testSet", org.apache.iotdb.commons.pipe.task.meta.PipeStatus.RUNNING);
 
-    List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
+    final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
     subPlans.add(createPipePlanV2);
     subPlans.add(alterPipePlanV2);
     subPlans.add(dropPipePlanV2);
     subPlans.add(setPipeStatusPlanV2);
 
-    OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
+    final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV2 =
         new OperateMultiplePipesPlanV2(subPlans);
-    OperateMultiplePipesPlanV2 operateMultiplePipesPlanV21 =
+    final OperateMultiplePipesPlanV2 operateMultiplePipesPlanV21 =
         (OperateMultiplePipesPlanV2)
             ConfigPhysicalPlan.Factory.create(operateMultiplePipesPlanV2.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1267,13 +1270,13 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void ShowPipePlanTest() throws IOException {
-    ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
-    ShowPipePlanV1 showPipePlan1 =
+  public void ShowPipePlanV1Test() throws IOException {
+    final ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
+    final ShowPipePlanV1 showPipePlan1 =
         (ShowPipePlanV1) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
     Assert.assertEquals(showPipePlan.getPipeName(), showPipePlan1.getPipeName());
-    ShowPipePlanV1 showPipePlanWithNullName = new ShowPipePlanV1();
-    ShowPipePlanV1 showPipePlanWithNullName1 =
+    final ShowPipePlanV1 showPipePlanWithNullName = new ShowPipePlanV1();
+    final ShowPipePlanV1 showPipePlanWithNullName1 =
         (ShowPipePlanV1)
             ConfigPhysicalPlan.Factory.create(showPipePlanWithNullName.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1282,11 +1285,11 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreatePipePluginPlanTest() throws IOException {
-    CreatePipePluginPlan createPipePluginPlan =
+    final CreatePipePluginPlan createPipePluginPlan =
         new CreatePipePluginPlan(
             new PipePluginMeta("testPlugin", "org.apache.iotdb.TestJar", false, "test.jar", "???"),
             new Binary("123", TSFileConfig.STRING_CHARSET));
-    CreatePipePluginPlan createPipePluginPlan1 =
+    final CreatePipePluginPlan createPipePluginPlan1 =
         (CreatePipePluginPlan)
             ConfigPhysicalPlan.Factory.create(createPipePluginPlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1296,8 +1299,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropPipePluginPlanTest() throws IOException {
-    DropPipePluginPlan dropPipePluginPlan = new DropPipePluginPlan("testPlugin");
-    DropPipePluginPlan dropPipePluginPlan1 =
+    final DropPipePluginPlan dropPipePluginPlan = new DropPipePluginPlan("testPlugin");
+    final DropPipePluginPlan dropPipePluginPlan1 =
         (DropPipePluginPlan)
             ConfigPhysicalPlan.Factory.create(dropPipePluginPlan.serializeToByteBuffer());
     Assert.assertEquals(dropPipePluginPlan.getPluginName(), dropPipePluginPlan1.getPluginName());
@@ -1305,16 +1308,16 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void pipeHandleLeaderChangePlanTest() throws IOException {
-    Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
+    final Map<TConsensusGroupId, Integer> newLeaderMap = new HashMap<>();
     // Do not test SchemaRegion or ConfigRegion since the Type is always "DataRegion" when
     // deserialized
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), 2);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), 3);
     newLeaderMap.put(new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), 5);
 
-    PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
+    final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan =
         new PipeHandleLeaderChangePlan(newLeaderMap);
-    PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan1 =
+    final PipeHandleLeaderChangePlan pipeHandleLeaderChangePlan1 =
         (PipeHandleLeaderChangePlan)
             ConfigPhysicalPlan.Factory.create(pipeHandleLeaderChangePlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1324,8 +1327,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void pipeHandleMetaChangePlanTest() throws IOException {
-    List<PipeMeta> pipeMetaList = new ArrayList<>();
-    PipeStaticMeta pipeStaticMeta =
+    final List<PipeMeta> pipeMetaList = new ArrayList<>();
+    final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
             "pipeName",
             123L,
@@ -1341,7 +1344,7 @@ public class ConfigPhysicalPlanSerDeTest {
               }
             },
             new HashMap<String, String>() {});
-    PipeRuntimeMeta pipeRuntimeMeta =
+    final PipeRuntimeMeta pipeRuntimeMeta =
         new PipeRuntimeMeta(
             new ConcurrentHashMap<Integer, PipeTaskMeta>() {
               {
@@ -1350,8 +1353,9 @@ public class ConfigPhysicalPlanSerDeTest {
               }
             });
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
-    PipeHandleMetaChangePlan pipeHandleMetaChangePlan1 = new PipeHandleMetaChangePlan(pipeMetaList);
-    PipeHandleMetaChangePlan pipeHandleMetaChangePlan2 =
+    final PipeHandleMetaChangePlan pipeHandleMetaChangePlan1 =
+        new PipeHandleMetaChangePlan(pipeMetaList);
+    final PipeHandleMetaChangePlan pipeHandleMetaChangePlan2 =
         (PipeHandleMetaChangePlan)
             ConfigPhysicalPlan.Factory.create(pipeHandleMetaChangePlan1.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1360,12 +1364,12 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreateTopicPlanTest() throws IOException {
-    Map<String, String> attributes = new HashMap<>();
+    final Map<String, String> attributes = new HashMap<>();
     attributes.put("k1", "v1");
     attributes.put("k2", "v2");
-    CreateTopicPlan createTopicPlan =
+    final CreateTopicPlan createTopicPlan =
         new CreateTopicPlan(new TopicMeta("test_topic", 1, attributes));
-    CreateTopicPlan createTopicPlan1 =
+    final CreateTopicPlan createTopicPlan1 =
         (CreateTopicPlan)
             ConfigPhysicalPlan.Factory.create(createTopicPlan.serializeToByteBuffer());
     Assert.assertEquals(createTopicPlan.getTopicMeta(), createTopicPlan1.getTopicMeta());
@@ -1373,32 +1377,33 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DropTopicPlanTest() throws IOException {
-    DropTopicPlan dropTopicPlan = new DropTopicPlan("test_topic");
-    DropTopicPlan dropTopicPlan1 =
+    final DropTopicPlan dropTopicPlan = new DropTopicPlan("test_topic");
+    final DropTopicPlan dropTopicPlan1 =
         (DropTopicPlan) ConfigPhysicalPlan.Factory.create(dropTopicPlan.serializeToByteBuffer());
     Assert.assertEquals(dropTopicPlan.getTopicName(), dropTopicPlan1.getTopicName());
   }
 
   @Test
   public void AlterTopicPlanTest() throws IOException {
-    Map<String, String> attributes = new HashMap<>();
+    final Map<String, String> attributes = new HashMap<>();
     attributes.put("k1", "v1");
     attributes.put("k2", "v2");
-    AlterTopicPlan alterTopicPlan = new AlterTopicPlan(new TopicMeta("test_topic", 1, attributes));
-    AlterTopicPlan alterTopicPlan1 =
+    final AlterTopicPlan alterTopicPlan =
+        new AlterTopicPlan(new TopicMeta("test_topic", 1, attributes));
+    final AlterTopicPlan alterTopicPlan1 =
         (AlterTopicPlan) ConfigPhysicalPlan.Factory.create(alterTopicPlan.serializeToByteBuffer());
     Assert.assertEquals(alterTopicPlan.getTopicMeta(), alterTopicPlan1.getTopicMeta());
   }
 
   @Test
   public void AlterMultipleTopicsTopicPlanTest() throws IOException {
-    List<AlterTopicPlan> subPlans = new ArrayList<>();
+    final List<AlterTopicPlan> subPlans = new ArrayList<>();
     subPlans.add(
         new AlterTopicPlan(new TopicMeta("test_topic1", 1, Collections.singletonMap("k1", "v1"))));
     subPlans.add(
         new AlterTopicPlan(new TopicMeta("test_topic2", 2, Collections.singletonMap("k2", "v2"))));
-    AlterMultipleTopicsPlan alterMultipleTopicsPlan = new AlterMultipleTopicsPlan(subPlans);
-    AlterMultipleTopicsPlan alterMultipleTopicsPlan1 =
+    final AlterMultipleTopicsPlan alterMultipleTopicsPlan = new AlterMultipleTopicsPlan(subPlans);
+    final AlterMultipleTopicsPlan alterMultipleTopicsPlan1 =
         (AlterMultipleTopicsPlan)
             ConfigPhysicalPlan.Factory.create(alterMultipleTopicsPlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1407,11 +1412,12 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void TopicHandleMetaChangePlanTest() throws IOException {
-    List<TopicMeta> topicMetas = new ArrayList<>();
+    final List<TopicMeta> topicMetas = new ArrayList<>();
     topicMetas.add(new TopicMeta("topic1", 1, Collections.singletonMap("k1", "v1")));
     topicMetas.add(new TopicMeta("topic2", 2, Collections.singletonMap("k2", "v2")));
-    TopicHandleMetaChangePlan topicHandleMetaChangePlan = new TopicHandleMetaChangePlan(topicMetas);
-    TopicHandleMetaChangePlan topicHandleMetaChangePlan1 =
+    final TopicHandleMetaChangePlan topicHandleMetaChangePlan =
+        new TopicHandleMetaChangePlan(topicMetas);
+    final TopicHandleMetaChangePlan topicHandleMetaChangePlan1 =
         (TopicHandleMetaChangePlan)
             ConfigPhysicalPlan.Factory.create(topicHandleMetaChangePlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1421,14 +1427,14 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void AlterConsumerGroupPlanTest() throws IOException {
-    Map<String, String> attributes = new HashMap<>();
+    final Map<String, String> attributes = new HashMap<>();
     attributes.put("k1", "v1");
     attributes.put("k2", "v2");
-    AlterConsumerGroupPlan alterConsumerGroupPlan =
+    final AlterConsumerGroupPlan alterConsumerGroupPlan =
         new AlterConsumerGroupPlan(
             new ConsumerGroupMeta(
                 "test_consumer_group", 1, new ConsumerMeta("test_consumer", 2, attributes)));
-    AlterConsumerGroupPlan alterConsumerGroupPlan1 =
+    final AlterConsumerGroupPlan alterConsumerGroupPlan1 =
         (AlterConsumerGroupPlan)
             ConfigPhysicalPlan.Factory.create(alterConsumerGroupPlan.serializeToByteBuffer());
     Assert.assertEquals(
@@ -1438,16 +1444,16 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ConsumerGroupHandleMetaChangePlanTest() throws IOException {
-    List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
+    final List<ConsumerGroupMeta> consumerGroupMetas = new ArrayList<>();
     consumerGroupMetas.add(
         new ConsumerGroupMeta(
             "cg1", 1, new ConsumerMeta("c1", 11, Collections.singletonMap("k1", "v1"))));
     consumerGroupMetas.add(
         new ConsumerGroupMeta(
             "cg2", 2, new ConsumerMeta("c2", 22, Collections.singletonMap("k2", "v2"))));
-    ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan =
+    final ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan =
         new ConsumerGroupHandleMetaChangePlan(consumerGroupMetas);
-    ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan1 =
+    final ConsumerGroupHandleMetaChangePlan consumerGroupHandleMetaChangePlan1 =
         (ConsumerGroupHandleMetaChangePlan)
             ConfigPhysicalPlan.Factory.create(
                 consumerGroupHandleMetaChangePlan.serializeToByteBuffer());
@@ -1537,6 +1543,15 @@ public class ConfigPhysicalPlanSerDeTest {
         setTablePropertiesPlan0.getTableName(), setTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
         setTablePropertiesPlan0.getProperties(), setTablePropertiesPlan1.getProperties());
+  }
+
+  @Test
+  public void showTablePlanTest() throws IOException {
+    final ShowTablePlan showTablePlan = new ShowTablePlan("database");
+    Assert.assertEquals(
+        showTablePlan.getDatabase(),
+        ((ShowTablePlan) ConfigPhysicalPlan.Factory.create(showTablePlan.serializeToByteBuffer()))
+            .getDatabase());
   }
 
   @Test
@@ -1680,12 +1695,12 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetTriggerJarPlanTest() throws IOException {
-    List<String> jarNames = new ArrayList<>();
+    final List<String> jarNames = new ArrayList<>();
     jarNames.add("test1");
     jarNames.add("test2");
-    GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
+    final GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
 
-    GetTriggerJarPlan getTriggerJarPlan1 =
+    final GetTriggerJarPlan getTriggerJarPlan1 =
         (GetTriggerJarPlan)
             ConfigPhysicalPlan.Factory.create(getTriggerJarPlan0.serializeToByteBuffer());
     Assert.assertEquals(getTriggerJarPlan0.getJarNames(), getTriggerJarPlan1.getJarNames());
@@ -1693,8 +1708,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetRegionIdPlanTest() throws IOException {
-    GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
-    GetRegionIdPlan getRegionIdPlan1 =
+    final GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
+    final GetRegionIdPlan getRegionIdPlan1 =
         (GetRegionIdPlan)
             ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
     Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
@@ -1702,8 +1717,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetTimeSlotListPlanTest() throws IOException {
-    GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
-    GetTimeSlotListPlan getTimeSlotListPlan1 =
+    final GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
+    final GetTimeSlotListPlan getTimeSlotListPlan1 =
         (GetTimeSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getTimeSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getTimeSlotListPlan0, getTimeSlotListPlan1);
@@ -1711,8 +1726,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CountTimeSlotListPlanTest() throws IOException {
-    CountTimeSlotListPlan countTimeSlotListPlan0 = new CountTimeSlotListPlan(0, Long.MAX_VALUE);
-    CountTimeSlotListPlan countTimeSlotListPlan1 =
+    final CountTimeSlotListPlan countTimeSlotListPlan0 =
+        new CountTimeSlotListPlan(0, Long.MAX_VALUE);
+    final CountTimeSlotListPlan countTimeSlotListPlan1 =
         (CountTimeSlotListPlan)
             ConfigPhysicalPlan.Factory.create(countTimeSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(countTimeSlotListPlan0, countTimeSlotListPlan1);
@@ -1720,9 +1736,9 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetSeriesSlotListPlanTest() throws IOException {
-    GetSeriesSlotListPlan getSeriesSlotListPlan0 =
+    final GetSeriesSlotListPlan getSeriesSlotListPlan0 =
         new GetSeriesSlotListPlan("root.test", SchemaRegion);
-    GetSeriesSlotListPlan getSeriesSlotListPlan1 =
+    final GetSeriesSlotListPlan getSeriesSlotListPlan1 =
         (GetSeriesSlotListPlan)
             ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
     Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
@@ -1730,11 +1746,11 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetPipePluginJarPlanTest() throws IOException {
-    List<String> jarNames = new ArrayList<>();
+    final List<String> jarNames = new ArrayList<>();
     jarNames.add("org.apache.testJar");
     jarNames.add("org.apache.testJar2");
-    GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
-    GetPipePluginJarPlan getPipePluginJarPlan1 =
+    final GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
+    final GetPipePluginJarPlan getPipePluginJarPlan1 =
         (GetPipePluginJarPlan)
             ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
     Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
@@ -1742,8 +1758,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetPipePluginTablePlanTest() throws IOException {
-    GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
-    GetPipePluginTablePlan getPipePluginTablePlan1 =
+    final GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
+    final GetPipePluginTablePlan getPipePluginTablePlan1 =
         (GetPipePluginTablePlan)
             ConfigPhysicalPlan.Factory.create(getPipePluginTablePlan0.serializeToByteBuffer());
     Assert.assertEquals(getPipePluginTablePlan0, getPipePluginTablePlan1);
@@ -1751,8 +1767,8 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void ShowPipePlanV2Test() throws IOException {
-    ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
-    ShowPipePlanV2 showPipePlanV21 =
+    final ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
+    final ShowPipePlanV2 showPipePlanV21 =
         (ShowPipePlanV2) ConfigPhysicalPlan.Factory.create(showPipePlanV2.serializeToByteBuffer());
     Assert.assertEquals(showPipePlanV2, showPipePlanV21);
   }

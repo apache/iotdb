@@ -842,7 +842,8 @@ public class AbstractCompactionTest {
   protected List<IFullPath> getPaths(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
     Set<IFullPath> paths = new HashSet<>();
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
+    try (MultiTsFileDeviceIterator deviceIterator =
+        new MultiTsFileDeviceIterator(resources, false)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();

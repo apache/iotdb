@@ -36,9 +36,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
 
 public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
 
@@ -170,7 +169,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             3,
             Arrays.asList(
                 new IdFilter(new InFilter(new HashSet<>(Arrays.asList("d_0", "d_1"))), 2),
-                new IdFilter(new LikeFilter(parseLikePatternToRegex("__1")), 2)));
+                new IdFilter(new LikeFilter("__1", Optional.empty()), 2)));
 
     Assert.assertEquals(2, deviceSchemaInfoList.size());
   }
@@ -246,8 +245,7 @@ public class SchemaRegionTableDeviceTest extends AbstractSchemaRegionTest {
             schemaRegion,
             tableName,
             3,
-            Collections.singletonList(
-                new IdFilter(new LikeFilter(parseLikePatternToRegex("%")), 2)));
+            Collections.singletonList(new IdFilter(new LikeFilter("%", Optional.empty()), 2)));
 
     Assert.assertEquals(2, deviceSchemaInfoList.size());
   }

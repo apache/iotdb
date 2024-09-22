@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
@@ -61,6 +62,7 @@ public class SizeTieredCompactionSelector
   protected static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   protected String storageGroupName;
   protected String dataRegionId;
+  protected final CompactionScheduleContext context;
   protected long timePartition;
   protected List<TsFileResource> tsFileResources;
   protected boolean sequence;
@@ -72,13 +74,15 @@ public class SizeTieredCompactionSelector
       String dataRegionId,
       long timePartition,
       boolean sequence,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.sequence = sequence;
     this.tsFileManager = tsFileManager;
-    hasNextTimePartition = tsFileManager.hasNextTimePartition(timePartition, sequence);
+    this.hasNextTimePartition = tsFileManager.hasNextTimePartition(timePartition, sequence);
+    this.context = context;
   }
 
   /**
@@ -219,22 +223,15 @@ public class SizeTieredCompactionSelector
                 tsFileManager,
                 resource,
                 sequence,
-                tsFileManager.getNextCompactionTaskId()));
+                tsFileManager.getNextCompactionTaskId(),
+                context.isIgnoreAllNullRows()));
       }
     }
     return taskList;
   }
 
   protected ICompactionPerformer createCompactionPerformer() {
-    return sequence
-        ? IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getInnerSeqCompactionPerformer()
-            .createInstance()
-        : IoTDBDescriptor.getInstance()
-            .getConfig()
-            .getInnerUnseqCompactionPerformer()
-            .createInstance();
+    return sequence ? context.getSeqCompactionPerformer() : context.getUnseqCompactionPerformer();
   }
 
   protected int searchMaxFileLevel() throws IOException {

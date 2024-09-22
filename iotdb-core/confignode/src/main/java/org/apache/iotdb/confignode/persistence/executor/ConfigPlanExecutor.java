@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -306,6 +307,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetTemplateSetInfo:
         return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
+      case ShowTable:
+        return clusterSchemaInfo.showTables((ShowTablePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:

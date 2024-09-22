@@ -30,7 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.PriorityM
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.reader.IPointReader;
@@ -47,7 +47,12 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   // only used for limit and offset push down optimizer, if we select all columns from aligned
   // device, we can use statistics to skip.
   // it's only exact while using limit & offset push down
+  // for table scan, it should always be true
   private final boolean queryAllSensors;
+
+  // for table model, it will be false
+  // for tree model, it will be true
+  private final boolean ignoreAllNullRows;
 
   public AlignedSeriesScanUtil(
       AlignedFullPath seriesPath,
@@ -73,6 +78,7 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
                 .map(IMeasurementSchema::getType)
                 .collect(Collectors.toList());
     this.queryAllSensors = queryAllSensors;
+    this.ignoreAllNullRows = context.isIgnoreAllNullRows();
   }
 
   @Override
@@ -86,10 +92,15 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   }
 
   @Override
-  protected AlignedTimeSeriesMetadata loadTimeSeriesMetadata(TsFileResource resource, boolean isSeq)
-      throws IOException {
+  protected AbstractAlignedTimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource, boolean isSeq) throws IOException {
     return FileLoaderUtils.loadAlignedTimeSeriesMetadata(
-        resource, (AlignedFullPath) seriesPath, context, scanOptions.getGlobalTimeFilter(), isSeq);
+        resource,
+        (AlignedFullPath) seriesPath,
+        context,
+        scanOptions.getGlobalTimeFilter(),
+        isSeq,
+        ignoreAllNullRows);
   }
 
   @Override

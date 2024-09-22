@@ -50,7 +50,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
   private final int totalFileNumLowerBound;
   private final long singleFileSizeThreshold;
   private final int maxLevelGap;
-  private final CompactionScheduleContext context;
   private boolean isActiveTimePartition;
 
   public NewSizeTieredCompactionSelector(
@@ -60,7 +59,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
       boolean sequence,
       TsFileManager tsFileManager,
       CompactionScheduleContext context) {
-    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager);
+    super(storageGroupName, dataRegionId, timePartition, sequence, tsFileManager, context);
     double availableDiskSpaceInByte =
         MetricService.getInstance()
             .getAutoGauge(
@@ -80,7 +79,6 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         Math.min(config.getInnerCompactionTotalFileSizeThresholdInByte(), maxDiskSizeForTempFiles);
     this.singleFileSizeThreshold =
         Math.min(config.getTargetCompactionFileSize(), maxDiskSizeForTempFiles);
-    this.context = context;
   }
 
   @Override
@@ -238,25 +236,28 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
         // size of a single file, merge all files together and try to include
         // as many files as possible within the limit.
         long totalFileSize = currentSelectedFileTotalSize + currentSkippedFileTotalSize;
+        int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
         nextTaskStartIndex = lastSelectedFileIndex + 1;
         for (TsFileResource resource : lastContinuousSkippedResources) {
           long currentFileSize = resource.getTsFileSize();
           if (totalFileSize + currentFileSize > singleFileSizeThreshold
+              || totalFileNum > totalFileNumUpperBound
               || !isFileLevelSatisfied(resource.getTsFileID().getInnerCompactionCount())) {
             break;
           }
           currentSkippedResources.add(resource);
           totalFileSize += currentFileSize;
           currentSkippedFileTotalSize += currentFileSize;
+          totalFileNum++;
           nextTaskStartIndex++;
         }
 
-        int totalFileNum = currentSelectedResources.size() + currentSkippedResources.size();
         if (totalFileNum < 2) {
           return;
         }
 
-        boolean canCompactAllFiles = totalFileSize <= singleFileSizeThreshold;
+        boolean canCompactAllFiles =
+            totalFileSize <= singleFileSizeThreshold && totalFileNum <= totalFileNumUpperBound;
         if (canCompactAllFiles) {
           currentSelectedResources =
               Stream.concat(currentSelectedResources.stream(), currentSkippedResources.stream())

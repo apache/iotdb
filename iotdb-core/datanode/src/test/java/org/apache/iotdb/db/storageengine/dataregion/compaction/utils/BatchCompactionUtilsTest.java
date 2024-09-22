@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactPagePlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -61,9 +61,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class BatchCompactionUtilsTest extends AbstractCompactionTest {
 
@@ -88,11 +86,11 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT32));
       }
     }
-    Set<String> selectedColumns = new HashSet<>();
-    List<IMeasurementSchema> iMeasurementSchemas =
-        AlignedSeriesBatchCompactionUtils.selectColumnBatchToCompact(
-            measurementSchemas, selectedColumns, 10);
-    Assert.assertEquals(10, iMeasurementSchemas.size());
+    AlignedSeriesBatchCompactionUtils.BatchColumnSelection batchColumnSelection =
+        new AlignedSeriesBatchCompactionUtils.BatchColumnSelection(measurementSchemas, 10);
+    Assert.assertTrue(batchColumnSelection.hasNext());
+    batchColumnSelection.next();
+    Assert.assertEquals(10, batchColumnSelection.getCurrentSelectedColumnSchemaList().size());
   }
 
   @Test
@@ -110,7 +108,8 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         new TsFileSequenceReader(seqResource1.getTsFile().getAbsolutePath())) {
       AlignedChunkMetadata alignedChunkMetadata =
           reader
-              .getAlignedChunkMetadata(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"))
+              .getAlignedChunkMetadata(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"), true)
               .get(0);
       ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       List<IChunkMetadata> valueChunkMetadataList =
@@ -128,9 +127,11 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
       AlignedChunkReader alignedChunkReader = new AlignedChunkReader(timeChunk, valueChunks);
       AlignedPageReader iPageReader =
           (AlignedPageReader) alignedChunkReader.loadPageReaderList().get(0);
-      BatchedCompactionAlignedPagePointReader batchCompactionPointReader =
-          new BatchedCompactionAlignedPagePointReader(
-              iPageReader.getTimePageReader(), iPageReader.getValuePageReaderList().subList(1, 2));
+      CompactionAlignedPageLazyLoadPointReader batchCompactionPointReader =
+          new CompactionAlignedPageLazyLoadPointReader(
+              iPageReader.getTimePageReader(),
+              iPageReader.getValuePageReaderList().subList(1, 2),
+              false);
       int readPointNum = 0;
       while (batchCompactionPointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchCompactionPointReader.nextTimeValuePair();
