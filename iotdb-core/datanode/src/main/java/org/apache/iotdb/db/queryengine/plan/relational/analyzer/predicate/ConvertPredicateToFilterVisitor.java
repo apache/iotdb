@@ -47,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -58,6 +59,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -66,6 +68,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor.isTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isLiteral;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
+import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 public class ConvertPredicateToFilterVisitor
     extends PredicateVisitor<Filter, ConvertPredicateToFilterVisitor.Context> {
@@ -208,10 +211,17 @@ public class ConvertPredicateToFilterVisitor
     SymbolReference operand = (SymbolReference) node.getValue();
     checkArgument(context.isMeasurementColumn(operand));
     int measurementIndex = context.getMeasurementIndex(operand.getName());
-    Expression pattern = node.getPattern();
+    Optional<String> escapeValueOpt =
+        node.getEscape().isPresent()
+            ? Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue())
+            : Optional.empty();
     Type type = context.getType(Symbol.from(operand));
     TSDataType dataType = InternalTypeManager.getTSDataType(type);
-    return ValueFilterApi.like(measurementIndex, getStringValue(pattern), dataType);
+    return ValueFilterApi.like(
+        measurementIndex,
+        LikePattern.compile(
+            ((StringLiteral) node.getPattern()).getValue(), getEscapeCharacter(escapeValueOpt)),
+        dataType);
   }
 
   @Override
