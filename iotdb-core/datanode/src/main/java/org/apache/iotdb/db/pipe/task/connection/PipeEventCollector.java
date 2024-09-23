@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.task.connection;
 
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;

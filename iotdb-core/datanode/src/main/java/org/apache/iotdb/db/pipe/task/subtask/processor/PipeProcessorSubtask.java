@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.EventSupplier;
+import org.apache.iotdb.commons.pipe.task.connection.EventSupplier;
 import org.apache.iotdb.commons.pipe.task.execution.scheduler.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.subtask.PipeReportableSubtask;

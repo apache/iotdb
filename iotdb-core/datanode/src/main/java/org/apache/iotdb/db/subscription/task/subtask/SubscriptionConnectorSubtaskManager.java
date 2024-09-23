@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskConnectorRuntimeEnvironment;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -48,7 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.SUBSCRIPTION_SINK;
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.SUBSCRIPTION_SINK;
 
 public class SubscriptionConnectorSubtaskManager {
 

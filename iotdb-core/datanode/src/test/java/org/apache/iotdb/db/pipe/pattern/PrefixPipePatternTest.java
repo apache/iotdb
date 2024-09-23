@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.pattern;
 
-import org.apache.iotdb.commons.pipe.pattern.PrefixPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixPipePattern;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
