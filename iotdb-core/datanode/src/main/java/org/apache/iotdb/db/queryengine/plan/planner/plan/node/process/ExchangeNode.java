@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -44,6 +45,8 @@ public class ExchangeNode extends SingleChildProcessNode {
   private PlanNodeId upstreamPlanNodeId;
 
   private List<String> outputColumnNames = new ArrayList<>();
+
+  private List<Symbol> outputSymbols = null;
 
   /** Exchange needs to know which child of IdentitySinkNode/ShuffleSinkNode it matches */
   private int indexOfUpstreamSinkHandle = 0;
@@ -82,6 +85,15 @@ public class ExchangeNode extends SingleChildProcessNode {
 
   public void setOutputColumnNames(List<String> outputColumnNames) {
     this.outputColumnNames = outputColumnNames;
+  }
+
+  @Override
+  public List<Symbol> getOutputSymbols() {
+    return outputSymbols;
+  }
+
+  public void setOutputSymbols(List<Symbol> outputSymbols) {
+    this.outputSymbols = outputSymbols;
   }
 
   public void setUpstream(TEndPoint endPoint, FragmentInstanceId instanceId, PlanNodeId nodeId) {

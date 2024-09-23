@@ -45,6 +45,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -405,8 +406,11 @@ public class FragmentInstanceContext extends QueryContext {
     if (globalTimeFilter == null) {
       globalTimeFilter = timeFilter;
     } else {
-      throw new IllegalStateException(
-          "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
+      // In join case, there may exist more than one table and time filter, join criteria only
+      // support and condition, so use and to connect these two filters
+      globalTimeFilter = FilterFactory.and(globalTimeFilter, timeFilter);
+      // throw new IllegalStateException(
+      //    "globalTimeFilter in FragmentInstanceContext should only be set once in Table Model!");
     }
   }
 
