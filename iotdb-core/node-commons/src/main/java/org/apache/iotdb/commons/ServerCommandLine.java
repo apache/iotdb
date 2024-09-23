@@ -94,7 +94,7 @@ public abstract class ServerCommandLine {
       }
       // Make sure we exit with the 0 error code
       return 0;
-    } catch (ParseException e) {
+    } catch (ParseException | NumberFormatException e) {
       output.println(e.getMessage());
       HelpFormatter formatter = new HelpFormatter();
       formatter.printHelp(
