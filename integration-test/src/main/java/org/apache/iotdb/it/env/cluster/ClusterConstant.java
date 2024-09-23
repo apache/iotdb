@@ -223,7 +223,11 @@ public class ClusterConstant {
   public static final String SIMPLE_CONSENSUS_STR = "Simple";
   public static final String RATIS_CONSENSUS_STR = "Ratis";
   public static final String IOT_CONSENSUS_STR = "IoT";
+<<<<<<< HEAD
   public static final String FAST_IOT_CONSENSUS_STR = "FastIoT";
+=======
+  public static final String IOT_CONSENSUS_V2_STR = "IoTV2";
+>>>>>>> master
 
   public static final String JAVA_CMD =
       System.getProperty("java.home")

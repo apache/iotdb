@@ -70,18 +70,18 @@ public class ModelManager {
     return configManager.getProcedureManager().dropModel(req.getModelId());
   }
 
-  public TShowModelResp showModel(TShowModelReq req) {
+  public TShowModelResp showModel(final TShowModelReq req) {
     try {
-      DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
+      final DataSet response = configManager.getConsensusManager().read(new ShowModelPlan(req));
       return ((ModelTableResp) response).convertToThriftResponse();
-    } catch (ConsensusException e) {
+    } catch (final ConsensusException e) {
       LOGGER.warn(
           String.format("Unexpected error happened while showing model %s: ", req.getModelId()), e);
       // consensus layer related errors
-      TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      final TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TShowModelResp(res, Collections.emptyList());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Fail to get ModelTable", e);
       return new TShowModelResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())

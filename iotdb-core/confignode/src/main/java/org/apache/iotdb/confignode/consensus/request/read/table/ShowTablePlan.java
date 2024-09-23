@@ -19,22 +19,12 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.table;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+public class ShowTablePlan extends ConfigPhysicalReadPlan {
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-public class ShowTablePlan extends ConfigPhysicalPlan {
-
-  private String database;
-
-  public ShowTablePlan() {
-    super(ConfigPhysicalPlanType.ShowTable);
-  }
+  private final String database;
 
   public ShowTablePlan(final String database) {
     super(ConfigPhysicalPlanType.ShowTable);
@@ -43,16 +33,5 @@ public class ShowTablePlan extends ConfigPhysicalPlan {
 
   public String getDatabase() {
     return database;
-  }
-
-  @Override
-  protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(database, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    database = ReadWriteIOUtils.readString(buffer);
   }
 }

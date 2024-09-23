@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.apache.iotdb.consensus.ConsensusFactory.FAST_IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.RATIS_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
@@ -48,6 +47,7 @@ import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_M
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.HIGH_PERFORMANCE_MODE_DATA_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_STR;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.IOT_CONSENSUS_V2_STR;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.LIGHT_WEIGHT_STANDALONE_MODE_DATA_NODE_NUM;
@@ -221,8 +221,13 @@ public class EnvUtils {
         return RATIS_CONSENSUS_STR;
       case IOT_CONSENSUS:
         return IOT_CONSENSUS_STR;
+<<<<<<< HEAD
       case FAST_IOT_CONSENSUS:
         return FAST_IOT_CONSENSUS_STR;
+=======
+      case IOT_CONSENSUS_V2:
+        return IOT_CONSENSUS_V2_STR;
+>>>>>>> master
       default:
         throw new IllegalArgumentException("Unknown consensus type: " + consensus);
     }
@@ -236,8 +241,13 @@ public class EnvUtils {
         return RATIS_CONSENSUS;
       case IOT_CONSENSUS_STR:
         return IOT_CONSENSUS;
+<<<<<<< HEAD
       case FAST_IOT_CONSENSUS_STR:
         return FAST_IOT_CONSENSUS;
+=======
+      case IOT_CONSENSUS_V2_STR:
+        return IOT_CONSENSUS_V2;
+>>>>>>> master
       default:
         throw new IllegalArgumentException("Unknown consensus type: " + consensus);
     }
