@@ -13,8 +13,6 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -25,7 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -47,23 +45,15 @@ public class PruneTableScanColumns extends ProjectOffPushDownRule<TableScanNode>
   @Override
   protected Optional<PlanNode> pushDownProjectOff(
       Context context, TableScanNode node, Set<Symbol> referencedOutputs) {
-    SessionInfo sessionInfo = context.getSessionInfo();
-    TypeProvider types = context.getSymbolAllocator().getTypes();
-
-    return pruneColumns(metadata, types, sessionInfo, node, referencedOutputs);
+    return pruneColumns(node, referencedOutputs);
   }
 
-  public static Optional<PlanNode> pruneColumns(
-      Metadata metadata,
-      TypeProvider types,
-      SessionInfo sessionInfo,
-      TableScanNode node,
-      Set<Symbol> referencedOutputs) {
+  public static Optional<PlanNode> pruneColumns(TableScanNode node, Set<Symbol> referencedOutputs) {
     if (node instanceof AggregationTableScanNode) {
       return Optional.empty();
     }
     List<Symbol> newOutputs = new ArrayList<>();
-    Map<Symbol, ColumnSchema> newAssignments = new HashMap<>();
+    Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>();
     for (Symbol symbol : node.getOutputSymbols()) {
       if (referencedOutputs.contains(symbol)) {
         newOutputs.add(symbol);

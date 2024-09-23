@@ -1282,6 +1282,11 @@ public class ColumnTransformerBuilder
   }
 
   @Override
+  protected ColumnTransformer visitCoalesceExpression(CoalesceExpression node, Context context) {
+    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+  }
+
+  @Override
   protected ColumnTransformer visitSimpleCaseExpression(
       SimpleCaseExpression node, Context context) {
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
@@ -1305,11 +1310,6 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitNullIfExpression(NullIfExpression node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
-  }
-
-  @Override
-  protected ColumnTransformer visitCoalesceExpression(CoalesceExpression node, Context context) {
     throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
   }
 

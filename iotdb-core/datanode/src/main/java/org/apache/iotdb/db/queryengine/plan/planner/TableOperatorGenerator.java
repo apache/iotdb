@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -117,6 +118,7 @@ import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNod
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -162,10 +164,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSink(sinkHandle);
 
-    Operator child = node.getChildren().get(0).accept(this, context);
-    List<Operator> children = new ArrayList<>(1);
-    children.add(child);
-    return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
+    if (node.getChildren().size() == 1) {
+      Operator child = node.getChildren().get(0).accept(this, context);
+      List<Operator> children = new ArrayList<>(1);
+      children.add(child);
+      return new IdentitySinkOperator(
+          operatorContext, children, downStreamChannelIndex, sinkHandle);
+    } else {
+      throw new IllegalStateException(
+          "IdentitySinkNode should only have one child in table model.");
+    }
   }
 
   @Override
@@ -742,7 +750,39 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitJoin(JoinNode node, LocalExecutionPlanContext context) {
-    throw new IllegalStateException("JoinOperator is not implemented currently.");
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(), node.getPlanNodeId(), JoinNode.class.getSimpleName());
+    List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+    Operator leftChild = node.getLeftChild().accept(this, context);
+    Operator rightChild = node.getRightChild().accept(this, context);
+
+    int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
+    for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+      leftOutputSymbolIdx[i] =
+          node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
+    }
+    int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
+    for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+      rightOutputSymbolIdx[i] =
+          node.getRightChild().getOutputSymbols().indexOf(node.getRightOutputSymbols().get(i));
+    }
+
+    if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
+      return new InnerJoinOperator(
+          operatorContext,
+          leftChild,
+          leftOutputSymbolIdx,
+          rightChild,
+          rightOutputSymbolIdx,
+          ASC_TIME_COMPARATOR,
+          dataTypes);
+    }
+
+    throw new IllegalStateException("Unsupported join type: " + node.getJoinType());
   }
 
   @Override
