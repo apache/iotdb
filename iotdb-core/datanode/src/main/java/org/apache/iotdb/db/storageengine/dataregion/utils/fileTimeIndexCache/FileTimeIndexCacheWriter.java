@@ -63,7 +63,8 @@ public class FileTimeIndexCacheWriter implements ILogWriter {
       }
     } catch (ClosedChannelException ignored) {
       logger.warn("someone interrupt current thread, so no need to do write for io safety");
-    }
+    } catch (Exception ignored) {
+    } // There may be an ignorable NPE if the channel is closed and set null here
   }
 
   @Override
