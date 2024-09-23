@@ -38,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -158,7 +159,8 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
 
     SettleSelectorImpl settleSelector =
-        new SettleSelectorImpl(true, COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new SettleSelectorImpl(
+            true, COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     List<SettleCompactionTask> seqTasks = settleSelector.selectSettleTask(seqResources);
     List<SettleCompactionTask> unseqTasks = settleSelector.selectSettleTask(unseqResources);
     Assert.assertEquals(1, seqTasks.size());

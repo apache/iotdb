@@ -63,13 +63,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       TsFileManager tsFileManager,
       TsFileResource sourceFile,
       boolean sequence,
-      long serialId) {
+      long serialId,
+      boolean ignoreAllNullRows) {
     super(
         timePartition,
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(true),
+        new RepairUnsortedFileCompactionPerformer(true, ignoreAllNullRows),
         serialId);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -82,13 +83,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       TsFileResource sourceFile,
       boolean sequence,
       boolean rewriteFile,
-      long serialId) {
+      long serialId,
+      boolean ignoreAllNullRows) {
     super(
         timePartition,
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(rewriteFile),
+        new RepairUnsortedFileCompactionPerformer(rewriteFile, ignoreAllNullRows),
         serialId);
     this.sourceFile = sourceFile;
     if (rewriteFile) {
@@ -103,13 +105,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       TsFileResource sourceFile,
       CountDownLatch latch,
       boolean sequence,
-      long serialId) {
+      long serialId,
+      boolean ignoreAllNullRows) {
     super(
         timePartition,
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(true),
+        new RepairUnsortedFileCompactionPerformer(true, ignoreAllNullRows),
         serialId);
     this.sourceFile = sourceFile;
     this.innerSpaceEstimator = new RepairUnsortedFileCompactionEstimator();
@@ -124,13 +127,14 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
       CountDownLatch latch,
       boolean sequence,
       boolean rewriteFile,
-      long serialId) {
+      long serialId,
+      boolean ignoreAllNullRows) {
     super(
         timePartition,
         tsFileManager,
         Collections.singletonList(sourceFile),
         sequence,
-        new RepairUnsortedFileCompactionPerformer(rewriteFile),
+        new RepairUnsortedFileCompactionPerformer(rewriteFile, ignoreAllNullRows),
         serialId);
     this.sourceFile = sourceFile;
     if (rewriteFile) {

@@ -25,6 +25,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTimePartitionProgressIndexKeeper {
@@ -41,7 +42,7 @@ public class PipeTimePartitionProgressIndexKeeper {
             timePartitionId,
             (k, v) -> {
               if (v == null) {
-                return new Pair<>(progressIndex.deepCopy(), true);
+                return new Pair<>(progressIndex, true);
               }
               return new Pair<>(
                   v.getLeft().updateToMinimumEqualOrIsAfterProgressIndex(progressIndex), true);
@@ -58,7 +59,7 @@ public class PipeTimePartitionProgressIndexKeeper {
               if (v == null) {
                 return null;
               }
-              if (v.getRight() && v.getLeft().equals(progressIndex)) {
+              if (v.getRight() && !v.getLeft().isAfter(progressIndex)) {
                 return new Pair<>(v.getLeft(), false);
               }
               return v;
@@ -75,7 +76,8 @@ public class PipeTimePartitionProgressIndexKeeper {
         .map(Entry::getValue)
         .filter(pair -> pair.right)
         .map(Pair::getLeft)
-        .anyMatch(index -> progressIndex.isAfter(index) || progressIndex.equals(index));
+        .filter(Objects::nonNull)
+        .anyMatch(index -> !index.isAfter(progressIndex));
   }
 
   //////////////////////////// singleton ////////////////////////////

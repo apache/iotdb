@@ -29,13 +29,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class GetOrCreateDataPartitionPlan extends GetDataPartitionPlan {
 
-  public GetOrCreateDataPartitionPlan() {
-    super(ConfigPhysicalPlanType.GetOrCreateDataPartition);
-  }
-
   public GetOrCreateDataPartitionPlan(
-      Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
-    this();
+      final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap) {
+    super(ConfigPhysicalPlanType.GetOrCreateDataPartition);
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
@@ -46,7 +42,7 @@ public class GetOrCreateDataPartitionPlan extends GetDataPartitionPlan {
    * @return GetOrCreateDataPartitionPlan
    */
   public static GetOrCreateDataPartitionPlan convertFromRpcTDataPartitionReq(
-      TDataPartitionReq req) {
+      final TDataPartitionReq req) {
     return new GetOrCreateDataPartitionPlan(new ConcurrentHashMap<>(req.getPartitionSlotsMap()));
   }
 }

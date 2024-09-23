@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile;
 
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;

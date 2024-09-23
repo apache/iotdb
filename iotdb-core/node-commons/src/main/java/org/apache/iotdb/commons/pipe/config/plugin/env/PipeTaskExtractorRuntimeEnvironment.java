@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.config.plugin.env;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 
 public class PipeTaskExtractorRuntimeEnvironment extends PipeTaskRuntimeEnvironment {
 

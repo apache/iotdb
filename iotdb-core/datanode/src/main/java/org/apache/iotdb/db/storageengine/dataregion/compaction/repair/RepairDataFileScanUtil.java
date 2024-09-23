@@ -117,7 +117,7 @@ public class RepairDataFileScanUtil {
       TsFileSequenceReader reader, IDeviceID device, MetadataIndexNode metadataIndexNode)
       throws IOException {
     List<AlignedChunkMetadata> chunkMetadataList =
-        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode);
+        reader.getAlignedChunkMetadataByMetadataIndexNode(device, metadataIndexNode, false);
     for (AlignedChunkMetadata alignedChunkMetadata : chunkMetadataList) {
       IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
       Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);

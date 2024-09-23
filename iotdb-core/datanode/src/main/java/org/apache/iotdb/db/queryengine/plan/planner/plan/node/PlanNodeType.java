@@ -250,6 +250,7 @@ public enum PlanNodeType {
   TABLE_TOPK_NODE((short) 1008),
   TABLE_COLLECT_NODE((short) 1009),
   TABLE_STREAM_SORT_NODE((short) 1010),
+  TABLE_JOIN_NODE((short) 1011),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -563,6 +564,9 @@ public enum PlanNodeType {
       case 1010:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode
             .deserialize(buffer);
+      case 1011:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.deserialize(
+            buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

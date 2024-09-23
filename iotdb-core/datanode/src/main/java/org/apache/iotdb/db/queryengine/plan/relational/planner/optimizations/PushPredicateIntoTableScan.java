@@ -294,12 +294,69 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
-    public PlanNode visitTableScan(TableScanNode node, RewriteContext context) {
-      if (!TRUE_LITERAL.equals(context.inheritedPredicate)) {
-        return combineFilterAndScan(node, context.inheritedPredicate);
+    public PlanNode visitTableScan(TableScanNode tableScanNode, RewriteContext context) {
+      // columnSymbols in TableScanNode may be added suffix in Join situation(such as self join),
+      // in which we need add a new ProjectNode above TableScanNode.
+      boolean hasSuffixInScanNodeColumns = false;
+      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
+        Symbol columnSymbol = entry.getKey();
+        ColumnSchema columnSchema = entry.getValue();
+        if (!columnSymbol.getName().equals(columnSchema.getName())) {
+          hasSuffixInScanNodeColumns = true;
+          break;
+        }
       }
 
-      return tableMetadataIndexScan(node, Collections.emptyList());
+      Map<Symbol, Expression> newProjectAssignments = null;
+      if (hasSuffixInScanNodeColumns) {
+        newProjectAssignments = getProjectAssignments(tableScanNode, context);
+      }
+
+      // no predicate, just scan all matched deviceEntries
+      if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        getDeviceEntriesWithDataPartitions(tableScanNode, Collections.emptyList());
+        return hasSuffixInScanNodeColumns
+            ? new ProjectNode(
+                queryId.genPlanNodeId(), tableScanNode, new Assignments(newProjectAssignments))
+            : tableScanNode;
+      }
+
+      // has predicate, deal with split predicate
+      PlanNode result = combineFilterAndScan(tableScanNode, context.inheritedPredicate);
+      return hasSuffixInScanNodeColumns
+          ? new ProjectNode(queryId.genPlanNodeId(), result, new Assignments(newProjectAssignments))
+          : result;
+    }
+
+    private Map<Symbol, Expression> getProjectAssignments(
+        TableScanNode tableScanNode, RewriteContext context) {
+      context.inheritedPredicate =
+          ReplaceSymbolInExpression.transform(
+              context.inheritedPredicate, tableScanNode.getAssignments());
+
+      int size = tableScanNode.getOutputSymbols().size();
+      Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
+      List<Symbol> newTableScanSymbols = new ArrayList<>(size);
+      Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
+      for (Symbol originalSymbol : tableScanNode.getOutputSymbols()) {
+        ColumnSchema columnSchema = tableScanNode.getAssignments().get(originalSymbol);
+
+        Symbol realSymbol = Symbol.of(columnSchema.getName());
+        newTableScanSymbols.add(realSymbol);
+        newTableScanAssignments.put(realSymbol, columnSchema);
+        projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
+        queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
+        Map<Symbol, Integer> idAndAttributeIndexMap = tableScanNode.getIdAndAttributeIndexMap();
+        if (idAndAttributeIndexMap.containsKey(originalSymbol)) {
+          Integer idx = idAndAttributeIndexMap.get(originalSymbol);
+          idAndAttributeIndexMap.remove(originalSymbol);
+          idAndAttributeIndexMap.put(realSymbol, idx);
+        }
+      }
+
+      tableScanNode.setOutputSymbols(newTableScanSymbols);
+      tableScanNode.setAssignments(newTableScanAssignments);
+      return projectAssignments;
     }
 
     public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
@@ -332,21 +389,20 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      PlanNode resultNode =
-          tableMetadataIndexScan(tableScanNode, splitExpression.getMetadataExpressions());
+      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
         List<Expression> expressions = splitExpression.getExpressionsCannotPushDown();
         return new FilterNode(
             queryId.genPlanNodeId(),
-            resultNode,
+            tableScanNode,
             expressions.size() == 1
                 ? expressions.get(0)
                 : new LogicalExpression(LogicalExpression.Operator.AND, expressions));
       }
 
-      return resultNode;
+      return tableScanNode;
     }
 
     private SplitExpression splitPredicate(TableScanNode node, Expression predicate) {
@@ -395,72 +451,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
       return new SplitExpression(
           metadataExpressions, expressionsCanPushDown, expressionsCannotPushDown);
-    }
-
-    /** Get deviceEntries and DataPartition used in TableScan. */
-    private PlanNode tableMetadataIndexScan(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
-
-      ProjectNode newProjectNode =
-          addProjectNodeIfColumnRenamed(tableScanNode, metadataExpressions);
-
-      getDeviceEntriesWithDataPartitions(tableScanNode, metadataExpressions);
-
-      return newProjectNode != null ? newProjectNode : tableScanNode;
-    }
-
-    private ProjectNode addProjectNodeIfColumnRenamed(
-        TableScanNode tableScanNode, List<Expression> metadataExpressions) {
-
-      // for join operator, columnSymbols in TableScanNode may be renamed in Join situation,
-      // in this situation we need add a new ProjectNode above TableScanNode.
-      boolean hasColumnRenamed = false;
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol columnSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
-        if (!columnSymbol.getName().equals(columnSchema.getName())) {
-          hasColumnRenamed = true;
-          break;
-        }
-      }
-
-      if (!hasColumnRenamed) {
-        return null;
-      }
-
-      metadataExpressions.replaceAll(
-          expression ->
-              ReplaceSymbolInExpression.transform(expression, tableScanNode.getAssignments()));
-      if (tableScanNode.getPushDownPredicate() != null) {
-        ReplaceSymbolInExpression.transform(
-            tableScanNode.getPushDownPredicate(), tableScanNode.getAssignments());
-      }
-
-      int size = tableScanNode.getOutputSymbols().size();
-      List<Symbol> newTableScanSymbols = new ArrayList<>(size);
-      Map<Symbol, ColumnSchema> newTableScanAssignments = new LinkedHashMap<>(size);
-      Map<Symbol, Expression> projectAssignments = new LinkedHashMap<>(size);
-      for (Map.Entry<Symbol, ColumnSchema> entry : tableScanNode.getAssignments().entrySet()) {
-        Symbol originalSymbol = entry.getKey();
-        ColumnSchema columnSchema = entry.getValue();
-
-        Symbol realSymbol = Symbol.of(columnSchema.getName());
-        newTableScanSymbols.add(realSymbol);
-        newTableScanAssignments.put(realSymbol, columnSchema);
-        projectAssignments.put(originalSymbol, new SymbolReference(columnSchema.getName()));
-        queryContext.getTypeProvider().putTableModelType(originalSymbol, columnSchema.getType());
-        Map<Symbol, Integer> idAndAttributeIndexMap = tableScanNode.getIdAndAttributeIndexMap();
-        if (idAndAttributeIndexMap.containsKey(originalSymbol)) {
-          Integer idx = idAndAttributeIndexMap.get(originalSymbol);
-          idAndAttributeIndexMap.remove(originalSymbol);
-          idAndAttributeIndexMap.put(realSymbol, idx);
-        }
-      }
-
-      tableScanNode.setOutputSymbols(newTableScanSymbols);
-      tableScanNode.setAssignments(newTableScanAssignments);
-      return new ProjectNode(
-          queryId.genPlanNodeId(), tableScanNode, new Assignments(projectAssignments));
     }
 
     private void getDeviceEntriesWithDataPartitions(
@@ -673,23 +663,28 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 newJoinFilter,
                 node.isSpillable());
       }
-      Symbol timeSymbol = Symbol.of("time");
-      OrderingScheme orderingScheme =
+
+      JoinNode.EquiJoinClause joinCriteria = ((JoinNode) output).getCriteria().get(0);
+      OrderingScheme leftOrderingScheme =
           new OrderingScheme(
-              Collections.singletonList(timeSymbol),
-              Collections.singletonMap(timeSymbol, ASC_NULLS_LAST));
+              Collections.singletonList(joinCriteria.getLeft()),
+              Collections.singletonMap(joinCriteria.getLeft(), ASC_NULLS_LAST));
+      OrderingScheme rightOrderingScheme =
+          new OrderingScheme(
+              Collections.singletonList(joinCriteria.getRight()),
+              Collections.singletonMap(joinCriteria.getRight(), ASC_NULLS_LAST));
       SortNode leftSortNode =
           new SortNode(
               queryId.genPlanNodeId(),
               ((JoinNode) output).getLeftChild(),
-              orderingScheme,
+              leftOrderingScheme,
               false,
               false);
       SortNode rightSortNode =
           new SortNode(
               queryId.genPlanNodeId(),
               ((JoinNode) output).getRightChild(),
-              orderingScheme,
+              rightOrderingScheme,
               false,
               false);
       ((JoinNode) output).setLeftChild(leftSortNode);

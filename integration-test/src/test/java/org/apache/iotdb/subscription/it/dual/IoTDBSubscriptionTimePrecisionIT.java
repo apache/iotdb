@@ -30,6 +30,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.write.record.Tablet;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -54,6 +55,12 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBSubscriptionTimePrecisionIT.class);
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Override
   protected void setUpConfig() {

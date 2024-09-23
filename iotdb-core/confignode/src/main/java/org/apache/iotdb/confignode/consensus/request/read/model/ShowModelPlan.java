@@ -19,26 +19,17 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class ShowModelPlan extends ConfigPhysicalPlan {
+public class ShowModelPlan extends ConfigPhysicalReadPlan {
 
   private String modelName;
 
-  public ShowModelPlan() {
-    super(ConfigPhysicalPlanType.ShowModel);
-  }
-
-  public ShowModelPlan(TShowModelReq showModelReq) {
+  public ShowModelPlan(final TShowModelReq showModelReq) {
     super(ConfigPhysicalPlanType.ShowModel);
     if (showModelReq.isSetModelId()) {
       this.modelName = showModelReq.getModelId();
@@ -54,22 +45,7 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(modelName != null, stream);
-    ReadWriteIOUtils.write(modelName, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    boolean isSetModelId = ReadWriteIOUtils.readBool(buffer);
-    if (isSetModelId) {
-      this.modelName = ReadWriteIOUtils.readString(buffer);
-    }
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -79,7 +55,7 @@ public class ShowModelPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    ShowModelPlan that = (ShowModelPlan) o;
+    final ShowModelPlan that = (ShowModelPlan) o;
     return Objects.equals(modelName, that.modelName);
   }
 
