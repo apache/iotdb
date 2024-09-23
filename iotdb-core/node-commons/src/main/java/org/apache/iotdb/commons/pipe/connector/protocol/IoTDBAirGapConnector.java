@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.util.PortUtilizationManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -158,7 +159,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       // Close the socket if necessary
       if (sockets.get(i) != null) {
         try {
-          sockets.set(i, null).close();
+          final Socket socket = sockets.set(i, null);
+          if (isCustomSendPortDefined) {
+            PortUtilizationManager.INSTANCE.releasePortIfUsed(socket.getPort());
+          }
+          socket.close();
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",
@@ -171,6 +176,12 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final AirGapSocket socket = new AirGapSocket(ip, port);
 
       try {
+        if (isCustomSendPortDefined) {
+          socket.bind(
+              new InetSocketAddress(
+                  PortUtilizationManager.INSTANCE.findAvailablePort(
+                      minSendPortRange, maxSendPortRange, candidatePorts)));
+        }
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
         sockets.set(i, socket);
@@ -338,7 +349,11 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     for (int i = 0; i < sockets.size(); ++i) {
       try {
         if (sockets.get(i) != null) {
-          sockets.set(i, null).close();
+          final Socket socket = sockets.set(i, null);
+          if (isCustomSendPortDefined) {
+            PortUtilizationManager.INSTANCE.releasePortIfUsed(socket.getPort());
+          }
+          socket.close();
         }
       } catch (final Exception e) {
         LOGGER.warn("Failed to close client {}.", i, e);

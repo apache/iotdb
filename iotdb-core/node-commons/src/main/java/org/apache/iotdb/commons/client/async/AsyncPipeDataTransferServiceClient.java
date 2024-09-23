@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.util.PortUtilizationManager;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -36,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -61,13 +63,19 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       ThriftClientProperty property,
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager)
+      ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
+      boolean isCustomSendPortDefined,
+      Integer sendPort)
       throws IOException {
     super(
         property.getProtocolFactory(),
         tClientManager,
         TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+            endpoint.getIp(),
+            endpoint.getPort(),
+            property.getConnectionTimeoutMs(),
+            isCustomSendPortDefined,
+            sendPort));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -177,11 +185,27 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
 
+    private int minSendPortRange;
+
+    private int maxSendPortRange;
+
+    private List<Integer> candidatePorts;
+
+    private boolean isCustomSendPortDefined;
+
     public Factory(
         ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
-        String threadName) {
+        String threadName,
+        boolean isCustomSendPortDefined,
+        int minSendPortRange,
+        int maxSendPortRange,
+        List<Integer> candidatePorts) {
       super(clientManager, thriftClientProperty, threadName);
+      this.isCustomSendPortDefined = isCustomSendPortDefined;
+      this.minSendPortRange = minSendPortRange;
+      this.maxSendPortRange = maxSendPortRange;
+      this.candidatePorts = candidatePorts;
     }
 
     @Override
@@ -193,12 +217,20 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     @Override
     public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
+      Integer sendPort = 0;
+      if (isCustomSendPortDefined) {
+        sendPort =
+            PortUtilizationManager.INSTANCE.findAvailablePort(
+                minSendPortRange, maxSendPortRange, candidatePorts);
+      }
       return new DefaultPooledObject<>(
           new AsyncPipeDataTransferServiceClient(
               thriftClientProperty,
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
-              clientManager));
+              clientManager,
+              isCustomSendPortDefined,
+              sendPort));
     }
 
     @Override

@@ -40,7 +40,11 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       String trustStorePwd,
       String loadBalanceStrategy,
       boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy) {
+      String loadTsFileStrategy,
+      boolean isCustomSendPortDefined,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts) {
     super(
         endPoints,
         useSSL,
@@ -49,7 +53,11 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
         false,
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
-        loadTsFileStrategy);
+        loadTsFileStrategy,
+        isCustomSendPortDefined,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
   }
 
   @Override

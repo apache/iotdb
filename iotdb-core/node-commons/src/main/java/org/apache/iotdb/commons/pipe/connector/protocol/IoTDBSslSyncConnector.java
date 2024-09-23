@@ -123,7 +123,11 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             useLeaderCache,
             loadBalanceStrategy,
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy);
+            loadTsFileStrategy,
+            isCustomSendPortDefined,
+            minSendPortRange,
+            maxSendPortRange,
+            candidatePorts);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
@@ -134,7 +138,11 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       boolean useLeaderCache,
       String loadBalanceStrategy,
       boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy);
+      String loadTsFileStrategy,
+      boolean isCustomSendPortDefined,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts);
 
   @Override
   public void handshake() throws Exception {

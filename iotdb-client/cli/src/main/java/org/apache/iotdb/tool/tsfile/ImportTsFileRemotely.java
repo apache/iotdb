@@ -301,7 +301,11 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               getEndPoint().getPort(),
               false,
               "",
-              "");
+              "",
+              false,
+              0,
+              0,
+              null);
     } catch (final TTransportException e) {
       throw new PipeException("Sync client init error because " + e.getMessage());
     }

@@ -43,14 +43,32 @@ public abstract class IoTDBClientManager {
   // it is a DataNode receiver. The flag is useless for configNode receiver.
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
+  protected int minSendPortRange;
+
+  protected int maxSendPortRange;
+
+  protected List<Integer> candidatePorts;
+
+  protected boolean isCustomSendPortDefined;
+
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
       new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
 
-  protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
+  protected IoTDBClientManager(
+      List<TEndPoint> endPointList,
+      boolean useLeaderCache,
+      boolean isCustomSendPortDefined,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
+    this.isCustomSendPortDefined = isCustomSendPortDefined;
+    this.minSendPortRange = minSendPortRange;
+    this.maxSendPortRange = maxSendPortRange;
+    this.candidatePorts = candidatePorts;
   }
 
   public boolean supportModsIfIsDataNodeReceiver() {

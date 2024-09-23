@@ -22,23 +22,28 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.client.util.PortUtilizationManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.TimeoutChangeableTFastFramedTransport;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBSyncClient extends IClientRPCService.Client
@@ -51,6 +56,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   private final String ipAddress;
   private final int port;
   private final TEndPoint endPoint;
+  private final boolean isCustomSendPortDefined;
 
   public IoTDBSyncClient(
       ThriftClientProperty property,
@@ -58,7 +64,11 @@ public class IoTDBSyncClient extends IClientRPCService.Client
       int port,
       boolean useSSL,
       String trustStore,
-      String trustStorePwd)
+      String trustStorePwd,
+      boolean isCustomSendPortDefined,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts)
       throws TTransportException {
     super(
         property
@@ -76,8 +86,31 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     this.ipAddress = ipAddress;
     this.port = port;
     this.endPoint = new TEndPoint(ipAddress, port);
+    this.isCustomSendPortDefined = isCustomSendPortDefined;
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
+      if (isCustomSendPortDefined) {
+        PortUtilizationManager portUtilizationManager = PortUtilizationManager.INSTANCE;
+        Integer sendPort =
+            portUtilizationManager.findAvailablePort(
+                minSendPortRange, maxSendPortRange, candidatePorts);
+        if (sendPort == null) {
+          throw new PipeConnectionException(
+              String.format(
+                  "Failed to find an available send port. Custom send port is defined."
+                      + " No ports are available in the candidate list [%s] or within the range %d to %d.",
+                  candidatePorts, minSendPortRange, maxSendPortRange));
+        }
+        try {
+          final InetSocketAddress isa = new InetSocketAddress(sendPort);
+          ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
+              .getSocket()
+              .bind(isa);
+        } catch (Exception e) {
+          String bindErrorMessage = "Failed to bind to the port: " + sendPort;
+          throw new PipeConnectionException(bindErrorMessage, e);
+        }
+      }
       transport.open();
     }
   }
@@ -166,6 +199,11 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   @Override
   public void invalidate() {
     if (getInputProtocol().getTransport().isOpen()) {
+      if (isCustomSendPortDefined) {
+        PortUtilizationManager portUtilizationManager = PortUtilizationManager.INSTANCE;
+        portUtilizationManager.releasePortIfUsed(
+            ((TSocket) getInputProtocol().getTransport()).getSocket().getPort());
+      }
       getInputProtocol().getTransport().close();
     }
   }

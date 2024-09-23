@@ -81,8 +81,18 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       boolean useLeaderCache,
       String loadBalanceStrategy,
       boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy) {
-    super(endPoints, useLeaderCache);
+      String loadTsFileStrategy,
+      boolean isCustomSendPortDefined,
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts) {
+    super(
+        endPoints,
+        useLeaderCache,
+        isCustomSendPortDefined,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts);
 
     endPointSet = new HashSet<>(endPoints);
 
@@ -94,7 +104,11 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             receiverAttributes,
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
-                    new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory()));
+                    new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory(
+                        isCustomSendPortDefined,
+                        minSendPortRange,
+                        maxSendPortRange,
+                        candidatePorts)));
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);
 

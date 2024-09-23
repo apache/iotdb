@@ -236,7 +236,11 @@ public class IoTDBLegacyPipeConnector implements PipeConnector {
               port,
               useSSL,
               trustStore,
-              trustStorePwd);
+              trustStorePwd,
+              false,
+              0,
+              0,
+              null);
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
               pipeName, System.currentTimeMillis(), syncConnectorVersion, databaseName);

@@ -46,6 +46,21 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
+  public static final String CONNECTOR_IOTDB_SEND_PORT_MIN_KEY = "connector.send-port.range.min";
+  public static final String SINK_IOTDB_SEND_PORT_MIN_KEY = "sink.send-port.range.min";
+  public static final String CONNECTOR_IOTDB_SEND_PORT_MAX_KEY = "connector.send-port.range.max";
+  public static final String SINK_IOTDB_SEND_PORT_MAX_KEY = "sink.send-port.range.max";
+  public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY =
+      "connector.send-port.range.candidate";
+  public static final String SINK_IOTDB_SEND_PORT_CANDIDATE_KEY = "sink.send-port.range.candidate";
+  public static final String CONNECTOR_IOTDB_SEND_PORT_ENABLE_KEY =
+      "connector.send-port.range.enable";
+  public static final String SINK_IOTDB_SEND_PORT_ENABLE_KEY = "sink.send-port.range.enable";
+  public static final int CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE = 0;
+  public static final int CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE = 65535;
+  public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE = "";
+  public static final boolean CONNECTOR_IOTDB_SEND_PORT_ENABLE_VALUE = true;
+
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY = "sink.ssl.trust-store-pwd";
