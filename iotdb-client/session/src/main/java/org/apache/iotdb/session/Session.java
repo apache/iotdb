@@ -2563,7 +2563,7 @@ public class Session implements ISession {
    * <p>e.g. source: [1,2,3,4,5], index:[1,0,3,2,4], return : [2,1,4,3,5]
    *
    * @param source Input list
-   * @param index retuen order
+   * @param index return order
    * @param <T> Input type
    * @return ordered list
    */

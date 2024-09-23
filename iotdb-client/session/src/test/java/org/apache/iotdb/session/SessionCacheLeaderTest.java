@@ -34,6 +34,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.record.Tablet.ColumnType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
@@ -608,6 +609,83 @@ public class SessionCacheLeaderTest {
   }
 
   @Test
+  public void testInsertRelationalTablet()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // without leader cache
+    session = new MockSession("127.0.0.1", 55560, false, "table");
+    session.open();
+    assertNull(session.tableModelDeviceIdToEndpoint);
+    assertNull(session.endPointToSessionConnection);
+
+    String tableName = "table1";
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<ColumnType> columnTypeList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("id", TSDataType.STRING));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    columnTypeList.add(ColumnType.ID);
+    columnTypeList.add(ColumnType.MEASUREMENT);
+    columnTypeList.add(ColumnType.MEASUREMENT);
+    Tablet tablet = new Tablet(tableName, schemaList, columnTypeList, 50);
+    long timestamp = System.currentTimeMillis();
+    for (long row = 0; row < 100; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, "id" + (rowIndex % 4));
+      for (int s = 1; s < 3; s++) {
+        long value = new Random().nextLong();
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+      }
+
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertRelationalTablet(tablet);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertRelationalTablet(tablet);
+      tablet.reset();
+    }
+
+    assertNull(session.tableModelDeviceIdToEndpoint);
+    assertNull(session.endPointToSessionConnection);
+    session.close();
+
+    // with leader cache
+    session = new MockSession("127.0.0.1", 55560, true, "table");
+    session.open();
+    assertEquals(0, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(1, session.endPointToSessionConnection.size());
+
+    for (long row = 0; row < 100; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, "id" + (rowIndex % 4));
+      for (int s = 1; s < 3; s++) {
+        long value = new Random().nextLong();
+        tablet.addValue(schemaList.get(s).getMeasurementId(), rowIndex, value);
+      }
+
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertRelationalTablet(tablet, true);
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertRelationalTablet(tablet);
+      tablet.reset();
+    }
+
+    assertEquals(4, session.tableModelDeviceIdToEndpoint.size());
+    assertEquals(4, session.endPointToSessionConnection.size());
+    session.close();
+  }
+
+  @Test
   public void testInsertRecordsWithSessionBroken() throws StatementExecutionException {
     // without leader cache
     session = new MockSession("127.0.0.1", 55560, false);
@@ -977,6 +1055,12 @@ public class SessionCacheLeaderTest {
       this.enableAutoFetch = false;
     }
 
+    public MockSession(String host, int rpcPort, boolean enableRedirection, String sqlDialect) {
+      this(host, rpcPort, enableRedirection);
+      this.sqlDialect = sqlDialect;
+      this.enableAutoFetch = false;
+    }
+
     @Override
     public SessionConnection constructSessionConnection(
         Session session, TEndPoint endpoint, ZoneId zoneId) {
@@ -996,7 +1080,7 @@ public class SessionCacheLeaderTest {
     private IoTDBConnectionException ioTDBConnectionException;
 
     public MockSessionConnection(Session session, TEndPoint endPoint, ZoneId zoneId) {
-      super();
+      super(session.sqlDialect);
       this.endPoint = endPoint;
       ioTDBConnectionException =
           new IoTDBConnectionException(
@@ -1057,7 +1141,15 @@ public class SessionCacheLeaderTest {
       if (isConnectionBroken()) {
         throw ioTDBConnectionException;
       }
-      throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
+      if (request.writeToTable) {
+        List<TEndPoint> endPoints = new ArrayList<>();
+        for (int i = 0; i < request.size; i++) {
+          endPoints.add(endpoints.get(i % 4));
+        }
+        throw new RedirectException(endPoints);
+      } else {
+        throw new RedirectException(getDeviceIdBelongedEndpoint(request.prefixPath));
+      }
     }
 
     @Override
