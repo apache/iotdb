@@ -20,37 +20,27 @@
 package org.apache.iotdb.confignode.consensus.request.read.database;
 
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
-public class CountDatabasePlan extends ConfigPhysicalPlan {
+public class CountDatabasePlan extends ConfigPhysicalReadPlan {
 
-  private String[] storageGroupPattern;
-  private PathPatternTree scope;
+  private final String[] storageGroupPattern;
+  private final PathPatternTree scope;
 
-  public CountDatabasePlan() {
+  public CountDatabasePlan(final List<String> storageGroupPattern, final PathPatternTree scope) {
     super(ConfigPhysicalPlanType.CountDatabase);
-  }
-
-  public CountDatabasePlan(ConfigPhysicalPlanType type) {
-    super(type);
-  }
-
-  public CountDatabasePlan(List<String> storageGroupPattern, PathPatternTree scope) {
-    this();
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
     this.scope = scope;
   }
 
   public CountDatabasePlan(
-      ConfigPhysicalPlanType type, List<String> storageGroupPattern, PathPatternTree scope) {
+      final ConfigPhysicalPlanType type,
+      final List<String> storageGroupPattern,
+      final PathPatternTree scope) {
     super(type);
     this.storageGroupPattern = storageGroupPattern.toArray(new String[0]);
     this.scope = scope;
@@ -65,35 +55,14 @@ public class CountDatabasePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-
-    stream.writeInt(storageGroupPattern.length);
-    for (String node : storageGroupPattern) {
-      BasicStructureSerDeUtil.write(node, stream);
-    }
-    scope.serialize(stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) {
-    int length = buffer.getInt();
-    storageGroupPattern = new String[length];
-    for (int i = 0; i < length; i++) {
-      storageGroupPattern[i] = BasicStructureSerDeUtil.readString(buffer);
-    }
-    scope = PathPatternTree.deserialize(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CountDatabasePlan that = (CountDatabasePlan) o;
+    final CountDatabasePlan that = (CountDatabasePlan) o;
     return Arrays.equals(storageGroupPattern, that.storageGroupPattern);
   }
 
