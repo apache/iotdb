@@ -29,12 +29,10 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
@@ -496,18 +494,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void start() {
-      if (!shouldExtractInsertion) {
-          hasBeenStarted = true;
-          return;
-      }
-      if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-          LOGGER.info(
-                  "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
-                  pipeName,
-                  dataRegionId);
-          return;
-      }
+    if (!shouldExtractInsertion) {
       hasBeenStarted = true;
+      return;
+    }
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      LOGGER.info(
+          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
+          pipeName,
+          dataRegionId);
+      return;
+    }
+    hasBeenStarted = true;
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -694,9 +692,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   @Override
   public synchronized Event supply() {
 
-      if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-          start();
-      }
+    if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      start();
+    }
 
     if (Objects.isNull(pendingQueue)) {
       return null;
@@ -716,8 +714,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueues are null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return hasBeenStarted
-            && (Objects.isNull(pendingQueue))
+    return hasBeenStarted && (Objects.isNull(pendingQueue))
         || pendingQueue.isEmpty()
             && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
   }

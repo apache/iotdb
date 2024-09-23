@@ -163,7 +163,7 @@ public class SimpleProgressIndex extends ProgressIndex {
       }
       if (thisSimpleProgressIndex.memTableFlushOrderId
           < thatSimpleProgressIndex.memTableFlushOrderId) {
-        return progressIndex.deepCopy();
+        return progressIndex;
       }
       // thisSimpleProgressIndex.memtableFlushOrderId ==
       // thatSimpleProgressIndex.memtableFlushOrderId
