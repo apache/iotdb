@@ -68,7 +68,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       new PriorityBlockingQueue<>(
           QUEUE_CAPACITY,
           // any two progressIndex can't be equal
-          (o1, o2) -> o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1);
+          (o1, o2) ->
+              o1.getProgressIndex().equals(o2.getProgressIndex())
+                  ? 0
+                  : (o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1));
   // Data region id
   private final String groupId;
   // directory to store .deletion files

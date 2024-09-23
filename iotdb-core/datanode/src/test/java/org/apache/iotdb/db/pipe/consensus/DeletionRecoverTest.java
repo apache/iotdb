@@ -62,7 +62,8 @@ public class DeletionRecoverTest {
       DeleteDataNode deleteDataNode =
           new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
       deleteDataNode.setProgressIndex(
-          new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
+          new RecoverProgressIndex(
+              THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, deletionCount - i)));
       PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionResourceManager.registerDeletionResource(deletionEvent);
       deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
