@@ -19,18 +19,14 @@
 
 package org.apache.iotdb.db.subscription.task.subtask;
 
-import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
@@ -86,26 +82,8 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   @Override
   public int getEventCount(final String pipeName) {
-    final AtomicInteger count = new AtomicInteger(0);
-    try {
-      inputPendingQueue.forEach(
-          event -> {
-            if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
-              count.incrementAndGet();
-            }
-          });
-    } catch (final Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Exception occurred when counting event of pipe {}, root cause: {}",
-            pipeName,
-            ErrorHandlingUtils.getRootCause(e).getMessage(),
-            e);
-      }
-    }
-    // it's safe to ignore lastEvent and don't forget to count the pipe events in the prefetching
-    // queue
-    return count.get() + SubscriptionAgent.broker().getPipeEventCount(consumerGroupId, topicName);
+    // count the number of pipe events in sink queue and prefetching queue, note that can safely
+    // ignore lastEvent
+    return SubscriptionAgent.broker().getPipeEventCount(consumerGroupId, topicName);
   }
 }
