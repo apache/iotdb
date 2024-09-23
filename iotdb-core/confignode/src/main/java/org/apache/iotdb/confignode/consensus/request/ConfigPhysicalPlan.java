@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
-import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
@@ -229,12 +228,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case DeleteDatabase:
           plan = new DeleteDatabasePlan();
           break;
-        case ListUserDep:
-        case ListRoleDep:
-        case ListUserPrivilegeDep:
-        case ListRolePrivilegeDep:
-        case ListUserRolesDep:
-        case ListRoleUsersDep:
         case CreateUserDep:
         case CreateRoleDep:
         case DropUserDep:
@@ -246,12 +239,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRoleDep:
         case RevokeRoleFromUserDep:
         case UpdateUserDep:
-        case ListUser:
-        case ListRole:
-        case ListUserPrivilege:
-        case ListRolePrivilege:
-        case ListUserRoles:
-        case ListRoleUsers:
         case CreateUser:
         case CreateRole:
         case DropUser:
@@ -403,9 +390,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ConsumerGroupHandleMetaChange:
           plan = new ConsumerGroupHandleMetaChangePlan();
-          break;
-        case ShowSubscription:
-          plan = new ShowSubscriptionPlan();
           break;
         case PipeUnsetTemplate:
           plan = new PipeUnsetSchemaTemplatePlan();
