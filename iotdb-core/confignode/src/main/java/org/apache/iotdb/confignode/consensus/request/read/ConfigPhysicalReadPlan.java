@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,9 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.sync;
+package org.apache.iotdb.confignode.consensus.request.read;
 
-import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
@@ -27,33 +26,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-// Deprecated, restored for upgrade
-@Deprecated
-public class ShowPipePlanV1 extends ConfigPhysicalPlan {
-  /** empty pipeName means show all PIPE */
-  private String pipeName;
+public abstract class ConfigPhysicalReadPlan extends ConfigPhysicalPlan {
 
-  public ShowPipePlanV1() {
-    super(ConfigPhysicalPlanType.ShowPipeV1);
-  }
-
-  public ShowPipePlanV1(String pipeName) {
-    this();
-    this.pipeName = pipeName;
-  }
-
-  public String getPipeName() {
-    return pipeName;
+  protected ConfigPhysicalReadPlan(final ConfigPhysicalPlanType type) {
+    super(type);
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    BasicStructureSerDeUtil.write(pipeName, stream);
+  protected void serializeImpl(final DataOutputStream stream) throws IOException {
+    throw new UnsupportedOperationException("Read request does not need to be serialized.");
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    pipeName = BasicStructureSerDeUtil.readString(buffer);
+  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
+    throw new UnsupportedOperationException("Read request does not need to be deserialized.");
   }
 }

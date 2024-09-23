@@ -58,11 +58,6 @@ public class RemoveRegionLocationPlan extends ConfigPhysicalPlan {
     deprecatedLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer);
   }
 
-  @Override
-  public ConfigPhysicalPlanType getType() {
-    return super.getType();
-  }
-
   public TConsensusGroupId getRegionId() {
     return regionId;
   }
