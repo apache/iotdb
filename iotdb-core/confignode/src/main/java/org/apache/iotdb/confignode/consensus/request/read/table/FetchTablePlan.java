@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.table;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
 
-public class FetchTablePlan extends ConfigPhysicalPlan {
+public class FetchTablePlan extends ConfigPhysicalReadPlan {
 
   private final Map<String, Set<String>> fetchTableMap;
 
@@ -39,15 +36,5 @@ public class FetchTablePlan extends ConfigPhysicalPlan {
 
   public Map<String, Set<String>> getFetchTableMap() {
     return fetchTableMap;
-  }
-
-  @Override
-  protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    // Do nothing
-  }
-
-  @Override
-  protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    // Do nothing
   }
 }
