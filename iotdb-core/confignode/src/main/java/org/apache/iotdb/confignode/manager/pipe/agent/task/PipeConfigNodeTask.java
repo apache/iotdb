@@ -16,17 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.consensus;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
-public class PipeConsensusSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 
-  public PipeConsensusSubtaskExecutor() {
-    super(
-        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL);
+public class PipeConfigNodeTask implements PipeTask {
+
+  private final PipeConfigNodeTaskStage stage;
+
+  public PipeConfigNodeTask(PipeConfigNodeTaskStage configNodeStage) {
+    this.stage = configNodeStage;
+  }
+
+  @Override
+  public void create() {
+    stage.create();
+  }
+
+  @Override
+  public void drop() {
+    stage.drop();
+  }
+
+  @Override
+  public void start() {
+    stage.start();
+  }
+
+  @Override
+  public void stop() {
+    stage.stop();
   }
 }

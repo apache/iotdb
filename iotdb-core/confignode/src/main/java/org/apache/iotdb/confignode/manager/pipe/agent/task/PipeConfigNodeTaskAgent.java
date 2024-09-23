@@ -34,9 +34,6 @@ import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningF
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigNodeRemainingTimeMetrics;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeConfigRegionExtractorMetrics;
 import org.apache.iotdb.confignode.manager.pipe.resource.PipeConfigNodeResourceManager;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTask;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskBuilder;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeTaskStage;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;

@@ -16,17 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.pipe.consensus;
 
-import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+package org.apache.iotdb.db.pipe.agent.task;
+
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecutor;
+import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
+import org.apache.iotdb.pipe.api.PipeConnector;
 
-public class PipeConsensusSubtaskExecutor extends PipeConnectorSubtaskExecutor {
+import org.junit.Before;
+import org.mockito.Mockito;
 
-  public PipeConsensusSubtaskExecutor() {
-    super(
-        PipeConfig.getInstance().getPipeSubtaskExecutorMaxThreadNum(),
-        ThreadName.PIPE_CONSENSUS_EXECUTOR_POOL);
+import static org.mockito.Mockito.mock;
+
+public class PipeConnectorSubtaskExecutorTest extends PipeSubtaskExecutorTest {
+
+  @Before
+  public void setUp() throws Exception {
+    executor = new PipeConnectorSubtaskExecutor();
+
+    subtask =
+        Mockito.spy(
+            new PipeConnectorSubtask(
+                "PipeConnectorSubtaskExecutorTest",
+                System.currentTimeMillis(),
+                "TestAttributeSortedString",
+                0,
+                mock(UnboundedBlockingPendingQueue.class),
+                mock(PipeConnector.class)));
   }
 }

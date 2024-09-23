@@ -31,9 +31,9 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.task.OperateMult
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.SetPipeStatusPlanV2;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.manager.pipe.agent.runtime.PipeConfigRegionListener;
+import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.agent.task.PipeConfigNodeTaskAgent;
 import org.apache.iotdb.confignode.manager.pipe.metric.PipeTemporaryMetaMetrics;
-import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaRespExceptionMessage;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
