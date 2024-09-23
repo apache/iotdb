@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.task.execution;
 
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
-import org.apache.iotdb.db.subscription.execution.executor.SubscriptionSubtaskExecutor;
+import org.apache.iotdb.db.subscription.task.execution.SubscriptionSubtaskExecutor;
 
 /**
  * PipeTaskExecutor is responsible for executing the pipe tasks, and it is scheduled by the

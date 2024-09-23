@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.subscription.execution.executor;
+package org.apache.iotdb.db.subscription.task.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
