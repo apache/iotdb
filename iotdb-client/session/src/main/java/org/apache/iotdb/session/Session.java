@@ -1387,12 +1387,25 @@ public class Session implements ISession {
         }
       }
 
-      if (deviceIdToEndpoint != null) {
-        for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
-            it.hasNext(); ) {
-          Entry<String, TEndPoint> entry = it.next();
-          if (entry.getValue().equals(endPoint)) {
-            it.remove();
+      if (sqlDialect.equals("tree")) {
+        if (deviceIdToEndpoint != null && !deviceIdToEndpoint.isEmpty()) {
+          for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+              it.hasNext(); ) {
+            Entry<String, TEndPoint> entry = it.next();
+            if (entry.getValue().equals(endPoint)) {
+              it.remove();
+            }
+          }
+        }
+      } else {
+        if (tableModelDeviceIdToEndpoint != null && !tableModelDeviceIdToEndpoint.isEmpty()) {
+          for (Iterator<Entry<IDeviceID, TEndPoint>> it =
+                  tableModelDeviceIdToEndpoint.entrySet().iterator();
+              it.hasNext(); ) {
+            Entry<IDeviceID, TEndPoint> entry = it.next();
+            if (entry.getValue().equals(endPoint)) {
+              it.remove();
+            }
           }
         }
       }
