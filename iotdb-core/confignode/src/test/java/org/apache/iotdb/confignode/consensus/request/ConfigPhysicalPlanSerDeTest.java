@@ -66,7 +66,6 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClus
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -1421,15 +1420,6 @@ public class ConfigPhysicalPlanSerDeTest {
     dropCQPlan1 =
         (DropCQPlan) ConfigPhysicalPlan.Factory.create(dropCQPlan0.serializeToByteBuffer());
     Assert.assertEquals(dropCQPlan0, dropCQPlan1);
-  }
-
-  @Test
-  public void ShowCQPlanTest() throws IOException {
-    ShowCQPlan showCQPlan0 = new ShowCQPlan();
-    ShowCQPlan showCQPlan1 =
-        (ShowCQPlan) ConfigPhysicalPlan.Factory.create(showCQPlan0.serializeToByteBuffer());
-
-    Assert.assertEquals(showCQPlan0, showCQPlan1);
   }
 
   @Test

@@ -29,7 +29,6 @@ import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateVers
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -420,9 +419,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UPDATE_CQ_LAST_EXEC_TIME:
           plan = new UpdateCQLastExecTimePlan();
-          break;
-        case SHOW_CQ:
-          plan = new ShowCQPlan();
           break;
         case CreatePipePlugin:
           plan = new CreatePipePluginPlan();
