@@ -41,7 +41,7 @@ public class DeletionRecoverTest {
   private static final int THIS_DATANODE_ID =
       IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private static final String DELETION_BASE_DIR =
-      IoTDBDescriptor.getInstance().getConfig().getPipeConsensusDeletionFileDir();
+      IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
   private static final String BASE_PATH = DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_ID;
   private final int deletionCount = 10;
   private DeletionResourceManager deletionResourceManager;

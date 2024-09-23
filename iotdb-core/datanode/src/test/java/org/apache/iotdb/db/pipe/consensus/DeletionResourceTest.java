@@ -59,7 +59,7 @@ import java.util.stream.Stream;
 public class DeletionResourceTest {
   private static final String[] FAKE_DATA_REGION_IDS = {"2", "3", "4", "5", "6"};
   private static final String DELETION_BASE_DIR =
-      IoTDBDescriptor.getInstance().getConfig().getPipeConsensusDeletionFileDir();
+      IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
   private static final int THIS_DATANODE_ID =
       IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private DeletionResourceManager deletionResourceManager;

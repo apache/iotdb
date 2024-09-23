@@ -1140,6 +1140,14 @@ public class IoTDBConfig {
   private int iotConsensusV2PipelineSize = 5;
   private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
   private String[] iotConsensusV2ReceiverFileDirs = new String[0];
+  private String iotConsensusV2DeletionFileDir =
+      systemDir
+          + File.separator
+          + PIPE_FOLDER_NAME
+          + File.separator
+          + CONSENSUS_FOLDER_NAME
+          + File.separator
+          + DELETION_FOLDER_NAME;
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1189,15 +1197,6 @@ public class IoTDBConfig {
   /** Pipe related */
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
-
-  private String pipeConsensusDeletionFileDir =
-      systemDir
-          + File.separator
-          + PIPE_FOLDER_NAME
-          + File.separator
-          + CONSENSUS_FOLDER_NAME
-          + File.separator
-          + DELETION_FOLDER_NAME;
 
   /** Resource control */
   private boolean quotaEnable = false;
@@ -1353,7 +1352,7 @@ public class IoTDBConfig {
     systemDir = addDataHomeDir(systemDir);
     schemaDir = addDataHomeDir(schemaDir);
     consensusDir = addDataHomeDir(consensusDir);
-    pipeConsensusDeletionFileDir = addDataHomeDir(pipeConsensusDeletionFileDir);
+    iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
     dataRegionConsensusDir = addDataHomeDir(dataRegionConsensusDir);
     ratisDataRegionSnapshotDir = addDataHomeDir(ratisDataRegionSnapshotDir);
     schemaRegionConsensusDir = addDataHomeDir(schemaRegionConsensusDir);
@@ -1553,12 +1552,12 @@ public class IoTDBConfig {
     this.systemDir = systemDir;
   }
 
-  public String getPipeConsensusDeletionFileDir() {
-    return pipeConsensusDeletionFileDir;
+  public String getIotConsensusV2DeletionFileDir() {
+    return iotConsensusV2DeletionFileDir;
   }
 
-  public void setPipeConsensusDeletionFileDir(String pipeConsensusDeletionFileDir) {
-    this.pipeConsensusDeletionFileDir = pipeConsensusDeletionFileDir;
+  public void setIotConsensusV2DeletionFileDir(String iotConsensusV2DeletionFileDir) {
+    this.iotConsensusV2DeletionFileDir = iotConsensusV2DeletionFileDir;
   }
 
   public String[] getLoadTsFileDirs() {

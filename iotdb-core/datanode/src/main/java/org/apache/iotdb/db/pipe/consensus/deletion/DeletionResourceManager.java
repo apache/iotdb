@@ -77,7 +77,7 @@ public class DeletionResourceManager implements AutoCloseable {
     this.dataRegionId = dataRegionId;
     this.storageDir =
         new File(
-            IoTDBDescriptor.getInstance().getConfig().getPipeConsensusDeletionFileDir()
+            IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir()
                 + File.separator
                 + dataRegionId);
     this.deletionBuffer = new PageCacheDeletionBuffer(dataRegionId, storageDir.getAbsolutePath());

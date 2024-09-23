@@ -2486,9 +2486,9 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setPipeConsensusDeletionFileDir(
+    conf.setIotConsensusV2DeletionFileDir(
         properties.getProperty(
-            "pipe_consensus_deletion_file_dir", conf.getPipeConsensusDeletionFileDir()));
+            "iot_consensus_v2_deletion_file_dir", conf.getIotConsensusV2DeletionFileDir()));
   }
 
   private void loadCQProps(Properties properties) {
