@@ -109,36 +109,28 @@ public class RemoveDataNodeManager {
   }
 
   /**
-   * Marks the given batch of DataNodes with the 'removing' status to prevent read or write requests
-   * from being routed to these nodes.
+   * Changes the status of the specified DataNode to the given status. This is done to prevent the
+   * DataNode from receiving read or write requests when it is being removed or is in a restricted
+   * state.
    *
-   * @param removedDataNodes the DataNodes to be marked as in 'removing' status
+   * @param dataNodeLocation the location of the DataNode whose status needs to be changed
+   * @param status the new status to assign to the DataNode (e.g., Removing, Running, etc.)
    */
-  public void markDataNodesAsRemovingAndBroadcast(List<TDataNodeLocation> removedDataNodes) {
-    removedDataNodes.parallelStream().forEach(this::markDataNodeAsRemovingAndBroadcast);
-  }
-
-  /**
-   * Marks the given DataNode as being in the 'removing' status to prevent read or write requests
-   * from being routed to this node.
-   *
-   * @param dataNodeLocation the DataNode to be marked as in 'removing' status
-   */
-  public void markDataNodeAsRemovingAndBroadcast(TDataNodeLocation dataNodeLocation) {
+  public void changeDataNodeStatus(TDataNodeLocation dataNodeLocation, NodeStatus status) {
     // Send request to update NodeStatus on the DataNode to be removed
     if (configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
         == NodeStatus.Unknown) {
       SyncDataNodeClientPool.getInstance()
           .sendSyncRequestToDataNodeWithGivenRetry(
               dataNodeLocation.getInternalEndPoint(),
-              NodeStatus.Removing.getStatus(),
+              status.getStatus(),
               CnToDnRequestType.SET_SYSTEM_STATUS,
               1);
     } else {
       SyncDataNodeClientPool.getInstance()
           .sendSyncRequestToDataNodeWithRetry(
               dataNodeLocation.getInternalEndPoint(),
-              NodeStatus.Removing.getStatus(),
+              status.getStatus(),
               CnToDnRequestType.SET_SYSTEM_STATUS);
     }
 
@@ -149,7 +141,7 @@ public class RemoveDataNodeManager {
         .forceUpdateNodeCache(
             NodeType.DataNode,
             dataNodeLocation.getDataNodeId(),
-            new NodeHeartbeatSample(currentTime, NodeStatus.Removing));
+            new NodeHeartbeatSample(currentTime, status));
     Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
         new TreeMap<>();
     // Force update RegionStatus to NodeStatus.Removing

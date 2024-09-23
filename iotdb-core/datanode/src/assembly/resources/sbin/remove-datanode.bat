@@ -20,17 +20,40 @@
 @echo off
 
 IF "%~1"=="--help" (
-    echo The script will remove a DataNode.
-    echo Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes.
+    echo The script will remove one or more DataNodes.
+    echo Before removing DataNodes, ensure that the cluster has at least the number of data/schema replicas DataNodes.
     echo Usage:
-    echo Remove the DataNode with datanode_id
-    echo ./sbin/remove-datanode.bat [datanode_id]
+    echo Remove one or more DataNodes with datanode_id
+    echo ./sbin/remove-datanode.bat [datanode_id ...]
     EXIT /B 0
 )
 
-echo ````````````````````````
-echo Starting to remove a DataNode
-echo ````````````````````````
+REM Ensure that at least one DataNode ID is provided
+IF "%~1"=="" (
+    echo Error: At least one DataNode ID must be provided.
+    EXIT /B 1
+)
+
+REM Check for duplicate DataNode IDs
+set "ids=%*"
+set "unique_ids="
+for %%i in (%ids%) do (
+    if "!unique_ids!" == "" (
+        set "unique_ids=%%i"
+    ) else (
+        echo !unique_ids! | findstr /b /c:"%%i " >nul
+        if errorlevel 1 (
+            set "unique_ids=!unique_ids! %%i"
+        ) else (
+            echo Error: Duplicate DataNode ID %%i found.
+            EXIT /B 1
+        )
+    )
+)
+
+echo -------------------------
+echo Starting to remove DataNodes: %ids%
+echo -------------------------
 
 PATH %PATH%;%JAVA_HOME%\bin\
 set "FULL_VERSION="
@@ -72,7 +95,7 @@ set IOTDB_LOGS=%IOTDB_HOME%\logs
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set CONF_PARAMS=-r
 set is_conf_path=false
-for %%i in (%*) do (
+for %%i in (%unique_ids%) do (
 	set CONF_PARAMS=!CONF_PARAMS! %%i
 )
 

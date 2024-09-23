@@ -19,21 +19,35 @@
 #
 
 if [ "$#" -eq 1 ] && [ "$1" == "--help" ]; then
-    echo "The script will remove a DataNode."
-    echo "Before removing a DataNode, ensure that the cluster has at least the number of data/schema replicas DataNodes."
+    echo "The script will remove one or more DataNodes."
+    echo "Before removing DataNodes, ensure that the cluster has at least the number of data/schema replicas DataNodes."
     echo "Usage:"
-    echo "Remove the DataNode with datanode_id"
-    echo "./sbin/remove-datanode.sh [datanode_id]"
+    echo "Remove one or more DataNodes with datanode_id"
+    echo "./sbin/remove-datanode.sh [datanode_id ...]"
     exit 0
 fi
 
+# Ensure that at least one DataNode ID is provided
+if [ "$#" -eq 0 ]; then
+    echo "Error: At least one DataNode ID must be provided."
+    exit 1
+fi
+
+# Check for duplicate DataNode IDs
+ids=("$@")
+unique_ids=($(printf "%s\n" "${ids[@]}" | sort -u))
+if [ "${#ids[@]}" -ne "${#unique_ids[@]}" ]; then
+    echo "Error: Duplicate DataNode IDs found."
+    exit 1
+fi
+
 echo ---------------------
-echo "Starting to remove a DataNode"
+echo "Starting to remove DataNodes: ${ids[*]}"
 echo ---------------------
 
 source "$(dirname "$0")/iotdb-common.sh"
 
-#get_iotdb_include wil remove -D parameters
+#get_iotdb_include will remove -D parameters
 VARS=$(get_iotdb_include "$*")
 checkAllVariables
 eval set -- "$VARS"

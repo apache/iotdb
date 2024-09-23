@@ -379,30 +379,29 @@ public class NodeManager {
   public synchronized DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
-
-    // Checks if the RemoveDataNode request is valid
-    RemoveDataNodeManager manager =
-        configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
-    DataNodeToStatusResp preCheckStatus = manager.checkRemoveDataNodeRequest(removeDataNodePlan);
-    if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.error(
-          "The remove DataNode request check failed. req: {}, check result: {}",
-          removeDataNodePlan,
-          preCheckStatus.getStatus());
-      return preCheckStatus;
-    }
-
-    // Do transfer of the DataNodes before remove
-    DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
-    if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataSet.setStatus(
-          new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
-              .setMessage("Fail to do transfer of the DataNodes"));
-      return dataSet;
-    }
-
     try {
+      // Checks if the RemoveDataNode request is valid
+      RemoveDataNodeManager manager =
+          configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
+      DataNodeToStatusResp preCheckStatus = manager.checkRemoveDataNodeRequest(removeDataNodePlan);
+      if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.error(
+            "The remove DataNode request check failed. req: {}, check result: {}",
+            removeDataNodePlan,
+            preCheckStatus.getStatus());
+        return preCheckStatus;
+      }
+
+      // Do transfer of the DataNodes before remove
+      DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+      if (configManager.transfer(removeDataNodePlan.getDataNodeLocations()).getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        dataSet.setStatus(
+            new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
+                .setMessage("Fail to do transfer of the DataNodes"));
+        return dataSet;
+      }
+
       // Add request to queue, then return to client
       boolean removeSucceed =
           configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
@@ -415,14 +414,14 @@ public class NodeManager {
         status.setMessage("Server rejected the request, maybe requests are too many");
       }
       dataSet.setStatus(status);
+
+      LOGGER.info(
+          "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
+          removeDataNodePlan);
+      return dataSet;
     } finally {
       configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().unlock();
     }
-
-    LOGGER.info(
-        "NodeManager submit RemoveDataNodePlan finished, removeDataNodePlan: {}",
-        removeDataNodePlan);
-    return dataSet;
   }
 
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {

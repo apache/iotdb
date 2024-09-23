@@ -30,6 +30,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import java.io.PrintWriter;
+import java.util.HashSet;
+import java.util.Set;
 
 public abstract class ServerCommandLine {
 
@@ -39,10 +41,10 @@ public abstract class ServerCommandLine {
       Option.builder("r")
           .longOpt("remove")
           .desc(
-              "remove a node (with the given nodeId or the node started on the current machine, if omitted)")
-          .hasArg()
+              "remove one or more nodes (with the given nodeIds or the node started on the current machine, if omitted)")
+          .hasArgs()
           .type(Number.class)
-          .argName("nodeId")
+          .argName("nodeIds")
           .optionalArg(true)
           .build();
 
@@ -77,9 +79,15 @@ public abstract class ServerCommandLine {
       // As we only support start and remove and one has to be selected,
       // no need to check if OPTION_REMOVE is set.
       else {
-        Number nodeId = (Number) cmd.getParsedOptionValue(OPTION_REMOVE);
-        if (nodeId != null) {
-          remove(nodeId.longValue());
+        // Support for removing one or more nodes
+        String[] nodeIdsStr = cmd.getOptionValues(OPTION_REMOVE.getOpt());
+        if (nodeIdsStr != null && nodeIdsStr.length > 0) {
+          Set<Integer> nodeIds = new HashSet<>();
+          for (String nodeIdStr : nodeIdsStr) {
+            int nodeId = Integer.parseInt(nodeIdStr);
+            nodeIds.add(nodeId);
+          }
+          remove(nodeIds);
         } else {
           remove(null);
         }
@@ -112,5 +120,5 @@ public abstract class ServerCommandLine {
 
   protected abstract void start() throws IoTDBException;
 
-  protected abstract void remove(Long nodeId) throws IoTDBException;
+  protected abstract void remove(Set<Integer> nodeIds) throws IoTDBException;
 }
