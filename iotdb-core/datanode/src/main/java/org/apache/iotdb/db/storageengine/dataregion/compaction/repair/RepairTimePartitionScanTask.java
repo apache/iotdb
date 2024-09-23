@@ -142,7 +142,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
     List<TsFileResource> seqList =
         tsFileManager.getTsFileListSnapshot(timePartition.getTimePartitionId(), true);
     List<TsFileResource> overlapFiles =
-        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList);
+        RepairDataFileScanUtil.checkTimePartitionHasOverlap(seqList, false);
     for (TsFileResource overlapFile : overlapFiles) {
       if (!timePartition.getTsFileManager().isAllowCompaction()) {
         LOGGER.info(
