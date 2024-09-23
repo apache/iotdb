@@ -80,19 +80,23 @@ public class TableHeaderSchemaValidator {
   }
 
   public Optional<TableSchema> validateTableHeaderSchema(
-      String database, TableSchema tableSchema, MPPQueryContext context, boolean allowCreateTable) {
+      final String database,
+      final TableSchema tableSchema,
+      final MPPQueryContext context,
+      final boolean allowCreateTable) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
     DataNodeSchemaLockManager.getInstance()
         .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
 
-    List<ColumnSchema> inputColumnList = tableSchema.getColumns();
+    final List<ColumnSchema> inputColumnList = tableSchema.getColumns();
     if (inputColumnList == null || inputColumnList.isEmpty()) {
       throw new IllegalArgumentException(
           "No column other than Time present, please check the request");
     }
-    TsTable table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
-    List<ColumnSchema> missingColumnList = new ArrayList<>();
+    TsTable table =
+        DataNodeTableCache.getInstance().getTableInWrite(database, tableSchema.getTableName());
+    final List<ColumnSchema> missingColumnList = new ArrayList<>();
 
     // first round validate, check existing schema
     if (table == null) {
@@ -112,8 +116,8 @@ public class TableHeaderSchemaValidator {
       }
     }
 
-    for (ColumnSchema columnSchema : inputColumnList) {
-      TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
+    for (final ColumnSchema columnSchema : inputColumnList) {
+      final TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
       if (existingColumn == null) {
         // check arguments for column auto creation
         if (columnSchema.getColumnCategory() == null) {
@@ -145,7 +149,7 @@ public class TableHeaderSchemaValidator {
       }
     }
 
-    List<ColumnSchema> resultColumnList = new ArrayList<>();
+    final List<ColumnSchema> resultColumnList = new ArrayList<>();
     if (!missingColumnList.isEmpty()
         && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
       // TODO table metadata: authority check for table alter
