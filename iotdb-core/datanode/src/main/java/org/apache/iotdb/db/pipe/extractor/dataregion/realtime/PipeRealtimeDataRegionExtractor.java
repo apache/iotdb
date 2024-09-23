@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -508,6 +509,11 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         + dataRegionId
         + '\''
         + '}';
+  }
+
+  @TestOnly
+  public void setShouldExtractDeletion(boolean shouldExtractDeletion) {
+    this.shouldExtractDeletion = shouldExtractDeletion;
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

@@ -176,19 +176,21 @@ public class DeletionResourceTest {
     // prepare pipe component
     PipeRealtimeDataRegionExtractor extractor = new PipeRealtimeDataRegionHybridExtractor();
     PipeParameters parameters =
-            new PipeParameters(
-                    new HashMap<String, String>() {
-                      {
-                        put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, "data");
-                      }
-                    });
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, "data");
+              }
+            });
     PipeTaskRuntimeConfiguration configuration =
-            new PipeTaskRuntimeConfiguration(
-                    new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
+        new PipeTaskRuntimeConfiguration(
+            new PipeTaskExtractorRuntimeEnvironment(
+                "1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
     extractor.customize(parameters, configuration);
     Assert.assertTrue(extractor.shouldExtractDeletion());
 
-    PipeInsertionDataNodeListener.getInstance().startListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
+    PipeInsertionDataNodeListener.getInstance()
+        .startListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[4]);
     int rebootTimes = 0;
     MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");

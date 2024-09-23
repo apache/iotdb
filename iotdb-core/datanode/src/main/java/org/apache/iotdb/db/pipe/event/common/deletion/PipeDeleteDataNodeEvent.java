@@ -32,12 +32,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public class PipeDeleteDataNodeEvent extends EnrichedEvent implements SerializableEvent {
   private DeleteDataNode deleteDataNode;
   private DeletionResource deletionResource;
   private boolean isGeneratedByPipe;
-  private final ProgressIndex progressIndex;
+  private ProgressIndex progressIndex;
 
   public PipeDeleteDataNodeEvent() {
     // Used for deserialization
@@ -59,7 +60,8 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
     super(pipeName, creationTime, pipeTaskMeta, pattern, Long.MIN_VALUE, Long.MAX_VALUE);
     this.isGeneratedByPipe = isGeneratedByPipe;
     this.deleteDataNode = deleteDataNode;
-    this.progressIndex = deleteDataNode.getProgressIndex();
+    Optional.ofNullable(deleteDataNode)
+        .ifPresent(node -> this.progressIndex = deleteDataNode.getProgressIndex());
   }
 
   public DeleteDataNode getDeleteDataNode() {
@@ -136,6 +138,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   public void deserializeFromByteBuffer(ByteBuffer buffer) {
     isGeneratedByPipe = ReadWriteIOUtils.readBool(buffer);
     deleteDataNode = (DeleteDataNode) PlanNodeType.deserialize(buffer);
+    progressIndex = deleteDataNode.getProgressIndex();
   }
 
   public static PipeDeleteDataNodeEvent deserialize(ByteBuffer buffer) {

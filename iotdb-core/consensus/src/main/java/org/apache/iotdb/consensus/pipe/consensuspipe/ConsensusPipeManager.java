@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
@@ -65,7 +64,7 @@ public class ConsensusPipeManager {
         consensusPipeName.toString(),
         ImmutableMap.<String, String>builder()
             .put(EXTRACTOR_KEY, config.getExtractorPluginName())
-                .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
+            .put(EXTRACTOR_INCLUSION_KEY, CONSENSUS_EXTRACTOR_INCLUSION_VALUE)
             .put(
                 EXTRACTOR_CONSENSUS_GROUP_ID_KEY,
                 consensusPipeName.getConsensusGroupId().toString())
