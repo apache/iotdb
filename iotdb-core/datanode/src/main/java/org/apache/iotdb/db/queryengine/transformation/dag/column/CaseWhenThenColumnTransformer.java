@@ -22,17 +22,11 @@ package org.apache.iotdb.db.queryengine.transformation.dag.column;
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.read.common.type.AbstractIntType;
-import org.apache.tsfile.read.common.type.AbstractLongType;
-import org.apache.tsfile.read.common.type.AbstractVarcharType;
-import org.apache.tsfile.read.common.type.BlobType;
-import org.apache.tsfile.read.common.type.BooleanType;
-import org.apache.tsfile.read.common.type.DoubleType;
-import org.apache.tsfile.read.common.type.FloatType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class CaseWhenThenColumnTransformer extends ColumnTransformer {
@@ -63,70 +57,96 @@ public class CaseWhenThenColumnTransformer extends ColumnTransformer {
     return elseTransformer;
   }
 
-  private void writeToColumnBuilder(
-      ColumnTransformer childTransformer, Column column, int index, ColumnBuilder builder) {
-    if (returnType instanceof BooleanType) {
-      builder.writeBoolean(childTransformer.getType().getBoolean(column, index));
-    } else if (returnType instanceof AbstractIntType) {
-      builder.writeInt(childTransformer.getType().getInt(column, index));
-    } else if (returnType instanceof AbstractLongType) {
-      builder.writeLong(childTransformer.getType().getLong(column, index));
-    } else if (returnType instanceof FloatType) {
-      builder.writeFloat(childTransformer.getType().getFloat(column, index));
-    } else if (returnType instanceof DoubleType) {
-      builder.writeDouble(childTransformer.getType().getDouble(column, index));
-    } else if (returnType instanceof AbstractVarcharType || returnType instanceof BlobType) {
-      builder.writeBinary(childTransformer.getType().getBinary(column, index));
-    } else {
-      throw new UnsupportedOperationException("Unsupported Type");
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    int[] branchIndexForEachRow = new int[selection.length];
+    for (int i = 0; i < selection.length; i++) {
+      if (selection[i]) {
+        branchIndexForEachRow[i] = -1;
+      } else {
+        branchIndexForEachRow[i] = whenThenTransformers.size();
+      }
+    }
+    doTransform(branchIndexForEachRow);
+  }
+
+  private void doTransform(int[] branchIndexForEachRow) {
+
+    List<Column> thenColumnList = new ArrayList<>();
+    for (int branchIndex = 0; branchIndex < branchIndexForEachRow.length; branchIndex++) {
+      boolean[] selection = new boolean[branchIndexForEachRow.length];
+
+      for (int i = 0; i < branchIndexForEachRow.length; i++) {
+        if (branchIndexForEachRow[i] == -1) {
+          selection[i] = true;
+        }
+      }
+
+      whenThenTransformers.get(branchIndex).left.evaluateWithSelection(selection);
+      Column whenColumn = whenThenTransformers.get(branchIndex).left.getColumn();
+
+      for (int i = 0; i < selection.length; i++) {
+        if (!whenColumn.isNull(i) && whenColumn.getBoolean(i)) {
+          branchIndexForEachRow[i] = branchIndex;
+        } else {
+          selection[i] = false;
+        }
+      }
+
+      whenThenTransformers.get(branchIndex).right.evaluateWithSelection(selection);
+      Column thenColumn = whenThenTransformers.get(branchIndex).right.getColumn();
+      thenColumnList.add(thenColumn);
+    }
+    boolean[] selection = new boolean[branchIndexForEachRow.length];
+
+    for (int i = 0; i < branchIndexForEachRow.length; i++) {
+      if (branchIndexForEachRow[i] == -1) {
+        selection[i] = true;
+      }
+    }
+    elseTransformer.evaluateWithSelection(selection);
+
+    int positionCount = whenThenTransformers.get(0).left.getColumnCachePositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    Column elseColumn = elseTransformer.getColumn();
+    for (int i = 0; i < branchIndexForEachRow.length; i++) {
+      Column resultColumn = null;
+      if (branchIndexForEachRow[i] == -1) {
+        resultColumn = elseColumn;
+      } else if (branchIndexForEachRow[i] < whenThenTransformers.size()) {
+        resultColumn = thenColumnList.get(branchIndexForEachRow[i]);
+      }
+      if (resultColumn == null || resultColumn.isNull(i)) {
+        builder.appendNull();
+      } else {
+        builder.write(resultColumn, i);
+      }
+    }
+    initializeColumnCache(builder.build());
+    // 清缓存
+    for (Pair<ColumnTransformer, ColumnTransformer> whenThenColumnTransformer :
+        whenThenTransformers) {
+      whenThenColumnTransformer.left.clearCache();
+      whenThenColumnTransformer.right.clearCache();
     }
   }
 
   @Override
-  protected void evaluate() {
-    List<Column> whenColumnList = new ArrayList<>();
-    List<Column> thenColumnList = new ArrayList<>();
-    for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
-      whenThenTransformer.left.tryEvaluate();
-      whenThenTransformer.right.tryEvaluate();
-    }
-    elseTransformer.tryEvaluate();
-    int positionCount = whenThenTransformers.get(0).left.getColumnCachePositionCount();
-    for (Pair<ColumnTransformer, ColumnTransformer> whenThenTransformer : whenThenTransformers) {
-      whenColumnList.add(whenThenTransformer.left.getColumn());
-      thenColumnList.add(whenThenTransformer.right.getColumn());
-    }
-    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
-    Column elseColumn = elseTransformer.getColumn();
-    for (int i = 0; i < positionCount; i++) {
-      boolean hasValue = false;
-      for (int j = 0; j < whenThenTransformers.size(); j++) {
-        Column whenColumn = whenColumnList.get(j);
-        Column thenColumn = thenColumnList.get(j);
-        if (!whenColumn.isNull(i) && whenColumn.getBoolean(i)) {
-          if (thenColumn.isNull(i)) {
-            builder.appendNull();
-          } else {
-            writeToColumnBuilder(whenThenTransformers.get(j).right, thenColumn, i, builder);
-          }
-          hasValue = true;
-          break;
-        }
-      }
-      if (!hasValue) {
-        if (!elseColumn.isNull(i)) {
-          writeToColumnBuilder(elseTransformer, elseColumn, i, builder);
-        } else {
-          builder.appendNull();
-        }
-      }
-    }
+  public void evaluate() {
+    int[] branchIndexForEachRow =
+        new int[whenThenTransformers.get(0).left.getColumnCachePositionCount()];
+    Arrays.fill(branchIndexForEachRow, -1);
 
-    initializeColumnCache(builder.build());
+    doTransform(branchIndexForEachRow);
   }
 
   @Override
   protected void checkType() {
     // do nothing
+  }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
   }
 }

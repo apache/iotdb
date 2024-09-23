@@ -29,9 +29,10 @@ public class NullColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  public void tryEvaluate() {
-    // do nothing
-  }
+  protected void evaluate() {}
+
+  @Override
+  public void evaluateWithShortCircuit(boolean[] selection) {}
 
   @Override
   public void initFromTsBlock(TsBlock input) {

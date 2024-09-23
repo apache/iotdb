@@ -53,4 +53,10 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
   }
 
   protected abstract void doTransform(Column column, ColumnBuilder columnBuilder);
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    childColumnTransformer.clearCache();
+  }
 }

@@ -56,11 +56,25 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   protected abstract void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount);
 
+  protected abstract void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection);
+
   public ColumnTransformer getLeftTransformer() {
     return leftTransformer;
   }
 
   public ColumnTransformer getRightTransformer() {
     return rightTransformer;
+  }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    this.leftTransformer.clearCache();
+    this.rightTransformer.clearCache();
   }
 }

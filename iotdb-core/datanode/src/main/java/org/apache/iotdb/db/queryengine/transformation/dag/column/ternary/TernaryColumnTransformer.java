@@ -77,4 +77,12 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   public ColumnTransformer getThirdColumnTransformer() {
     return thirdColumnTransformer;
   }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    firstColumnTransformer.clearCache();
+    secondColumnTransformer.clearCache();
+    thirdColumnTransformer.clearCache();
+  }
 }

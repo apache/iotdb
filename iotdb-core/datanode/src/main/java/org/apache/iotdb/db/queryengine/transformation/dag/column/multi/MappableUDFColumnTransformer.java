@@ -73,4 +73,12 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
     // finalize executor
     executor.beforeDestroy();
   }
+
+  @Override
+  public void clearCache() {
+    super.clearCache();
+    for (ColumnTransformer columnTransformer : inputColumnTransformers) {
+      columnTransformer.clearCache();
+    }
+  }
 }
