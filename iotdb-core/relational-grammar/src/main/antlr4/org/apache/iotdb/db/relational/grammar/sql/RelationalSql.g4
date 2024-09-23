@@ -83,6 +83,7 @@ statement
     | showRegionsStatement
     | showDataNodesStatement
     | showConfigNodesStatement
+    | showAINodesStatement
     | showClusterIdStatement
     | showRegionIdStatement
     | showTimeSlotListStatement
@@ -264,6 +265,10 @@ showDataNodesStatement
 
 showConfigNodesStatement
     : SHOW CONFIGNODES
+    ;
+
+showAINodesStatement
+    : SHOW AINODES
     ;
 
 showClusterIdStatement
@@ -781,6 +786,7 @@ COMMITTED: 'COMMITTED';
 CONDITION: 'CONDITION';
 CONDITIONAL: 'CONDITIONAL';
 CONFIGNODES: 'CONFIGNODES';
+AINODES: 'AINODES';
 CONFIGURATION: 'CONFIGURATION';
 CONSTRAINT: 'CONSTRAINT';
 COUNT: 'COUNT';

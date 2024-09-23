@@ -34,9 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
@@ -53,12 +51,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListSt
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -158,9 +154,11 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
 
-  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodesStatement showDataNodesStatement);
+  SettableFuture<ConfigTaskResult> showDataNodes();
 
   SettableFuture<ConfigTaskResult> showConfigNodes();
+
+  SettableFuture<ConfigTaskResult> showAINodes();
 
   SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement);
@@ -265,8 +263,6 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showModels(String modelName);
 
-  SettableFuture<ConfigTaskResult> showAINodes(ShowAINodesStatement showAINodesStatement);
-
   TPipeTransferResp handleTransferConfigPlan(String clientId, TPipeTransferReq req);
 
   void handlePipeConfigClientExit(String clientId);
@@ -278,10 +274,6 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
 
   SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions);
-
-  SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodes showDataNodes);
-
-  SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes);
 
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 
