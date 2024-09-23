@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -62,12 +63,12 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.schemaengine.template.Template;
@@ -1076,24 +1077,26 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
   }
 
-  public TShowTableResp showTables(final String database) {
+  public ShowTableResp showTables(final ShowTablePlan plan) {
     databaseReadWriteLock.readLock().lock();
     try {
-      return new TShowTableResp(StatusUtils.OK)
-          .setTableInfoList(
-              mTree
-                  .getAllUsingTablesUnderSpecificDatabase(getQualifiedDatabasePartialPath(database))
-                  .stream()
-                  .map(
-                      tsTable ->
-                          new TTableInfo(
-                              tsTable.getTableName(),
-                              tsTable
-                                  .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
-                                  .orElse(TTL_INFINITE)))
-                  .collect(Collectors.toList()));
+      return new ShowTableResp(
+          StatusUtils.OK,
+          mTree
+              .getAllUsingTablesUnderSpecificDatabase(
+                  getQualifiedDatabasePartialPath(plan.getDatabase()))
+              .stream()
+              .map(
+                  tsTable ->
+                      new TTableInfo(
+                          tsTable.getTableName(),
+                          tsTable
+                              .getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH))
+                              .orElse(TTL_INFINITE)))
+              .collect(Collectors.toList()));
     } catch (final MetadataException e) {
-      return new TShowTableResp(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      return new ShowTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }

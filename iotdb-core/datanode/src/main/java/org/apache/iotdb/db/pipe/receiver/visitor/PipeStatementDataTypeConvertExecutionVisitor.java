@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
 import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.receiver.transform.statement.PipeConvertedInsertRowStatement;
@@ -83,7 +83,9 @@ public class PipeStatementDataTypeConvertExecutionVisitor
   @Override
   public Optional<TSStatus> visitLoadFile(
       final LoadTsFileStatement loadTsFileStatement, final TSStatus status) {
-    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()) {
+    if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
+        // Ignore the error if it is caused by insufficient memory
+        || (status.getMessage() != null && status.getMessage().contains("memory"))) {
       return Optional.empty();
     }
 

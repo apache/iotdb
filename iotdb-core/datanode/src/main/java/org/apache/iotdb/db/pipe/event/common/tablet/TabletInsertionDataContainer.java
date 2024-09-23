@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRowCollector;
@@ -145,7 +145,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // The full path is always cached when device path is deserialized
-    this.deviceStr = insertRowNode.getDevicePath().getFullPath();
+    this.deviceStr = insertRowNode.getTargetPath().getFullPath();
     this.deviceId = insertRowNode.getDeviceID();
     this.isAligned = insertRowNode.isAligned();
 
@@ -214,7 +214,7 @@ public class TabletInsertionDataContainer {
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
     // The full path is always cached when device path is deserialized
-    this.deviceStr = insertTabletNode.getDevicePath().getFullPath();
+    this.deviceStr = insertTabletNode.getTargetPath().getFullPath();
     this.deviceId = insertTabletNode.getDeviceID();
     this.isAligned = insertTabletNode.isAligned();
 

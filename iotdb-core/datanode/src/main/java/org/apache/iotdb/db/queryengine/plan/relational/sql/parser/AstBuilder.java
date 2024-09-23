@@ -553,8 +553,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         new Table(getLocation(ctx), getQualifiedName(ctx.qualifiedName())),
         visitIfPresent(ctx.where, Expression.class).orElse(null),
-        visitIfPresent(ctx.offset, Offset.class).orElse(null),
-        visitIfPresent(ctx.limit, Node.class).orElse(null));
+        visitIfPresent(ctx.limitOffsetClause().offset, Offset.class).orElse(null),
+        visitIfPresent(ctx.limitOffsetClause().limit, Node.class).orElse(null));
   }
 
   @Override
@@ -727,7 +727,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
             propertyValue.getExpressionType() + " is not supported for 'set configuration'");
       }
       String value = ((StringLiteral) propertyValue).getValue();
-      configItems.put(key, value);
+      configItems.put(key.trim(), value.trim());
     }
     setConfigurationStatement.setNodeId(nodeId);
     setConfigurationStatement.setConfigItems(configItems);
@@ -797,16 +797,16 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
     }
 
     Optional<Offset> offset = Optional.empty();
-    if (ctx.OFFSET() != null) {
-      offset = visitIfPresent(ctx.offset, Offset.class);
+    if (ctx.limitOffsetClause().OFFSET() != null) {
+      offset = visitIfPresent(ctx.limitOffsetClause().offset, Offset.class);
     }
 
     Optional<Node> limit = Optional.empty();
-    if (ctx.LIMIT() != null) {
-      if (ctx.limit == null) {
+    if (ctx.limitOffsetClause().LIMIT() != null) {
+      if (ctx.limitOffsetClause().limit == null) {
         throw new IllegalStateException("Missing LIMIT value");
       }
-      limit = visitIfPresent(ctx.limit, Node.class);
+      limit = visitIfPresent(ctx.limitOffsetClause().limit, Node.class);
     }
 
     if (term instanceof QuerySpecification) {

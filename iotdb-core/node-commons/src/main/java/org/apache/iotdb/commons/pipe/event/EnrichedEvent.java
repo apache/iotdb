@@ -21,9 +21,10 @@ package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -54,7 +55,7 @@ public abstract class EnrichedEvent implements Event {
   protected final long creationTime;
   protected final PipeTaskMeta pipeTaskMeta;
 
-  protected String committerKey;
+  protected CommitterKey committerKey;
   public static final long NO_COMMIT_ID = -1;
   protected long commitId = NO_COMMIT_ID;
   protected int rebootTimes = 0;
@@ -291,6 +292,11 @@ public abstract class EnrichedEvent implements Event {
     return creationTime;
   }
 
+  public final int getRegionId() {
+    // TODO: persist regionId in EnrichedEvent
+    return committerKey == null ? -1 : committerKey.getRegionId();
+  }
+
   public final boolean isDataRegionEvent() {
     return !(this instanceof PipeWritePlanEvent) && !(this instanceof PipeSnapshotEvent);
   }
@@ -363,7 +369,7 @@ public abstract class EnrichedEvent implements Event {
 
   public abstract boolean mayEventPathsOverlappedWithPattern();
 
-  public void setCommitterKeyAndCommitId(final String committerKey, final long commitId) {
+  public void setCommitterKeyAndCommitId(final CommitterKey committerKey, final long commitId) {
     this.committerKey = committerKey;
     this.commitId = commitId;
   }
@@ -376,7 +382,7 @@ public abstract class EnrichedEvent implements Event {
     return rebootTimes;
   }
 
-  public String getCommitterKey() {
+  public CommitterKey getCommitterKey() {
     return committerKey;
   }
 

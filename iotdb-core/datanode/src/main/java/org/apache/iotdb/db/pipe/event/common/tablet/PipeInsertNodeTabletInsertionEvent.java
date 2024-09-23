@@ -22,9 +22,9 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -254,7 +254,7 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
       }
 
       if (insertNode instanceof InsertRowNode || insertNode instanceof InsertTabletNode) {
-        final PartialPath devicePartialPath = insertNode.getDevicePath();
+        final PartialPath devicePartialPath = insertNode.getTargetPath();
         return Objects.isNull(devicePartialPath)
             || pipePattern.mayOverlapWithDevice(devicePartialPath.getIDeviceIDAsFullDevice());
       }
@@ -264,9 +264,9 @@ public class PipeInsertNodeTabletInsertionEvent extends EnrichedEvent
             .getInsertRowNodeList().stream()
                 .anyMatch(
                     insertRowNode ->
-                        Objects.isNull(insertRowNode.getDevicePath())
+                        Objects.isNull(insertRowNode.getTargetPath())
                             || pipePattern.mayOverlapWithDevice(
-                                insertRowNode.getDevicePath().getIDeviceIDAsFullDevice()));
+                                insertRowNode.getTargetPath().getIDeviceIDAsFullDevice()));
       }
 
       return true;

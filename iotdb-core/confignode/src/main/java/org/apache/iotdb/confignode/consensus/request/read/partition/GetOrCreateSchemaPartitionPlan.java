@@ -31,7 +31,8 @@ public class GetOrCreateSchemaPartitionPlan extends GetSchemaPartitionPlan {
     super(ConfigPhysicalPlanType.GetOrCreateSchemaPartition);
   }
 
-  public GetOrCreateSchemaPartitionPlan(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+  public GetOrCreateSchemaPartitionPlan(
+      final Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
     this();
     this.partitionSlotsMap = partitionSlotsMap;
   }

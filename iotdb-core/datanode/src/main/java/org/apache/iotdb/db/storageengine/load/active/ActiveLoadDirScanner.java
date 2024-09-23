@@ -51,6 +51,8 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
   private final AtomicReference<String[]> listeningDirsConfig = new AtomicReference<>();
   private final Set<String> listeningDirs = new CopyOnWriteArraySet<>();
 
+  private final Set<String> noPermissionDirs = new CopyOnWriteArraySet<>();
+
   private final ActiveLoadTsFileLoader activeLoadTsFileLoader;
 
   public ActiveLoadDirScanner(final ActiveLoadTsFileLoader activeLoadTsFileLoader) {
@@ -73,6 +75,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     hotReloadActiveLoadDirs();
 
     for (final String listeningDir : listeningDirs) {
+      if (!checkPermission(listeningDir)) {
+        continue;
+      }
+
       final int currentAllowedPendingSize = activeLoadTsFileLoader.getCurrentAllowedPendingSize();
       if (currentAllowedPendingSize <= 0) {
         return;
@@ -93,6 +99,43 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     }
   }
 
+  private boolean checkPermission(final String listeningDir) {
+    try {
+      final Path listeningDirPath = new File(listeningDir).toPath();
+
+      if (!Files.isReadable(listeningDirPath)) {
+        if (!noPermissionDirs.contains(listeningDir)) {
+          LOGGER.error(
+              "Current dir path is not readable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
+          noPermissionDirs.add(listeningDir);
+        }
+        return false;
+      }
+
+      if (!Files.isWritable(listeningDirPath)) {
+        if (!noPermissionDirs.contains(listeningDir)) {
+          LOGGER.error(
+              "Current dir path is not writable: {}."
+                  + "Skip scanning this dir. Please check the permission.",
+              listeningDirPath);
+          noPermissionDirs.add(listeningDir);
+        }
+        return false;
+      }
+
+      noPermissionDirs.remove(listeningDir);
+      return true;
+    } catch (final Exception e) {
+      LOGGER.error(
+          "Error occurred during checking r/w permission of dir: {}. Skip scanning this dir.",
+          listeningDir,
+          e);
+      return false;
+    }
+  }
+
   private boolean isTsFileCompleted(final String file) {
     try (final TsFileSequenceReader reader = new TsFileSequenceReader(file, false)) {
       return TSFileConfig.MAGIC_STRING.equals(reader.readTailMagic());
@@ -108,11 +151,15 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
         if (IOTDB_CONFIG.getLoadActiveListeningDirs() != listeningDirsConfig.get()) {
           synchronized (this) {
             if (IOTDB_CONFIG.getLoadActiveListeningDirs() != listeningDirsConfig.get()) {
+              listeningDirs.clear();
+
               listeningDirsConfig.set(IOTDB_CONFIG.getLoadActiveListeningDirs());
               listeningDirs.addAll(Arrays.asList(IOTDB_CONFIG.getLoadActiveListeningDirs()));
             }
           }
         }
+      } else {
+        listeningDirs.clear();
       }
       // Hot reload active load listening dir for pipe data sync
       // Active load is always enabled for pipe data sync

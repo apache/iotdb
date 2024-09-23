@@ -43,6 +43,7 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.TimeRange;
@@ -181,7 +182,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       IMemTable memTable,
       List<Pair<Modification, IMemTable>> modsToMemtable,
       long timeLowerBound)
-      throws QueryProcessException, IOException {
+      throws QueryProcessException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     IDeviceID deviceID = alignedFullPath.getDeviceId();
 
@@ -191,22 +192,36 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     }
     AlignedWritableMemChunk alignedMemChunk =
         ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
-    boolean containsMeasurement = false;
-    for (String measurement : alignedFullPath.getMeasurementList()) {
-      if (alignedMemChunk.containsMeasurement(measurement)) {
-        containsMeasurement = true;
-        break;
+    // only need to do this check for tree model
+    if (context.isIgnoreAllNullRows()) {
+      boolean containsMeasurement = false;
+      for (String measurement : alignedFullPath.getMeasurementList()) {
+        if (alignedMemChunk.containsMeasurement(measurement)) {
+          containsMeasurement = true;
+          break;
+        }
+      }
+      if (!containsMeasurement) {
+        return null;
       }
     }
-    if (!containsMeasurement) {
-      return null;
-    }
+
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy =
-        alignedMemChunk.getSortedTvListForQuery(alignedFullPath.getSchemaList());
-    List<List<TimeRange>> deletionList = null;
+        alignedMemChunk.getSortedTvListForQuery(
+            alignedFullPath.getSchemaList(), context.isIgnoreAllNullRows());
+    List<TimeRange> timeColumnDeletion = null;
+    List<List<TimeRange>> valueColumnsDeletionList = null;
     if (modsToMemtable != null) {
-      deletionList =
+      timeColumnDeletion =
+          ModificationUtils.constructDeletionList(
+                  alignedFullPath.getDeviceId(),
+                  Collections.singletonList(AlignedFullPath.VECTOR_PLACEHOLDER),
+                  memTable,
+                  modsToMemtable,
+                  timeLowerBound)
+              .get(0);
+      valueColumnsDeletionList =
           ModificationUtils.constructDeletionList(
               alignedFullPath.getDeviceId(),
               alignedFullPath.getMeasurementList(),
@@ -215,7 +230,11 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
               timeLowerBound);
     }
     return new AlignedReadOnlyMemChunk(
-        context, getMeasurementSchema(), alignedTvListCopy, deletionList);
+        context,
+        getMeasurementSchema(),
+        alignedTvListCopy,
+        timeColumnDeletion,
+        valueColumnsDeletionList);
   }
 
   public VectorMeasurementSchema getMeasurementSchema() {
@@ -236,7 +255,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         array,
         types,
         encodings,
-        alignedFullPath.getSchemaList().get(0).getCompressor());
+        // considering that compressor won't be used in memtable scan, so here passing
+        // CompressionType.UNCOMPRESSED just as a placeholder
+        CompressionType.UNCOMPRESSED);
   }
 
   @Override
@@ -245,9 +266,6 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       TsFileResource tsFileResource,
       QueryContext context,
       long timeLowerBound) {
-    List<List<Modification>> modifications =
-        context.getPathModifications(
-            tsFileResource, alignedFullPath.getDeviceId(), alignedFullPath.getMeasurementList());
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
@@ -277,14 +295,26 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
           exits = (exits || currentExist);
           valueChunkMetadata.add(currentExist ? chunkMetadata.get(i) : null);
         }
-        if (exits) {
+        if (!context.isIgnoreAllNullRows() || exits) {
           chunkMetadataList.add(
               new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
         }
       }
     }
 
-    ModificationUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
+    List<Modification> timeColumnModifications =
+        context.getPathModifications(
+            tsFileResource, alignedFullPath.getDeviceId(), AlignedFullPath.VECTOR_PLACEHOLDER);
+
+    List<List<Modification>> valueColumnsModifications =
+        context.getPathModifications(
+            tsFileResource, alignedFullPath.getDeviceId(), alignedFullPath.getMeasurementList());
+
+    ModificationUtils.modifyAlignedChunkMetaData(
+        chunkMetadataList,
+        timeColumnModifications,
+        valueColumnsModifications,
+        context.isIgnoreAllNullRows());
     chunkMetadataList.removeIf(x -> x.getEndTime() < timeLowerBound);
     return new ArrayList<>(chunkMetadataList);
   }

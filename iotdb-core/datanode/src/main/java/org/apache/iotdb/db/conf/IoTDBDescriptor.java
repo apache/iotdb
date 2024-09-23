@@ -1074,12 +1074,12 @@ public class IoTDBDescriptor {
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1126,16 +1126,20 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  private void loadPipeConsensusProps(Properties properties) throws IOException {
-    conf.setPipeConsensusPipelineSize(
+  private void loadIoTConsensusV2Props(Properties properties) throws IOException {
+    conf.setIotConsensusV2PipelineSize(
         Integer.parseInt(
             properties.getProperty(
-                "fast_iot_consensus_pipeline_size",
+                "iot_consensus_v2_pipeline_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "fast_iot_consensus_pipeline_size"))));
-    if (conf.getPipeConsensusPipelineSize() <= 0) {
-      conf.setPipeConsensusPipelineSize(5);
+                    "iot_consensus_v2_pipeline_size"))));
+    if (conf.getIotConsensusV2PipelineSize() <= 0) {
+      conf.setIotConsensusV2PipelineSize(5);
     }
+    conf.setIotConsensusV2Mode(
+        properties.getProperty(
+            "iot_consensus_v2_mode",
+            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -1175,6 +1179,15 @@ public class IoTDBDescriptor {
                 "wal_buffer_queue_capacity", Integer.toString(conf.getWalBufferQueueCapacity())));
     if (walBufferQueueCapacity > 0) {
       conf.setWalBufferQueueCapacity(walBufferQueueCapacity);
+    }
+
+    boolean WALInsertNodeCacheShrinkClearEnabled =
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "wal_cache_shrink_clear_enabled",
+                Boolean.toString(conf.getWALCacheShrinkClearEnabled())));
+    if (conf.getWALCacheShrinkClearEnabled() != WALInsertNodeCacheShrinkClearEnabled) {
+      conf.setWALCacheShrinkClearEnabled(WALInsertNodeCacheShrinkClearEnabled);
     }
 
     loadWALHotModifiedProps(properties);
@@ -2248,6 +2261,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_analyze_schema_memory_size_in_bytes",
                 String.valueOf(conf.getLoadTsFileAnalyzeSchemaMemorySizeInBytes()))));
+    conf.setLoadTsFileMaxDeviceCountToUseDeviceTimeIndex(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_max_device_count_to_use_device_index",
+                String.valueOf(conf.getLoadTsFileMaxDeviceCountToUseDeviceTimeIndex()))));
     conf.setLoadCleanupTaskExecutionDelayTimeSeconds(
         Long.parseLong(
             properties.getProperty(
@@ -2277,19 +2295,30 @@ public class IoTDBDescriptor {
     conf.setLoadActiveListeningFailDir(
         properties.getProperty(
             "load_active_listening_fail_dir", conf.getLoadActiveListeningFailDir()));
-    conf.setLoadActiveListeningCheckIntervalSeconds(
+
+    final long loadActiveListeningCheckIntervalSeconds =
         Long.parseLong(
             properties.getProperty(
                 "load_active_listening_check_interval_seconds",
-                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds()))));
-    conf.setLoadActiveListeningMaxThreadNum(
+                Long.toString(conf.getLoadActiveListeningCheckIntervalSeconds())));
+    conf.setLoadActiveListeningCheckIntervalSeconds(
+        loadActiveListeningCheckIntervalSeconds <= 0
+            ? conf.getLoadActiveListeningCheckIntervalSeconds()
+            : loadActiveListeningCheckIntervalSeconds);
+
+    final int defaultLoadActiveListeningMaxThreadNum =
+        Math.min(
+            conf.getLoadActiveListeningMaxThreadNum(),
+            Math.max(1, Runtime.getRuntime().availableProcessors() / 2));
+    final int loadActiveListeningMaxThreadNum =
         Integer.parseInt(
             properties.getProperty(
                 "load_active_listening_max_thread_num",
-                Integer.toString(
-                    Math.min(
-                        conf.getLoadActiveListeningMaxThreadNum(),
-                        Math.max(1, Runtime.getRuntime().availableProcessors() / 2))))));
+                Integer.toString(defaultLoadActiveListeningMaxThreadNum)));
+    conf.setLoadActiveListeningMaxThreadNum(
+        loadActiveListeningMaxThreadNum <= 0
+            ? defaultLoadActiveListeningMaxThreadNum
+            : loadActiveListeningMaxThreadNum);
   }
 
   private void loadLoadTsFileHotModifiedProp(Properties properties) throws IOException {
@@ -2446,12 +2475,12 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setPipeConsensusReceiverFileDirs(
+    conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
                     .getProperty(
-                        "pipe_consensus_receiver_file_dirs",
-                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
+                        "iot_consensus_v2_receiver_file_dirs",
+                        String.join(",", conf.getIotConsensusV2ReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())

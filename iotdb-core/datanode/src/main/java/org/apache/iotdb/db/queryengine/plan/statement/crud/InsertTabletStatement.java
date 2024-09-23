@@ -88,7 +88,7 @@ public class InsertTabletStatement extends InsertBaseStatement implements ISchem
 
   public InsertTabletStatement(InsertTabletNode node) {
     this();
-    setDevicePath(node.getDevicePath());
+    setDevicePath(node.getTargetPath());
     setMeasurements(node.getMeasurements());
     setTimes(node.getTimes());
     setColumns(node.getColumns());

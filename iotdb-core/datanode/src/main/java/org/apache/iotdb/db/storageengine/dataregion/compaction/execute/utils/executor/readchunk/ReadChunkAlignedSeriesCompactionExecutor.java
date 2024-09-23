@@ -23,6 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.ChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.loader.InstantPageLoader;
@@ -45,9 +47,9 @@ import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
-import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.page.TimePageReader;
+import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -56,8 +58,6 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -76,9 +76,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   protected AlignedChunkWriterImpl chunkWriter;
   protected IMeasurementSchema timeSchema;
   protected List<IMeasurementSchema> schemaList;
-  protected Map<String, Integer> measurementSchemaListIndexMap;
   protected ReadChunkAlignedSeriesCompactionFlushController flushController;
   protected final CompactionTaskSummary summary;
+  protected final boolean ignoreAllNullRows;
 
   private long lastWriteTimestamp = Long.MIN_VALUE;
 
@@ -87,7 +87,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
       CompactionTsFileWriter writer,
-      CompactionTaskSummary summary)
+      CompactionTaskSummary summary,
+      boolean ignoreAllNullRows)
       throws IOException {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
@@ -95,12 +96,15 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.targetResource = targetResource;
     this.summary = summary;
     collectValueColumnSchemaList();
+    fillAlignedChunkMetadataToMatchSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.chunkWriter = constructAlignedChunkWriter();
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
+  // used for batched column compaction
   public ReadChunkAlignedSeriesCompactionExecutor(
       IDeviceID device,
       TsFileResource targetResource,
@@ -108,7 +112,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       CompactionTsFileWriter writer,
       CompactionTaskSummary summary,
       IMeasurementSchema timeSchema,
-      List<IMeasurementSchema> valueSchemaList) {
+      List<IMeasurementSchema> valueSchemaList,
+      boolean ignoreAllNullRows) {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.writer = writer;
@@ -119,11 +124,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.timeSchema = timeSchema;
     this.schemaList = valueSchemaList;
-    this.measurementSchemaListIndexMap = new HashMap<>();
-    for (int i = 0; i < schemaList.size(); i++) {
-      measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
-    }
     this.chunkWriter = constructAlignedChunkWriter();
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   private void collectValueColumnSchemaList() throws IOException {
@@ -171,10 +173,18 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         measurementSchemaMap.values().stream()
             .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementId))
             .collect(Collectors.toList());
+  }
 
-    this.measurementSchemaListIndexMap = new HashMap<>();
-    for (int i = 0; i < schemaList.size(); i++) {
-      this.measurementSchemaListIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+  private void fillAlignedChunkMetadataToMatchSchemaList() {
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> pair : readerAndChunkMetadataList) {
+      List<AlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+      for (int i = 0; i < alignedChunkMetadataList.size(); i++) {
+        AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(i);
+        alignedChunkMetadataList.set(
+            i,
+            AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+                alignedChunkMetadata, schemaList));
+      }
     }
   }
 
@@ -209,17 +219,17 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws IOException, PageException {
     ChunkLoader timeChunk =
         getChunkLoader(reader, (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata());
-    List<ChunkLoader> valueChunks = Arrays.asList(new ChunkLoader[schemaList.size()]);
-    Collections.fill(valueChunks, getChunkLoader(reader, null));
+    List<ChunkLoader> valueChunks = new ArrayList<>(schemaList.size());
     long pointNum = 0;
-    for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (chunkMetadata == null || !isValueChunkDataTypeMatchSchema(chunkMetadata)) {
+    for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
+      IChunkMetadata chunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(i);
+      if (chunkMetadata == null
+          || !chunkMetadata.getDataType().equals(schemaList.get(i).getType())) {
+        valueChunks.add(getChunkLoader(reader, null));
         continue;
       }
       pointNum += chunkMetadata.getStatistics().getCount();
-      ChunkLoader valueChunk = getChunkLoader(reader, (ChunkMetadata) chunkMetadata);
-      int idx = measurementSchemaListIndexMap.get(chunkMetadata.getMeasurementUid());
-      valueChunks.set(idx, valueChunk);
+      valueChunks.add(getChunkLoader(reader, (ChunkMetadata) chunkMetadata));
     }
     summary.increaseProcessPointNum(pointNum);
     if (flushController.canFlushCurrentChunkWriter()) {
@@ -230,12 +240,6 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     } else {
       compactAlignedChunkByDeserialize(timeChunk, valueChunks);
     }
-  }
-
-  private boolean isValueChunkDataTypeMatchSchema(IChunkMetadata valueChunkMetadata) {
-    String measurement = valueChunkMetadata.getMeasurementUid();
-    IMeasurementSchema schema = schemaList.get(measurementSchemaListIndexMap.get(measurement));
-    return schema.getType() == valueChunkMetadata.getDataType();
   }
 
   private ChunkLoader getChunkLoader(TsFileSequenceReader reader, ChunkMetadata chunkMetadata)
@@ -256,7 +260,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws IOException {
     writer.markStartingWritingAligned();
     checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getStartTime());
-    checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
+    if (timeChunk.getChunkMetadata().getStartTime() != timeChunk.getChunkMetadata().getEndTime()) {
+      checkAndUpdatePreviousTimestamp(timeChunk.getChunkMetadata().getEndTime());
+    }
     writer.writeChunk(timeChunk.getChunk(), timeChunk.getChunkMetadata());
     timeChunk.clear();
     int nonEmptyChunkNum = 1;
@@ -303,7 +309,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
             pageListOfValueColumn.isEmpty() ? getEmptyPage() : pageListOfValueColumn.get(i));
       }
 
-      if (isAllValuePageEmpty(timePage, valuePages)) {
+      // used for tree model
+      if (ignoreAllNullRows && isAllValuePageEmpty(timePage, valuePages)) {
+        continue;
+      }
+      // used for table model deletion
+      if (!ignoreAllNullRows && timePage.isEmpty()) {
         continue;
       }
 
@@ -336,7 +347,9 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       throws PageException, IOException {
     int nonEmptyPage = 1;
     checkAndUpdatePreviousTimestamp(timePage.getHeader().getStartTime());
-    checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    if (timePage.getHeader().getStartTime() != timePage.getHeader().getEndTime()) {
+      checkAndUpdatePreviousTimestamp(timePage.getHeader().getEndTime());
+    }
     timePage.flushToTimeChunkWriter(chunkWriter);
     for (int i = 0; i < valuePageLoaders.size(); i++) {
       PageLoader valuePage = valuePageLoaders.get(i);
@@ -354,49 +367,33 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     ByteBuffer uncompressedTimePageData = timePage.getUnCompressedData();
     Decoder timeDecoder = Decoder.getDecoderByType(timePage.getEncoding(), TSDataType.INT64);
     timePage.clear();
+    TimePageReader timePageReader =
+        new TimePageReader(timePageHeader, uncompressedTimePageData, timeDecoder);
+    timePageReader.setDeleteIntervalList(timePage.getDeleteIntervalList());
 
-    List<PageHeader> valuePageHeaders = new ArrayList<>(valuePages.size());
-    List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>(valuePages.size());
-    List<TSDataType> valueDataTypes = new ArrayList<>(valuePages.size());
-    List<Decoder> valueDecoders = new ArrayList<>(valuePages.size());
-    List<List<TimeRange>> deleteIntervalLists = new ArrayList<>(valuePages.size());
+    List<ValuePageReader> valuePageReaders = new ArrayList<>(valuePages.size());
     int nonEmptyPageNum = 1;
     for (int i = 0; i < valuePages.size(); i++) {
       PageLoader valuePage = valuePages.get(i);
-      if (valuePage.isEmpty()) {
-        valuePageHeaders.add(null);
-        uncompressedValuePageDatas.add(null);
-        valueDataTypes.add(schemaList.get(i).getType());
-        valueDecoders.add(
-            Decoder.getDecoderByType(
-                schemaList.get(i).getEncodingType(), schemaList.get(i).getType()));
-        deleteIntervalLists.add(null);
-      } else {
-        valuePageHeaders.add(valuePage.getHeader());
-        uncompressedValuePageDatas.add(valuePage.getUnCompressedData());
-        valueDataTypes.add(valuePage.getDataType());
-        valueDecoders.add(
-            Decoder.getDecoderByType(valuePage.getEncoding(), valuePage.getDataType()));
-        deleteIntervalLists.add(valuePage.getDeleteIntervalList());
-        valuePage.clear();
+      ValuePageReader valuePageReader = null;
+      if (!valuePage.isEmpty()) {
+        valuePageReader =
+            new ValuePageReader(
+                valuePage.getHeader(),
+                valuePage.getUnCompressedData(),
+                schemaList.get(i).getType(),
+                Decoder.getDecoderByType(
+                    schemaList.get(i).getEncodingType(), schemaList.get(i).getType()));
+        valuePageReader.setDeleteIntervalList(valuePage.getDeleteIntervalList());
         nonEmptyPageNum++;
       }
+      valuePage.clear();
+      valuePageReaders.add(valuePageReader);
     }
     summary.increaseDeserializedPageNum(nonEmptyPageNum);
 
-    AlignedPageReader alignedPageReader =
-        new AlignedPageReader(
-            timePageHeader,
-            uncompressedTimePageData,
-            timeDecoder,
-            valuePageHeaders,
-            uncompressedValuePageDatas,
-            valueDataTypes,
-            valueDecoders,
-            null);
-    alignedPageReader.setDeleteIntervalList(deleteIntervalLists);
     long processedPointNum = 0;
-    IPointReader lazyPointReader = getPointReader(alignedPageReader);
+    IPointReader lazyPointReader = getPointReader(timePageReader, valuePageReaders);
     while (lazyPointReader.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = lazyPointReader.nextTimeValuePair();
       long currentTime = timeValuePair.getTimestamp();
@@ -412,8 +409,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     }
   }
 
-  protected IPointReader getPointReader(AlignedPageReader alignedPageReader) throws IOException {
-    return alignedPageReader.getLazyPointReader();
+  protected IPointReader getPointReader(
+      TimePageReader timePageReader, List<ValuePageReader> valuePageReaders) throws IOException {
+    return new CompactionAlignedPageLazyLoadPointReader(
+        timePageReader, valuePageReaders, this.ignoreAllNullRows);
   }
 
   protected void checkAndUpdatePreviousTimestamp(long currentWritingTimestamp) {
@@ -454,8 +453,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     private boolean canFlushChunk(ChunkLoader timeChunk, List<ChunkLoader> valueChunks)
         throws IOException {
       boolean largeEnough =
-          timeChunk.getHeader().getDataSize() > targetChunkSize
-              || timeChunk.getChunkMetadata().getNumOfPoints() > targetChunkPointNum;
+          timeChunk.getHeader().getDataSize() >= targetChunkSize
+              || timeChunk.getChunkMetadata().getNumOfPoints() >= targetChunkPointNum;
       if (timeSchema.getEncodingType() != timeChunk.getHeader().getEncodingType()
           || timeSchema.getCompressor() != timeChunk.getHeader().getCompressionType()) {
         return false;
@@ -473,7 +472,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         if (valueChunk.getModifiedStatus() == ModifiedStatus.PARTIAL_DELETED) {
           return false;
         }
-        if (valueChunk.getHeader().getDataSize() > targetChunkSize) {
+        if (valueChunk.getHeader().getDataSize() >= targetChunkSize) {
           largeEnough = true;
         }
       }

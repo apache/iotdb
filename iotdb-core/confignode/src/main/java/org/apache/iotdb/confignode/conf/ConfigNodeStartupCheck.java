@@ -142,10 +142,9 @@ public class ConfigNodeStartupCheck extends StartupChecks {
           "the SchemaRegion doesn't support org.apache.iotdb.consensus.iot.IoTConsensus");
     }
 
-    // When the schemaengine region consensus protocol is set to PipeConsensus,
+    // When the schemaengine region consensus protocol is set to IoTConsensusV2,
     // we should report an error
-    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-        || CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+    if (CONF.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       throw new ConfigurationException(
           "schema_region_consensus_protocol_class",
           String.valueOf(CONF.getSchemaRegionConsensusProtocolClass()),

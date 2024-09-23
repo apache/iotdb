@@ -279,7 +279,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
             "Unsupported node type " + insertNodes.get(0).getType());
     }
     result.setSearchIndex(insertNodes.get(0).getSearchIndex());
-    result.setDevicePath(insertNodes.get(0).getDevicePath());
+    result.setTargetPath(insertNodes.get(0).getTargetPath());
     return result;
   }
 

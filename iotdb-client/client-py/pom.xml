@@ -151,7 +151,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <!-- here the phase you need -->
-                        <phase>generate-sources</phase>
+                        <phase>process-resources</phase>
                         <configuration>
                             <encoding>utf-8</encoding>
                             <outputDirectory>${basedir}/</outputDirectory>

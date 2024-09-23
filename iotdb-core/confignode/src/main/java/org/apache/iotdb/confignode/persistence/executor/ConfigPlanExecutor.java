@@ -27,8 +27,9 @@ import org.apache.iotdb.commons.schema.node.MNodeType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -44,6 +45,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotL
 import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
@@ -55,6 +57,7 @@ import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
@@ -265,7 +268,7 @@ public class ConfigPlanExecutor {
     this.snapshotProcessorList.add(PipeConfigNodeAgent.runtime().listener());
   }
 
-  public DataSet executeQueryPlan(ConfigPhysicalPlan req)
+  public DataSet executeQueryPlan(final ConfigPhysicalReadPlan req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case GetDataNodeConfiguration:
@@ -283,13 +286,13 @@ public class ConfigPlanExecutor {
       case GetOrCreateSchemaPartition:
         return partitionInfo.getSchemaPartition((GetSchemaPartitionPlan) req);
       case ListUser:
-        return authorInfo.executeListUsers((AuthorPlan) req);
+        return authorInfo.executeListUsers((AuthorReadPlan) req);
       case ListRole:
-        return authorInfo.executeListRoles((AuthorPlan) req);
+        return authorInfo.executeListRoles((AuthorReadPlan) req);
       case ListUserPrivilege:
-        return authorInfo.executeListUserPrivileges((AuthorPlan) req);
+        return authorInfo.executeListUserPrivileges((AuthorReadPlan) req);
       case ListRolePrivilege:
-        return authorInfo.executeListRolePrivileges((AuthorPlan) req);
+        return authorInfo.executeListRolePrivileges((AuthorReadPlan) req);
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
@@ -306,6 +309,8 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.getAllTemplateSetInfo();
       case GetTemplateSetInfo:
         return clusterSchemaInfo.getTemplateSetInfo((GetTemplateSetInfoPlan) req);
+      case ShowTable:
+        return clusterSchemaInfo.showTables((ShowTablePlan) req);
       case GetTriggerTable:
         return triggerInfo.getTriggerTable((GetTriggerTablePlan) req);
       case GetTriggerLocation:

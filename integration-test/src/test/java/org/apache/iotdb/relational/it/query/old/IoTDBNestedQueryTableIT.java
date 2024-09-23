@@ -79,6 +79,8 @@ public class IoTDBNestedQueryTableIT {
 
       statement.execute(
           "create table vehicle2(device_id STRING ID, s1 FLOAT MEASUREMENT, s2 DOUBLE MEASUREMENT, empty DOUBLE MEASUREMENT)");
+      statement.execute(
+          "create table likeTest(device_id STRING ID, s1 TEXT MEASUREMENT, s2 STRING MEASUREMENT)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -101,6 +103,12 @@ public class IoTDBNestedQueryTableIT {
       statement.execute("insert into vehicle1(time,device_id,s5) values(1, 'd1', '2024-01-01')");
       statement.execute("insert into vehicle1(time,device_id,s5) values(2, 'd1','2024-01-02')");
       statement.execute("insert into vehicle1(time,device_id,s5) values(3, 'd1','2024-01-03')");
+      statement.execute(
+          "insert into likeTest(time,device_id,s1,s2) values(1, 'd1','abcdef', '123456')");
+      statement.execute(
+          "insert into likeTest(time,device_id,s1,s2) values(2, 'd1','_abcdef', '123\\456')");
+      statement.execute(
+          "insert into likeTest(time,device_id,s1,s2) values(3, 'd1','abcdef%', '123#456')");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -403,45 +411,63 @@ public class IoTDBNestedQueryTableIT {
   public void testRegularLikeInExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      //      String query =
-      //          "SELECT s1 FROM vehicle1 where device_id='d1' WHERE s3 LIKE '_' && s3 REGEXP
-      // '[0-9]' && s3 IN ('4', '2', '3')";
-      //      try (ResultSet rs = statement.executeQuery(query)) {
-      //        for (int i = 2; i <= 4; i++) {
-      //          Assert.assertTrue(rs.next());
-      //          Assert.assertEquals(i, rs.getLong(1));
-      //        }
-      //        Assert.assertFalse(rs.next());
-      //      }
-
-      //      String query2 =
-      //          "SELECT s1 FROM vehicle1 where device_id='d1' WHERE s4 LIKE '_' && s4 REGEXP
-      // '[0-9]' && s4 IN ('4', '2', '3')";
-      //      try (ResultSet rs = statement.executeQuery(query2)) {
-      //        for (int i = 2; i <= 4; i++) {
-      //          Assert.assertTrue(rs.next());
-      //          Assert.assertEquals(i, rs.getLong(1));
-      //        }
-      //        Assert.assertFalse(rs.next());
-      //      }
       statement.execute("USE " + DATABASE_NAME);
-
-      //      String query3 =
-      //          "SELECT time,s1 FROM vehicle1 where device_id='d1' and s5 IN ('2024-01-01',
-      // '2024-01-02', '2024-01-03')";
-      //      try (ResultSet rs = statement.executeQuery(query3)) {
-      //        for (int i = 1; i <= 3; i++) {
-      //          Assert.assertTrue(rs.next());
-      //          Assert.assertEquals(i, rs.getLong(1));
-      //        }
-      //        Assert.assertFalse(rs.next());
-      //      }
-
-      String query4 = "SELECT time,s1 FROM vehicle1 where device_id='d1' and s6 IN (1, 2, 3)";
-      try (ResultSet rs = statement.executeQuery(query4)) {
-        for (int i = 1; i <= 3; i++) {
+      String[] ans = new String[] {"abcdef"};
+      String query = "SELECT s1 FROM likeTest where s1 LIKE 'abcdef'";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i < 3; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(i, rs.getLong(1));
+          Assert.assertEquals(ans[i - 2], rs.getString(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      ans = new String[] {"_abcdef"};
+      query = "SELECT s1 FROM likeTest where s1 LIKE '\\_%' escape '\\'";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i < 3; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(ans[i - 2], rs.getString(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      ans = new String[] {"abcdef", "_abcdef", "abcdef%"};
+      query = "SELECT s1 FROM likeTest where s1 LIKE '%abcde%' escape '\\'";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i < 5; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(ans[i - 2], rs.getString(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      ans = new String[] {"123456"};
+      query = "SELECT s2 FROM likeTest where s2 LIKE '12345_'";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i < 3; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(ans[i - 2], rs.getString(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      ans = new String[] {"123\\456"};
+      query = "SELECT s2 FROM likeTest where s2 LIKE '%\\\\%' escape '\\'";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i < 3; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(ans[i - 2], rs.getString(1));
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      ans = new String[] {"123#456"};
+      query = "SELECT s2 FROM likeTest where s2 LIKE '123##456' escape '#'";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = 2; i < 3; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(ans[i - 2], rs.getString(1));
         }
         Assert.assertFalse(rs.next());
       }

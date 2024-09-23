@@ -17,15 +17,11 @@
 #
 
 # for package
-from .Field import Field
-
-# for debug
-# from IoTDBConstants import TSDataType
-# from Field import Field
+from iotdb.utils.Field import Field
 
 
 class RowRecord(object):
-    def __init__(self, timestamp, field_list=None):
+    def __init__(self, timestamp, field_list: list = None):
         self.__timestamp = timestamp
         self.__field_list = field_list
 

@@ -115,7 +115,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
               .map(measurement -> measurementSchemas[measurementToSchemaIndexMap.get(measurement)])
               .collect(Collectors.toList());
       // only one row
-      Tablet tablet = new Tablet(node.getDevicePath().getFullPath(), schemas, 1);
+      Tablet tablet = new Tablet(node.getTargetPath().getFullPath(), schemas, 1);
       // add one row
       tablet.rowSize++;
       tablet.addTimestamp(0, time);
@@ -166,7 +166,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         // all measurements are included
         tablet =
             new Tablet(
-                node.getDevicePath().getFullPath(),
+                node.getTargetPath().getFullPath(),
                 Arrays.asList(measurementSchemas),
                 timestamps,
                 columns,
@@ -192,7 +192,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
         }
         tablet =
             new Tablet(
-                node.getDevicePath().getFullPath(),
+                node.getTargetPath().getFullPath(),
                 schemas,
                 timestamps,
                 columnsOfNewTablet,
@@ -291,7 +291,7 @@ public class TriggerFireVisitor extends PlanVisitor<TriggerFireResult, TriggerEv
 
   private Map<String, List<String>> constructTriggerNameToMeasurementListMap(
       InsertNode node, TriggerEvent event) {
-    PartialPath device = node.getDevicePath();
+    PartialPath device = node.getTargetPath();
     List<String> measurements = new ArrayList<>();
     for (String measurement : node.getMeasurements()) {
       if (measurement != null) {

@@ -110,7 +110,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     } catch (BatchProcessException e) {
       LOGGER.warn(
           "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
-          node.getDevicePath(),
+          node.getTargetPath(),
           node.getTimes()[0],
           node.getMeasurements(),
           e.getFailingStatus());
@@ -149,7 +149,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
         LOGGER.warn(
             "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
-            insertRowNode.getDevicePath(),
+            insertRowNode.getTargetPath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
             failedEntry.getValue());
@@ -180,7 +180,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
         LOGGER.warn(
             "Insert tablet failed. device: {}, startTime: {}, measurements: {}, failing status: {}",
-            insertTabletNode.getDevicePath(),
+            insertTabletNode.getTargetPath(),
             insertTabletNode.getTimes()[0],
             insertTabletNode.getMeasurements(),
             failedEntry.getValue());
@@ -217,7 +217,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
         }
         LOGGER.warn(
             "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
-            insertRowNode.getDevicePath(),
+            insertRowNode.getTargetPath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
             failedEntry.getValue());

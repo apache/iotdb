@@ -30,8 +30,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class IoTProgressIndex extends ProgressIndex {
@@ -41,12 +43,15 @@ public class IoTProgressIndex extends ProgressIndex {
   private final Map<Integer, Long> peerId2SearchIndex;
 
   private IoTProgressIndex() {
-    peerId2SearchIndex = new HashMap<>();
+    this(Collections.emptyMap());
   }
 
   public IoTProgressIndex(Integer peerId, Long searchIndex) {
-    peerId2SearchIndex = new HashMap<>();
-    peerId2SearchIndex.put(peerId, searchIndex);
+    this(Collections.singletonMap(peerId, searchIndex));
+  }
+
+  public IoTProgressIndex(Map<Integer, Long> peerId2SearchIndex) {
+    this.peerId2SearchIndex = new HashMap<>(peerId2SearchIndex);
   }
 
   @Override
@@ -151,7 +156,7 @@ public class IoTProgressIndex extends ProgressIndex {
 
   @Override
   public int hashCode() {
-    return 0;
+    return Objects.hash(peerId2SearchIndex);
   }
 
   @Override
@@ -164,11 +169,13 @@ public class IoTProgressIndex extends ProgressIndex {
 
       final IoTProgressIndex thisIoTProgressIndex = this;
       final IoTProgressIndex thatIoTProgressIndex = (IoTProgressIndex) progressIndex;
+      final Map<Integer, Long> peerId2SearchIndex =
+          new HashMap<>(thisIoTProgressIndex.peerId2SearchIndex);
       thatIoTProgressIndex.peerId2SearchIndex.forEach(
           (thatK, thatV) ->
-              thisIoTProgressIndex.peerId2SearchIndex.compute(
+              peerId2SearchIndex.compute(
                   thatK, (thisK, thisV) -> (thisV == null ? thatV : Math.max(thisV, thatV))));
-      return this;
+      return new IoTProgressIndex(peerId2SearchIndex);
     } finally {
       lock.writeLock().unlock();
     }
@@ -185,6 +192,15 @@ public class IoTProgressIndex extends ProgressIndex {
     try {
       return new TotalOrderSumTuple(
           peerId2SearchIndex.values().stream().mapToLong(Long::longValue).sum());
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  public int getPeerId2SearchIndexSize() {
+    lock.readLock().lock();
+    try {
+      return peerId2SearchIndex.size();
     } finally {
       lock.readLock().unlock();
     }

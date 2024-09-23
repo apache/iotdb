@@ -24,13 +24,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.IterativeOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.AddTableScanColumnsToTypeProviderOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.InlineProjections;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimits;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneAggregationSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneFilterColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinChildrenColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneJoinColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneLimitColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneOffsetColumns;
@@ -61,11 +65,12 @@ public class LogicalOptimizeFactory {
     Metadata metadata = plannerContext.getMetadata();
     RuleStatsRecorder ruleStats = new RuleStatsRecorder();
 
-    PlanOptimizer pushPredicateIntoTableScanOptimizer = new PushPredicateIntoTableScan();
-    PlanOptimizer transformSortToStreamSortOptimizer = new TransformSortToStreamSort();
-
     Set<Rule<?>> columnPruningRules =
         ImmutableSet.of(
+            new PruneAggregationColumns(),
+            // TODO After ValuesNode introduced
+            // new RemoveEmptyGlobalAggregation(),
+            new PruneAggregationSourceColumns(),
             new PruneFilterColumns(),
             new PruneLimitColumns(),
             new PruneOffsetColumns(),
@@ -74,7 +79,8 @@ public class LogicalOptimizeFactory {
             new PruneSortColumns(),
             new PruneTableScanColumns(plannerContext.getMetadata()),
             new PruneTopKColumns(),
-            new PruneJoinColumns());
+            new PruneJoinColumns(),
+            new PruneJoinChildrenColumns());
     IterativeOptimizer columnPruningOptimizer =
         new IterativeOptimizer(plannerContext, ruleStats, columnPruningRules);
 
@@ -119,84 +125,84 @@ public class LogicalOptimizeFactory {
 
     Set<Rule<?>> limitPushdownRules =
         ImmutableSet.of(new PushLimitThroughOffset(), new PushLimitThroughProject());
-    IterativeOptimizer limitPushdownOptimizer =
-        new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules);
 
-    PlanOptimizer pushLimitOffsetIntoTableScanOptimizer = new PushLimitOffsetIntoTableScan();
+    ImmutableList.Builder<PlanOptimizer> optimizerBuilder = ImmutableList.builder();
 
-    IterativeOptimizer topKOptimizer =
+    optimizerBuilder.add(
         new IterativeOptimizer(
             plannerContext,
             ruleStats,
-            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort()));
+            ImmutableSet.<Rule<?>>builder()
+                .addAll(columnPruningRules)
+                // .addAll(projectionPushdownRules).
+                // addAll(newUnwrapRowSubscript().rules()).
+                // addAll(new PushCastIntoRow().rules())
+                .addAll(
+                    ImmutableSet.of(
+                        new MergeFilters(),
+                        new InlineProjections(plannerContext),
+                        new RemoveRedundantIdentityProjections(),
+                        new MergeLimits(),
+                        new RemoveTrivialFilters()
+                        //                        new RemoveRedundantLimit(),
+                        //                        new RemoveRedundantOffset(),
+                        //                        new RemoveRedundantSort(),
+                        //                        new RemoveRedundantSortBelowLimitWithTies(),
+                        //                        new RemoveRedundantTopN(),
+                        //                        new RemoveRedundantDistinctLimit(),
+                        //                        new ReplaceRedundantJoinWithSource(),
+                        //                        new RemoveRedundantJoin(),
+                        //                        new ReplaceRedundantJoinWithProject(),
+                        //                        new RemoveRedundantExists(),
+                        //                        new RemoveRedundantWindow(),
+                        //                        new SingleDistinctAggregationToGroupBy(),
+                        //                        new MergeLimitWithDistinct(),
+                        //                        new PruneCountAggregationOverScalar(metadata),
+                        //                        new SimplifyCountOverConstant(plannerContext),
+                        //                        new
+                        // PreAggregateCaseAggregations(plannerContext, typeAnalyzer)))
+                        ))
+                .build()),
+        // MergeUnion and related projection pruning rules must run before limit pushdown rules,
+        // otherwise
+        // an intermediate limit node will prevent unions from being merged later on
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.<Rule<?>>builder()
+                // .addAll(projectionPushdownRules)
+                .addAll(columnPruningRules)
+                .addAll(limitPushdownRules)
+                .addAll(
+                    ImmutableSet.of(
+                        // new MergeUnion(),
+                        // new RemoveEmptyUnionBranches(),
+                        new MergeFilters(),
+                        new RemoveTrivialFilters(),
+                        new MergeLimits(),
+                        new InlineProjections(plannerContext),
+                        new RemoveRedundantIdentityProjections()))
+                .build()),
+        simplifyOptimizer,
+        new UnaliasSymbolReferences(plannerContext.getMetadata()),
+        columnPruningOptimizer,
+        inlineProjectionLimitFiltersOptimizer,
+        new PushPredicateIntoTableScan(),
+        // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
+        columnPruningOptimizer,
+        inlineProjectionLimitFiltersOptimizer,
+        new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules),
+        new PushLimitOffsetIntoTableScan(),
+        new TransformAggregationToStreamable(),
+        new PushAggregationIntoTableScan(),
+        new TransformSortToStreamSort(),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.of(new MergeLimitWithSort(), new MergeLimitOverProjectWithSort())),
+        new AddTableScanColumnsToTypeProviderOptimizer());
 
-    this.planOptimizers =
-        ImmutableList.of(
-            new IterativeOptimizer(
-                plannerContext,
-                ruleStats,
-                ImmutableSet.<Rule<?>>builder()
-                    .addAll(columnPruningRules)
-                    //                    .addAll(projectionPushdownRules)
-                    //                    .addAll(new UnwrapRowSubscript().rules())
-                    //                    .addAll(new PushCastIntoRow().rules())
-                    .addAll(
-                        ImmutableSet.of(
-                            new MergeFilters(),
-                            new InlineProjections(plannerContext),
-                            new RemoveRedundantIdentityProjections(),
-                            new MergeLimits(),
-                            new RemoveTrivialFilters()
-                            //                        new RemoveRedundantLimit(),
-                            //                        new RemoveRedundantOffset(),
-                            //                        new RemoveRedundantSort(),
-                            //                        new RemoveRedundantSortBelowLimitWithTies(),
-                            //                        new RemoveRedundantTopN(),
-                            //                        new RemoveRedundantDistinctLimit(),
-                            //                        new ReplaceRedundantJoinWithSource(),
-                            //                        new RemoveRedundantJoin(),
-                            //                        new ReplaceRedundantJoinWithProject(),
-                            //                        new RemoveRedundantExists(),
-                            //                        new RemoveRedundantWindow(),
-                            //                        new SingleDistinctAggregationToGroupBy(),
-                            //                        new MergeLimitWithDistinct(),
-                            //                        new PruneCountAggregationOverScalar(metadata),
-                            //                        new SimplifyCountOverConstant(plannerContext),
-                            //                        new
-                            // PreAggregateCaseAggregations(plannerContext, typeAnalyzer)))
-                            ))
-                    .build()),
-            // MergeUnion and related projection pruning rules must run before limit pushdown rules,
-            // otherwise
-            // an intermediate limit node will prevent unions from being merged later on
-            new IterativeOptimizer(
-                plannerContext,
-                ruleStats,
-                ImmutableSet.<Rule<?>>builder()
-                    //                    .addAll(projectionPushdownRules)
-                    .addAll(columnPruningRules)
-                    .addAll(limitPushdownRules)
-                    .addAll(
-                        ImmutableSet.of(
-                            //                        new MergeUnion(),
-                            //                        new RemoveEmptyUnionBranches(),
-                            new MergeFilters(),
-                            new RemoveTrivialFilters(),
-                            new MergeLimits(),
-                            new InlineProjections(plannerContext),
-                            new RemoveRedundantIdentityProjections()))
-                    .build()),
-            simplifyOptimizer,
-            columnPruningOptimizer,
-            inlineProjectionLimitFiltersOptimizer,
-            pushPredicateIntoTableScanOptimizer,
-            // redo columnPrune and inlineProjections after pushPredicateIntoTableScan
-            columnPruningOptimizer,
-            inlineProjectionLimitFiltersOptimizer,
-            limitPushdownOptimizer,
-            pushLimitOffsetIntoTableScanOptimizer,
-            transformSortToStreamSortOptimizer,
-            topKOptimizer);
+    this.planOptimizers = optimizerBuilder.build();
   }
 
   public List<PlanOptimizer> getPlanOptimizers() {

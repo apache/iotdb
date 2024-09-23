@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICrossSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
@@ -39,12 +40,13 @@ public enum CrossCompactionSelector {
       String logicalStorageGroupName,
       String virtualGroupId,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     switch (this) {
       case REWRITE:
       default:
         return new RewriteCrossSpaceCompactionSelector(
-            logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager);
+            logicalStorageGroupName, virtualGroupId, timePartition, tsFileManager, context);
     }
   }
 }

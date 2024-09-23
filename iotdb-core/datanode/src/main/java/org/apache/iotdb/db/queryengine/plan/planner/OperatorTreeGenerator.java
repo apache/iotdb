@@ -327,7 +327,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   private static final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE =
       DataNodeSchemaCache.getInstance();
 
-  private static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
+  public static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
 
   private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
 

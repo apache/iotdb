@@ -72,9 +72,11 @@ public class TsFileResourceCandidate {
   }
 
   private void prepareDeviceInfos() throws IOException {
+    boolean canCacheDeviceInfo = resource.getStatus() != TsFileResourceStatus.UNCLOSED;
     if (deviceInfoMap == null && compactionScheduleContext != null) {
       // get device info from cache
       deviceInfoMap = compactionScheduleContext.getResourceDeviceInfo(this.resource);
+      hasDetailedDeviceInfo = true;
     }
     if (deviceInfoMap != null) {
       return;
@@ -107,7 +109,7 @@ public class TsFileResourceCandidate {
       }
     }
     hasDetailedDeviceInfo = true;
-    if (compactionScheduleContext != null) {
+    if (compactionScheduleContext != null && canCacheDeviceInfo) {
       compactionScheduleContext.addResourceDeviceTimeIndex(this.resource, deviceInfoMap);
     }
   }

@@ -108,6 +108,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggre
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -249,6 +250,7 @@ public enum PlanNodeType {
   TABLE_TOPK_NODE((short) 1008),
   TABLE_COLLECT_NODE((short) 1009),
   TABLE_STREAM_SORT_NODE((short) 1010),
+  TABLE_JOIN_NODE((short) 1011),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -285,6 +287,8 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(stream);
       case 44:
         return DeleteDataNode.deserializeFromWAL(stream);
+      case 97:
+        return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(stream);
       case 2000:
         return RelationalInsertTabletNode.deserializeFromWAL(stream);
       case 2001:
@@ -307,6 +311,8 @@ public enum PlanNodeType {
         return InsertRowsNode.deserializeFromWAL(buffer);
       case 44:
         return DeleteDataNode.deserializeFromWAL(buffer);
+      case 97:
+        return ContinuousSameSearchIndexSeparatorNode.deserializeFromWAL(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserializeFromWAL(buffer);
       case 2001:
@@ -512,6 +518,9 @@ public enum PlanNodeType {
         return ActiveRegionScanMergeNode.deserialize(buffer);
       case 96:
         return DeviceSchemaFetchScanNode.deserialize(buffer);
+      case 97:
+        throw new UnsupportedOperationException(
+            "You should never see ContinuousSameSearchIndexSeparatorNode in this function, because ContinuousSameSearchIndexSeparatorNode should never be used in network transmission.");
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
       case 903:
@@ -555,6 +564,9 @@ public enum PlanNodeType {
       case 1010:
         return org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode
             .deserialize(buffer);
+      case 1011:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode.deserialize(
+            buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
