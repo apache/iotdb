@@ -55,8 +55,6 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -1116,7 +1114,6 @@ public class ConfigPhysicalPlanSerDeTest {
         consumerGroupHandleMetaChangePlan.getConsumerGroupMetaList(),
         consumerGroupHandleMetaChangePlan1.getConsumerGroupMetaList());
   }
-
 
   @Test
   public void AddTriggerInTablePlanTest() throws IOException, IllegalPathException {
