@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.pipe.task.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.task.execution.executor.PipeSubtaskExecutor;
 
 public class PipeProcessorSubtaskExecutor extends PipeSubtaskExecutor {
 

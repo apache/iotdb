@@ -21,10 +21,10 @@ package org.apache.iotdb.confignode.manager.pipe.execution;
 
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.task.execution.executor.PipeSubtaskExecutor;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
-import org.apache.iotdb.commons.pipe.task.subtask.PipeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeSubtask;
 import org.apache.iotdb.confignode.manager.pipe.task.PipeConfigNodeSubtaskExecutor;
 

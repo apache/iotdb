@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.task;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.pipe.task.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskExecutor;
 import org.apache.iotdb.commons.utils.TestOnly;
 
 public class PipeConfigNodeSubtaskExecutor extends PipeSubtaskExecutor {

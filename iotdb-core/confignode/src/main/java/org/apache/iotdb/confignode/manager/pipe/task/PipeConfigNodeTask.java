@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.pipe.task;
 
-import org.apache.iotdb.commons.pipe.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
 
 public class PipeConfigNodeTask implements PipeTask {
 

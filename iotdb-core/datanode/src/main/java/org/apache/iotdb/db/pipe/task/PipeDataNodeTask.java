@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.task;
 
-import org.apache.iotdb.commons.pipe.task.PipeTask;
-import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
+import org.apache.iotdb.commons.pipe.agent.task.PipeTask;
+import org.apache.iotdb.commons.pipe.agent.task.stage.PipeTaskStage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

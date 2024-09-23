@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.task.subtask.connector;
 
-import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.db.pipe.task.execution.PipeConnectorSubtaskExecutor;
 import org.apache.iotdb.pipe.api.event.Event;
 
