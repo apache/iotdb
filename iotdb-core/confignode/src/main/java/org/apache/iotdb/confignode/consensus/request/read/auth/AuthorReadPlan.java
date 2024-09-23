@@ -30,14 +30,14 @@ import java.util.Set;
 
 public class AuthorReadPlan extends ConfigPhysicalReadPlan {
 
-  private ConfigPhysicalPlanType authorType;
-  private String roleName;
+  private final ConfigPhysicalPlanType authorType;
+  private final String roleName;
   private String password;
-  private String newPassword;
+  private final String newPassword;
   private Set<Integer> permissions;
-  private List<PartialPath> nodeNameList;
+  private final List<PartialPath> nodeNameList;
   private String userName;
-  private boolean grantOpt;
+  private final boolean grantOpt;
 
   /**
    * {@link AuthorReadPlan} Constructor.
@@ -71,20 +71,8 @@ public class AuthorReadPlan extends ConfigPhysicalReadPlan {
     this.nodeNameList = nodeNameList;
   }
 
-  public ConfigPhysicalPlanType getAuthorType() {
-    return authorType;
-  }
-
-  public void setAuthorType(final ConfigPhysicalPlanType authorType) {
-    this.authorType = authorType;
-  }
-
   public String getRoleName() {
     return roleName;
-  }
-
-  public void setRoleName(final String roleName) {
-    this.roleName = roleName;
   }
 
   public String getPassword() {
@@ -95,32 +83,12 @@ public class AuthorReadPlan extends ConfigPhysicalReadPlan {
     this.password = password;
   }
 
-  public String getNewPassword() {
-    return newPassword;
-  }
-
   public Set<Integer> getPermissions() {
     return permissions;
   }
 
   public void setPermissions(final Set<Integer> permissions) {
     this.permissions = permissions;
-  }
-
-  public boolean getGrantOpt() {
-    return this.grantOpt;
-  }
-
-  public void setGrantOpt(final boolean grantOpt) {
-    this.grantOpt = grantOpt;
-  }
-
-  public List<PartialPath> getNodeNameList() {
-    return nodeNameList;
-  }
-
-  public void setNodeNameList(final List<PartialPath> nodeNameList) {
-    this.nodeNameList = nodeNameList;
   }
 
   public String getUserName() {
