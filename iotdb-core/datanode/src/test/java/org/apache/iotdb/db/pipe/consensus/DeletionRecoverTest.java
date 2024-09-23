@@ -62,18 +62,12 @@ public class DeletionRecoverTest {
       DeleteDataNode deleteDataNode =
           new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
       deleteDataNode.setProgressIndex(
-          new RecoverProgressIndex(
-              THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, deletionCount - i)));
+          new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
       PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionResourceManager.registerDeletionResource(deletionEvent);
       deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
     }
-    // Manually close for further test
-    deletionResourceManager.close();
-  }
-
-  @After
-  public void tearDown() throws Exception {
+    // Manually close to ensure all deletions are persisted
     deletionResourceManager.close();
   }
 

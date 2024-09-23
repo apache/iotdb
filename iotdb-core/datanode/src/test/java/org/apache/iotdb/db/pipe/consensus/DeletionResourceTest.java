@@ -23,15 +23,21 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
+import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
+import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionHybridExtractor;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -45,6 +51,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -166,6 +173,22 @@ public class DeletionResourceTest {
 
   @Test
   public void testWaitForResult() throws Exception {
+    // prepare pipe component
+    PipeRealtimeDataRegionExtractor extractor = new PipeRealtimeDataRegionHybridExtractor();
+    PipeParameters parameters =
+            new PipeParameters(
+                    new HashMap<String, String>() {
+                      {
+                        put(PipeExtractorConstant.EXTRACTOR_INCLUSION_KEY, "data");
+                      }
+                    });
+    PipeTaskRuntimeConfiguration configuration =
+            new PipeTaskRuntimeConfiguration(
+                    new PipeTaskExtractorRuntimeEnvironment("1", 1, Integer.parseInt(FAKE_DATA_REGION_IDS[4]), null));
+    extractor.customize(parameters, configuration);
+    Assert.assertTrue(extractor.shouldExtractDeletion());
+
+    PipeInsertionDataNodeListener.getInstance().startListenAndAssign(FAKE_DATA_REGION_IDS[4], extractor);
     deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_IDS[4]);
     int rebootTimes = 0;
     MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");

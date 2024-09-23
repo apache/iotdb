@@ -83,7 +83,7 @@ public class DeletionResourceManager implements AutoCloseable {
     this.deletionBuffer = new PageCacheDeletionBuffer(dataRegionId, storageDir.getAbsolutePath());
     initAndRecover();
     // Only after initAndRecover can we start serialize and sync new deletions.
-    //    this.deletionBuffer.start();
+    this.deletionBuffer.start();
   }
 
   private void initAndRecover() throws IOException {
