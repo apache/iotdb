@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 public class PipeConsensusConfig {
   private final RPC rpc;
   private final Pipe pipe;
-  // Use stream mode by default. User can configure it
   private final ReplicateMode replicateMode;
 
   public PipeConsensusConfig(RPC rpc, Pipe pipe, ReplicateMode replicateMode) {
