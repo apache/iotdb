@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.execution.scheduler;
+package org.apache.iotdb.commons.pipe.task.execution.scheduler;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.task.execution.executor.PipeSubtaskExecutor;
 
 public class PipeSubtaskScheduler {
 

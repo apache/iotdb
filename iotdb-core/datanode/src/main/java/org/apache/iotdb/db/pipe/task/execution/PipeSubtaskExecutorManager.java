@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution;
+package org.apache.iotdb.db.pipe.task.execution;
 
 import org.apache.iotdb.db.pipe.consensus.PipeConsensusSubtaskExecutor;
 import org.apache.iotdb.db.subscription.execution.executor.SubscriptionSubtaskExecutor;

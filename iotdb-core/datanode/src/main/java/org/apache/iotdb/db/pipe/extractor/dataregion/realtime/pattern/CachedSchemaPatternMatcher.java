@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.pattern;
+package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.pattern;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;

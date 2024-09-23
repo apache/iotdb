@@ -29,8 +29,8 @@ import org.apache.iotdb.commons.pipe.task.connection.UnboundedBlockingPendingQue
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.task.stage.PipeTaskStage;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.connection.PipeEventCollector;
+import org.apache.iotdb.db.pipe.task.execution.PipeProcessorSubtaskExecutor;
 import org.apache.iotdb.db.pipe.task.subtask.processor.PipeProcessorSubtask;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;

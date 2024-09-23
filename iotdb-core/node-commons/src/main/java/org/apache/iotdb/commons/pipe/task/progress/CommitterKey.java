@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.progress;
+package org.apache.iotdb.commons.pipe.task.progress;
 
 import java.util.Objects;
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.pipe.metric;
 
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
+import org.apache.iotdb.commons.pipe.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;

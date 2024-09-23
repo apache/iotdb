@@ -22,9 +22,9 @@ package org.apache.iotdb.commons.pipe.event;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.progress.CommitterKey;
-import org.apache.iotdb.commons.pipe.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.task.progress.CommitterKey;
+import org.apache.iotdb.commons.pipe.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;

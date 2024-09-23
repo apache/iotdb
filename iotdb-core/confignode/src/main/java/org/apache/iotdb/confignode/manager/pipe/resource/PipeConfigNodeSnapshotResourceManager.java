@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.manager.pipe.resource.snapshot;
+package org.apache.iotdb.confignode.manager.pipe.resource;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 
 import java.util.Collections;
 import java.util.HashSet;

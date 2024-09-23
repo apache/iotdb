@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.pipe.execution;
+package org.apache.iotdb.db.pipe.task.execution;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.execution.executor.PipeSubtaskExecutor;
+import org.apache.iotdb.commons.pipe.task.execution.executor.PipeSubtaskExecutor;
 
 public class PipeConnectorSubtaskExecutor extends PipeSubtaskExecutor {
 

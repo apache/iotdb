@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
+import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 
 import java.util.Set;
