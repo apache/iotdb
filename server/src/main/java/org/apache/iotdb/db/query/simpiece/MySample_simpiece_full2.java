@@ -29,9 +29,13 @@ import java.util.Comparator;
 import java.util.List;
 
 public class MySample_simpiece_full2 {
+  // After running this,
+  // output sample csv and copy them into lts-exp/notebook/segmentResults/.
+  // output epsilonArray_*.txt and copy them into lts-exp/tools/.
 
   public static void main(String[] args) {
     String fileDir = "D:\\desktop\\NISTPV\\";
+    // do not change the order of datasets below, as the output is used in exp bash
     String[] datasetNameList = new String[] {"WindSpeed", "Qloss", "Pyra1", "RTD"};
     int[] noutList =
         new int[] {
@@ -141,11 +145,25 @@ public class MySample_simpiece_full2 {
       }
     }
 
-    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
-      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
-        System.out.print(epsilonArray[i][j] + ",");
+//    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
+//      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
+//        System.out.print(epsilonArray[i][j] + ",");
+//      }
+//      System.out.println();
+//    }
+
+    // do not change name of the output file, as the output is used in exp bash
+    try (FileWriter writer = new FileWriter("epsilonArray_simpiece.txt")) {
+      for (double[] row : epsilonArray) {
+        for (double element : row) {
+          writer.write(element + " ");
+          System.out.print(element + ",");
+        }
+        writer.write("\n");
+        System.out.println();
       }
-      System.out.println();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 

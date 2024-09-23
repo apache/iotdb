@@ -259,7 +259,6 @@ public class MyTest_ILTS {
   @Test
   public void test2_2() {
     prepareData2();
-    // https://github.com/LeiRui/iotdb/assets/33376433/bca2de97-47ba-40b9-9e41-353de7a6ab0e
     config.setNumIterations(1); // result equals LTTB
     String res =
         "-1.2079272[0],1.101946[200],-0.523204[300],0.145359[500],-1.014322[700],0.532565[900],"
