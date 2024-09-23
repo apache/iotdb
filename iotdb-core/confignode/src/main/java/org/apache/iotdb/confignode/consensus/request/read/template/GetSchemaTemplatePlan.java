@@ -19,26 +19,17 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.template;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
+public class GetSchemaTemplatePlan extends ConfigPhysicalReadPlan {
 
-  private String templateName;
+  private final String templateName;
 
-  public GetSchemaTemplatePlan() {
+  public GetSchemaTemplatePlan(final String templateName) {
     super(ConfigPhysicalPlanType.GetSchemaTemplate);
-  }
-
-  public GetSchemaTemplatePlan(String templateName) {
-    this();
     this.templateName = templateName;
   }
 
@@ -47,25 +38,14 @@ public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(getType().getPlanType(), stream);
-    ReadWriteIOUtils.write(templateName, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.templateName = ReadWriteIOUtils.readString(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    GetSchemaTemplatePlan that = (GetSchemaTemplatePlan) o;
+    final GetSchemaTemplatePlan that = (GetSchemaTemplatePlan) o;
     return this.templateName.equalsIgnoreCase(that.templateName);
   }
 

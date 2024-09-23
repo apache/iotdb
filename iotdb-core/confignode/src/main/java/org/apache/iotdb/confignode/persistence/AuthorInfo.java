@@ -37,7 +37,8 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
@@ -318,18 +319,18 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
-    PermissionInfoResp result = new PermissionInfoResp();
-    List<String> userList = authorizer.listAllUsers();
+  public PermissionInfoResp executeListUsers(final AuthorReadPlan plan) throws AuthException {
+    final PermissionInfoResp result = new PermissionInfoResp();
+    final List<String> userList = authorizer.listAllUsers();
     if (!plan.getRoleName().isEmpty()) {
-      Role role = authorizer.getRole(plan.getRoleName());
+      final Role role = authorizer.getRole(plan.getRoleName());
       if (role == null) {
         result.setStatus(
             RpcUtils.getStatus(
                 TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
         return result;
       }
-      Iterator<String> itr = userList.iterator();
+      final Iterator<String> itr = userList.iterator();
       while (itr.hasNext()) {
         User userObj = authorizer.getUser(itr.next());
         if (userObj == null || !userObj.hasRole(plan.getRoleName())) {
@@ -343,14 +344,14 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
-    PermissionInfoResp result = new PermissionInfoResp();
-    List<String> permissionInfo = new ArrayList<>();
-    List<String> roleList = new ArrayList<>();
+  public PermissionInfoResp executeListRoles(final AuthorReadPlan plan) throws AuthException {
+    final PermissionInfoResp result = new PermissionInfoResp();
+    final List<String> permissionInfo = new ArrayList<>();
+    final List<String> roleList = new ArrayList<>();
     if (plan.getUserName().isEmpty()) {
       roleList.addAll(authorizer.listAllRoles());
     } else {
-      User user = authorizer.getUser(plan.getUserName());
+      final User user = authorizer.getUser(plan.getUserName());
       if (user == null) {
         result.setStatus(
             RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
@@ -365,22 +366,23 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListRolePrivileges(AuthorPlan plan) throws AuthException {
-    PermissionInfoResp result = new PermissionInfoResp();
-    List<String> permissionInfo = new ArrayList<>();
-    Role role = authorizer.getRole(plan.getRoleName());
+  public PermissionInfoResp executeListRolePrivileges(final AuthorReadPlan plan)
+      throws AuthException {
+    final PermissionInfoResp result = new PermissionInfoResp();
+    final List<String> permissionInfo = new ArrayList<>();
+    final Role role = authorizer.getRole(plan.getRoleName());
     if (role == null) {
       result.setStatus(
           RpcUtils.getStatus(TSStatusCode.ROLE_NOT_EXIST, "No such role : " + plan.getRoleName()));
       result.setMemberInfo(permissionInfo);
       return result;
     }
-    TPermissionInfoResp resp = new TPermissionInfoResp();
-    TRoleResp roleResp = new TRoleResp();
+    final TPermissionInfoResp resp = new TPermissionInfoResp();
+    final TRoleResp roleResp = new TRoleResp();
     roleResp.setRoleName(role.getName());
-    List<TPathPrivilege> pathList = new ArrayList<>();
-    for (PathPrivilege path : role.getPathPrivilegeList()) {
-      TPathPrivilege pathPri = new TPathPrivilege();
+    final List<TPathPrivilege> pathList = new ArrayList<>();
+    for (final PathPrivilege path : role.getPathPrivilegeList()) {
+      final TPathPrivilege pathPri = new TPathPrivilege();
       pathPri.setPriGrantOpt(path.getGrantOpt());
       pathPri.setPriSet(path.getPrivileges());
       pathPri.setPath(path.getPath().toString());
@@ -389,7 +391,7 @@ public class AuthorInfo implements SnapshotProcessor {
     roleResp.setPrivilegeList(pathList);
     roleResp.setSysPriSet(role.getSysPrivilege());
     roleResp.setSysPriSetGrantOpt(role.getSysPriGrantOpt());
-    Map<String, TRoleResp> roleInfo = new HashMap<>();
+    final Map<String, TRoleResp> roleInfo = new HashMap<>();
     roleInfo.put(role.getName(), roleResp);
     resp.setRoleInfo(roleInfo);
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -400,15 +402,16 @@ public class AuthorInfo implements SnapshotProcessor {
     return result;
   }
 
-  public PermissionInfoResp executeListUserPrivileges(AuthorPlan plan) throws AuthException {
-    PermissionInfoResp result = new PermissionInfoResp();
-    User user = authorizer.getUser(plan.getUserName());
+  public PermissionInfoResp executeListUserPrivileges(final AuthorReadPlan plan)
+      throws AuthException {
+    final PermissionInfoResp result = new PermissionInfoResp();
+    final User user = authorizer.getUser(plan.getUserName());
     if (user == null) {
       result.setStatus(
           RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, NO_USER_MSG + plan.getUserName()));
       return result;
     }
-    TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
+    final TPermissionInfoResp resp = getUserPermissionInfo(plan.getUserName());
     resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setTag(ColumnHeaderConstant.PRIVILEGES);
     result.setPermissionInfoResp(resp);

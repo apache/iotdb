@@ -17,29 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.cq;
+package org.apache.iotdb.confignode.consensus.request.read.cq;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
 import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.SHOW_CQ;
 
-public class ShowCQPlan extends ConfigPhysicalPlan {
+public class ShowCQPlan extends ConfigPhysicalReadPlan {
 
   public ShowCQPlan() {
     super(SHOW_CQ);
-  }
-
-  @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    // no customized field to deserialize from
   }
 }
