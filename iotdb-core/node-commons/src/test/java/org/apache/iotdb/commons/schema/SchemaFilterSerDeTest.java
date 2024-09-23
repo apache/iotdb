@@ -43,8 +43,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
-
-import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+import java.util.Optional;
 
 public class SchemaFilterSerDeTest {
 
@@ -62,7 +61,7 @@ public class SchemaFilterSerDeTest {
         new OrFilter(Arrays.asList(viewTypeFilter, pathContainsFilter, tagFilter));
     final PreciseFilter preciseFilter = new PreciseFilter("s1");
     final InFilter inFilter = new InFilter(Collections.singleton("d1"));
-    final LikeFilter likeFilter = new LikeFilter(parseLikePatternToRegex("__1"));
+    final LikeFilter likeFilter = new LikeFilter("__1", Optional.empty());
     final IdFilter idFilter = new IdFilter(preciseFilter, 1);
     final AttributeFilter attributeFilter = new AttributeFilter(likeFilter, "attr");
     final ComparisonFilter comparisonFilter =

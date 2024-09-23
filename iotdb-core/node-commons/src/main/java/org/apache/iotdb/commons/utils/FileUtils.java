@@ -65,16 +65,19 @@ public class FileUtils {
     deleteFileOrDirectory(file, false);
   }
 
-  public static void deleteFileOrDirectory(File file, boolean quiteForNoSuchFile) {
+  public static void deleteFileOrDirectory(File file, boolean quietForNoSuchFile) {
     if (file.isDirectory()) {
-      for (File subfile : file.listFiles()) {
-        deleteFileOrDirectory(subfile);
+      File[] files = file.listFiles();
+      if (files != null) {
+        for (File subfile : files) {
+          deleteFileOrDirectory(subfile, quietForNoSuchFile);
+        }
       }
     }
     try {
       Files.delete(file.toPath());
     } catch (NoSuchFileException e) {
-      if (!quiteForNoSuchFile) {
+      if (!quietForNoSuchFile) {
         LOGGER.warn("{}: {}", e.getMessage(), Arrays.toString(file.list()), e);
       }
     } catch (DirectoryNotEmptyException e) {
