@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin;
 
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoader;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginClassLoaderManager;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoader;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginClassLoaderManager;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
 import org.apache.iotdb.pipe.api.PipePlugin;

@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.resource;
 
-import org.apache.iotdb.commons.pipe.resource.PipeSnapshotResourceManager;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogManager;
-import org.apache.iotdb.confignode.manager.pipe.resource.snapshot.PipeConfigNodeSnapshotResourceManager;
+import org.apache.iotdb.commons.pipe.resource.snapshot.PipeSnapshotResourceManager;
 
 public class PipeConfigNodeResourceManager {
 
