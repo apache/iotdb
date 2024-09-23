@@ -326,15 +326,17 @@ public class PartitionManager {
   /**
    * Get DataPartition and create a new one if it does not exist.
    *
-   * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
-   *     List<TimePartitionSlot>>>
-   * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
-   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
+   * @param req DataPartitionPlan with Map{@literal <}StorageGroupName, Map{@literal
+   *     <}SeriesPartitionSlot, List{@literal <}TimePartitionSlot{@literal >}{@literal >}{@literal
+   *     >}
+   * @return DataPartitionResp with DataPartition and {@link TSStatus}. {@link
+   *     TSStatusCode#SUCCESS_STATUS} if all process finish. {@link TSStatusCode#NO_ENOUGH_DATANODE}
+   *     if the DataNodes is not enough to create new Regions. {@link
+   *     TSStatusCode#DATABASE_NOT_EXIST} if some database does not exist.
    */
-  public DataPartitionResp getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
+  public DataPartitionResp getOrCreateDataPartition(final GetOrCreateDataPartitionPlan req) {
     // Check if the related Databases exist
-    for (String database : req.getPartitionSlotsMap().keySet()) {
+    for (final String database : req.getPartitionSlotsMap().keySet()) {
       if (!isDatabaseExist(database)) {
         return new DataPartitionResp(
             new TSStatus(TSStatusCode.DATABASE_NOT_EXIST.getStatusCode())

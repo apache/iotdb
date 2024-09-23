@@ -32,6 +32,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -98,13 +99,13 @@ public class InlineProjections implements Rule<ProjectNode> {
       return Optional.empty();
     }
 
-    // inline the expressions
+    // inline the expressions; use LinkedHashMap to keep order
     Assignments assignments = child.getAssignments().filter(targets::contains);
     Map<Symbol, Expression> parentAssignments =
-        parent.getAssignments().entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey, entry -> inlineReferences(entry.getValue(), assignments)));
+        new LinkedHashMap<>(parent.getAssignments().getMap().size());
+    for (Map.Entry<Symbol, Expression> entry : parent.getAssignments().getMap().entrySet()) {
+      parentAssignments.put(entry.getKey(), inlineReferences(entry.getValue(), assignments));
+    }
 
     // Synthesize identity assignments for the inputs of expressions that were inlined
     // to place in the child projection.

@@ -613,6 +613,9 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
     boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    if (node.getTimePredicate().isPresent()) {
+      boxValue.add(String.format("TimePredicate: %s", node.getTimePredicate().get()));
+    }
     if (node.getPushDownPredicate() != null) {
       boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
     }

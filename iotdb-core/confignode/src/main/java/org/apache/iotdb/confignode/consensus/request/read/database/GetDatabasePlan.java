@@ -26,11 +26,7 @@ import java.util.List;
 
 public class GetDatabasePlan extends CountDatabasePlan {
 
-  public GetDatabasePlan() {
-    super(ConfigPhysicalPlanType.GetDatabase);
-  }
-
-  public GetDatabasePlan(List<String> storageGroupPathPattern, PathPatternTree scope) {
+  public GetDatabasePlan(final List<String> storageGroupPathPattern, final PathPatternTree scope) {
     super(ConfigPhysicalPlanType.GetDatabase, storageGroupPathPattern, scope);
   }
 }

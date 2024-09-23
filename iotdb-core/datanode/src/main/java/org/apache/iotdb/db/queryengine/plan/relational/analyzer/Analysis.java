@@ -490,6 +490,10 @@ public class Analysis implements IAnalysis {
     return joins.get(NodeRef.of(join));
   }
 
+  public boolean hasJoinNode() {
+    return !joinUsing.isEmpty() || !joins.isEmpty();
+  }
+
   public void recordSubqueries(Node node, ExpressionAnalysis expressionAnalysis) {
     SubqueryAnalysis subqueries =
         this.subQueries.computeIfAbsent(NodeRef.of(node), key -> new SubqueryAnalysis());
