@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeStatus;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 
 import java.util.Map;
 

@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -331,10 +330,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       outputs.add(output);
       queryContext.getTypeProvider().putTableModelType(output, LongType.INT64);
       assignments.put(
-          output,
-          new CoalesceExpression(
-              leftJoinColumns.get(column).toSymbolReference(),
-              rightJoinColumns.get(column).toSymbolReference()));
+          output, leftJoinColumns.get(column).toSymbolReference()
+          //          new CoalesceExpression(
+          //              leftJoinColumns.get(column).toSymbolReference(),
+          //              rightJoinColumns.get(column).toSymbolReference())
+          );
     }
 
     for (int field : joinAnalysis.getOtherLeftFields()) {
