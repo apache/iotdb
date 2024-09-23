@@ -1334,21 +1334,15 @@ public class ColumnTransformerBuilder
           thenList.add(process(whenClause.getResult(), context));
         }
 
-        if (node.getDefaultValue().isPresent()) {
-          ColumnTransformer elseColumnTransformer = process(node.getDefaultValue().get(), context);
-          context.cache.put(
-              node,
-              new CaseWhenThenColumnTransformer(
-                  elseColumnTransformer.getType(),
-                  whenList,
-                  thenList,
-                  elseColumnTransformer));
-        } else {
-          context.cache.put(
-              node,
-              new CaseWhenThenColumnTransformer(
-                  thenList.get(0).getType(), whenList, thenList, children));
-        }
+        ColumnTransformer elseColumnTransformer =
+            node.getDefaultValue().isPresent()
+                ? process(node.getDefaultValue().get(), context)
+                : process(new NullLiteral());
+        context.cache.put(
+            node,
+            // fix this
+            new CaseWhenThenColumnTransformer(
+                thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
       }
     }
     ColumnTransformer res = context.cache.get(node);
@@ -1378,18 +1372,16 @@ public class ColumnTransformerBuilder
           whenList.add(process(whenClause.getOperand(), context));
           thenList.add(process(whenClause.getResult(), context));
         }
-        if (node.getDefaultValue().isPresent()) {
-          ColumnTransformer elseColumnTransformer = process(node.getDefaultValue().get(), context);
-          context.cache.put(
-              node,
-              new CaseWhenThenColumnTransformer(
-                  elseColumnTransformer.getType(), whenList, thenList, elseColumnTransformer));
-        } else {
-          context.cache.put(
-              node,
-              // fix this
-              new CaseWhenThenColumnTransformer(thenList.get(0).getType(), whenList, thenList,thenList.get(0)));
-        }
+
+        ColumnTransformer elseColumnTransformer =
+            node.getDefaultValue().isPresent()
+                ? process(node.getDefaultValue().get(), context)
+                : process(new NullLiteral());
+        context.cache.put(
+            node,
+            // fix this
+            new CaseWhenThenColumnTransformer(
+                thenList.get(0).getType(), whenList, thenList, elseColumnTransformer));
       }
     }
     ColumnTransformer res = context.cache.get(node);

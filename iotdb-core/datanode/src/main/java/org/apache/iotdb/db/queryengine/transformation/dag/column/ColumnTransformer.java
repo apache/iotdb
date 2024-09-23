@@ -41,6 +41,17 @@ public abstract class ColumnTransformer {
     referenceCount = 0;
   }
 
+  /**
+   * Return whether the types of two ColumnTransformer are equal. If one ColumnTransformer is {@link
+   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}.
+   */
+  public static boolean typeEquals(ColumnTransformer a, ColumnTransformer b) {
+    if (a.getType() == null || b.getType() == null) {
+      return true;
+    }
+    return a.getType().getTypeEnum().equals(b.getType().getTypeEnum());
+  }
+
   public void tryEvaluate() {
     if (!columnCache.hasCached()) {
       evaluate();
@@ -75,17 +86,6 @@ public abstract class ColumnTransformer {
   }
 
   /**
-   * Return whether the types of two ColumnTransformer are equal. If one ColumnTransformer is {@link
-   * NullColumnTransformer} (Only the Type of NullColumnTransformer is null), return {@code true}.
-   */
-  public static boolean typeEquals(ColumnTransformer a, ColumnTransformer b) {
-    if (a.getType() == null || b.getType() == null) {
-      return true;
-    }
-    return a.getType().getTypeEnum().equals(b.getType().getTypeEnum());
-  }
-
-  /**
    * Return whether the type of this ColumnTransformer is equal to certain type. If this
    * ColumnTransformer is {@link NullColumnTransformer}, return {@code true}.
    */
@@ -104,7 +104,9 @@ public abstract class ColumnTransformer {
   /** Responsible for the calculation. */
   protected abstract void evaluate();
 
-  public abstract void evaluateWithSelection(boolean[] selection);
+  public void evaluateWithSelection(boolean[] selection) {
+    // do nothing
+  }
 
   protected abstract void checkType();
 

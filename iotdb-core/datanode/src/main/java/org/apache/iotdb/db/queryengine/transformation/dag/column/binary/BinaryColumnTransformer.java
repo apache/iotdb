@@ -56,12 +56,12 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   protected abstract void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount);
 
-  protected abstract void doTransform(
-      Column leftColumn,
-      Column rightColumn,
-      ColumnBuilder builder,
-      int positionCount,
-      boolean[] selection);
+  //  protected abstract void doTransform(
+  //      Column leftColumn,
+  //      Column rightColumn,
+  //      ColumnBuilder builder,
+  //      int positionCount,
+  //      boolean[] selection);
 
   public ColumnTransformer getLeftTransformer() {
     return leftTransformer;

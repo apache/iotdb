@@ -36,8 +36,8 @@ public class ConstantColumnTransformer extends LeafColumnTransformer {
   @Override
   protected void evaluate() {}
 
-  @Override
-  public void evaluateWithShortCircuit(boolean[] selection) {}
+  //  @Override
+  //  public void evaluateWithShortCircuit(boolean[] selection) {}
 
   @Override
   public void initFromTsBlock(TsBlock input) {
