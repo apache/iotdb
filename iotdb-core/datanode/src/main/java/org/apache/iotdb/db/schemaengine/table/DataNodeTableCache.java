@@ -190,7 +190,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public TsTable getTableInWrite(String database, final String tableName) {
+  public TsTable getTableInWrite(final String database, final String tableName) {
     final TsTable result = getTableInCache(database, tableName);
     return Objects.nonNull(result) ? result : getTable(database, tableName);
   }
@@ -291,7 +291,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  public TsTable getTableInCache(final String database, final String tableName) {
+  private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
       return databaseTableMap.containsKey(database)
