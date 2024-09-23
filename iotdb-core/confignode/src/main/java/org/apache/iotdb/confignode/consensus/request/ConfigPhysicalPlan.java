@@ -20,9 +20,9 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowSubscriptionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;

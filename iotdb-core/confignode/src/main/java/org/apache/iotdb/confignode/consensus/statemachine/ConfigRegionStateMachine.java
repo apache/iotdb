@@ -178,12 +178,12 @@ public class ConfigRegionStateMachine implements IStateMachine, IStateMachine.Ev
     return read(plan);
   }
 
-  /** Transmit {@link ConfigPhysicalPlan} to {@link ConfigPlanExecutor} */
+  /** Transmit {@link ConfigPhysicalReadPlan} to {@link ConfigPlanExecutor} */
   protected DataSet read(final ConfigPhysicalReadPlan plan) {
     DataSet result;
     try {
       result = executor.executeQueryPlan(plan);
-    } catch (UnknownPhysicalPlanTypeException | AuthException e) {
+    } catch (final UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = null;
     }
