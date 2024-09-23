@@ -164,15 +164,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
     context.getDriverContext().setSink(sinkHandle);
 
-    //    Operator child = node.getChildren().get(0).accept(this, context);
-    //    List<Operator> children = new ArrayList<>(1);
-    //    children.add(child);
-
-    List<Operator> children =
-        node.getChildren().stream()
-            .map(child -> child.accept(this, context))
-            .collect(Collectors.toList());
-    return new IdentitySinkOperator(operatorContext, children, downStreamChannelIndex, sinkHandle);
+    if (node.getChildren().size() == 1) {
+      Operator child = node.getChildren().get(0).accept(this, context);
+      List<Operator> children = new ArrayList<>(1);
+      children.add(child);
+      return new IdentitySinkOperator(
+          operatorContext, children, downStreamChannelIndex, sinkHandle);
+    } else {
+      throw new IllegalStateException(
+          "IdentitySinkNode should only have one child in table model.");
+    }
   }
 
   @Override
