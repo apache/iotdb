@@ -147,22 +147,26 @@ public class JoinTest {
      *                       │       └──TableScanNode-123
      *                       └──ExchangeNode-175: [SourceAddress:192.0.10.1/test_query.3.0/177]
      *
-     * IdentitySinkNode-176
-     *   ├──SortNode-116
-     *   │   └──TableScanNode-112
-     *   └──SortNode-129
-     *       └──ProjectNode-125
-     *           └──TableScanNode-122
+     * IdentitySinkNode-201
+     *   └──SortNode-141
+     *       └──TableScanNode-137
      *
-     * IdentitySinkNode-177
-     *   ├──SortNode-118
-     *   │   └──TableScanNode-114
-     *   └──SortNode-131
-     *       └──ProjectNode-127
-     *           └──TableScanNode-124
+     * IdentitySinkNode-201
+     *   └──SortNode-141
+     *       └──TableScanNode-137
+     *
+     * IdentitySinkNode-203
+     *   └──SortNode-154
+     *       └──ProjectNode-150
+     *           └──TableScanNode-147
+     *
+     * IdentitySinkNode-203
+     *   └──SortNode-154
+     *       └──ProjectNode-150
+     *           └──TableScanNode-147
      */
     distributedQueryPlan = new TableDistributedPlanner(analysis, logicalQueryPlan).plan();
-    assertEquals(3, distributedQueryPlan.getFragments().size());
+    assertEquals(5, distributedQueryPlan.getFragments().size());
     IdentitySinkNode identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(0).getPlanNodeTree();
     outputNode = (OutputNode) getChildrenNode(identitySinkNode, 1);
@@ -177,7 +181,17 @@ public class JoinTest {
 
     identitySinkNode =
         (IdentitySinkNode) distributedQueryPlan.getFragments().get(1).getPlanNodeTree();
-    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode.getChildren().get(1), 2);
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 2);
+    assertTableScan(tableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
+
+    identitySinkNode =
+        (IdentitySinkNode) distributedQueryPlan.getFragments().get(3).getPlanNodeTree();
+    assertTrue(getChildrenNode(identitySinkNode, 1) instanceof SortNode);
+    assertTrue(getChildrenNode(identitySinkNode, 2) instanceof ProjectNode);
+    assertTrue(getChildrenNode(identitySinkNode, 3) instanceof TableScanNode);
+    tableScanNode = (TableScanNode) getChildrenNode(identitySinkNode, 3);
     assertTableScan(tableScanNode, SHENZHEN_DEVICE_ENTRIES, Ordering.ASC, 0, 0, true, "");
   }
 
