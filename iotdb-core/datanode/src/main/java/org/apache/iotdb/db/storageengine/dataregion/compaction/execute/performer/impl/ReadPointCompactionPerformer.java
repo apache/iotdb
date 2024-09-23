@@ -79,6 +79,7 @@ public class ReadPointCompactionPerformer
   private CompactionTaskSummary summary;
 
   protected List<TsFileResource> targetFiles = Collections.emptyList();
+  protected boolean ignoreAllNullRows = true;
 
   public ReadPointCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -112,7 +113,7 @@ public class ReadPointCompactionPerformer
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
-          new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
+          new MultiTsFileDeviceIterator(seqFiles, unseqFiles, ignoreAllNullRows);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles, unseqFiles, deviceIterator.getReaderMap());
@@ -152,6 +153,11 @@ public class ReadPointCompactionPerformer
     this.summary = summary;
   }
 
+  @Override
+  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
+  }
+
   private void compactAlignedSeries(
       IDeviceID device,
       MultiTsFileDeviceIterator deviceIterator,
@@ -169,6 +175,8 @@ public class ReadPointCompactionPerformer
         measurementSchemas.stream()
             .map(IMeasurementSchema::getMeasurementId)
             .collect(Collectors.toList());
+
+    fragmentInstanceContext.setIgnoreAllNullRows(ignoreAllNullRows);
     IDataBlockReader dataBlockReader =
         constructReader(
             device,

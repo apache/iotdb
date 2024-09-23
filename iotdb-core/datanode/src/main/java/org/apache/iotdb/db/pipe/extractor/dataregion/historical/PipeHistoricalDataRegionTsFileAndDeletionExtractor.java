@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.StateProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.extractor.dataregion.DataRegionListeningFilter;
@@ -126,6 +128,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean isTerminateSignalSent = false;
 
   private Queue<PersistentResource> pendingQueue;
+  private volatile boolean hasBeenStarted = false;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -266,7 +269,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     pipeTaskMeta = environment.getPipeTaskMeta();
-    startIndex = environment.getPipeTaskMeta().getProgressIndex().deepCopy();
+    startIndex = environment.getPipeTaskMeta().getProgressIndex();
 
     dataRegionId = environment.getRegionId();
     synchronized (DATA_REGION_ID_TO_PIPE_FLUSHED_TIME_MAP) {
@@ -493,12 +496,18 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized void start() {
-    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-      return;
-    }
-    if (!shouldExtractInsertion) {
-      return;
-    }
+      if (!shouldExtractInsertion) {
+          hasBeenStarted = true;
+          return;
+      }
+      if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+          LOGGER.info(
+                  "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
+                  pipeName,
+                  dataRegionId);
+          return;
+      }
+      hasBeenStarted = true;
 
     final DataRegion dataRegion =
         StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
@@ -581,10 +590,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       return true;
     }
 
-    return deviceSet.stream()
-        .anyMatch(
-            // TODO: use IDeviceID
-            deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
+    return deviceSet.stream().anyMatch(deviceID -> pipePattern.mayOverlapWithDevice(deviceID));
   }
 
   private boolean isTsFileResourceOverlappedWithTimeRange(final TsFileResource resource) {
@@ -687,6 +693,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized Event supply() {
+
+      if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+          start();
+      }
+
     if (Objects.isNull(pendingQueue)) {
       return null;
     }
@@ -705,7 +716,8 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   public synchronized boolean hasConsumedAll() {
     // If the pendingQueues are null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
-    return (Objects.isNull(pendingQueue))
+    return hasBeenStarted
+            && (Objects.isNull(pendingQueue))
         || pendingQueue.isEmpty()
             && (!shouldTerminatePipeOnAllHistoricalEventsConsumed || isTerminateSignalSent);
   }

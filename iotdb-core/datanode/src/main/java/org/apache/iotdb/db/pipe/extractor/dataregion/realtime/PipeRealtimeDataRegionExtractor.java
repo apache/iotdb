@@ -21,8 +21,11 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
@@ -509,11 +512,6 @@ public abstract class PipeRealtimeDataRegionExtractor implements PipeExtractor {
         + dataRegionId
         + '\''
         + '}';
-  }
-
-  @TestOnly
-  public void setShouldExtractDeletion(boolean shouldExtractDeletion) {
-    this.shouldExtractDeletion = shouldExtractDeletion;
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////

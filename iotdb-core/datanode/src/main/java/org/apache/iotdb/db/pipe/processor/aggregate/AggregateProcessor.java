@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.TimeWindowStateProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
@@ -375,17 +375,21 @@ public class AggregateProcessor implements PipeProcessor {
         .set(System.currentTimeMillis());
 
     final AtomicReference<Exception> exception = new AtomicReference<>();
-    final TimeWindowStateProgressIndex progressIndex =
-        new TimeWindowStateProgressIndex(new ConcurrentHashMap<>());
+    final TimeWindowStateProgressIndex[] progressIndex = {
+      new TimeWindowStateProgressIndex(new ConcurrentHashMap<>())
+    };
 
     final Iterable<TabletInsertionEvent> outputEvents =
         tabletInsertionEvent.processRowByRow(
             (row, rowCollector) ->
-                progressIndex.updateToMinimumEqualOrIsAfterProgressIndex(
-                    new TimeWindowStateProgressIndex(processRow(row, rowCollector, exception))));
+                progressIndex[0] =
+                    (TimeWindowStateProgressIndex)
+                        progressIndex[0].updateToMinimumEqualOrIsAfterProgressIndex(
+                            new TimeWindowStateProgressIndex(
+                                processRow(row, rowCollector, exception))));
 
     // Must reset progressIndex before collection
-    ((EnrichedEvent) tabletInsertionEvent).bindProgressIndex(progressIndex);
+    ((EnrichedEvent) tabletInsertionEvent).bindProgressIndex(progressIndex[0]);
 
     outputEvents.forEach(
         event -> {

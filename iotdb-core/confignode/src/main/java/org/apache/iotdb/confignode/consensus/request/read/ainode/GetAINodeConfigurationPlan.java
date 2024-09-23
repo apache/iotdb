@@ -19,24 +19,16 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.ainode;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-public class GetAINodeConfigurationPlan extends ConfigPhysicalPlan {
+public class GetAINodeConfigurationPlan extends ConfigPhysicalReadPlan {
 
   // if aiNodeId is set to -1, return all AINode configurations.
-  private int aiNodeId;
+  private final int aiNodeId;
 
-  public GetAINodeConfigurationPlan() {
+  public GetAINodeConfigurationPlan(final int aiNodeId) {
     super(ConfigPhysicalPlanType.GetAINodeConfiguration);
-  }
-
-  public GetAINodeConfigurationPlan(int aiNodeId) {
-    this();
     this.aiNodeId = aiNodeId;
   }
 
@@ -45,25 +37,14 @@ public class GetAINodeConfigurationPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    stream.writeInt(aiNodeId);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.aiNodeId = buffer.getInt();
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (!(o instanceof GetAINodeConfigurationPlan)) {
       return false;
     }
-    GetAINodeConfigurationPlan that = (GetAINodeConfigurationPlan) o;
+    final GetAINodeConfigurationPlan that = (GetAINodeConfigurationPlan) o;
     return aiNodeId == that.aiNodeId;
   }
 

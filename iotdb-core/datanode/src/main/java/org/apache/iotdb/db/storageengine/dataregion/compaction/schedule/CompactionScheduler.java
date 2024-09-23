@@ -277,7 +277,8 @@ public class CompactionScheduler {
     ICrossSpaceSelector crossSpaceCompactionSelector =
         config
             .getCrossCompactionSelector()
-            .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+            .createInstance(
+                logicalStorageGroupName, dataRegionId, timePartition, tsFileManager, context);
 
     List<CrossCompactionTaskResource> taskList =
         crossSpaceCompactionSelector.selectCrossSpaceTask(
@@ -297,10 +298,7 @@ public class CompactionScheduler {
               tsFileManager,
               taskList.get(i).getSeqFiles(),
               taskList.get(i).getUnseqFiles(),
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getCrossCompactionPerformer()
-                  .createInstance(),
+              context.getCrossCompactionPerformer(),
               memoryCost.get(i),
               tsFileManager.getNextCompactionTaskId());
       task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);
@@ -323,7 +321,12 @@ public class CompactionScheduler {
     String dataRegionId = tsFileManager.getDataRegionId();
     SettleSelectorImpl settleSelector =
         new SettleSelectorImpl(
-            heavySelect, logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+            heavySelect,
+            logicalStorageGroupName,
+            dataRegionId,
+            timePartition,
+            tsFileManager,
+            context);
     long startTime = System.currentTimeMillis();
     List<AbstractCompactionTask> taskList = new ArrayList<>();
     if (config.isEnableSeqSpaceCompaction()) {

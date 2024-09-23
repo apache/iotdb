@@ -141,11 +141,6 @@ public class SimpleProgressIndex extends ProgressIndex {
   }
 
   @Override
-  public ProgressIndex deepCopy() {
-    return new SimpleProgressIndex(rebootTimes, memTableFlushOrderId);
-  }
-
-  @Override
   public ProgressIndex updateToMinimumEqualOrIsAfterProgressIndex(ProgressIndex progressIndex) {
     lock.writeLock().lock();
     try {
@@ -159,7 +154,7 @@ public class SimpleProgressIndex extends ProgressIndex {
         return this;
       }
       if (thisSimpleProgressIndex.rebootTimes < thatSimpleProgressIndex.rebootTimes) {
-        return progressIndex.deepCopy();
+        return progressIndex;
       }
       // thisSimpleProgressIndex.rebootTimes == thatSimpleProgressIndex.rebootTimes
       if (thisSimpleProgressIndex.memTableFlushOrderId

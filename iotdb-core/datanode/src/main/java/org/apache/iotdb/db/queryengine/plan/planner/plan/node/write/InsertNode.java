@@ -209,11 +209,14 @@ public abstract class InsertNode extends SearchNode {
     this.deviceID = deviceID;
   }
 
+  public boolean isDeviceIDExists() {
+    return deviceID != null;
+  }
+
   public boolean isGeneratedByRemoteConsensusLeader() {
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:
       case ConsensusFactory.IOT_CONSENSUS_V2:
-      case ConsensusFactory.FAST_IOT_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
         return isGeneratedByRemoteConsensusLeader;
       case ConsensusFactory.SIMPLE_CONSENSUS:
@@ -331,7 +334,7 @@ public abstract class InsertNode extends SearchNode {
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex.deepCopy();
+    this.progressIndex = progressIndex;
   }
 
   // endregion
