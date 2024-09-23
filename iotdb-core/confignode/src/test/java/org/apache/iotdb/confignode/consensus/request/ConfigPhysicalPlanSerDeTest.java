@@ -59,41 +59,13 @@ import org.apache.iotdb.commons.sync.PipeStatus;
 import org.apache.iotdb.commons.sync.TsFilePipeInfo;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
 import org.apache.iotdb.commons.udf.UDFInformation;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
-import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
-import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetSeriesSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.partition.GetTimeSlotListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.plugin.GetPipePluginTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionIdPlan;
-import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
-import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTransferringTriggersPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerJarPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerLocationPlan;
-import org.apache.iotdb.confignode.consensus.request.read.trigger.GetTriggerTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.UpdateClusterIdPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.ActiveCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.AddCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.DropCQPlan;
-import org.apache.iotdb.confignode.consensus.request.write.cq.ShowCQPlan;
 import org.apache.iotdb.confignode.consensus.request.write.cq.UpdateCQLastExecTimePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.AdjustMaxRegionGroupNumPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
@@ -146,7 +118,6 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.GetPipeSinkPlanV
 import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
-import org.apache.iotdb.confignode.consensus.request.write.sync.ShowPipePlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreCreateTablePlan;
@@ -172,8 +143,6 @@ import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
 import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -202,10 +171,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.ConfigRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.DataRegion;
 import static org.apache.iotdb.common.rpc.thrift.TConsensusGroupType.SchemaRegion;
-import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.junit.Assert.assertEquals;
 
 public class ConfigPhysicalPlanSerDeTest {
@@ -251,15 +218,6 @@ public class ConfigPhysicalPlanSerDeTest {
     UpdateDataNodePlan plan0 = new UpdateDataNodePlan(dataNodeConfiguration);
     UpdateDataNodePlan plan1 =
         (UpdateDataNodePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
-    Assert.assertEquals(plan0, plan1);
-  }
-
-  @Test
-  public void QueryDataNodeInfoPlanTest() throws IOException {
-    GetDataNodeConfigurationPlan plan0 = new GetDataNodeConfigurationPlan(-1);
-    GetDataNodeConfigurationPlan plan1 =
-        (GetDataNodeConfigurationPlan)
-            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
   }
 
@@ -354,22 +312,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void CountStorageGroupPlanTest() throws IOException {
-    CountDatabasePlan req0 = new CountDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
-    CountDatabasePlan req1 =
-        (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetStorageGroupPlanTest() throws IOException {
-    GetDatabasePlan req0 = new GetDatabasePlan(Arrays.asList("root", "sg"), ALL_MATCH_SCOPE);
-    CountDatabasePlan req1 =
-        (CountDatabasePlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
   public void CreateRegionsPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
@@ -459,35 +401,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetSchemaPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
-
-    GetSchemaPartitionPlan req0 = new GetSchemaPartitionPlan(partitionSlotsMap);
-    GetSchemaPartitionPlan req1 =
-        (GetSchemaPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetOrCreateSchemaPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-
-    Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
-
-    GetOrCreateSchemaPartitionPlan req0 = new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
-    GetOrCreateSchemaPartitionPlan req1 =
-        (GetOrCreateSchemaPartitionPlan)
-            ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
   public void CreateDataPartitionPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
@@ -518,53 +431,6 @@ public class ConfigPhysicalPlanSerDeTest {
     req0.setAssignedDataPartition(assignedDataPartition);
     CreateDataPartitionPlan req1 =
         (CreateDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetDataPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
-
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap
-        .get(storageGroup)
-        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
-    partitionSlotsMap
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .getTimePartitionSlots()
-        .add(timePartitionSlot);
-
-    GetDataPartitionPlan req0 = new GetDataPartitionPlan(partitionSlotsMap);
-    GetDataPartitionPlan req1 =
-        (GetDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-  }
-
-  @Test
-  public void GetOrCreateDataPartitionPlanTest() throws IOException {
-    String storageGroup = "root.sg0";
-    TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(100);
-
-    Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
-    partitionSlotsMap.put(storageGroup, new HashMap<>());
-    partitionSlotsMap
-        .get(storageGroup)
-        .put(seriesPartitionSlot, new TTimeSlotList().setTimePartitionSlots(new ArrayList<>()));
-    partitionSlotsMap
-        .get(storageGroup)
-        .get(seriesPartitionSlot)
-        .getTimePartitionSlots()
-        .add(timePartitionSlot);
-
-    GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan(partitionSlotsMap);
-    GetOrCreateDataPartitionPlan req1 =
-        (GetOrCreateDataPartitionPlan)
-            ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -732,118 +598,6 @@ public class ConfigPhysicalPlanSerDeTest {
             new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
-
-    // list user
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListUser,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list role
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListRole,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list privileges user
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListUserPrivilege,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list privileges role
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListRolePrivilege,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list user privileges
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListUserPrivilege,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list role privileges
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListRolePrivilege,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list all role of user
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListUserRoles,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
-
-    // list all user of role
-    req0 =
-        new AuthorPlan(
-            ConfigPhysicalPlanType.ListRoleUsers,
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            false,
-            new ArrayList<>());
-    req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0, req1);
   }
 
   @Test
@@ -939,24 +693,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetRegionLocationsPlanTest() throws IOException {
-    final GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
-    final TShowRegionReq showRegionReq = new TShowRegionReq();
-    req0.setShowRegionReq(showRegionReq);
-    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
-    final GetRegionInfoListPlan req1 =
-        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
-    final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
-    showRegionReq.setDatabases(new ArrayList<>(sgList));
-    final GetRegionInfoListPlan req2 =
-        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
-    Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getShowRegionReq(), req2.getShowRegionReq());
-  }
-
-  @Test
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
     final Template template = newSchemaTemplate("template_name");
     final CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
@@ -992,52 +728,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetSchemaTemplatePlanTest() throws IOException {
-    final GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan("template1");
-    final GetSchemaTemplatePlan deserializedPlan =
-        (GetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan.serializeToByteBuffer());
-    Assert.assertEquals("template1", deserializedPlan.getTemplateName());
-  }
-
-  @Test
-  public void GetAllSchemaTemplatePlanTest() throws IOException {
-    final GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer())
-            instanceof GetAllSchemaTemplatePlan);
-  }
-
-  @Test
-  public void GetNodesInSchemaTemplatePlanTest() throws IOException {
-    final GetSchemaTemplatePlan getSchemaTemplatePlan0 =
-        new GetSchemaTemplatePlan("template_name_test");
-    final GetSchemaTemplatePlan getSchemaTemplatePlan1 =
-        (GetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
-  }
-
-  @Test
-  public void GetNodePathsPartitionPlanTest() throws IOException, IllegalPathException {
-    final GetNodePathsPartitionPlan getNodePathsPartitionPlan0 = new GetNodePathsPartitionPlan();
-    getNodePathsPartitionPlan0.setPartialPath(new PartialPath("root.sg1.**"));
-    getNodePathsPartitionPlan0.setScope(ALL_MATCH_SCOPE);
-    final GetNodePathsPartitionPlan getNodePathsPartitionPlan1 =
-        (GetNodePathsPartitionPlan)
-            ConfigPhysicalPlan.Factory.create(getNodePathsPartitionPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getNodePathsPartitionPlan0, getNodePathsPartitionPlan1);
-  }
-
-  @Test
-  public void GetAllTemplateSetInfoPlanTest() throws IOException {
-    final GetAllTemplateSetInfoPlan getAllTemplateSetInfoPlan = new GetAllTemplateSetInfoPlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getAllTemplateSetInfoPlan.serializeToByteBuffer())
-            instanceof GetAllTemplateSetInfoPlan);
-  }
-
-  @Test
   public void SetSchemaTemplatePlanTest() throws IOException {
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
         new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
@@ -1047,16 +737,6 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         setSchemaTemplatePlanPlan0.getName().equalsIgnoreCase(setSchemaTemplatePlanPlan1.getName()),
         setSchemaTemplatePlanPlan0.getPath().equals(setSchemaTemplatePlanPlan1.getPath()));
-  }
-
-  @Test
-  public void ShowPathSetTemplatePlanTest() throws IOException {
-    final GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
-        new GetPathsSetTemplatePlan("template_name_test", ALL_MATCH_SCOPE);
-    final GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
-        (GetPathsSetTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
   }
 
   @Test
@@ -1268,20 +948,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(operateMultiplePipesPlanV2.serializeToByteBuffer());
     Assert.assertEquals(
         operateMultiplePipesPlanV2.getSubPlans(), operateMultiplePipesPlanV21.getSubPlans());
-  }
-
-  @Test
-  public void ShowPipePlanV1Test() throws IOException {
-    final ShowPipePlanV1 showPipePlan = new ShowPipePlanV1("demo");
-    final ShowPipePlanV1 showPipePlan1 =
-        (ShowPipePlanV1) ConfigPhysicalPlan.Factory.create(showPipePlan.serializeToByteBuffer());
-    Assert.assertEquals(showPipePlan.getPipeName(), showPipePlan1.getPipeName());
-    final ShowPipePlanV1 showPipePlanWithNullName = new ShowPipePlanV1();
-    final ShowPipePlanV1 showPipePlanWithNullName1 =
-        (ShowPipePlanV1)
-            ConfigPhysicalPlan.Factory.create(showPipePlanWithNullName.serializeToByteBuffer());
-    Assert.assertEquals(
-        showPipePlanWithNullName.getPipeName(), showPipePlanWithNullName1.getPipeName());
   }
 
   @Test
@@ -1547,35 +1213,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void showTablePlanTest() throws IOException {
-    final ShowTablePlan showTablePlan = new ShowTablePlan("database");
-    Assert.assertEquals(
-        showTablePlan.getDatabase(),
-        ((ShowTablePlan) ConfigPhysicalPlan.Factory.create(showTablePlan.serializeToByteBuffer()))
-            .getDatabase());
-  }
-
-  @Test
-  public void GetTriggerTablePlanTest() throws IOException {
-    GetTriggerTablePlan getTriggerTablePlan0 = new GetTriggerTablePlan(true);
-    GetTriggerTablePlan getTriggerTablePlan1 =
-        (GetTriggerTablePlan)
-            ConfigPhysicalPlan.Factory.create(getTriggerTablePlan0.serializeToByteBuffer());
-    Assert.assertEquals(
-        getTriggerTablePlan0.isOnlyStateful(), getTriggerTablePlan1.isOnlyStateful());
-  }
-
-  @Test
-  public void GetTriggerLocationPlanTest() throws IOException {
-    GetTriggerLocationPlan getTriggerLocationPlan0 = new GetTriggerLocationPlan("test1");
-    GetTriggerLocationPlan getTriggerLocationPlan1 =
-        (GetTriggerLocationPlan)
-            ConfigPhysicalPlan.Factory.create(getTriggerLocationPlan0.serializeToByteBuffer());
-    Assert.assertEquals(
-        getTriggerLocationPlan0.getTriggerName(), getTriggerLocationPlan1.getTriggerName());
-  }
-
-  @Test
   public void AddTriggerInTablePlanTest() throws IOException, IllegalPathException {
     TriggerInformation triggerInformation =
         new TriggerInformation(
@@ -1675,15 +1312,6 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void ShowCQPlanTest() throws IOException {
-    ShowCQPlan showCQPlan0 = new ShowCQPlan();
-    ShowCQPlan showCQPlan1 =
-        (ShowCQPlan) ConfigPhysicalPlan.Factory.create(showCQPlan0.serializeToByteBuffer());
-
-    Assert.assertEquals(showCQPlan0, showCQPlan1);
-  }
-
-  @Test
   public void UpdateCQLastExecTimePlanTest() throws IOException {
     UpdateCQLastExecTimePlan updateCQLastExecTimePlan0 =
         new UpdateCQLastExecTimePlan("testCq", System.currentTimeMillis(), "testCq_md5");
@@ -1692,86 +1320,6 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(updateCQLastExecTimePlan0.serializeToByteBuffer());
 
     Assert.assertEquals(updateCQLastExecTimePlan0, updateCQLastExecTimePlan1);
-  }
-
-  @Test
-  public void GetTriggerJarPlanTest() throws IOException {
-    final List<String> jarNames = new ArrayList<>();
-    jarNames.add("test1");
-    jarNames.add("test2");
-    final GetTriggerJarPlan getTriggerJarPlan0 = new GetTriggerJarPlan(jarNames);
-
-    final GetTriggerJarPlan getTriggerJarPlan1 =
-        (GetTriggerJarPlan)
-            ConfigPhysicalPlan.Factory.create(getTriggerJarPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getTriggerJarPlan0.getJarNames(), getTriggerJarPlan1.getJarNames());
-  }
-
-  @Test
-  public void GetRegionIdPlanTest() throws IOException {
-    final GetRegionIdPlan getRegionIdPlan0 = new GetRegionIdPlan(ConfigRegion);
-    final GetRegionIdPlan getRegionIdPlan1 =
-        (GetRegionIdPlan)
-            ConfigPhysicalPlan.Factory.create(getRegionIdPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getRegionIdPlan0, getRegionIdPlan1);
-  }
-
-  @Test
-  public void GetTimeSlotListPlanTest() throws IOException {
-    final GetTimeSlotListPlan getTimeSlotListPlan0 = new GetTimeSlotListPlan(0, Long.MAX_VALUE);
-    final GetTimeSlotListPlan getTimeSlotListPlan1 =
-        (GetTimeSlotListPlan)
-            ConfigPhysicalPlan.Factory.create(getTimeSlotListPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getTimeSlotListPlan0, getTimeSlotListPlan1);
-  }
-
-  @Test
-  public void CountTimeSlotListPlanTest() throws IOException {
-    final CountTimeSlotListPlan countTimeSlotListPlan0 =
-        new CountTimeSlotListPlan(0, Long.MAX_VALUE);
-    final CountTimeSlotListPlan countTimeSlotListPlan1 =
-        (CountTimeSlotListPlan)
-            ConfigPhysicalPlan.Factory.create(countTimeSlotListPlan0.serializeToByteBuffer());
-    Assert.assertEquals(countTimeSlotListPlan0, countTimeSlotListPlan1);
-  }
-
-  @Test
-  public void GetSeriesSlotListPlanTest() throws IOException {
-    final GetSeriesSlotListPlan getSeriesSlotListPlan0 =
-        new GetSeriesSlotListPlan("root.test", SchemaRegion);
-    final GetSeriesSlotListPlan getSeriesSlotListPlan1 =
-        (GetSeriesSlotListPlan)
-            ConfigPhysicalPlan.Factory.create(getSeriesSlotListPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getSeriesSlotListPlan0, getSeriesSlotListPlan1);
-  }
-
-  @Test
-  public void GetPipePluginJarPlanTest() throws IOException {
-    final List<String> jarNames = new ArrayList<>();
-    jarNames.add("org.apache.testJar");
-    jarNames.add("org.apache.testJar2");
-    final GetPipePluginJarPlan getPipePluginJarPlan0 = new GetPipePluginJarPlan(jarNames);
-    final GetPipePluginJarPlan getPipePluginJarPlan1 =
-        (GetPipePluginJarPlan)
-            ConfigPhysicalPlan.Factory.create(getPipePluginJarPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getPipePluginJarPlan0, getPipePluginJarPlan1);
-  }
-
-  @Test
-  public void GetPipePluginTablePlanTest() throws IOException {
-    final GetPipePluginTablePlan getPipePluginTablePlan0 = new GetPipePluginTablePlan();
-    final GetPipePluginTablePlan getPipePluginTablePlan1 =
-        (GetPipePluginTablePlan)
-            ConfigPhysicalPlan.Factory.create(getPipePluginTablePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getPipePluginTablePlan0, getPipePluginTablePlan1);
-  }
-
-  @Test
-  public void ShowPipePlanV2Test() throws IOException {
-    final ShowPipePlanV2 showPipePlanV2 = new ShowPipePlanV2();
-    final ShowPipePlanV2 showPipePlanV21 =
-        (ShowPipePlanV2) ConfigPhysicalPlan.Factory.create(showPipePlanV2.serializeToByteBuffer());
-    Assert.assertEquals(showPipePlanV2, showPipePlanV21);
   }
 
   @Test
@@ -1849,34 +1397,6 @@ public class ConfigPhysicalPlanSerDeTest {
 
     Assert.assertEquals(plan0.getTriggerName(), plan1.getTriggerName());
     Assert.assertEquals(plan0.getDataNodeLocation(), plan1.getDataNodeLocation());
-  }
-
-  @Test
-  public void GetTransferringTriggersPlanTest() throws IOException {
-    GetTransferringTriggersPlan getTransferringTriggerPlan0 = new GetTransferringTriggersPlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getTransferringTriggerPlan0.serializeToByteBuffer())
-            instanceof GetTransferringTriggersPlan);
-  }
-
-  @Test
-  public void GetUDFTablePlanTest() throws IOException {
-    GetFunctionTablePlan getUDFTablePlan0 = new GetFunctionTablePlan();
-    Assert.assertTrue(
-        ConfigPhysicalPlan.Factory.create(getUDFTablePlan0.serializeToByteBuffer())
-            instanceof GetFunctionTablePlan);
-  }
-
-  @Test
-  public void GetUDFJarPlanTest() throws IOException {
-    List<String> jarNames = new ArrayList<>();
-    jarNames.add("test1");
-    jarNames.add("test2");
-    GetUDFJarPlan getUDFJarPlan0 = new GetUDFJarPlan(jarNames);
-
-    GetUDFJarPlan getUDFJarPlan1 =
-        (GetUDFJarPlan) ConfigPhysicalPlan.Factory.create(getUDFJarPlan0.serializeToByteBuffer());
-    Assert.assertEquals(getUDFJarPlan0.getJarNames(), getUDFJarPlan1.getJarNames());
   }
 
   @Test
