@@ -78,7 +78,7 @@ public class StringValueFilterVisitor extends SchemaFilterVisitor<String> {
     if (Objects.isNull(context)) {
       return null;
     }
-    return filter.getPattern().matcher(context).find();
+    return filter.getPattern().getMatcher().match(context.getBytes(), 0, context.length());
   }
 
   @Override

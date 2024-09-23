@@ -225,10 +225,19 @@ public class IoTDBDatabaseIT {
         final Statement statement = connection.createStatement()) {
       try {
         statement.execute("create database \"````x.\"");
-        fail("create database test shouldn't succeed because it contains '.'");
+        fail("create database ````x. shouldn't succeed because it contains '.'");
       } catch (final SQLException e) {
         assertEquals(
-            "509: ````x. is not a legal path, because The database name shall not contain '.'",
+            "509: ````x. is not a legal path, because the database name can only contain english or chinese characters, numbers, backticks and underscores.",
+            e.getMessage());
+      }
+
+      try {
+        statement.execute("create database \"#\"");
+        fail("create database # shouldn't succeed because it contains illegal character '#'");
+      } catch (final SQLException e) {
+        assertEquals(
+            "509: # is not a legal path, because the database name can only contain english or chinese characters, numbers, backticks and underscores.",
             e.getMessage());
       }
 

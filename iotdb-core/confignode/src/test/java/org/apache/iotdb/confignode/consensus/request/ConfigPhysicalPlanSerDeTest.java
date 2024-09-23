@@ -41,11 +41,11 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeStaticMeta;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.IdColumnSchema;
@@ -1204,7 +1204,8 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void SetPipeStatusPlanV2Test() throws IOException {
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
-        new SetPipeStatusPlanV2("pipe", org.apache.iotdb.commons.pipe.task.meta.PipeStatus.RUNNING);
+        new SetPipeStatusPlanV2(
+            "pipe", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
     final SetPipeStatusPlanV2 setPipeStatusPlanV21 =
         (SetPipeStatusPlanV2)
             ConfigPhysicalPlan.Factory.create(setPipeStatusPlanV2.serializeToByteBuffer());
@@ -1252,7 +1253,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
     final SetPipeStatusPlanV2 setPipeStatusPlanV2 =
         new SetPipeStatusPlanV2(
-            "testSet", org.apache.iotdb.commons.pipe.task.meta.PipeStatus.RUNNING);
+            "testSet", org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus.RUNNING);
 
     final List<ConfigPhysicalPlan> subPlans = new ArrayList<>();
     subPlans.add(createPipePlanV2);

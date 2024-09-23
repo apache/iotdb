@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
-import org.apache.iotdb.commons.pipe.task.meta.PipeRuntimeMetaVersion;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMetaVersion;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 

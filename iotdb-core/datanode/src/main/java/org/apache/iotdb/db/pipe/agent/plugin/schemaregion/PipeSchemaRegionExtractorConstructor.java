@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipeExtractorConstructor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.extractor.donothing.DoNothingExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.extractor.donothing.DoNothingExtractor;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeExtractorConstructor;
 import org.apache.iotdb.db.pipe.extractor.schemaregion.IoTDBSchemaRegionExtractor;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 
