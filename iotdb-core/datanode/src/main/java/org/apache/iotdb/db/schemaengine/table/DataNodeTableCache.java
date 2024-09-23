@@ -190,6 +190,11 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  public TsTable getTableInWrite(String database, final String tableName) {
+    final TsTable result = getTableInCache(database, tableName);
+    return Objects.nonNull(result) ? result : getTable(database, tableName);
+  }
+
   /**
    * The following logic can handle the cases when configNode failed to clear some table in {@link
    * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
@@ -286,7 +291,7 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
-  private TsTable getTableInCache(final String database, final String tableName) {
+  public TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
       return databaseTableMap.containsKey(database)
