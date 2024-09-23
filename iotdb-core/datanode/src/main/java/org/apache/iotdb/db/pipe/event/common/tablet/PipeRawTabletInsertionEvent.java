@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
@@ -51,7 +52,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private TabletInsertionDataContainer dataContainer;
 
-  private ProgressIndex overridingProgressIndex;
+  private volatile ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
       final Tablet tablet,
@@ -136,6 +137,9 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   protected void reportProgress() {
     if (needToReport) {
       super.reportProgress();
+      if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
+      }
     }
   }
 

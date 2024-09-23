@@ -58,11 +58,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
-import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 /**
  * The {@link ConvertSchemaPredicateToFilterVisitor} will convert a predicate to {@link
@@ -116,7 +117,12 @@ public class ConvertSchemaPredicateToFilterVisitor
       return null;
     }
     return wrapIdOrAttributeFilter(
-        new LikeFilter(parseLikePatternToRegex(((StringLiteral) node.getPattern()).getValue())),
+        new LikeFilter(
+            (((StringLiteral) node.getPattern()).getValue()),
+            node.getEscape().isPresent()
+                ? getEscapeCharacter(
+                    Optional.ofNullable(((StringLiteral) node.getEscape().get()).getValue()))
+                : Optional.empty()),
         ((SymbolReference) node.getValue()).getName(),
         context);
   }

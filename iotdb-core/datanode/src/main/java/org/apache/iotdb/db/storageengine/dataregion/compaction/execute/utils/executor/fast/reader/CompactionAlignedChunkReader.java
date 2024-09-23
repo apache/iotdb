@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.reader;
 
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.compress.IUnCompressor;
@@ -31,7 +31,8 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
-import org.apache.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.tsfile.read.reader.page.TimePageReader;
+import org.apache.tsfile.read.reader.page.ValuePageReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -46,27 +47,33 @@ public class CompactionAlignedChunkReader {
   private final List<ChunkHeader> valueChunkHeaderList = new ArrayList<>();
 
   private final IUnCompressor timeUnCompressor;
+  private final boolean ignoreAllNullRows;
   private final Decoder timeDecoder =
       Decoder.getDecoderByType(
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
           TSDataType.INT64);
 
+  private final List<TimeRange> timeDeleteIntervalList;
   // A list of deleted intervals
-  private final List<List<TimeRange>> valueDeleteIntervalList = new ArrayList<>();
+  private final List<List<TimeRange>> valueDeleteIntervalList;
 
   /**
    * Constructor of ChunkReader without deserializing chunk into page. This is used for fast
    * compaction.
    */
-  public CompactionAlignedChunkReader(Chunk timeChunk, List<Chunk> valueChunkList) {
+  public CompactionAlignedChunkReader(
+      Chunk timeChunk, List<Chunk> valueChunkList, boolean ignoreAllNullRows) {
     ChunkHeader timeChunkHeader = timeChunk.getHeader();
     this.timeUnCompressor = IUnCompressor.getUnCompressor(timeChunkHeader.getCompressionType());
+    this.timeDeleteIntervalList = timeChunk.getDeleteIntervalList();
+    this.valueDeleteIntervalList = new ArrayList<>(valueChunkList.size());
 
     valueChunkList.forEach(
         chunk -> {
           this.valueChunkHeaderList.add(chunk == null ? null : chunk.getHeader());
           this.valueDeleteIntervalList.add(chunk == null ? null : chunk.getDeleteIntervalList());
         });
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -80,10 +87,12 @@ public class CompactionAlignedChunkReader {
       ByteBuffer compressedTimePageData,
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
-    AlignedPageReader alignedPageReader =
-        getAlignedPageReader(
-            timePageHeader, valuePageHeaders, compressedTimePageData, compressedValuePageDatas);
-    return alignedPageReader.getLazyPointReader();
+    return getPontReader(
+        timePageHeader,
+        valuePageHeaders,
+        compressedTimePageData,
+        compressedValuePageDatas,
+        ignoreAllNullRows);
   }
 
   public IPointReader getBatchedPagePointReader(
@@ -92,58 +101,50 @@ public class CompactionAlignedChunkReader {
       ByteBuffer compressedTimePageData,
       List<ByteBuffer> compressedValuePageDatas)
       throws IOException {
-    AlignedPageReader alignedPageReader =
-        getAlignedPageReader(
-            timePageHeader, valuePageHeaders, compressedTimePageData, compressedValuePageDatas);
-    return new BatchedCompactionAlignedPagePointReader(
-        alignedPageReader.getTimePageReader(), alignedPageReader.getValuePageReaderList());
+    return getPontReader(
+        timePageHeader, valuePageHeaders, compressedTimePageData, compressedValuePageDatas, false);
   }
 
-  public AlignedPageReader getAlignedPageReader(
+  private IPointReader getPontReader(
       PageHeader timePageHeader,
       List<PageHeader> valuePageHeaders,
       ByteBuffer compressedTimePageData,
-      List<ByteBuffer> compressedValuePageDatas)
+      List<ByteBuffer> compressedValuePageDatas,
+      boolean ignoreAllNullRows)
       throws IOException {
 
     // uncompress time page data
     ByteBuffer uncompressedTimePageData =
         uncompressPageData(timePageHeader, timeUnCompressor, compressedTimePageData);
+    TimePageReader timePageReader =
+        new TimePageReader(timePageHeader, uncompressedTimePageData, timeDecoder);
+    timePageReader.setDeleteIntervalList(timeDeleteIntervalList);
+
     // uncompress value page datas
-    List<ByteBuffer> uncompressedValuePageDatas = new ArrayList<>();
-    List<TSDataType> valueTypes = new ArrayList<>();
-    List<Decoder> valueDecoders = new ArrayList<>();
+    List<ValuePageReader> valuePageReaders = new ArrayList<>(valuePageHeaders.size());
     for (int i = 0; i < valuePageHeaders.size(); i++) {
       if (valuePageHeaders.get(i) == null) {
-        uncompressedValuePageDatas.add(null);
-        valueTypes.add(TSDataType.BOOLEAN);
-        valueDecoders.add(null);
+        valuePageReaders.add(null);
       } else {
         ChunkHeader valueChunkHeader = valueChunkHeaderList.get(i);
-        uncompressedValuePageDatas.add(
+        ByteBuffer uncompressedPageData =
             uncompressPageData(
                 valuePageHeaders.get(i),
                 IUnCompressor.getUnCompressor(valueChunkHeader.getCompressionType()),
-                compressedValuePageDatas.get(i)));
+                compressedValuePageDatas.get(i));
         TSDataType valueType = valueChunkHeader.getDataType();
-        valueDecoders.add(Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
-        valueTypes.add(valueType);
+        ValuePageReader valuePageReader =
+            new ValuePageReader(
+                valuePageHeaders.get(i),
+                uncompressedPageData,
+                valueType,
+                Decoder.getDecoderByType(valueChunkHeader.getEncodingType(), valueType));
+        valuePageReader.setDeleteIntervalList(valueDeleteIntervalList.get(i));
+        valuePageReaders.add(valuePageReader);
       }
     }
 
-    // decode page data
-    AlignedPageReader alignedPageReader =
-        new AlignedPageReader(
-            timePageHeader,
-            uncompressedTimePageData,
-            timeDecoder,
-            valuePageHeaders,
-            uncompressedValuePageDatas,
-            valueTypes,
-            valueDecoders,
-            null);
-    alignedPageReader.initTsBlockBuilder(valueTypes);
-    alignedPageReader.setDeleteIntervalList(valueDeleteIntervalList);
-    return alignedPageReader;
+    return new CompactionAlignedPageLazyLoadPointReader(
+        timePageReader, valuePageReaders, ignoreAllNullRows);
   }
 }
