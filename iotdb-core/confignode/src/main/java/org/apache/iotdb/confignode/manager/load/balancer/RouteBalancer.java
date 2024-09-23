@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.manager.load.subscriber.RegionGroupStatistics
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -59,6 +60,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -245,7 +247,35 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         }
       }
     }
+
     getLoadManager().forceUpdateConsensusGroupCache(successTransferMap);
+
+    invalidateSchemaCacheOfOldLeaders(currentLeaderMap, successTransferMap.keySet());
+  }
+
+  private void invalidateSchemaCacheOfOldLeaders(
+      Map<TConsensusGroupId, Integer> oldLeaderMap, Set<TConsensusGroupId> successTransferSet) {
+    DataNodeAsyncRequestContext<TInvalidateCacheReq, TSStatus> invalidateSchemaCacheRequestHandler =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.INVALIDATE_SCHEMA_CACHE);
+    AtomicInteger requestIndex = new AtomicInteger(0);
+    oldLeaderMap.entrySet().stream()
+        .filter(entry -> successTransferSet.contains(entry.getKey()))
+        .forEach(
+            entry -> {
+              // set req
+              TConsensusGroupId consensusGroupId = entry.getKey();
+              String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
+              invalidateSchemaCacheRequestHandler.putRequest(
+                  requestIndex.get(), new TInvalidateCacheReq(true, database));
+              // set target
+              Integer dataNodeId = entry.getValue();
+              TDataNodeLocation dataNodeLocation =
+                  getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
+              invalidateSchemaCacheRequestHandler.putNodeLocation(
+                  requestIndex.getAndIncrement(), dataNodeLocation);
+            });
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
   }
 
   public synchronized void balanceRegionLeaderAndPriority() {

@@ -522,6 +522,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       String database = req.getFullPath().substring(5);
       DataNodeTableCache.getInstance().invalid(database);
       TableDeviceSchemaFetcher.getInstance().getTableDeviceCache().invalidate(database);
+      LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
