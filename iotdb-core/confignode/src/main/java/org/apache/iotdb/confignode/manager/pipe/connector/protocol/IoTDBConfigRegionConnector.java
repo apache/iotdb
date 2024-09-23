@@ -69,7 +69,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         useSSL,
-        ConfigNodeConfig.addHomeDir(trustStorePath),
+        Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
