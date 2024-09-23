@@ -54,20 +54,21 @@ public class IoTDBNullIdQueryIT {
         "USE " + DATABASE_NAME,
         "CREATE TABLE testNullId(id1 STRING ID, id2 STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 DOUBLE MEASUREMENT)",
         "INSERT INTO testNullId(time,id1,id2,s1,s2,s3) " + "values(1, null, null, 0, false, 11.1)",
-        "CREATE TABLE table1(device_id STRING ID, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT64 MEASUREMENT)",
+        "CREATE TABLE table1(device_id STRING ID, color STRING ATTRIBUTE, s1 INT32 MEASUREMENT, s2 BOOLEAN MEASUREMENT, s3 INT64 MEASUREMENT)",
         // in seq disk
-        "INSERT INTO table1(time,device_id,s1,s2,s3) " + "values(1, 'd1', 1, false, 11)",
+        "INSERT INTO table1(time,device_id,color,s1,s2,s3) "
+            + "values(1, 'd1', 'green', 1, false, 11)",
         "INSERT INTO table1(time,device_id,s1) " + "values(5, 'd1', 5)",
         "FLUSH",
         // in uneq disk
         "INSERT INTO table1(time,device_id,s1,s2,s3) " + "values(4, 'd1', 4, true, 44)",
-        "INSERT INTO table1(time,device_id,s1) " + "values(3, 'd1', 3)",
+        "INSERT INTO table1(time,device_id,color,s1) " + "values(3, 'd1', 'green', 3)",
         "FLUSH",
         // in seq memtable
         "INSERT INTO table1(time,device_id,s1,s2,s3) " + "values(7, 'd1', 7, false, 77)",
         "INSERT INTO table1(time,device_id,s1) " + "values(6, 'd1', 6)",
         // in unseq memtable
-        "INSERT INTO table1(time,device_id,s1) " + "values(2, 'd1', 2)",
+        "INSERT INTO table1(time,device_id,color,s1) " + "values(2, 'd1', 'green', 2)",
       };
 
   @BeforeClass
@@ -311,6 +312,107 @@ public class IoTDBNullIdQueryIT {
   }
 
   @Test
+  public void noMeasurementColumnsSelectTest() {
+    String[] expectedHeader = new String[] {"time"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,",
+          "1970-01-01T00:00:00.002Z,",
+          "1970-01-01T00:00:00.003Z,",
+          "1970-01-01T00:00:00.004Z,",
+          "1970-01-01T00:00:00.005Z,",
+          "1970-01-01T00:00:00.006Z,",
+          "1970-01-01T00:00:00.007Z,"
+        };
+    tableResultSetEqualTest("select time from table1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"device_id"};
+    retArray = new String[] {"d1,", "d1,", "d1,", "d1,", "d1,", "d1,"};
+    tableResultSetEqualTest(
+        "select device_id from table1 where time > 1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"color"};
+    retArray = new String[] {"green,", "green,", "green,", "green,", "green,", "green,"};
+    tableResultSetEqualTest(
+        "select color from table1 where time > 1", expectedHeader, retArray, DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,",
+          "1970-01-01T00:00:00.002Z,d1,",
+          "1970-01-01T00:00:00.003Z,d1,",
+          "1970-01-01T00:00:00.004Z,d1,",
+          "1970-01-01T00:00:00.005Z,d1,",
+          "1970-01-01T00:00:00.006Z,d1,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id from table1 where time < 7",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time", "device_id", "color"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,green,",
+          "1970-01-01T00:00:00.002Z,d1,green,",
+          "1970-01-01T00:00:00.003Z,d1,green,",
+          "1970-01-01T00:00:00.004Z,d1,green,",
+          "1970-01-01T00:00:00.005Z,d1,green,",
+          "1970-01-01T00:00:00.006Z,d1,green,",
+        };
+    tableResultSetEqualTest(
+        "select time, device_id, color from table1 where time < 7",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"device_id", "color"};
+    retArray =
+        new String[] {
+          "d1,green,",
+        };
+    tableResultSetEqualTest(
+        "select device_id, color from table1 where device_id='d1' limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"color"};
+    retArray =
+        new String[] {
+          "green,",
+        };
+    tableResultSetEqualTest(
+        "select color from table1 where device_id='d1' limit 1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,", "1970-01-01T00:00:00.004Z,", "1970-01-01T00:00:00.005Z,",
+        };
+    tableResultSetEqualTest(
+        "select time from table1 where time >= 3 and time <= 5 and device_id='d1'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    expectedHeader = new String[] {"time"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.003Z,", "1970-01-01T00:00:00.004Z,", "1970-01-01T00:00:00.005Z,",
+        };
+    tableResultSetEqualTest(
+        "select time from table1 where time >= 3 and time < 6 and color='green'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
   public void limitOffsetTest() {
     String[] expectedHeader = new String[] {"time", "device_id", "s2", "s3"};
     String[] retArray =
