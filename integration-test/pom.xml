@@ -60,13 +60,6 @@
         <highPerformanceMode.dataRegionReplicaNumber>2</highPerformanceMode.dataRegionReplicaNumber>
         <highPerformanceMode.schemaRegionConsensus>Ratis</highPerformanceMode.schemaRegionConsensus>
         <highPerformanceMode.schemaRegionReplicaNumber>3</highPerformanceMode.schemaRegionReplicaNumber>
-        <fastHighPerformanceMode.configNodeConsensus>Ratis</fastHighPerformanceMode.configNodeConsensus>
-        <fastHighPerformanceMode.configNodeNumber>1</fastHighPerformanceMode.configNodeNumber>
-        <fastHighPerformanceMode.dataNodeNumber>3</fastHighPerformanceMode.dataNodeNumber>
-        <fastHighPerformanceMode.dataRegionConsensus>FastIoT</fastHighPerformanceMode.dataRegionConsensus>
-        <fastHighPerformanceMode.dataRegionReplicaNumber>2</fastHighPerformanceMode.dataRegionReplicaNumber>
-        <fastHighPerformanceMode.schemaRegionConsensus>Ratis</fastHighPerformanceMode.schemaRegionConsensus>
-        <fastHighPerformanceMode.schemaRegionReplicaNumber>3</fastHighPerformanceMode.schemaRegionReplicaNumber>
         <strongConsistencyClusterMode.configNodeConsensus>Ratis</strongConsistencyClusterMode.configNodeConsensus>
         <strongConsistencyClusterMode.configNodeNumber>3</strongConsistencyClusterMode.configNodeNumber>
         <strongConsistencyClusterMode.dataNodeNumber>3</strongConsistencyClusterMode.dataNodeNumber>
@@ -74,6 +67,13 @@
         <strongConsistencyClusterMode.dataRegionReplicaNumber>3</strongConsistencyClusterMode.dataRegionReplicaNumber>
         <strongConsistencyClusterMode.schemaRegionConsensus>Ratis</strongConsistencyClusterMode.schemaRegionConsensus>
         <strongConsistencyClusterMode.schemaRegionReplicaNumber>3</strongConsistencyClusterMode.schemaRegionReplicaNumber>
+        <pipeConsensusBatchMode.configNodeConsensus>Ratis</pipeConsensusBatchMode.configNodeConsensus>
+        <pipeConsensusBatchMode.configNodeNumber>1</pipeConsensusBatchMode.configNodeNumber>
+        <pipeConsensusBatchMode.dataNodeNumber>3</pipeConsensusBatchMode.dataNodeNumber>
+        <pipeConsensusBatchMode.dataRegionConsensus>IoTV2</pipeConsensusBatchMode.dataRegionConsensus>
+        <pipeConsensusBatchMode.dataRegionReplicaNumber>2</pipeConsensusBatchMode.dataRegionReplicaNumber>
+        <pipeConsensusBatchMode.schemaRegionConsensus>Ratis</pipeConsensusBatchMode.schemaRegionConsensus>
+        <pipeConsensusBatchMode.schemaRegionReplicaNumber>3</pipeConsensusBatchMode.schemaRegionReplicaNumber>
     </properties>
     <dependencies>
         <dependency>
@@ -314,13 +314,6 @@
                                 <highPerformanceMode.dataRegionConsensus>${highPerformanceMode.dataRegionConsensus}</highPerformanceMode.dataRegionConsensus>
                                 <highPerformanceMode.schemaRegionReplicaNumber>${highPerformanceMode.schemaRegionReplicaNumber}</highPerformanceMode.schemaRegionReplicaNumber>
                                 <highPerformanceMode.dataRegionReplicaNumber>${highPerformanceMode.dataRegionReplicaNumber}</highPerformanceMode.dataRegionReplicaNumber>
-                                <fastHighPerformanceMode.configNodeNumber>${fastHighPerformanceMode.configNodeNumber}</fastHighPerformanceMode.configNodeNumber>
-                                <fastHighPerformanceMode.dataNodeNumber>${fastHighPerformanceMode.dataNodeNumber}</fastHighPerformanceMode.dataNodeNumber>
-                                <fastHighPerformanceMode.configNodeConsensus>${fastHighPerformanceMode.configNodeConsensus}</fastHighPerformanceMode.configNodeConsensus>
-                                <fastHighPerformanceMode.schemaRegionConsensus>${fastHighPerformanceMode.schemaRegionConsensus}</fastHighPerformanceMode.schemaRegionConsensus>
-                                <fastHighPerformanceMode.dataRegionConsensus>${fastHighPerformanceMode.dataRegionConsensus}</fastHighPerformanceMode.dataRegionConsensus>
-                                <fastHighPerformanceMode.schemaRegionReplicaNumber>${fastHighPerformanceMode.schemaRegionReplicaNumber}</fastHighPerformanceMode.schemaRegionReplicaNumber>
-                                <fastHighPerformanceMode.dataRegionReplicaNumber>${fastHighPerformanceMode.dataRegionReplicaNumber}</fastHighPerformanceMode.dataRegionReplicaNumber>
                                 <strongConsistencyClusterMode.configNodeNumber>${strongConsistencyClusterMode.configNodeNumber}</strongConsistencyClusterMode.configNodeNumber>
                                 <strongConsistencyClusterMode.dataNodeNumber>${strongConsistencyClusterMode.dataNodeNumber}</strongConsistencyClusterMode.dataNodeNumber>
                                 <strongConsistencyClusterMode.configNodeConsensus>${strongConsistencyClusterMode.configNodeConsensus}</strongConsistencyClusterMode.configNodeConsensus>
@@ -328,6 +321,13 @@
                                 <strongConsistencyClusterMode.dataRegionConsensus>${strongConsistencyClusterMode.dataRegionConsensus}</strongConsistencyClusterMode.dataRegionConsensus>
                                 <strongConsistencyClusterMode.schemaRegionReplicaNumber>${strongConsistencyClusterMode.schemaRegionReplicaNumber}</strongConsistencyClusterMode.schemaRegionReplicaNumber>
                                 <strongConsistencyClusterMode.dataRegionReplicaNumber>${strongConsistencyClusterMode.dataRegionReplicaNumber}</strongConsistencyClusterMode.dataRegionReplicaNumber>
+                                <pipeConsensusBatchMode.configNodeNumber>${pipeConsensusBatchMode.configNodeNumber}</pipeConsensusBatchMode.configNodeNumber>
+                                <pipeConsensusBatchMode.dataNodeNumber>${pipeConsensusBatchMode.dataNodeNumber}</pipeConsensusBatchMode.dataNodeNumber>
+                                <pipeConsensusBatchMode.configNodeConsensus>${pipeConsensusBatchMode.configNodeConsensus}</pipeConsensusBatchMode.configNodeConsensus>
+                                <pipeConsensusBatchMode.schemaRegionConsensus>${pipeConsensusBatchMode.schemaRegionConsensus}</pipeConsensusBatchMode.schemaRegionConsensus>
+                                <pipeConsensusBatchMode.dataRegionConsensus>${pipeConsensusBatchMode.dataRegionConsensus}</pipeConsensusBatchMode.dataRegionConsensus>
+                                <pipeConsensusBatchMode.schemaRegionReplicaNumber>${pipeConsensusBatchMode.schemaRegionReplicaNumber}</pipeConsensusBatchMode.schemaRegionReplicaNumber>
+                                <pipeConsensusBatchMode.dataRegionReplicaNumber>${pipeConsensusBatchMode.dataRegionReplicaNumber}</pipeConsensusBatchMode.dataRegionReplicaNumber>
                             </systemPropertyVariables>
                             <summaryFile>target/failsafe-reports/failsafe-summary-IT.xml</summaryFile>
                         </configuration>

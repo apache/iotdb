@@ -37,7 +37,7 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster: [FastHighPerformanceMode]
+        cluster: [PipeConsensusBatchMode]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -74,8 +74,8 @@ jobs:
       matrix:
         java: [17]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [FastHighPerformanceMode]
-        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, FastHighPerformanceMode]
+        cluster1: [PipeConsensusBatchMode]
+        cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode, PipeConsensusBatchMode]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -112,8 +112,8 @@ jobs:
       matrix:
         java: [ 17 ]
         # StrongConsistencyClusterMode is ignored now because RatisConsensus has not been supported yet.
-        cluster1: [ FastHighPerformanceMode ]
-        cluster2: [ FastHighPerformanceMode ]
+        cluster1: [ PipeConsensusBatchMode ]
+        cluster2: [ PipeConsensusBatchMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -150,8 +150,8 @@ jobs:
       matrix:
         java: [ 17 ]
         # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
-        cluster1: [ FastHighPerformanceMode ]
-        cluster2: [ FastHighPerformanceMode ]
+        cluster1: [ PipeConsensusBatchMode ]
+        cluster2: [ PipeConsensusBatchMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
@@ -188,8 +188,8 @@ jobs:
       matrix:
         java: [ 17 ]
         # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
-        cluster1: [ FastHighPerformanceMode ]
-        cluster2: [ FastHighPerformanceMode ]
+        cluster1: [ PipeConsensusBatchMode ]
+        cluster2: [ PipeConsensusBatchMode ]
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
