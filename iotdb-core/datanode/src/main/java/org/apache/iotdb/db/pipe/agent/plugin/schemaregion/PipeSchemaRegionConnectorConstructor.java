@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin.schemaregion;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipeConnectorConstructor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
 import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBSchemaRegionAirGapConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.thrift.sync.IoTDBSchemaRegionConnector;
 import org.apache.iotdb.pipe.api.PipeConnector;
