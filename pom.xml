@@ -1360,6 +1360,87 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Check if we've changed any dependencies being included -->
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <!-- Only run this in the root module of the project -->
+                <inherited>false</inherited>
+                <configuration>
+                    <outputName>apache-${project.artifactId}-${project.version}-sbom</outputName>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeAggregateBom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>xml-maven-plugin</artifactId>
+                <version>1.1.0</version>
+                <!-- Only run this in the root module of the project -->
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>transform</goal>
+                        </goals>
+                        <configuration>
+                            <transformationSets>
+                                <transformationSet>
+                                    <dir>${project.basedir}/target/</dir>
+                                    <includes>apache-${project.artifactId}-${project.version}-sbom.xml</includes>
+                                    <stylesheet>src/main/xslt/sbom-filter.xsl</stylesheet>
+                                    <outputDir>${project.basedir}/target/</outputDir>
+                                    <fileMappers>
+                                        <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
+                                            <targetExtension>.txt</targetExtension>
+                                        </fileMapper>
+                                    </fileMappers>
+                                </transformationSet>
+                            </transformationSets>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>net.sf.saxon</groupId>
+                        <artifactId>Saxon-HE</artifactId>
+                        <version>12.5</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.gmaven</groupId>
+                <artifactId>groovy-maven-plugin</artifactId>
+                <version>2.1.1</version>
+                <!-- Only run this in the root module of the project -->
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>compare-with-reference-list</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>execute</goal>
+                        </goals>
+                        <configuration>
+                            <source>src/main/groovy/checkDependencies.groovy</source>
+                        </configuration>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.groovy</groupId>
+                        <artifactId>groovy</artifactId>
+                        <version>4.0.22</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
         </plugins>
     </build>
     <licenses>
