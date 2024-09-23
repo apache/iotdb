@@ -549,6 +549,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.LAST_VALUE:
       case SqlConstant.TIME_DURATION:
       case SqlConstant.MODE:
+      case SqlConstant.FIRST:
+      case SqlConstant.LAST:
         if (argumentTypes.size() != 1) {
           throw new SemanticException(
               String.format(
@@ -581,6 +583,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.COUNT:
       case SqlConstant.TIME_DURATION:
         return INT64;
+      case SqlConstant.FIRST:
+      case SqlConstant.LAST:
       case SqlConstant.MIN_VALUE:
       case SqlConstant.LAST_VALUE:
       case SqlConstant.FIRST_VALUE:

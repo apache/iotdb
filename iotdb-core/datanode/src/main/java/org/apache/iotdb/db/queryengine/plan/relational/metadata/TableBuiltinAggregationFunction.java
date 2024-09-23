@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
+import org.apache.iotdb.db.utils.constant.SqlConstant;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.read.common.type.Type;
 
@@ -79,15 +81,15 @@ public enum TableBuiltinAggregationFunction {
   public static boolean canUseStatistics(String name) {
     final String functionName = name.toLowerCase();
     switch (functionName) {
-      case "sum":
-      case "count":
-      case "avg":
-      case "extreme":
-      case "max":
-      case "min":
-      case "first":
-      case "last":
-      case "time_duration":
+      case SqlConstant.SUM:
+      case SqlConstant.COUNT:
+      case SqlConstant.AVG:
+      case SqlConstant.EXTREME:
+      case SqlConstant.MIN:
+      case SqlConstant.MAX:
+      case SqlConstant.FIRST:
+      case SqlConstant.LAST:
+      case SqlConstant.TIME_DURATION:
         return true;
       case "first_by":
       case "last_by":
