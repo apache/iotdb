@@ -41,6 +41,7 @@ import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -63,6 +64,12 @@ import static org.junit.Assert.fail;
 public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSubscriptionDataTypeIT.class);
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   // ----------------------------- //
   // SessionDataSetsHandler format //
