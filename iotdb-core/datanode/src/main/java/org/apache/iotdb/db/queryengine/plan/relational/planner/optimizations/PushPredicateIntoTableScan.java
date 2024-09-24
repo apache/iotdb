@@ -88,7 +88,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinN
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.extractJoinPredicate;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.joinEqualityExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.processInnerJoin;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils.tryNormalizeToOuterToInnerJoin;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 
 /**
@@ -519,7 +518,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           context.inheritedPredicate != null ? context.inheritedPredicate : TRUE_LITERAL;
 
       // See if we can rewrite outer joins in terms of a plain inner join
-      node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
+      // node = tryNormalizeToOuterToInnerJoin(node, inheritedPredicate);
 
       Expression leftEffectivePredicate = TRUE_LITERAL;
       // effectivePredicateExtractor.extract(session, node.getLeftChild(), types, typeAnalyzer);
@@ -547,6 +546,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           rightPredicate = innerJoinPushDownResult.getRightPredicate();
           postJoinPredicate = innerJoinPushDownResult.getPostJoinPredicate();
           newJoinPredicate = innerJoinPushDownResult.getJoinPredicate();
+          break;
+        case FULL:
+          leftPredicate = TRUE_LITERAL;
+          rightPredicate = TRUE_LITERAL;
+          postJoinPredicate = inheritedPredicate;
+          newJoinPredicate = joinPredicate;
           break;
         default:
           throw new IllegalStateException("Only support INNER JOIN in current version");
