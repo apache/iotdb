@@ -312,7 +312,7 @@ public class DeletionExprMain {
         200_000_000,
     };
     Configurer configurer = (expr, j) -> {
-      expr.config.generateFullDeletionInterval = exprArgs2[j];
+      expr.config.generateFullDeletionInterval = exprArgs1[j];
       expr.config.generatePartialDeletionInterval = exprArgs2[j];
     };
     parallelExpr(configurer, exprArgs1.length, (i) -> argName1 + ":" + exprArgs1[i] +";" + argName2 + ":" + exprArgs2[i], true);
