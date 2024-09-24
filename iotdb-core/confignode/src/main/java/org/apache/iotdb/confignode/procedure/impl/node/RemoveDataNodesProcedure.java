@@ -40,6 +40,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -261,6 +262,11 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           ThriftCommonsSerDeUtils.serializeTDataNodeLocation(
               regionMigrationPlan.getToDataNode(), stream);
         });
+    stream.writeInt(nodeStatusMap.size());
+    for (Map.Entry<Integer, NodeStatus> entry : nodeStatusMap.entrySet()) {
+      stream.writeInt(entry.getKey());
+      stream.writeByte(entry.getValue().ordinal());
+    }
   }
 
   @Override
@@ -284,6 +290,13 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
         regionMigrationPlan.setToDataNode(
             ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer));
         regionMigrationPlans.add(regionMigrationPlan);
+      }
+      int nodeStatusMapSize = byteBuffer.getInt();
+      nodeStatusMap = new HashMap<>(nodeStatusMapSize);
+      for (int i = 0; i < nodeStatusMapSize; i++) {
+        int dataNodeId = byteBuffer.getInt();
+        NodeStatus nodeStatus = NodeStatus.values()[byteBuffer.get()];
+        nodeStatusMap.put(dataNodeId, nodeStatus);
       }
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
