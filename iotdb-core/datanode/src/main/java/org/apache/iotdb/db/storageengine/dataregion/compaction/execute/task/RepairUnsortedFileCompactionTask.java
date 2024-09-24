@@ -54,6 +54,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     }
   }
 
+  public static long getInitialAllocatedFileTimestamp() {
+    return Long.MAX_VALUE / 2;
+  }
+
   private final TsFileResource sourceFile;
   private final boolean rewriteFile;
   private CountDownLatch latch;
