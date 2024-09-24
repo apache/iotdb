@@ -181,7 +181,6 @@ public class SetTablePropertiesProcedure
           database,
           table.getTableName(),
           failedResults);
-      // TODO: Handle commit failure
     }
   }
 
