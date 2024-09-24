@@ -92,7 +92,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
   private final BlockingQueue<Event> retryEventQueue = new LinkedBlockingQueue<>();
   // We use enrichedEvent here to make use of EnrichedEvent.equalsInPipeConsensus
   private final BlockingQueue<EnrichedEvent> transferBuffer =
-      new LinkedBlockingDeque<>(IOTDB_CONFIG.getPipeConsensusPipelineSize());
+      new LinkedBlockingDeque<>(IOTDB_CONFIG.getIotConsensusV2PipelineSize());
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
   private final int thisDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private PipeConsensusConnectorMetrics pipeConsensusConnectorMetrics;
@@ -206,7 +206,7 @@ public class PipeConsensusAsyncConnector extends IoTDBConnector implements Conse
           consensusGroupId,
           event,
           transferBuffer.size(),
-          IOTDB_CONFIG.getPipeConsensusPipelineSize());
+          IOTDB_CONFIG.getIotConsensusV2PipelineSize());
     }
     if (transferBuffer.isEmpty()) {
       LOGGER.info(

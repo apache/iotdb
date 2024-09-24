@@ -30,6 +30,7 @@ import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig;
+import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -168,8 +169,9 @@ public class DataRegionConsensusImpl {
                               () -> PipeDataNodeAgent.task().getAllConsensusPipe())
                           .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().pipeConsensus())
                           .setProgressIndexManager(new ProgressIndexDataNodeManager())
-                          .setConsensusPipeGuardJobIntervalInSeconds(300) // TODO: move to config
+                          .setConsensusPipeGuardJobIntervalInSeconds(300)
                           .build())
+                  .setReplicateMode(ReplicateMode.fromValue(CONF.getIotConsensusV2Mode()))
                   .build())
           .setRatisConfig(
               RatisConfig.newBuilder()
