@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Inne
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -356,7 +357,7 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
       }
       resource
           .getCompactionModFile()
-          .write(new Deletion(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
+          .write(new TreeDeletionEntry(new PartialPath("root.**"), Long.MAX_VALUE, Long.MAX_VALUE));
       resource.getCompactionModFile().close();
       seqResources.add(resource);
     }
@@ -378,11 +379,11 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     for (int i = 0; i < filesAfterCompaction.size(); i++) {
       TsFileResource resource = filesAfterCompaction.get(i);
       if (i == 8) {
-        Assert.assertTrue(resource.modFileExists());
+        Assert.assertTrue(resource.oldModFileExists());
       } else {
-        Assert.assertFalse(resource.modFileExists());
+        Assert.assertFalse(resource.oldModFileExists());
       }
-      Assert.assertFalse(resource.compactionModFileExists());
+      Assert.assertFalse(resource.getCompactionModFile().getFile().exists());
     }
   }
 

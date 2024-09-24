@@ -40,6 +40,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.CompactionEstimateUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCompactionInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -73,13 +74,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       ICompactionPerformer performer,
-      long serialId) {
+      long serialId,
+      ModFileManager modFileManager) {
     super(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        serialId);
+        serialId,
+        modFileManager);
     filesView = new InnerCompactionTaskFilesView(selectedTsFileResourceList, sequence);
     this.performer = performer;
     this.hashCode = this.hashCode();
@@ -93,13 +96,15 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> skippedTsFileResourceList,
       boolean sequence,
       ICompactionPerformer performer,
-      long serialId) {
+      long serialId,
+      ModFileManager modFileManager) {
     super(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        serialId);
+        serialId,
+        modFileManager);
     this.filesView =
         new InnerCompactionTaskFilesView(
             selectedTsFileResourceList, skippedTsFileResourceList, sequence);
@@ -110,8 +115,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   public InnerSpaceCompactionTask(
-      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
+      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile, ModFileManager modFileManager) {
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, modFileManager);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
     this.filesView = new InnerCompactionTaskFilesView();
@@ -183,6 +188,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       sortedAllSourceFilesInTask = sourceFiles;
     }
 
+    @TestOnly
     protected void setTargetFileForRecover(TsFileResource resource) {
       targetFilesInLog = Collections.singletonList(resource);
       targetFilesInPerformer = targetFilesInLog;
@@ -292,6 +298,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     return isSuccess;
   }
 
+  @SuppressWarnings("unchecked")
   protected void calculateSourceFilesAndTargetFiles()
       throws DiskSpaceInsufficientException, IOException {
     LinkedList<TsFileResource> availablePositionForTargetFiles = new LinkedList<>();
@@ -345,6 +352,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
           TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
               availablePositionForTargetFiles.subList(0, requiredPositionNum), filesView.sequence);
     }
+
+    allocateModFile(filesView.targetFilesInPerformer, filesView.sourceFilesInLog);
+
     filesView.targetFilesInLog =
         new ArrayList<>(
             filesView.targetFilesInPerformer.size() + filesView.renamedTargetFiles.size());
@@ -451,11 +461,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       Files.createLink(
           new File(newFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
           new File(oldFile.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (oldFile.modFileExists()) {
+      if (oldFile.oldModFileExists()) {
         Files.createLink(
             new File(newFile.getTsFilePath() + ModificationFileV1.FILE_SUFFIX).toPath(),
             new File(oldFile.getTsFilePath() + ModificationFileV1.FILE_SUFFIX).toPath());
       }
+      newFile.inheritModFile(oldFile);
       newFile.deserialize();
     }
     CompactionUtils.moveTargetFile(
@@ -540,7 +551,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     if (recoverMemoryStatus) {
       replaceTsFileInMemory(targetFiles, filesView.sourceFilesInLog);
     }
-    deleteCompactionModsFile(filesView.sortedAllSourceFilesInTask);
+    unsetCompactionModsFile(filesView.sortedAllSourceFilesInTask);
+    deleteCompactionModsFile(targetFiles);
     // delete target file
     for (TsFileResource targetTsFileResource : targetFiles) {
       if (targetTsFileResource != null && !deleteTsFileOnDisk(targetTsFileResource)) {

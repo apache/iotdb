@@ -159,7 +159,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.modFileExists());
+    Assert.assertFalse(targetFile.oldModFileExists());
   }
 
   @Test
@@ -249,7 +249,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.modFileExists());
+    Assert.assertFalse(targetFile.oldModFileExists());
   }
 
   @Test
@@ -342,7 +342,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertTrue(targetFile.modFileExists());
+    Assert.assertTrue(targetFile.oldModFileExists());
   }
 
   @Test
@@ -424,7 +424,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.modFileExists());
+    Assert.assertFalse(targetFile.oldModFileExists());
   }
 
   private TsFileResource createTsFileResource(String name, boolean seq) {

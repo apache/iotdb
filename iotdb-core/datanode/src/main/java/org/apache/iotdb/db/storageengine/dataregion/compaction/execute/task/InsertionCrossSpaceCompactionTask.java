@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -62,7 +63,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        serialId);
+        serialId,
+        null);
     this.phaser = phaser;
     this.selectedSeqFiles = new ArrayList<>();
     this.selectedUnseqFiles = new ArrayList<>();
@@ -85,7 +87,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
   public InsertionCrossSpaceCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, null);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
     this.selectedSeqFiles = Collections.emptyList();
@@ -233,9 +235,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
           new File(targetTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
     }
-    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
+    targetFile.inheritModFile(unseqFileToInsert);
     targetFile.deserialize();
-    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
   }
 
   private boolean recoverTaskInfoFromLogFile() throws IOException {
@@ -297,8 +298,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
         || !targetFile.tsFileExists()
         || !targetFile.resourceFileExists()
         || (unseqFileToInsert != null
-            && unseqFileToInsert.modFileExists()
-            && !targetFile.modFileExists())
+            && unseqFileToInsert.oldModFileExists()
+            && !targetFile.oldModFileExists())
         || failToPassOverlapValidation;
   }
 
@@ -308,7 +309,8 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       replaceTsFileInMemory(
           Collections.singletonList(targetFile), Collections.singletonList(unseqFileToInsert));
     }
-    deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
+    unsetCompactionModsFile(Collections.singletonList(unseqFileToInsert));
+    deleteCompactionModsFile(Collections.singletonList(targetFile));
     if (targetFile == null) {
       return;
     }
@@ -333,7 +335,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       throw new CompactionRecoverException("source files cannot be deleted successfully");
     }
 
-    deleteCompactionModsFile(Collections.singletonList(unseqFileToInsert));
+    unsetCompactionModsFile(Collections.singletonList(unseqFileToInsert));
   }
 
   @Override

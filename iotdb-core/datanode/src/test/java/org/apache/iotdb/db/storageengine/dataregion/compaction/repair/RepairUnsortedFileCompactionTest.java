@@ -579,7 +579,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
-    Assert.assertTrue(targetResource.modFileExists());
+    Assert.assertTrue(targetResource.oldModFileExists());
     Assert.assertEquals(1, targetResource.getOldModFile().getModifications().size());
     Deletion modification =
         (Deletion) targetResource.getOldModFile().getModifications().iterator().next();

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
 import java.nio.channels.FileChannel;
+import java.util.Collections;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -77,7 +78,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-@SuppressWarnings("java:S1135") // ignore todos
+@SuppressWarnings({"java:S1135", "resource"}) // ignore todos
 public class TsFileResource {
 
   private static final long INSTANCE_SIZE =
@@ -113,9 +114,10 @@ public class TsFileResource {
   private long modFileOffset;
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFileV1 oldModFile;
+  private volatile boolean oldModFileChecked = false;
 
   @SuppressWarnings("squid:S3077")
-  private volatile ModificationFileV1 compactionModFile;
+  private volatile ModificationFile compactionModFile;
   private ModFileManager modFileManager;
   // the start pos of mod file path in this TsFileResource
   private long modFilePathOffset = -1;
@@ -339,9 +341,19 @@ public class TsFileResource {
     }
   }
 
-  public void setModFile(ModificationFile modFile) throws IOException {
+  public void inheritModFile(TsFileResource parent) {
+    this.modFile = parent.modFile;
+    this.modFilePathOffset = parent.modFilePathOffset;
+    this.modFileOffset = parent.modFileOffset;
+  }
+
+  public void setModFile(ModificationFile modFile, boolean persist) throws IOException {
     this.modFile = modFile;
     this.modFileOffset = modFile.getFile().length();
+    if (!persist) {
+      return;
+    }
+
     File resFile = new File(file + RESOURCE_SUFFIX);
     if (!resFile.exists()) {
       // the file has not been serialized, just serialize it
@@ -423,12 +435,12 @@ public class TsFileResource {
     return file != null && file.exists();
   }
 
-  public boolean modFileExists() {
-    return getOldModFile().exists();
-  }
-
-  public boolean compactionModFileExists() {
-    return getCompactionModFile().exists();
+  public boolean oldModFileExists() {
+    ModificationFileV1 oldModFile = getOldModFile();
+    if (oldModFile == null) {
+      return false;
+    }
+    return oldModFile.exists();
   }
 
   public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
@@ -441,25 +453,30 @@ public class TsFileResource {
 
   @SuppressWarnings("squid:S2886")
   public ModificationFileV1 getOldModFile() {
-    if (oldModFile == null) {
-      synchronized (this) {
-        if (oldModFile == null) {
-          oldModFile = ModificationFileV1.getNormalMods(this);
-        }
-      }
+    if (oldModFileChecked) {
+      return oldModFile;
     }
-    return oldModFile;
+    writeLock();
+    // avoid creating different old mod files
+    try {
+      File oldModFile = new File(getTsFilePath() + ModificationFileV1.FILE_SUFFIX);
+      if (oldModFile.exists()) {
+        this.oldModFile = new ModificationFileV1(oldModFile.getPath());
+      }
+      oldModFileChecked = true;
+    } finally {
+      writeUnlock();
+    }
+    return this.oldModFile;
   }
 
-  public ModificationFileV1 getCompactionModFile() {
-    if (compactionModFile == null) {
-      synchronized (this) {
-        if (compactionModFile == null) {
-          compactionModFile = ModificationFileV1.getCompactionMods(this);
-        }
-      }
-    }
+  public ModificationFile getCompactionModFile() {
     return compactionModFile;
+  }
+
+  public void setCompactionModFile(
+      ModificationFile compactionModFile) {
+    this.compactionModFile = compactionModFile;
   }
 
   public void resetModFile() throws IOException {
@@ -609,14 +626,15 @@ public class TsFileResource {
 
   /** Used for compaction. */
   public void closeWithoutSettingStatus() throws IOException {
+    if (modFile != null) {
+      modFile.close();
+      modFile = null;
+    }
     if (oldModFile != null) {
       oldModFile.close();
       oldModFile = null;
     }
-    if (compactionModFile != null) {
-      compactionModFile.close();
-      compactionModFile = null;
-    }
+
     processor = null;
     pathToChunkMetadataListMap = null;
     pathToReadOnlyMemChunkMap = null;
@@ -681,8 +699,16 @@ public class TsFileResource {
   }
 
   public void removeModFile() throws IOException {
-    getOldModFile().remove();
-    oldModFile = null;
+    ModificationFileV1 oldModFile = getOldModFile();
+    if (oldModFile != null) {
+      oldModFile.remove();
+      setOldModFile(null);
+    }
+
+    if (modFile != null) {
+      modFile.removeReferences(Collections.singletonList(this));
+      modFile = null;
+    }
   }
 
   /**
@@ -691,6 +717,7 @@ public class TsFileResource {
    */
   public boolean remove() {
     forceMarkDeleted();
+
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -702,10 +729,9 @@ public class TsFileResource {
     if (!removeResourceFile()) {
       return false;
     }
+
     try {
-      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFileV1.FILE_SUFFIX));
-      fsFactory.deleteIfExists(
-          fsFactory.getFile(file.getPath() + ModificationFileV1.COMPACTION_FILE_SUFFIX));
+      removeModFile();
     } catch (IOException e) {
       LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
@@ -1298,7 +1324,7 @@ public class TsFileResource {
 
   public ModificationFile getModFileMayAllocate() throws IOException {
     if (modFile == null) {
-      modFileManager.allocate(this);
+      setModFile(modFileManager.allocate(this), true);
     }
     return modFile;
   }

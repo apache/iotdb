@@ -82,6 +82,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -265,6 +266,10 @@ public class DataRegion implements IDataRegionForQuery {
    */
   private final HashMap<Long, VersionController> timePartitionIdVersionControllerMap =
       new HashMap<>();
+  /**
+   * time partition id -> ModFileManager
+   */
+  private final Map<Long, ModFileManager> timePartitionModFileManagerMap = new ConcurrentHashMap<>();
 
   /** file system factory (local or hdfs). */
   private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
@@ -2155,7 +2160,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
-  private void getTwoKindsOfTsFiles(
+  private void separateTsFileBySealStatus(
       List<TsFileResource> sealedResource,
       List<TsFileResource> unsealedResource,
       long startTime,
@@ -2187,6 +2192,7 @@ public class DataRegion implements IDataRegionForQuery {
     writeLock("delete");
 
     boolean hasReleasedLock = false;
+    boolean anyFileRemoved = false;
 
     try {
       DataNodeSchemaCache.getInstance().invalidateLastCache(pattern);
@@ -2206,10 +2212,22 @@ public class DataRegion implements IDataRegionForQuery {
 
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      separateTsFileBySealStatus(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      Set<String> deviceMatchInfo = new HashSet<>();
+      sealedTsFileResource.removeIf(f -> canSkipDelete(
+          f,
+          devicePaths,
+          deletion.getStartTime(),
+          deletion.getEndTime(),
+          deviceMatchInfo));
+      unsealedTsFileResource.removeIf(f -> canSkipDelete(
+          f,
+          devicePaths,
+          deletion.getStartTime(),
+          deletion.getEndTime(),
+          deviceMatchInfo));
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
-      Set<String> deviceMatchInfo = new HashSet<>();
       deleteDataInFiles(unsealedTsFileResource, deletion, devicePaths, deviceMatchInfo);
       writeUnlock();
       hasReleasedLock = true;
@@ -2249,7 +2267,7 @@ public class DataRegion implements IDataRegionForQuery {
       }
       List<TsFileResource> sealedTsFileResource = new ArrayList<>();
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
-      getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
+      separateTsFileBySealStatus(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       deleteDataDirectlyInFile(unsealedTsFileResource, pathToDelete, startTime, endTime);
       writeUnlock();
       releasedLock = true;
@@ -2374,23 +2392,22 @@ public class DataRegion implements IDataRegionForQuery {
     return true;
   }
 
+  private void deleteDataInMemory(Collection<TsFileResource> tsFileResourceList,
+      Deletion deletion,
+      Set<PartialPath> devicePaths,
+      List<TsFileResource> nonWritableFiles) {
+
+  }
+
   // suppress warn of Throwable catch
   @SuppressWarnings("java:S1181")
   private void deleteDataInFiles(
       Collection<TsFileResource> tsFileResourceList,
       Deletion deletion,
       Set<PartialPath> devicePaths,
-      Set<String> deviceMatchInfo)
+      List<TsFileResource> nonWritableFiles)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (canSkipDelete(
-          tsFileResource,
-          devicePaths,
-          deletion.getStartTime(),
-          deletion.getEndTime(),
-          deviceMatchInfo)) {
-        continue;
-      }
 
       ModificationFileV1 modFile = tsFileResource.getOldModFile();
       if (tsFileResource.isClosed()) {
@@ -3798,5 +3815,12 @@ public class DataRegion implements IDataRegionForQuery {
   @TestOnly
   public TsFileManager getTsFileManager() {
     return tsFileManager;
+  }
+
+  public ModFileManager getModFileManager(long timePartitionId) {
+    // TODO: conclude better arguments from the previous partition
+    long singleModFileSizeThreshold = config.getSingleModFileSizeThreshold();
+    int levelModFileCntThreshold = config.getLevelModFileCntThreshold();
+    return timePartitionModFileManagerMap.computeIfAbsent(timePartitionId, tid -> new ModFileManager(levelModFileCntThreshold, singleModFileSizeThreshold));
   }
 }

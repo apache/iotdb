@@ -123,41 +123,6 @@ public class CompactionUtils {
    *
    * @throws IOException if io errors occurred
    */
-  public static void combineModsInCrossCompaction(
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources,
-      List<TsFileResource> targetResources)
-      throws IOException {
-    Set<Modification> modifications = new HashSet<>();
-    // get compaction mods from all source unseq files
-    for (TsFileResource unseqFile : unseqResources) {
-      modifications.addAll(ModificationFileV1.getCompactionMods(unseqFile).getModifications());
-    }
-
-    // write target mods file
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
-      if (targetResource == null) {
-        continue;
-      }
-      Set<Modification> seqModifications =
-          new HashSet<>(ModificationFileV1.getCompactionMods(seqResources.get(i)).getModifications());
-      modifications.addAll(seqModifications);
-      updateOneTargetMods(targetResource, modifications);
-      if (!modifications.isEmpty()) {
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(targetResource.getOldModFile().getSize());
-      }
-      modifications.removeAll(seqModifications);
-    }
-  }
-
-  /**
-   * Collect all the compaction modification files of source files, and combines them as the
-   * modification file of target file.
-   *
-   * @throws IOException if io errors occurred
-   */
   public static void combineModsInInnerCompaction(
       Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
     Set<Modification> modifications = new HashSet<>();

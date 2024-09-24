@@ -71,25 +71,30 @@ public class ModFileManager {
     }
   }
 
+  /**
+   * Allocate a Mod File by newing or sharing to the give TsFile.
+   * @param resource tsFile to allocate
+   */
   @SuppressWarnings("DuplicatedCode")
-  public void allocate(TsFileResource resource) throws IOException {
+  public ModificationFile allocate(TsFileResource resource) throws IOException {
     TsFileID tsFileID = resource.getTsFileID();
     long levelNum = tsFileID.getInnerCompactionCount();
 
     // find the nearest TsFile that has a mod, i.e, share candidate
     TsFileResource prev = resource.getPrev();
     TsFileResource next = resource.getNext();
+    ModificationFile allocatedModFile;
     while (prev != null || next != null) {
       if (prev != null) {
         ModificationFile prevModFile = prev.getModFile();
         if (prevModFile != null) {
           if (shouldAllocateNew(prevModFile, levelNum)) {
-            ModificationFile newModFile = allocateNew(resource);
-            resource.setModFile(newModFile);
+            allocatedModFile = allocateNew(resource);
           } else {
-            resource.setModFile(prevModFile);
+            allocatedModFile = prevModFile;
+            allocatedModFile.addReference(resource);
           }
-          return;
+          return allocatedModFile;
         }
         prev = prev.getPrev();
       }
@@ -98,16 +103,19 @@ public class ModFileManager {
         ModificationFile nextModFile = next.getModFile();
         if (nextModFile != null) {
           if (shouldAllocateNew(nextModFile, levelNum)) {
-            ModificationFile newModFile = allocateNew(resource);
-            resource.setModFile(newModFile);
+            allocatedModFile = allocateNew(resource);
           } else {
-            resource.setModFile(nextModFile);
+            allocatedModFile = nextModFile;
+            allocatedModFile.addReference(resource);
           }
-          return;
+          return allocatedModFile;
         }
         next = next.getNext();
       }
     }
+
+    // no mod file found, allocate a new one
+    return allocateNew(resource);
   }
 
   private boolean shouldAllocateNew(ModificationFile modificationFile, long levelNum) {
@@ -122,7 +130,13 @@ public class ModFileManager {
     return fileLength > singleModFileSizeThreshold;
   }
 
-  public ModificationFile allocateNew(TsFileResource resource) {
+  /**
+   * Force to allocate a new Mod File for the TsFile.
+   * This will NOT set any fields of the TsFileResource.
+   * @param resource TsFile to allocate.
+   * @return the newly allocated Mod File.
+   */
+  private ModificationFile allocateNew(TsFileResource resource) {
     TsFileID tsFileID = resource.getTsFileID();
     long levelNum = tsFileID.getInnerCompactionCount();
     long nextModNum = maxModNum(levelNum) + 1;
@@ -131,6 +145,7 @@ public class ModFileManager {
         levelNum,
         k -> new TreeMap<>());
     synchronized (levelModsFileMap) {
+      // use the provided file as the initial reference to avoid a newly created Mod File being cleaned
       return levelModsFileMap.computeIfAbsent(nextModNum, k -> new ModificationFile(file, resource));
     }
   }

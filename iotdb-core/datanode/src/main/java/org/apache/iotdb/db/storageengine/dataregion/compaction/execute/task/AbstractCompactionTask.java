@@ -35,7 +35,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairDataFileScanUtil;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -84,12 +85,15 @@ public abstract class AbstractCompactionTask {
   private boolean fileHandleAcquired = false;
   protected long compactionConfigVersion = Long.MAX_VALUE;
 
+  protected ModFileManager modFileManager;
+
   protected AbstractCompactionTask(
       String storageGroupName,
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
-      long serialId) {
+      long serialId,
+      ModFileManager modFileManager) {
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
@@ -373,13 +377,15 @@ public abstract class AbstractCompactionTask {
     return null;
   }
 
-  protected void deleteCompactionModsFile(List<TsFileResource> tsFileResourceList)
-      throws IOException {
-    for (TsFileResource tsFile : tsFileResourceList) {
-      ModificationFileV1 modificationFile = tsFile.getCompactionModFile();
-      if (modificationFile.exists()) {
-        modificationFile.remove();
-      }
+  protected void unsetCompactionModsFile(List<TsFileResource> sourceFileList) {
+    for (TsFileResource tsFile : sourceFileList) {
+      tsFile.setCompactionModFile(null);
+    }
+  }
+
+  protected void deleteCompactionModsFile(List<TsFileResource> targetFileList) throws IOException {
+    for (TsFileResource resource : targetFileList) {
+      resource.removeModFile();
     }
   }
 
@@ -500,5 +506,29 @@ public abstract class AbstractCompactionTask {
   @TestOnly
   public void setRecoverMemoryStatus(boolean recoverMemoryStatus) {
     this.recoverMemoryStatus = recoverMemoryStatus;
+  }
+
+  @SafeVarargs
+  protected final void allocateModFile(List<TsFileResource> targetFiles,
+      List<TsFileResource>... allSourceFiles)
+      throws IOException {
+    // allocate the same mod file for all target files
+    ModificationFile modificationFile = modFileManager.allocate(targetFiles.get(0));
+    for (int i = 1; i < targetFiles.size(); i++) {
+      // do not persist the modification file path now because the resource is incomplete
+      targetFiles.get(i).setModFile(modificationFile, false);
+    }
+    // mark the mod file as the compaction mod file for all source files
+    for (List<TsFileResource> sourceFiles : allSourceFiles) {
+      for (TsFileResource resource : sourceFiles) {
+        resource.writeLock();
+        try {
+          // make sure the compaction mod file can be seen by deletion threads
+          resource.setCompactionModFile(modificationFile);
+        } finally {
+          resource.writeUnlock();
+        }
+      }
+    }
   }
 }

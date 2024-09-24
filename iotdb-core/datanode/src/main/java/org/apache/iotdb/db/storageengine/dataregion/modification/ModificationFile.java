@@ -69,7 +69,7 @@ public class ModificationFile implements AutoCloseable {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws IOException {
     fileOutputStream.close();
     fileOutputStream = null;
     channel.close();

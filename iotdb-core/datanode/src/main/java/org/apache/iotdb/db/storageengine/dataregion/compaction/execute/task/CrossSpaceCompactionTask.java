@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.TsFileIdentifier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -71,13 +72,15 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedUnsequenceFiles,
       ICrossCompactionPerformer performer,
       long memoryCost,
-      long serialId) {
+      long serialId,
+      ModFileManager modFileManager) {
     super(
         tsFileManager.getStorageGroupName(),
         tsFileManager.getDataRegionId(),
         timePartition,
         tsFileManager,
-        serialId);
+        serialId,
+        modFileManager);
     this.selectedSequenceFiles = selectedSequenceFiles;
     this.selectedUnsequenceFiles = selectedUnsequenceFiles;
     this.emptyTargetTsFileResourceList = new ArrayList<>();
@@ -88,8 +91,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   public CrossSpaceCompactionTask(
-      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, 0L, tsFileManager, 0L);
+      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile, ModFileManager modFileManager) {
+    super(databaseName, dataRegionId, 0L, tsFileManager, 0L, modFileManager);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;
   }
@@ -122,7 +125,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   @Override
-  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142"})
+  @SuppressWarnings({"squid:S6541", "squid:S3776", "squid:S2142", "unchecked"})
   public boolean doCompaction() {
     recoverMemoryStatus = true;
     boolean isSuccess = true;
@@ -171,6 +174,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       long startTime = System.currentTimeMillis();
       targetTsfileResourceList =
           TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSequenceFiles);
+      allocateModFile(targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
 
       logFile =
           new File(
@@ -197,8 +201,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetTsfileResourceList,
             CompactionTaskType.CROSS,
             storageGroupName + "-" + dataRegionId);
-        CompactionUtils.combineModsInCrossCompaction(
-            selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
         validateCompactionResult(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
@@ -307,8 +309,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           Stream.concat(selectedSequenceFiles.stream(), selectedUnsequenceFiles.stream())
               .collect(Collectors.toList()));
     }
-    deleteCompactionModsFile(selectedSequenceFiles);
-    deleteCompactionModsFile(selectedUnsequenceFiles);
+    unsetCompactionModsFile(selectedSequenceFiles);
+    unsetCompactionModsFile(selectedUnsequenceFiles);
+    deleteCompactionModsFile(targetTsfileResourceList);
     // delete target file
     if (targetTsfileResourceList != null && !deleteTsFilesOnDisk(targetTsfileResourceList)) {
       throw new CompactionRecoverException("failed to delete target file %s");

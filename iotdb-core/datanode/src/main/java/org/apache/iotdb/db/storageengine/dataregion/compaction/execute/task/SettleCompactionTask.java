@@ -63,7 +63,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
       boolean isSequence,
       ICompactionPerformer performer,
       long serialId) {
-    super(timePartition, tsFileManager, partiallyDirtyFiles, isSequence, performer, serialId);
+    super(timePartition, tsFileManager, partiallyDirtyFiles, isSequence, performer, serialId, null);
     this.fullyDirtyFiles = fullyDirtyFiles;
     fullyDirtyFiles.forEach(x -> fullyDirtyFileSize += x.getTsFileSize());
     partiallyDirtyFiles.forEach(
@@ -76,7 +76,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
   public SettleCompactionTask(
       String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile) {
-    super(databaseName, dataRegionId, tsFileManager, logFile);
+    super(databaseName, dataRegionId, tsFileManager, logFile, null);
   }
 
   @Override
@@ -86,6 +86,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
     return allSourceFiles;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   protected void calculateSourceFilesAndTargetFiles() throws IOException {
     filesView.renamedTargetFiles = Collections.emptyList();
@@ -96,6 +97,7 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
                 TsFileNameGenerator.getSettleCompactionTargetFileResources(
                     filesView.sourceFilesInCompactionPerformer, filesView.sequence));
     filesView.targetFilesInPerformer = filesView.targetFilesInLog;
+    allocateModFile(filesView.targetFilesInPerformer, filesView.sourceFilesInCompactionPerformer);
   }
 
   @Override

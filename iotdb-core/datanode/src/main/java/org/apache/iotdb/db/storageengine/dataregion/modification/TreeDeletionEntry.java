@@ -34,6 +34,10 @@ public class TreeDeletionEntry extends ModEntry {
     super(ModType.TREE_DELETION);
   }
 
+  public TreeDeletionEntry(PartialPath path, long start, long end) {
+    this(path, new TimeRange(start, end));
+  }
+
   public TreeDeletionEntry(PartialPath path, TimeRange timeRange) {
     this();
     this.pathPattern = path;
