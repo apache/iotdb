@@ -202,7 +202,7 @@ calculate_heap_sizes
 #HEAP_NEWSIZE="`expr $system_memory_in_mb \* $min_percentage / 100`M"
 
 # Maximum heap size
-#MAX_HEAP_SIZE="2G"
+MAX_HEAP_SIZE="2G"
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
 # Maximum direct memory size
