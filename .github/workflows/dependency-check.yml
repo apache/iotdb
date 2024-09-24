@@ -54,6 +54,6 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
-      - name: Test Datanode Module with Maven
+      - name: Do the dependency check
         shell: bash
         run: mvn verify -Dmaven.test.skip=true -DdependencyCheck.skip=false -Dmdep.analyze.skip=true
