@@ -1399,7 +1399,7 @@
                                     <outputDir>${project.basedir}/target/</outputDir>
                                     <fileMappers>
                                         <fileMapper implementation="org.codehaus.plexus.components.io.filemappers.FileExtensionMapper">
-                                            <targetExtension>.txt</targetExtension>
+                                            <targetExtension>transformed.json</targetExtension>
                                         </fileMapper>
                                     </fileMappers>
                                 </transformationSet>

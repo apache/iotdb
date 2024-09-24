@@ -18,19 +18,38 @@ package src.main.groovy
  * under the License.
  */
 
-var referenceFile = new File(basedir, "dependencies.txt")
+import groovy.json.JsonSlurper
+
+def jsonSlurper = new JsonSlurper()
+
+var referenceFile = new File(basedir, "dependencies.json")
 if(!referenceFile.exists()) {
-    throw new RuntimeException("Missing Reference: dependencies.txt")
+    throw new RuntimeException("Missing Reference: dependencies.json")
 }
-var curBuildFile = new File(project.build.directory, "apache-${project.artifactId}-${project.version}-sbom.txt")
+def referenceJson = jsonSlurper.parse(referenceFile)
+
+var curBuildFile = new File(project.build.directory, "apache-${project.artifactId}-${project.version}-sbom.transformed.json")
 if(!curBuildFile.exists()) {
-    throw new RuntimeException("Missing Build: apache-${project.artifactId}-${project.version}-sbom.txt")
+    throw new RuntimeException("Missing Build: apache-${project.artifactId}-${project.version}-sbom.transformed.json")
+}
+def curBuildJson = jsonSlurper.parse(curBuildFile)
+
+def differencesFound = false
+referenceJson.dependencies.each {
+    if(!curBuildJson.dependencies.contains(it)) {
+        println "current build has removed a previously existing dependency: " + it
+        differencesFound = true
+    }
+}
+curBuildJson.dependencies.each {
+    if(!referenceJson.dependencies.contains(it)) {
+        println "current build has added a new dependency: " + it
+        differencesFound = true
+    }
 }
 
-// Simply compare the content of the two files for equality.
-// TODO: Possibly a detailed diff output on the screen might be better, but for now this should do.
-String referenceText = referenceFile.text
-String buildText = curBuildFile.text
-if(!referenceText.equals(buildText)) {
-    throw new RuntimeException("The content of ${referenceFile.getPath()} and ${curBuildFile.getPath()} do not match")
+if(differencesFound) {
+    println "Differences were found between the information in ${referenceFile.getPath()} and ${curBuildFile.toPath()}"
+    println "The simplest fix for this, is to replace the content of ${referenceFile.getPath()} with that of ${curBuildFile.toPath()} and to inspect the diff of the resulting file in your IDE of choice."
+    throw new RuntimeException("Differences found.")
 }
