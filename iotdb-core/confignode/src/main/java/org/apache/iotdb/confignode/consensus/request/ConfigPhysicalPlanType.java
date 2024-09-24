@@ -161,6 +161,7 @@ public enum ConfigPhysicalPlanType {
   AddTableColumn((short) 853),
   SetTableProperties((short) 854),
   ShowTable((short) 855),
+  FetchTable((short) 856),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated

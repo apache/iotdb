@@ -86,6 +86,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetRegionIdReq;
@@ -285,6 +286,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -3198,6 +3200,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TFetchTableResp fetchTableResp = configNodeClient.fetchTables(fetchTableMap);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != fetchTableResp.getStatus().getCode()) {
+        LOGGER.warn("Failed to fetchTables, status is {}.", fetchTableResp);
+      }
+      return fetchTableResp;
+    } catch (final Exception e) {
+      return new TFetchTableResp(
+          new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode())
+              .setMessage(e.toString()));
+    }
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> alterTableAddColumn(
       final String database,
       final String tableName,
@@ -3305,14 +3323,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
-  public void handlePipeConfigClientExit(String clientId) {
+  public void handlePipeConfigClientExit(final String clientId) {
     try (final ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TSStatus status = configNodeClient.handlePipeConfigClientExit(clientId);
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
         LOGGER.warn("Failed to handlePipeConfigClientExit, status is {}.", status);
       }
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
     }
   }

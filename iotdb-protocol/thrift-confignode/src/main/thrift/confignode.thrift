@@ -1044,6 +1044,11 @@ struct TShowTableResp {
    2: optional list<TTableInfo> tableInfoList
 }
 
+struct TFetchTableResp {
+   1: required common.TSStatus status
+   2: optional binary tableInfoMap
+}
+
 struct TTableInfo {
    1: required string tableName
    // TTL is stored as string in table props
@@ -1785,5 +1790,7 @@ service IConfigNodeRPCService {
   common.TSStatus alterTable(TAlterTableReq req)
 
   TShowTableResp showTables(string database)
+
+  TFetchTableResp fetchTables(map<string, set<string>> fetchTableMap)
 }
 

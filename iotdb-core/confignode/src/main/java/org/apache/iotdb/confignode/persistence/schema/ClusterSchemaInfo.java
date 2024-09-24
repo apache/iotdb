@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.read.table.FetchTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.table.ShowTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
@@ -63,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.template.UnsetSchemaT
 import org.apache.iotdb.confignode.consensus.response.database.CountDatabaseResp;
 import org.apache.iotdb.confignode.consensus.response.database.DatabaseSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.partition.PathInfoResp;
+import org.apache.iotdb.confignode.consensus.response.table.FetchTableResp;
 import org.apache.iotdb.confignode.consensus.response.table.ShowTableResp;
 import org.apache.iotdb.confignode.consensus.response.template.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
@@ -1097,6 +1099,27 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     } catch (final MetadataException e) {
       return new ShowTableResp(
           RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyList());
+    } finally {
+      databaseReadWriteLock.readLock().unlock();
+    }
+  }
+
+  public FetchTableResp fetchTables(final FetchTablePlan plan) {
+    databaseReadWriteLock.readLock().lock();
+    try {
+      final Map<String, Map<String, TsTable>> result = new HashMap<>();
+      for (final Map.Entry<String, Set<String>> database2Tables :
+          plan.getFetchTableMap().entrySet()) {
+        result.put(
+            database2Tables.getKey(),
+            mTree.getSpecificTablesUnderSpecificDatabase(
+                getQualifiedDatabasePartialPath(database2Tables.getKey()),
+                database2Tables.getValue()));
+      }
+      return new FetchTableResp(StatusUtils.OK, result);
+    } catch (final MetadataException e) {
+      return new FetchTableResp(
+          RpcUtils.getStatus(e.getErrorCode(), e.getMessage()), Collections.emptyMap());
     } finally {
       databaseReadWriteLock.readLock().unlock();
     }
