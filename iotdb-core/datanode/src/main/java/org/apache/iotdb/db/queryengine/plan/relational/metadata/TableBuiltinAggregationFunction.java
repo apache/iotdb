@@ -65,8 +65,8 @@ public enum TableBuiltinAggregationFunction {
 
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
-          Arrays.stream(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction.values())
-              .map(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction::getFunctionName)
+          Arrays.stream(TableBuiltinAggregationFunction.values())
+              .map(TableBuiltinAggregationFunction::getFunctionName)
               .collect(Collectors.toList()));
 
   public static Set<String> getNativeFunctionNames() {
@@ -87,7 +87,6 @@ public enum TableBuiltinAggregationFunction {
       case "min":
       case "first":
       case "last":
-      case "time_duration":
         return true;
       case "first_by":
       case "last_by":
