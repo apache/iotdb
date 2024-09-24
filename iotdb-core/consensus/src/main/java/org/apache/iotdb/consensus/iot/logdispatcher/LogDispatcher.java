@@ -104,7 +104,8 @@ public class LogDispatcher {
 
   public synchronized void stop() {
     if (!threads.isEmpty()) {
-      threads.forEach(LogDispatcherThread::stop);
+      threads.forEach(LogDispatcherThread::setStopped);
+      threads.forEach(LogDispatcherThread::processStopped);
       executorService.shutdownNow();
       int timeout = 10;
       try {
@@ -300,7 +301,15 @@ public class LogDispatcher {
     }
 
     public void stop() {
+      setStopped();
+      processStopped();
+    }
+
+    private void setStopped() {
       stopped = true;
+    }
+
+    private void processStopped() {
       try {
         if (!runFinished.await(30, TimeUnit.SECONDS)) {
           logger.info("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
