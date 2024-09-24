@@ -93,8 +93,7 @@ public class AlterPipe extends Statement {
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    // TODO
-    return super.accept(visitor, context);
+    return visitor.visitAlterPipe(this, context);
   }
 
   @Override

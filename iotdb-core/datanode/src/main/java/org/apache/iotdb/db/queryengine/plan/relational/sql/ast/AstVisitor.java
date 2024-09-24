@@ -503,6 +503,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitAlterPipe(AlterPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitDropPipe(DropPipe node, C context) {
     return visitStatement(node, context);
   }
