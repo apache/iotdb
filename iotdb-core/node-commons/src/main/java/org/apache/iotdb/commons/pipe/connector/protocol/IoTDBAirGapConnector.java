@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.util.PortUtilizationManager;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -161,7 +161,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         try {
           final Socket socket = sockets.set(i, null);
           if (isCustomSendPortDefined) {
-            PortUtilizationManager.INSTANCE.releasePortIfUsed(socket.getPort());
+            IoTDBConnectorPortManager.INSTANCE.releaseUsedPort(socket.getPort());
           }
           socket.close();
         } catch (final Exception e) {
@@ -175,13 +175,14 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
 
       final AirGapSocket socket = new AirGapSocket(ip, port);
 
+      if (isCustomSendPortDefined) {
+        IoTDBConnectorPortManager.INSTANCE.bingPort(
+            minSendPortRange,
+            maxSendPortRange,
+            candidatePorts,
+            (sendPort) -> socket.bind(new InetSocketAddress(sendPort)));
+      }
       try {
-        if (isCustomSendPortDefined) {
-          socket.bind(
-              new InetSocketAddress(
-                  PortUtilizationManager.INSTANCE.findAvailablePort(
-                      minSendPortRange, maxSendPortRange, candidatePorts)));
-        }
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);
         sockets.set(i, socket);
@@ -351,7 +352,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
         if (sockets.get(i) != null) {
           final Socket socket = sockets.set(i, null);
           if (isCustomSendPortDefined) {
-            PortUtilizationManager.INSTANCE.releasePortIfUsed(socket.getPort());
+            IoTDBConnectorPortManager.INSTANCE.releaseUsedPort(socket.getPort());
           }
           socket.close();
         }

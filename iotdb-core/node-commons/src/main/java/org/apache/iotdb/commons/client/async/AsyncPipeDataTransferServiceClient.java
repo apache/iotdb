@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.util.PortUtilizationManager;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortManager;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -37,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,17 +67,36 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
       boolean isCustomSendPortDefined,
-      Integer sendPort)
+      int minSendPortRange,
+      int maxSendPortRange,
+      List<Integer> candidatePorts)
       throws IOException {
     super(
         property.getProtocolFactory(),
         tClientManager,
         TNonblockingSocketWrapper.wrap(
-            endpoint.getIp(),
-            endpoint.getPort(),
-            property.getConnectionTimeoutMs(),
-            isCustomSendPortDefined,
-            sendPort));
+            endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
+    SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
+    if (isCustomSendPortDefined) {
+      IoTDBConnectorPortManager.INSTANCE.bingPort(
+          minSendPortRange,
+          maxSendPortRange,
+          candidatePorts,
+          (sendPort) -> {
+            socketChannel.bind(new InetSocketAddress(sendPort));
+          });
+    } else {
+      try {
+        socketChannel.bind(new InetSocketAddress(0));
+        IoTDBConnectorPortManager.INSTANCE.addPortIfAvailable(
+            ((InetSocketAddress)
+                    (((TNonblockingSocket) ___transport).getSocketChannel().getLocalAddress()))
+                .getPort());
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to add port to PortUtilizationManager due to exception: {}", e.getMessage());
+      }
+    }
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -136,6 +157,14 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   }
 
   private void close() {
+    try {
+      IoTDBConnectorPortManager.INSTANCE.releaseUsedPort(
+          ((InetSocketAddress)
+                  (((TNonblockingSocket) ___transport).getSocketChannel().getLocalAddress()))
+              .getPort());
+    } catch (Exception e) {
+      LOGGER.warn("Failed to release port due to exception: ", e);
+    }
     ___transport.close();
     ___currentMethod = null;
   }
@@ -217,12 +246,6 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     @Override
     public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(TEndPoint endPoint)
         throws Exception {
-      Integer sendPort = 0;
-      if (isCustomSendPortDefined) {
-        sendPort =
-            PortUtilizationManager.INSTANCE.findAvailablePort(
-                minSendPortRange, maxSendPortRange, candidatePorts);
-      }
       return new DefaultPooledObject<>(
           new AsyncPipeDataTransferServiceClient(
               thriftClientProperty,
@@ -230,7 +253,9 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager,
               isCustomSendPortDefined,
-              sendPort));
+              minSendPortRange,
+              maxSendPortRange,
+              candidatePorts));
     }
 
     @Override

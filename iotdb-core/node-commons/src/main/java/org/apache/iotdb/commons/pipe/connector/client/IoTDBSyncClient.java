@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.util.PortUtilizationManager;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
@@ -90,26 +90,16 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       if (isCustomSendPortDefined) {
-        PortUtilizationManager portUtilizationManager = PortUtilizationManager.INSTANCE;
-        Integer sendPort =
-            portUtilizationManager.findAvailablePort(
-                minSendPortRange, maxSendPortRange, candidatePorts);
-        if (sendPort == null) {
-          throw new PipeConnectionException(
-              String.format(
-                  "Failed to find an available send port. Custom send port is defined."
-                      + " No ports are available in the candidate list [%s] or within the range %d to %d.",
-                  candidatePorts, minSendPortRange, maxSendPortRange));
-        }
-        try {
-          final InetSocketAddress isa = new InetSocketAddress(sendPort);
-          ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
-              .getSocket()
-              .bind(isa);
-        } catch (Exception e) {
-          String bindErrorMessage = "Failed to bind to the port: " + sendPort;
-          throw new PipeConnectionException(bindErrorMessage, e);
-        }
+        IoTDBConnectorPortManager.INSTANCE.bingPort(
+            minSendPortRange,
+            maxSendPortRange,
+            candidatePorts,
+            (sendPort) -> {
+              final InetSocketAddress isa = new InetSocketAddress(sendPort);
+              ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
+                  .getSocket()
+                  .bind(isa);
+            });
       }
       transport.open();
     }
@@ -200,9 +190,13 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   public void invalidate() {
     if (getInputProtocol().getTransport().isOpen()) {
       if (isCustomSendPortDefined) {
-        PortUtilizationManager portUtilizationManager = PortUtilizationManager.INSTANCE;
-        portUtilizationManager.releasePortIfUsed(
-            ((TSocket) getInputProtocol().getTransport()).getSocket().getPort());
+        IoTDBConnectorPortManager portUtilizationManager = IoTDBConnectorPortManager.INSTANCE;
+        portUtilizationManager.releaseUsedPort(
+            ((TSocket)
+                    ((TimeoutChangeableTFastFramedTransport) getInputProtocol().getTransport())
+                        .getSocket())
+                .getSocket()
+                .getPort());
       }
       getInputProtocol().getTransport().close();
     }

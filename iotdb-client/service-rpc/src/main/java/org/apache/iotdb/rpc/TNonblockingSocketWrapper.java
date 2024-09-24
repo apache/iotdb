@@ -23,7 +23,6 @@ import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TTransportException;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 /**
@@ -43,24 +42,7 @@ public class TNonblockingSocketWrapper {
 
   public static TNonblockingSocket wrap(String host, int port, int timeout) throws IOException {
     try {
-      TNonblockingSocket nonblockingSocket = new TNonblockingSocket(host, port, timeout);
-      nonblockingSocket.getSocketChannel().bind(new InetSocketAddress(0));
-      return nonblockingSocket;
-    } catch (TTransportException e) {
-      // never happen
-      return null;
-    }
-  }
-
-  public static TNonblockingSocket wrap(
-      String host, int port, int timeout, boolean isCustomSendPortDefined, int sendPort)
-      throws IOException {
-    try {
-      TNonblockingSocket nonblockingSocket = new TNonblockingSocket(host, port, timeout);
-      if (isCustomSendPortDefined) {
-        nonblockingSocket.getSocketChannel().bind(new InetSocketAddress(sendPort));
-      }
-      return nonblockingSocket;
+      return new TNonblockingSocket(host, port, timeout);
     } catch (TTransportException e) {
       // never happen
       return null;
