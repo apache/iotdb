@@ -378,6 +378,12 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Some dummy dependency for triggering the dependency check -->
+        <dependency>
+            <groupId>org.apache.plc4x</groupId>
+            <artifactId>plc4j-spi</artifactId>
+            <version>0.12.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
