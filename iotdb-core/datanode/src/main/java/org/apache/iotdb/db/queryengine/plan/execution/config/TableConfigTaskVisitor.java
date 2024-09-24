@@ -43,17 +43,23 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -68,8 +74,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
@@ -433,5 +443,59 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           name + " value must be lower than " + Integer.MAX_VALUE + ", but now is: " + value);
     }
     return (int) parsedValue;
+  }
+
+  @Override
+  protected IConfigTask visitCreatePipe(CreatePipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new CreatePipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return super.visitAlterPipe(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return super.visitDropPipe(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return super.visitStartPipe(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return super.visitStopPipe(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return super.visitShowPipes(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return super.visitCreatePipePlugin(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitDropPipePlugin(DropPipePlugin node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return super.visitDropPipePlugin(node, context);
+  }
+
+  @Override
+  protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return super.visitShowPipePlugins(node, context);
   }
 }
