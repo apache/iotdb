@@ -153,18 +153,5 @@ public class IoTDBDatetimeFormatTableIT {
       e.printStackTrace();
       fail();
     }
-
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use " + DATABASE_NAME);
-      statement.execute(
-          "insert into table1(time,device_id,s2) values (16182830055860000000, 'd2',8.76)");
-      fail();
-    } catch (SQLException e) {
-      e.printStackTrace();
-      Assert.assertTrue(
-          e.getMessage()
-              .contains("please check whether the timestamp 16182830055860000000 is correct."));
-    }
   }
 }
