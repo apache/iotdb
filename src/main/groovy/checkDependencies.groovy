@@ -20,6 +20,11 @@ package src.main.groovy
 
 import groovy.json.JsonSlurper
 
+if(Boolean.parseBoolean(properties['skipDependencyCheck']).booleanValue()) {
+    println "Skipping dependency check"
+    return
+}
+
 def jsonSlurper = new JsonSlurper()
 
 var referenceFile = new File(basedir, "dependencies.json")
@@ -37,13 +42,13 @@ def curBuildJson = jsonSlurper.parse(curBuildFile)
 def differencesFound = false
 referenceJson.dependencies.each {
     if(!curBuildJson.dependencies.contains(it)) {
-        println "current build has removed a previously existing dependency: " + it
+        println "current build has removed a dependency: " + it
         differencesFound = true
     }
 }
 curBuildJson.dependencies.each {
     if(!referenceJson.dependencies.contains(it)) {
-        println "current build has added a new dependency: " + it
+        println "current build has added a dependency: " + it
         differencesFound = true
     }
 }
