@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.TwoChildProcessNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -29,10 +30,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -125,6 +128,26 @@ public class JoinNode extends TwoChildProcessNode {
                 equiJoinClause));
   }
 
+  // only used for deserialize
+  public JoinNode(
+      PlanNodeId id,
+      JoinType joinType,
+      List<EquiJoinClause> criteria,
+      List<Symbol> leftOutputSymbols,
+      List<Symbol> rightOutputSymbols) {
+    super(id);
+    requireNonNull(joinType, "type is null");
+    requireNonNull(criteria, "criteria is null");
+
+    this.leftOutputSymbols = leftOutputSymbols;
+    this.rightOutputSymbols = rightOutputSymbols;
+    this.filter = Optional.empty();
+    this.spillable = Optional.empty();
+
+    this.joinType = joinType;
+    this.criteria = criteria;
+  }
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitJoin(this, context);
@@ -177,10 +200,73 @@ public class JoinNode extends TwoChildProcessNode {
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    PlanNodeType.TABLE_JOIN_NODE.serialize(byteBuffer);
+
+    ReadWriteIOUtils.write(joinType.ordinal(), byteBuffer);
+
+    ReadWriteIOUtils.write(criteria.size(), byteBuffer);
+    for (EquiJoinClause equiJoinClause : criteria) {
+      Symbol.serialize(equiJoinClause.getLeft(), byteBuffer);
+      Symbol.serialize(equiJoinClause.getRight(), byteBuffer);
+    }
+
+    ReadWriteIOUtils.write(leftOutputSymbols.size(), byteBuffer);
+    for (Symbol leftOutputSymbol : leftOutputSymbols) {
+      Symbol.serialize(leftOutputSymbol, byteBuffer);
+    }
+    ReadWriteIOUtils.write(rightOutputSymbols.size(), byteBuffer);
+    for (Symbol rightOutputSymbol : rightOutputSymbols) {
+      Symbol.serialize(rightOutputSymbol, byteBuffer);
+    }
+  }
 
   @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TABLE_JOIN_NODE.serialize(stream);
+
+    ReadWriteIOUtils.write(joinType.ordinal(), stream);
+
+    ReadWriteIOUtils.write(criteria.size(), stream);
+    for (EquiJoinClause equiJoinClause : criteria) {
+      Symbol.serialize(equiJoinClause.getLeft(), stream);
+      Symbol.serialize(equiJoinClause.getRight(), stream);
+    }
+
+    ReadWriteIOUtils.write(leftOutputSymbols.size(), stream);
+    for (Symbol leftOutputSymbol : leftOutputSymbols) {
+      Symbol.serialize(leftOutputSymbol, stream);
+    }
+    ReadWriteIOUtils.write(rightOutputSymbols.size(), stream);
+    for (Symbol rightOutputSymbol : rightOutputSymbols) {
+      Symbol.serialize(rightOutputSymbol, stream);
+    }
+  }
+
+  public static JoinNode deserialize(ByteBuffer byteBuffer) {
+    JoinType joinType = JoinType.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<EquiJoinClause> criteria = new ArrayList<>(size);
+    while (size-- > 0) {
+      criteria.add(
+          new EquiJoinClause(Symbol.deserialize(byteBuffer), Symbol.deserialize(byteBuffer)));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> leftOutputSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      leftOutputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+
+    size = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Symbol> rightOutputSymbols = new ArrayList<>(size);
+    while (size-- > 0) {
+      rightOutputSymbols.add(Symbol.deserialize(byteBuffer));
+    }
+
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
+    return new JoinNode(planNodeId, joinType, criteria, leftOutputSymbols, rightOutputSymbols);
+  }
 
   public JoinType getJoinType() {
     return joinType;

@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
-import org.apache.iotdb.commons.pipe.agent.plugin.PipeConnectorConstructor;
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.plugin.builtin.connector.donothing.DoNothingConnector;
-import org.apache.iotdb.commons.pipe.plugin.meta.DataNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.connector.donothing.DoNothingConnector;
+import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeConnectorConstructor;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.connector.protocol.airgap.IoTDBDataRegionAirGapConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.legacy.IoTDBLegacyPipeConnector;
 import org.apache.iotdb.db.pipe.connector.protocol.opcua.OpcUaConnector;

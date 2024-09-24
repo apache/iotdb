@@ -313,6 +313,8 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
+  private boolean isTreeModel;
+
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
 
@@ -333,6 +335,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    this.isTreeModel = this.databaseName.startsWith("root.");
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
@@ -383,6 +386,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = id;
     this.tsFileManager = new TsFileManager(databaseName, id, "");
     this.partitionMaxFileVersions = new HashMap<>();
+    this.isTreeModel = this.databaseName.startsWith("root.");
     partitionMaxFileVersions.put(0L, 0L);
   }
 
@@ -876,7 +880,6 @@ public class DataRegion implements IDataRegionForQuery {
         new SealedTsFileRecoverPerformer(sealedTsFile)) {
       recoverPerformer.recover();
       sealedTsFile.close();
-      tsFileManager.add(sealedTsFile, isSeq);
       tsFileResourceManager.registerSealedTsFileResource(sealedTsFile);
     } catch (Throwable e) {
       logger.error("Fail to recover sealed TsFile {}, skip it.", sealedTsFile.getTsFilePath(), e);
@@ -896,10 +899,10 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> resourceListForSyncRecover = new ArrayList<>();
     Callable<Void> asyncRecoverTask = null;
     for (TsFileResource tsFileResource : resourceList) {
+      tsFileManager.add(tsFileResource, isSeq);
       if (fileTimeIndexMap.containsKey(tsFileResource.getTsFileID())) {
         tsFileResource.setTimeIndex(fileTimeIndexMap.get(tsFileResource.getTsFileID()));
         tsFileResource.setStatus(TsFileResourceStatus.NORMAL);
-        tsFileManager.add(tsFileResource, isSeq);
         resourceListForAsyncRecover.add(tsFileResource);
       } else {
         resourceListForSyncRecover.add(tsFileResource);
@@ -2765,7 +2768,7 @@ public class DataRegion implements IDataRegionForQuery {
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleContext context = new CompactionScheduleContext();
+      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
 
       // schedule insert compaction
       trySubmitCount += executeInsertionCompaction(timePartitions, context);
@@ -2808,7 +2811,7 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
-      CompactionScheduleContext context = new CompactionScheduleContext();
+      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -3881,7 +3884,6 @@ public class DataRegion implements IDataRegionForQuery {
   private void acquireDirectBufferMemory() throws DataRegionException {
     long acquireDirectBufferMemCost = 0;
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-        || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
         || config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
       acquireDirectBufferMemCost = config.getWalBufferSize();
     } else if (config

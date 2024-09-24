@@ -218,7 +218,6 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
     switch (config.getDataRegionConsensusProtocolClass()) {
       case ConsensusFactory.IOT_CONSENSUS:
       case ConsensusFactory.IOT_CONSENSUS_V2:
-      case ConsensusFactory.FAST_IOT_CONSENSUS:
       case ConsensusFactory.RATIS_CONSENSUS:
         return isGeneratedByRemoteConsensusLeader;
       case ConsensusFactory.SIMPLE_CONSENSUS:
@@ -336,7 +335,7 @@ public abstract class InsertNode extends SearchNode implements ComparableConsens
 
   @Override
   public void setProgressIndex(ProgressIndex progressIndex) {
-    this.progressIndex = progressIndex.deepCopy();
+    this.progressIndex = progressIndex;
   }
 
   // endregion

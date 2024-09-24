@@ -40,6 +40,8 @@ public interface ICompactionPerformer {
 
   void setSummary(CompactionTaskSummary summary);
 
+  void setIgnoreAllNullRows(boolean ignoreAllNullRows);
+
   default void setSourceFiles(List<TsFileResource> files) {
     throw new IllegalSourceFileTypeException(
         "Cannot set single type of source files to this kind of performer");

@@ -26,6 +26,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.model.Topic;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -39,8 +40,14 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class})
 public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
 
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
+
   @Test
-  public void testBasicCreateTopic() throws Exception {
+  public void testBasicCreateTopic() {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -76,7 +83,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
   }
 
   @Test
-  public void testBasicCreateTopicIfNotExists() throws Exception {
+  public void testBasicCreateTopicIfNotExists() {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -118,7 +125,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
       topic = session.getTopic(topicName);
       Assert.assertTrue(topic.isPresent());
       Assert.assertEquals(topicName, topic.get().getTopicName());
-      // Verify Topic Parameters
+      // verify Topic Parameters
       Assert.assertTrue(topic.get().getTopicAttributes().contains("path=root.**"));
       Assert.assertTrue(topic.get().getTopicAttributes().contains("start-time=2023-01-01"));
       Assert.assertFalse(topic.get().getTopicAttributes().contains("start-time=2023-01-02"));
@@ -131,7 +138,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
   }
 
   @Test
-  public void testBasicDropTopic() throws Exception {
+  public void testBasicDropTopic() {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
@@ -152,7 +159,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionLocalIT {
   }
 
   @Test
-  public void testBasicDropTopicIfExists() throws Exception {
+  public void testBasicDropTopicIfExists() {
     final String host = EnvFactory.getEnv().getIP();
     final int port = Integer.parseInt(EnvFactory.getEnv().getPort());
 
