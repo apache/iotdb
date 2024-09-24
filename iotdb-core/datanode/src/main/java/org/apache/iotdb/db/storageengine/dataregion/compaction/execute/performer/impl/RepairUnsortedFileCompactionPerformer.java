@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.RepairUnsortedFileCompactionWriter;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
@@ -34,11 +35,8 @@ import java.util.List;
 /** Used for fixing files which contains internal unsorted data */
 public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPerformer {
 
-  private final boolean rewriteFile;
-
-  public RepairUnsortedFileCompactionPerformer(boolean rewriteFile, boolean ignoreAllNullRows) {
+  public RepairUnsortedFileCompactionPerformer(boolean ignoreAllNullRows) {
     super();
-    this.rewriteFile = rewriteFile;
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
@@ -53,7 +51,8 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
 
   @Override
   public void perform() throws Exception {
-    if (rewriteFile) {
+    TsFileResource resource = !seqFiles.isEmpty() ? seqFiles.get(0) : unseqFiles.get(0);
+    if (resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       super.perform();
     } else {
       prepareTargetFile();
