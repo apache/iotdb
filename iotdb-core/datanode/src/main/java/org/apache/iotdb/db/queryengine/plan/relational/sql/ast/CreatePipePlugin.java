@@ -27,23 +27,39 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DropPipe extends Statement {
+public class CreatePipePlugin extends Statement {
 
-  private final String pipeName;
-  private final boolean ifExistsCondition;
+  private final String pluginName;
+  private final boolean ifNotExistsCondition;
+  private final String className;
+  private final String uriString;
 
-  public DropPipe(final String pipeName, final boolean ifExistsCondition) {
+  public CreatePipePlugin(
+      final String pluginName,
+      final boolean ifNotExistsCondition,
+      final String className,
+      final String uriString) {
     super(null);
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
-    this.ifExistsCondition = ifExistsCondition;
+    this.pluginName = requireNonNull(pluginName, "plugin name can not be null");
+    this.ifNotExistsCondition = ifNotExistsCondition;
+    this.className = requireNonNull(className, "class name can not be null");
+    this.uriString = requireNonNull(uriString, "uri can not be null");
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public String getPluginName() {
+    return pluginName;
   }
 
-  public boolean hasIfExistsCondition() {
-    return ifExistsCondition;
+  public boolean hasIfNotExistsCondition() {
+    return ifNotExistsCondition;
+  }
+
+  public String getClassName() {
+    return className;
+  }
+
+  public String getUriString() {
+    return uriString;
   }
 
   @Override
@@ -59,7 +75,7 @@ public class DropPipe extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, ifExistsCondition);
+    return Objects.hash(pluginName, ifNotExistsCondition, className, uriString);
   }
 
   @Override
@@ -70,16 +86,20 @@ public class DropPipe extends Statement {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    DropPipe other = (DropPipe) obj;
-    return Objects.equals(pipeName, other.pipeName)
-        && Objects.equals(ifExistsCondition, other.ifExistsCondition);
+    CreatePipePlugin other = (CreatePipePlugin) obj;
+    return Objects.equals(pluginName, other.pluginName)
+        && Objects.equals(ifNotExistsCondition, other.ifNotExistsCondition)
+        && Objects.equals(className, other.className)
+        && Objects.equals(uriString, other.uriString);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
-        .add("pipeName", pipeName)
-        .add("ifExistsCondition", ifExistsCondition)
+        .add("pluginName", pluginName)
+        .add("ifNotExistsCondition", ifNotExistsCondition)
+        .add("className", className)
+        .add("uriString", uriString)
         .toString();
   }
 }

@@ -43,11 +43,14 @@ public class CreatePipe extends Statement {
       final Map<String, String> processorAttributes,
       final Map<String, String> connectorAttributes) {
     super(null);
-    this.pipeName = requireNonNull(pipeName);
+    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
     this.ifNotExistsCondition = ifNotExistsCondition;
-    this.extractorAttributes = requireNonNull(extractorAttributes);
-    this.processorAttributes = requireNonNull(processorAttributes);
-    this.connectorAttributes = requireNonNull(connectorAttributes);
+    this.extractorAttributes =
+        requireNonNull(extractorAttributes, "extractor/source attributes can not be null");
+    this.processorAttributes =
+        requireNonNull(processorAttributes, "processor attributes can not be null");
+    this.connectorAttributes =
+        requireNonNull(connectorAttributes, "connector attributes can not be null");
   }
 
   public String getPipeName() {

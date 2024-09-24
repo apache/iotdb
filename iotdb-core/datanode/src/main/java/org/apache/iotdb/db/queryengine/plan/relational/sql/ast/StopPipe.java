@@ -33,7 +33,7 @@ public class StopPipe extends Statement {
 
   public StopPipe(final String pipeName) {
     super(null);
-    this.pipeName = requireNonNull(pipeName);
+    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
   }
 
   public String getPipeName() {

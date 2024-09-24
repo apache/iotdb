@@ -22,28 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import com.google.common.collect.ImmutableList;
 
 import java.util.List;
-import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
-public class DropPipe extends Statement {
+public class ShowPipePlugins extends Statement {
 
-  private final String pipeName;
-  private final boolean ifExistsCondition;
-
-  public DropPipe(final String pipeName, final boolean ifExistsCondition) {
+  public ShowPipePlugins() {
     super(null);
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
-    this.ifExistsCondition = ifExistsCondition;
-  }
-
-  public String getPipeName() {
-    return pipeName;
-  }
-
-  public boolean hasIfExistsCondition() {
-    return ifExistsCondition;
   }
 
   @Override
@@ -59,27 +44,16 @@ public class DropPipe extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, ifExistsCondition);
+    return 0;
   }
 
   @Override
   public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
-    if (obj == null || getClass() != obj.getClass()) {
-      return false;
-    }
-    DropPipe other = (DropPipe) obj;
-    return Objects.equals(pipeName, other.pipeName)
-        && Objects.equals(ifExistsCondition, other.ifExistsCondition);
+    return obj instanceof ShowPipePlugins;
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this)
-        .add("pipeName", pipeName)
-        .add("ifExistsCondition", ifExistsCondition)
-        .toString();
+    return toStringHelper(this).toString();
   }
 }

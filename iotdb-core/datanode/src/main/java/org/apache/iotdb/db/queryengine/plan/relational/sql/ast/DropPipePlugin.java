@@ -27,19 +27,19 @@ import java.util.Objects;
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DropPipe extends Statement {
+public class DropPipePlugin extends Statement {
 
-  private final String pipeName;
+  private final String pluginName;
   private final boolean ifExistsCondition;
 
-  public DropPipe(final String pipeName, final boolean ifExistsCondition) {
+  public DropPipePlugin(final String pluginName, final boolean ifExistsCondition) {
     super(null);
-    this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
+    this.pluginName = requireNonNull(pluginName, "plugin name can not be null");
     this.ifExistsCondition = ifExistsCondition;
   }
 
-  public String getPipeName() {
-    return pipeName;
+  public String getPluginName() {
+    return pluginName;
   }
 
   public boolean hasIfExistsCondition() {
@@ -59,7 +59,7 @@ public class DropPipe extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(pipeName, ifExistsCondition);
+    return Objects.hash(pluginName, ifExistsCondition);
   }
 
   @Override
@@ -70,15 +70,15 @@ public class DropPipe extends Statement {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    DropPipe other = (DropPipe) obj;
-    return Objects.equals(pipeName, other.pipeName)
+    DropPipePlugin other = (DropPipePlugin) obj;
+    return Objects.equals(pluginName, other.pluginName)
         && Objects.equals(ifExistsCondition, other.ifExistsCondition);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
-        .add("pipeName", pipeName)
+        .add("pluginName", pluginName)
         .add("ifExistsCondition", ifExistsCondition)
         .toString();
   }

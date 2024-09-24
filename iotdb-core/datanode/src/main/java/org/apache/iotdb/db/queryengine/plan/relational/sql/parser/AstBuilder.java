@@ -44,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
@@ -118,6 +120,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
@@ -165,6 +168,8 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -700,18 +705,38 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitCreatePipePluginStatement(
       RelationalSqlParser.CreatePipePluginStatementContext ctx) {
-    return super.visitCreatePipePluginStatement(ctx);
+    final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+    final String className = ((StringLiteral) visit(ctx.className)).getValue();
+    final String uriString = parseAndValidateURI(ctx.uriClause());
+    return new CreatePipePlugin(pluginName, hasIfNotExistsCondition, className, uriString);
+  }
+
+  private String parseAndValidateURI(RelationalSqlParser.UriClauseContext ctx) {
+    final String uriString =
+        ctx.uri.identifier() != null
+            ? ((Identifier) visit(ctx.uri.identifier())).getValue()
+            : ((StringLiteral) visit(ctx.uri.string())).getValue();
+    try {
+      new URI(uriString);
+    } catch (URISyntaxException e) {
+      throw new SemanticException(String.format("Invalid URI: %s", uriString));
+    }
+    return uriString;
   }
 
   @Override
   public Node visitDropPipePluginStatement(RelationalSqlParser.DropPipePluginStatementContext ctx) {
-    return super.visitDropPipePluginStatement(ctx);
+    final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropPipePlugin(pluginName, hasIfExistsCondition);
   }
 
   @Override
   public Node visitShowPipePluginsStatement(
       RelationalSqlParser.ShowPipePluginsStatementContext ctx) {
-    return super.visitShowPipePluginsStatement(ctx);
+    return new ShowPipePlugins();
   }
 
   @Override
