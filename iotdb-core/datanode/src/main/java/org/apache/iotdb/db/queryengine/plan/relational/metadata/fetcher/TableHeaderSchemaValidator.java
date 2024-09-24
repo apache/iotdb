@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
@@ -94,6 +95,8 @@ public class TableHeaderSchemaValidator {
       throw new IllegalArgumentException(
           "No column other than Time present, please check the request");
     }
+    // Get directly if there is a table because we do not want "addColumn" to affect
+    // original writings
     TsTable table =
         DataNodeTableCache.getInstance().getTableInWrite(database, tableSchema.getTableName());
     final List<ColumnSchema> missingColumnList = new ArrayList<>();
@@ -116,25 +119,36 @@ public class TableHeaderSchemaValidator {
       }
     }
 
+    boolean refreshed = false;
     for (final ColumnSchema columnSchema : inputColumnList) {
-      final TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
-      if (existingColumn == null) {
-        // check arguments for column auto creation
-        if (columnSchema.getColumnCategory() == null) {
-          throw new SemanticException(
-              String.format(
-                  "Unknown column category for %s. Cannot auto create column.",
-                  columnSchema.getName()),
-              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+      TsTableColumnSchema existingColumn = table.getColumnSchema(columnSchema.getName());
+      if (Objects.isNull(existingColumn)) {
+        if (!refreshed) {
+          // Refresh because there may be new columns added and failed to commit
+          // Allow refresh only once to avoid too much failure columns in sql when there are column
+          // procedures
+          refreshed = true;
+          table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
+          existingColumn = table.getColumnSchema(columnSchema.getName());
         }
-        if (columnSchema.getType() == null) {
-          throw new SemanticException(
-              String.format(
-                  "Unknown column data type for %s. Cannot auto create column.",
-                  columnSchema.getName()),
-              TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+        if (Objects.isNull(existingColumn)) {
+          // check arguments for column auto creation
+          if (columnSchema.getColumnCategory() == null) {
+            throw new SemanticException(
+                String.format(
+                    "Unknown column category for %s. Cannot auto create column.",
+                    columnSchema.getName()),
+                TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+          }
+          if (columnSchema.getType() == null) {
+            throw new SemanticException(
+                String.format(
+                    "Unknown column data type for %s. Cannot auto create column.",
+                    columnSchema.getName()),
+                TSStatusCode.COLUMN_NOT_EXISTS.getStatusCode());
+          }
+          missingColumnList.add(columnSchema);
         }
-        missingColumnList.add(columnSchema);
       } else {
         // leave measurement columns' dataType checking to the caller, then the caller can decide
         // whether to do partial insert
