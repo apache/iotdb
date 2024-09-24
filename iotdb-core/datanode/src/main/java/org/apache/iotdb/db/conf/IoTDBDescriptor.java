@@ -444,6 +444,12 @@ public class IoTDBDescriptor {
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
+
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1222,6 +1228,12 @@ public class IoTDBDescriptor {
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
   }
 
   private boolean loadCompactionTaskHotModifiedProps(Properties properties) throws IOException {

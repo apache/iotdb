@@ -1170,6 +1170,11 @@ enable_unseq_space_compaction=true
 # Datatype: boolean
 enable_cross_space_compaction=true
 
+# enable auto repair unsorted file by compaction
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_auto_repair_compaction=true
+
 # the selector of cross space compaction task
 # effectiveMode: restart
 # Options: rewrite
