@@ -1133,8 +1133,10 @@ public class IoTDBConfig {
   private double maxMemoryRatioForQueue = 0.6;
   private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
 
-  // PipeConsensus Config
-  private int pipeConsensusPipelineSize = 5;
+  // IoTConsensusV2 Config
+  private int iotConsensusV2PipelineSize = 5;
+  private String iotConsensusV2Mode = ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE;
+  private String[] iotConsensusV2ReceiverFileDirs = new String[0];
 
   /** Load related */
   private double maxAllocateMemoryRatioForLoad = 0.8;
@@ -1185,8 +1187,6 @@ public class IoTDBConfig {
   /** initialized as empty, updated based on the latest `systemDir` during querying */
   private String[] pipeReceiverFileDirs = new String[0];
 
-  private String[] pipeConsensusReceiverFileDirs = new String[0];
-
   /** Resource control */
   private boolean quotaEnable = false;
 
@@ -1230,12 +1230,12 @@ public class IoTDBConfig {
     this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
   }
 
-  public int getPipeConsensusPipelineSize() {
-    return pipeConsensusPipelineSize;
+  public int getIotConsensusV2PipelineSize() {
+    return iotConsensusV2PipelineSize;
   }
 
-  public void setPipeConsensusPipelineSize(int pipeConsensusPipelineSize) {
-    this.pipeConsensusPipelineSize = pipeConsensusPipelineSize;
+  public void setIotConsensusV2PipelineSize(int iotConsensusV2PipelineSize) {
+    this.iotConsensusV2PipelineSize = iotConsensusV2PipelineSize;
   }
 
   public void setMaxSizePerBatch(int maxSizePerBatch) {
@@ -1360,8 +1360,8 @@ public class IoTDBConfig {
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
       pipeReceiverFileDirs[i] = addDataHomeDir(pipeReceiverFileDirs[i]);
     }
-    for (int i = 0; i < pipeConsensusReceiverFileDirs.length; i++) {
-      pipeConsensusReceiverFileDirs[i] = addDataHomeDir(pipeConsensusReceiverFileDirs[i]);
+    for (int i = 0; i < iotConsensusV2ReceiverFileDirs.length; i++) {
+      iotConsensusV2ReceiverFileDirs[i] = addDataHomeDir(iotConsensusV2ReceiverFileDirs[i]);
     }
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
@@ -3205,6 +3205,14 @@ public class IoTDBConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
+  public String getIotConsensusV2Mode() {
+    return iotConsensusV2Mode;
+  }
+
+  public void setIotConsensusV2Mode(String iotConsensusV2Mode) {
+    this.iotConsensusV2Mode = iotConsensusV2Mode;
+  }
+
   public String getSchemaRegionConsensusProtocolClass() {
     return schemaRegionConsensusProtocolClass;
   }
@@ -4091,13 +4099,13 @@ public class IoTDBConfig {
         : this.pipeReceiverFileDirs;
   }
 
-  public void setPipeConsensusReceiverFileDirs(String[] pipeConsensusReceiverFileDirs) {
-    this.pipeConsensusReceiverFileDirs = pipeConsensusReceiverFileDirs;
+  public void setIotConsensusV2ReceiverFileDirs(String[] iotConsensusV2ReceiverFileDirs) {
+    this.iotConsensusV2ReceiverFileDirs = iotConsensusV2ReceiverFileDirs;
   }
 
-  public String[] getPipeConsensusReceiverFileDirs() {
-    return (Objects.isNull(this.pipeConsensusReceiverFileDirs)
-            || this.pipeConsensusReceiverFileDirs.length == 0)
+  public String[] getIotConsensusV2ReceiverFileDirs() {
+    return (Objects.isNull(this.iotConsensusV2ReceiverFileDirs)
+            || this.iotConsensusV2ReceiverFileDirs.length == 0)
         ? new String[] {
           systemDir
               + File.separator
@@ -4107,7 +4115,7 @@ public class IoTDBConfig {
               + File.separator
               + "receiver"
         }
-        : this.pipeConsensusReceiverFileDirs;
+        : this.iotConsensusV2ReceiverFileDirs;
   }
 
   public boolean isQuotaEnable() {
