@@ -33,8 +33,7 @@ public class ShowPipePlugins extends Statement {
 
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    // TODO
-    return super.accept(visitor, context);
+    return visitor.visitShowPipePlugins(this, context);
   }
 
   @Override
