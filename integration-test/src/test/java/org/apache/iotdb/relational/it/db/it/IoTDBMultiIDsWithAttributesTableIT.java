@@ -389,6 +389,7 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  // ========== SubQuery Test =========
   @Test
   public void subQueryTest1() {
     String[] expectedHeader = new String[] {"time", "level", "device", "add_num"};
@@ -409,5 +410,123 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+  }
+
+  // ========== Join Test =========
+  // no filter
+  @Test
+  public void innerJoinTest1() {
+    String[] expectedHeader =
+        new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.000Z,d2,l1,3,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,d2,l1,3,d2,c,3,coconut,",
+          "1970-01-01T00:00:00.020Z,d1,l2,2,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d1,l2,2,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d2,l2,2,d1,zz,2,pineapple,",
+          "1970-01-01T00:00:00.020Z,d2,l2,2,d2,null,2,pineapple,"
+        };
+
+    // join on
+    String sql =
+        "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 JOIN table0 t2 ON t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device OFFSET 2 LIMIT 6";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // implicit join
+    sql =
+        "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1, table0 t2 WHERE t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device OFFSET 2 LIMIT 6";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // join using
+    sql =
+        "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 JOIN table0 t2 USING(time)\n"
+            + "ORDER BY time, t1.device, t2.device OFFSET 2 LIMIT 6";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+  }
+
+  // has filter
+  @Test
+  public void innerJoinTest2() {
+    String[] expectedHeader =
+        new String[] {"time", "device", "level", "t1_num_add", "device", "attr2", "num", "str"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,5,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d2,null,5,orange,",
+        };
+
+    // join on
+    String sql =
+        "SELECT t2.time,t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
+            + "JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "ON t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT t2.time,t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0) t1 \n"
+            + "JOIN (SELECT * FROM table0) t2 ON t1.time = t2.time \n"
+            + "WHERE t1.TIME>=80 AND cast(t1.num as double)>0 AND t1.level!='l1' \n"
+            + "AND t2.time<=31536001000 AND t2.floatNum<1000 AND t2.device in ('d1','d2')\n"
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT t2.time,t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE time>=80) t1 \n"
+            + "JOIN (SELECT * FROM table0 WHERE floatNum<1000) t2 ON t1.time = t2.time \n"
+            + "WHERE cast(t1.num as double)>0 AND t1.level!='l1' \n"
+            + "AND t2.time<=31536001000 AND t2.device in ('d1','d2')\n"
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // implicit join
+    sql =
+        "SELECT t2.time,t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1, \n"
+            + " (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "WHERE t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT t2.time,t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0) t1, \n"
+            + " (SELECT * FROM table0) t2 \n"
+            + "WHERE t1.time=t2.time AND t1.TIME>=80 AND cast(t1.num as double)>0 AND t1.level!='l1' \n"
+            + "AND t2.time<=31536001000 AND t2.floatNum<1000 AND t2.device in ('d1','d2')\n"
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT t2.time,t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE time>=80) t1, \n"
+            + " (SELECT * FROM table0 WHERE floatNum<1000) t2 \n"
+            + "WHERE t1.time=t2.time AND cast(t1.num as double)>0 AND t1.level!='l1' \n"
+            + "AND t2.time<=31536001000 AND t2.device in ('d1','d2')\n"
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 20";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 }

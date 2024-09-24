@@ -19,26 +19,17 @@
 
 package org.apache.iotdb.confignode.consensus.request.read.model;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class GetModelInfoPlan extends ConfigPhysicalPlan {
+public class GetModelInfoPlan extends ConfigPhysicalReadPlan {
 
-  private String modelId;
+  private final String modelId;
 
-  public GetModelInfoPlan() {
-    super(ConfigPhysicalPlanType.GetModelInfo);
-  }
-
-  public GetModelInfoPlan(TGetModelInfoReq getModelInfoReq) {
+  public GetModelInfoPlan(final TGetModelInfoReq getModelInfoReq) {
     super(ConfigPhysicalPlanType.GetModelInfo);
     this.modelId = getModelInfoReq.getModelId();
   }
@@ -48,18 +39,7 @@ public class GetModelInfoPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(modelId, stream);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.modelId = ReadWriteIOUtils.readString(buffer);
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
@@ -69,7 +49,7 @@ public class GetModelInfoPlan extends ConfigPhysicalPlan {
     if (!super.equals(o)) {
       return false;
     }
-    GetModelInfoPlan that = (GetModelInfoPlan) o;
+    final GetModelInfoPlan that = (GetModelInfoPlan) o;
     return Objects.equals(modelId, that.modelId);
   }
 

@@ -210,10 +210,15 @@ public class TableDistributedPlanner {
       if (child instanceof ExchangeNode) {
         ExchangeNode exchangeNode = (ExchangeNode) child;
 
+        //        IdentitySinkNode identitySinkNode =
+        //            regionNodeMap.computeIfAbsent(
+        //
+        // context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
+        //                k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
+
+        // In table model, each ExchangeNode matches only one IdentitySinkNode
         IdentitySinkNode identitySinkNode =
-            regionNodeMap.computeIfAbsent(
-                context.getNodeDistribution(exchangeNode.getChild().getPlanNodeId()).getRegion(),
-                k -> new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId()));
+            new IdentitySinkNode(mppQueryContext.getQueryId().genPlanNodeId());
         identitySinkNode.addChild(exchangeNode.getChild());
         identitySinkNode.addDownStreamChannelLocation(
             new DownStreamChannelLocation(exchangeNode.getPlanNodeId().toString()));
