@@ -167,7 +167,6 @@ public class AddTableColumnProcedure
           database,
           table.getTableName(),
           failedResults);
-      // TODO: Handle commit failure
     }
   }
 
