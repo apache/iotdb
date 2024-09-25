@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
-import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
@@ -37,12 +36,12 @@ import java.io.File;
 import java.util.Collections;
 
 public class DeletionRecoverTest {
-  private static final String FAKE_DATE_REGION_ID = "1";
+  private static final String FAKE_DATA_REGION_ID = "1";
   private static final int THIS_DATANODE_ID =
       IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
-  private static final String BASE_PATH = DELETION_BASE_DIR + File.separator + FAKE_DATE_REGION_ID;
+  private static final String BASE_PATH = DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID;
   private final int deletionCount = 10;
   private DeletionResourceManager deletionResourceManager;
 
@@ -53,7 +52,7 @@ public class DeletionRecoverTest {
       FileUtils.deleteFileOrDirectory(baseDir);
     }
     DeletionResourceManager.buildForTest();
-    deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATE_REGION_ID);
+    deletionResourceManager = DeletionResourceManager.getInstance(FAKE_DATA_REGION_ID);
     // Create some deletion files
     int rebootTimes = 0;
     MeasurementPath path = new MeasurementPath("root.vehicle.d2.s0");
@@ -62,9 +61,7 @@ public class DeletionRecoverTest {
           new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
       deleteDataNode.setProgressIndex(
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
-      PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
-      deletionResourceManager.registerDeletionResource(deletionEvent);
-      deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
+      deletionResourceManager.registerDeletionResource(deleteDataNode);
     }
     // Manually close to ensure all deletions are persisted
     deletionResourceManager.close();

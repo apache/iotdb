@@ -100,9 +100,7 @@ public class DeletionResourceTest {
           new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
       deleteDataNode.setProgressIndex(
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
-      PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
-      deletionResourceManager.registerDeletionResource(deletionEvent);
-      deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
+      deletionResourceManager.registerDeletionResource(deleteDataNode);
     }
 
     Stream<Path> paths =
@@ -120,10 +118,8 @@ public class DeletionResourceTest {
         new DeleteDataNode(new PlanNodeId("1"), Collections.singletonList(path), 50, 150);
     deleteDataNode.setProgressIndex(
         new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, 1)));
-    PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
     // Only register one deletionResource
-    deletionResourceManager.registerDeletionResource(deletionEvent);
-    deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
+    deletionResourceManager.registerDeletionResource(deleteDataNode);
     // Sleep to wait deletion being persisted
     Thread.sleep(5000);
     Stream<Path> paths =
@@ -146,8 +142,9 @@ public class DeletionResourceTest {
           new RecoverProgressIndex(THIS_DATANODE_ID, new SimpleProgressIndex(rebootTimes, i)));
       PipeDeleteDataNodeEvent deletionEvent = new PipeDeleteDataNodeEvent(deleteDataNode, true);
       deletionEvents.add(deletionEvent);
-      deletionResourceManager.registerDeletionResource(deletionEvent);
-      deletionResourceManager.enrichDeletionResourceAndPersist(deletionEvent, deletionEvent);
+      deletionResourceManager.registerDeletionResource(deleteDataNode);
+      deletionEvent.setDeletionResource(
+          deletionResourceManager.increaseResourceReferenceAndGet(deleteDataNode));
     }
     deletionEvents.forEach(deletionEvent -> deletionEvent.increaseReferenceCount("test"));
     // Sleep to wait deletion being persisted
