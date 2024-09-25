@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.SimpleCompactionLogger;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
@@ -117,7 +118,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -204,7 +206,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -295,7 +298,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -388,7 +392,8 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));

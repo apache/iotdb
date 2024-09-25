@@ -73,13 +73,14 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private final long maxCrossCompactionFileSize;
 
   private final AbstractCrossSpaceEstimator compactionEstimator;
-  private CompactionScheduleContext context;
+  private final CompactionScheduleContext context;
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
       String dataRegionId,
       long timePartition,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      CompactionScheduleContext context) {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
@@ -98,16 +99,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         (AbstractCrossSpaceEstimator)
             ICompactionSelector.getCompactionEstimator(
                 IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
-    this.context = null;
-  }
-
-  public RewriteCrossSpaceCompactionSelector(
-      String logicalStorageGroupName,
-      String dataRegionId,
-      long timePartition,
-      TsFileManager tsFileManager,
-      CompactionScheduleContext context) {
-    this(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
     this.context = context;
   }
 
