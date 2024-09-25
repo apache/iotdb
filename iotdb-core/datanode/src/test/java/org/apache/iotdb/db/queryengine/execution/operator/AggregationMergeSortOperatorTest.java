@@ -32,6 +32,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 import org.junit.Test;
 
@@ -168,10 +169,10 @@ public class AggregationMergeSortOperatorTest {
   }
 
   private static TsBlock buildTsBlock(String device, int count) {
-    LongColumn timeColumn = new LongColumn(1, Optional.empty(), new long[] {0});
+    TimeColumn timeColumn = new TimeColumn(1, new long[] {0});
     BinaryColumn deviceColumn =
         new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(device.getBytes())});
     LongColumn countColumn = new LongColumn(1, Optional.empty(), new long[] {count});
-    return new TsBlock(1, timeColumn, deviceColumn, countColumn);
+    return new TsBlock(timeColumn, deviceColumn, countColumn);
   }
 }
