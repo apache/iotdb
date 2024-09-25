@@ -19,22 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
-
 import javax.annotation.Nullable;
 
-import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 
-public class ShowPipes extends Statement {
+public class ShowPipes extends PipeStatement {
 
   private final String pipeName;
   private final boolean hasWhereClause;
 
   public ShowPipes(final @Nullable String pipeName, final boolean hasWhereClause) {
-    super(null);
     this.pipeName = pipeName;
     this.hasWhereClause = hasWhereClause;
   }
@@ -50,11 +46,6 @@ public class ShowPipes extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitShowPipes(this, context);
-  }
-
-  @Override
-  public List<? extends Node> getChildren() {
-    return ImmutableList.of();
   }
 
   @Override

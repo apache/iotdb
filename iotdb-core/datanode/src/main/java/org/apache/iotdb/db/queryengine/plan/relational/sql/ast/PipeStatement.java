@@ -19,27 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import static com.google.common.base.MoreObjects.toStringHelper;
+import com.google.common.collect.ImmutableList;
 
-public class ShowPipePlugins extends PipeStatement {
+import java.util.List;
 
-  @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitShowPipePlugins(this, context);
+public abstract class PipeStatement extends Statement {
+
+  protected PipeStatement() {
+    super(null);
   }
 
   @Override
-  public int hashCode() {
-    return 0;
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj instanceof ShowPipePlugins;
-  }
-
-  @Override
-  public String toString() {
-    return toStringHelper(this).toString();
+  public List<? extends Node> getChildren() {
+    return ImmutableList.of();
   }
 }
