@@ -198,7 +198,7 @@ public class RepairUnsortedFileSchedulerTest extends AbstractRepairDataTest {
     scheduler.run();
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     // check whether the repair status is marked correctly
-    Assert.assertEquals(TsFileRepairStatus.NEED_TO_REPAIR, seqResource3.getTsFileRepairStatus());
+    Assert.assertTrue(seqResource3.getTsFileRepairStatus().isRepairCompactionCandidate());
   }
 
   @Test

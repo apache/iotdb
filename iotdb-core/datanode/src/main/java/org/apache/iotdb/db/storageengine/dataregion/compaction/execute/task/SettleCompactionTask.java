@@ -156,17 +156,25 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       if (isSuccess) {
-        LOGGER.info(
-            "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s."
-                + "Fully_dirty files num is {} and partially_dirty files num is {}.",
-            storageGroupName,
-            dataRegionId,
-            String.format("%.2f", costTime),
-            String.format(
-                "%.2f",
-                (fullyDirtyFileSize + partiallyDirtyFileSize) / 1024.0d / 1024.0d / costTime),
-            fullyDirtyFiles.size(),
-            filesView.sourceFilesInCompactionPerformer.size());
+        if (partiallyDirtyFileSize == 0) {
+          LOGGER.info(
+              "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s."
+                  + "Fully_dirty files num is {}.",
+              storageGroupName,
+              dataRegionId,
+              String.format("%.2f", costTime),
+              fullyDirtyFiles.size());
+        } else {
+          LOGGER.info(
+              "{}-{} [Compaction] SettleCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s."
+                  + "Fully_dirty files num is {} and partially_dirty files num is {}.",
+              storageGroupName,
+              dataRegionId,
+              String.format("%.2f", costTime),
+              String.format("%.2f", (partiallyDirtyFileSize) / 1024.0d / 1024.0d / costTime),
+              fullyDirtyFiles.size(),
+              filesView.sourceFilesInCompactionPerformer.size());
+        }
       } else {
         LOGGER.info(
             "{}-{} [Compaction] SettleCompaction task finishes with some error, time cost is {} s."
