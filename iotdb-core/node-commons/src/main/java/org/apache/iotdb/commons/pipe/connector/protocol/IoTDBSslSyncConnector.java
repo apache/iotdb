@@ -143,8 +143,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final boolean isCustomSendPortDefined,
       final int minSendPortRange,
       final int maxSendPortRange,
-      fianl List<Integer> candidatePorts);
-
+      final List<Integer> candidatePorts);
 
   @Override
   public void handshake() throws Exception {
