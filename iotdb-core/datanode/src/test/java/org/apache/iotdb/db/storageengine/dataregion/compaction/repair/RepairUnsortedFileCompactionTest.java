@@ -708,6 +708,71 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
   }
 
   @Test
+  public void testRepairFilesWithCheck1() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, false, false));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0, true);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(
+        resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE);
+  }
+
+  @Test
+  public void testRepairFilesWithCheck2() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(true);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20), new TimeRange(1, 10)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, false, false));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0, true);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(
+        resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
+  }
+
+  @Test
+  public void testRepairFilesWithCheck3() throws IOException {
+    TsFileResource resource = createEmptyFileAndResource(false);
+    try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
+      writer.startChunkGroup("d1");
+      writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
+          Arrays.asList("s1", "s2", "s3"),
+          new TimeRange[][] {new TimeRange[] {new TimeRange(10, 20)}},
+          TSEncoding.PLAIN,
+          CompressionType.LZ4,
+          Arrays.asList(true, false, false));
+      writer.endChunkGroup();
+      writer.endFile();
+    }
+    resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
+    RepairUnsortedFileCompactionTask task =
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0, true);
+    Assert.assertTrue(task.start());
+    Assert.assertEquals(resource.getTsFileRepairStatus(), TsFileRepairStatus.NORMAL);
+  }
+
+  @Test
   public void testSplitChunk() throws IOException {
     TsFileResource resource = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(resource)) {
