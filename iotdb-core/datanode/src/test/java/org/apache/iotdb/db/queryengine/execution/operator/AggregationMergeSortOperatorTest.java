@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.CountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
@@ -51,13 +50,9 @@ public class AggregationMergeSortOperatorTest {
   public void deviceInTwoRegionTest() throws Exception {
     OperatorContext operatorContext =
         new OperatorContext(1, new PlanNodeId("1"), "test-type", new DriverContext());
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.INT64);
-    List<Accumulator> accumulators = Collections.singletonList(new CountAccumulator());
 
     MockDeviceViewOperator1 operator1 = new MockDeviceViewOperator1(operatorContext);
     MockDeviceViewOperator1 operator2 = new MockDeviceViewOperator2(operatorContext);
-
-    List<Operator> children = Arrays.asList(operator1, operator2);
 
     List<SortItem> sortItemList =
         Arrays.asList(new SortItem("DEVICE", Ordering.ASC), new SortItem("TIME", Ordering.ASC));
@@ -68,7 +63,12 @@ public class AggregationMergeSortOperatorTest {
 
     AggregationMergeSortOperator operator =
         new AggregationMergeSortOperator(
-            operatorContext, children, dataTypes, accumulators, false, comparator);
+            operatorContext,
+            Arrays.asList(operator1, operator2),
+            Arrays.asList(TSDataType.TEXT, TSDataType.INT64),
+            Collections.singletonList(new CountAccumulator()),
+            false,
+            comparator);
     int cnt = 0;
     while (operator.isBlocked().isDone() && operator.hasNext()) {
       TsBlock block = operator.next();
@@ -83,12 +83,12 @@ public class AggregationMergeSortOperatorTest {
         cnt++;
       }
     }
+    assertEquals(2, cnt);
   }
 
   private static class MockDeviceViewOperator1 implements ProcessOperator {
 
     OperatorContext operatorContext;
-
     int invokeCount = 0;
 
     public MockDeviceViewOperator1(OperatorContext operatorContext) {
