@@ -51,6 +51,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -723,20 +724,26 @@ public class NodeInfo implements SnapshotProcessor {
     versionInfoReadWriteLock.writeLock().lock();
 
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile);
-        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(fileInputStream)) {
+        BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+        TIOStreamTransport tioStreamTransport = new TIOStreamTransport(bufferedInputStream)) {
       TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
 
       clear();
 
-      nextNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
+      nextNodeId.set(ReadWriteIOUtils.readInt(bufferedInputStream));
 
-      deserializeRegisteredConfigNode(fileInputStream, protocol);
+      deserializeRegisteredConfigNode(bufferedInputStream, protocol);
 
-      deserializeRegisteredDataNode(fileInputStream, protocol);
+      deserializeRegisteredDataNode(bufferedInputStream, protocol);
 
-      deserializeRegisteredAINode(fileInputStream, protocol);
+      try {
+        bufferedInputStream.mark(1024);
+        deserializeRegisteredAINode(bufferedInputStream, protocol);
+      } catch (IOException | TException ignore) {
+        bufferedInputStream.reset();
+      }
 
-      deserializeBuildInfo(fileInputStream);
+      deserializeBuildInfo(bufferedInputStream);
 
     } finally {
       versionInfoReadWriteLock.writeLock().unlock();
@@ -805,6 +812,7 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(-1);
     registeredDataNodes.clear();
     registeredConfigNodes.clear();
+    registeredAINodes.clear();
     nodeVersionInfo.clear();
   }
 
@@ -827,5 +835,10 @@ public class NodeInfo implements SnapshotProcessor {
   @Override
   public int hashCode() {
     return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes, nodeVersionInfo);
+  }
+
+  public static void main(String[] args) throws TException, IOException {
+    NodeInfo nodeInfo = new NodeInfo();
+    nodeInfo.processLoadSnapshot(new File("."));
   }
 }
