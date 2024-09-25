@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -32,6 +34,18 @@ public class AlterPipeTask implements IConfigTask {
 
   public AlterPipeTask(AlterPipeStatement alterPipeStatement) {
     this.alterPipeStatement = alterPipeStatement;
+  }
+
+  public AlterPipeTask(AlterPipe node) {
+    alterPipeStatement = new AlterPipeStatement(StatementType.ALTER_PIPE);
+    alterPipeStatement.setPipeName(node.getPipeName());
+    alterPipeStatement.setIfExists(node.hasIfExistsCondition());
+    alterPipeStatement.setExtractorAttributes(node.getExtractorAttributes());
+    alterPipeStatement.setProcessorAttributes(node.getProcessorAttributes());
+    alterPipeStatement.setConnectorAttributes(node.getConnectorAttributes());
+    alterPipeStatement.setReplaceAllExtractorAttributes(node.isReplaceAllExtractorAttributes());
+    alterPipeStatement.setReplaceAllProcessorAttributes(node.isReplaceAllProcessorAttributes());
+    alterPipeStatement.setReplaceAllConnectorAttributes(node.isReplaceAllConnectorAttributes());
   }
 
   @Override

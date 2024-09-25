@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllRows;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
@@ -42,6 +43,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentTime;
@@ -55,6 +58,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
@@ -115,13 +120,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
@@ -159,6 +168,8 @@ import org.apache.tsfile.utils.TimeDuration;
 
 import javax.annotation.Nullable;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -545,6 +556,187 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitLoadTsFileStatement(RelationalSqlParser.LoadTsFileStatementContext ctx) {
     return super.visitLoadTsFileStatement(ctx);
+  }
+
+  @Override
+  public Node visitCreatePipeStatement(RelationalSqlParser.CreatePipeStatementContext ctx) {
+    final String pipeName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+
+    final Map<String, String> extractorAttributes =
+        ctx.extractorAttributesClause() != null
+            ? parseExtractorAttributesClause(
+                ctx.extractorAttributesClause().extractorAttributeClause())
+            : Collections.emptyMap();
+    final Map<String, String> processorAttributes =
+        ctx.processorAttributesClause() != null
+            ? parseProcessorAttributesClause(
+                ctx.processorAttributesClause().processorAttributeClause())
+            : Collections.emptyMap();
+    final Map<String, String> connectorAttributes =
+        ctx.connectorAttributesClause() != null
+            ? parseConnectorAttributesClause(
+                ctx.connectorAttributesClause().connectorAttributeClause())
+            : parseConnectorAttributesClause(
+                ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause());
+
+    return new CreatePipe(
+        pipeName,
+        hasIfNotExistsCondition,
+        extractorAttributes,
+        processorAttributes,
+        connectorAttributes);
+  }
+
+  private Map<String, String> parseExtractorAttributesClause(
+      List<RelationalSqlParser.ExtractorAttributeClauseContext> contexts) {
+    final Map<String, String> collectorMap = new HashMap<>();
+    for (RelationalSqlParser.ExtractorAttributeClauseContext context : contexts) {
+      collectorMap.put(
+          ((StringLiteral) visit(context.extractorKey)).getValue(),
+          ((StringLiteral) visit(context.extractorValue)).getValue());
+    }
+    return collectorMap;
+  }
+
+  private Map<String, String> parseProcessorAttributesClause(
+      List<RelationalSqlParser.ProcessorAttributeClauseContext> contexts) {
+    final Map<String, String> processorMap = new HashMap<>();
+    for (RelationalSqlParser.ProcessorAttributeClauseContext context : contexts) {
+      processorMap.put(
+          ((StringLiteral) visit(context.processorKey)).getValue(),
+          ((StringLiteral) visit(context.processorValue)).getValue());
+    }
+    return processorMap;
+  }
+
+  private Map<String, String> parseConnectorAttributesClause(
+      List<RelationalSqlParser.ConnectorAttributeClauseContext> contexts) {
+    final Map<String, String> connectorMap = new HashMap<>();
+    for (RelationalSqlParser.ConnectorAttributeClauseContext context : contexts) {
+      connectorMap.put(
+          ((StringLiteral) visit(context.connectorKey)).getValue(),
+          ((StringLiteral) visit(context.connectorValue)).getValue());
+    }
+    return connectorMap;
+  }
+
+  @Override
+  public Node visitAlterPipeStatement(RelationalSqlParser.AlterPipeStatementContext ctx) {
+    final String pipeName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+
+    final Map<String, String> extractorAttributes;
+    final boolean isReplaceAllExtractorAttributes;
+    if (ctx.alterExtractorAttributesClause() != null) {
+      extractorAttributes =
+          parseExtractorAttributesClause(
+              ctx.alterExtractorAttributesClause().extractorAttributeClause());
+      isReplaceAllExtractorAttributes =
+          Objects.nonNull(ctx.alterExtractorAttributesClause().REPLACE());
+    } else {
+      extractorAttributes = Collections.emptyMap();
+      isReplaceAllExtractorAttributes = false;
+    }
+
+    final Map<String, String> processorAttributes;
+    final boolean isReplaceAllProcessorAttributes;
+    if (ctx.alterProcessorAttributesClause() != null) {
+      processorAttributes =
+          parseProcessorAttributesClause(
+              ctx.alterProcessorAttributesClause().processorAttributeClause());
+      isReplaceAllProcessorAttributes =
+          Objects.nonNull(ctx.alterProcessorAttributesClause().REPLACE());
+    } else {
+      processorAttributes = Collections.emptyMap();
+      isReplaceAllProcessorAttributes = false;
+    }
+
+    final Map<String, String> connectorAttributes;
+    final boolean isReplaceAllConnectorAttributes;
+    if (ctx.alterConnectorAttributesClause() != null) {
+      connectorAttributes =
+          parseConnectorAttributesClause(
+              ctx.alterConnectorAttributesClause().connectorAttributeClause());
+      isReplaceAllConnectorAttributes =
+          Objects.nonNull(ctx.alterConnectorAttributesClause().REPLACE());
+    } else {
+      connectorAttributes = Collections.emptyMap();
+      isReplaceAllConnectorAttributes = false;
+    }
+
+    return new AlterPipe(
+        pipeName,
+        hasIfExistsCondition,
+        extractorAttributes,
+        processorAttributes,
+        connectorAttributes,
+        isReplaceAllExtractorAttributes,
+        isReplaceAllProcessorAttributes,
+        isReplaceAllConnectorAttributes);
+  }
+
+  @Override
+  public Node visitDropPipeStatement(RelationalSqlParser.DropPipeStatementContext ctx) {
+    final String pipeName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropPipe(pipeName, hasIfExistsCondition);
+  }
+
+  @Override
+  public Node visitStartPipeStatement(RelationalSqlParser.StartPipeStatementContext ctx) {
+    return new StartPipe(((Identifier) visit(ctx.identifier())).getValue());
+  }
+
+  @Override
+  public Node visitStopPipeStatement(RelationalSqlParser.StopPipeStatementContext ctx) {
+    return new StopPipe(((Identifier) visit(ctx.identifier())).getValue());
+  }
+
+  @Override
+  public Node visitShowPipesStatement(RelationalSqlParser.ShowPipesStatementContext ctx) {
+    final String pipeName =
+        getIdentifierIfPresent(ctx.identifier()).map(Identifier::getValue).orElse(null);
+    final boolean hasWhereClause = ctx.WHERE() != null;
+    return new ShowPipes(pipeName, hasWhereClause);
+  }
+
+  @Override
+  public Node visitCreatePipePluginStatement(
+      RelationalSqlParser.CreatePipePluginStatementContext ctx) {
+    final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfNotExistsCondition =
+        ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null;
+    final String className = ((StringLiteral) visit(ctx.className)).getValue();
+    final String uriString = parseAndValidateURI(ctx.uriClause());
+    return new CreatePipePlugin(pluginName, hasIfNotExistsCondition, className, uriString);
+  }
+
+  private String parseAndValidateURI(RelationalSqlParser.UriClauseContext ctx) {
+    final String uriString =
+        ctx.uri.identifier() != null
+            ? ((Identifier) visit(ctx.uri.identifier())).getValue()
+            : ((StringLiteral) visit(ctx.uri.string())).getValue();
+    try {
+      new URI(uriString);
+    } catch (URISyntaxException e) {
+      throw new SemanticException(String.format("Invalid URI: %s", uriString));
+    }
+    return uriString;
+  }
+
+  @Override
+  public Node visitDropPipePluginStatement(RelationalSqlParser.DropPipePluginStatementContext ctx) {
+    final String pluginName = ((Identifier) visit(ctx.identifier())).getValue();
+    final boolean hasIfExistsCondition = ctx.IF() != null && ctx.EXISTS() != null;
+    return new DropPipePlugin(pluginName, hasIfExistsCondition);
+  }
+
+  @Override
+  public Node visitShowPipePluginsStatement(
+      RelationalSqlParser.ShowPipePluginsStatementContext ctx) {
+    return new ShowPipePlugins();
   }
 
   @Override
