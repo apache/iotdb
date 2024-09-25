@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
@@ -182,7 +183,7 @@ public class SizeTieredCompactionSelector
     try {
       // 1. select compaction task based on file which need to repair
       List<InnerSpaceCompactionTask> taskList = selectFileNeedToRepair();
-      if (!taskList.isEmpty()) {
+      if (!taskList.isEmpty() || !CompactionUtils.isDiskHasSpace()) {
         return taskList;
       }
       // 2. if a suitable compaction task is not selected in the first step, select the compaction
