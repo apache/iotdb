@@ -50,4 +50,23 @@ public class ExpColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        if (TSDataType.DOUBLE.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.exp(column.getDouble(i)));
+        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.exp(column.getFloat(i)));
+        } else if (TSDataType.INT32.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.exp(column.getInt(i)));
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.exp((double) column.getLong(i)));
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

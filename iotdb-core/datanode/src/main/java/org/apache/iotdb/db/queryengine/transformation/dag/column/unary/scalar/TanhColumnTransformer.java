@@ -50,4 +50,23 @@ public class TanhColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        if (TSDataType.DOUBLE.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.tanh(column.getDouble(i)));
+        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.tanh(column.getFloat(i)));
+        } else if (TSDataType.INT32.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.tanh(column.getInt(i)));
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.tanh((double) column.getLong(i)));
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

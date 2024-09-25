@@ -94,6 +94,51 @@ public class CastFunctionColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    TypeEnum sourceType = childColumnTransformer.getType().getTypeEnum();
+    Type childType = childColumnTransformer.getType();
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        switch (sourceType) {
+          case INT32:
+            cast(columnBuilder, childType.getInt(column, i));
+            break;
+          case DATE:
+            castDate(columnBuilder, childType.getInt(column, i));
+            break;
+          case INT64:
+            cast(columnBuilder, childType.getLong(column, i));
+            break;
+          case TIMESTAMP:
+            castTimestamp(columnBuilder, childType.getLong(column, i));
+            break;
+          case FLOAT:
+            cast(columnBuilder, childType.getFloat(column, i));
+            break;
+          case DOUBLE:
+            cast(columnBuilder, childType.getDouble(column, i));
+            break;
+          case BOOLEAN:
+            cast(columnBuilder, childType.getBoolean(column, i));
+            break;
+          case TEXT:
+          case STRING:
+          case BLOB:
+            cast(columnBuilder, childType.getBinary(column, i));
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                String.format(
+                    "Unsupported source dataType: %s",
+                    childColumnTransformer.getType().getTypeEnum()));
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
   private void cast(ColumnBuilder columnBuilder, int value) {
     switch (returnType.getTypeEnum()) {
       case INT32:

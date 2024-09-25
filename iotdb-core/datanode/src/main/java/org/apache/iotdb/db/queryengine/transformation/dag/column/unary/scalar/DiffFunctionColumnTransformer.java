@@ -66,4 +66,32 @@ public class DiffFunctionColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i]) {
+        if (column.isNull(i)) {
+          columnBuilder.appendNull(); // currValue is null, append null
+
+          // When currValue is null:
+          // ignoreNull = true, keep lastValueIsNull as before
+          // ignoreNull = false, update lastValueIsNull to true
+          lastValueIsNull |= !ignoreNull;
+        } else {
+          double currValue = childColumnTransformer.getType().getDouble(column, i);
+          if (lastValueIsNull) {
+            columnBuilder.appendNull(); // lastValue is null, append null
+          } else {
+            returnType.writeDouble(columnBuilder, currValue - lastValue);
+          }
+
+          lastValue = currValue; // currValue is not null, update lastValue
+          lastValueIsNull = false;
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

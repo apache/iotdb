@@ -50,4 +50,23 @@ public class CosColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        if (TSDataType.DOUBLE.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.cos(column.getDouble(i)));
+        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.cos(column.getFloat(i)));
+        } else if (TSDataType.INT32.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.cos(column.getInt(i)));
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.cos((double) column.getLong(i)));
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

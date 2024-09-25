@@ -95,6 +95,42 @@ public class InColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        switch (childType) {
+          case INT32:
+          case DATE:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getInt(i)));
+            break;
+          case INT64:
+          case TIMESTAMP:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getLong(i)));
+            break;
+          case FLOAT:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getFloat(i)));
+            break;
+          case DOUBLE:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getDouble(i)));
+            break;
+          case BOOLEAN:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
+            break;
+          case STRING:
+          case TEXT:
+          case BLOB:
+            returnType.writeBoolean(columnBuilder, satisfy.of(column.getBinary(i)));
+            break;
+          default:
+            throw new UnsupportedOperationException("unsupported data type: " + childType);
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
+
   private void initTypedSet(Set<String> values) {
     if (childType == null) {
       return;

@@ -56,6 +56,21 @@ public class ConcatColumnTransformer extends UnaryColumnTransformer {
     }
   }
 
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        if (isBehind) {
+          columnBuilder.writeBinary(new Binary(concat(column.getBinary(i).getValues(), value)));
+        } else {
+          columnBuilder.writeBinary(new Binary(concat(value, column.getBinary(i).getValues())));
+        }
+      } else {
+        columnBuilder.writeBinary(new Binary(value));
+      }
+    }
+  }
+
   // 只处理两个参数的concat
   public static byte[] concat(byte[] leftValue, byte[] rightValue) {
     byte[] result = new byte[leftValue.length + rightValue.length];

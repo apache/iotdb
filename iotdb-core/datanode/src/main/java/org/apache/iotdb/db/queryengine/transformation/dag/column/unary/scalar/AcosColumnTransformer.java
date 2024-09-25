@@ -50,4 +50,23 @@ public class AcosColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        if (TSDataType.DOUBLE.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.acos(column.getDouble(i)));
+        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.acos(column.getFloat(i)));
+        } else if (TSDataType.INT32.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.acos(column.getInt(i)));
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.acos((double) column.getLong(i)));
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

@@ -53,4 +53,25 @@ public class AbsColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        if (TSDataType.DOUBLE.equals(column.getDataType())) {
+          columnBuilder.writeDouble(Math.abs(column.getDouble(i)));
+        } else if (TSDataType.FLOAT.equals(column.getDataType())) {
+          columnBuilder.writeFloat(Math.abs(column.getFloat(i)));
+        } else if (TSDataType.INT32.equals(column.getDataType())) {
+          columnBuilder.writeInt(Math.abs(column.getInt(i)));
+        } else if (TSDataType.INT64.equals(column.getDataType())) {
+          columnBuilder.writeLong(Math.abs(column.getLong(i)));
+        } else if (TSDataType.TIMESTAMP.equals(column.getDataType())) {
+          columnBuilder.writeLong(Math.abs(column.getLong(i)));
+        }
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }

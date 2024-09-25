@@ -61,4 +61,25 @@ public class SubStringFunctionColumnTransformer extends UnaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (selection[i] && !column.isNull(i)) {
+        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        if (beginPosition >= currentValue.length() || endPosition < 0) {
+          currentValue = EMPTY_STRING;
+        } else {
+          if (endPosition >= currentValue.length()) {
+            currentValue = currentValue.substring(beginPosition);
+          } else {
+            currentValue = currentValue.substring(beginPosition, endPosition);
+          }
+        }
+        columnBuilder.writeBinary(BytesUtils.valueOf(currentValue));
+      } else {
+        columnBuilder.appendNull();
+      }
+    }
+  }
 }
