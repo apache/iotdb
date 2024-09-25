@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -42,16 +41,10 @@ import java.util.stream.Collectors;
 
 public class ShowConfigNodesTask implements IConfigTask {
 
-  private final ShowConfigNodes showConfigNodes;
-
-  public ShowConfigNodesTask(ShowConfigNodes showConfigNodes) {
-    this.showConfigNodes = showConfigNodes;
-  }
-
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showConfigNodes(showConfigNodes);
+    return configTaskExecutor.showConfigNodes();
   }
 
   public static void buildTSBlock(

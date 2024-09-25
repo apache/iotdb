@@ -38,6 +38,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesS
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.SetTTLTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
@@ -54,7 +55,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariab
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.UnSetTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.CreateModelTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.DropModelTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.AlterSchemaTemplateTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.template.CreateSchemaTemplateTask;
@@ -442,6 +442,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitShowAINodes(
+      ShowAINodesStatement showAINodesStatement, MPPQueryContext context) {
+    return new ShowAINodesTask();
+  }
+
+  @Override
   public IConfigTask visitShowPipes(
       ShowPipesStatement showPipesStatement, MPPQueryContext context) {
     return new ShowPipeTask(showPipesStatement);
@@ -611,11 +617,5 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitShowModels(
       ShowModelsStatement showModelsStatement, MPPQueryContext context) {
     return new ShowModelsTask(showModelsStatement.getModelName());
-  }
-
-  @Override
-  public IConfigTask visitShowAINodes(
-      ShowAINodesStatement showAINodesStatement, MPPQueryContext context) {
-    return new ShowAINodesTask(showAINodesStatement);
   }
 }
