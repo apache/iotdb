@@ -24,8 +24,6 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
-import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
-import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -141,16 +139,13 @@ public class PipeDataRegionAssigner implements Closeable {
               if (copiedEvent.getEvent() instanceof PipeDeleteDataNodeEvent) {
                 DeletionResourceManager mgr =
                     DeletionResourceManager.getInstance(extractor.getDataRegionId());
+                // increase deletion resource's reference
                 if (Objects.nonNull(mgr)) {
-                  DeletionResource deletionResource =
-                      mgr.enrichDeletionResourceAndPersist(
-                          (PipeDeleteDataNodeEvent) event.getEvent(),
-                          (PipeDeleteDataNodeEvent) copiedEvent.getEvent());
-                  // if persist failed, skip sending this event to keep consistency with the
-                  // behavior of storage engine.
-                  if (deletionResource.waitForResult() == Status.FAILURE) {
-                    return;
-                  }
+                  PipeDeleteDataNodeEvent deleteDataNodeEvent =
+                      (PipeDeleteDataNodeEvent) copiedEvent.getEvent();
+                  deleteDataNodeEvent.setDeletionResource(
+                      mgr.increaseResourceReferenceAndGet(
+                          ((PipeDeleteDataNodeEvent) event.getEvent()).getDeleteDataNode()));
                 }
               }
 

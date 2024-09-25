@@ -22,6 +22,8 @@ package org.apache.iotdb.db.pipe.consensus.deletion;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -39,37 +42,29 @@ import java.util.function.Consumer;
 public class DeletionResource implements PersistentResource {
   private static final Logger LOGGER = LoggerFactory.getLogger(DeletionResource.class);
   private final Consumer<DeletionResource> removeHook;
-  private PipeDeleteDataNodeEvent correspondingPipeTaskEvent;
+  private final AtomicInteger pipeTaskReferenceCount = new AtomicInteger(0);
+  private final DeleteDataNode deleteDataNode;
   private volatile Status currentStatus;
 
   // it's safe to use volatile here to make this reference thread-safe.
   @SuppressWarnings("squid:S3077")
   private volatile Exception cause;
 
-  // For first register in DataRegion
-  public DeletionResource(Consumer<DeletionResource> removeHook) {
+  public DeletionResource(DeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook) {
+    this.deleteDataNode = deleteDataNode;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
   }
 
-  // For deserialize
-  public DeletionResource(PipeDeleteDataNodeEvent event, Consumer<DeletionResource> removeHook) {
-    this.correspondingPipeTaskEvent = event;
-    this.removeHook = removeHook;
-    this.currentStatus = Status.RUNNING;
+  public void increaseReference() {
+    pipeTaskReferenceCount.incrementAndGet();
   }
 
-  public void setCorrespondingPipeTaskEvent(PipeDeleteDataNodeEvent correspondingPipeTaskEvent) {
-    this.correspondingPipeTaskEvent = correspondingPipeTaskEvent;
-  }
-
-  /**
-   * This method is invoked when DeletionResource is deleted by DeleteResourceManager. In this
-   * method, we release the reference of deletionEvent to resolve circular references between
-   * deletionResource and deletionEvent so that GC can reclaim them.
-   */
-  public void releaseSelf() {
-    correspondingPipeTaskEvent = null;
+  public synchronized void decreaseReference() {
+    if (pipeTaskReferenceCount.get() == 1) {
+      removeSelf();
+    }
+    pipeTaskReferenceCount.decrementAndGet();
   }
 
   public void removeSelf() {
@@ -77,7 +72,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public long getReferenceCount() {
-    return correspondingPipeTaskEvent.getReferenceCount();
+    return pipeTaskReferenceCount.get();
   }
 
   public synchronized void onPersistFailed(Exception e) {
@@ -92,7 +87,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   /**
-   * @return true if this object has been successfully persisted, false if persist failed.
+   * @return true, if this object has been successfully persisted, false if persist failed.
    */
   public synchronized Status waitForResult() {
     while (currentStatus == Status.RUNNING) {
@@ -110,7 +105,7 @@ public class DeletionResource implements PersistentResource {
 
   @Override
   public ProgressIndex getProgressIndex() {
-    return correspondingPipeTaskEvent.getDeleteDataNode().getProgressIndex();
+    return deleteDataNode.getProgressIndex();
   }
 
   @Override
@@ -123,24 +118,24 @@ public class DeletionResource implements PersistentResource {
     return 0;
   }
 
-  public PipeDeleteDataNodeEvent getCorrespondingPipeTaskEvent() {
-    return correspondingPipeTaskEvent;
+  public DeleteDataNode getDeleteDataNode() {
+    return deleteDataNode;
   }
 
   public ByteBuffer serialize() {
-    return correspondingPipeTaskEvent.serializeToByteBuffer();
+    return deleteDataNode.serializeToByteBuffer();
   }
 
   public static DeletionResource deserialize(
       final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) throws IOException {
-    PipeDeleteDataNodeEvent event = PipeDeleteDataNodeEvent.deserialize(buffer);
-    return new DeletionResource(event, removeHook);
+    DeleteDataNode node = (DeleteDataNode) PlanNodeType.deserialize(buffer);
+    return new DeletionResource(node, removeHook);
   }
 
   @Override
   public String toString() {
     return String.format(
-        "DeletionResource[%s]{referenceCount=%s}", correspondingPipeTaskEvent, getReferenceCount());
+        "DeletionResource[%s]{referenceCount=%s}", deleteDataNode, getReferenceCount());
   }
 
   @Override
@@ -152,12 +147,12 @@ public class DeletionResource implements PersistentResource {
       return false;
     }
     final DeletionResource otherEvent = (DeletionResource) o;
-    return Objects.equals(correspondingPipeTaskEvent, otherEvent.correspondingPipeTaskEvent);
+    return Objects.equals(deleteDataNode, otherEvent.deleteDataNode);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(correspondingPipeTaskEvent);
+    return Objects.hash(deleteDataNode);
   }
 
   public Exception getCause() {

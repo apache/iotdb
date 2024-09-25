@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.consensus.ProgressIndexDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.DeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.consensus.deletion.recover.DeletionReader;
-import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
@@ -43,9 +43,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -66,9 +65,8 @@ public class DeletionResourceManager implements AutoCloseable {
   private final String dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
-  private final Map<Integer, DeletionResource> eventHash2DeletionResources =
+  private final Map<DeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
       new ConcurrentHashMap<>();
-  private final List<DeletionResource> deletionResources = new CopyOnWriteArrayList<>();
   private final Lock recoverLock = new ReentrantLock();
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
   private volatile boolean hasCompletedRecovery = false;
@@ -107,7 +105,12 @@ public class DeletionResourceManager implements AutoCloseable {
         for (Path path : deletionPaths) {
           try (DeletionReader deletionReader =
               new DeletionReader(path.toFile(), this::removeDeletionResource)) {
-            deletionResources.addAll(deletionReader.readAllDeletions());
+            deletionReader
+                .readAllDeletions()
+                .forEach(
+                    deletion ->
+                        deleteNode2ResourcesMap.computeIfAbsent(
+                            deletion.getDeleteDataNode(), key -> deletion));
           } catch (IOException e) {
             LOGGER.warn(
                 "Detect file corrupted when recover DAL-{}, discard all subsequent DALs...",
@@ -126,36 +129,24 @@ public class DeletionResourceManager implements AutoCloseable {
   @Override
   public void close() {
     LOGGER.info("Closing deletion resource manager for {}...", dataRegionId);
-    this.deletionResources.clear();
+    this.deleteNode2ResourcesMap.clear();
     this.deletionBuffer.close();
     LOGGER.info("Deletion resource manager for {} has been successfully closed!", dataRegionId);
   }
 
-  /**
-   * In this method, we only new an instance and return it to DataRegion and not persist
-   * deletionResource. Because currently deletionResource can not bind corresponding pipe task's
-   * deletionEvent.
-   */
-  public DeletionResource registerDeletionResource(PipeDeleteDataNodeEvent originEvent) {
+  public DeletionResource registerDeletionResource(DeleteDataNode deleteDataNode) {
     DeletionResource deletionResource =
-        eventHash2DeletionResources.computeIfAbsent(
-            Objects.hash(originEvent, dataRegionId),
-            key -> new DeletionResource(this::removeDeletionResource));
-    this.deletionResources.add(deletionResource);
+        deleteNode2ResourcesMap.computeIfAbsent(
+            deleteDataNode,
+            key -> new DeletionResource(deleteDataNode, this::removeDeletionResource));
+    // register a persist task for current deletionResource
+    deletionBuffer.registerDeletionResource(deletionResource);
     return deletionResource;
   }
 
-  /** This method will bind event for deletionResource and persist it. */
-  public DeletionResource enrichDeletionResourceAndPersist(
-      PipeDeleteDataNodeEvent originEvent, PipeDeleteDataNodeEvent copiedEvent) {
-    int key = Objects.hash(originEvent, dataRegionId);
-    DeletionResource deletionResource = eventHash2DeletionResources.get(key);
-    // Bind real deletion event
-    deletionResource.setCorrespondingPipeTaskEvent(copiedEvent);
-    // Register a persist task for current deletionResource
-    deletionBuffer.registerDeletionResource(deletionResource);
-    // Now, we can safely remove this entry from map. Since this entry will not be used anymore.
-    eventHash2DeletionResources.remove(key);
+  public DeletionResource increaseResourceReferenceAndGet(DeleteDataNode deleteDataNode) {
+    DeletionResource deletionResource = deleteNode2ResourcesMap.get(deleteDataNode);
+    Optional.ofNullable(deletionResource).ifPresent(DeletionResource::increaseReference);
     return deletionResource;
   }
 
@@ -165,14 +156,14 @@ public class DeletionResourceManager implements AutoCloseable {
       if (!hasCompletedRecovery) {
         recoveryReadyCondition.await();
       }
-      return deletionResources.stream().collect(ImmutableList.toImmutableList());
+      return deleteNode2ResourcesMap.values().stream().collect(ImmutableList.toImmutableList());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
           "DeletionManager-{}: current waiting is interrupted. May because current application is down. ",
           dataRegionId,
           e);
-      return deletionResources.stream().collect(ImmutableList.toImmutableList());
+      return deleteNode2ResourcesMap.values().stream().collect(ImmutableList.toImmutableList());
     } finally {
       recoverLock.unlock();
     }
@@ -184,7 +175,7 @@ public class DeletionResourceManager implements AutoCloseable {
    */
   private synchronized void removeDeletionResource(DeletionResource deletionResource) {
     // Clean memory
-    deletionResources.remove(deletionResource);
+    deleteNode2ResourcesMap.remove(deletionResource.getDeleteDataNode());
     // Clean disk
     ProgressIndex currentProgressIndex =
         ProgressIndexDataNodeManager.extractLocalSimpleProgressIndex(
@@ -324,7 +315,12 @@ public class DeletionResourceManager implements AutoCloseable {
       for (Path path : deletionPaths) {
         try (DeletionReader deletionReader =
             new DeletionReader(path.toFile(), this::removeDeletionResource)) {
-          deletionResources.addAll(deletionReader.readAllDeletions());
+          deletionReader
+              .readAllDeletions()
+              .forEach(
+                  deletion ->
+                      deleteNode2ResourcesMap.computeIfAbsent(
+                          deletion.getDeleteDataNode(), key -> deletion));
         }
       }
     } catch (IOException e) {

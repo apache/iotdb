@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -72,6 +73,19 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     this.pathList = pathList;
     this.deleteStartTime = deleteStartTime;
     this.deleteEndTime = deleteEndTime;
+  }
+
+  public DeleteDataNode(
+      PlanNodeId id,
+      List<MeasurementPath> pathList,
+      long deleteStartTime,
+      long deleteEndTime,
+      ProgressIndex progressIndex) {
+    super(id);
+    this.pathList = pathList;
+    this.deleteStartTime = deleteStartTime;
+    this.deleteEndTime = deleteEndTime;
+    this.progressIndex = progressIndex;
   }
 
   public DeleteDataNode(
@@ -207,6 +221,7 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     }
     ReadWriteIOUtils.write(deleteStartTime, byteBuffer);
     ReadWriteIOUtils.write(deleteEndTime, byteBuffer);
+    progressIndex.serialize(byteBuffer);
   }
 
   @Override
@@ -218,6 +233,7 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     }
     ReadWriteIOUtils.write(deleteStartTime, stream);
     ReadWriteIOUtils.write(deleteEndTime, stream);
+    progressIndex.serialize(stream);
   }
 
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
@@ -228,12 +244,14 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     }
     long deleteStartTime = ReadWriteIOUtils.readLong(byteBuffer);
     long deleteEndTime = ReadWriteIOUtils.readLong(byteBuffer);
+    ProgressIndex deserializedIndex = ProgressIndexType.deserializeFrom(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
+    return new DeleteDataNode(
+        planNodeId, pathList, deleteStartTime, deleteEndTime, deserializedIndex);
   }
 
   @Override

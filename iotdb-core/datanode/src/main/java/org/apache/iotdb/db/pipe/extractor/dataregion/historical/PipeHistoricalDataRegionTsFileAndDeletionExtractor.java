@@ -518,15 +518,15 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
     try {
       List<PersistentResource> resourceList = new ArrayList<>();
-      // Extract deletions
-      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-          .ifPresent(mgr -> extractDeletions(mgr, resourceList));
-
       // Flush TsFiles
       final long startHistoricalExtractionTime = System.currentTimeMillis();
       flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
       // Extract TsFiles
       extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+
+      // Extract deletions
+      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+          .ifPresent(mgr -> extractDeletions(mgr, resourceList));
 
       // Sort tsFileResource and deletionResource
       resourceList.sort(
@@ -648,7 +648,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
               PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
       if (!isReferenceCountIncreased) {
         LOGGER.warn(
-            "Pipe {}@{}: failed to increase reference count for historical event {}, will discard it",
+            "Pipe {}@{}: failed to increase reference count for historical tsfile event {}, will discard it",
             pipeName,
             dataRegionId,
             event);
@@ -668,10 +668,32 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   }
 
   private Event supplyDeletionEvent(final DeletionResource deletionResource) {
-    PipeDeleteDataNodeEvent event = deletionResource.getCorrespondingPipeTaskEvent();
-    event.increaseReferenceCount(
-        PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
-    return event;
+    final PipeDeleteDataNodeEvent event =
+        new PipeDeleteDataNodeEvent(
+            deletionResource.getDeleteDataNode(),
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            pipePattern,
+            false);
+    if (sloppyPattern || isDbNameCoveredByPattern) {
+      event.skipParsingPattern();
+    }
+    if (sloppyTimeRange) {
+      event.skipParsingTime();
+    }
+
+    final boolean isReferenceCountIncreased =
+        event.increaseReferenceCount(
+            PipeHistoricalDataRegionTsFileAndDeletionExtractor.class.getName());
+    if (!isReferenceCountIncreased) {
+      LOGGER.warn(
+          "Pipe {}@{}: failed to increase reference count for historical deletion event {}, will discard it",
+          pipeName,
+          dataRegionId,
+          event);
+    }
+    return isReferenceCountIncreased ? event : null;
   }
 
   private Event supplyTerminateEvent() {
@@ -691,7 +713,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized Event supply() {
-
     if (!hasBeenStarted && StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
       start();
     }

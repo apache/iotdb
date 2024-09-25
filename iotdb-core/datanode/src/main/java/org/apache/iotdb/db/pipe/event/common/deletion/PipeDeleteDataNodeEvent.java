@@ -84,11 +84,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
   @Override
   public boolean internallyDecreaseResourceReferenceCount(String holderMessage) {
     if (deletionResource != null) {
-      // Trigger hook function.
-      deletionResource.removeSelf();
-      // Resolve circular reference to let GC reclaim them all.
-      deletionResource.releaseSelf();
-      deletionResource = null;
+      deletionResource.decreaseReference();
     }
     return true;
   }

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.extractor.dataregion.realtime.listener;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
-import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEventFactory;
 import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.PipeRealtimeDataRegionExtractor;
@@ -157,10 +157,13 @@ public class PipeInsertionDataNodeListener {
     DeletionResourceManager mgr = DeletionResourceManager.getInstance(regionId);
     DeletionResource deletionResource = null;
     if (Objects.nonNull(mgr)) {
-      deletionResource =
-          mgr.registerDeletionResource((PipeDeleteDataNodeEvent) realtimeEvent.getEvent());
+      deletionResource = mgr.registerDeletionResource(node);
+      // if persist failed, skip sending/publishing this event to keep consistency with the
+      // behavior of storage engine.
+      if (deletionResource.waitForResult() == Status.FAILURE) {
+        return deletionResource;
+      }
     }
-    // register first, then publish.
     assigner.publishToAssign(realtimeEvent);
     return deletionResource;
   }
