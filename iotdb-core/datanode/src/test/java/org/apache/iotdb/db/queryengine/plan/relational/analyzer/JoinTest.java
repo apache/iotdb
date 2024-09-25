@@ -385,15 +385,7 @@ public class JoinTest {
         "SELECT * FROM table1 t1 INNER JOIN table1 t2 USING(tag1, time)",
         ONLY_SUPPORT_TIME_COLUMN_IN_USING_CLAUSE);
 
-    // FULL, LEFT, RIGHT JOIN
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 FULL JOIN table1 t2 ON t1.time=t2.time",
-        "FULL JOIN is not supported, only support INNER JOIN in current version");
-
-    assertAnalyzeSemanticException(
-        "SELECT * FROM table1 t1 FULL JOIN table1 t2 ON t1.time=t2.time WHERE t1.time>1",
-        "FULL JOIN is not supported, only support INNER JOIN in current version");
-
+    // LEFT, RIGHT JOIN
     assertAnalyzeSemanticException(
         "SELECT * FROM table1 t1 LEFT JOIN table1 t2 ON t1.time=t2.time",
         "LEFT JOIN is not supported, only support INNER JOIN in current version");
