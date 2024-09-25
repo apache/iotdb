@@ -105,11 +105,11 @@ public enum TableBuiltinAggregationFunction {
     }
   }
 
-  public static List<Type> getIntermediateTypes(String name, Type originalType) {
+  public static List<Type> getIntermediateTypes(String name, List<Type> originalArgumentTypes) {
     if (AVG.functionName.equalsIgnoreCase(name)) {
       return ImmutableList.of(DOUBLE, INT32);
     } else {
-      return ImmutableList.of(originalType);
+      return ImmutableList.copyOf(originalArgumentTypes);
     }
   }
 }
