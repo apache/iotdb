@@ -29,13 +29,7 @@
         encoding="utf-8"
     />
     
-    <xsl:template match="/">{<!--
-    "project": [<xsl:for-each select="sbom:bom/sbom:components/sbom:component[sbom:group='org.apache.iotdb']">
-    <xsl:sort select="sbom:group"/>
-    <xsl:sort select="sbom:name"/>
-        "<xsl:value-of select="sbom:group"/>:<xsl:value-of select="sbom:name"/>"<xsl:if test="position() != last()">,</xsl:if>
-</xsl:for-each>
-    ],-->
+    <xsl:template match="/">{
     "dependencies": [<xsl:for-each select="sbom:bom/sbom:components/sbom:component[sbom:group!='org.apache.iotdb']">
     <xsl:sort select="sbom:group"/>
     <xsl:sort select="sbom:name"/>
