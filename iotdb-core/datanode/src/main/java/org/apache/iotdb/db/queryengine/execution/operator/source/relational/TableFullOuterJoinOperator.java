@@ -310,9 +310,9 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
   private void appendResult(long leftTime) {
 
     while (comparator.lessThan(getCurrentRightTime(), leftTime)) {
-      rightIndex++;
-
       appendOneRightRowWithEmptyLeft();
+
+      rightIndex++;
 
       if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
         rightBlockListIdx++;
