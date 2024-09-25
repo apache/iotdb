@@ -48,15 +48,17 @@ import java.util.stream.Collectors;
 public class ShowRegionTask implements IConfigTask {
 
   private final ShowRegionStatement showRegionStatement;
+  private final boolean isTableModel;
 
-  public ShowRegionTask(final ShowRegionStatement showRegionStatement) {
+  public ShowRegionTask(final ShowRegionStatement showRegionStatement, final boolean isTableModel) {
     this.showRegionStatement = showRegionStatement;
+    this.isTableModel = isTableModel;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showRegion(showRegionStatement, false);
+    return configTaskExecutor.showRegion(showRegionStatement, isTableModel);
   }
 
   public static void buildTSBlock(

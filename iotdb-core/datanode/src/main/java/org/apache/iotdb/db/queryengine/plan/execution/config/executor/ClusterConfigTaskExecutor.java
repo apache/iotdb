@@ -185,7 +185,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -2953,17 +2952,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     ShowClusterStatement treeStatement = new ShowClusterStatement();
     treeStatement.setDetails(showCluster.getDetails().orElse(false));
     return showCluster(treeStatement);
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showRegions(final ShowRegions showRegions) {
-    // As the implementation is identical, we'll simply translate to the
-    // corresponding tree-model variant and execute that.
-    final ShowRegionStatement treeStatement = new ShowRegionStatement();
-    treeStatement.setRegionType(showRegions.getRegionType());
-    treeStatement.setStorageGroups(showRegions.getDatabases());
-    treeStatement.setNodeIds(showRegions.getNodeIds());
-    return showRegion(treeStatement, true);
   }
 
   @Override

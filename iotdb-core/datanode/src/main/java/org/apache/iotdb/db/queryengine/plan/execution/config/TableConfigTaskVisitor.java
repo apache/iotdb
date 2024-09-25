@@ -244,11 +244,11 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     context.setQueryType(QueryType.READ);
     // As the implementation is identical, we'll simply translate to the
     // corresponding tree-model variant and execute that.
-    ShowRegionStatement treeStatement = new ShowRegionStatement();
+    final ShowRegionStatement treeStatement = new ShowRegionStatement();
     treeStatement.setRegionType(showRegions.getRegionType());
     treeStatement.setStorageGroups(showRegions.getDatabases());
     treeStatement.setNodeIds(showRegions.getNodeIds());
-    return new ShowRegionTask(treeStatement);
+    return new ShowRegionTask(treeStatement, true);
   }
 
   @Override
