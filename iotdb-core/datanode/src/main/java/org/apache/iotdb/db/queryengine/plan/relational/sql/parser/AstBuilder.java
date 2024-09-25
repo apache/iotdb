@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AliasedRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
@@ -179,6 +180,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -1735,6 +1737,24 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       arguments =
           ImmutableList.of(
               new DereferenceExpression(getLocation(ctx.label), (Identifier) visit(ctx.label)));
+    }
+
+    if (name.toString().equalsIgnoreCase("first") || name.toString().equalsIgnoreCase("last")) {
+      if (arguments.size() == 1) {
+        arguments.add(
+            new Identifier(
+                TimestampOperand.TIMESTAMP_EXPRESSION_STRING.toLowerCase(Locale.ENGLISH)));
+      } else if (arguments.size() == 2) {
+        check(
+            arguments
+                .get(1)
+                .toString()
+                .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING),
+            "The second argument of 'first' or 'last' function must be 'time'",
+            ctx);
+      } else {
+        throw parseError("Invalid number of arguments for 'first' or 'last' function", ctx);
+      }
     }
 
     return new FunctionCall(getLocation(ctx), name, distinct, arguments);

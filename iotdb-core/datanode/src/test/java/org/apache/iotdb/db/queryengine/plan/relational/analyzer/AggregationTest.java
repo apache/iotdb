@@ -581,4 +581,36 @@ public class AggregationTest {
             ImmutableList.of("count"),
             ImmutableSet.of("s2")));
   }
+
+  @Test
+  public void syntacticSugarTest() {
+    PlanTester planTester = new PlanTester();
+
+    // First and last need to be added the second argument 'time' if it is not explicit
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan("SELECT first(s1+1), last(s2) FROM table1");
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            aggregation(
+                singleGroupingSet(),
+                ImmutableMap.of(
+                    Optional.of("first"),
+                        aggregationFunction("first", ImmutableList.of("expr", "time")),
+                    Optional.of("last"),
+                        aggregationFunction("last", ImmutableList.of("s2", "time"))),
+                ImmutableList.of(),
+                Optional.empty(),
+                SINGLE,
+                project(
+                    ImmutableMap.of(
+                        "expr",
+                        expression(
+                            new ArithmeticBinaryExpression(
+                                ADD, new SymbolReference("s1"), new LongLiteral("1")))),
+                    tableScan(
+                        "testdb.table1",
+                        ImmutableList.of("time", "s1", "s2"),
+                        ImmutableSet.of("s1", "s2", "time"))))));
+  }
 }
