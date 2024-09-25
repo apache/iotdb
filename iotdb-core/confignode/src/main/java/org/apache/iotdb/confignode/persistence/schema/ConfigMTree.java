@@ -685,6 +685,23 @@ public class ConfigMTree {
         .collect(Collectors.toList());
   }
 
+  public Map<String, TsTable> getSpecificTablesUnderSpecificDatabase(
+      final PartialPath databasePath, final Set<String> tables) throws MetadataException {
+    final IConfigMNode databaseNode = getDatabaseNodeByDatabasePath(databasePath).getAsMNode();
+    final Map<String, TsTable> result = new HashMap<>();
+    tables.forEach(
+        table -> {
+          final IConfigMNode child = databaseNode.getChildren().get(table);
+          if (child instanceof ConfigTableNode
+              && ((ConfigTableNode) child).getStatus().equals(TableNodeStatus.USING)) {
+            result.put(table, ((ConfigTableNode) child).getTable());
+          } else {
+            result.put(table, null);
+          }
+        });
+    return result;
+  }
+
   public Map<String, List<TsTable>> getAllUsingTables() {
     return getAllDatabasePaths().stream()
         .collect(

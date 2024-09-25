@@ -1073,13 +1073,19 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setDataNodeTableCacheSemaphorePermitNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "datanode_table_cache_semaphore_permit_num",
+                String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
+
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
   }
 
   private void reloadConsensusProps(Properties properties) throws IOException {
     loadIoTConsensusProps(properties);
-    loadPipeConsensusProps(properties);
+    loadIoTConsensusV2Props(properties);
     DataRegionConsensusImpl.reloadConsensusConfig();
   }
 
@@ -1126,16 +1132,20 @@ public class IoTDBDescriptor {
                 .trim()));
   }
 
-  private void loadPipeConsensusProps(Properties properties) throws IOException {
-    conf.setPipeConsensusPipelineSize(
+  private void loadIoTConsensusV2Props(Properties properties) throws IOException {
+    conf.setIotConsensusV2PipelineSize(
         Integer.parseInt(
             properties.getProperty(
-                "fast_iot_consensus_pipeline_size",
+                "iot_consensus_v2_pipeline_size",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "fast_iot_consensus_pipeline_size"))));
-    if (conf.getPipeConsensusPipelineSize() <= 0) {
-      conf.setPipeConsensusPipelineSize(5);
+                    "iot_consensus_v2_pipeline_size"))));
+    if (conf.getIotConsensusV2PipelineSize() <= 0) {
+      conf.setIotConsensusV2PipelineSize(5);
     }
+    conf.setIotConsensusV2Mode(
+        properties.getProperty(
+            "iot_consensus_v2_mode",
+            ConfigurationFileUtils.getConfigurationDefaultValue("iot_consensus_v2_mode")));
   }
 
   private void loadAuthorCache(Properties properties) {
@@ -2471,12 +2481,12 @@ public class IoTDBDescriptor {
             .filter(dir -> !dir.isEmpty())
             .toArray(String[]::new));
 
-    conf.setPipeConsensusReceiverFileDirs(
+    conf.setIotConsensusV2ReceiverFileDirs(
         Arrays.stream(
                 properties
                     .getProperty(
-                        "pipe_consensus_receiver_file_dirs",
-                        String.join(",", conf.getPipeConsensusReceiverFileDirs()))
+                        "iot_consensus_v2_receiver_file_dirs",
+                        String.join(",", conf.getIotConsensusV2ReceiverFileDirs()))
                     .trim()
                     .split(","))
             .filter(dir -> !dir.isEmpty())

@@ -17,44 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read.trigger;
+package org.apache.iotdb.confignode.consensus.request.read.table;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.Set;
 
-public class GetTriggerJarPlan extends ConfigPhysicalReadPlan {
+public class FetchTablePlan extends ConfigPhysicalReadPlan {
 
-  private final List<String> jarNames;
+  private final Map<String, Set<String>> fetchTableMap;
 
-  public GetTriggerJarPlan(final List<String> triggerNames) {
-    super(ConfigPhysicalPlanType.GetTriggerJar);
-    jarNames = triggerNames;
+  public FetchTablePlan(final Map<String, Set<String>> fetchTableMap) {
+    super(ConfigPhysicalPlanType.FetchTable);
+    this.fetchTableMap = fetchTableMap;
   }
 
-  public List<String> getJarNames() {
-    return jarNames;
-  }
-
-  @Override
-  public boolean equals(final Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    final GetTriggerJarPlan that = (GetTriggerJarPlan) o;
-    return Objects.equals(jarNames, that.jarNames);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), jarNames);
+  public Map<String, Set<String>> getFetchTableMap() {
+    return fetchTableMap;
   }
 }

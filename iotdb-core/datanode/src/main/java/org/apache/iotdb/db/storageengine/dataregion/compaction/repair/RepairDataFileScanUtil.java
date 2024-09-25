@@ -242,7 +242,8 @@ public class RepairDataFileScanUtil {
     return isBrokenFile;
   }
 
-  public static List<TsFileResource> checkTimePartitionHasOverlap(List<TsFileResource> resources) {
+  public static List<TsFileResource> checkTimePartitionHasOverlap(
+      List<TsFileResource> resources, boolean printOverlappedDevices) {
     List<TsFileResource> overlapResources = new ArrayList<>();
     Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
     for (TsFileResource resource : resources) {
@@ -270,6 +271,13 @@ public class RepairDataFileScanUtil {
         }
         long deviceEndTimeInPreviousFile = deviceEndTimeMap.get(device);
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
+          if (printOverlappedDevices) {
+            logger.error(
+                "Device {} has overlapped data, start time in current file is {}, end time in previous file is {}",
+                device,
+                deviceStartTimeInCurrentFile,
+                deviceEndTimeInPreviousFile);
+          }
           fileHasOverlap = true;
           overlapResources.add(resource);
           break;

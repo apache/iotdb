@@ -46,8 +46,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -56,6 +56,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetOrCreateD
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -132,6 +133,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -213,6 +215,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -595,7 +598,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return showTTLResp.convertToRPCTShowTTLResp();
   }
 
-  public TSStatus callSpecialProcedure(TTestOperation operation) throws TException {
+  public TSStatus callSpecialProcedure(TTestOperation operation) {
     switch (operation) {
       case TEST_PROCEDURE_RECOVER:
         return configManager.getProcedureManager().createManyDatabases();
@@ -686,7 +689,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     final PermissionInfoResp dataSet =
         (PermissionInfoResp)
             configManager.queryPermission(
-                new AuthorPlan(
+                new AuthorReadPlan(
                     ConfigPhysicalPlanType.values()[
                         req.getAuthorType() + ConfigPhysicalPlanType.CreateUser.ordinal()],
                     req.getUserName(),
@@ -1302,5 +1305,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowTableResp showTables(final String database) {
     return configManager.showTables(database);
+  }
+
+  @Override
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+    return configManager.fetchTables(fetchTableMap);
   }
 }

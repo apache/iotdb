@@ -61,8 +61,8 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.auth.AuthorReadPlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
@@ -74,6 +74,7 @@ import org.apache.iotdb.confignode.consensus.request.read.partition.GetSchemaPar
 import org.apache.iotdb.confignode.consensus.request.read.region.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.ttl.ShowTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetDataReplicationFactorPlan;
@@ -165,6 +166,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -1225,8 +1227,8 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus operatePermission(AuthorPlan authorPlan) {
-    TSStatus status = confirmLeader();
+  public TSStatus operatePermission(final AuthorPlan authorPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.operatePermission(authorPlan, false);
     } else {
@@ -1235,12 +1237,12 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet queryPermission(AuthorPlan authorPlan) {
-    TSStatus status = confirmLeader();
+  public DataSet queryPermission(final AuthorReadPlan authorPlan) {
+    final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return permissionManager.queryPermission(authorPlan);
     } else {
-      PermissionInfoResp dataSet = new PermissionInfoResp();
+      final PermissionInfoResp dataSet = new PermissionInfoResp();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -2579,6 +2581,28 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterSchemaManager.showTables(database)
         : new TShowTableResp(status);
+  }
+
+  @Override
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterSchemaManager.fetchTables(
+            fetchTableMap.entrySet().stream()
+                .filter(
+                    entry -> {
+                      entry
+                          .getValue()
+                          .removeIf(
+                              table ->
+                                  procedureManager
+                                      .checkDuplicateTableTask(
+                                          entry.getKey(), null, table, null, null)
+                                      .getRight());
+                      return !entry.getValue().isEmpty();
+                    })
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
+        : new TFetchTableResp(status);
   }
 
   @Override
