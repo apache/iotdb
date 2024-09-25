@@ -207,9 +207,7 @@ public class ClusterConstant {
   public static final String SIMPLE_CONSENSUS_STR = "Simple";
   public static final String RATIS_CONSENSUS_STR = "Ratis";
   public static final String IOT_CONSENSUS_STR = "IoT";
-  public static final String PIPE_CONSENSUS_STR = "Pipe";
-  public static final String STREAM_CONSENSUS_STR = "Stream";
-  public static final String BATCH_CONSENSUS_STR = "Batch";
+  public static final String IOT_CONSENSUS_V2_STR = "IoTV2";
 
   public static final String JAVA_CMD =
       System.getProperty("java.home")

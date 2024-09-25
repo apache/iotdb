@@ -99,6 +99,7 @@ public class InternalTypeManager implements TypeManager {
       case TIMESTAMP:
         return TSDataType.TIMESTAMP;
       case BLOB:
+      case ROW:
         return TSDataType.BLOB;
       case STRING:
         return TSDataType.STRING;

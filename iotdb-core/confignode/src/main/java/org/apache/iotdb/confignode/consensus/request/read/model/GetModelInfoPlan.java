@@ -23,11 +23,20 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class GetModelInfoPlan extends ConfigPhysicalReadPlan {
 
-  private final String modelId;
+  private String modelId;
+
+  public GetModelInfoPlan() {
+    super(ConfigPhysicalPlanType.GetModelInfo);
+  }
 
   public GetModelInfoPlan(final TGetModelInfoReq getModelInfoReq) {
     super(ConfigPhysicalPlanType.GetModelInfo);
@@ -36,6 +45,17 @@ public class GetModelInfoPlan extends ConfigPhysicalReadPlan {
 
   public String getModelId() {
     return modelId;
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+    ReadWriteIOUtils.write(modelId, stream);
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    this.modelId = ReadWriteIOUtils.readString(buffer);
   }
 
   @Override

@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
@@ -330,7 +331,8 @@ public class Coordinator {
         || statement instanceof ShowDataNodes
         || statement instanceof ShowConfigNodes
         || statement instanceof Flush
-        || statement instanceof SetConfiguration) {
+        || statement instanceof SetConfiguration
+        || statement instanceof PipeStatement) {
       return new ConfigExecution(
           queryContext,
           null,

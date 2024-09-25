@@ -65,7 +65,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   protected IoTDBSyncClientManager clientManager;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
@@ -90,7 +90,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -131,18 +132,19 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache,
-      String loadBalanceStrategy,
-      boolean shouldReceiverConvertOnTypeMismatch,
-      String loadTsFileStrategy,
-      boolean isCustomSendPortDefined,
-      int minSendPortRange,
-      int maxSendPortRange,
-      List<Integer> candidatePorts);
+      final List<TEndPoint> nodeUrls,
+      final boolean useSSL,
+      final String trustStorePath,
+      final String trustStorePwd,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy,
+      final boolean isCustomSendPortDefined,
+      final int minSendPortRange,
+      final int maxSendPortRange,
+      fianl List<Integer> candidatePorts);
+
 
   @Override
   public void handshake() throws Exception {
@@ -153,7 +155,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   public void heartbeat() {
     try {
       handshake();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Failed to reconnect to target server, because: {}. Try to reconnect later.",
           e.getMessage(),
@@ -198,7 +200,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
           resp =
               PipeTransferFilePieceResp.fromTPipeTransferResp(
                   clientAndStatus.getLeft().pipeTransfer(req));
-        } catch (Exception e) {
+        } catch (final Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
@@ -236,10 +238,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected abstract PipeTransferFilePieceReq getTransferSingleFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException;
+      final String fileName, final long position, final byte[] payLoad) throws IOException;
 
   protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException;
+      final String fileName, final long position, final byte[] payLoad) throws IOException;
 
   @Override
   public void close() {

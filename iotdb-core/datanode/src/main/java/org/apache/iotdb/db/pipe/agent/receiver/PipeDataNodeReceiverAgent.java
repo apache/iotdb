@@ -68,7 +68,7 @@ public class PipeDataNodeReceiverAgent {
         .forEach(IoTDBReceiverAgent::cleanPipeReceiverDir);
     // consensus
     String[] pipeConsensusReceiverFileDirs =
-        IoTDBDescriptor.getInstance().getConfig().getPipeConsensusReceiverFileDirs();
+        IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2ReceiverFileDirs();
     Arrays.stream(pipeConsensusReceiverFileDirs)
         .map(File::new)
         .forEach(IoTDBReceiverAgent::cleanPipeReceiverDir);
