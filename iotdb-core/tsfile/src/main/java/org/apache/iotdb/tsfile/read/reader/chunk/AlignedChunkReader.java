@@ -258,4 +258,18 @@ public class AlignedChunkReader extends AbstractChunkReader {
     }
     return false;
   }
+
+  @Override
+  public String toString() {
+    return "AlignedChunkReader{"
+        + "timeChunkHeader="
+        + timeChunkHeader
+        + ", valueChunkHeaderList="
+        + valueChunkHeaderList
+        + ", valueDeleteIntervalsList="
+        + valueDeleteIntervalsList
+        + ", queryFilter="
+        + queryFilter
+        + '}';
+  }
 }

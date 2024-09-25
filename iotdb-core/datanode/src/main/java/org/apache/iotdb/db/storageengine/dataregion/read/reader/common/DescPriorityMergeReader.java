@@ -26,7 +26,8 @@ import java.util.PriorityQueue;
 
 public class DescPriorityMergeReader extends PriorityMergeReader {
 
-  public DescPriorityMergeReader() {
+  public DescPriorityMergeReader(boolean debug) {
+    super(debug);
     super.heap =
         new PriorityQueue<>(
             (o1, o2) -> {

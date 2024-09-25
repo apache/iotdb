@@ -41,6 +41,7 @@ import java.util.List;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CHUNK_METADATA_FILTER_ALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.CHUNK_METADATA_MODIFICATION_ALIGNED_DISK;
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.LOAD_CHUNK_METADATA_LIST_ALIGNED_DISK;
+import static org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils.DEBUG_LOGGER;
 
 public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
@@ -75,6 +76,14 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           ((AlignedTimeSeriesMetadata) timeSeriesMetadata).getCopiedChunkMetadataList();
 
+      if (context.isDebug()) {
+        DEBUG_LOGGER.info(
+            "Before filter ChunkMetadataList from {}, version is {}, {}",
+            resource,
+            resource.getVersion(),
+            alignedChunkMetadataList);
+      }
+
       // when alignedChunkMetadataList.size() == 1, it means that the chunk statistics is same as
       // the time series metadata, so we don't need to filter it again.
       if (alignedChunkMetadataList.size() > 1) {
@@ -92,6 +101,14 @@ public class DiskAlignedChunkMetadataLoader implements IChunkMetadataLoader {
 
         SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
             CHUNK_METADATA_FILTER_ALIGNED_DISK, System.nanoTime() - t2);
+      }
+
+      if (context.isDebug()) {
+        DEBUG_LOGGER.info(
+            "After filter ChunkMetadataList from {}, version is {}, {}",
+            resource,
+            resource.getVersion(),
+            alignedChunkMetadataList);
       }
 
       final long t3 = System.nanoTime();

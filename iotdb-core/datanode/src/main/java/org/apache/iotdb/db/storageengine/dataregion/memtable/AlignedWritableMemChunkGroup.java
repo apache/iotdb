@@ -163,4 +163,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     memChunkGroup.memChunk = AlignedWritableMemChunk.deserialize(stream);
     return memChunkGroup;
   }
+
+  @Override
+  public String toString() {
+    return memChunk.toString();
+  }
 }

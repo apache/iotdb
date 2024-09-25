@@ -330,6 +330,18 @@ public class TsBlock {
     public void setRowIndex(int rowIndex) {
       this.rowIndex = rowIndex;
     }
+
+    @Override
+    public String toString() {
+      return "TsBlockSingleColumnIterator{"
+          + "timeColumn="
+          + timeColumn
+          + ", valueColumns="
+          + Arrays.toString(valueColumns)
+          + ", positionCount="
+          + positionCount
+          + '}';
+    }
   }
 
   /** Mainly used for UDF framework. Note that the timestamps are at the last column. */
@@ -479,6 +491,18 @@ public class TsBlock {
       }
       return true;
     }
+
+    @Override
+    public String toString() {
+      return "TsBlockAlignedRowIterator{"
+          + "timeColumn="
+          + timeColumn
+          + ", valueColumns="
+          + Arrays.toString(valueColumns)
+          + ", positionCount="
+          + positionCount
+          + '}';
+    }
   }
 
   private long updateRetainedSize() {
@@ -552,5 +576,17 @@ public class TsBlock {
               "Unknown datatype: " + valueColumns[i].getDataType());
       }
     }
+  }
+
+  @Override
+  public String toString() {
+    return "TsBlock{"
+        + "timeColumn="
+        + timeColumn
+        + ", valueColumns="
+        + Arrays.toString(valueColumns)
+        + ", positionCount="
+        + positionCount
+        + '}';
   }
 }

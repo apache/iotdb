@@ -94,4 +94,16 @@ public class PaginationController {
     }
     return resultTsBlock.getRegion(fromIndex, length);
   }
+
+  @Override
+  public String toString() {
+    return "PaginationController{"
+        + "hasLimit="
+        + hasLimit
+        + ", curLimit="
+        + curLimit
+        + ", curOffset="
+        + curOffset
+        + '}';
+  }
 }

@@ -206,4 +206,9 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     }
     return memChunkGroup;
   }
+
+  @Override
+  public String toString() {
+    return memChunkMap.toString();
+  }
 }

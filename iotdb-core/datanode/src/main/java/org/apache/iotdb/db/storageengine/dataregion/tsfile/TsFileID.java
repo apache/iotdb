@@ -93,4 +93,18 @@ public class TsFileID {
         (Long.parseLong(names[2]) << 32) | Long.parseLong(names[3].substring(0, dotIndex));
     return versionArray;
   }
+
+  @Override
+  public String toString() {
+    return "TsFileID{"
+        + "regionId="
+        + regionId
+        + ", timePartitionId="
+        + timePartitionId
+        + ", fileVersion="
+        + fileVersion
+        + ", compactionVersion="
+        + compactionVersion
+        + '}';
+  }
 }

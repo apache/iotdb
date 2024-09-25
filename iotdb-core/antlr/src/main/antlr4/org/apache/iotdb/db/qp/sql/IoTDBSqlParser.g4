@@ -708,7 +708,7 @@ selectStatement
 
 // ---- Select Clause
 selectClause
-    : SELECT LAST? resultColumn (COMMA resultColumn)*
+    : DEBUG? SELECT LAST? resultColumn (COMMA resultColumn)*
     ;
 
 resultColumn

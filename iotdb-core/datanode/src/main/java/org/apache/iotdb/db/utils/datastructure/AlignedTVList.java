@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -1258,5 +1259,89 @@ public abstract class AlignedTVList extends TVList {
     }
 
     return new BitMap(rowCount, rowBitsArr);
+  }
+
+  private String printValueColumn(int i) {
+    StringBuilder builder = new StringBuilder();
+    List<Object> objects = values.get(i);
+    builder.append("<valueColumn>");
+    switch (dataTypes.get(i)) {
+      case TEXT:
+        for (Object object : objects) {
+          builder.append(Arrays.toString((Binary[]) object)).append(" ");
+        }
+        break;
+      case FLOAT:
+        for (Object object : objects) {
+          builder.append(Arrays.toString((float[]) object)).append(" ");
+        }
+        break;
+      case INT32:
+        for (Object object : objects) {
+          builder.append(Arrays.toString((int[]) object)).append(" ");
+        }
+        break;
+      case INT64:
+        for (Object object : objects) {
+          builder.append(Arrays.toString((long[]) object)).append(" ");
+        }
+        break;
+      case DOUBLE:
+        for (Object object : objects) {
+          builder.append(Arrays.toString((double[]) object)).append(" ");
+        }
+        break;
+      case BOOLEAN:
+        for (Object object : objects) {
+          builder.append(Arrays.toString((boolean[]) object)).append(" ");
+        }
+        break;
+    }
+    builder.append("</valueColumn>");
+    return builder.toString();
+  }
+
+  private String printValues() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("<values>");
+    for (int i = 0; i < values.size(); i++) {
+      builder.append(printValueColumn(i));
+    }
+    builder.append("</values>");
+    return builder.toString();
+  }
+
+  private String printTimestamps() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("<timestamps>");
+    for (long[] timestamp : timestamps) {
+      builder.append(Arrays.toString(timestamp)).append(" ");
+    }
+    builder.append("</timestamps>");
+    return builder.toString();
+  }
+
+  private String printIndices() {
+    StringBuilder builder = new StringBuilder();
+    builder.append("<indices>");
+    for (int[] index : indices) {
+      builder.append(Arrays.toString(index)).append(" ");
+    }
+    builder.append("/<indices>");
+    return builder.toString();
+  }
+
+  @Override
+  public String toString() {
+    return "AlignedTVList{"
+        + "values="
+        + printValues()
+        + ", indices="
+        + printIndices()
+        + ", timestamps="
+        + printTimestamps()
+        + ", rowCount="
+        + rowCount
+        + '}';
   }
 }
