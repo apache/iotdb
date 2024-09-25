@@ -211,6 +211,9 @@ public class SizeTieredCompactionSelector
   }
 
   private List<InnerSpaceCompactionTask> selectFileNeedToRepair() {
+    if (!config.isEnableAutoRepairCompaction()) {
+      return Collections.emptyList();
+    }
     List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
     for (TsFileResource resource : tsFileResources) {
       if (resource.getStatus() == TsFileResourceStatus.NORMAL
