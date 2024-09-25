@@ -76,7 +76,7 @@ public enum TableBuiltinAggregationFunction {
   /**
    * @return if the Aggregation can use statistics to optimize
    */
-  public static boolean canUseStatistics(String name) {
+  public static boolean canUseStatistics(String name, boolean withTime) {
     final String functionName = name.toLowerCase();
     switch (functionName) {
       case "sum":
@@ -90,6 +90,7 @@ public enum TableBuiltinAggregationFunction {
         return true;
       case "first_by":
       case "last_by":
+        return withTime;
       case "mode":
       case "max_by":
       case "min_by":

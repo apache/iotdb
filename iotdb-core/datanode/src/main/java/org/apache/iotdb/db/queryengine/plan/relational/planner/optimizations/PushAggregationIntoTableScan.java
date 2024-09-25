@@ -139,7 +139,13 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       for (AggregationNode.Aggregation aggregation : values) {
         // if the function cannot make use of Statistics, we don't push down
         if (!metadata.canUseStatistics(
-            aggregation.getResolvedFunction().getSignature().getName())) {
+            aggregation.getResolvedFunction().getSignature().getName(),
+            aggregation.getArguments().stream()
+                .anyMatch(
+                    v ->
+                        ((SymbolReference) v)
+                            .getName()
+                            .equalsIgnoreCase(TimestampOperand.TIMESTAMP_EXPRESSION_STRING)))) {
           return PushDownLevel.NOOP;
         }
 
