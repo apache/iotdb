@@ -722,7 +722,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     }
     resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
     RepairUnsortedFileCompactionTask task =
-        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0, true);
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(
         resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE);
@@ -744,7 +744,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     }
     resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
     RepairUnsortedFileCompactionTask task =
-        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0, true);
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(
         resource.getTsFileRepairStatus(), TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
@@ -766,7 +766,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     }
     resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
     RepairUnsortedFileCompactionTask task =
-        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0, true);
+        new RepairUnsortedFileCompactionTask(0, tsFileManager, resource, true, 0);
     Assert.assertTrue(task.start());
     Assert.assertEquals(resource.getTsFileRepairStatus(), TsFileRepairStatus.NORMAL);
   }
