@@ -57,7 +57,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
 
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
-    if (batch.shouldEmit()) {
+    if (batch.shouldEmit() && !enrichedEvents.isEmpty()) {
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
