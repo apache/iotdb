@@ -70,5 +70,25 @@ public class Replace2ColumnTransformer extends BinaryColumnTransformer {
       Column rightColumn,
       ColumnBuilder builder,
       int positionCount,
-      boolean[] selection) {}
+      boolean[] selection) {
+    Type leftType = leftTransformer.getType();
+    Type rightType = rightTransformer.getType();
+    for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        returnType.writeBinary(
+            builder,
+            BytesUtils.valueOf(
+                leftType
+                    .getBinary(leftColumn, i)
+                    .getStringValue(TSFileConfig.STRING_CHARSET)
+                    .replace(
+                        rightType
+                            .getBinary(rightColumn, i)
+                            .getStringValue(TSFileConfig.STRING_CHARSET),
+                        "")));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
 }

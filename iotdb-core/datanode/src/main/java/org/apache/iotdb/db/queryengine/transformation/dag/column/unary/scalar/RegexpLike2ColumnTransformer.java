@@ -58,5 +58,15 @@ public class RegexpLike2ColumnTransformer extends BinaryColumnTransformer {
       Column rightColumn,
       ColumnBuilder builder,
       int positionCount,
-      boolean[] selection) {}
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        String leftValue = leftColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        String rightValue = rightColumn.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
+        builder.writeBoolean(leftValue.matches(rightValue));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
 }

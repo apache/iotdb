@@ -95,7 +95,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.Between
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LogicNotColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.RegularColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AbsColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AcosColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.AsinColumnTransformer;

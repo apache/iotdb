@@ -51,7 +51,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
     }
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        validateAndTransform(leftColumn, rightColumn, i, builder);
+        evaluateAndTransform(leftColumn, rightColumn, i, builder);
       } else {
         builder.appendNull();
       }
@@ -74,14 +74,14 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
     }
     for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i) && !selection[i]) {
-        validateAndTransform(leftColumn, rightColumn, i, builder);
+        evaluateAndTransform(leftColumn, rightColumn, i, builder);
       } else {
         builder.appendNull();
       }
     }
   }
 
-  private void validateAndTransform(
+  private void evaluateAndTransform(
       Column leftColumn, Column rightColumn, int index, ColumnBuilder builder) {
     boolean flag = false;
     // compare binary type

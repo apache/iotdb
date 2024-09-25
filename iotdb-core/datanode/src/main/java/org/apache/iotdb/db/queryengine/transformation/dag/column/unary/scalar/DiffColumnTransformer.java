@@ -77,5 +77,32 @@ public class DiffColumnTransformer extends BinaryColumnTransformer {
       Column rightColumn,
       ColumnBuilder builder,
       int positionCount,
-      boolean[] selection) {}
+      boolean[] selection) {
+    Type leftType = leftTransformer.getType();
+    Type rightType = rightTransformer.getType();
+    for (int i = 0; i < positionCount; i++) {
+      if (leftColumn.isNull(i)) {
+        builder.appendNull(); // currValue is null, append null
+
+        // When currValue is null:
+        // ignoreNull = true, keep lastValueIsNull as before
+        // ignoreNull = false or ignoreNull is null, update lastValueIsNull to true
+        lastValueIsNull |= (rightColumn.isNull(i) || !rightType.getBoolean(rightColumn, i));
+      } else {
+        if (selection[i]) {
+          double currValue = leftType.getDouble(leftColumn, i);
+          if (lastValueIsNull) {
+            builder.appendNull(); // lastValue is null, append null
+          } else {
+            returnType.writeDouble(builder, currValue - lastValue);
+          }
+
+          lastValue = currValue; // currValue is not null, update lastValue
+          lastValueIsNull = false;
+        } else {
+          builder.appendNull();
+        }
+      }
+    }
+  }
 }

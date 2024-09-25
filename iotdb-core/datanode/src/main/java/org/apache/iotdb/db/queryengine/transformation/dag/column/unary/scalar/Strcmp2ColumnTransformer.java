@@ -58,5 +58,15 @@ public class Strcmp2ColumnTransformer extends BinaryColumnTransformer {
       Column rightColumn,
       ColumnBuilder builder,
       int positionCount,
-      boolean[] selection) {}
+      boolean[] selection) {
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i] && !leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        Binary leftValue = leftColumn.getBinary(i);
+        Binary rightValue = rightColumn.getBinary(i);
+        builder.writeInt(Integer.compare(leftValue.compareTo(rightValue), 0));
+      } else {
+        builder.appendNull();
+      }
+    }
+  }
 }
