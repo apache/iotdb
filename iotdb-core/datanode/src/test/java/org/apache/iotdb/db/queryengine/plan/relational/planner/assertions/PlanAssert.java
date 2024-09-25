@@ -17,6 +17,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -71,7 +72,7 @@ public final class PlanAssert {
         throw new AssertionError(
             format(
                 "Plan does not match, expected [\n\n%s\n] but found [\n\n%s\n], matches:[%s]",
-                pattern, actual, matches));
+                pattern, String.join("\n", actual.accept(new PlanGraphPrinter(), null)), matches));
       }
       // TODO support print plan tree
       PlanNode resolvedPlan = resolveGroupReferences(actual, lookup);

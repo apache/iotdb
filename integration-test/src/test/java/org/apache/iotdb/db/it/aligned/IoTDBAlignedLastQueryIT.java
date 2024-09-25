@@ -340,4 +340,117 @@ public class IoTDBAlignedLastQueryIT {
     selectSomeAlignedLastWithTimeFilterTest();
     selectSomeAlignedAndNonAlignedLastWithTimeFilterTest();
   }
+
+  @Test
+  public void testNullInMemtable() {
+    String[] sqls =
+        new String[] {
+          "create aligned timeseries root.ln_1.tb_6141(fengjituichu_BOOLEAN BOOLEAN encoding=RLE,`chushuiNH4-N_DOUBLE` DOUBLE encoding=GORILLA,mochanshuizhuangtai_BOOLEAN BOOLEAN encoding=RLE,11_TEXT TEXT encoding=PLAIN,chanshuijianxieyunxingshijianshezhi_DOUBLE DOUBLE encoding=GORILLA,wenben_TEXT TEXT encoding=PLAIN, fengjitouru_BOOLEAN BOOLEAN encoding=RLE,meiju_INT32 INT32 encoding=RLE,chushuiTP_DOUBLE DOUBLE encoding=GORILLA,shuiguanliusu_DOUBLE DOUBLE encoding=GORILLA,CO2_DOUBLE DOUBLE encoding=GORILLA,`kaiguanliang-yunxing_BOOLEAN` BOOLEAN encoding=RLE,gongnengma_DOUBLE DOUBLE encoding=GORILLA);",
+          "alter timeseries root.ln_1.tb_6141.fengjituichu_BOOLEAN upsert alias=fengjituichu;",
+          "alter timeseries root.ln_1.tb_6141.shuiguanliusu_DOUBLE upsert alias=shuiguanliusu;",
+          "alter timeseries root.ln_1.tb_6141.CO2_DOUBLE upsert alias=CO2;",
+          "alter timeseries root.ln_1.tb_6141.fengjitouru_BOOLEAN upsert alias=fengjitouru;",
+          "alter timeseries root.ln_1.tb_6141.chanshuijianxieyunxingshijianshezhi_DOUBLE upsert alias=chanshuijianxieyunxingshijianshezhi;",
+          "alter timeseries root.ln_1.tb_6141.mochanshuizhuangtai_BOOLEAN upsert alias=mochanshuizhuangtai;",
+          "alter timeseries root.ln_1.tb_6141.meiju_INT32 upsert alias=meiju;",
+          "alter timeseries root.ln_1.tb_6141.chushuiTP_DOUBLE upsert alias=chushuiTP;",
+          "alter timeseries root.ln_1.tb_6141.wenben_TEXT upsert alias=wenben;",
+          "alter timeseries root.ln_1.tb_6141.`chushuiNH4-N_DOUBLE` upsert alias=`chushuiNH4-N`;",
+          "alter timeseries root.ln_1.tb_6141.gongnengma_DOUBLE upsert alias=gongnengma;",
+          "alter timeseries root.ln_1.tb_6141.11_TEXT upsert alias=`11`;",
+          "alter timeseries root.ln_1.tb_6141.`kaiguanliang-yunxing_BOOLEAN` upsert alias=`kaiguanliang-yunxing`;",
+          "insert into root.ln_1.tb_6141(time,chanshuijianxieyunxingshijianshezhi_DOUBLE) aligned values(1679365910000,10.0);",
+          "insert into root.ln_1.tb_6141(time,chushuiTP_DOUBLE) aligned values(1679365910000,15.0);",
+          "insert into root.ln_1.tb_6141(time,gongnengma_DOUBLE) aligned values(1679477545000,2.0);",
+          "insert into root.ln_1.tb_6141(time,wenben_TEXT) aligned values(1675995566000,52);",
+          "insert into root.ln_1.tb_6141(time,meiju_INT32) aligned values(1675995566000,2);",
+          "insert into root.ln_1.tb_6141(time,shuiguanliusu_DOUBLE) aligned values(1679365910000,15.0);",
+          "insert into root.ln_1.tb_6141(time,mochanshuizhuangtai_BOOLEAN) aligned values(1677033625000,true);",
+          "insert into root.ln_1.tb_6141(time,fengjitouru_BOOLEAN) aligned values(1675995566000,true);",
+          "insert into root.ln_1.tb_6141(time,fengjituichu_BOOLEAN) aligned values(1675995566000,false);",
+          "insert into root.ln_1.tb_6141(time,11_TEXT) aligned values(1679365910000,13);",
+          "insert into root.ln_1.tb_6141(time,CO2_DOUBLE) aligned values(1679365910000,12.0);",
+          "insert into root.ln_1.tb_6141(time,`chushuiNH4-N_DOUBLE`) aligned values(1679365910000,12.0);",
+          "insert into root.ln_1.tb_6141(time,`kaiguanliang-yunxing_BOOLEAN`) aligned values(1675995566000,false);",
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      // create aligned and non-aligned time series
+      for (String sql : sqls) {
+        statement.addBatch(sql);
+      }
+      statement.executeBatch();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    Set<String> retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "1679477545000,root.ln_1.tb_6141.gongnengma_DOUBLE,2.0,DOUBLE",
+                "1675995566000,root.ln_1.tb_6141.wenben_TEXT,52,TEXT"));
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select last gongnengma,wenben from root.ln_1.tb_6141;")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TIMESEIRES_STR)
+                  + ","
+                  + resultSet.getString(VALUE_STR)
+                  + ","
+                  + resultSet.getString(DATA_TYPE_STR);
+          assertTrue(ans, retSet.contains(ans));
+          cnt++;
+        }
+        assertEquals(retSet.size(), cnt);
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "1679477545000,root.ln_1.tb_6141.gongnengma_DOUBLE,2.0,DOUBLE",
+                "1677033625000,root.ln_1.tb_6141.mochanshuizhuangtai_BOOLEAN,true,BOOLEAN",
+                "1675995566000,root.ln_1.tb_6141.wenben_TEXT,52,TEXT"));
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last gongnengma,mochanshuizhuangtai,wenben from root.ln_1.tb_6141;")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TIMESEIRES_STR)
+                  + ","
+                  + resultSet.getString(VALUE_STR)
+                  + ","
+                  + resultSet.getString(DATA_TYPE_STR);
+          assertTrue(ans, retSet.contains(ans));
+          cnt++;
+        }
+        assertEquals(retSet.size(), cnt);
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

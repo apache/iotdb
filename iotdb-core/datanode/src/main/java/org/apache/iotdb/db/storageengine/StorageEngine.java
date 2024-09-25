@@ -281,6 +281,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void start() throws StartupException {
+    recoverDataRegionNum = 0;
     // build time Interval to divide time partition
     initTimePartition();
     // create systemDir
@@ -758,9 +759,6 @@ public class StorageEngine implements IService {
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         if (CONFIG.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS)
-            || CONFIG
-                .getDataRegionConsensusProtocolClass()
-                .equals(ConsensusFactory.FAST_IOT_CONSENSUS)
             || CONFIG
                 .getDataRegionConsensusProtocolClass()
                 .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {

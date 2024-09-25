@@ -24,16 +24,16 @@ import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.regex.Pattern;
+import java.util.Optional;
 
-import static org.apache.tsfile.utils.RegexUtils.compileRegex;
-import static org.apache.tsfile.utils.RegexUtils.parseLikePatternToRegex;
+import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 public class LikeExpression extends UnaryExpression {
 
@@ -41,7 +41,7 @@ public class LikeExpression extends UnaryExpression {
       RamUsageEstimator.shallowSizeOfInstance(LikeExpression.class);
 
   private final String patternString;
-  private final Pattern pattern;
+  private final LikePattern pattern;
 
   private final boolean isNot;
 
@@ -49,11 +49,11 @@ public class LikeExpression extends UnaryExpression {
     super(expression);
     this.patternString = patternString;
     this.isNot = isNot;
-    pattern = compileRegex(parseLikePatternToRegex(patternString));
+    pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
   }
 
   public LikeExpression(
-      Expression expression, String patternString, Pattern pattern, boolean isNot) {
+      Expression expression, String patternString, LikePattern pattern, boolean isNot) {
     super(expression);
     this.patternString = patternString;
     this.pattern = pattern;
@@ -64,14 +64,14 @@ public class LikeExpression extends UnaryExpression {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = compileRegex(parseLikePatternToRegex(patternString));
+    pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
   }
 
   public String getPatternString() {
     return patternString;
   }
 
-  public Pattern getPattern() {
+  public LikePattern getPattern() {
     return pattern;
   }
 

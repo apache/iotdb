@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.connector.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBSslSyncConnector;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.manager.pipe.connector.client.IoTDBConfigNodeSyncClientManager;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigPlanReq;
 import org.apache.iotdb.confignode.manager.pipe.connector.payload.PipeTransferConfigSnapshotPieceReq;
@@ -68,7 +69,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         useSSL,
-        trustStorePath,
+        Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,

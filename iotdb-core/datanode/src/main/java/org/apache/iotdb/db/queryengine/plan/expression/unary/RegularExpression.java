@@ -33,8 +33,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.regex.Pattern;
 
-import static org.apache.tsfile.utils.RegexUtils.compileRegex;
-
 public class RegularExpression extends UnaryExpression {
 
   private static final long INSTANCE_SIZE =
@@ -49,7 +47,7 @@ public class RegularExpression extends UnaryExpression {
     super(expression);
     this.patternString = patternString;
     this.isNot = isNot;
-    pattern = compileRegex(patternString);
+    pattern = Pattern.compile(patternString);
   }
 
   public RegularExpression(
@@ -64,7 +62,7 @@ public class RegularExpression extends UnaryExpression {
     super(Expression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = compileRegex(Validate.notNull(patternString, "patternString cannot be null"));
+    pattern = Pattern.compile(Validate.notNull(patternString, "patternString cannot be null"));
   }
 
   public String getPatternString() {

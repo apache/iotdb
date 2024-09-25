@@ -22,18 +22,12 @@ package org.apache.iotdb.confignode.consensus.request.read.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
+public class CountTimeSlotListPlan extends ConfigPhysicalReadPlan {
 
   private String database;
 
@@ -41,16 +35,12 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
 
   private TConsensusGroupId regionId;
 
-  private long startTime;
+  private final long startTime;
 
-  private long endTime;
+  private final long endTime;
 
-  public CountTimeSlotListPlan() {
+  public CountTimeSlotListPlan(final long startTime, final long endTime) {
     super(ConfigPhysicalPlanType.CountTimeSlotList);
-  }
-
-  public CountTimeSlotListPlan(long startTime, long endTime) {
-    this();
     this.startTime = startTime;
     this.endTime = endTime;
     this.database = "";
@@ -58,7 +48,7 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
     this.regionId = new TConsensusGroupId(TConsensusGroupType.DataRegion, -1);
   }
 
-  public void setDatabase(String database) {
+  public void setDatabase(final String database) {
     this.database = database;
   }
 
@@ -66,7 +56,7 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
     return database;
   }
 
-  public void setRegionId(TConsensusGroupId regionId) {
+  public void setRegionId(final TConsensusGroupId regionId) {
     this.regionId = regionId;
   }
 
@@ -74,7 +64,7 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
     return regionId;
   }
 
-  public void setSeriesSlotId(TSeriesPartitionSlot seriesSlotId) {
+  public void setSeriesSlotId(final TSeriesPartitionSlot seriesSlotId) {
     this.seriesSlotId = seriesSlotId;
   }
 
@@ -91,33 +81,14 @@ public class CountTimeSlotListPlan extends ConfigPhysicalPlan {
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
-    ReadWriteIOUtils.write(database, stream);
-    ThriftCommonsSerDeUtils.serializeTSeriesPartitionSlot(seriesSlotId, stream);
-    ThriftCommonsSerDeUtils.serializeTConsensusGroupId(regionId, stream);
-    stream.writeLong(startTime);
-    stream.writeLong(endTime);
-  }
-
-  @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.database = ReadWriteIOUtils.readString(buffer);
-    this.seriesSlotId = ThriftCommonsSerDeUtils.deserializeTSeriesPartitionSlot(buffer);
-    this.regionId = ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer);
-    this.startTime = buffer.getLong();
-    this.endTime = buffer.getLong();
-  }
-
-  @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     if (this == o) {
       return true;
     }
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    CountTimeSlotListPlan that = (CountTimeSlotListPlan) o;
+    final CountTimeSlotListPlan that = (CountTimeSlotListPlan) o;
     return database.equals(that.database)
         && seriesSlotId.equals(that.seriesSlotId)
         && regionId.equals(that.regionId)

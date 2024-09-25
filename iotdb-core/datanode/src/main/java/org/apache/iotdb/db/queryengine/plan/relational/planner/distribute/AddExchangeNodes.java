@@ -77,6 +77,7 @@ public class AddExchangeNodes
       if (!region.equals(context.mostUsedRegion)) {
         ExchangeNode exchangeNode = new ExchangeNode(queryContext.getQueryId().genPlanNodeId());
         exchangeNode.addChild(rewriteNode);
+        exchangeNode.setOutputSymbols(rewriteNode.getOutputSymbols());
         newNode.addChild(exchangeNode);
         context.hasExchangeNode = true;
       } else {

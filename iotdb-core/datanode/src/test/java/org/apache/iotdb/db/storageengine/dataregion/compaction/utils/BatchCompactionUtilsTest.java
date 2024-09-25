@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.BatchedCompactionAlignedPagePointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactChunkPlan;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactPagePlan;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FirstBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.FollowingBatchCompactionAlignedChunkWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -62,6 +62,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class BatchCompactionUtilsTest extends AbstractCompactionTest {
 
@@ -108,7 +109,8 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
         new TsFileSequenceReader(seqResource1.getTsFile().getAbsolutePath())) {
       AlignedChunkMetadata alignedChunkMetadata =
           reader
-              .getAlignedChunkMetadata(IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"))
+              .getAlignedChunkMetadata(
+                  IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d0"), true)
               .get(0);
       ChunkMetadata timeChunkMetadata = (ChunkMetadata) alignedChunkMetadata.getTimeChunkMetadata();
       List<IChunkMetadata> valueChunkMetadataList =
@@ -126,9 +128,11 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
       AlignedChunkReader alignedChunkReader = new AlignedChunkReader(timeChunk, valueChunks);
       AlignedPageReader iPageReader =
           (AlignedPageReader) alignedChunkReader.loadPageReaderList().get(0);
-      BatchedCompactionAlignedPagePointReader batchCompactionPointReader =
-          new BatchedCompactionAlignedPagePointReader(
-              iPageReader.getTimePageReader(), iPageReader.getValuePageReaderList().subList(1, 2));
+      CompactionAlignedPageLazyLoadPointReader batchCompactionPointReader =
+          new CompactionAlignedPageLazyLoadPointReader(
+              iPageReader.getTimePageReader(),
+              iPageReader.getValuePageReaderList().subList(1, 2),
+              false);
       int readPointNum = 0;
       while (batchCompactionPointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = batchCompactionPointReader.nextTimeValuePair();
@@ -287,5 +291,142 @@ public class BatchCompactionUtilsTest extends AbstractCompactionTest {
       return;
     }
     Assert.fail();
+  }
+
+  @Test
+  public void testMapAlignedChunkMetadata1() {
+    List<IChunkMetadata> valueChunkMetadatas =
+        Arrays.asList(
+            new ChunkMetadata("s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            null,
+            new ChunkMetadata(
+                "s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
+    AlignedChunkMetadata alignedChunkMetadata =
+        new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT32),
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s4", TSDataType.INT32));
+    AlignedChunkMetadata newAlignedChunkMetadata =
+        AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+            alignedChunkMetadata, measurementSchemas);
+    Assert.assertEquals(
+        newAlignedChunkMetadata.getValueChunkMetadataList().stream()
+            .map(IChunkMetadata::getMeasurementUid)
+            .collect(Collectors.toList()),
+        Arrays.asList("s0", "s1", "s2", "s4"));
+  }
+
+  @Test
+  public void testMapAlignedChunkMetadata2() {
+    List<IChunkMetadata> valueChunkMetadatas =
+        Arrays.asList(
+            new ChunkMetadata("s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            null);
+    AlignedChunkMetadata alignedChunkMetadata =
+        new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT32),
+            new MeasurementSchema("s4", TSDataType.INT32));
+    AlignedChunkMetadata newAlignedChunkMetadata =
+        AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+            alignedChunkMetadata, measurementSchemas);
+    Assert.assertEquals(
+        newAlignedChunkMetadata.getValueChunkMetadataList().stream()
+            .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
+            .collect(Collectors.toList()),
+        Arrays.asList(null, "s4"));
+  }
+
+  @Test
+  public void testMapAlignedChunkMetadata3() {
+    List<IChunkMetadata> valueChunkMetadatas =
+        Arrays.asList(
+            new ChunkMetadata("s0", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata("s1", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata(
+                "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
+    AlignedChunkMetadata alignedChunkMetadata1 =
+        new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+
+    valueChunkMetadatas =
+        Arrays.asList(
+            new ChunkMetadata("s3", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null),
+            new ChunkMetadata(
+                "s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
+    AlignedChunkMetadata alignedChunkMetadata2 =
+        new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s0", TSDataType.INT32),
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32),
+            new MeasurementSchema("s4", TSDataType.INT32));
+    AlignedChunkMetadata newAlignedChunkMetadata1 =
+        AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+            alignedChunkMetadata1, measurementSchemas);
+    Assert.assertEquals(
+        newAlignedChunkMetadata1.getValueChunkMetadataList().stream()
+            .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
+            .collect(Collectors.toList()),
+        Arrays.asList("s0", "s1", "s2", null, null));
+
+    AlignedChunkMetadata newAlignedChunkMetadata2 =
+        AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+            alignedChunkMetadata2, measurementSchemas);
+    Assert.assertEquals(
+        newAlignedChunkMetadata2.getValueChunkMetadataList().stream()
+            .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
+            .collect(Collectors.toList()),
+        Arrays.asList(null, null, null, "s3", "s4"));
+  }
+
+  @Test
+  public void testMapAlignedChunkMetadata4() {
+    List<IChunkMetadata> valueChunkMetadatas =
+        Arrays.asList(
+            null,
+            new ChunkMetadata(
+                "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
+    AlignedChunkMetadata alignedChunkMetadata1 =
+        new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+
+    valueChunkMetadatas =
+        Arrays.asList(
+            null,
+            null,
+            null,
+            null,
+            new ChunkMetadata(
+                "s4", TSDataType.INT32, TSEncoding.RLE, CompressionType.LZ4, 0, null));
+    AlignedChunkMetadata alignedChunkMetadata2 =
+        new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s4", TSDataType.INT32));
+    AlignedChunkMetadata newAlignedChunkMetadata1 =
+        AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+            alignedChunkMetadata1, measurementSchemas);
+    Assert.assertEquals(
+        newAlignedChunkMetadata1.getValueChunkMetadataList().stream()
+            .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
+            .collect(Collectors.toList()),
+        Arrays.asList("s2", null));
+
+    AlignedChunkMetadata newAlignedChunkMetadata2 =
+        AlignedSeriesBatchCompactionUtils.fillAlignedChunkMetadataBySchemaList(
+            alignedChunkMetadata2, measurementSchemas);
+    Assert.assertEquals(
+        newAlignedChunkMetadata2.getValueChunkMetadataList().stream()
+            .map(chunkMetadata -> chunkMetadata == null ? null : chunkMetadata.getMeasurementUid())
+            .collect(Collectors.toList()),
+        Arrays.asList(null, "s4"));
   }
 }

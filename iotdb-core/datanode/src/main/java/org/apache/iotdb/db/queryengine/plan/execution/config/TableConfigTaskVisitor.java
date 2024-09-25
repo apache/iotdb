@@ -23,11 +23,15 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreatePipePluginTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropPipePluginTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableAddColumnTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.AlterTableSetPropertiesTask;
@@ -42,17 +46,28 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.UseDBTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.FlushTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.sys.SetConfigurationTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.AlterPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.CreatePipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.DropPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.ShowPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StartPipeTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe.StopPipeTask;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreatePipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
@@ -67,8 +82,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipePlugins;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowPipes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
@@ -129,15 +148,17 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final String dbName = node.getDbName();
     // Check database length here
     // We need to calculate the database name without "root."
-    if (dbName.contains(PATH_SEPARATOR) || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
+    if (dbName.contains(PATH_SEPARATOR)
+        || !IoTDBConfig.STORAGE_GROUP_PATTERN.matcher(dbName).matches()
+        || dbName.length() > MAX_DATABASE_NAME_LENGTH) {
       throw new SemanticException(
           new IllegalPathException(
-              node.getDbName(),
-              dbName.contains(PATH_SEPARATOR)
-                  ? "The database name shall not contain '.'"
-                  : "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH));
+              dbName,
+              dbName.length() > MAX_DATABASE_NAME_LENGTH
+                  ? "the length of database name shall not exceed " + MAX_DATABASE_NAME_LENGTH
+                  : "the database name can only contain english or chinese characters, numbers, backticks and underscores."));
     }
-    schema.setName(ROOT + PATH_SEPARATOR_CHAR + node.getDbName());
+    schema.setName(ROOT + PATH_SEPARATOR_CHAR + dbName);
 
     for (final Property property : node.getProperties()) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
@@ -430,5 +451,59 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           name + " value must be lower than " + Integer.MAX_VALUE + ", but now is: " + value);
     }
     return (int) parsedValue;
+  }
+
+  @Override
+  protected IConfigTask visitCreatePipe(CreatePipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new CreatePipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitAlterPipe(AlterPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new AlterPipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitDropPipe(DropPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new DropPipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitStartPipe(StartPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new StartPipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitStopPipe(StopPipe node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new StopPipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowPipes(ShowPipes node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowPipeTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitCreatePipePlugin(CreatePipePlugin node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new CreatePipePluginTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitDropPipePlugin(DropPipePlugin node, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    return new DropPipePluginTask(node);
+  }
+
+  @Override
+  protected IConfigTask visitShowPipePlugins(ShowPipePlugins node, MPPQueryContext context) {
+    context.setQueryType(QueryType.READ);
+    return new ShowPipePluginsTask();
   }
 }

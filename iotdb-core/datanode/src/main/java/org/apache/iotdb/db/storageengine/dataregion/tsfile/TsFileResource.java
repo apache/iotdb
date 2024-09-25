@@ -648,7 +648,7 @@ public class TsFileResource {
 
   @Override
   public String toString() {
-    return String.format("file is %s, status: %s", file.toString(), getStatus());
+    return String.format("{file: %s, status: %s}", file.toString(), getStatus());
   }
 
   @Override
@@ -1138,7 +1138,7 @@ public class TsFileResource {
 
     maxProgressIndex =
         (maxProgressIndex == null
-            ? progressIndex.deepCopy()
+            ? progressIndex
             : maxProgressIndex.updateToMinimumEqualOrIsAfterProgressIndex(progressIndex));
 
     PipeTimePartitionProgressIndexKeeper.getInstance()
@@ -1150,7 +1150,7 @@ public class TsFileResource {
       return;
     }
 
-    maxProgressIndex = progressIndex.deepCopy();
+    maxProgressIndex = progressIndex;
 
     PipeTimePartitionProgressIndexKeeper.getInstance()
         .updateProgressIndex(getDataRegionId(), getTimePartition(), maxProgressIndex);

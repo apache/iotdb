@@ -138,6 +138,10 @@ public class TypeProvider {
     return Collections.unmodifiableMap(tableModelTypes);
   }
 
+  public void setTableModelTypes(Map<Symbol, Type> tableModelTypes) {
+    this.tableModelTypes = tableModelTypes;
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(treeModelTypeMap.size(), byteBuffer);
     for (Map.Entry<String, TSDataType> entry : treeModelTypeMap.entrySet()) {
