@@ -775,7 +775,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   private void tryDeserializeRegisteredAINode(
-          BufferedInputStream bufferedInputStream, TProtocol protocol) throws IOException {
+      BufferedInputStream bufferedInputStream, TProtocol protocol) throws IOException {
     try {
       bufferedInputStream.mark(1024);
       deserializeRegisteredAINode(bufferedInputStream, protocol);
