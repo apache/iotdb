@@ -773,6 +773,9 @@ class RatisConsensus implements IConsensus {
 
   @Override
   public List<ConsensusGroupId> getAllConsensusGroupIdsWithoutStarting() {
+    if (!storageDir.exists()) {
+      return Collections.emptyList();
+    }
     List<ConsensusGroupId> consensusGroupIds = new ArrayList<>();
     try (DirectoryStream<Path> stream = Files.newDirectoryStream(storageDir.toPath())) {
       for (Path path : stream) {
