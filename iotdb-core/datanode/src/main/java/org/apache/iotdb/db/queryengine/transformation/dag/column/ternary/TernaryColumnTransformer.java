@@ -59,6 +59,9 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     initializeColumnCache(columnBuilder.build());
   }
 
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {}
+
   protected abstract void doTransform(
       Column firstColumn,
       Column secondColumn,

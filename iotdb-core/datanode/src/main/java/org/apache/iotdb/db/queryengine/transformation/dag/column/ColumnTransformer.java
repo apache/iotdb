@@ -104,9 +104,7 @@ public abstract class ColumnTransformer {
   /** Responsible for the calculation. */
   protected abstract void evaluate();
 
-  public void evaluateWithSelection(boolean[] selection) {
-    // do nothing
-  }
+  public abstract void evaluateWithSelection(boolean[] selection);
 
   protected abstract void checkType();
 

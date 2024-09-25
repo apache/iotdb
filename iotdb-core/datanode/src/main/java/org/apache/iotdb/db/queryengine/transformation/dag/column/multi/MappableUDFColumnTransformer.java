@@ -60,6 +60,9 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   }
 
   @Override
+  public void evaluateWithSelection(boolean[] selection) {}
+
+  @Override
   protected void checkType() {
     // do nothing
   }

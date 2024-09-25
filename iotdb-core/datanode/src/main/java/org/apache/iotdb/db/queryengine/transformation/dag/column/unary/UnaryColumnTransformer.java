@@ -43,6 +43,9 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
     initializeColumnCache(columnBuilder.build());
   }
 
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {}
+
   public ColumnTransformer getChildColumnTransformer() {
     return childColumnTransformer;
   }

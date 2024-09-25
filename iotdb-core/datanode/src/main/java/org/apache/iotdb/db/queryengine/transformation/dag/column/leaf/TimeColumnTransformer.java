@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.transformation.dag.column.leaf;
 
-import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.type.Type;
+
+import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class TimeColumnTransformer extends LeafColumnTransformer {
   public TimeColumnTransformer(Type returnType) {
@@ -28,13 +31,20 @@ public class TimeColumnTransformer extends LeafColumnTransformer {
   }
 
   @Override
-  protected void evaluate() {}
-
-  //  @Override
-  //  public void evaluateWithShortCircuit(boolean[] selection) {}
+  protected void evaluate() {
+    initializeColumnCache(input.getTimeColumn());
+  }
 
   @Override
-  public void initFromTsBlock(TsBlock input) {
-    initializeColumnCache(input.getTimeColumn());
+  public void evaluateWithSelection(boolean[] selection) {
+    ColumnBuilder builder = TIMESTAMP.createColumnBuilder(selection.length);
+    Column timeColumn = input.getTimeColumn();
+    for (int i = 0; i < selection.length; i++) {
+      if (!selection[i] || timeColumn.isNull(i)) {
+        builder.appendNull();
+      } else {
+        builder.write(timeColumn, i);
+      }
+    }
   }
 }

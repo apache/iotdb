@@ -58,6 +58,9 @@ public abstract class MultiColumnTransformer extends ColumnTransformer {
     initializeColumnCache(builder.build());
   }
 
+  @Override
+  public void evaluateWithSelection(boolean[] selection) {}
+
   protected abstract void doTransform(
       List<Column> childrenColumns, ColumnBuilder builder, int positionCount);
 

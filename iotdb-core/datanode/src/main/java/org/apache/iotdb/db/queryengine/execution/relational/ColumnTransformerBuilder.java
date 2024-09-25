@@ -1341,9 +1341,7 @@ public class ColumnTransformerBuilder
         }
 
         ColumnTransformer elseColumnTransformer =
-            node.getDefaultValue().isPresent()
-                ? process(node.getDefaultValue().get(), context)
-                : process(new NullLiteral());
+            process(node.getDefaultValue().orElse(new NullLiteral()), context);
         context.cache.put(
             node,
             // fix this
@@ -1380,9 +1378,8 @@ public class ColumnTransformerBuilder
         }
 
         ColumnTransformer elseColumnTransformer =
-            node.getDefaultValue().isPresent()
-                ? process(node.getDefaultValue().get(), context)
-                : process(new NullLiteral());
+            process(node.getDefaultValue().orElse(new NullLiteral()), context);
+
         context.cache.put(
             node,
             // fix this

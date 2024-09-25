@@ -48,6 +48,14 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
   }
 
   @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {}
+
+  @Override
   protected void checkType() {
     if (!leftTransformer.isReturnTypeNumeric() || !rightTransformer.isReturnTypeNumeric()) {
       throw new UnsupportedOperationException("Unsupported Type");

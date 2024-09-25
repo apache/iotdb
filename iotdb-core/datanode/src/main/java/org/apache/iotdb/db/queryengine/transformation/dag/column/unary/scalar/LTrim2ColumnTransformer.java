@@ -53,4 +53,12 @@ public class LTrim2ColumnTransformer extends BinaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {}
 }

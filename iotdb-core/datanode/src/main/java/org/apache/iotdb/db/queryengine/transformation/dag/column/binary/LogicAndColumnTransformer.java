@@ -32,6 +32,57 @@ public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
   }
 
   @Override
+  public void evaluateWithSelection(boolean[] selection) {
+    boolean[] selectionCopy = new boolean[selection.length];
+    System.arraycopy(selection, 0, selectionCopy, 0, selection.length);
+
+    leftTransformer.evaluateWithSelection(selectionCopy);
+    Column leftColumn = leftTransformer.getColumn();
+    int positionCount = leftTransformer.getColumnCachePositionCount();
+
+    for (int i = 0; i < positionCount; i++) {
+      if (!leftColumn.isNull(i) && !leftColumn.getBoolean(i)) {
+        selectionCopy[i] = false;
+      }
+    }
+
+    rightTransformer.evaluateWithSelection(selectionCopy);
+    Column rightColumn = rightTransformer.getColumn();
+
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    for (int i = 0; i < positionCount; i++) {
+      if (selection[i]) {
+        if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+          // left value must be true
+          builder.write(rightColumn, i);
+        } else if (!leftColumn.isNull(i)) {
+          // right value is null
+          if (leftColumn.getBoolean(i)) {
+            builder.appendNull();
+          } else {
+            builder.write(leftColumn, i);
+          }
+        } else if (!rightColumn.isNull(i)) {
+          // left value is null
+          if (rightColumn.getBoolean(i)) {
+            builder.appendNull();
+          } else {
+            builder.write(rightColumn, i);
+          }
+        } else {
+          builder.appendNull();
+        }
+      } else {
+        builder.appendNull();
+      }
+    }
+
+    initializeColumnCache(rightColumn);
+    this.leftTransformer.clearCache();
+    this.rightTransformer.clearCache();
+  }
+
+  @Override
   protected void doTransform(
       Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
     for (int i = 0; i < positionCount; i++) {
@@ -58,6 +109,14 @@ public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
       }
     }
   }
+
+  @Override
+  protected void doTransform(
+      Column leftColumn,
+      Column rightColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection) {}
 
   @Override
   protected boolean transform(boolean left, boolean right) {
