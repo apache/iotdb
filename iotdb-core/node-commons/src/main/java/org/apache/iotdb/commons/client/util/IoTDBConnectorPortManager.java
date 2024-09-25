@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.client.util;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.function.Consumer;
+import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -31,6 +32,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 
+// By recording the port range that has been used, the problem of brute force iterative query of
+// available ports can be reduced. For example, if ports 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, and 14
+// are used, they are recorded as 1-9, 11-12, 14, and the order is guaranteed.
 public class IoTDBConnectorPortManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBConnectorPortManager.class);
@@ -41,8 +45,9 @@ public class IoTDBConnectorPortManager {
 
   private final List<Pair<Integer, Integer>> occupiedPorts = new LinkedList<>();
 
+  // Set the port boundaries
   private IoTDBConnectorPortManager() {
-    occupiedPorts.add(new Pair<>(1023, 1023));
+    occupiedPorts.add(new Pair<>(-1, -1));
     occupiedPorts.add(new Pair<>(65536, 65536));
   }
 
@@ -50,27 +55,33 @@ public class IoTDBConnectorPortManager {
 
   // ===========================Iterator================================
 
+  // Iterator can be used to iterate over undocumented ports
   public static class AvailablePortIterator implements Iterator<Integer> {
-    private final ListIterator<Pair<Integer, Integer>> occupiedPortsIterator;
-    private final Iterator<Pair<Integer, Integer>> availableRangesIterator;
+    private ListIterator<Pair<Integer, Integer>> occupiedPortsIterator;
     private ListIterator<Pair<Integer, Integer>> preOccupiedPortsIterator;
+    private Iterator<Pair<Integer, Integer>> availableRangesIterator;
     private Pair<Integer, Integer> availableRange;
     private Pair<Integer, Integer> previousRange;
     private Pair<Integer, Integer> currentRange;
     private boolean hasNext = true;
-    private int availablePort = 0;
-    private int maxAvailablePort = -1;
+    private int availablePort = -1;
+    private int maxAvailablePort = -2;
 
     AvailablePortIterator(
         final List<Pair<Integer, Integer>> occupiedPorts,
         final List<Pair<Integer, Integer>> availableRanges) {
       if (occupiedPorts.size() <= 1 || availableRanges.isEmpty()) {
         hasNext = false;
+        return;
       }
       this.occupiedPortsIterator = occupiedPorts.listIterator();
+      this.preOccupiedPortsIterator = occupiedPorts.listIterator();
       this.availableRangesIterator = availableRanges.iterator();
       this.availableRange = availableRangesIterator.next();
       this.currentRange = occupiedPortsIterator.next();
+      previousRange = currentRange;
+      currentRange = occupiedPortsIterator.next();
+      preOccupiedPortsIterator.next();
     }
 
     @Override
@@ -81,52 +92,98 @@ public class IoTDBConnectorPortManager {
       if (availablePort <= maxAvailablePort) {
         return true;
       }
-      while (occupiedPortsIterator.hasNext()) {
-        previousRange = currentRange;
-        currentRange = occupiedPortsIterator.next();
-        preOccupiedPortsIterator.next();
-        if (currentRange.getRight() <= availableRange.getLeft()) {
-          continue;
-        }
-        while (previousRange.getLeft() >= availableRange.getRight()) {
-          if (availableRangesIterator.hasNext()) {
-            availableRange = availableRangesIterator.next();
-          } else {
-            hasNext = false;
-            break;
+      if (availablePort != -1) {
+        if (availableRange.getRight() <= currentRange.right) {
+          if (!updateAvailablePort()) {
+            return hasNext = false;
+          }
+        } else {
+          if (!updateCurrentRanges()) {
+            return hasNext = false;
           }
         }
-
+      }
+      out:
+      while (true) {
+        if (currentRange.getRight() <= availableRange.getLeft()) {
+          if (!updateCurrentRanges()) {
+            return hasNext = false;
+          }
+          continue;
+        }
+        if (previousRange.getLeft() >= availableRange.getRight()) {
+          if (!updateAvailablePort()) {
+            return hasNext = false;
+          }
+          continue;
+        }
         final int max = Math.min(availableRange.getRight(), currentRange.getLeft() - 1);
         final int min = Math.max(availableRange.getLeft(), previousRange.getRight() + 1);
         if (max < min) {
+          if (availableRange.getRight() <= currentRange.right) {
+            if (!updateAvailablePort()) {
+              return hasNext = false;
+            }
+            continue;
+          }
+          if (!updateCurrentRanges()) {
+            return hasNext = false;
+          }
           continue;
         }
         availablePort = min;
         maxAvailablePort = max;
-        break;
+        return hasNext = true;
       }
-      return hasNext;
+    }
+
+    private boolean updateAvailablePort() {
+      if (!availableRangesIterator.hasNext()) {
+        return false;
+      }
+      availableRange = availableRangesIterator.next();
+      return true;
+    }
+
+    private boolean updateCurrentRanges() {
+      if (!occupiedPortsIterator.hasNext()) {
+        return false;
+      }
+      previousRange = currentRange;
+      currentRange = occupiedPortsIterator.next();
+      preOccupiedPortsIterator.next();
+      return true;
     }
 
     @Override
     public Integer next() {
+      if (availablePort > maxAvailablePort) {
+        if (!hasNext()) {
+          throw new PipeConnectionException("No more available ports to iterate.");
+        }
+      }
       final int value = this.availablePort;
       this.availablePort++;
       return value;
     }
 
-    public void updateOccupiedRanges() {
+    public void updateOccupiedPort() {
+      if (availablePort == -1) {
+        throw new IllegalStateException("Available port not initialized.");
+      }
       final int value = availablePort - 1;
       if (value == previousRange.getRight() + 1 && currentRange.getLeft() - 1 == value) {
         previousRange.setRight(currentRange.getRight());
         occupiedPortsIterator.remove();
+        return;
       }
       if (value == previousRange.getRight() + 1) {
         previousRange.setRight(value);
+        return;
       }
       if (value == currentRange.getLeft() - 1) {
         currentRange.setLeft(value);
+        return;
       }
       preOccupiedPortsIterator.add(new Pair<>(value, value));
     }
@@ -134,10 +191,10 @@ public class IoTDBConnectorPortManager {
 
   // ===========================add and release================================
 
-  public Integer addPortIfAvailable(final int candidatePort) {
+  public boolean addPortIfAvailable(final int candidatePort) {
     synchronized (occupiedPorts) {
       if (occupiedPorts.size() == 1 || occupiedPorts.isEmpty()) {
-        return null;
+        return false;
       }
 
       ListIterator<Pair<Integer, Integer>> occupiedPortsIterator = occupiedPorts.listIterator();
@@ -154,30 +211,30 @@ public class IoTDBConnectorPortManager {
           break;
         }
         if (previousRange.getRight() >= candidatePort || currentRange.getLeft() <= candidatePort) {
-          return null;
+          return false;
         }
         if (candidatePort == previousRange.getRight() + 1
             && currentRange.getLeft() - 1 == candidatePort) {
           previousRange.setRight(currentRange.getRight());
           occupiedPortsIterator.remove();
-          return candidatePort;
+          return true;
         }
 
         if (candidatePort == previousRange.getRight() + 1) {
           previousRange.setRight(candidatePort);
-          return candidatePort;
+          return true;
         }
 
         if (candidatePort == currentRange.getLeft() - 1) {
           currentRange.setLeft(candidatePort);
-          return candidatePort;
+          return true;
         }
 
         previousIterator.add(new Pair<>(candidatePort, candidatePort));
-        return candidatePort;
+        return true;
       }
     }
-    return null;
+    return false;
   }
 
   public void releaseUsedPort(final int port) {
@@ -185,7 +242,6 @@ public class IoTDBConnectorPortManager {
       if (occupiedPorts.isEmpty()) {
         return;
       }
-      ListIterator<Pair<Integer, Integer>> preIterator = occupiedPorts.listIterator();
       ListIterator<Pair<Integer, Integer>> iterator = occupiedPorts.listIterator();
       Pair<Integer, Integer> cur = null;
       while (iterator.hasNext()) {
@@ -230,7 +286,7 @@ public class IoTDBConnectorPortManager {
       while (portIterator.hasNext()) {
         try {
           consumer.accept(portIterator.next());
-          portIterator.updateOccupiedRanges();
+          portIterator.updateOccupiedPort();
           portFound = true;
           break;
         } catch (Exception e) {
@@ -238,12 +294,13 @@ public class IoTDBConnectorPortManager {
         }
       }
       if (!portFound) {
-        LOGGER.warn(
+        String exceptionMessage =
             String.format(
                 "Failed to find an available send port. Custom send port is defined. "
                     + "No ports are available in the candidate list [%s] or within the range %d to %d.",
-                candidatePorts, minSendPortRange, maxSendPortRange),
-            lastException);
+                candidatePorts, minSendPortRange, maxSendPortRange);
+        LOGGER.warn(exceptionMessage, lastException);
+        throw new PipeConnectionException(exceptionMessage);
       }
     }
   }
@@ -252,7 +309,7 @@ public class IoTDBConnectorPortManager {
   public void resetPortManager() {
     synchronized (occupiedPorts) {
       occupiedPorts.clear();
-      occupiedPorts.add(new Pair<>(1023, 1023));
+      occupiedPorts.add(new Pair<>(-1, -1));
       occupiedPorts.add(new Pair<>(65536, 65536));
     }
   }
@@ -271,21 +328,45 @@ public class IoTDBConnectorPortManager {
       return range;
     }
     Iterator<Integer> candidatePortIterator = candidatePorts.iterator();
+    int tempValue = -1;
     while (candidatePortIterator.hasNext()) {
       int value = candidatePortIterator.next();
       if (value >= minSendPortRange) {
+        tempValue = value;
         break;
       }
-      range.add(new Pair<>(value, value));
+      addPair(range, value);
     }
-    range.add(new Pair<>(minSendPortRange, maxSendPortRange));
+    addPair(range, minSendPortRange, maxSendPortRange);
+    if (tempValue != -1) {
+      if (tempValue > maxSendPortRange) {
+        addPair(range, tempValue);
+      }
+    }
+
     while (candidatePortIterator.hasNext()) {
       int value = candidatePortIterator.next();
       if (value <= maxSendPortRange) {
         continue;
       }
-      range.add(new Pair<>(value, value));
+      addPair(range, value);
     }
     return range;
+  }
+
+  private void addPair(List<Pair<Integer, Integer>> range, int value) {
+    if (!range.isEmpty() && range.get(range.size() - 1).getRight() == value - 1) {
+      range.get(range.size() - 1).setRight(value);
+    } else {
+      range.add(new Pair<>(value, value));
+    }
+  }
+
+  private void addPair(List<Pair<Integer, Integer>> range, int minValue, int maxValue) {
+    if (!range.isEmpty() && range.get(range.size() - 1).getRight() == minValue - 1) {
+      range.get(range.size() - 1).setRight(maxValue);
+    } else {
+      range.add(new Pair<>(minValue, maxValue));
+    }
   }
 }

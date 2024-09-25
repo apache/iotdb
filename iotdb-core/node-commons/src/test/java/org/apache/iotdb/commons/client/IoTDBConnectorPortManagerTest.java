@@ -34,16 +34,14 @@ import java.util.Set;
 
 public class IoTDBConnectorPortManagerTest {
 
-  IoTDBConnectorPortManager portManager = IoTDBConnectorPortManager.INSTANCE;
+  private final IoTDBConnectorPortManager portManager = IoTDBConnectorPortManager.INSTANCE;
 
   @Test
   public void testAddIfPortAvailable() {
     portManager.resetPortManager();
-    Set<Integer> ports = new HashSet<>();
-    portManager.resetPortManager();
     Set<Integer> set = new HashSet<>();
     addPort(set);
-    Assert.assertEquals(greEX(set), portManager.getOccupiedPorts());
+    Assert.assertEquals(generateExpectedRanges(set), portManager.getOccupiedPorts());
   }
 
   @Test
@@ -57,16 +55,65 @@ public class IoTDBConnectorPortManagerTest {
       set.remove(port);
       portManager.releaseUsedPort(port);
     }
-    Assert.assertEquals(greEX(set), portManager.getOccupiedPorts());
+    Assert.assertEquals(generateExpectedRanges(set), portManager.getOccupiedPorts());
   }
 
-  private void addPort(Set<Integer> set) {
-    set.add(1023);
-    set.add(65536);
-    Random random = new Random();
+  @Test
+  public void testAvailablePortIterator() {
+    portManager.resetPortManager();
+    Set<Integer> set = new HashSet<>();
+    addPort(set);
+    testPortRange(1024, 65535, new HashSet<>(), set);
+    Random r = new Random();
+    Set<Integer> cp = new HashSet<>();
+    for (int i = 0; i < 1; i++) {
+      IoTDBConnectorPortManager.AvailablePortIterator iterator =
+          portManager.createAvailablePortIterator(1024, 65535, new ArrayList<>());
+      while (iterator.hasNext()) {
+        int port = iterator.next();
+        if (r.nextBoolean()) {
+          iterator.updateOccupiedPort();
+          set.add(port);
+          break;
+        }
+      }
+      testPortRange(1024, 6553, cp, set);
+      int randomPort = 1024 + r.nextInt(65535 - 1024 - 200);
+      cp.clear();
+      for (int j = 0; j < 40; j++) {
+        cp.add(1024 + r.nextInt(65535 - 1024));
+      }
+      testPortRange(randomPort, randomPort + 200, cp, set);
+    }
+  }
 
+  private void testPortRange(int port, int maxPort, Set<Integer> cp, Set<Integer> set) {
+    int start = port;
+    int end = maxPort;
+    List<Integer> candidatePorts = new ArrayList<>(cp);
+    if (!candidatePorts.isEmpty()) {
+      candidatePorts.sort(Integer::compare);
+      start = Math.min(port, candidatePorts.get(0));
+      end = Math.max(maxPort, candidatePorts.get(candidatePorts.size() - 1));
+    }
+    IoTDBConnectorPortManager.AvailablePortIterator iterator =
+        portManager.createAvailablePortIterator(port, maxPort, candidatePorts);
+    for (int i = start; i <= end; i++) {
+      if (set.contains(i) || ((i < port || i > maxPort) && !cp.contains(i))) {
+        continue;
+      }
+      Assert.assertTrue(iterator.hasNext());
+      Assert.assertEquals(i, iterator.next().intValue());
+    }
+    Assert.assertFalse(iterator.hasNext());
+  }
+
+  private void addPort(final Set<Integer> set) {
+    set.add(-1);
+    set.add(65536);
+    final Random random = new Random();
     while (set.size() < 300) {
-      int port = 1024 + random.nextInt(65535 - 1024);
+      final int port = 1024 + random.nextInt(65535 - 1024);
       set.add(port);
       portManager.addPortIfAvailable(port);
     }
@@ -83,10 +130,9 @@ public class IoTDBConnectorPortManagerTest {
     }
   }
 
-  private List<Pair<Integer, Integer>> greEX(Set<Integer> set) {
+  private List<Pair<Integer, Integer>> generateExpectedRanges(final Set<Integer> set) {
     List<Integer> ports = new ArrayList<>(set);
     ports.sort(Integer::compare);
-
     int start = ports.get(0);
     int end = start;
     List<Pair<Integer, Integer>> data = new LinkedList<>();
