@@ -80,13 +80,17 @@ public class AlignedSeriesBatchCompactionUtils {
       AlignedChunkMetadata originAlignedChunkMetadata, List<IMeasurementSchema> schemaList) {
     List<IChunkMetadata> originValueChunkMetadataList =
         originAlignedChunkMetadata.getValueChunkMetadataList();
-    if (originValueChunkMetadataList.size() == schemaList.size()) {
-      return originAlignedChunkMetadata;
-    }
     IChunkMetadata[] newValueChunkMetadataArr = new IChunkMetadata[schemaList.size()];
     int currentValueChunkMetadataIndex = 0;
     for (int i = 0; i < schemaList.size(); i++) {
       IMeasurementSchema currentSchema = schemaList.get(i);
+
+      // skip null value
+      while (currentValueChunkMetadataIndex < originValueChunkMetadataList.size()
+          && originValueChunkMetadataList.get(currentValueChunkMetadataIndex) == null) {
+        currentValueChunkMetadataIndex++;
+      }
+
       if (currentValueChunkMetadataIndex >= originValueChunkMetadataList.size()) {
         break;
       }
