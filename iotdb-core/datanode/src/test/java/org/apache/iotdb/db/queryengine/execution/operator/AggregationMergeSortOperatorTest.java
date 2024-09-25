@@ -48,9 +48,9 @@ import static org.junit.Assert.assertEquals;
 public class AggregationMergeSortOperatorTest {
 
   @Test
-  public void test() throws Exception {
+  public void deviceInTwoRegionTest() throws Exception {
     OperatorContext operatorContext =
-        new OperatorContext(1, new PlanNodeId("1"), "aaa", new DriverContext());
+        new OperatorContext(1, new PlanNodeId("1"), "test-type", new DriverContext());
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.INT64);
     List<Accumulator> accumulators = Collections.singletonList(new CountAccumulator());
 
@@ -75,10 +75,10 @@ public class AggregationMergeSortOperatorTest {
       if (block != null && block.getPositionCount() > 0) {
         if (cnt == 0) {
           assertEquals("d1", block.getColumn(0).getBinary(0).toString());
-          assertEquals(2, block.getColumn(1).getLong(0));
+          assertEquals(3, block.getColumn(1).getLong(0));
         } else {
           assertEquals("d2", block.getColumn(0).getBinary(0).toString());
-          assertEquals(1, block.getColumn(1).getLong(0));
+          assertEquals(5, block.getColumn(1).getLong(0));
         }
         cnt++;
       }
@@ -89,7 +89,7 @@ public class AggregationMergeSortOperatorTest {
 
     OperatorContext operatorContext;
 
-    int a = 0;
+    int invokeCount = 0;
 
     public MockDeviceViewOperator1(OperatorContext operatorContext) {
       this.operatorContext = operatorContext;
@@ -102,8 +102,8 @@ public class AggregationMergeSortOperatorTest {
 
     @Override
     public TsBlock next() throws Exception {
-      if (a == 0) {
-        a++;
+      if (invokeCount == 0) {
+        invokeCount++;
         return buildTsBlock("d1", 1);
       }
       return null;
@@ -111,7 +111,7 @@ public class AggregationMergeSortOperatorTest {
 
     @Override
     public boolean hasNext() throws Exception {
-      return a < 1;
+      return invokeCount < 1;
     }
 
     @Override
@@ -119,7 +119,7 @@ public class AggregationMergeSortOperatorTest {
 
     @Override
     public boolean isFinished() throws Exception {
-      return a < 1;
+      return invokeCount < 1;
     }
 
     @Override
@@ -151,21 +151,19 @@ public class AggregationMergeSortOperatorTest {
 
     @Override
     public TsBlock next() throws Exception {
-      if (a == 0) {
-
-        a++;
-        return buildTsBlock("d1", 1);
-      } else if (a == 1) {
-
-        a++;
-        return buildTsBlock("d2", 1);
+      if (invokeCount == 0) {
+        invokeCount++;
+        return buildTsBlock("d1", 2);
+      } else if (invokeCount == 1) {
+        invokeCount++;
+        return buildTsBlock("d2", 5);
       }
       return null;
     }
 
     @Override
     public boolean hasNext() throws Exception {
-      return a < 2;
+      return invokeCount < 2;
     }
   }
 
@@ -174,6 +172,6 @@ public class AggregationMergeSortOperatorTest {
     BinaryColumn deviceColumn =
         new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(device.getBytes())});
     LongColumn countColumn = new LongColumn(1, Optional.empty(), new long[] {count});
-    TsBlock tsBlock = new TsBlock(1, timeColumn, deviceColumn, countColumn);
+    return new TsBlock(1, timeColumn, deviceColumn, countColumn);
   }
 }
