@@ -263,17 +263,21 @@ public class RouteBalancer implements IClusterStatusSubscriber {
         .filter(entry -> successTransferSet.contains(entry.getKey()))
         .forEach(
             entry -> {
+              // set target
+              Integer dataNodeId = entry.getValue();
+              TDataNodeLocation dataNodeLocation =
+                  getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
+              if (dataNodeLocation == null) {
+                LOGGER.warn("DataNodeLocation is null, datanodeId {}", dataNodeId);
+                return;
+              }
+              invalidateSchemaCacheRequestHandler.putNodeLocation(
+                  requestIndex.getAndIncrement(), dataNodeLocation);
               // set req
               TConsensusGroupId consensusGroupId = entry.getKey();
               String database = getPartitionManager().getRegionStorageGroup(consensusGroupId);
               invalidateSchemaCacheRequestHandler.putRequest(
                   requestIndex.get(), new TInvalidateCacheReq(true, database));
-              // set target
-              Integer dataNodeId = entry.getValue();
-              TDataNodeLocation dataNodeLocation =
-                  getNodeManager().getRegisteredDataNode(dataNodeId).getLocation();
-              invalidateSchemaCacheRequestHandler.putNodeLocation(
-                  requestIndex.getAndIncrement(), dataNodeLocation);
             });
     CnToDnInternalServiceAsyncRequestManager.getInstance()
         .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
