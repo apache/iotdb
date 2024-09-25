@@ -42,6 +42,7 @@ public class CoalesceColumnTransformer extends MultiColumnTransformer {
         if (!column.isNull(i)) {
           allNull = false;
           builder.write(column, i);
+          break;
         }
       }
       if (allNull) {

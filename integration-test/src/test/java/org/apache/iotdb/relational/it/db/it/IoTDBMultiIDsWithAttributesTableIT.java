@@ -574,20 +574,84 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.020Z,d1,l2,2,d2,null,2,pineapple,",
           "1970-01-01T00:00:00.020Z,d2,l2,2,d1,zz,2,pineapple,",
           "1970-01-01T00:00:00.020Z,d2,l2,2,d2,null,2,pineapple,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d1,l3,1,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d2,l3,1,d1,a,1,apricot,",
+          "1970-01-01T00:00:00.040Z,d2,l3,1,d2,null,1,apricot,",
+          "1970-01-01T00:00:00.080Z,d1,l4,9,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d1,l4,9,d2,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,9,d1,null,9,apple,",
+          "1970-01-01T00:00:00.080Z,d2,l4,9,d2,null,9,apple,",
+          "1970-01-01T00:00:00.100Z,d1,l5,8,d1,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d1,l5,8,d2,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d2,l5,8,d1,null,8,papaya,",
+          "1970-01-01T00:00:00.100Z,d2,l5,8,d2,null,8,papaya,",
+          "1971-01-01T00:00:00.000Z,d1,l1,6,d1,d,6,banana,",
+          "1971-01-01T00:00:00.000Z,d1,l1,6,d2,c,6,banana,",
+          "1971-01-01T00:00:00.000Z,d2,l1,6,d1,d,6,banana,",
+          "1971-01-01T00:00:00.000Z,d2,l1,6,d2,c,6,banana,",
+          "1971-01-01T00:00:00.100Z,d1,l2,10,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d1,l2,10,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,10,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,10,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,4,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d1,l3,4,d2,null,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,4,d1,a,4,peach,",
+          "1971-01-01T00:00:00.500Z,d2,l3,4,d2,null,4,peach,",
+          "1971-01-01T00:00:01.000Z,d1,l4,5,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,5,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,5,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,5,d2,null,5,orange,",
+          "1971-01-01T00:00:10.000Z,d1,l5,7,d1,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d1,l5,7,d2,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d2,l5,7,d1,null,7,lemon,",
+          "1971-01-01T00:00:10.000Z,d2,l5,7,d2,null,7,lemon,",
+          "1971-01-01T00:01:40.000Z,d1,l1,11,d1,d,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d1,l1,11,d2,c,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d2,l1,11,d1,d,11,pitaya,",
+          "1971-01-01T00:01:40.000Z,d2,l1,11,d2,c,11,pitaya,",
+          "1971-04-26T17:46:40.000Z,d1,l2,12,d1,zz,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d1,l2,12,d2,null,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d2,l2,12,d1,zz,12,strawberry,",
+          "1971-04-26T17:46:40.000Z,d2,l2,12,d2,null,12,strawberry,",
+          "1971-04-26T17:46:40.020Z,d1,l3,14,d1,a,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d1,l3,14,d2,null,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d2,l3,14,d1,a,14,cherry,",
+          "1971-04-26T17:46:40.020Z,d2,l3,14,d2,null,14,cherry,",
+          "1971-04-26T18:01:40.000Z,d1,l4,13,d1,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d1,l4,13,d2,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d2,l4,13,d1,null,13,lychee,",
+          "1971-04-26T18:01:40.000Z,d2,l4,13,d2,null,13,lychee,",
+          "1971-08-20T11:33:20.000Z,d1,l5,15,d1,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d1,l5,15,d2,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d2,l5,15,d1,null,15,watermelon,",
+          "1971-08-20T11:33:20.000Z,d2,l5,15,d2,null,15,watermelon,",
         };
 
     // join on
     String sql =
         "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM table0 t1 FULL JOIN table0 t2 ON t1.time = t2.time \n"
-            + "ORDER BY t1.time, t1.device, t2.device LIMIT 8";
+            + "ORDER BY t1.time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 INNER JOIN table0 t2 ON t1.time = t2.time \n"
+            + "ORDER BY t1.time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // join using
     sql =
         "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM table0 t1 FULL OUTER JOIN table0 t2 USING(time)\n"
-            + "ORDER BY time, t1.device, t2.device LIMIT 8";
+            + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    sql =
+        "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM table0 t1 INNER JOIN table0 t2 USING(time)\n"
+            + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
@@ -606,51 +670,43 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1970-01-01T00:00:00.040Z,null,null,null,d2,null,1,apricot,",
           "1970-01-01T00:00:00.080Z,d1,l4,10,d1,null,9,apple,",
           "1970-01-01T00:00:00.080Z,d1,l4,10,d2,null,9,apple,",
-          "1970-01-01T00:00:00.080Z,d1,l2,11,d2,null,10,pumelo,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d1,null,9,apple,",
-          "1970-01-01T00:00:00.080Z,d2,l2,11,d1,zz,10,pumelo,",
           "1970-01-01T00:00:00.080Z,d2,l4,10,d2,null,9,apple,",
-          "1970-01-01T00:00:00.080Z,d2,l2,11,d2,null,10,pumelo,",
-          "1970-01-01T00:00:00.080Z,null,null,null,d1,null,9,apple,",
-          "1970-01-01T00:00:00.080Z,null,null,null,d2,null,9,apple,",
           "1971-01-01T00:00:00.100Z,d1,l2,11,d1,zz,10,pumelo,",
-          "1971-01-01T00:00:00.100Z,d1,l3,5,d1,a,4,peach,",
-          "1971-01-01T00:00:00.100Z,null,null,null,d1,zz,10,pumelo,",
-          "1971-01-01T00:00:00.100Z,null,null,null,d2,null,10,pumelo,",
-          "1971-01-01T00:00:00.500Z,d1,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:00.100Z,d1,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d1,zz,10,pumelo,",
+          "1971-01-01T00:00:00.100Z,d2,l2,11,d2,null,10,pumelo,",
+          "1971-01-01T00:00:00.500Z,d1,l3,5,d1,a,4,peach,",
           "1971-01-01T00:00:00.500Z,d1,l3,5,d2,null,4,peach,",
-          "1971-01-01T00:00:00.500Z,d1,l4,6,d2,null,5,orange,",
           "1971-01-01T00:00:00.500Z,d2,l3,5,d1,a,4,peach,",
-          "1971-01-01T00:00:00.500Z,d2,l4,6,d1,null,5,orange,",
           "1971-01-01T00:00:00.500Z,d2,l3,5,d2,null,4,peach,",
-          "1971-01-01T00:00:00.500Z,d2,l4,6,d2,null,5,orange,",
-          "1971-01-01T00:00:00.500Z,null,null,null,d1,a,4,peach,",
-          "1971-01-01T00:00:00.500Z,null,null,null,d2,null,4,peach,",
-          "1971-01-01T00:00:00.500Z,null,null,null,d2,null,5,orange,",
-          "1971-01-01T00:00:01.000Z,null,null,null,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d1,l4,6,d2,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d1,null,5,orange,",
+          "1971-01-01T00:00:01.000Z,d2,l4,6,d2,null,5,orange,",
           "1971-01-01T00:00:10.000Z,d1,l5,8,null,null,null,null,",
           "1971-01-01T00:00:10.000Z,d2,l5,8,null,null,null,null,",
-          "1971-04-26T17:46:40.000Z,d1,l2,13,null,null,null,null,",
-          "1971-04-26T17:46:40.020Z,d2,l3,15,null,null,null,null,",
-          "1971-04-26T18:01:40.000Z,d1,l4,14,null,null,null,null,",
-          "1971-08-20T11:33:20.000Z,d2,l5,16,null,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d2,l2,13,null,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d1,l3,15,null,null,null,null,",
+          "1971-04-26T18:01:40.000Z,d2,l4,14,null,null,null,null,",
+          "1971-08-20T11:33:20.000Z,d1,l5,16,null,null,null,null,",
         };
 
-    // join on
-    String sql =
-        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
-            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
-            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
-            + "ON t1.time = t2.time \n"
-            + "ORDER BY time, t1.device, t2.device";
-    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
-
     // join using
-    sql =
+    String sql =
         "SELECT time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
             + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
             + "USING(time) \n"
+            + "ORDER BY time, t1.device, t2.device";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
+
+    // join on
+    sql =
+        "SELECT COALESCE(t1.time, t2.time) as time, t1.device, t1.level, t1_num_add, t2.device, t2.attr2, t2.num, t2.str\n"
+            + "FROM (SELECT *,num+1 as t1_num_add FROM table0 WHERE TIME>=80 AND level!='l1' AND cast(num as double)>0) t1 \n"
+            + "FULL JOIN (SELECT * FROM table0 WHERE TIME<=31536001000 AND floatNum<1000 AND device in ('d1','d2')) t2 \n"
+            + "ON t1.time = t2.time \n"
             + "ORDER BY time, t1.device, t2.device";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
