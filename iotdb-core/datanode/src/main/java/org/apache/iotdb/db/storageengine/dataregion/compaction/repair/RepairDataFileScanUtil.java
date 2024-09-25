@@ -72,13 +72,13 @@ public class RepairDataFileScanUtil {
   private boolean printLog;
 
   public RepairDataFileScanUtil(TsFileResource resource) {
+    this(resource, false);
+  }
+
+  public RepairDataFileScanUtil(TsFileResource resource, boolean printLog) {
     this.resource = resource;
     this.hasUnsortedData = false;
     this.previousTime = Long.MIN_VALUE;
-    this.printLog = false;
-  }
-
-  public void setPrintLog(boolean printLog) {
     this.printLog = printLog;
   }
 
