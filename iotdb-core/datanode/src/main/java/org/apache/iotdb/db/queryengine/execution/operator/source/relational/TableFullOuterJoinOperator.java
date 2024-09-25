@@ -60,6 +60,9 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
   private TsBlock cachedNextRightBlock;
   private boolean hasCachedNextRightBlock;
   private boolean rightFinished;
+  private long lastMatchedRightTime = Long.MIN_VALUE;
+  private int lastMatchedRightBlockListIdx = -1;
+  private int lastMatchedRightIdx = -1;
 
   private final TimeComparator comparator;
   private final TsBlockBuilder resultBuilder;
@@ -310,7 +313,9 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
   private void appendResult(long leftTime) {
 
     while (comparator.lessThan(getCurrentRightTime(), leftTime)) {
-      appendOneRightRowWithEmptyLeft();
+      if (getCurrentRightTime() > lastMatchedRightTime) {
+        appendOneRightRowWithEmptyLeft();
+      }
 
       rightIndex++;
 
@@ -328,6 +333,9 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
 
     int tmpBlockIdx = rightBlockListIdx, tmpIdx = rightIndex;
     while (leftTime == getRightTime(tmpBlockIdx, tmpIdx)) {
+      // lastMatchedRightBlockListIdx = rightBlockListIdx;
+      // lastMatchedRightIdx = rightIndex;
+      lastMatchedRightTime = leftTime;
       appendValueToResult(tmpBlockIdx, tmpIdx);
 
       resultBuilder.declarePosition();
@@ -368,27 +376,31 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
 
   private void appendRightWithEmptyLeft() {
     while (rightBlockListIdx < rightBlockList.size()) {
-      for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
-        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
-        columnBuilder.appendNull();
-      }
 
-      for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
-        ColumnBuilder columnBuilder =
-            resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
-
-        if (rightBlockList
-            .get(rightBlockListIdx)
-            .getColumn(rightOutputSymbolIdx[i])
-            .isNull(rightIndex)) {
+      if (getCurrentRightTime() > lastMatchedRightTime) {
+        for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
+          ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
           columnBuilder.appendNull();
-        } else {
-          columnBuilder.write(
-              rightBlockList.get(rightBlockListIdx).getColumn(rightOutputSymbolIdx[i]), rightIndex);
         }
-      }
 
-      resultBuilder.declarePosition();
+        for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
+          ColumnBuilder columnBuilder =
+              resultBuilder.getColumnBuilder(leftOutputSymbolIdx.length + i);
+
+          if (rightBlockList
+              .get(rightBlockListIdx)
+              .getColumn(rightOutputSymbolIdx[i])
+              .isNull(rightIndex)) {
+            columnBuilder.appendNull();
+          } else {
+            columnBuilder.write(
+                rightBlockList.get(rightBlockListIdx).getColumn(rightOutputSymbolIdx[i]),
+                rightIndex);
+          }
+        }
+
+        resultBuilder.declarePosition();
+      }
 
       rightIndex++;
       if (rightIndex >= rightBlockList.get(rightBlockListIdx).getPositionCount()) {
@@ -429,6 +441,10 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
     return !rightBlockList.isEmpty()
         && rightBlockListIdx < rightBlockList.size()
         && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount();
+  }
+
+  private boolean rightTimeHasMatched() {
+    return rightBlockListIdx == lastMatchedRightBlockListIdx && rightIndex == lastMatchedRightIdx;
   }
 
   private void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {

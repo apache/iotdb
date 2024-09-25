@@ -566,26 +566,28 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         new String[] {"time", "device", "level", "num", "device", "attr2", "num", "str"};
     String[] retArray =
         new String[] {
+          "1970-01-01T00:00:00.000Z,d1,l1,3,d1,d,3,coconut,",
+          "1970-01-01T00:00:00.000Z,d1,l1,3,d2,c,3,coconut,",
           "1970-01-01T00:00:00.000Z,d2,l1,3,d1,d,3,coconut,",
           "1970-01-01T00:00:00.000Z,d2,l1,3,d2,c,3,coconut,",
           "1970-01-01T00:00:00.020Z,d1,l2,2,d1,zz,2,pineapple,",
           "1970-01-01T00:00:00.020Z,d1,l2,2,d2,null,2,pineapple,",
           "1970-01-01T00:00:00.020Z,d2,l2,2,d1,zz,2,pineapple,",
-          "1970-01-01T00:00:00.020Z,d2,l2,2,d2,null,2,pineapple,"
+          "1970-01-01T00:00:00.020Z,d2,l2,2,d2,null,2,pineapple,",
         };
 
     // join on
     String sql =
         "SELECT t1.time as time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM table0 t1 FULL JOIN table0 t2 ON t1.time = t2.time \n"
-            + "ORDER BY t1.time, t1.device, t2.device OFFSET 2 LIMIT 6";
+            + "ORDER BY t1.time, t1.device, t2.device LIMIT 8";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     // join using
     sql =
         "SELECT time, t1.device, t1.level, t1.num, t2.device, t2.attr2, t2.num, t2.str\n"
             + "FROM table0 t1 FULL OUTER JOIN table0 t2 USING(time)\n"
-            + "ORDER BY time, t1.device, t2.device OFFSET 2 LIMIT 6";
+            + "ORDER BY time, t1.device, t2.device LIMIT 8";
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
   }
 
