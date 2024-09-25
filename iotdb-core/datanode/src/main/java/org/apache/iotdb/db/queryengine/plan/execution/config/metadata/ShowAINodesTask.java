@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeaderConstant;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
@@ -28,7 +28,6 @@ import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -40,48 +39,39 @@ import org.apache.tsfile.utils.BytesUtils;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShowDataNodesTask implements IConfigTask {
+public class ShowAINodesTask implements IConfigTask {
 
-  private ShowDataNodesStatement showDataNodesStatement;
-
-  public ShowDataNodesTask() {}
-
-  public ShowDataNodesTask(ShowDataNodesStatement showDataNodesStatement) {
-    this.showDataNodesStatement = showDataNodesStatement;
+  public ShowAINodesTask() {
+    // do nothing
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showDataNodes();
+    return configTaskExecutor.showAINodes();
   }
 
-  public static void buildTSBlock(
-      TShowDataNodesResp showDataNodesResp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTsBlock(
+      TShowAINodesResp showAINodesResp, SettableFuture<ConfigTaskResult> future) {
     List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.showDataNodesColumnHeaders.stream()
+        ColumnHeaderConstant.showAINodesColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    if (showDataNodesResp.getDataNodesInfoList() != null) {
-      for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
-        builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeInt(dataNodeInfo.getDataNodeId());
+    if (showAINodesResp.getAiNodesInfoList() != null) {
+      for (TAINodeInfo aiNodeInfo : showAINodesResp.getAiNodesInfoList()) {
+        builder.getTimeColumnBuilder().writeLong(0);
+        builder.getColumnBuilder(0).writeInt(aiNodeInfo.getAiNodeId());
+        builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(aiNodeInfo.getStatus()));
         builder
-            .getColumnBuilder(1)
-            .writeBinary(
-                BytesUtils.valueOf(
-                    dataNodeInfo.getStatus() == null ? "" : dataNodeInfo.getStatus()));
+            .getColumnBuilder(2)
+            .writeBinary(BytesUtils.valueOf(aiNodeInfo.getInternalAddress()));
+        builder.getColumnBuilder(3).writeInt(aiNodeInfo.getInternalPort());
 
-        builder.getColumnBuilder(2).writeBinary(BytesUtils.valueOf(dataNodeInfo.getRpcAddresss()));
-        builder.getColumnBuilder(3).writeInt(dataNodeInfo.getRpcPort());
-        builder.getColumnBuilder(4).writeInt(dataNodeInfo.getDataRegionNum());
-
-        builder.getColumnBuilder(5).writeInt(dataNodeInfo.getSchemaRegionNum());
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDataNodesHeader();
+    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowAINodesHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

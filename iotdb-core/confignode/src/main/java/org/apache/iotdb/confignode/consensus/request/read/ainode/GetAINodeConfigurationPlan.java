@@ -22,10 +22,18 @@ package org.apache.iotdb.confignode.consensus.request.read.ainode;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+
 public class GetAINodeConfigurationPlan extends ConfigPhysicalReadPlan {
 
   // if aiNodeId is set to -1, return all AINode configurations.
-  private final int aiNodeId;
+  private int aiNodeId;
+
+  public GetAINodeConfigurationPlan() {
+    super(ConfigPhysicalPlanType.GetAINodeConfiguration);
+  }
 
   public GetAINodeConfigurationPlan(final int aiNodeId) {
     super(ConfigPhysicalPlanType.GetAINodeConfiguration);
@@ -34,6 +42,17 @@ public class GetAINodeConfigurationPlan extends ConfigPhysicalReadPlan {
 
   public int getAiNodeId() {
     return aiNodeId;
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeShort(getType().getPlanType());
+    stream.writeInt(aiNodeId);
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    this.aiNodeId = buffer.getInt();
   }
 
   @Override

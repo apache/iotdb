@@ -1762,9 +1762,12 @@ public class DataRegion implements IDataRegionForQuery {
         || tsFileProcessor.alreadyMarkedClosing()) {
       return CompletableFuture.completedFuture(null);
     }
+    TsFileResource resource = tsFileProcessor.getTsFileResource();
     logger.info(
-        "Async close tsfile: {}",
-        tsFileProcessor.getTsFileResource().getTsFile().getAbsolutePath());
+        "Async close tsfile: {}, file start time: {}, file end time: {}",
+        resource.getTsFile().getAbsolutePath(),
+        resource.getFileStartTime(),
+        resource.getFileEndTime());
     Future<?> future;
     if (sequence) {
       closingSequenceTsFileProcessor.add(tsFileProcessor);

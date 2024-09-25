@@ -158,7 +158,7 @@ public abstract class AbstractCompactionTask {
       // these exceptions generally caused by unsorted data, mark all source files as NEED_TO_REPAIR
       for (TsFileResource resource : unsortedTsFileResources) {
         if (resource.getTsFileRepairStatus() != TsFileRepairStatus.CAN_NOT_REPAIR) {
-          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_CHECK);
         }
       }
     } else if (e instanceof InterruptedException
