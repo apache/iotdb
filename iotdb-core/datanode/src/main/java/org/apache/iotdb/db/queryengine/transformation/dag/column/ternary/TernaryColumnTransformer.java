@@ -60,7 +60,22 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void evaluateWithSelection(boolean[] selection) {}
+  public void evaluateWithSelection(boolean[] selection) {
+    firstColumnTransformer.evaluateWithSelection(selection);
+    secondColumnTransformer.evaluateWithSelection(selection);
+    thirdColumnTransformer.evaluateWithSelection(selection);
+    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
+    Column firstColumn = firstColumnTransformer.getColumn();
+    Column secondColumn = secondColumnTransformer.getColumn();
+    Column thirdColumn = thirdColumnTransformer.getColumn();
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
+    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount, selection);
+    initializeColumnCache(columnBuilder.build());
+    firstColumnTransformer.clearCache();
+    secondColumnTransformer.clearCache();
+    thirdColumnTransformer.clearCache();
+    ;
+  }
 
   protected abstract void doTransform(
       Column firstColumn,
@@ -68,6 +83,14 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
       Column thirdColumn,
       ColumnBuilder builder,
       int positionCount);
+
+  protected abstract void doTransform(
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount,
+      boolean[] selection);
 
   public ColumnTransformer getFirstColumnTransformer() {
     return firstColumnTransformer;
