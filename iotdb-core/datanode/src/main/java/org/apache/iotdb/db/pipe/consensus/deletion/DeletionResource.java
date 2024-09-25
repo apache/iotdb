@@ -20,7 +20,9 @@
 package org.apache.iotdb.db.pipe.consensus.deletion;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -123,13 +125,26 @@ public class DeletionResource implements PersistentResource {
   }
 
   public ByteBuffer serialize() {
-    return deleteDataNode.serializeToByteBuffer();
+    ByteBuffer deletion = deleteDataNode.serializeToByteBuffer();
+    final ByteBuffer result = ByteBuffer.allocate(deletion.limit());
+    result.put(deletion);
+    return result;
   }
 
   public static DeletionResource deserialize(
       final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) throws IOException {
     DeleteDataNode node = (DeleteDataNode) PlanNodeType.deserialize(buffer);
     return new DeletionResource(node, removeHook);
+  }
+
+  public static boolean isDeleteNodeGeneratedInLocalByIoTV2(DeleteDataNode node) {
+    if (node.getProgressIndex() instanceof RecoverProgressIndex) {
+      RecoverProgressIndex recoverProgressIndex = (RecoverProgressIndex) node.getProgressIndex();
+      return recoverProgressIndex
+          .getDataNodeId2LocalIndex()
+          .containsKey(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+    }
+    return false;
   }
 
   @Override

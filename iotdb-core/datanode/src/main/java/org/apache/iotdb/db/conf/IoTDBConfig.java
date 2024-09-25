@@ -1375,6 +1375,7 @@ public class IoTDBConfig {
     for (int i = 0; i < iotConsensusV2ReceiverFileDirs.length; i++) {
       iotConsensusV2ReceiverFileDirs[i] = addDataHomeDir(iotConsensusV2ReceiverFileDirs[i]);
     }
+    iotConsensusV2DeletionFileDir = addDataHomeDir(iotConsensusV2DeletionFileDir);
     mqttDir = addDataHomeDir(mqttDir);
     extPipeDir = addDataHomeDir(extPipeDir);
     queryDir = addDataHomeDir(queryDir);

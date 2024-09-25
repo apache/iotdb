@@ -280,20 +280,22 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
     return this.getPlanNodeId().equals(that.getPlanNodeId())
         && Objects.equals(this.pathList, that.pathList)
         && Objects.equals(this.deleteStartTime, that.deleteStartTime)
-        && Objects.equals(this.deleteEndTime, that.deleteEndTime);
+        && Objects.equals(this.deleteEndTime, that.deleteEndTime)
+        && Objects.equals(this.progressIndex, that.progressIndex);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime);
+    return Objects.hash(getPlanNodeId(), pathList, deleteStartTime, deleteEndTime, progressIndex);
   }
 
   public String toString() {
     return String.format(
-        "DeleteDataNode-%s[ Paths: %s, Region: %s ]",
+        "DeleteDataNode-%s[ Paths: %s, Region: %s, ProgressIndex: %s]",
         getPlanNodeId(),
         pathList,
-        regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId());
+        regionReplicaSet == null ? "Not Assigned" : regionReplicaSet.getRegionId(),
+        progressIndex == null ? "Not Assigned" : progressIndex);
   }
 
   @Override

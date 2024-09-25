@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
+import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -139,10 +140,12 @@ public class PipeDataRegionAssigner implements Closeable {
               if (copiedEvent.getEvent() instanceof PipeDeleteDataNodeEvent) {
                 DeletionResourceManager mgr =
                     DeletionResourceManager.getInstance(extractor.getDataRegionId());
+                PipeDeleteDataNodeEvent deleteDataNodeEvent =
+                    (PipeDeleteDataNodeEvent) copiedEvent.getEvent();
                 // increase deletion resource's reference
-                if (Objects.nonNull(mgr)) {
-                  PipeDeleteDataNodeEvent deleteDataNodeEvent =
-                      (PipeDeleteDataNodeEvent) copiedEvent.getEvent();
+                if (Objects.nonNull(mgr)
+                    && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
+                        deleteDataNodeEvent.getDeleteDataNode())) {
                   deleteDataNodeEvent.setDeletionResource(
                       mgr.increaseResourceReferenceAndGet(
                           ((PipeDeleteDataNodeEvent) event.getEvent()).getDeleteDataNode()));
