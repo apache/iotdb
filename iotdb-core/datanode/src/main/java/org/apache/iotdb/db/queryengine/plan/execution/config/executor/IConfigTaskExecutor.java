@@ -154,7 +154,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 
-  SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
+  SettableFuture<ConfigTaskResult> showRegion(
+      final ShowRegionStatement showRegionStatement, final boolean isTableModel);
 
   SettableFuture<ConfigTaskResult> showDataNodes();
 
