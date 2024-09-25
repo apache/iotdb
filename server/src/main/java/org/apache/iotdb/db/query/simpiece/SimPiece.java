@@ -24,6 +24,7 @@ package org.apache.iotdb.db.query.simpiece;
 import org.apache.iotdb.db.query.simpiece.Encoding.FloatEncoder;
 import org.apache.iotdb.db.query.simpiece.Encoding.UIntEncoder;
 import org.apache.iotdb.db.query.simpiece.Encoding.VariableByteEncoder;
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -71,6 +72,8 @@ public class SimPiece {
     }
 
     for (int idx = startIdx + 2; idx < points.size(); idx++) {
+      IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+
       double upValue = points.get(idx).getValue() + epsilon;
       double downValue = points.get(idx).getValue() - epsilon;
 
@@ -110,6 +113,7 @@ public class SimPiece {
         Comparator.comparingDouble(SimPieceSegment::getB)
             .thenComparingDouble(SimPieceSegment::getA));
     for (int i = 0; i < segments.size(); i++) {
+      IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
       if (b != segments.get(i).getB()) {
         if (timestamps.size() == 1)
           mergedSegments.add(new SimPieceSegment(timestamps.get(0), aMinTemp, aMaxTemp, b));

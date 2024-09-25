@@ -31,8 +31,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.db.query.simpiece.TimeSeries;
+import org.apache.iotdb.db.query.simpiece.TimeSeriesReader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
@@ -40,11 +40,9 @@ import org.apache.iotdb.tsfile.read.common.ChunkSuit4Tri;
 import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,6 +70,8 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
   private final int N1;
 
   private Filter timeFilter;
+
+  private TimeSeries timeSeries;
 
   public LocalGroupByExecutorTri_LTTB(
       PartialPath path,
@@ -115,7 +115,13 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
       long endTime = groupByFilter.getEndTime();
       long interval = groupByFilter.getInterval();
       N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // 分桶数
+
+      timeSeries = TimeSeriesReader.getTimeSeriesFromTsFiles(futureChunkList, startTime, endTime);
+
       for (ChunkSuit4Tri chunkSuit4Tri : futureChunkList) {
+        // maintain which chunks fall into which buckets, facilitating LTTB calculating average and
+        // so on
+        // but ChunkSuit4Tri does not maintain data but only keep pointers to the timeseries list
         ChunkMetadata chunkMetadata = chunkSuit4Tri.chunkMetadata;
         long chunkMinTime = chunkMetadata.getStartTime();
         long chunkMaxTime = chunkMetadata.getEndTime();
@@ -170,33 +176,32 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
         long rightEndTime = startTime + (b + 2) * interval;
         int cnt = 0;
         for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
-          TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
-          if (dataType != TSDataType.DOUBLE) {
-            throw new UnSupportedDataTypeException(String.valueOf(dataType));
-          }
-          // 1. load page data if it hasn't been loaded
-          if (chunkSuit4Tri.pageReader == null) {
-            chunkSuit4Tri.pageReader =
-                FileLoaderUtils.loadPageReaderList4CPV(
-                    chunkSuit4Tri.chunkMetadata, this.timeFilter);
-            //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
-            //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
-            //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-            //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
-            //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
-          }
-          // 2. calculate avg
-          PageReader pageReader = chunkSuit4Tri.pageReader;
-          for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
+          //          // 1. load page data if it hasn't been loaded
+          //          if (chunkSuit4Tri.pageReader == null) {
+          //            chunkSuit4Tri.pageReader =
+          //                FileLoaderUtils.loadPageReaderList4CPV(
+          //                    chunkSuit4Tri.chunkMetadata, this.timeFilter);
+          //            //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+          //            //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
+          //            //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
+          //            //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS
+          // IS
+          //            //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
+          //          }
+          //          // 2. calculate avg
+          //          PageReader pageReader = chunkSuit4Tri.pageReader;
+          for (int j = chunkSuit4Tri.globalStartInList; j < chunkSuit4Tri.globalEndInList; j++) {
             IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-            long timestamp = pageReader.timeBuffer.getLong(j * 8);
+            //            long timestamp = pageReader.timeBuffer.getLong(j * 8);
+            long timestamp = timeSeries.data.get(j).getTimestamp();
             if (timestamp < rightStartTime) {
               continue;
             } else if (timestamp >= rightEndTime) {
               break;
             } else { // rightStartTime<=t<rightEndTime
-              ByteBuffer valueBuffer = pageReader.valueBuffer;
-              double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+              //              ByteBuffer valueBuffer = pageReader.valueBuffer;
+              //              double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+              double v = timeSeries.data.get(j).getValue();
               rt += timestamp;
               rv += v;
               cnt++;
@@ -217,33 +222,33 @@ public class LocalGroupByExecutorTri_LTTB implements GroupByExecutor {
       long localCurStartTime = startTime + (b) * interval;
       long localCurEndTime = startTime + (b + 1) * interval;
       for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
-        TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
-        if (dataType != TSDataType.DOUBLE) {
-          throw new UnSupportedDataTypeException(String.valueOf(dataType));
-        }
-        // load page data if it hasn't been loaded
-        if (chunkSuit4Tri.pageReader == null) {
-          chunkSuit4Tri.pageReader =
-              FileLoaderUtils.loadPageReaderList4CPV(chunkSuit4Tri.chunkMetadata, this.timeFilter);
-          //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
-          //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
-          //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-          //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
-          //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
-        }
-        PageReader pageReader = chunkSuit4Tri.pageReader;
-        int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
-        int j;
-        for (j = 0; j < count; j++) {
+        //        // load page data if it hasn't been loaded
+        //        if (chunkSuit4Tri.pageReader == null) {
+        //          chunkSuit4Tri.pageReader =
+        //              FileLoaderUtils.loadPageReaderList4CPV(chunkSuit4Tri.chunkMetadata,
+        // this.timeFilter);
+        //          //  ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+        //          //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
+        //          //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
+        //          //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS
+        //          //  ASSIGN DIRECTLY), WHICH WILL INTRODUCE BUGS!
+        //        }
+        //        PageReader pageReader = chunkSuit4Tri.pageReader;
+        //        int count = chunkSuit4Tri.chunkMetadata.getStatistics().getCount();
+        //        int j;
+        //        for (j = 0; j < count; j++) {
+        for (int j = chunkSuit4Tri.globalStartInList; j < chunkSuit4Tri.globalEndInList; j++) {
           IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-          long timestamp = pageReader.timeBuffer.getLong(j * 8);
+          //          long timestamp = pageReader.timeBuffer.getLong(j * 8);
+          long timestamp = timeSeries.data.get(j).getTimestamp();
           if (timestamp < localCurStartTime) {
             continue;
           } else if (timestamp >= localCurEndTime) {
             break;
           } else { // localCurStartTime<=t<localCurEndTime
-            ByteBuffer valueBuffer = pageReader.valueBuffer;
-            double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+            //            ByteBuffer valueBuffer = pageReader.valueBuffer;
+            //            double v = valueBuffer.getDouble(pageReader.timeBufferLength + j * 8);
+            double v = timeSeries.data.get(j).getValue();
             double area = IOMonitor2.calculateTri(lt, lv, timestamp, v, rt, rv);
             if (area > maxArea) {
               maxArea = area;

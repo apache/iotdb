@@ -145,12 +145,12 @@ public class MySample_simpiece_full2 {
       }
     }
 
-//    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
-//      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
-//        System.out.print(epsilonArray[i][j] + ",");
-//      }
-//      System.out.println();
-//    }
+    //    for (int i = 0; i < epsilonArray.length; i++) { // 遍历行
+    //      for (int j = 0; j < epsilonArray[i].length; j++) { // 遍历列
+    //        System.out.print(epsilonArray[i][j] + ",");
+    //      }
+    //      System.out.println();
+    //    }
 
     // do not change name of the output file, as the output is used in exp bash
     try (FileWriter writer = new FileWriter("epsilonArray_simpiece.txt")) {

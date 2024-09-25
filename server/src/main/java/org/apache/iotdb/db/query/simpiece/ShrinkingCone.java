@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.simpiece;
 
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,12 +44,14 @@ public class ShrinkingCone {
     // init the first segment
     int sp = 0;
     int i = 1;
+    IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
     double vsp = points.get(sp).getValue();
     double dx = points.get(i).getTimestamp() - points.get(sp).getTimestamp();
     double upSlope = (p_upper[i] - vsp) / dx;
     double lowSlope = (p_lower[i] - vsp) / dx;
 
     while (i < length - 1) {
+      IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
       i++;
       vsp = points.get(sp).getValue(); // the value of the start point
       dx = points.get(i).getTimestamp() - points.get(sp).getTimestamp(); // time distance
@@ -64,6 +68,7 @@ public class ShrinkingCone {
         result.add(points.get(i - 1));
 
         // begin new segment
+        IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
         sp = i - 1; // joint style
         vsp = points.get(sp).getValue(); // note sp has changed
         dx = points.get(i).getTimestamp() - points.get(sp).getTimestamp(); // note sp has changed
@@ -73,6 +78,7 @@ public class ShrinkingCone {
     }
 
     // write last point
+    IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
     result.add(points.get(points.size() - 1));
 
     return result;

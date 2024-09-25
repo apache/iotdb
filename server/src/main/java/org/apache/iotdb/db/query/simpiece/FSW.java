@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.simpiece;
 
+import org.apache.iotdb.tsfile.read.common.IOMonitor2;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +52,7 @@ public class FSW {
     double lowSlope = Double.NEGATIVE_INFINITY;
 
     while (i < length - 1) {
+      IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
       i++;
       upSlope =
           Math.min(
@@ -82,6 +85,7 @@ public class FSW {
 
     // deal with the last segment
     if (segmentPoint.get(seg_no)[1] < length - 1) {
+      IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
       seg_no += 1;
       segmentPoint.add(new int[] {seg_no, length - 1});
     }
@@ -90,6 +94,7 @@ public class FSW {
     for (int[] ints : segmentPoint) {
       result.add(points.get(ints[1]));
     }
+
     return result;
   }
 }

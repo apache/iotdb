@@ -22,9 +22,10 @@
 package org.apache.iotdb.db.query.simpiece;
 
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4Tri;
-import org.apache.iotdb.tsfile.read.common.IOMonitor2;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 import java.io.BufferedReader;
@@ -47,7 +48,13 @@ public class TimeSeriesReader {
     double max = Double.MIN_VALUE;
     double min = Double.MAX_VALUE;
 
+    int start = 0;
+
     for (ChunkSuit4Tri chunkSuit4Tri : chunkSuit4TriList) {
+      TSDataType dataType = chunkSuit4Tri.chunkMetadata.getDataType();
+      if (dataType != TSDataType.DOUBLE) {
+        throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
       ChunkMetadata chunkMetadata = chunkSuit4Tri.chunkMetadata;
       long chunkMinTime = chunkMetadata.getStartTime();
       long chunkMaxTime = chunkMetadata.getEndTime();
@@ -56,12 +63,13 @@ public class TimeSeriesReader {
       } else if (chunkMinTime >= endTime) {
         break;
       } else {
-        PageReader pageReader =
+        chunkSuit4Tri.globalStartInList = start; // pointer start
+        chunkSuit4Tri.lastReadPos = start; // note this means global pos in the list
+        PageReader pageReader = // note this pageReader and its buffer is not maintained in memory
             FileLoaderUtils.loadPageReaderList4CPV(
                 chunkSuit4Tri.chunkMetadata,
                 null); // note do not assign to chunkSuit4Tri.pageReader
         for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
-          IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
           long timestamp = pageReader.timeBuffer.getLong(j * 8);
           if (timestamp < startTime) {
             continue;
@@ -73,8 +81,10 @@ public class TimeSeriesReader {
             ts.add(new Point(timestamp, value));
             max = Math.max(max, value);
             min = Math.min(min, value);
+            start++;
           }
         }
+        chunkSuit4Tri.globalEndInList = start; // pointer end
       }
     }
     return new TimeSeries(ts, max - min);
@@ -101,7 +111,6 @@ public class TimeSeriesReader {
                 chunkSuit4Tri.chunkMetadata,
                 null); // note do not assign to chunkSuit4Tri.pageReader
         for (int j = 0; j < chunkSuit4Tri.chunkMetadata.getStatistics().getCount(); j++) {
-          IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
           long timestamp = pageReader.timeBuffer.getLong(j * 8);
           if (timestamp < startTime) {
             continue;

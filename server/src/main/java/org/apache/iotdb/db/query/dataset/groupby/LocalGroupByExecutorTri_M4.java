@@ -31,14 +31,11 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
+import org.apache.iotdb.db.query.simpiece.TimeSeries;
+import org.apache.iotdb.db.query.simpiece.TimeSeriesReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.DoubleStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.FloatStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.ChunkSuit4Tri;
@@ -48,32 +45,30 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Set;
 
 public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
+  //  private static final Logger M4_CHUNK_METADATA = LoggerFactory.getLogger("M4_CHUNK_METADATA");
 
   // Aggregate result buffer of this path
   private final List<AggregateResult> results = new ArrayList<>();
 
-  private List<ChunkSuit4Tri> currentChunkList;
-  private final List<ChunkSuit4Tri> futureChunkList = new ArrayList<>();
+  //  private List<ChunkSuit4Tri> currentChunkList;
+  //  private final List<ChunkSuit4Tri> futureChunkList = new ArrayList<>();
 
   private Filter timeFilter;
 
   private final int N1;
+
+  private TimeSeries timeSeries;
 
   public LocalGroupByExecutorTri_M4(
       PartialPath path,
@@ -114,7 +109,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
     N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // 分桶数
 
     try {
-      // : this might be bad to load all chunk metadata at first
+      List<ChunkSuit4Tri> futureChunkList = new ArrayList<>();
       futureChunkList.addAll(seriesReader.getAllChunkMetadatas4Tri());
       // order futureChunkList by chunk startTime
       futureChunkList.sort(
@@ -125,102 +120,104 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
             }
           });
 
-      if (M4_CHUNK_METADATA.isDebugEnabled()) {
-        if (timeFilter instanceof GroupByFilter) {
-          M4_CHUNK_METADATA.debug(
-              "M4_QUERY_PARAM,{},{},{}",
-              ((GroupByFilter) timeFilter).getStartTime(),
-              ((GroupByFilter) timeFilter).getEndTime(),
-              ((GroupByFilter) timeFilter).getInterval());
-        }
-        for (ChunkSuit4Tri ChunkSuit4Tri : futureChunkList) {
-          Statistics statistics = ChunkSuit4Tri.chunkMetadata.getStatistics();
-          long FP_t = statistics.getStartTime();
-          long LP_t = statistics.getEndTime();
-          long BP_t = statistics.getBottomTimestamp();
-          long TP_t = statistics.getTopTimestamp();
-          switch (statistics.getType()) {
-            case INT32:
-              int FP_v_int = ((IntegerStatistics) statistics).getFirstValue();
-              int LP_v_int = ((IntegerStatistics) statistics).getLastValue();
-              int BP_v_int = ((IntegerStatistics) statistics).getMinValue();
-              int TP_v_int = ((IntegerStatistics) statistics).getMaxValue();
-              M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
-                  FP_t,
-                  LP_t,
-                  BP_t,
-                  TP_t,
-                  FP_v_int,
-                  LP_v_int,
-                  BP_v_int,
-                  TP_v_int,
-                  ChunkSuit4Tri.chunkMetadata.getVersion(),
-                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
-                  statistics.getCount());
-              break;
-            case INT64:
-              long FP_v_long = ((LongStatistics) statistics).getFirstValue();
-              long LP_v_long = ((LongStatistics) statistics).getLastValue();
-              long BP_v_long = ((LongStatistics) statistics).getMinValue();
-              long TP_v_long = ((LongStatistics) statistics).getMaxValue();
-              M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
-                  FP_t,
-                  LP_t,
-                  BP_t,
-                  TP_t,
-                  FP_v_long,
-                  LP_v_long,
-                  BP_v_long,
-                  TP_v_long,
-                  ChunkSuit4Tri.chunkMetadata.getVersion(),
-                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
-                  statistics.getCount());
-              break;
-            case FLOAT:
-              float FP_v_float = ((FloatStatistics) statistics).getFirstValue();
-              float LP_v_float = ((FloatStatistics) statistics).getLastValue();
-              float BP_v_float = ((FloatStatistics) statistics).getMinValue();
-              float TP_v_float = ((FloatStatistics) statistics).getMaxValue();
-              M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
-                  FP_t,
-                  LP_t,
-                  BP_t,
-                  TP_t,
-                  FP_v_float,
-                  LP_v_float,
-                  BP_v_float,
-                  TP_v_float,
-                  ChunkSuit4Tri.chunkMetadata.getVersion(),
-                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
-                  statistics.getCount());
-              break;
-            case DOUBLE:
-              double FP_v_double = ((DoubleStatistics) statistics).getFirstValue();
-              double LP_v_double = ((DoubleStatistics) statistics).getLastValue();
-              double BP_v_double = ((DoubleStatistics) statistics).getMinValue();
-              double TP_v_double = ((DoubleStatistics) statistics).getMaxValue();
-              M4_CHUNK_METADATA.debug(
-                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
-                  FP_t,
-                  LP_t,
-                  BP_t,
-                  TP_t,
-                  FP_v_double,
-                  LP_v_double,
-                  BP_v_double,
-                  TP_v_double,
-                  ChunkSuit4Tri.chunkMetadata.getVersion(),
-                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
-                  statistics.getCount());
-              break;
-            default:
-              throw new QueryProcessException("unsupported data type!");
-          }
-        }
-      }
+      timeSeries = TimeSeriesReader.getTimeSeriesFromTsFiles(futureChunkList, startTime, endTime);
+
+      //      if (M4_CHUNK_METADATA.isDebugEnabled()) {
+      //        if (timeFilter instanceof GroupByFilter) {
+      //          M4_CHUNK_METADATA.debug(
+      //              "M4_QUERY_PARAM,{},{},{}",
+      //              ((GroupByFilter) timeFilter).getStartTime(),
+      //              ((GroupByFilter) timeFilter).getEndTime(),
+      //              ((GroupByFilter) timeFilter).getInterval());
+      //        }
+      //        for (ChunkSuit4Tri ChunkSuit4Tri : futureChunkList) {
+      //          Statistics statistics = ChunkSuit4Tri.chunkMetadata.getStatistics();
+      //          long FP_t = statistics.getStartTime();
+      //          long LP_t = statistics.getEndTime();
+      //          long BP_t = statistics.getBottomTimestamp();
+      //          long TP_t = statistics.getTopTimestamp();
+      //          switch (statistics.getType()) {
+      //            case INT32:
+      //              int FP_v_int = ((IntegerStatistics) statistics).getFirstValue();
+      //              int LP_v_int = ((IntegerStatistics) statistics).getLastValue();
+      //              int BP_v_int = ((IntegerStatistics) statistics).getMinValue();
+      //              int TP_v_int = ((IntegerStatistics) statistics).getMaxValue();
+      //              M4_CHUNK_METADATA.debug(
+      //                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
+      //                  FP_t,
+      //                  LP_t,
+      //                  BP_t,
+      //                  TP_t,
+      //                  FP_v_int,
+      //                  LP_v_int,
+      //                  BP_v_int,
+      //                  TP_v_int,
+      //                  ChunkSuit4Tri.chunkMetadata.getVersion(),
+      //                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
+      //                  statistics.getCount());
+      //              break;
+      //            case INT64:
+      //              long FP_v_long = ((LongStatistics) statistics).getFirstValue();
+      //              long LP_v_long = ((LongStatistics) statistics).getLastValue();
+      //              long BP_v_long = ((LongStatistics) statistics).getMinValue();
+      //              long TP_v_long = ((LongStatistics) statistics).getMaxValue();
+      //              M4_CHUNK_METADATA.debug(
+      //                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
+      //                  FP_t,
+      //                  LP_t,
+      //                  BP_t,
+      //                  TP_t,
+      //                  FP_v_long,
+      //                  LP_v_long,
+      //                  BP_v_long,
+      //                  TP_v_long,
+      //                  ChunkSuit4Tri.chunkMetadata.getVersion(),
+      //                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
+      //                  statistics.getCount());
+      //              break;
+      //            case FLOAT:
+      //              float FP_v_float = ((FloatStatistics) statistics).getFirstValue();
+      //              float LP_v_float = ((FloatStatistics) statistics).getLastValue();
+      //              float BP_v_float = ((FloatStatistics) statistics).getMinValue();
+      //              float TP_v_float = ((FloatStatistics) statistics).getMaxValue();
+      //              M4_CHUNK_METADATA.debug(
+      //                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
+      //                  FP_t,
+      //                  LP_t,
+      //                  BP_t,
+      //                  TP_t,
+      //                  FP_v_float,
+      //                  LP_v_float,
+      //                  BP_v_float,
+      //                  TP_v_float,
+      //                  ChunkSuit4Tri.chunkMetadata.getVersion(),
+      //                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
+      //                  statistics.getCount());
+      //              break;
+      //            case DOUBLE:
+      //              double FP_v_double = ((DoubleStatistics) statistics).getFirstValue();
+      //              double LP_v_double = ((DoubleStatistics) statistics).getLastValue();
+      //              double BP_v_double = ((DoubleStatistics) statistics).getMinValue();
+      //              double TP_v_double = ((DoubleStatistics) statistics).getMaxValue();
+      //              M4_CHUNK_METADATA.debug(
+      //                  "M4_CHUNK_METADATA,{},{},{},{},{},{},{},{},{},{},{}",
+      //                  FP_t,
+      //                  LP_t,
+      //                  BP_t,
+      //                  TP_t,
+      //                  FP_v_double,
+      //                  LP_v_double,
+      //                  BP_v_double,
+      //                  TP_v_double,
+      //                  ChunkSuit4Tri.chunkMetadata.getVersion(),
+      //                  ChunkSuit4Tri.chunkMetadata.getOffsetOfChunkHeader(),
+      //                  statistics.getCount());
+      //              break;
+      //            default:
+      //              throw new QueryProcessException("unsupported data type!");
+      //          }
+      //        }
+      //      }
 
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());
@@ -235,6 +232,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
     results.add(aggrResult);
   }
 
+  /*
   private void getCurrentChunkListFromFutureChunkList(long curStartTime, long curEndTime) {
     //    IOMonitor2.M4_LSM_status = Operation.M4_LSM_MERGE_M4_TIME_SPAN;
 
@@ -267,6 +265,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
       }
     }
   }
+   */
 
   @Override
   public List<AggregateResult> calcResult(
@@ -281,11 +280,77 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
 
     series.append(CONFIG.getP1v()).append("[").append(CONFIG.getP1t()).append("]").append(",");
 
-    // Assume no empty buckets
+    int tmpLastReadPos = 0;
+    // use list without the notion of chunks
     for (int b = 0; b < N1; b++) {
       long localCurStartTime = startTime + (b) * interval;
       long localCurEndTime = startTime + (b + 1) * interval;
 
+      double minValue = Double.MAX_VALUE;
+      long bottomTime = -1;
+      double maxValue = -Double.MAX_VALUE; // Double.MIN_VALUE is positive so do not use it!!!
+      long topTime = -1;
+      long firstTime = -1;
+      double firstValue = 0;
+      long lastTime = -1;
+      double lastValue = 0;
+
+      for (int i = tmpLastReadPos; i < timeSeries.data.size(); i++) {
+        IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+        long timestamp = timeSeries.data.get(i).getTimestamp();
+        if (timestamp < localCurStartTime) {
+          continue;
+        } else if (timestamp >= localCurEndTime) {
+          tmpLastReadPos = i;
+          break;
+        } else {
+          double v = timeSeries.data.get(i).getValue();
+          if (firstTime < 0) {
+            firstTime = timestamp;
+            firstValue = v;
+          }
+          lastTime = timestamp;
+          lastValue = v;
+          if (v < minValue) {
+            minValue = v;
+            bottomTime = timestamp;
+          }
+          if (v > maxValue) {
+            maxValue = v;
+            topTime = timestamp;
+          }
+        }
+      }
+
+      if (topTime >= 0) {
+        // minValue[bottomTime],maxValue[topTime],firstValue[firstTime],lastValue[lastTime]
+        series
+            .append(minValue)
+            .append("[")
+            .append(bottomTime)
+            .append("]")
+            .append(",")
+            .append(maxValue)
+            .append("[")
+            .append(topTime)
+            .append("]")
+            .append(",")
+            .append(firstValue)
+            .append("[")
+            .append(firstTime)
+            .append("]")
+            .append(",")
+            .append(lastValue)
+            .append("[")
+            .append(lastTime)
+            .append("]")
+            .append(",");
+      } else {
+        // minValue[bottomTime],maxValue[topTime],firstValue[firstTime],lastValue[lastTime]
+        series.append("null[null],null[null],null[null],null[null],");
+      }
+
+      /*
       getCurrentChunkListFromFutureChunkList(localCurStartTime, localCurEndTime);
 
       if (currentChunkList.size() == 0) {
@@ -295,6 +360,7 @@ public class LocalGroupByExecutorTri_M4 implements GroupByExecutor {
       }
 
       calculateM4(currentChunkList, localCurStartTime, localCurEndTime, series);
+       */
     }
 
     series.append(CONFIG.getPnv()).append("[").append(CONFIG.getPnt()).append("]").append(",");

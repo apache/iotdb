@@ -209,120 +209,103 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     record = new RowRecord(0);
     StringBuilder series = new StringBuilder();
 
-    try {
-      // First step: get the MinMax preselection result
-      List<Long> times = new ArrayList<>();
-      List<Double> values = new ArrayList<>();
-      GroupByExecutor executor = null;
-      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-        executor = pathToExecutorEntry.getValue(); // assume only one series here
-        break;
-      }
-      for (long localCurStartTime = startTime;
-          localCurStartTime + interval <= endTime;
-          // + interval to make the last bucket complete
-          // e.g, T=11,nout=3,interval=floor(11/3)=3,
-          // [0,3),[3,6),[6,9), no need incomplete [9,11)
-          // then the number of buckets must be Math.floor((endTime-startTime)/interval)
-          localCurStartTime += interval) {
-        // not change real curStartTime&curEndTime
-        // attention the returned aggregations need deep copy if using directly
-        List<AggregateResult> aggregations =
-            executor.calcResult(
-                localCurStartTime, localCurStartTime + interval, startTime, endTime, interval);
-        int c = 0;
-        for (AggregateResult aggregation : aggregations) {
-          // ATTENTION only take the first two aggregation fields, which are BPv[BPt], TPv[TPt]
-          // Each row correspond to (bucketLeftBound, minV[bottomT], maxV[topT]) of a MinMax bucket
-          MinMaxInfo minMaxInfo = (MinMaxInfo) aggregation.getResult();
-          if (minMaxInfo == null) {
-            times.add(null);
-            values.add(null);
-          } else {
-            times.add(minMaxInfo.timestamp);
-            values.add((Double) minMaxInfo.val);
-          }
-          c++;
-          if (c >= 2) {
-            // ATTENTION only take the first two aggregation fields, which are BPv[BPt], TPv[TPt]
-            break;
-          }
-        }
-      }
+    // First step: get the MinMax preselection result
+    List<Long> times = new ArrayList<>();
+    List<Double> values = new ArrayList<>();
+    LocalGroupByExecutorTri_MinMax executor = null;
+    for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+      executor =
+          (LocalGroupByExecutorTri_MinMax)
+              (pathToExecutorEntry.getValue()); // assume only one series here
+      break;
+    }
+    // get MinMax preselection times&values list
+    executor.calcResult(
+        startTime, startTime + interval, startTime, endTime, interval, times, values);
 
-      // Second step: apply LTTB on the MinMax preselection result
-      int N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // MinMax桶数
-      int N2 = N1 / (rps / divide);
-      series.append(p1v).append("[").append(p1t).append("]").append(",");
-      long lt = p1t; // left fixed t
-      double lv = p1v; // left fixed v
-      int currentBucket = 0;
-      for (; currentBucket < N2; currentBucket++) {
-        boolean emptyBucket = true;
-        for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
-          if (times.get(j) != null) {
-            emptyBucket = false;
-            break;
-          }
-        }
-        if (!emptyBucket) {
+    //      for (long localCurStartTime = startTime;
+    //          localCurStartTime + interval <= endTime;
+    //          // + interval to make the last bucket complete
+    //          // e.g, T=11,nout=3,interval=floor(11/3)=3,
+    //          // [0,3),[3,6),[6,9), no need incomplete [9,11)
+    //          // then the number of buckets must be Math.floor((endTime-startTime)/interval)
+    //          localCurStartTime += interval) {
+    //        // not change real curStartTime&curEndTime
+    //        // attention the returned aggregations need deep copy if using directly
+    //        List<AggregateResult> aggregations =
+    //            executor.calcResult(
+    //                localCurStartTime, localCurStartTime + interval, startTime, endTime,
+    // interval);
+    //        int c = 0;
+    //        for (AggregateResult aggregation : aggregations) {
+    //          // ATTENTION only take the first two aggregation fields, which are BPv[BPt],
+    // TPv[TPt]
+    //          // Each row correspond to (bucketLeftBound, minV[bottomT], maxV[topT]) of a MinMax
+    // bucket
+    //          MinMaxInfo minMaxInfo = (MinMaxInfo) aggregation.getResult();
+    //          if (minMaxInfo == null) {
+    //            times.add(null);
+    //            values.add(null);
+    //          } else {
+    //            times.add(minMaxInfo.timestamp);
+    //            values.add((Double) minMaxInfo.val);
+    //          }
+    //          c++;
+    //          if (c >= 2) {
+    //            // ATTENTION only take the first two aggregation fields, which are BPv[BPt],
+    // TPv[TPt]
+    //            break;
+    //          }
+    //        }
+    //      }
+
+    // Second step: apply LTTB on the MinMax preselection result
+    int N1 = (int) Math.floor((endTime * 1.0 - startTime) / interval); // MinMax桶数
+    int N2 = N1 / (rps / divide);
+    series.append(p1v).append("[").append(p1t).append("]").append(",");
+    long lt = p1t; // left fixed t
+    double lv = p1v; // left fixed v
+    int currentBucket = 0;
+    for (; currentBucket < N2; currentBucket++) {
+      boolean emptyBucket = true;
+      for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
+        if (times.get(j) != null) {
+          emptyBucket = false;
           break;
         }
       }
-      for (int nextBucket = currentBucket + 1; nextBucket < N2; nextBucket++) {
-        boolean emptyBucket = true;
-        for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
-          if (times.get(j) != null) {
-            emptyBucket = false;
-            break;
-          }
-        }
-        if (emptyBucket) {
-          continue;
-        }
-
-        double rt = 0;
-        double rv = 0;
-        int cnt = 0;
-        for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
-          if (times.get(j) != null) {
-            IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-            rt += times.get(j);
-            rv += (double) values.get(j);
-            cnt++;
-          }
-        }
-        if (cnt == 0) {
-          throw new IOException("Empty bucket!");
-        }
-        rt = rt / cnt;
-        rv = rv / cnt;
-
-        double maxArea = -1;
-        long select_t = -1;
-        double select_v = -1;
-        for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
-          if (times.get(j) != null) {
-            IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
-            long t = times.get(j);
-            double v = values.get(j);
-            double area = IOMonitor2.calculateTri(lt, lv, t, v, rt, rv);
-            if (area > maxArea) {
-              maxArea = area;
-              select_t = t;
-              select_v = v;
-            }
-          }
-        }
-        if (select_t < 0) {
-          throw new IOException("something is wrong");
-        }
-        series.append(select_v).append("[").append(select_t).append("]").append(",");
-
-        currentBucket = nextBucket;
-        lt = select_t;
-        lv = select_v;
+      if (!emptyBucket) {
+        break;
       }
+    }
+    for (int nextBucket = currentBucket + 1; nextBucket < N2; nextBucket++) {
+      boolean emptyBucket = true;
+      for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
+        if (times.get(j) != null) {
+          emptyBucket = false;
+          break;
+        }
+      }
+      if (emptyBucket) {
+        continue;
+      }
+
+      double rt = 0;
+      double rv = 0;
+      int cnt = 0;
+      for (int j = nextBucket * rps; j < (nextBucket + 1) * rps; j++) {
+        if (times.get(j) != null) {
+          IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+          rt += times.get(j);
+          rv += (double) values.get(j);
+          cnt++;
+        }
+      }
+      if (cnt == 0) {
+        throw new IOException("Empty bucket!");
+      }
+      rt = rt / cnt;
+      rv = rv / cnt;
 
       double maxArea = -1;
       long select_t = -1;
@@ -332,7 +315,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
           long t = times.get(j);
           double v = values.get(j);
-          double area = IOMonitor2.calculateTri(lt, lv, t, v, pnt, pnv); // 全局尾点作为右边固定点
+          double area = IOMonitor2.calculateTri(lt, lv, t, v, rt, rv);
           if (area > maxArea) {
             maxArea = area;
             select_t = t;
@@ -345,14 +328,35 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       series.append(select_v).append("[").append(select_t).append("]").append(",");
 
-      series.append(pnv).append("[").append(pnt).append("]").append(",");
-
-      record.addField(series, TSDataType.MIN_MAX_INT64);
-
-    } catch (QueryProcessException e) {
-      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-      throw new IOException(e.getMessage(), e);
+      currentBucket = nextBucket;
+      lt = select_t;
+      lv = select_v;
     }
+
+    double maxArea = -1;
+    long select_t = -1;
+    double select_v = -1;
+    for (int j = currentBucket * rps; j < (currentBucket + 1) * rps; j++) {
+      if (times.get(j) != null) {
+        IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum++;
+        long t = times.get(j);
+        double v = values.get(j);
+        double area = IOMonitor2.calculateTri(lt, lv, t, v, pnt, pnv); // 全局尾点作为右边固定点
+        if (area > maxArea) {
+          maxArea = area;
+          select_t = t;
+          select_v = v;
+        }
+      }
+    }
+    if (select_t < 0) {
+      throw new IOException("something is wrong");
+    }
+    series.append(select_v).append("[").append(select_t).append("]").append(",");
+
+    series.append(pnv).append("[").append(pnt).append("]").append(",");
+
+    record.addField(series, TSDataType.MIN_MAX_INT64);
 
     // in the end, make the next hasNextWithoutConstraint() false
     // as we already fetch all here
@@ -432,8 +436,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       return new LocalGroupByExecutorTri_MinMax(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("MinMaxLTTB")) {
-      return new LocalGroupByExecutorTri_MinMaxPreselection(
+      return new LocalGroupByExecutorTri_MinMax(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+      //      return new LocalGroupByExecutorTri_MinMaxPreselection(
+      //          path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else if (CONFIG.getEnableTri().equals("M4")) {
       return new LocalGroupByExecutorTri_M4(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);

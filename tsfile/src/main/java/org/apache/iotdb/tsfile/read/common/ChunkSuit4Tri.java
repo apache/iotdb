@@ -24,17 +24,16 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 
 public class ChunkSuit4Tri {
 
-  public ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
+  public int globalStartInList = 0; // close, pointer to pos in timeseries list
+  public int globalEndInList = 0; // open, pointer to pos in timeseries list
 
   // dynamic maintained globally, starting from 0, incremental, never decrease.
-  // only used in LocalGroupByExecutorTri_MinMax as it never reads backward
-  public int lastReadPos = 0;
+  public int lastReadPos = 0; // pointer to pos in timeseries list
 
-  // TODO ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
+  public ChunkMetadata chunkMetadata; // fixed info, including version, dataType, stepRegress
+
+  // ATTENTION: YOU HAVE TO ENSURE THAT THERE IS ONLY ONE PAGE IN A CHUNK,
   //  BECAUSE THE WHOLE IMPLEMENTATION IS BASED ON THIS ASSUMPTION.
-  //  OTHERWISE, PAGEREADER IS FOR THE FIRST PAGE IN THE CHUNK WHILE
-  //  STEPREGRESS IS FOR THE LAST PAGE IN THE CHUNK (THE MERGE OF STEPREGRESS IS ASSIGN DIRECTLY),
-  //  WHICH WILL INTRODUCE BUGS!
   public PageReader pageReader; // bears fixed plain timeBuffer and valueBuffer
   // pageReader does not refer to the same deleteInterval as those in chunkMetadata
   // after chunkMetadata executes insertIntoSortedDeletions
