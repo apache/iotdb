@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.util.IoTDBConnectorPortManager;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.connector.payload.airgap.AirGapOneByteResponse;
@@ -160,9 +160,6 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       if (sockets.get(i) != null) {
         try {
           final Socket socket = sockets.set(i, null);
-          if (isCustomSendPortDefined) {
-            IoTDBConnectorPortManager.INSTANCE.releaseUsedPort(socket.getPort());
-          }
           socket.close();
         } catch (final Exception e) {
           LOGGER.warn(
@@ -176,7 +173,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       final AirGapSocket socket = new AirGapSocket(ip, port);
 
       if (isCustomSendPortDefined) {
-        IoTDBConnectorPortManager.INSTANCE.bingPort(
+        IoTDBConnectorPortBinder.bindPort(
             minSendPortRange,
             maxSendPortRange,
             candidatePorts,
@@ -350,11 +347,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
     for (int i = 0; i < sockets.size(); ++i) {
       try {
         if (sockets.get(i) != null) {
-          final Socket socket = sockets.set(i, null);
-          if (isCustomSendPortDefined) {
-            IoTDBConnectorPortManager.INSTANCE.releaseUsedPort(socket.getPort());
-          }
-          socket.close();
+          sockets.set(i, null).close();
         }
       } catch (final Exception e) {
         LOGGER.warn("Failed to close client {}.", i, e);

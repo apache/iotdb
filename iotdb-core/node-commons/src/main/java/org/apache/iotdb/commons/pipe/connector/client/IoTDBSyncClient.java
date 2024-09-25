@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.pipe.connector.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.util.IoTDBConnectorPortManager;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
 import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferSliceReq;
@@ -90,16 +90,20 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       if (isCustomSendPortDefined) {
-        IoTDBConnectorPortManager.INSTANCE.bingPort(
-            minSendPortRange,
-            maxSendPortRange,
-            candidatePorts,
-            (sendPort) -> {
-              final InetSocketAddress isa = new InetSocketAddress(sendPort);
-              ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
-                  .getSocket()
-                  .bind(isa);
-            });
+        try {
+          IoTDBConnectorPortBinder.bindPort(
+              minSendPortRange,
+              maxSendPortRange,
+              candidatePorts,
+              (sendPort) -> {
+                final InetSocketAddress isa = new InetSocketAddress(sendPort);
+                ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
+                    .getSocket()
+                    .bind(isa);
+              });
+        } catch (Exception e) {
+          LOGGER.warn("Failed to bind port:", e);
+        }
       }
       transport.open();
     }
@@ -189,15 +193,6 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   @Override
   public void invalidate() {
     if (getInputProtocol().getTransport().isOpen()) {
-      if (isCustomSendPortDefined) {
-        IoTDBConnectorPortManager portUtilizationManager = IoTDBConnectorPortManager.INSTANCE;
-        portUtilizationManager.releaseUsedPort(
-            ((TSocket)
-                    ((TimeoutChangeableTFastFramedTransport) getInputProtocol().getTransport())
-                        .getSocket())
-                .getSocket()
-                .getPort());
-      }
       getInputProtocol().getTransport().close();
     }
   }

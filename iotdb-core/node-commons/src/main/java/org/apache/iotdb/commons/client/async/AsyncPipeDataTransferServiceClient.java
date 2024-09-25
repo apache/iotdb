@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.util.IoTDBConnectorPortManager;
+import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
@@ -78,24 +78,13 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
     if (isCustomSendPortDefined) {
-      IoTDBConnectorPortManager.INSTANCE.bingPort(
+      IoTDBConnectorPortBinder.bindPort(
           minSendPortRange,
           maxSendPortRange,
           candidatePorts,
           (sendPort) -> {
             socketChannel.bind(new InetSocketAddress(sendPort));
           });
-    } else {
-      try {
-        socketChannel.bind(new InetSocketAddress(0));
-        IoTDBConnectorPortManager.INSTANCE.addPortIfAvailable(
-            ((InetSocketAddress)
-                    (((TNonblockingSocket) ___transport).getSocketChannel().getLocalAddress()))
-                .getPort());
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Failed to add port to PortUtilizationManager due to exception: {}", e.getMessage());
-      }
     }
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
@@ -157,14 +146,6 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   }
 
   private void close() {
-    try {
-      IoTDBConnectorPortManager.INSTANCE.releaseUsedPort(
-          ((InetSocketAddress)
-                  (((TNonblockingSocket) ___transport).getSocketChannel().getLocalAddress()))
-              .getPort());
-    } catch (Exception e) {
-      LOGGER.warn("Failed to release port due to exception: ", e);
-    }
     ___transport.close();
     ___currentMethod = null;
   }

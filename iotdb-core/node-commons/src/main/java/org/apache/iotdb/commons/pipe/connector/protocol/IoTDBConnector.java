@@ -532,7 +532,7 @@ public abstract class IoTDBConnector implements PipeConnector {
   private int calculateUsablePorts(int sendPortMin, int sendPortMax, List<Integer> candidatePorts) {
     int usablePortCount = sendPortMax - sendPortMin + 1;
     for (int port : candidatePorts) {
-      if (sendPortMax < port && port < sendPortMin) {
+      if (sendPortMax < port || port < sendPortMin) {
         usablePortCount++;
       }
     }
