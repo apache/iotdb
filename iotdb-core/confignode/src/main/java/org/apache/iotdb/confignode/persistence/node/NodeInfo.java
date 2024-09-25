@@ -736,12 +736,9 @@ public class NodeInfo implements SnapshotProcessor {
 
       deserializeRegisteredDataNode(bufferedInputStream, protocol);
 
-      try {
-        bufferedInputStream.mark(1024);
-        deserializeRegisteredAINode(bufferedInputStream, protocol);
-      } catch (IOException | TException ignore) {
-        bufferedInputStream.reset();
-      }
+      // TODO: Compatibility design. Should replace this function to actual deserialization method
+      // in IoTDB 2.2 / 1.5
+      tryDeserializeRegisteredAINode(bufferedInputStream, protocol);
 
       deserializeBuildInfo(bufferedInputStream);
 
@@ -774,6 +771,17 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfo.read(protocol);
       registeredDataNodes.put(dataNodeId, dataNodeInfo);
       size--;
+    }
+  }
+
+  private void tryDeserializeRegisteredAINode(
+          BufferedInputStream bufferedInputStream, TProtocol protocol) throws IOException {
+    try {
+      bufferedInputStream.mark(1024);
+      deserializeRegisteredAINode(bufferedInputStream, protocol);
+    } catch (IOException | TException ignore) {
+      // Exception happens here means that the data is upgraded from the old version
+      bufferedInputStream.reset();
     }
   }
 
