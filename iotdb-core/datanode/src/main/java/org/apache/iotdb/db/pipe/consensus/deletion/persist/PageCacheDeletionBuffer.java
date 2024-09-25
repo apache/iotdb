@@ -67,7 +67,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private final BlockingQueue<DeletionResource> deletionResources =
       new PriorityBlockingQueue<>(
           QUEUE_CAPACITY,
-          // any two progressIndex can't be equal
           (o1, o2) ->
               o1.getProgressIndex().equals(o2.getProgressIndex())
                   ? 0
