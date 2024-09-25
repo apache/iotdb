@@ -19,21 +19,17 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
-
-import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class DropPipe extends Statement {
+public class DropPipe extends PipeStatement {
 
   private final String pipeName;
   private final boolean ifExistsCondition;
 
   public DropPipe(final String pipeName, final boolean ifExistsCondition) {
-    super(null);
     this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
     this.ifExistsCondition = ifExistsCondition;
   }
@@ -49,11 +45,6 @@ public class DropPipe extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitDropPipe(this, context);
-  }
-
-  @Override
-  public List<? extends Node> getChildren() {
-    return ImmutableList.of();
   }
 
   @Override

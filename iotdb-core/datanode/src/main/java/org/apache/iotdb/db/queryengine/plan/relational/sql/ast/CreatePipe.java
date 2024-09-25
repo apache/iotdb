@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import com.google.common.collect.ImmutableList;
-
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class CreatePipe extends Statement {
+public class CreatePipe extends PipeStatement {
 
   private final String pipeName;
   private final boolean ifNotExistsCondition;
@@ -42,7 +39,6 @@ public class CreatePipe extends Statement {
       final Map<String, String> extractorAttributes,
       final Map<String, String> processorAttributes,
       final Map<String, String> connectorAttributes) {
-    super(null);
     this.pipeName = requireNonNull(pipeName, "pipe name can not be null");
     this.ifNotExistsCondition = ifNotExistsCondition;
     this.extractorAttributes =
@@ -76,11 +72,6 @@ public class CreatePipe extends Statement {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitCreatePipe(this, context);
-  }
-
-  @Override
-  public List<? extends Node> getChildren() {
-    return ImmutableList.of();
   }
 
   @Override
