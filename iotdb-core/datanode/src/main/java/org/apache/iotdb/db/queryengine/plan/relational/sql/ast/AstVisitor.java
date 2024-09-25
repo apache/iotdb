@@ -498,4 +498,40 @@ public abstract class AstVisitor<R, C> {
   protected R visitCountDevice(CountDevice node, C context) {
     return visitStatement(node, context);
   }
+
+  protected R visitCreatePipe(CreatePipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterPipe(AlterPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropPipe(DropPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStartPipe(StartPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStopPipe(StopPipe node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowPipes(ShowPipes node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitCreatePipePlugin(CreatePipePlugin node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropPipePlugin(DropPipePlugin node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowPipePlugins(ShowPipePlugins node, C context) {
+    return visitStatement(node, context);
+  }
 }

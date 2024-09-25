@@ -121,11 +121,13 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
     recoverMemoryStatus = true;
     LOGGER.info(
         "{}-{} [Compaction] InsertionCrossSpaceCompaction task starts with unseq file {}, "
+            + "nearest seq files are {}, "
             + "target file name timestamp is {}, "
             + "file size is {} MB.",
         storageGroupName,
         dataRegionId,
         unseqFileToInsert,
+        selectedSeqFiles,
         timestamp,
         unseqFileToInsert.getTsFileSize() / 1024 / 1024);
     boolean isSuccess = true;

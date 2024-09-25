@@ -431,6 +431,12 @@ public class IoTDBDescriptor {
                 "compaction_schedule_interval_in_ms",
                 Long.toString(conf.getCompactionScheduleIntervalInMs()))));
 
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
+
     conf.setEnableCrossSpaceCompaction(
         Boolean.parseBoolean(
             properties.getProperty(
@@ -1060,6 +1066,12 @@ public class IoTDBDescriptor {
         properties.getProperty(
             "datanode_schema_cache_eviction_policy", conf.getDataNodeSchemaCacheEvictionPolicy()));
 
+    conf.setDataNodeTableCacheSemaphorePermitNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "datanode_table_cache_semaphore_permit_num",
+                String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
+
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
   }
@@ -1213,6 +1225,12 @@ public class IoTDBDescriptor {
         .setCompactionReadThroughputRate(conf.getCompactionReadThroughputMbPerSec());
     CompactionTaskManager.getInstance()
         .setWriteMergeRate(conf.getCompactionWriteThroughputMbPerSec());
+
+    conf.setEnableAutoRepairCompaction(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_auto_repair_compaction",
+                Boolean.toString(conf.isEnableAutoRepairCompaction()))));
   }
 
   private boolean loadCompactionTaskHotModifiedProps(Properties properties) throws IOException {

@@ -439,6 +439,9 @@ public class IoTDBConfig {
   /** Compact the unsequence files into the overlapped sequence files */
   private volatile boolean enableCrossSpaceCompaction = true;
 
+  /** Enable auto repair compaction */
+  private volatile boolean enableAutoRepairCompaction = true;
+
   /** The buffer for sort operation */
   private long sortBufferSize = 1024 * 1024L;
 
@@ -1038,6 +1041,8 @@ public class IoTDBConfig {
 
   /** Policy of DataNodeSchemaCache eviction */
   private String dataNodeSchemaCacheEvictionPolicy = "FIFO";
+
+  private int dataNodeTableCacheSemaphorePermitNum = 5;
 
   private String readConsistencyLevel = "strong";
 
@@ -2865,6 +2870,14 @@ public class IoTDBConfig {
     this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
+  public boolean isEnableAutoRepairCompaction() {
+    return enableAutoRepairCompaction;
+  }
+
+  public void setEnableAutoRepairCompaction(boolean enableAutoRepairCompaction) {
+    this.enableAutoRepairCompaction = enableAutoRepairCompaction;
+  }
+
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
   }
@@ -3442,6 +3455,14 @@ public class IoTDBConfig {
 
   public void setDataNodeSchemaCacheEvictionPolicy(String dataNodeSchemaCacheEvictionPolicy) {
     this.dataNodeSchemaCacheEvictionPolicy = dataNodeSchemaCacheEvictionPolicy;
+  }
+
+  public int getDataNodeTableCacheSemaphorePermitNum() {
+    return dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
+    this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
   }
 
   public String getReadConsistencyLevel() {

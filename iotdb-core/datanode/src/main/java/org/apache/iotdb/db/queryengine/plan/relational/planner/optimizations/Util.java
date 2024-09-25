@@ -54,14 +54,15 @@ public class Util {
       List<Type> intermediateTypes =
           TableBuiltinAggregationFunction.getIntermediateTypes(
               resolvedFunction.getSignature().getName(),
-              resolvedFunction.getSignature().getReturnType());
+              resolvedFunction.getSignature().getArgumentTypes());
       Type intermediateType =
           intermediateTypes.size() == 1
               ? intermediateTypes.get(0)
               : RowType.anonymous(intermediateTypes);
       Symbol intermediateSymbol =
           symbolAllocator.newSymbol(resolvedFunction.getSignature().getName(), intermediateType);
-
+      // TODO put symbol and its type to TypeProvide or later process: add all map contents of
+      // SymbolAllocator to the TypeProvider
       checkState(
           !originalAggregation.getOrderingScheme().isPresent(),
           "Aggregate with ORDER BY does not support partial aggregation");
@@ -123,7 +124,7 @@ public class Util {
       List<Type> intermediateTypes =
           TableBuiltinAggregationFunction.getIntermediateTypes(
               resolvedFunction.getSignature().getName(),
-              resolvedFunction.getSignature().getReturnType());
+              resolvedFunction.getSignature().getArgumentTypes());
       Type intermediateType =
           intermediateTypes.size() == 1
               ? intermediateTypes.get(0)

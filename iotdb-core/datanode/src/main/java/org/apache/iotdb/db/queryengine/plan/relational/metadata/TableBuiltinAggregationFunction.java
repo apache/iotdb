@@ -65,8 +65,8 @@ public enum TableBuiltinAggregationFunction {
 
   private static final Set<String> NATIVE_FUNCTION_NAMES =
       new HashSet<>(
-          Arrays.stream(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction.values())
-              .map(org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction::getFunctionName)
+          Arrays.stream(TableBuiltinAggregationFunction.values())
+              .map(TableBuiltinAggregationFunction::getFunctionName)
               .collect(Collectors.toList()));
 
   public static Set<String> getNativeFunctionNames() {
@@ -76,7 +76,7 @@ public enum TableBuiltinAggregationFunction {
   /**
    * @return if the Aggregation can use statistics to optimize
    */
-  public static boolean canUseStatistics(String name) {
+  public static boolean canUseStatistics(String name, boolean withTime) {
     final String functionName = name.toLowerCase();
     switch (functionName) {
       case "sum":
@@ -87,10 +87,10 @@ public enum TableBuiltinAggregationFunction {
       case "min":
       case "first":
       case "last":
-      case "time_duration":
         return true;
       case "first_by":
       case "last_by":
+        return withTime;
       case "mode":
       case "max_by":
       case "min_by":
@@ -106,11 +106,11 @@ public enum TableBuiltinAggregationFunction {
     }
   }
 
-  public static List<Type> getIntermediateTypes(String name, Type originalType) {
+  public static List<Type> getIntermediateTypes(String name, List<Type> originalArgumentTypes) {
     if (AVG.functionName.equalsIgnoreCase(name)) {
       return ImmutableList.of(DOUBLE, INT32);
     } else {
-      return ImmutableList.of(originalType);
+      return ImmutableList.copyOf(originalArgumentTypes);
     }
   }
 }
