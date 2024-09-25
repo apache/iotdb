@@ -70,6 +70,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public void removeSelf() {
+    LOGGER.info("DeletionResource {} has been released, trigger a remove of DAL...", this);
     removeHook.accept(this);
   }
 

@@ -198,7 +198,10 @@ public class DeletionResourceManager implements AutoCloseable {
       // So here we cannot guarantee that the last file can be deleted, we can only guarantee that
       // the first n-1 files can be deleted (if the length of deletionPaths is n)
       for (int i = 0; i < deletionPaths.length - 1; i++) {
-        FileUtils.deleteFileOrDirectory(deletionPaths[i].toFile());
+        File fileToDelete = deletionPaths[i].toFile();
+        FileUtils.deleteFileOrDirectory(fileToDelete);
+        LOGGER.info(
+            "DeletionManager-{} delete deletion file in {} dir...", dataRegionId, fileToDelete);
       }
     } catch (IOException e) {
       LOGGER.warn(

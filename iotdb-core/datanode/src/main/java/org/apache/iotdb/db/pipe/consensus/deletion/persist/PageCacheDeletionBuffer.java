@@ -73,7 +73,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
                   ? 0
                   : (o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1));
   // Data region id
-  private final String groupId;
+  private final String dataRegionId;
   // directory to store .deletion files
   private final String baseDirectory;
   // single thread to serialize WALEntry to workingBuffer
@@ -99,13 +99,16 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   // maxProgressIndex of each batch increases in the same order as the physical time.
   private volatile ProgressIndex maxProgressIndexInLastFile = MinimumProgressIndex.INSTANCE;
 
-  public PageCacheDeletionBuffer(String groupId, String baseDirectory) {
-    this.groupId = groupId;
+  public PageCacheDeletionBuffer(String dataRegionId, String baseDirectory) {
+    this.dataRegionId = dataRegionId;
     this.baseDirectory = baseDirectory;
     allocateBuffers();
     persistThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE.getName() + "(group-" + groupId + ")");
+            ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE.getName()
+                + "(group-"
+                + dataRegionId
+                + ")");
   }
 
   @Override
@@ -125,6 +128,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
             ByteBuffer.wrap(
                 DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
       }
+      LOGGER.info(
+          "Deletion persist-{}: starting to persist, current writing: {}", dataRegionId, logFile);
     } catch (IOException e) {
       LOGGER.warn(
           "Deletion persist: Cannot create file {}, please check your file system manually.",
@@ -149,7 +154,9 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       serializeBuffer = ByteBuffer.allocateDirect(ONE_THIRD_WAL_BUFFER_SIZE);
     } catch (OutOfMemoryError e) {
       LOGGER.error(
-          "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.", groupId, e);
+          "Fail to allocate deletionBuffer-group-{}'s buffer because out of memory.",
+          dataRegionId,
+          e);
       close();
       throw e;
     }
@@ -159,7 +166,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     if (isClosed) {
       LOGGER.error(
           "Fail to register DeletionResource into deletionBuffer-{} because this buffer is closed.",
-          groupId);
+          dataRegionId);
       return;
     }
     deletionResources.add(deletionResource);
@@ -171,11 +178,13 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   }
 
   private void fsyncCurrentLoggingFile() throws IOException {
+    LOGGER.info("Deletion persist-{}: current batch fsync due to timeout", dataRegionId);
     this.logChannel.force(false);
     pendingDeletionsInOneTask.forEach(DeletionResource::onPersistSucceed);
   }
 
   private void closeCurrentLoggingFile() throws IOException {
+    LOGGER.info("Deletion persist-{}: current file has been closed", dataRegionId);
     // Close old resource to fsync.
     this.logStream.close();
     this.logChannel.close();
@@ -234,6 +243,10 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
             ByteBuffer.wrap(
                 DeletionResourceManager.MAGIC_VERSION_V1.getBytes(StandardCharsets.UTF_8)));
       }
+      LOGGER.info(
+          "Deletion persist-{}: switching to a new file, current writing: {}",
+          dataRegionId,
+          logFile);
     } finally {
       resetFileAttribute();
     }
@@ -261,6 +274,8 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     }
 
     private boolean serializeDeletionToBatchBuffer(DeletionResource deletionResource) {
+      LOGGER.info(
+          "Deletion persist-{}: serialize deletion resource {}", dataRegionId, deletionResource);
       ByteBuffer buffer = deletionResource.serialize();
       // if working buffer doesn't have enough space
       if (buffer.position() > serializeBuffer.remaining()) {
