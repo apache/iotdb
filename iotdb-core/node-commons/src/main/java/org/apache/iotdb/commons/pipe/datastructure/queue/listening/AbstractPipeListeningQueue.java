@@ -82,7 +82,6 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
             - PipeConfig.getInstance().getPipeListeningQueueTransferSnapshotThreshold()) {
       clearSnapshots();
     }
-    System.out.println(queueTailIndex2SnapshotsCache);
     return queueTailIndex2SnapshotsCache;
   }
 
