@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCacheBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl.DualKeyCachePolicy;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegion;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -79,10 +80,12 @@ public class TableDeviceSchemaCache {
   private static final Logger logger = LoggerFactory.getLogger(TableDeviceSchemaCache.class);
 
   /**
-   * In table model: {@literal <}QualifiedObjectName, IDeviceID, lastCache / attributes{@literal >}
+   * In table model: {@literal <}{@link QualifiedObjectName}, {@link IDeviceID}, lastCache /
+   * attributes{@literal >}
    *
-   * <p>In tree model: {@literal <}Pair{@literal <}null, tableName(translated){@literal >},
-   * IDeviceID(translated), Map{@literal <}Measurement, Schema{@literal >}/templateInfo{@literal >}
+   * <p>In tree model: {@literal <}Pair{@literal <}{@code null}, tableName(translated){@literal >},
+   * {@link IDeviceID}(translated), Map{@literal <}Measurement, Schema{@literal
+   * >}/templateInfo{@literal >}
    */
   private final IDualKeyCache<TableId, IDeviceID, TableDeviceCacheEntry> dualKeyCache;
 
@@ -162,7 +165,7 @@ public class TableDeviceSchemaCache {
    * invalidate the cache of the whole table.
    *
    * @param database the device's database, without "root"
-   * @param deviceId IDeviceID
+   * @param deviceId {@link IDeviceID}
    */
   public void invalidateAttributes(final String database, final IDeviceID deviceId) {
     dualKeyCache.update(
@@ -199,7 +202,7 @@ public class TableDeviceSchemaCache {
    * {@link TimeValuePair}s shall be all {@code null}s in this case.
    *
    * @param database the device's database, without "root"
-   * @param deviceId IDeviceID
+   * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs {@code null} for the first fetch, the {@link TimeValuePair} with indexes
    *     corresponding to the measurements for the second fetch, all {@code null}s if the query has
@@ -231,7 +234,7 @@ public class TableDeviceSchemaCache {
    * the cache lazily and only update the existing last caches of measurements.
    *
    * @param database the device's database, without "root"
-   * @param deviceId IDeviceID
+   * @param deviceId {@link IDeviceID}
    * @param measurements the fetched measurements
    * @param timeValuePairs the {@link TimeValuePair}s with indexes corresponding to the measurements
    */
@@ -252,7 +255,7 @@ public class TableDeviceSchemaCache {
    * Get the last entry of a measurement, the measurement shall never be "time".
    *
    * @param database the device's database, without "root", {@code null} for tree model
-   * @param deviceId IDeviceID
+   * @param deviceId {@link IDeviceID}
    * @param measurement the measurement to get
    * @return {@code null} iff cache miss, {@link TableDeviceLastCache#EMPTY_TIME_VALUE_PAIR} iff
    *     cache hit but result is {@code null}, and the result value otherwise.
@@ -270,7 +273,7 @@ public class TableDeviceSchemaCache {
    * indicate the time column.
    *
    * @param database the device's database, without "root"
-   * @param deviceId IDeviceID
+   * @param deviceId {@link IDeviceID}
    * @param sourceMeasurement the measurement to get
    * @return {@code Optional.empty()} iff the last cache is miss at all; Or the optional of a pair,
    *     the {@link Pair#left} will be the source measurement's last time, (OptionalLong.empty() iff
