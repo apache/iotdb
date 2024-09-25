@@ -705,8 +705,8 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public boolean canUseStatistics(String functionName) {
-    return TableBuiltinAggregationFunction.canUseStatistics(functionName);
+  public boolean canUseStatistics(String functionName, boolean withTime) {
+    return TableBuiltinAggregationFunction.canUseStatistics(functionName, withTime);
   }
 
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {

@@ -657,4 +657,29 @@ public class AggregationTest {
                         ImmutableList.of("time", "s1", "s2"),
                         ImmutableSet.of("s1", "s2", "time"))))));
   }
+
+  @Test
+  public void withTimePushDownLevelTest() {
+    PlanTester planTester = new PlanTester();
+
+    // first, last, first_by with time, last_by with time should be push-down
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(
+            "SELECT first(s1), last(s1), first_by(time,s1), last_by(time,s1) FROM table1 group by tag1, tag2, tag3");
+
+    // Output - Project - AggregationTableScan
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                aggregationTableScan(
+                    singleGroupingSet("tag1", "tag2", "tag3"),
+                    ImmutableList.of("tag1", "tag2", "tag3"), // Streamable
+                    Optional.empty(),
+                    SINGLE,
+                    "testdb.table1",
+                    ImmutableList.of(
+                        "tag1", "tag2", "tag3", "first", "last", "first_by", "last_by"),
+                    ImmutableSet.of("tag1", "tag2", "tag3", "s1", "time")))));
+  }
 }

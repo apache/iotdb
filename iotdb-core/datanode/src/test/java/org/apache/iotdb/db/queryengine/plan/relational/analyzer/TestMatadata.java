@@ -312,8 +312,8 @@ public class TestMatadata implements Metadata {
   }
 
   @Override
-  public boolean canUseStatistics(String name) {
-    return TableBuiltinAggregationFunction.canUseStatistics(name);
+  public boolean canUseStatistics(String name, boolean withTime) {
+    return TableBuiltinAggregationFunction.canUseStatistics(name, withTime);
   }
 
   private static final DataPartition DATA_PARTITION =
