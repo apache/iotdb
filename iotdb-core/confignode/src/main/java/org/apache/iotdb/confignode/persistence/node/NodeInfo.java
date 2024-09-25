@@ -836,9 +836,4 @@ public class NodeInfo implements SnapshotProcessor {
   public int hashCode() {
     return Objects.hash(registeredConfigNodes, nextNodeId, registeredDataNodes, nodeVersionInfo);
   }
-
-  public static void main(String[] args) throws TException, IOException {
-    NodeInfo nodeInfo = new NodeInfo();
-    nodeInfo.processLoadSnapshot(new File("."));
-  }
 }
