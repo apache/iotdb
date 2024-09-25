@@ -409,12 +409,4 @@ public class SettleCompactionTask extends InnerSpaceCompactionTask {
   public int hashCode() {
     return Objects.hash(fullyDirtyFiles, filesView.sourceFilesInCompactionPerformer, performer);
   }
-
-  @Override
-  public boolean isDiskSpaceCheckPassed() {
-    if (this.partiallyDirtyFileSize == 0) {
-      return true;
-    }
-    return super.isDiskSpaceCheckPassed();
-  }
 }
