@@ -156,7 +156,11 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
       // calculate DataSet part
       if (groupingKeys.isEmpty()) {
         // GlobalAggregation
-        return PushDownLevel.COMPLETE;
+        if (tableScanNode.getDeviceEntries().size() < 2) {
+          return PushDownLevel.COMPLETE;
+        }
+        // We need to two-stage Aggregation to combine Aggregation result of different DeviceEntry
+        return PushDownLevel.PARTIAL;
       }
 
       List<FunctionCall> dateBinFunctionsOfTime = new ArrayList<>();
