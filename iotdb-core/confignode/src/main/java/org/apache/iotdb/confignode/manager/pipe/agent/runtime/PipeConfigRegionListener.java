@@ -24,7 +24,6 @@ import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningF
 import org.apache.iotdb.confignode.manager.pipe.extractor.ConfigRegionListeningQueue;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PipeConfigRegionListener {
@@ -38,7 +37,7 @@ public class PipeConfigRegionListener {
     return listeningQueue;
   }
 
-  public synchronized void increaseReference(PipeParameters parameters)
+  public synchronized void increaseReference(final PipeParameters parameters)
       throws IllegalPathException {
     if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
       listeningQueueReferenceCount++;
@@ -48,8 +47,8 @@ public class PipeConfigRegionListener {
     }
   }
 
-  public synchronized void decreaseReference(PipeParameters parameters)
-      throws IllegalPathException, IOException {
+  public synchronized void decreaseReference(final PipeParameters parameters)
+      throws IllegalPathException {
     if (!ConfigRegionListeningFilter.parseListeningPlanTypeSet(parameters).isEmpty()) {
       listeningQueueReferenceCount--;
       if (listeningQueueReferenceCount == 0) {
