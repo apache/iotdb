@@ -42,12 +42,7 @@ public class LoadTsFileNodeTest {
   public void testLoadSingleTsFileNode() throws FileNotFoundException {
     TsFileResource resource = new TsFileResource(new File("1"));
     LoadSingleTsFileNode node =
-        new LoadSingleTsFileNode(
-            new PlanNodeId(""),
-            resource,
-            true,
-            0L,
-            new LoadTsFileStatement(resource.getTsFilePath()));
+        new LoadSingleTsFileNode(new PlanNodeId(""), resource, true, 0L, null);
     Assert.assertTrue(node.isDeleteAfterLoad());
     Assert.assertEquals(resource, node.getTsFileResource());
     Assert.assertNull(node.getLocalRegionReplicaSet());
