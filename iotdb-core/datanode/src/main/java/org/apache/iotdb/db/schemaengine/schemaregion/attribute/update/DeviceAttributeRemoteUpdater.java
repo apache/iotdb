@@ -19,8 +19,15 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceAttributeRemoteUpdater {
   private final AtomicLong version = new AtomicLong(0);
+  private final MemSchemaRegionStatistics regionStatistics;
+
+  public DeviceAttributeRemoteUpdater(final MemSchemaRegionStatistics regionStatistics) {
+    this.regionStatistics = regionStatistics;
+  }
 }

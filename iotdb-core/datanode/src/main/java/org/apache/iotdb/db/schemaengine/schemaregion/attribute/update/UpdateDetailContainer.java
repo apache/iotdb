@@ -27,15 +27,26 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-public interface UpdateContainer {
+public class UpdateDetailContainer implements UpdateContainer {
+  @Override
+  public int updateAttribute(
+      final IDeviceID deviceId, final Map<String, String> updatedAttributes) {
+    return 0;
+  }
 
-  int updateAttribute(final IDeviceID deviceId, final Map<String, String> updatedAttributes);
+  @Override
+  public ByteBuffer getUpdateBuffer() {
+    return null;
+  }
 
-  ByteBuffer getUpdateBuffer();
+  @Override
+  public Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer) {
+    return null;
+  }
 
-  Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
+  @Override
+  public void serialize(final OutputStream outputstream) {}
 
-  void serialize(final OutputStream outputstream);
-
-  void deserialize(final FileInputStream fileInputStream);
+  @Override
+  public void deserialize(final FileInputStream fileInputStream) {}
 }
