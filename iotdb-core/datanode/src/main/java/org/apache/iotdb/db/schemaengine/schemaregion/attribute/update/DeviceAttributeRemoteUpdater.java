@@ -63,6 +63,14 @@ public class DeviceAttributeRemoteUpdater {
 
   /////////////////////////////// Service ///////////////////////////////
 
+  public void update(
+      final String database,
+      final String tableName,
+      final String[] deviceId,
+      final Map<String, String> attributeMap) {
+    // TODO
+  }
+
   public void addVersion() {
     version.incrementAndGet();
   }

@@ -1396,6 +1396,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       TableDeviceSchemaFetcher.getInstance()
           .getTableDeviceCache()
           .update(databaseName, tableName, deviceId, resultMap);
+      deviceAttributeRemoteUpdater.update(databaseName, tableName, deviceId, resultMap);
     }
   }
 
