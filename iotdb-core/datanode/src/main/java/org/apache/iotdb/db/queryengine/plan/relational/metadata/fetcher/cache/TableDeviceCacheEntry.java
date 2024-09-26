@@ -119,7 +119,7 @@ public class TableDeviceCacheEntry {
     } else {
       return deviceSchema.compareAndSet(
               null, new TreeDeviceTemplateSchema(database, deviceSchemaInfo.getTemplateId()))
-          ? TreeDeviceNormalSchema.INSTANCE_SIZE
+          ? TreeDeviceTemplateSchema.INSTANCE_SIZE
           : 0;
     }
   }

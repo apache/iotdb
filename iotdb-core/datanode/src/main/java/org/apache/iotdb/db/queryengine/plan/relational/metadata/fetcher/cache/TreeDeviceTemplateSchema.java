@@ -22,9 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 public class TreeDeviceTemplateSchema implements IDeviceSchema {
-  private static final int INSTANCE_SIZE =
-      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class)
-          + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+  static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class);
 
   private final String database;
   private final int templateId;
@@ -44,6 +43,7 @@ public class TreeDeviceTemplateSchema implements IDeviceSchema {
 
   @Override
   public int estimateSize() {
+    // Do not need to calculate database because it is interned
     return INSTANCE_SIZE;
   }
 }

@@ -34,7 +34,7 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
 
   static final int INSTANCE_SIZE =
       (int) RamUsageEstimator.shallowSizeOfInstance(TreeDeviceTemplateSchema.class)
-          + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
   private final String database;
   private final boolean isAligned;
 
@@ -90,6 +90,7 @@ public class TreeDeviceNormalSchema implements IDeviceSchema {
 
   @Override
   public int estimateSize() {
+    // Do not need to calculate database because it is interned
     return INSTANCE_SIZE
         + measurementMap.entrySet().stream()
             .mapToInt(
