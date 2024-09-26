@@ -527,11 +527,11 @@ public class ValueConverter {
   }
 
   public static int convertTextToInt32(final Binary value) {
-    return parseInteger(value.toString());
+    return (int) parseDouble(value.toString());
   }
 
   public static long convertTextToInt64(final Binary value) {
-    return parseLong(value.toString());
+    return (long) parseDouble(value.toString());
   }
 
   public static float convertTextToFloat(final Binary value) {
@@ -653,11 +653,11 @@ public class ValueConverter {
   }
 
   public static int convertBlobToInt32(final Binary value) {
-    return parseInteger(value.toString());
+    return (int) parseDouble(value.toString());
   }
 
   public static long convertBlobToInt64(final Binary value) {
-    return parseLong(value.toString());
+    return (long) parseDouble(value.toString());
   }
 
   public static float convertBlobToFloat(final Binary value) {
@@ -691,11 +691,11 @@ public class ValueConverter {
   }
 
   public static int convertStringToInt32(final Binary value) {
-    return parseInteger(value.toString());
+    return (int) parseDouble(value.toString());
   }
 
   public static long convertStringToInt64(final Binary value) {
-    return parseLong(value.toString());
+    return (long) parseDouble(value.toString());
   }
 
   public static float convertStringToFloat(final Binary value) {
