@@ -34,11 +34,11 @@ public abstract class ConfigPhysicalReadPlan extends ConfigPhysicalPlan {
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
-    throw new UnsupportedOperationException("Read request does not need to be serialized.");
+    // Read request does not need to be serialized
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
-    throw new UnsupportedOperationException("Read request does not need to be deserialized.");
+    // Read request does not need to be deserialized
   }
 }

@@ -46,8 +46,8 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -229,7 +229,7 @@ public class LogDispatcher {
 
     private final LogDispatcherThreadMetrics logDispatcherThreadMetrics;
 
-    private Semaphore threadSemaphore = new Semaphore(0);
+    private final CountDownLatch runFinished = new CountDownLatch(1);
 
     public LogDispatcherThread(Peer peer, IoTConsensusConfig config, long initialSyncIndex) {
       this.peer = peer;
@@ -311,7 +311,7 @@ public class LogDispatcher {
 
     private void processStopped() {
       try {
-        if (!threadSemaphore.tryAcquire(30, TimeUnit.SECONDS)) {
+        if (!runFinished.await(30, TimeUnit.SECONDS)) {
           logger.info("{}: Dispatcher for {} didn't stop after 30s.", impl.getThisNode(), peer);
         }
       } catch (InterruptedException e) {
@@ -386,7 +386,7 @@ public class LogDispatcher {
       } catch (Exception e) {
         logger.error("Unexpected error in logDispatcher for peer {}", peer, e);
       }
-      threadSemaphore.release();
+      runFinished.countDown();
       logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
     }
 

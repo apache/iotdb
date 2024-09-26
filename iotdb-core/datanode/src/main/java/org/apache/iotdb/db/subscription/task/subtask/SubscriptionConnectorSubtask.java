@@ -25,7 +25,12 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConnectorSubtask.class);
 
   private final String topicName;
   private final String consumerGroupId;
@@ -71,5 +76,14 @@ public class SubscriptionConnectorSubtask extends PipeConnectorSubtask {
 
   public UnboundedBlockingPendingQueue<Event> getInputPendingQueue() {
     return inputPendingQueue;
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getEventCount(final String pipeName) {
+    // count the number of pipe events in sink queue and prefetching queue, note that can safely
+    // ignore lastEvent
+    return SubscriptionAgent.broker().getPipeEventCount(consumerGroupId, topicName);
   }
 }
