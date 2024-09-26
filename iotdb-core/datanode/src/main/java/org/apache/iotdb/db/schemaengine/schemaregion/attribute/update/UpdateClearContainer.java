@@ -75,4 +75,10 @@ public class UpdateClearContainer implements UpdateContainer {
       tableNames.add(ReadWriteIOUtils.readString(fileInputStream));
     }
   }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum);
+  }
 }

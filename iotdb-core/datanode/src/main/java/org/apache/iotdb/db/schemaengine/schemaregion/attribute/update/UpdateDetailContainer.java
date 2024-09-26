@@ -60,4 +60,9 @@ public class UpdateDetailContainer implements UpdateContainer {
 
   @Override
   public void deserialize(final InputStream fileInputStream) {}
+
+  @Override
+  public long ramBytesUsed() {
+    return 0;
+  }
 }
