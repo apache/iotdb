@@ -51,9 +51,9 @@ public class MemSchemaRegionStatistics implements ISchemaRegionStatistics {
     return schemaEngineStatistics.isAllowToCreateNewSeries();
   }
 
-  public void requestMemory(final long size) {
+  public boolean requestMemory(final long size) {
     memoryUsage.addAndGet(size);
-    schemaEngineStatistics.requestMemory(size);
+    return schemaEngineStatistics.requestMemory(size);
   }
 
   public void releaseMemory(final long size) {
