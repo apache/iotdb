@@ -144,6 +144,12 @@ public class DeviceAttributeRemoteUpdater {
     final File snapshot =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir, SchemaConstant.DEVICE_ATTRIBUTE_REMOTE_UPDATER_SNAPSHOT);
+    if (!snapshot.exists()) {
+      logger.info(
+          "Device attribute remote updater snapshot {} not found, consider it as upgraded from the older version, will not update remote",
+          snapshot);
+      return;
+    }
     try (final BufferedInputStream inputStream =
         new BufferedInputStream(Files.newInputStream(snapshot.toPath()))) {
       deserialize(inputStream);
