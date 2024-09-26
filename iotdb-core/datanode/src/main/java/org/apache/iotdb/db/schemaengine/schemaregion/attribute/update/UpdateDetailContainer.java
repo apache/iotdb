@@ -148,13 +148,9 @@ public class UpdateDetailContainer implements UpdateContainer {
       return null;
     } else {
       final ConcurrentMap<String, String> map = new ConcurrentHashMap<>(length);
-
       for (int i = 0; i < length; ++i) {
-        final String key = ReadWriteIOUtils.readString(inputStream);
-        final String value = ReadWriteIOUtils.readString(inputStream);
-        map.put(key, value);
+        map.put(ReadWriteIOUtils.readString(inputStream), ReadWriteIOUtils.readString(inputStream));
       }
-
       return map;
     }
   }
