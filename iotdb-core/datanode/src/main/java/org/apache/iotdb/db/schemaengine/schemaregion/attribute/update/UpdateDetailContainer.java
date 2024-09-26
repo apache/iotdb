@@ -95,7 +95,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public ByteBuffer getUpdateBuffer() {
+  public byte[] getUpdateContent() {
     return null;
   }
 

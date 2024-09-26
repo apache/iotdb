@@ -32,7 +32,7 @@ public interface UpdateContainer {
   long updateAttribute(
       final String tableName, final String[] deviceId, final Map<String, String> updatedAttributes);
 
-  ByteBuffer getUpdateBuffer();
+  byte[] getUpdateContent();
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
 
