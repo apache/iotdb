@@ -71,6 +71,8 @@ public class DeviceAttributeRemoteUpdater {
                 attributeUpdateMap
                     .get(pair.getLeft())
                     .updateAttribute(tableName, deviceId, attributeMap));
+          } else {
+
           }
         });
   }

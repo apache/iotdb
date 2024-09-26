@@ -26,13 +26,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class UpdateDetailContainer implements UpdateContainer {
 
+  static final long MAP_SIZE = RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
   static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class)
-          + RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+      RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + MAP_SIZE;
 
   private final Map<String, Map<String[], Map<String, String>>> updateMap =
       new ConcurrentHashMap<>();
@@ -42,6 +44,42 @@ public class UpdateDetailContainer implements UpdateContainer {
       final String tableName,
       final String[] deviceId,
       final Map<String, String> updatedAttributes) {
+    final AtomicLong result = new AtomicLong(0);
+    updateMap.compute(
+        tableName,
+        (name, value) -> {
+          if (Objects.isNull(value)) {
+            result.addAndGet(
+                RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                    + RamUsageEstimator.sizeOf(name)
+                    + MAP_SIZE);
+            value = new ConcurrentHashMap<>();
+          }
+          value.compute(
+              deviceId,
+              (device, attributes) -> {
+                if (Objects.isNull(attributes)) {
+                  result.addAndGet(
+                      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          + RamUsageEstimator.sizeOf(device)
+                          + MAP_SIZE);
+                  attributes = new ConcurrentHashMap<>();
+                }
+                for (final Map.Entry<String, String> updateAttribute :
+                    updatedAttributes.entrySet()) {
+                  attributes.compute(
+                      updateAttribute.getKey(),
+                      (k, v) -> {
+                        result.addAndGet(
+                            RamUsageEstimator.sizeOf(updateAttribute.getValue())
+                                - RamUsageEstimator.sizeOf(v));
+                        return updateAttribute.getValue();
+                      });
+                }
+                return attributes;
+              });
+          return value;
+        });
     return 0;
   }
 
@@ -63,6 +101,7 @@ public class UpdateDetailContainer implements UpdateContainer {
 
   @Override
   public long ramBytesUsed() {
-    return 0;
+    // TODO
+    return INSTANCE_SIZE;
   }
 }
