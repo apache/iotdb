@@ -70,11 +70,19 @@ public class UpdateDetailContainer implements UpdateContainer {
                   attributes.compute(
                       updateAttribute.getKey(),
                       (k, v) -> {
+                        if (Objects.isNull(v)) {
+                          result.addAndGet(
+                              RamUsageEstimator.sizeOf(k)
+                                  + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                        }
                         result.addAndGet(
                             RamUsageEstimator.sizeOf(updateAttribute.getValue())
                                 - RamUsageEstimator.sizeOf(v));
                         return updateAttribute.getValue();
                       });
+                  if (Objects.isNull(updateAttribute.getValue())) {
+                    attributes.put(updateAttribute.getKey(), null);
+                  }
                 }
                 return attributes;
               });
