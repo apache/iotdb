@@ -46,7 +46,8 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 public class TableDeviceCacheEntry {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(TableDeviceCacheEntry.class);
+      RamUsageEstimator.shallowSizeOfInstance(TableDeviceCacheEntry.class)
+          + 2 * RamUsageEstimator.shallowSizeOfInstance(AtomicReference.class);
 
   // the cached attributeMap may not be the latest, but there won't be any correctness problems
   // because when missing getting the key-value from this attributeMap, caller will try to get or
@@ -63,7 +64,7 @@ public class TableDeviceCacheEntry {
       final String tableName,
       final @Nonnull Map<String, String> attributeSetMap) {
     return (deviceSchema.compareAndSet(null, new TableAttributeSchema())
-            ? (int) RamUsageEstimator.shallowSizeOf(deviceSchema)
+            ? TableAttributeSchema.INSTANCE_SIZE
             : 0)
         + updateAttribute(database, tableName, attributeSetMap);
   }

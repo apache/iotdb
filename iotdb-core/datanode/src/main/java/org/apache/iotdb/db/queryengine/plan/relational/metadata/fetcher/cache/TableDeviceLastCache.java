@@ -41,7 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableDeviceLastCache {
   static final int INSTANCE_SIZE =
-      (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class);
+      (int) RamUsageEstimator.shallowSizeOfInstance(TableDeviceLastCache.class)
+          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
   public static final TsPrimitiveType EMPTY_PRIMITIVE_TYPE =
       new TsPrimitiveType() {

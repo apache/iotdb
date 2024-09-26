@@ -31,6 +31,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TableAttributeSchema implements IDeviceSchema {
+
+  static final int INSTANCE_SIZE =
+      (int) RamUsageEstimator.shallowSizeOfInstance(TableAttributeSchema.class)
+          + (int) RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
+
   private final Map<String, String> attributeMap = new ConcurrentHashMap<>();
 
   public int updateAttribute(
