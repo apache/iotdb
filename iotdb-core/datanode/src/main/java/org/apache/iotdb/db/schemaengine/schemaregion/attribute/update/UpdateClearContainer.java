@@ -21,8 +21,10 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -32,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateClearContainer implements UpdateContainer {
 
-  private Set<String> tableNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<String> tableNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Override
   public int updateAttribute(
@@ -51,8 +53,18 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public void serialize(final OutputStream outputstream) {}
+  public void serialize(final OutputStream outputstream) throws IOException {
+    ReadWriteIOUtils.write(tableNames.size(), outputstream);
+    for (final String tableName : tableNames) {
+      ReadWriteIOUtils.write(tableName, outputstream);
+    }
+  }
 
   @Override
-  public void deserialize(final FileInputStream fileInputStream) {}
+  public void deserialize(final FileInputStream fileInputStream) throws IOException {
+    final int size = ReadWriteIOUtils.readInt(fileInputStream);
+    for (int i = 0; i < size; ++i) {
+      tableNames.add(ReadWriteIOUtils.readString(fileInputStream));
+    }
+  }
 }

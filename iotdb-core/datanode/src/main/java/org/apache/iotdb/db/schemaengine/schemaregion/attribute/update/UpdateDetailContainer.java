@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateDetailContainer implements UpdateContainer {
 
-  private Map<String, Map<String[], Map<String, String>>> updateMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String[], Map<String, String>>> updateMap =
+      new ConcurrentHashMap<>();
 
   @Override
   public int updateAttribute(

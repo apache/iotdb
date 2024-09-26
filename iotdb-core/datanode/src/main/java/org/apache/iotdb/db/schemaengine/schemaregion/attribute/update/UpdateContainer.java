@@ -23,6 +23,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -35,7 +36,7 @@ public interface UpdateContainer {
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
 
-  void serialize(final OutputStream outputstream);
+  void serialize(final OutputStream outputstream) throws IOException;
 
-  void deserialize(final FileInputStream fileInputStream);
+  void deserialize(final FileInputStream fileInputStream) throws IOException;
 }
