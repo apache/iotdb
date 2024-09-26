@@ -114,11 +114,11 @@ public class SessionConnection {
   private int timeFactor = 1_000;
 
   // TestOnly
-  public SessionConnection() {
+  public SessionConnection(String sqlDialect) {
     availableNodes = Collections::emptyList;
     this.maxRetryCount = Math.max(0, SessionConfig.MAX_RETRY_COUNT);
     this.retryIntervalInMs = Math.max(0, SessionConfig.RETRY_INTERVAL_IN_MS);
-    this.sqlDialect = "tree";
+    this.sqlDialect = sqlDialect;
     database = null;
   }
 
