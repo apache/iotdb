@@ -26,13 +26,13 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.RepairUnsortedFileCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -167,8 +167,7 @@ public class SizeTieredCompactionSelector
 
   private boolean cannotSelectCurrentFileToNormalCompaction(TsFileResource resource) {
     return resource.getStatus() != TsFileResourceStatus.NORMAL
-        || resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR
-        || resource.getTsFileRepairStatus() == TsFileRepairStatus.CAN_NOT_REPAIR;
+        || !resource.getTsFileRepairStatus().isNormalCompactionCandidate();
   }
 
   /**
@@ -188,7 +187,7 @@ public class SizeTieredCompactionSelector
     try {
       // 1. select compaction task based on file which need to repair
       List<InnerSpaceCompactionTask> taskList = selectFileNeedToRepair();
-      if (!taskList.isEmpty()) {
+      if (!taskList.isEmpty() || !CompactionUtils.isDiskHasSpace()) {
         return taskList;
       }
       // 2. if a suitable compaction task is not selected in the first step, select the compaction
@@ -213,10 +212,13 @@ public class SizeTieredCompactionSelector
   }
 
   private List<InnerSpaceCompactionTask> selectFileNeedToRepair() {
+    if (!config.isEnableAutoRepairCompaction()) {
+      return Collections.emptyList();
+    }
     List<InnerSpaceCompactionTask> taskList = new ArrayList<>();
     for (TsFileResource resource : tsFileResources) {
       if (resource.getStatus() == TsFileResourceStatus.NORMAL
-          && resource.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR) {
+          && resource.getTsFileRepairStatus().isRepairCompactionCandidate()) {
         taskList.add(
             new RepairUnsortedFileCompactionTask(
                 timePartition,

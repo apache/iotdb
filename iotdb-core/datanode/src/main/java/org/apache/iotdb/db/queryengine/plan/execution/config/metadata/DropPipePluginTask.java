@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -32,6 +33,12 @@ public class DropPipePluginTask implements IConfigTask {
 
   public DropPipePluginTask(DropPipePluginStatement dropPipePluginStatement) {
     this.dropPipePluginStatement = dropPipePluginStatement;
+  }
+
+  public DropPipePluginTask(DropPipePlugin node) {
+    dropPipePluginStatement = new DropPipePluginStatement();
+    dropPipePluginStatement.setPluginName(node.getPluginName());
+    dropPipePluginStatement.setIfExists(node.hasIfExistsCondition());
   }
 
   @Override

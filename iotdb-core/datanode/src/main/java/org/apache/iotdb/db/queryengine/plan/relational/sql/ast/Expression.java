@@ -146,6 +146,9 @@ public abstract class Expression extends Node {
       case 24:
         expression = new SymbolReference(byteBuffer);
         break;
+      case 25:
+        expression = new CoalesceExpression(byteBuffer);
+        break;
       default:
         throw new IllegalArgumentException("Invalid expression type: " + type);
     }

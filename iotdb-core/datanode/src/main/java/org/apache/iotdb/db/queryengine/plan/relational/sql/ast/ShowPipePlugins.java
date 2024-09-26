@@ -17,10 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.thrift.impl;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.mpp.rpc.thrift.IAINodeInternalRPCService;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-public interface IAINodeRPCServiceWithHandler extends IAINodeInternalRPCService.Iface {
-  void handleExit();
+public class ShowPipePlugins extends PipeStatement {
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipePlugins(this, context);
+  }
+
+  @Override
+  public int hashCode() {
+    return 0;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    return obj instanceof ShowPipePlugins;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).toString();
+  }
 }

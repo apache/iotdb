@@ -91,9 +91,14 @@ public class TableModelTypeProviderExtractor {
       node.getChild().accept(this, context);
       node.getAggregations()
           .forEach(
-              (k, v) ->
-                  beTypeProvider.putTableModelType(
-                      k, v.getResolvedFunction().getSignature().getReturnType()));
+              (k, v) -> beTypeProvider.putTableModelType(k, feTypeProvider.getTableModelType(k)));
+      node.getGroupingKeys()
+          .forEach(
+              k -> {
+                if ((!beTypeProvider.isSymbolExist(k))) {
+                  beTypeProvider.putTableModelType(k, feTypeProvider.getTableModelType(k));
+                }
+              });
       return null;
     }
 

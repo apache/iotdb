@@ -383,9 +383,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
+  public TSStatus setDatabase(final TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
-    boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
+    final boolean isSystemDatabase =
+        databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
     if (databaseSchema.getTTL() < 0) {
       errorResp =
@@ -465,9 +466,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
     databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
 
-    DatabaseSchemaPlan setPlan =
+    final DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
-    TSStatus resp = configManager.setDatabase(setPlan);
+    final TSStatus resp = configManager.setDatabase(setPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);

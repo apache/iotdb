@@ -153,6 +153,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DatabaseSc
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterDetailsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowClusterTask;
@@ -165,7 +166,6 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegion
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTriggersTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowVariablesTask;
-import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowAINodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.model.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.DescribeTableTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowDBTask;
@@ -184,10 +184,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.visitor.TransformToViewEx
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.AlterLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -203,12 +200,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListSt
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.MigrateRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.ShowAINodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipePluginStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.CreatePipeStatement;
@@ -1393,10 +1388,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+  public SettableFuture<ConfigTaskResult> showRegion(
+      final ShowRegionStatement showRegionStatement, final boolean isTableModel) {
+    final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowRegionResp showRegionResp = new TShowRegionResp();
-    TShowRegionReq showRegionReq = new TShowRegionReq();
+    final TShowRegionReq showRegionReq = new TShowRegionReq();
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
     if (showRegionStatement.getStorageGroups() == null) {
       showRegionReq.setDatabases(null);
@@ -1406,7 +1402,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .map(PartialPath::getFullPath)
               .collect(Collectors.toList()));
     }
-    try (ConfigNodeClient client =
+    try (final ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       showRegionResp = client.showRegion(showRegionReq);
       if (showRegionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1415,7 +1411,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 showRegionResp.getStatus().message, showRegionResp.getStatus().code));
         return future;
       }
-    } catch (ClientManagerException | TException e) {
+    } catch (final ClientManagerException | TException e) {
       future.setException(e);
     }
 
@@ -1432,13 +1428,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
 
     // build TSBlock
-    ShowRegionTask.buildTSBlock(showRegionResp, future);
+    ShowRegionTask.buildTSBlock(showRegionResp, future, isTableModel);
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showDataNodes(
-      final ShowDataNodesStatement showDataNodesStatement) {
+  public SettableFuture<ConfigTaskResult> showDataNodes() {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
     try (final ConfigNodeClient client =
@@ -1477,6 +1472,24 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
     // build TSBlock
     ShowConfigNodesTask.buildTSBlock(showConfigNodesResp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showAINodes() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowAINodesResp resp = new TShowAINodesResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      resp = client.showAINodes();
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
+        return future;
+      }
+    } catch (ClientManagerException | TException e) {
+      future.setException(e);
+    }
+    ShowAINodesTask.buildTsBlock(resp, future);
     return future;
   }
 
@@ -2766,24 +2779,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> showAINodes(ShowAINodesStatement showAINodesStatement) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TShowAINodesResp resp = new TShowAINodesResp();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      resp = client.showAINodes();
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(new IoTDBException(resp.getStatus().message, resp.getStatus().code));
-        return future;
-      }
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    ShowAINodesTask.buildTsBlock(resp, future);
-    return future;
-  }
-
-  @Override
   public SettableFuture<ConfigTaskResult> setSpaceQuota(
       SetSpaceQuotaStatement setSpaceQuotaStatement) {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
@@ -2957,60 +2952,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     ShowClusterStatement treeStatement = new ShowClusterStatement();
     treeStatement.setDetails(showCluster.getDetails().orElse(false));
     return showCluster(treeStatement);
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions) {
-    // As the implementation is identical, we'll simply translate to the
-    // corresponding tree-model variant and execute that.
-    ShowRegionStatement treeStatement = new ShowRegionStatement();
-    treeStatement.setRegionType(showRegions.getRegionType());
-    treeStatement.setStorageGroups(showRegions.getDatabases());
-    treeStatement.setNodeIds(showRegions.getNodeIds());
-    return showRegion(treeStatement);
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodes showDataNodes) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      showDataNodesResp = client.showDataNodes();
-      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(
-            new IoTDBException(
-                showDataNodesResp.getStatus().message, showDataNodesResp.getStatus().code));
-        return future;
-      }
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    // build TSBlock
-    ShowDataNodesTask.buildTSBlock(showDataNodesResp, future);
-    return future;
-  }
-
-  @Override
-  public SettableFuture<ConfigTaskResult> showConfigNodes(ShowConfigNodes showConfigNodes) {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TShowConfigNodesResp showConfigNodesResp = new TShowConfigNodesResp();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      showConfigNodesResp = client.showConfigNodes();
-      if (showConfigNodesResp.getStatus().getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(
-            new IoTDBException(
-                showConfigNodesResp.getStatus().message, showConfigNodesResp.getStatus().code));
-        return future;
-      }
-    } catch (ClientManagerException | TException e) {
-      future.setException(e);
-    }
-    // build TSBlock
-    ShowConfigNodesTask.buildTSBlock(showConfigNodesResp, future);
-    return future;
   }
 
   @Override
