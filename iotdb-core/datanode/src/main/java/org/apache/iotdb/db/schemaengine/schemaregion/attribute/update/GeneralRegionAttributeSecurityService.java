@@ -19,4 +19,14 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
-public class GeneralRegionAttributeSecurityService {}
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+
+import java.util.concurrent.ScheduledExecutorService;
+
+public class GeneralRegionAttributeSecurityService {
+
+  private static final ScheduledExecutorService SECURITY_SERVICE_EXECUTOR =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
+}
