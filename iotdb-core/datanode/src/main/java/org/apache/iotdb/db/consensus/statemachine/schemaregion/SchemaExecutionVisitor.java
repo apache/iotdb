@@ -315,6 +315,18 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
         encodingList.remove(index);
         compressionTypeList.remove(index);
 
+        // If with merge is set, the lists are deep copied and need to be altered here.
+        // We still remove the element from the original list to help cascading pipe transfer
+        // schema.
+        // If this exception is thrown, the measurements, data types, etc. must be unchanged.
+        // Thus, the index for the copied lists are identical to that in the original lists.
+        if (withMerge) {
+          createAlignedTimeSeriesPlan.getMeasurements().remove(index);
+          createAlignedTimeSeriesPlan.getDataTypes().remove(index);
+          createAlignedTimeSeriesPlan.getEncodings().remove(index);
+          createAlignedTimeSeriesPlan.getCompressors().remove(index);
+        }
+
         if (measurementList.isEmpty()) {
           shouldRetry = false;
         }

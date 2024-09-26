@@ -159,14 +159,35 @@ public class PipeInfo implements SnapshotProcessor {
 
   public TSStatus alterPipe(final AlterPipePlanV2 plan) {
     try {
+      final Optional<PipeMeta> pipeMetaBeforeAlter =
+          Optional.ofNullable(
+              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+
       pipeTaskInfo.alterPipe(plan);
 
-      PipeConfigNodeAgent.task()
-          .handleSinglePipeMetaChanges(
-              pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
-      PipeTemporaryMetaMetrics.getInstance()
-          .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      final TPushPipeMetaRespExceptionMessage message =
+          PipeConfigNodeAgent.task()
+              .handleSinglePipeMetaChanges(
+                  pipeTaskInfo.getPipeMetaByPipeName(plan.getPipeStaticMeta().getPipeName()));
+      if (message == null) {
+        pipeMetaBeforeAlter.ifPresent(
+            meta -> {
+              try {
+                PipeConfigNodeAgent.runtime()
+                    .decreaseListenerReference(meta.getStaticMeta().getExtractorParameters());
+              } catch (final Exception e) {
+                throw new PipeException("Failed to decrease listener reference", e);
+              }
+            });
+        PipeConfigNodeAgent.runtime()
+            .increaseListenerReference(plan.getPipeStaticMeta().getExtractorParameters());
+        PipeTemporaryMetaMetrics.getInstance()
+            .handleTemporaryMetaChanges(pipeTaskInfo.getPipeMetaList());
+        return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      } else {
+        return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
+            .setMessage(message.getMessage());
+      }
     } catch (final Exception e) {
       LOGGER.error("Failed to alter pipe", e);
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode())
