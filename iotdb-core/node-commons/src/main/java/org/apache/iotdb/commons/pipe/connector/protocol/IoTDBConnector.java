@@ -21,7 +21,6 @@ package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
@@ -220,15 +219,8 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET, customSendPortStrategy),
         customSendPortStrategy);
 
-    final int parallelTaskNum =
-        parameters.getIntOrDefault(
-            Arrays.asList(
-                PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
-                PipeConnectorConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-            PipeConnectorConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
     final int requiredPortsNum =
-        parallelTaskNum
-            * CommonDescriptor.getInstance().getConfig().getPipeAsyncConnectorMaxClientNumber();
+        CommonDescriptor.getInstance().getConfig().getPipeAsyncConnectorMaxClientNumber();
 
     if (CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(customSendPortStrategy)) {
       minSendPortRange =
@@ -250,7 +242,7 @@ public abstract class IoTDBConnector implements PipeConnector {
           minSendPortRange,
           maxSendPortRange);
       validator.validate(
-          args -> (int) args[0] <= (int) args[1] || (int) args[2] >= (int) args[3],
+          args -> (int) args[0] <= (int) args[1] && (int) args[2] >= (int) args[3],
           String.format(
               "Port range is invalid: %s must be >= %d and %s must be <= %d. Current values are %d and %d respectively.",
               SINK_IOTDB_SEND_PORT_MIN_KEY,
@@ -266,7 +258,7 @@ public abstract class IoTDBConnector implements PipeConnector {
 
       final int maxUsablePortsNum = maxSendPortRange - minSendPortRange + 1;
       validator.validate(
-          arg -> (int) arg[0] > (int) arg[1],
+          arg -> (int) arg[0] >= (int) arg[1],
           String.format(
               "Not enough available ports: There are %d available ports but require %d.",
               maxUsablePortsNum, requiredPortsNum),
