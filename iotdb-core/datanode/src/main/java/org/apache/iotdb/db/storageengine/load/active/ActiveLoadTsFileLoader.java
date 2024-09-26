@@ -74,23 +74,13 @@ public class ActiveLoadTsFileLoader {
       new AtomicReference<>();
   private final AtomicReference<String> failDir = new AtomicReference<>();
 
-  private final AtomicBoolean printReadOnlyLog = new AtomicBoolean(true);
-
   public int getCurrentAllowedPendingSize() {
     return MAX_PENDING_SIZE - pendingQueue.size();
   }
 
   public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
-    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
-      if (printReadOnlyLog.get()) {
-        LOGGER.info("Current System is read only. Active load tsfile task can not work.");
-        printReadOnlyLog.set(false);
-      }
-      return;
-    }
-    printReadOnlyLog.set(true);
-
-    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
+    if (pendingQueue.getIsPrintReadOnlyLog()
+        && pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }

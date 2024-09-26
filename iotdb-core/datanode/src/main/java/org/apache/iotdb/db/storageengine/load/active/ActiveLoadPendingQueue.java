@@ -19,21 +19,29 @@
 
 package org.apache.iotdb.db.storageengine.load.active;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ActiveLoadPendingQueue {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ActiveLoadPendingQueue.class);
 
   private final Set<String> pendingFileSet = new HashSet<>();
   private final Queue<Pair<String, Boolean>> pendingFileQueue = new ConcurrentLinkedQueue<>();
 
   private final Set<String> loadingFileSet = new HashSet<>();
+
+  private final AtomicBoolean printReadOnlyLog = new AtomicBoolean(true);
 
   public synchronized boolean enqueue(final String file, final boolean isGeneratedByPipe) {
     if (!loadingFileSet.contains(file) && pendingFileSet.add(file)) {
@@ -54,6 +62,16 @@ public class ActiveLoadPendingQueue {
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseLoadingFileCounter(1);
       ActiveLoadingFilesNumberMetricsSet.getInstance().increaseQueuingFileCounter(-1);
     }
+
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (printReadOnlyLog.get()) {
+        LOGGER.info("Current System is read only. Active load tsfile task can not work.");
+        printReadOnlyLog.set(false);
+      }
+      return null;
+    }
+    printReadOnlyLog.set(true);
+
     return pair;
   }
 
@@ -73,5 +91,9 @@ public class ActiveLoadPendingQueue {
 
   public boolean isEmpty() {
     return pendingFileQueue.isEmpty() && loadingFileSet.isEmpty();
+  }
+
+  public boolean getIsPrintReadOnlyLog() {
+    return printReadOnlyLog.get();
   }
 }
