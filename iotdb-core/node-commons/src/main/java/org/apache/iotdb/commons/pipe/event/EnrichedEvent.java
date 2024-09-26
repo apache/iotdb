@@ -365,6 +365,10 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
+  public boolean needToCommitRate() {
+    return true;
+  }
+
   public abstract boolean mayEventTimeOverlappedWithTimeRange();
 
   public abstract boolean mayEventPathsOverlappedWithPattern();

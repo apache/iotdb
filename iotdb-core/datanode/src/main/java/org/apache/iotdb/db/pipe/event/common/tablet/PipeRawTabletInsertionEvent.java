@@ -191,6 +191,13 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   @Override
+  public boolean needToCommitRate() {
+    // When computing the commit rate, only consider events where needToReport is true to avoid
+    // counting unparsed source events that influence remaining time calculation.
+    return needToReport;
+  }
+
+  @Override
   public boolean mayEventTimeOverlappedWithTimeRange() {
     final long[] timestamps = tablet.timestamps;
     if (Objects.isNull(timestamps) || timestamps.length == 0) {
