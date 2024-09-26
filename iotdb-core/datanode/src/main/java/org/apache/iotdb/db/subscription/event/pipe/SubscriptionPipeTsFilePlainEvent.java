@@ -60,6 +60,6 @@ public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents 
 
   @Override
   public int getPipeEventCount(final boolean forCommitRate) {
-    return 1;
+    return forCommitRate ? (tsFileInsertionEvent.needToCommitRate() ? 1 : 0) : 1;
   }
 }
