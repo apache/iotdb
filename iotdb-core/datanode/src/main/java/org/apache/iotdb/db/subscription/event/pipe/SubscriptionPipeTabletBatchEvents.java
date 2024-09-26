@@ -56,7 +56,7 @@ public class SubscriptionPipeTabletBatchEvents implements SubscriptionPipeEvents
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
-  public int getPipeEventCount() {
-    return batch.getPipeEventCount();
+  public int getPipeEventCount(final boolean forCommitRate) {
+    return batch.getPipeEventCount(forCommitRate);
   }
 }

@@ -204,13 +204,14 @@ public class SubscriptionBrokerAgent {
     broker.executePrefetch(topicName);
   }
 
-  public int getPipeEventCount(final String consumerGroupId, final String topicName) {
+  public int getPipeEventCount(
+      final String consumerGroupId, final String topicName, final boolean forCommitRate) {
     final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
     if (Objects.isNull(broker)) {
       LOGGER.warn(
           "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
       return 0;
     }
-    return broker.getPipeEventCount(topicName);
+    return broker.getPipeEventCount(topicName, forCommitRate);
   }
 }

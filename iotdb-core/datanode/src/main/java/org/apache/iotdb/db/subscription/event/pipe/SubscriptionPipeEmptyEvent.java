@@ -44,7 +44,7 @@ public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
-  public int getPipeEventCount() {
+  public int getPipeEventCount(final boolean forCommitRate) {
     return 0;
   }
 }

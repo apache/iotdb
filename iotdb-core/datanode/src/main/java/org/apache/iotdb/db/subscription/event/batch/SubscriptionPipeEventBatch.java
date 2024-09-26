@@ -25,6 +25,7 @@ import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ public abstract class SubscriptionPipeEventBatch {
   protected final int maxDelayInMs;
   protected final long maxBatchSizeInBytes;
 
+  protected final List<EnrichedEvent> enrichedEvents = new ArrayList<>();
   protected volatile List<SubscriptionEvent> events = null;
 
   protected SubscriptionPipeEventBatch(
@@ -83,5 +85,12 @@ public abstract class SubscriptionPipeEventBatch {
     result.put("maxDelayInMs", String.valueOf(maxDelayInMs));
     result.put("maxBatchSizeInBytes", String.valueOf(maxBatchSizeInBytes));
     return result;
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getPipeEventCount(final boolean forCommitRate) {
+    return (int)
+        enrichedEvents.stream().filter(event -> !forCommitRate || event.needToCommitRate()).count();
   }
 }

@@ -297,13 +297,14 @@ public class PipeConnectorSubtask extends PipeAbstractConnectorSubtask {
 
   // For performance, this will not acquire lock and does not guarantee the correct
   // result. However, this shall not cause any exceptions when concurrently read & written.
-  public int getEventCount(final String pipeName) {
+  public int getEventCount(final String pipeName, final boolean forCommitRate) {
     final AtomicInteger count = new AtomicInteger(0);
     try {
       inputPendingQueue.forEach(
           event -> {
             if (event instanceof EnrichedEvent
-                && pipeName.equals(((EnrichedEvent) event).getPipeName())) {
+                && pipeName.equals(((EnrichedEvent) event).getPipeName())
+                && (!forCommitRate || ((EnrichedEvent) event).needToCommitRate())) {
               count.incrementAndGet();
             }
           });

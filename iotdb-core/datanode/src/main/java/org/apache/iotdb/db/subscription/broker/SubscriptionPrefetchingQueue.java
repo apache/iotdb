@@ -29,6 +29,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.event.batch.SubscriptionPipeEventBatches;
 import org.apache.iotdb.db.subscription.event.pipe.SubscriptionPipeEmptyEvent;
+import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -48,6 +49,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -539,14 +541,32 @@ public abstract class SubscriptionPrefetchingQueue {
     return commitIdGenerator.get();
   }
 
-  public int getPipeEventCount() {
-    return inputPendingQueue.size()
+  public int getPipeEventCount(final boolean forCommitRate) {
+    final AtomicInteger count = new AtomicInteger(0);
+    try {
+      inputPendingQueue.forEach(
+          event -> {
+            if (event instanceof EnrichedEvent
+                && (!forCommitRate || ((EnrichedEvent) event).needToCommitRate())) {
+              count.incrementAndGet();
+            }
+          });
+    } catch (final Exception e) {
+      if (LOGGER.isDebugEnabled()) {
+        LOGGER.debug(
+            "Exception occurred when counting event of input pending queue of {}, root cause: {}",
+            this,
+            ErrorHandlingUtils.getRootCause(e).getMessage(),
+            e);
+      }
+    }
+    return count.get()
         + prefetchingQueue.stream()
-            .map(SubscriptionEvent::getPipeEventCount)
+            .map(event -> event.getPipeEventCount(forCommitRate))
             .reduce(Integer::sum)
             .orElse(0)
-        + +inFlightEvents.values().stream()
-            .map(SubscriptionEvent::getPipeEventCount)
+        + inFlightEvents.values().stream()
+            .map(event -> event.getPipeEventCount(forCommitRate))
             .reduce(Integer::sum)
             .orElse(0);
   }
