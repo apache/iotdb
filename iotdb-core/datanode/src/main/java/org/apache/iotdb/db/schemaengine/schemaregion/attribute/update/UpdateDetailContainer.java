@@ -26,8 +26,12 @@ import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateDetailContainer implements UpdateContainer {
+
+  private Map<String, Map<String[], Map<String, String>>> updateMap = new ConcurrentHashMap<>();
+
   @Override
   public int updateAttribute(
       final IDeviceID deviceId, final Map<String, String> updatedAttributes) {

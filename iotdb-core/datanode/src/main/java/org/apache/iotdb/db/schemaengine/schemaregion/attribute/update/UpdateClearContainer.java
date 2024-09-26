@@ -25,9 +25,15 @@ import org.apache.tsfile.utils.Pair;
 import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateClearContainer implements UpdateContainer {
+
+  private Set<String> tableNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
   @Override
   public int updateAttribute(
       final IDeviceID deviceId, final Map<String, String> updatedAttributes) {
