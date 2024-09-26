@@ -29,6 +29,7 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
   private final SubscriptionPipeTsFileEventBatch batch;
   private final File tsFile;
   private final AtomicInteger referenceCount; // shared between the same batch
+  private final int count; // snapshot the initial reference count, used for event count calculation
 
   public SubscriptionPipeTsFileBatchEvents(
       final SubscriptionPipeTsFileEventBatch batch,
@@ -37,6 +38,7 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
     this.batch = batch;
     this.tsFile = tsFile;
     this.referenceCount = referenceCount;
+    this.count = Math.max(1, referenceCount.get());
   }
 
   @Override
@@ -58,6 +60,8 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
     }
   }
 
+  /////////////////////////////// stringify ///////////////////////////////
+
   @Override
   public String toString() {
     return "SubscriptionPipeTsFileBatchEvents{batch="
@@ -67,5 +71,14 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
         + ", referenceCount="
         + referenceCount
         + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    // Since multiple events will share the same batch, equal division is performed here.
+    // If it is not exact, round up to remain pessimistic.
+    return (batch.getPipeEventCount() + count - 1) / count;
   }
 }

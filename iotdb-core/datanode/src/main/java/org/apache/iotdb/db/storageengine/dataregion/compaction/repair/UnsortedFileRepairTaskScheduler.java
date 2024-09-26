@@ -148,7 +148,7 @@ public class UnsortedFileRepairTaskScheduler implements Runnable {
           continue;
         }
         if (cannotRepairFiles.contains(resource.getTsFile().getName())) {
-          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR);
+          resource.setTsFileRepairStatus(TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE);
         }
       }
     }

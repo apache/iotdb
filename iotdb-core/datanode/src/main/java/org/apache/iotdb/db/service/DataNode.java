@@ -818,10 +818,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
-    // Start InternalRPCService to indicate that the current DataNode can accept request from AINode
-    if (config.isEnableAINodeService()) {
-      registerManager.register(AINodeRPCService.getInstance());
-    }
 
     // Notice: During the period between starting the internal RPC service
     // and starting the client RPC service , some requests may fail because

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
@@ -47,26 +48,30 @@ import java.util.stream.Collectors;
 public class ShowRegionTask implements IConfigTask {
 
   private final ShowRegionStatement showRegionStatement;
+  private final boolean isTableModel;
 
-  public ShowRegionTask(ShowRegionStatement showRegionStatement) {
+  public ShowRegionTask(final ShowRegionStatement showRegionStatement, final boolean isTableModel) {
     this.showRegionStatement = showRegionStatement;
+    this.isTableModel = isTableModel;
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+  public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showRegion(showRegionStatement);
+    return configTaskExecutor.showRegion(showRegionStatement, isTableModel);
   }
 
   public static void buildTSBlock(
-      TShowRegionResp showRegionResp, SettableFuture<ConfigTaskResult> future) {
-    List<TSDataType> outputDataTypes =
+      final TShowRegionResp showRegionResp,
+      final SettableFuture<ConfigTaskResult> future,
+      final boolean isTableModel) {
+    final List<TSDataType> outputDataTypes =
         ColumnHeaderConstant.showRegionColumnHeaders.stream()
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
-    TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+    final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
     if (showRegionResp.getRegionInfoList() != null) {
-      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
+      for (final TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeInt(regionInfo.getConsensusGroupId().getId());
         if (regionInfo.getConsensusGroupId().getType().ordinal()
@@ -84,7 +89,13 @@ public class ShowRegionTask implements IConfigTask {
             .getColumnBuilder(2)
             .writeBinary(
                 BytesUtils.valueOf(regionInfo.getStatus() == null ? "" : regionInfo.getStatus()));
-        builder.getColumnBuilder(3).writeBinary(BytesUtils.valueOf(regionInfo.getDatabase()));
+        builder
+            .getColumnBuilder(3)
+            .writeBinary(
+                BytesUtils.valueOf(
+                    isTableModel
+                        ? PathUtils.unQualifyDatabaseName(regionInfo.getDatabase())
+                        : regionInfo.getDatabase()));
         builder.getColumnBuilder(4).writeInt(regionInfo.getSeriesSlots());
         builder.getColumnBuilder(5).writeLong(regionInfo.getTimeSlots());
         builder.getColumnBuilder(6).writeInt(regionInfo.getDataNodeId());
@@ -103,7 +114,7 @@ public class ShowRegionTask implements IConfigTask {
         builder.declarePosition();
       }
     }
-    DatasetHeader datasetHeader = DatasetHeaderFactory.getShowRegionHeader();
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowRegionHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
