@@ -41,8 +41,7 @@ public class UpdateClearContainer implements UpdateContainer {
       final String tableName,
       final String[] deviceId,
       final Map<String, String> updatedAttributes) {
-    tableNames.add(tableName);
-    return RamUsageEstimator.sizeOf(tableName);
+    return tableNames.add(tableName) ? RamUsageEstimator.sizeOf(tableName) : 0;
   }
 
   @Override
