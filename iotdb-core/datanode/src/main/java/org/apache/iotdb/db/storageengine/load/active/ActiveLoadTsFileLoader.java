@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.WrappedThreadPoolExecutor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -56,6 +57,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
@@ -72,11 +74,22 @@ public class ActiveLoadTsFileLoader {
       new AtomicReference<>();
   private final AtomicReference<String> failDir = new AtomicReference<>();
 
+  private final AtomicBoolean printReadOnlyLog = new AtomicBoolean(true);
+
   public int getCurrentAllowedPendingSize() {
     return MAX_PENDING_SIZE - pendingQueue.size();
   }
 
   public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
+    if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
+      if (printReadOnlyLog.get()) {
+        LOGGER.info("Current System is read only. Active load tsfile task can not work.");
+        printReadOnlyLog.set(false);
+      }
+      return;
+    }
+    printReadOnlyLog.set(true);
+
     if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
