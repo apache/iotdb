@@ -531,12 +531,13 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
         expectedResSet);
 
     // Create database on sender
-    if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "create database root.test")) {
+    if (!TestUtils.tryExecuteNonQueryWithRetry(
+        senderEnv, "create timeSeries root.db.d2.at2 int32")) {
       fail();
     }
 
     // Check database on receiver
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases", "count,", Collections.singleton("2,"));
+        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("3,"));
   }
 }
