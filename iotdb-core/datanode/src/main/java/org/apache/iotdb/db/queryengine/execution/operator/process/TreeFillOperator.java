@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,17 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.statement.component;
+package org.apache.iotdb.db.queryengine.execution.operator.process;
 
-public enum FillPolicy {
-  PREVIOUS((byte) 0),
-  LINEAR((byte) 1),
-  VALUE((byte) 2),
-  ;
+import org.apache.iotdb.db.queryengine.execution.operator.Operator;
+import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 
-  FillPolicy(byte fillMethod) {
-    this.fillMethod = fillMethod;
+import org.apache.tsfile.block.column.Column;
+import org.apache.tsfile.read.common.block.TsBlock;
+
+public class TreeFillOperator extends AbstractFillOperator {
+
+  public TreeFillOperator(OperatorContext operatorContext, IFill[] fillArray, Operator child) {
+    super(operatorContext, fillArray, child);
   }
 
-  final byte fillMethod;
+  @Override
+  Column getHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getTimeColumn();
+  }
 }

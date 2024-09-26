@@ -379,9 +379,19 @@ propertyValue
 
 queryNoWith
     : queryTerm
+      fillClause?
       (ORDER BY sortItem (',' sortItem)*)?
-      (FILL '(' (LINEAR | PREVIOUS | literalExpression) (',' duration=timeDuration)? ')')?
       limitOffsetClause
+    ;
+
+fillClause
+    : FILL '(' fillMethod ')'
+    ;
+
+fillMethod
+    : LINEAR ('(' INTEGER_VALUE ')')?                                            #linearFill
+    | PREVIOUS ('(' INTEGER_VALUE ')')? (',' duration=timeDuration)?             #previousFill
+    | literalExpression                                                          #valueFill
     ;
 
 limitOffsetClause

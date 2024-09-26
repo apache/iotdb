@@ -36,11 +36,10 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-/** Used for linear fill. */
-public class LinearFillOperator implements ProcessOperator {
+abstract class AbstractLinearFillOperator implements ProcessOperator {
 
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(LinearFillOperator.class);
+      RamUsageEstimator.shallowSizeOfInstance(AbstractLinearFillOperator.class);
   private final OperatorContext operatorContext;
   private final ILinearFill[] fillArray;
   private final Operator child;
@@ -55,14 +54,14 @@ public class LinearFillOperator implements ProcessOperator {
 
   /**
    * indicate whether we can call child.next(). it's used to make sure that child.next() will only
-   * be called once in LinearFillOperator.next().
+   * be called once in AbstractLinearFillOperator.next().
    */
   private boolean canCallNext;
 
   // indicate whether there is more TsBlock for child operator
   private boolean noMoreTsBlock;
 
-  public LinearFillOperator(
+  AbstractLinearFillOperator(
       OperatorContext operatorContext, ILinearFill[] fillArray, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(
@@ -138,7 +137,7 @@ public class LinearFillOperator implements ProcessOperator {
     for (int i = 0; i < outputColumnCount; i++) {
       columns[i] =
           fillArray[i].fill(
-              originTsBlock.getTimeColumn(), originTsBlock.getColumn(i), startRowIndex);
+              getHelperColumn(originTsBlock), originTsBlock.getColumn(i), startRowIndex);
     }
     TsBlock result =
         new TsBlock(originTsBlock.getPositionCount(), originTsBlock.getTimeColumn(), columns);
@@ -148,6 +147,8 @@ public class LinearFillOperator implements ProcessOperator {
     }
     return result;
   }
+
+  abstract Column getHelperColumn(TsBlock tsBlock);
 
   @Override
   public boolean hasNext() throws Exception {
@@ -213,7 +214,7 @@ public class LinearFillOperator implements ProcessOperator {
       if (fillArray[columnIndex].prepareForNext(
           startRowIndex,
           currentEndRowIndex,
-          nextTsBlock.getTimeColumn(),
+          getHelperColumn(nextTsBlock),
           nextTsBlock.getColumn(columnIndex))) {
         return true;
       }

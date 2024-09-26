@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -763,6 +764,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         getLocation(ctx),
         visitIfPresent(ctx.with(), With.class),
         body.getQueryBody(),
+        body.getFill(),
         body.getOrderBy(),
         body.getOffset(),
         body.getLimit());
@@ -789,6 +791,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitQueryNoWith(RelationalSqlParser.QueryNoWithContext ctx) {
     QueryBody term = (QueryBody) visit(ctx.queryTerm());
+
+    Optional<Fill> fill = Optional.empty();
+    if (ctx.fillClause() != null) {
+      fill = visitIfPresent(ctx.fillClause(), Fill.class);
+    }
 
     Optional<OrderBy> orderBy = Optional.empty();
     if (ctx.ORDER() != null) {
@@ -828,15 +835,56 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
               query.getWhere(),
               query.getGroupBy(),
               query.getHaving(),
+              fill,
               orderBy,
               offset,
               limit),
           Optional.empty(),
           Optional.empty(),
+          Optional.empty(),
           Optional.empty());
     }
 
-    return new Query(getLocation(ctx), Optional.empty(), term, orderBy, offset, limit);
+    return new Query(getLocation(ctx), Optional.empty(), term, fill, orderBy, offset, limit);
+  }
+
+  @Override
+  public Node visitPreviousFill(RelationalSqlParser.PreviousFillContext ctx) {
+    TimeDuration timeDuration = null;
+    LongLiteral helperColumnIndex = null;
+    if (ctx.timeDuration() != null) {
+      timeDuration = DateTimeUtils.constructTimeDuration(ctx.timeDuration().getText());
+
+      if (timeDuration.monthDuration != 0 && timeDuration.nonMonthDuration != 0) {
+        throw new SemanticException(
+            "Simultaneous setting of monthly and non-monthly intervals is not supported.");
+      }
+
+      if (ctx.INTEGER_VALUE() != null) {
+        helperColumnIndex = new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.getText());
+      }
+    } else {
+      if (ctx.INTEGER_VALUE() != null) {
+        throw new SemanticException(
+            "Don't need to specify helper column index while timeDuration parameter is not specified.");
+      }
+    }
+    return new Fill(getLocation(ctx), timeDuration, helperColumnIndex);
+  }
+
+  @Override
+  public Node visitLinearFill(RelationalSqlParser.LinearFillContext ctx) {
+    if (ctx.INTEGER_VALUE() != null) {
+      return new Fill(
+          getLocation(ctx), new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.getText()));
+    } else {
+      return new Fill(getLocation(ctx));
+    }
+  }
+
+  @Override
+  public Node visitValueFill(RelationalSqlParser.ValueFillContext ctx) {
+    return new Fill(getLocation(ctx), (Literal) visit(ctx.literalExpression()));
   }
 
   @Override
@@ -891,6 +939,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
         visitIfPresent(ctx.where, Expression.class),
         visitIfPresent(ctx.groupBy(), GroupBy.class),
         visitIfPresent(ctx.having, Expression.class),
+        Optional.empty(),
         Optional.empty(),
         Optional.empty(),
         Optional.empty());

@@ -26,12 +26,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
@@ -129,6 +133,7 @@ public class QueryPlanner {
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
+    builder = fill(builder, query.getFill());
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, query.getOrderBy(), analysis.getOrderByExpressions(query));
     builder = sort(builder, orderingScheme);
@@ -196,6 +201,7 @@ public class QueryPlanner {
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
+    builder = fill(builder, node.getFill());
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
@@ -206,8 +212,6 @@ public class QueryPlanner {
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs));
-
-    // TODO handle aggregate, having, distinct, subQuery later
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
@@ -612,6 +616,46 @@ public class QueryPlanner {
             new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
 
     return new PlanAndMappings(subPlan, mappings);
+  }
+
+  private PlanBuilder fill(PlanBuilder subPlan, Optional<Fill> fill) {
+    if (!fill.isPresent()) {
+      return subPlan;
+    }
+
+    switch (fill.get().getFillMethod()) {
+      case PREVIOUS:
+        Analysis.PreviousFillAnalysis previousFillAnalysis =
+            (Analysis.PreviousFillAnalysis) analysis.getFill(fill.get());
+        Symbol previousFillHelperColumn = null;
+        if (previousFillAnalysis.getFieldReference().isPresent()) {
+          previousFillHelperColumn =
+              subPlan.translate(previousFillAnalysis.getFieldReference().get());
+        }
+
+        return subPlan.withNewRoot(
+            new PreviousFillNode(
+                queryIdAllocator.genPlanNodeId(),
+                subPlan.getRoot(),
+                previousFillAnalysis.getTimeDuration().orElse(null),
+                previousFillHelperColumn));
+      case LINEAR:
+        Analysis.LinearFillAnalysis linearFillAnalysis =
+            (Analysis.LinearFillAnalysis) analysis.getFill(fill.get());
+        Symbol helperColumn = subPlan.translate(linearFillAnalysis.getFieldReference());
+        return subPlan.withNewRoot(
+            new LinearFillNode(queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), helperColumn));
+      case VALUE:
+        Analysis.ValueFillAnalysis valueFillAnalysis =
+            (Analysis.ValueFillAnalysis) analysis.getFill(fill.get());
+        return subPlan.withNewRoot(
+            new ValueFillNode(
+                queryIdAllocator.genPlanNodeId(),
+                subPlan.getRoot(),
+                valueFillAnalysis.getFilledValue()));
+      default:
+        throw new IllegalArgumentException("Unknown fill method: " + fill.get().getFillMethod());
+    }
   }
 
   private Optional<OrderingScheme> orderingScheme(

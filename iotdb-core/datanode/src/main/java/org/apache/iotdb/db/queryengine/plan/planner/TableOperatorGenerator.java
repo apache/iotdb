@@ -37,10 +37,19 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperato
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BooleanConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.DoubleConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.FloatConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.IntConstantFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.LongConstantFill;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -67,6 +76,15 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDateLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToDoubleLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToFloatLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt32LiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToInt64LiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToStringLiteralVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
@@ -75,24 +93,30 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.filter.basic.Filter;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
@@ -119,6 +143,10 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.join.me
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.ASC_TIME_COMPARATOR;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.IDENTITY_FILL;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
@@ -348,6 +376,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return outputMappings;
   }
 
+  private ImmutableMap<Symbol, Integer> makeLayoutFromOutputSymbols(List<Symbol> outputSymbols) {
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    int channel = 0;
+    for (Symbol symbol : outputSymbols) {
+      outputMappings.put(symbol, channel);
+      channel++;
+    }
+    return outputMappings.buildOrThrow();
+  }
+
   private SeriesScanOptions.Builder getSeriesScanOptionsBuilder(
       LocalExecutionPlanContext context, @NotNull Expression timePredicate) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
@@ -505,6 +543,177 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         .flatMap(List::stream)
         .map(s -> getTSDataType(typeProvider.getTableModelType(s)))
         .collect(Collectors.toList());
+  }
+
+  @Override
+  public Operator visitPreviousFill(PreviousFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableFillOperator.class.getSimpleName());
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    int helperColumnIndex = -1;
+    if (node.getHelperColumn().isPresent()) {
+      helperColumnIndex = getColumnIndex(node.getHelperColumn().get(), node.getChild());
+    }
+    return new TableFillOperator(
+        operatorContext,
+        getPreviousFill(
+            inputColumnCount,
+            inputDataTypes,
+            node.getTimeDuration().orElse(null),
+            context.getZoneId()),
+        child,
+        helperColumnIndex);
+  }
+
+  // index starts from 0
+  private int getColumnIndex(Symbol symbol, PlanNode node) {
+    String name = symbol.getName();
+    int channel = 0;
+    for (Symbol columnName : node.getOutputSymbols()) {
+      if (columnName.getName().equals(name)) {
+        return channel;
+      }
+      channel++;
+    }
+    throw new IllegalStateException(
+        String.format("Found no column %s in %s", symbol, node.getOutputSymbols()));
+  }
+
+  @Override
+  public Operator visitLinearFill(LinearFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableFillOperator.class.getSimpleName());
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    int helperColumnIndex = getColumnIndex(node.getHelperColumn(), node.getChild());
+    return new TableLinearFillOperator(
+        operatorContext, getLinearFill(inputColumnCount, inputDataTypes), child, helperColumnIndex);
+  }
+
+  @Override
+  public Operator visitValueFill(ValueFillNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableFillOperator.class.getSimpleName());
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    int inputColumnCount = inputDataTypes.size();
+    Literal filledValue = node.getFilledValue();
+    return new TableFillOperator(
+        operatorContext,
+        getValueFill(inputColumnCount, inputDataTypes, filledValue, context),
+        child,
+        -1);
+  }
+
+  private IFill[] getValueFill(
+      int inputColumnCount,
+      List<TSDataType> inputDataTypes,
+      Literal filledValue,
+      LocalExecutionPlanContext context) {
+    IFill[] constantFill = new IFill[inputColumnCount];
+    for (int i = 0; i < inputColumnCount; i++) {
+      switch (inputDataTypes.get(i)) {
+        case BOOLEAN:
+          Boolean bool = filledValue.accept(new CastToBooleanLiteralVisitor(), null);
+          if (bool == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new BooleanConstantFill(bool);
+          }
+          break;
+        case TEXT:
+        case STRING:
+          Binary binary =
+              filledValue.accept(new CastToStringLiteralVisitor(TSFileConfig.STRING_CHARSET), null);
+          if (binary == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new BinaryConstantFill(binary);
+          }
+          break;
+        case BLOB:
+          Binary blob = filledValue.accept(new CastToBlobLiteralVisitor(), null);
+          if (blob == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new BinaryConstantFill(blob);
+          }
+          break;
+        case INT32:
+          Integer intValue = filledValue.accept(new CastToInt32LiteralVisitor(), null);
+          if (intValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new IntConstantFill(intValue);
+          }
+          break;
+        case DATE:
+          Integer dateValue = filledValue.accept(new CastToDateLiteralVisitor(), null);
+          if (dateValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new IntConstantFill(dateValue);
+          }
+          break;
+        case INT64:
+          Long longValue = filledValue.accept(new CastToInt64LiteralVisitor(), null);
+          if (longValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new LongConstantFill(longValue);
+          }
+          break;
+        case TIMESTAMP:
+          Long timestampValue =
+              filledValue.accept(new CastToTimestampLiteralVisitor(context.getZoneId()), null);
+          if (timestampValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new LongConstantFill(timestampValue);
+          }
+          break;
+        case FLOAT:
+          Float floatValue = filledValue.accept(new CastToFloatLiteralVisitor(), null);
+          if (floatValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new FloatConstantFill(floatValue);
+          }
+          break;
+        case DOUBLE:
+          Double doubleValue = filledValue.accept(new CastToDoubleLiteralVisitor(), null);
+          if (doubleValue == null) {
+            constantFill[i] = IDENTITY_FILL;
+          } else {
+            constantFill[i] = new DoubleConstantFill(doubleValue);
+          }
+          break;
+        default:
+          throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));
+      }
+    }
+    return constantFill;
   }
 
   @Override

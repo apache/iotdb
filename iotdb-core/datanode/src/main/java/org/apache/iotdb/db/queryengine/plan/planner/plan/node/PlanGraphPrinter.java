@@ -66,7 +66,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
@@ -725,6 +728,35 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitPreviousFill(PreviousFillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("PreviousFill-%s", node.getPlanNodeId().getId()));
+    node.getTimeDuration()
+        .ifPresent(
+            timeDuration -> {
+              boxValue.add(String.format("HelperColumn: %s", node.getHelperColumn()));
+              boxValue.add(String.format("TimeDuration: %s", timeDuration));
+            });
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLinearFill(LinearFillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("LinearFill-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("HelperColumn: %s", node.getHelperColumn()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitValueFill(ValueFillNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ValueFill-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("FilledValue: %s", node.getFilledValue()));
     return render(node, boxValue, context);
   }
 
