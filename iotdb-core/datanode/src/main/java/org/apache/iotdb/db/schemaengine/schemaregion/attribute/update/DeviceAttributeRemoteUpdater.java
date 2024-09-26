@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceAttributeRemoteUpdater {
+
+  private ConcurrentMap<TEndPoint, UpdateContainer> attributeUpdateMap = new ConcurrentHashMap<>();
   private final AtomicLong version = new AtomicLong(0);
   private final MemSchemaRegionStatistics regionStatistics;
 
