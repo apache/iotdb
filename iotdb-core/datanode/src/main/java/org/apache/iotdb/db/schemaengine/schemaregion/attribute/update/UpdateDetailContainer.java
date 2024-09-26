@@ -88,7 +88,7 @@ public class UpdateDetailContainer implements UpdateContainer {
               });
           return value;
         });
-    return 0;
+    return result.get();
   }
 
   @Override
