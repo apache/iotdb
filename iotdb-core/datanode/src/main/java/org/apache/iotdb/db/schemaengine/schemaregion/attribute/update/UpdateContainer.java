@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
@@ -30,7 +29,8 @@ import java.util.Map;
 
 public interface UpdateContainer {
 
-  int updateAttribute(final IDeviceID deviceId, final Map<String, String> updatedAttributes);
+  long updateAttribute(
+      final String tableName, final String[] deviceId, final Map<String, String> updatedAttributes);
 
   ByteBuffer getUpdateBuffer();
 

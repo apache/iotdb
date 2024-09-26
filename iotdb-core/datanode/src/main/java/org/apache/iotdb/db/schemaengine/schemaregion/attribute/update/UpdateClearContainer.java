@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -37,9 +37,12 @@ public class UpdateClearContainer implements UpdateContainer {
   private final Set<String> tableNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Override
-  public int updateAttribute(
-      final IDeviceID deviceId, final Map<String, String> updatedAttributes) {
-    return 0;
+  public long updateAttribute(
+      final String tableName,
+      final String[] deviceId,
+      final Map<String, String> updatedAttributes) {
+    tableNames.add(tableName);
+    return RamUsageEstimator.sizeOf(tableName);
   }
 
   @Override

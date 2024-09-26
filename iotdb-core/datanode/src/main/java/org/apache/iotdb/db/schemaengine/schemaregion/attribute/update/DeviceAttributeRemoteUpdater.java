@@ -41,7 +41,6 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -64,11 +63,8 @@ public class DeviceAttributeRemoteUpdater {
   /////////////////////////////// Service ///////////////////////////////
 
   public void update(
-      final String database,
-      final String tableName,
-      final String[] deviceId,
-      final Map<String, String> attributeMap) {
-    // TODO
+      final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
+    targetDataNodeLocations.forEach(pair -> {});
   }
 
   public void addVersion() {
@@ -174,8 +170,10 @@ public class DeviceAttributeRemoteUpdater {
 
   /////////////////////////////// Memory ///////////////////////////////
 
-  private boolean requestMemory(final long size) {
-    return Objects.isNull(regionStatistics) || regionStatistics.requestMemory(size);
+  private void requestMemory(final long size) {
+    if (regionStatistics != null) {
+      regionStatistics.requestMemory(size);
+    }
   }
 
   private void releaseMemory(final long size) {
