@@ -34,6 +34,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateClearContainer implements UpdateContainer {
 
+  static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class)
+          + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+          + 2L * RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+
   private final Set<String> tableNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   @Override

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -28,6 +29,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UpdateDetailContainer implements UpdateContainer {
+
+  static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class)
+          + RamUsageEstimator.shallowSizeOfInstance(ConcurrentHashMap.class);
 
   private final Map<String, Map<String[], Map<String, String>>> updateMap =
       new ConcurrentHashMap<>();
