@@ -61,8 +61,6 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
   private boolean hasCachedNextRightBlock;
   private boolean rightFinished;
   private long lastMatchedRightTime = Long.MIN_VALUE;
-  private int lastMatchedRightBlockListIdx = -1;
-  private int lastMatchedRightIdx = -1;
 
   private final TimeComparator comparator;
   private final TsBlockBuilder resultBuilder;
@@ -441,10 +439,6 @@ public class TableFullOuterJoinOperator extends AbstractOperator {
     return !rightBlockList.isEmpty()
         && rightBlockListIdx < rightBlockList.size()
         && rightIndex < rightBlockList.get(rightBlockListIdx).getPositionCount();
-  }
-
-  private boolean rightTimeHasMatched() {
-    return rightBlockListIdx == lastMatchedRightBlockListIdx && rightIndex == lastMatchedRightIdx;
   }
 
   private void appendValueToResult(int tmpRightBlockListIdx, int tmpRightIndex) {
