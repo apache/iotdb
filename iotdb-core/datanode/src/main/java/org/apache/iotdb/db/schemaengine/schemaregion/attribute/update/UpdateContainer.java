@@ -38,7 +38,7 @@ public interface UpdateContainer {
 
   void serialize(final OutputStream outputstream) throws IOException;
 
-  void deserialize(final InputStream fileInputStream) throws IOException;
+  void deserialize(final InputStream inputStream) throws IOException;
 
   long ramBytesUsed();
 }

@@ -69,10 +69,10 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public void deserialize(final InputStream fileInputStream) throws IOException {
-    final int size = ReadWriteIOUtils.readInt(fileInputStream);
+  public void deserialize(final InputStream inputStream) throws IOException {
+    final int size = ReadWriteIOUtils.readInt(inputStream);
     for (int i = 0; i < size; ++i) {
-      tableNames.add(ReadWriteIOUtils.readString(fileInputStream));
+      tableNames.add(ReadWriteIOUtils.readString(inputStream));
     }
   }
 

@@ -21,13 +21,16 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class UpdateDetailContainer implements UpdateContainer {
@@ -36,8 +39,8 @@ public class UpdateDetailContainer implements UpdateContainer {
   static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + MAP_SIZE;
 
-  private final Map<String, Map<String[], Map<String, String>>> updateMap =
-      new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
+      updateMap = new ConcurrentHashMap<>();
 
   @Override
   public long updateAttribute(
@@ -102,10 +105,59 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public void serialize(final OutputStream outputstream) {}
+  public void serialize(final OutputStream outputstream) throws IOException {
+    ReadWriteIOUtils.write(updateMap.size(), outputstream);
+    for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
+        tableEntry : updateMap.entrySet()) {
+      ReadWriteIOUtils.write(tableEntry.getKey(), outputstream);
+      for (final Map.Entry<String[], ConcurrentMap<String, String>> deviceEntry :
+          tableEntry.getValue().entrySet()) {
+        ReadWriteIOUtils.write(deviceEntry.getKey().length, outputstream);
+        for (final String node : deviceEntry.getKey()) {
+          ReadWriteIOUtils.write(node, outputstream);
+        }
+        ReadWriteIOUtils.write(deviceEntry.getValue(), outputstream);
+      }
+    }
+  }
 
   @Override
-  public void deserialize(final InputStream fileInputStream) {}
+  public void deserialize(final InputStream inputStream) throws IOException {
+    final int tableSize = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < tableSize; ++i) {
+      final String tableName = ReadWriteIOUtils.readString(inputStream);
+      final int deviceSize = ReadWriteIOUtils.readInt(inputStream);
+      final ConcurrentMap<String[], ConcurrentMap<String, String>> deviceMap =
+          new ConcurrentHashMap<>(deviceSize);
+      for (int j = 0; j < deviceSize; ++j) {
+        final int nodeSize = ReadWriteIOUtils.readInt(inputStream);
+        final String[] deviceId = new String[nodeSize];
+        for (int k = 0; k < nodeSize; ++k) {
+          deviceId[k] = ReadWriteIOUtils.readString(inputStream);
+        }
+        deviceMap.put(deviceId, readConcurrentMap(inputStream));
+      }
+      updateMap.put(tableName, deviceMap);
+    }
+  }
+
+  private static ConcurrentMap<String, String> readConcurrentMap(final InputStream inputStream)
+      throws IOException {
+    final int length = ReadWriteIOUtils.readInt(inputStream);
+    if (length == -1) {
+      return null;
+    } else {
+      final ConcurrentMap<String, String> map = new ConcurrentHashMap<>(length);
+
+      for (int i = 0; i < length; ++i) {
+        final String key = ReadWriteIOUtils.readString(inputStream);
+        final String value = ReadWriteIOUtils.readString(inputStream);
+        map.put(key, value);
+      }
+
+      return map;
+    }
+  }
 
   @Override
   public long ramBytesUsed() {
