@@ -36,7 +36,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
@@ -154,7 +153,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);
 
-  SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement);
+  SettableFuture<ConfigTaskResult> showRegion(
+      final ShowRegionStatement showRegionStatement, final boolean isTableModel);
 
   SettableFuture<ConfigTaskResult> showDataNodes();
 
@@ -274,8 +274,6 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showDatabases(ShowDB showDB);
 
   SettableFuture<ConfigTaskResult> showCluster(ShowCluster showCluster);
-
-  SettableFuture<ConfigTaskResult> showRegions(ShowRegions showRegions);
 
   SettableFuture<ConfigTaskResult> useDatabase(final Use useDB, final IClientSession clientSession);
 

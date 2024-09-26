@@ -370,7 +370,7 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   @Override
   public IConfigTask visitShowRegion(
       ShowRegionStatement showRegionStatement, MPPQueryContext context) {
-    return new ShowRegionTask(showRegionStatement);
+    return new ShowRegionTask(showRegionStatement, false);
   }
 
   @Override
