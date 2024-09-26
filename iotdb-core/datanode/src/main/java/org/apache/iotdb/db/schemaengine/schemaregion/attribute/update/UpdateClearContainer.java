@@ -42,6 +42,14 @@ public class UpdateClearContainer implements UpdateContainer {
 
   private final Set<String> tableNames = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+  public UpdateClearContainer() {
+    // Public constructor
+  }
+
+  UpdateClearContainer(final Set<String> tableNames) {
+    this.tableNames.addAll(tableNames);
+  }
+
   @Override
   public long updateAttribute(
       final String tableName,

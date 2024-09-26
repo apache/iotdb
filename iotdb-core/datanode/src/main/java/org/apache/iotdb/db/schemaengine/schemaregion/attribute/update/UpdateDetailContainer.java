@@ -160,4 +160,8 @@ public class UpdateDetailContainer implements UpdateContainer {
     // TODO
     return INSTANCE_SIZE;
   }
+
+  UpdateClearContainer degrade() {
+    return new UpdateClearContainer(updateMap.keySet());
+  }
 }
