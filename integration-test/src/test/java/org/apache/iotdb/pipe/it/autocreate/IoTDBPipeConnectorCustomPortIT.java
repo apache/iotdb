@@ -76,65 +76,149 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testPortsAvailable() {
+  public void testRangePortsAvailable() {
+    doTest(
+        "iotdb-thrift-async-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "range",
+        "1024",
+        "1025",
+        0,
+        "16",
+        10000,
+        0);
+  }
+
+  @Test
+  public void testCandidatePortsAvailable() {
+    doTest(
+        "iotdb-thrift-async-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "candidate",
+        null,
+        null,
+        4,
+        "16",
+        10000,
+        0);
+  }
+
+  @Test
+  public void testAsyncPortRange() {
+    doTest(
+        "iotdb-thrift-async-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "range",
+        "1024",
+        "1224",
+        0,
+        "3",
+        2000,
+        2);
+  }
+
+  @Test
+  public void testAsyncPortCandidate() {
+    doTest(
+        "iotdb-thrift-async-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "candidate",
+        "1024",
+        "1224",
+        30,
+        "1",
+        2000,
+        2);
+  }
+
+  @Test
+  public void testSyncThriftPortRange() {
+    doTest(
+        "iotdb-thrift-sync-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "range",
+        "1024",
+        "1224",
+        30,
+        "1",
+        2000,
+        2);
+  }
+
+  @Test
+  public void testSyncThriftPortCandidate() {
+    doTest(
+        "iotdb-thrift-sync-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "candidate",
+        "1024",
+        "1224",
+        30,
+        "1",
+        2000,
+        2);
+  }
+
+  @Test
+  public void testAirGapPortRange() {
+    doTest(
+        "iotdb-air-gap-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getDataNodeWrapper(0).getPipeAirGapReceiverPort(),
+        "range",
+        "1024",
+        "1224",
+        30,
+        "1",
+        2000,
+        2);
+  }
+
+  @Test
+  public void testAirGapPortCandidate() {
+    doTest(
+        "iotdb-air-gap-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getDataNodeWrapper(0).getPipeAirGapReceiverPort(),
+        "candidate",
+        "1024",
+        "1224",
+        30,
+        "1",
+        2000,
+        2);
+  }
+
+  private void doTest(
+      final String connector,
+      final String urls,
+      final String strategy,
+      final String min,
+      final String max,
+      final int candidateNum,
+      final String tasks,
+      final long sleepTime,
+      final int resultNum) {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
-        return;
+      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+      extractorAttributes.put("realtime.mode", "forced-log");
+      connectorAttributes.put("connector", connector);
+      connectorAttributes.put("batch.enable", "false");
+      connectorAttributes.put("node-urls", urls);
+      connectorAttributes.put("send-port.restriction-strategy", strategy);
+      if (strategy.equals("range")) {
+        connectorAttributes.put("send-port.range.min", min);
+        connectorAttributes.put("send-port.range.max", max);
+      } else {
+        StringBuilder candidateBuilder = new StringBuilder();
+        for (int i = 0; i < candidateNum; i++) {
+          candidateBuilder.append(1024 + i).append(",");
+        }
+        candidateBuilder.append(1024 + candidateNum);
+        connectorAttributes.put("send-port.candidate", candidateBuilder.toString());
       }
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-      extractorAttributes.put("realtime.mode", "forced-log");
-      connectorAttributes.put("connector", "iotdb-thrift-async-connector");
-      connectorAttributes.put("batch.enable", "false");
-      connectorAttributes.put("node-urls", receiverEnv.getIP() + ":" + receiverEnv.getPort());
-      connectorAttributes.put("send-port.enable", "true");
-      connectorAttributes.put("send-port.range.min", "1024");
-      connectorAttributes.put("send-port.range.max", "1035");
-      connectorAttributes.put("parallel.tasks", "16");
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      Thread.sleep(5000);
-      TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"));
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select count(*) from root.**", "Time,", new HashSet<>());
-    } catch (Exception e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testAsyncConnector() {
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-      extractorAttributes.put("realtime.mode", "forced-log");
-      connectorAttributes.put("connector", "iotdb-thrift-async-connector");
-      connectorAttributes.put("batch.enable", "false");
-      connectorAttributes.put("node-urls", receiverEnv.getIP() + ":" + receiverEnv.getPort());
-      connectorAttributes.put("send-port.enable", "true");
-      connectorAttributes.put("send-port.range.min", "1024");
-      connectorAttributes.put("send-port.range.max", "1124");
-      connectorAttributes.put("parallel.tasks", "3");
+      connectorAttributes.put("parallel.tasks", tasks);
 
       final TSStatus status =
           client.createPipe(
@@ -144,7 +228,7 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      Thread.sleep(10000);
+      Thread.sleep(sleepTime);
       TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
@@ -154,96 +238,8 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
-
-    } catch (Exception e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void testSyncThriftConnector() {
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-      extractorAttributes.put("realtime.mode", "forced-log");
-      connectorAttributes.put("connector", "iotdb-thrift-sync-connector");
-      connectorAttributes.put("batch.enable", "false");
-      connectorAttributes.put("node-urls", receiverEnv.getIP() + ":" + receiverEnv.getPort());
-      connectorAttributes.put("send-port.enable", "true");
-      connectorAttributes.put("send-port.range.min", "1024");
-      connectorAttributes.put("send-port.range.max", "1124");
-      connectorAttributes.put("parallel.tasks", "3");
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Thread.sleep(2000);
-      TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"));
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
-
-    } catch (Exception e) {
-      Assert.fail();
-    }
-  }
-
-  @Test
-  public void TestAirGap() {
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
-      final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
-      extractorAttributes.put("realtime.mode", "forced-log");
-      connectorAttributes.put("connector", "iotdb-air-gap-connector");
-      connectorAttributes.put("batch.enable", "false");
-      connectorAttributes.put(
-          "node-urls",
-          receiverEnv.getIP()
-              + ":"
-              + receiverEnv.getDataNodeWrapper(0).getPipeAirGapReceiverPort());
-      connectorAttributes.put("send-port.enable", "true");
-      connectorAttributes.put("send-port.range.min", "1024");
-      connectorAttributes.put("send-port.range.max", "1124");
-      connectorAttributes.put("parallel.tasks", "3");
-
-      final TSStatus status =
-          client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
-                  .setProcessorAttributes(processorAttributes));
-
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-      Thread.sleep(2000);
-      TestUtils.tryExecuteNonQueriesWithRetry(
-          senderEnv,
-          Arrays.asList(
-              "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
-              "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"));
-      TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv,
-          "select count(*) from root.**",
-          "count(root.db.d1.s1),",
-          Collections.singleton("2,"));
+          resultNum == 0 ? "Time," : "count(root.db.d1.s1),",
+          resultNum == 0 ? new HashSet<>() : Collections.singleton(resultNum + ","));
 
     } catch (Exception e) {
       Assert.fail();

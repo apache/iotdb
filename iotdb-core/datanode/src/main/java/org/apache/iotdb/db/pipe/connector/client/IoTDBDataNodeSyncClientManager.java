@@ -51,7 +51,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
-      final boolean isCustomSendPortDefined,
+      final String customSendPortStrategy,
       final int minSendPortRange,
       final int maxSendPortRange,
       final List<Integer> candidatePorts) {
@@ -65,7 +65,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
-        isCustomSendPortDefined,
+        customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
         candidatePorts);

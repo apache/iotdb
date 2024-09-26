@@ -125,7 +125,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
             loadBalanceStrategy,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
-            isCustomSendPortDefined,
+            customSendPortStrategy,
             minSendPortRange,
             maxSendPortRange,
             candidatePorts);
@@ -140,7 +140,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
-      final boolean isCustomSendPortDefined,
+      final String customSendPortStrategy,
       final int minSendPortRange,
       final int maxSendPortRange,
       final List<Integer> candidatePorts);

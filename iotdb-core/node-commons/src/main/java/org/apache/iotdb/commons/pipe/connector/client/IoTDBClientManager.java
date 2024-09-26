@@ -49,7 +49,7 @@ public abstract class IoTDBClientManager {
 
   protected List<Integer> candidatePorts;
 
-  protected boolean isCustomSendPortDefined;
+  protected String customSendPortStrategy;
 
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
@@ -59,13 +59,13 @@ public abstract class IoTDBClientManager {
   protected IoTDBClientManager(
       List<TEndPoint> endPointList,
       boolean useLeaderCache,
-      boolean isCustomSendPortDefined,
+      String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
       List<Integer> candidatePorts) {
     this.endPointList = endPointList;
     this.useLeaderCache = useLeaderCache;
-    this.isCustomSendPortDefined = isCustomSendPortDefined;
+    this.customSendPortStrategy = customSendPortStrategy;
     this.minSendPortRange = minSendPortRange;
     this.maxSendPortRange = maxSendPortRange;
     this.candidatePorts = candidatePorts;

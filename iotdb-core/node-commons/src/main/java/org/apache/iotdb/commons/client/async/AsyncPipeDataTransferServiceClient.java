@@ -66,7 +66,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       TEndPoint endpoint,
       TAsyncClientManager tClientManager,
       ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
-      boolean isCustomSendPortDefined,
+      String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
       List<Integer> candidatePorts)
@@ -77,15 +77,14 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
         TNonblockingSocketWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
-    if (isCustomSendPortDefined) {
-      IoTDBConnectorPortBinder.bindPort(
-          minSendPortRange,
-          maxSendPortRange,
-          candidatePorts,
-          (sendPort) -> {
-            socketChannel.bind(new InetSocketAddress(sendPort));
-          });
-    }
+    IoTDBConnectorPortBinder.bindPort(
+        customSendPortStrategy,
+        minSendPortRange,
+        maxSendPortRange,
+        candidatePorts,
+        (sendPort) -> {
+          socketChannel.bind(new InetSocketAddress(sendPort));
+        });
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;
@@ -195,24 +194,24 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public static class Factory
       extends AsyncThriftClientFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
 
-    private int minSendPortRange;
+    private final int minSendPortRange;
 
-    private int maxSendPortRange;
+    private final int maxSendPortRange;
 
-    private List<Integer> candidatePorts;
+    private final List<Integer> candidatePorts;
 
-    private boolean isCustomSendPortDefined;
+    private final String customSendPortStrategy;
 
     public Factory(
         ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
         String threadName,
-        boolean isCustomSendPortDefined,
+        String customSendPortStrategy,
         int minSendPortRange,
         int maxSendPortRange,
         List<Integer> candidatePorts) {
       super(clientManager, thriftClientProperty, threadName);
-      this.isCustomSendPortDefined = isCustomSendPortDefined;
+      this.customSendPortStrategy = customSendPortStrategy;
       this.minSendPortRange = minSendPortRange;
       this.maxSendPortRange = maxSendPortRange;
       this.candidatePorts = candidatePorts;
@@ -233,7 +232,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager,
-              isCustomSendPortDefined,
+              customSendPortStrategy,
               minSendPortRange,
               maxSendPortRange,
               candidatePorts));

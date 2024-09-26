@@ -82,14 +82,14 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       String loadBalanceStrategy,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
-      boolean isCustomSendPortDefined,
+      String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
       List<Integer> candidatePorts) {
     super(
         endPoints,
         useLeaderCache,
-        isCustomSendPortDefined,
+        customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
         candidatePorts);
@@ -105,7 +105,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
             new IClientManager.Factory<TEndPoint, AsyncPipeDataTransferServiceClient>()
                 .createClientManager(
                     new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory(
-                        isCustomSendPortDefined,
+                        this.customSendPortStrategy,
                         minSendPortRange,
                         maxSendPortRange,
                         candidatePorts)));

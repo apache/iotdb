@@ -53,12 +53,21 @@ public class PipeConnectorConstant {
   public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY =
       "connector.send-port.candidate";
   public static final String SINK_IOTDB_SEND_PORT_CANDIDATE_KEY = "sink.send-port.candidate";
-  public static final String CONNECTOR_IOTDB_SEND_PORT_ENABLE_KEY = "connector.send-port.enable";
-  public static final String SINK_IOTDB_SEND_PORT_ENABLE_KEY = "sink.send-port.enable";
-  public static final int CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE = 1024;
+  public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY =
+      "connector.send-port.restriction-strategy";
+  public static final String SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY =
+      "sink.send-port.restriction-strategy";
+  public static final int CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE = 0;
   public static final int CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE = 65535;
   public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE = "";
-  public static final boolean CONNECTOR_IOTDB_SEND_PORT_ENABLE_VALUE = false;
+  public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY = "range";
+  public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_CANDIDATE_STRATEGY = "candidate";
+  public static final Set<String> CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET =
+      Collections.unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_CANDIDATE_STRATEGY,
+                  CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)));
 
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";

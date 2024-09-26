@@ -56,7 +56,6 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   private final String ipAddress;
   private final int port;
   private final TEndPoint endPoint;
-  private final boolean isCustomSendPortDefined;
 
   public IoTDBSyncClient(
       ThriftClientProperty property,
@@ -65,7 +64,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
       boolean useSSL,
       String trustStore,
       String trustStorePwd,
-      boolean isCustomSendPortDefined,
+      String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
       List<Integer> candidatePorts)
@@ -86,25 +85,49 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     this.ipAddress = ipAddress;
     this.port = port;
     this.endPoint = new TEndPoint(ipAddress, port);
-    this.isCustomSendPortDefined = isCustomSendPortDefined;
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
-      if (isCustomSendPortDefined) {
-        try {
-          IoTDBConnectorPortBinder.bindPort(
-              minSendPortRange,
-              maxSendPortRange,
-              candidatePorts,
-              (sendPort) -> {
-                final InetSocketAddress isa = new InetSocketAddress(sendPort);
-                ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
-                    .getSocket()
-                    .bind(isa);
-              });
-        } catch (Exception e) {
-          LOGGER.warn("Failed to bind port:", e);
-        }
-      }
+      IoTDBConnectorPortBinder.bindPort(
+          customSendPortStrategy,
+          minSendPortRange,
+          maxSendPortRange,
+          candidatePorts,
+          (sendPort) -> {
+            final InetSocketAddress isa = new InetSocketAddress(sendPort);
+            ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
+                .getSocket()
+                .bind(isa);
+          });
+      transport.open();
+    }
+  }
+
+  public IoTDBSyncClient(
+      ThriftClientProperty property,
+      String ipAddress,
+      int port,
+      boolean useSSL,
+      String trustStore,
+      String trustStorePwd)
+      throws TTransportException {
+    super(
+        property
+            .getProtocolFactory()
+            .getProtocol(
+                useSSL
+                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        ipAddress,
+                        port,
+                        property.getConnectionTimeoutMs(),
+                        trustStore,
+                        trustStorePwd)
+                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        ipAddress, port, property.getConnectionTimeoutMs())));
+    this.ipAddress = ipAddress;
+    this.port = port;
+    this.endPoint = new TEndPoint(ipAddress, port);
+    final TTransport transport = getInputProtocol().getTransport();
+    if (!transport.isOpen()) {
       transport.open();
     }
   }

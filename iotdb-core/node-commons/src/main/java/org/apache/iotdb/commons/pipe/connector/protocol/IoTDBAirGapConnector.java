@@ -171,14 +171,13 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       }
 
       final AirGapSocket socket = new AirGapSocket(ip, port);
+      IoTDBConnectorPortBinder.bindPort(
+          customSendPortStrategy,
+          minSendPortRange,
+          maxSendPortRange,
+          candidatePorts,
+          (sendPort) -> socket.bind(new InetSocketAddress(sendPort)));
 
-      if (isCustomSendPortDefined) {
-        IoTDBConnectorPortBinder.bindPort(
-            minSendPortRange,
-            maxSendPortRange,
-            candidatePorts,
-            (sendPort) -> socket.bind(new InetSocketAddress(sendPort)));
-      }
       try {
         socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
         socket.setKeepAlive(true);

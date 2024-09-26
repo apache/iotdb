@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.commons.client.util;
 
+import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.utils.function.Consumer;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Iterator;
 import java.util.List;
 
 public class IoTDBConnectorPortBinder {
@@ -35,28 +35,37 @@ public class IoTDBConnectorPortBinder {
   // ===========================bind================================
 
   public static void bindPort(
+      final String customSendPortStrategy,
       final int minSendPortRange,
       final int maxSendPortRange,
       final List<Integer> candidatePorts,
       final Consumer<Integer, Exception> consumer) {
+    final boolean isRange =
+        PipeConnectorConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(
+            customSendPortStrategy);
     boolean portFound = false;
-    Iterator<Integer> iterator = candidatePorts.iterator();
-    int port = minSendPortRange;
-    while (iterator.hasNext() || port <= maxSendPortRange) {
+    int index = 0;
+    boolean isNotEnd = true;
+    while (isNotEnd) {
+      int port = isRange ? minSendPortRange + index : candidatePorts.get(index);
       try {
-        int bindPort = iterator.hasNext() ? iterator.next() : port++;
-        consumer.accept(bindPort);
+        consumer.accept(port);
         portFound = true;
         break;
       } catch (Exception ignored) {
       }
+      index++;
+      isNotEnd = isRange ? port <= maxSendPortRange : candidatePorts.size() > index;
     }
     if (!portFound) {
       String exceptionMessage =
-          String.format(
-              "Failed to find an available send port. Custom send port is defined. "
-                  + "No ports are available in the candidate list [%s] or within the range %d to %d.",
-              candidatePorts, minSendPortRange, maxSendPortRange);
+          isRange
+              ? String.format(
+                  "Failed to find an available send port within the range %d to %d.",
+                  minSendPortRange, maxSendPortRange)
+              : String.format(
+                  "Failed to find an available send port in the candidate list [%s].",
+                  candidatePorts);
       LOGGER.warn(exceptionMessage);
       throw new PipeConnectionException(exceptionMessage);
     }

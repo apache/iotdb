@@ -73,14 +73,14 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
       String loadBalanceStrategy,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
-      boolean isCustomSendPortDefined,
+      String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
       List<Integer> candidatePorts) {
     super(
         endPoints,
         useLeaderCache,
-        isCustomSendPortDefined,
+        customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
         candidatePorts);
@@ -170,7 +170,7 @@ public abstract class IoTDBSyncClientManager extends IoTDBClientManager implemen
               useSSL,
               trustStorePath,
               trustStorePwd,
-              isCustomSendPortDefined,
+              customSendPortStrategy,
               minSendPortRange,
               maxSendPortRange,
               candidatePorts));

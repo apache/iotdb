@@ -279,17 +279,17 @@ public class ClientPoolFactory {
 
     private List<Integer> candidatePorts;
 
-    private boolean isCustomSendPortDefined;
+    private String customSendPortStrategy;
 
     public AsyncPipeDataTransferServiceClientPoolFactory(
-        boolean isCustomSendPortDefined,
+        String customSendPortStrategy,
         int minSendPortRange,
         int maxSendPortRange,
         List<Integer> candidatePorts) {
       this.minSendPortRange = minSendPortRange;
       this.maxSendPortRange = maxSendPortRange;
       this.candidatePorts = candidatePorts;
-      this.isCustomSendPortDefined = isCustomSendPortDefined;
+      this.customSendPortStrategy = customSendPortStrategy;
     }
 
     @Override
@@ -307,7 +307,7 @@ public class ClientPoolFactory {
                           conf.getPipeAsyncConnectorSelectorNumber())
                       .build(),
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
-                  isCustomSendPortDefined,
+                  customSendPortStrategy,
                   minSendPortRange,
                   maxSendPortRange,
                   candidatePorts),

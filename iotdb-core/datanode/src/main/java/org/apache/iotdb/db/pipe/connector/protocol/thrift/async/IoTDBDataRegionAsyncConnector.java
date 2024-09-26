@@ -127,7 +127,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
             loadBalanceStrategy,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
-            isCustomSendPortDefined,
+            customSendPortStrategy,
             minSendPortRange,
             maxSendPortRange,
             candidatePorts);

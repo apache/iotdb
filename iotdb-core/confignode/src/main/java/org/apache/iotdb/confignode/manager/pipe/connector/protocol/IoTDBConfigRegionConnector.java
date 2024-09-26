@@ -66,7 +66,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
       final String loadBalanceStrategy,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
-      boolean isCustomSendPortDefined,
+      String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
       List<Integer> candidatePorts) {
@@ -78,7 +78,7 @@ public class IoTDBConfigRegionConnector extends IoTDBSslSyncConnector {
         loadBalanceStrategy,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
-        isCustomSendPortDefined,
+        customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
         candidatePorts);
