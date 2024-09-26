@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -657,7 +656,6 @@ public class IoTDBMultiIDsWithAttributesTableIT {
   }
 
   // has filter
-  @Ignore // TODO fix this (Beyyes)
   @Test
   public void fullOuterJoinTest2() {
     String[] expectedHeader =
@@ -688,10 +686,14 @@ public class IoTDBMultiIDsWithAttributesTableIT {
           "1971-01-01T00:00:01.000Z,d2,l4,6,d2,null,5,orange,",
           "1971-01-01T00:00:10.000Z,d1,l5,8,null,null,null,null,",
           "1971-01-01T00:00:10.000Z,d2,l5,8,null,null,null,null,",
+          "1971-04-26T17:46:40.000Z,d1,l2,13,null,null,null,null,",
           "1971-04-26T17:46:40.000Z,d2,l2,13,null,null,null,null,",
           "1971-04-26T17:46:40.020Z,d1,l3,15,null,null,null,null,",
+          "1971-04-26T17:46:40.020Z,d2,l3,15,null,null,null,null,",
+          "1971-04-26T18:01:40.000Z,d1,l4,14,null,null,null,null,",
           "1971-04-26T18:01:40.000Z,d2,l4,14,null,null,null,null,",
           "1971-08-20T11:33:20.000Z,d1,l5,16,null,null,null,null,",
+          "1971-08-20T11:33:20.000Z,d2,l5,16,null,null,null,null,",
         };
 
     // join using
