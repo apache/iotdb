@@ -389,6 +389,25 @@ public class IoTDBMultiIDsWithAttributesTableIT {
         DATABASE_NAME);
   }
 
+  @Test
+  public void coalesceTest() {
+    String[] expectedHeader = new String[] {"time", "level", "coalesce_attr2", "str"};
+    String[] retArray =
+        new String[] {
+          "1970-01-01T00:00:00.040Z,l3,a,apricot,",
+          "1970-01-01T00:00:00.040Z,l3,CCC,apricot,",
+          "1970-01-01T00:00:00.020Z,l2,CCC,pineapple,",
+          "1970-01-01T00:00:00.020Z,l2,zz,pineapple,",
+          "1970-01-01T00:00:00.000Z,l1,d,coconut,",
+          "1970-01-01T00:00:00.000Z,l1,c,coconut,",
+        };
+    tableResultSetEqualTest(
+        "select time,level,coalesce(attr2, 'CCC', 'DDD') as coalesce_attr2,str from table0 order by num+1,attr1 limit 6",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
   // ========== SubQuery Test =========
   @Test
   public void subQueryTest1() {

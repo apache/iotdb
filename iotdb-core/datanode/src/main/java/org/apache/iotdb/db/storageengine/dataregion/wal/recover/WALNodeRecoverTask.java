@@ -134,11 +134,8 @@ public class WALNodeRecoverTask implements Runnable {
             logDirectory);
       }
 
-      // PipeConsensus will not only delete WAL node folder, but also register WAL node.
-      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.FAST_IOT_CONSENSUS)
-          || config
-              .getDataRegionConsensusProtocolClass()
-              .equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
+      // IoTConsensusV2 will not only delete WAL node folder, but also register WAL node.
+      if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2)) {
         // register wal node
         WALManager.getInstance()
             .registerWALNode(

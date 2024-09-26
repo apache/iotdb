@@ -166,6 +166,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -2580,6 +2581,28 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? clusterSchemaManager.showTables(database)
         : new TShowTableResp(status);
+  }
+
+  @Override
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+    final TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? clusterSchemaManager.fetchTables(
+            fetchTableMap.entrySet().stream()
+                .filter(
+                    entry -> {
+                      entry
+                          .getValue()
+                          .removeIf(
+                              table ->
+                                  procedureManager
+                                      .checkDuplicateTableTask(
+                                          entry.getKey(), null, table, null, null)
+                                      .getRight());
+                      return !entry.getValue().isEmpty();
+                    })
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
+        : new TFetchTableResp(status);
   }
 
   @Override
