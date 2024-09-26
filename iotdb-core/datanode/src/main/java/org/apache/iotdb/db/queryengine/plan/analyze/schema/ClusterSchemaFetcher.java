@@ -181,17 +181,17 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
-      MPPQueryContext context) {
+      final ISchemaComputationWithAutoCreation schemaComputationWithAutoCreation,
+      final MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeseries will be effective.
-    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
-    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
     schemaCache.takeReadLock();
     try {
-      Pair<Template, PartialPath> templateSetInfo =
+      final Pair<Template, PartialPath> templateSetInfo =
           templateManager.checkTemplateSetInfo(schemaComputationWithAutoCreation.getDevicePath());
-      List<Integer> indexOfMissingMeasurements;
+      final List<Integer> indexOfMissingMeasurements;
       if (templateSetInfo == null) {
         // normal timeseries
         indexOfMissingMeasurements =
@@ -209,7 +209,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       // offer null for the rest missing schema processing
-      for (int index : indexOfMissingMeasurements) {
+      for (final int index : indexOfMissingMeasurements) {
         schemaComputationWithAutoCreation.computeMeasurement(index, null);
       }
     } finally {
@@ -219,12 +219,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public void fetchAndComputeSchemaWithAutoCreate(
-      List<? extends ISchemaComputationWithAutoCreation> schemaComputationWithAutoCreationList,
-      MPPQueryContext context) {
+      final List<? extends ISchemaComputationWithAutoCreation>
+          schemaComputationWithAutoCreationList,
+      final MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
-    // operation executed by delete timeseries will be effective.
-    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
-    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
+    // operation executed by delete timeSeries will be effective.
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
     schemaCache.takeReadLock();
     try {
 
@@ -258,25 +259,26 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ISchemaTree fetchSchemaListWithAutoCreate(
-      List<PartialPath> devicePathList,
-      List<String[]> measurementsList,
-      List<TSDataType[]> tsDataTypesList,
-      List<TSEncoding[]> encodingsList,
-      List<CompressionType[]> compressionTypesList,
-      List<Boolean> isAlignedList,
-      MPPQueryContext context) {
+      final List<PartialPath> devicePathList,
+      final List<String[]> measurementsList,
+      final List<TSDataType[]> tsDataTypesList,
+      final List<TSEncoding[]> encodingsList,
+      final List<CompressionType[]> compressionTypesList,
+      final List<Boolean> isAlignedList,
+      final MPPQueryContext context) {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
-    // operation executed by delete timeseries will be effective.
-    DataNodeSchemaLockManager.getInstance().takeReadLock(SchemaLockType.VALIDATE_VS_DELETION);
-    context.addAcquiredLockNum(SchemaLockType.VALIDATE_VS_DELETION);
+    // operation executed by delete timeSeries will be effective.
+    DataNodeSchemaLockManager.getInstance()
+        .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION);
     schemaCache.takeReadLock();
     try {
-      ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-      List<List<Integer>> indexOfMissingMeasurementsList = new ArrayList<>(devicePathList.size());
-      List<Integer> indexOfDevicesWithMissingMeasurements = new ArrayList<>();
+      final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+      final List<List<Integer>> indexOfMissingMeasurementsList =
+          new ArrayList<>(devicePathList.size());
+      final List<Integer> indexOfDevicesWithMissingMeasurements = new ArrayList<>();
       for (int i = 0; i < devicePathList.size(); i++) {
         schemaTree.mergeSchemaTree(schemaCache.get(devicePathList.get(i), measurementsList.get(i)));
-        List<Integer> indexOfMissingMeasurements =
+        final List<Integer> indexOfMissingMeasurements =
             checkMissingMeasurements(schemaTree, devicePathList.get(i), measurementsList.get(i));
         if (!indexOfMissingMeasurements.isEmpty()) {
           indexOfDevicesWithMissingMeasurements.add(i);
@@ -289,8 +291,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
-      // try fetch the missing schema from remote and cache fetched schema
-      ClusterSchemaTree remoteSchemaTree =
+      // Try fetch the missing schema from remote and cache fetched schema
+      final ClusterSchemaTree remoteSchemaTree =
           clusterSchemaFetchExecutor.fetchSchemaOfMultiDevices(
               devicePathList,
               measurementsList,
@@ -305,9 +307,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
         return schemaTree;
       }
 
-      // auto create the still missing schema and merge them into schemaTree
-      List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
-      List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
+      // Auto create the still missing schema and merge them into schemaTree
+      final List<Integer> indexOfDevicesNeedAutoCreateSchema = new ArrayList<>();
+      final List<List<Integer>> indexOfMeasurementsNeedAutoCreate = new ArrayList<>();
       List<Integer> indexOfMissingMeasurements;
       int deviceIndex;
       for (int i = 0, size = indexOfDevicesWithMissingMeasurements.size(); i < size; i++) {
