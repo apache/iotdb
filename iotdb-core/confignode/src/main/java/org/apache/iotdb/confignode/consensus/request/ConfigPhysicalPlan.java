@@ -20,7 +20,13 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.GetModelInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.model.ShowModelPlan;
 import org.apache.iotdb.confignode.consensus.request.read.subscription.ShowTopicPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RegisterAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.RemoveAINodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.ainode.UpdateAINodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.confignode.RemoveConfigNodePlan;
@@ -43,6 +49,10 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelInNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.DropModelPlan;
+import org.apache.iotdb.confignode.consensus.request.write.model.UpdateModelInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
@@ -161,6 +171,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case RemoveDataNode:
           plan = new RemoveDataNodePlan();
+          break;
+        case RegisterAINode:
+          plan = new RegisterAINodePlan();
+          break;
+        case RemoveAINode:
+          plan = new RemoveAINodePlan();
+          break;
+        case GetAINodeConfiguration:
+          plan = new GetAINodeConfigurationPlan();
+          break;
+        case UpdateAINodeConfiguration:
+          plan = new UpdateAINodePlan();
           break;
         case CreateDatabase:
           plan = new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase);
@@ -399,6 +421,24 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case UPDATE_CQ_LAST_EXEC_TIME:
           plan = new UpdateCQLastExecTimePlan();
+          break;
+        case CreateModel:
+          plan = new CreateModelPlan();
+          break;
+        case UpdateModelInfo:
+          plan = new UpdateModelInfoPlan();
+          break;
+        case DropModel:
+          plan = new DropModelPlan();
+          break;
+        case ShowModel:
+          plan = new ShowModelPlan();
+          break;
+        case DropModelInNode:
+          plan = new DropModelInNodePlan();
+          break;
+        case GetModelInfo:
+          plan = new GetModelInfoPlan();
           break;
         case CreatePipePlugin:
           plan = new CreatePipePluginPlan();
