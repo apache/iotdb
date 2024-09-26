@@ -23,8 +23,8 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Collections;
@@ -61,7 +61,7 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public void deserialize(final FileInputStream fileInputStream) throws IOException {
+  public void deserialize(final InputStream fileInputStream) throws IOException {
     final int size = ReadWriteIOUtils.readInt(fileInputStream);
     for (int i = 0; i < size; ++i) {
       tableNames.add(ReadWriteIOUtils.readString(fileInputStream));

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 
-import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
@@ -53,5 +53,5 @@ public class UpdateDetailContainer implements UpdateContainer {
   public void serialize(final OutputStream outputstream) {}
 
   @Override
-  public void deserialize(final FileInputStream fileInputStream) {}
+  public void deserialize(final InputStream fileInputStream) {}
 }

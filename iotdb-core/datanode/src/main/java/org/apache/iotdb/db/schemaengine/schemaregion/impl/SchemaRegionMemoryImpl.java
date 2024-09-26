@@ -546,7 +546,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       snapshotStartTime = System.currentTimeMillis();
       deviceAttributeRemoteUpdater = new DeviceAttributeRemoteUpdater(regionStatistics);
-      deviceAttributeRemoteUpdater.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      deviceAttributeRemoteUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,

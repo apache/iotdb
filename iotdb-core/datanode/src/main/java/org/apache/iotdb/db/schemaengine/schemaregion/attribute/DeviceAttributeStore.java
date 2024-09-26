@@ -96,7 +96,7 @@ public class DeviceAttributeStore implements IDeviceAttributeStore {
 
       return true;
     } catch (final IOException e) {
-      logger.error("Failed to create mtree snapshot due to {}", e.getMessage(), e);
+      logger.error("Failed to create device attribute snapshot due to {}", e.getMessage(), e);
       FileUtils.deleteFileIfExist(snapshot);
       return false;
     } finally {
