@@ -752,6 +752,7 @@ public class SessionCacheLeaderTest {
       if (time != 0 && time % 100 == 0) {
         try {
           session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+          Assert.fail();
         } catch (IoTDBConnectionException e) {
           Assert.assertEquals(
               "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
@@ -766,6 +767,7 @@ public class SessionCacheLeaderTest {
 
     try {
       session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+      fail();
     } catch (IoTDBConnectionException e) {
       Assert.assertEquals(
           "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken", e.getMessage());
@@ -780,8 +782,7 @@ public class SessionCacheLeaderTest {
     try {
       session.close();
     } catch (IoTDBConnectionException e) {
-      Assert.assertEquals(
-          "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken", e.getMessage());
+      Assert.fail(e.getMessage());
     }
 
     // with leader cache
@@ -831,8 +832,7 @@ public class SessionCacheLeaderTest {
     try {
       session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
     } catch (IoTDBConnectionException e) {
-      Assert.assertEquals(
-          "the session connection = TEndPoint(ip:127.0.0.1, port:55561) is broken", e.getMessage());
+      Assert.fail(e.getMessage());
     }
     assertEquals(3, session.deviceIdToEndpoint.size());
     for (Map.Entry<String, TEndPoint> endPointMap : session.deviceIdToEndpoint.entrySet()) {
@@ -900,6 +900,7 @@ public class SessionCacheLeaderTest {
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         try {
           session.insertTablets(tabletMap, true);
+          fail();
         } catch (IoTDBConnectionException e) {
           assertEquals(
               "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
@@ -910,18 +911,6 @@ public class SessionCacheLeaderTest {
         tablet3.reset();
       }
       timestamp++;
-    }
-
-    if (tablet1.rowSize != 0) {
-      try {
-        session.insertTablets(tabletMap, true);
-      } catch (IoTDBConnectionException e) {
-        Assert.fail(e.getMessage());
-      }
-
-      tablet1.reset();
-      tablet2.reset();
-      tablet3.reset();
     }
 
     assertNull(session.deviceIdToEndpoint);
@@ -1006,8 +995,7 @@ public class SessionCacheLeaderTest {
     try {
       session.insertTablets(tabletMap, true);
     } catch (IoTDBConnectionException e) {
-      Assert.assertEquals(
-          "the session connection = TEndPoint(ip:127.0.0.1, port:55562) is broken", e.getMessage());
+      Assert.fail(e.getMessage());
     }
     tablet1.reset();
     tablet2.reset();
@@ -1063,6 +1051,7 @@ public class SessionCacheLeaderTest {
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         try {
           session.insertRelationalTablet(tablet);
+          fail();
         } catch (IoTDBConnectionException e) {
           assertEquals(
               "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
@@ -1071,17 +1060,6 @@ public class SessionCacheLeaderTest {
         tablet.reset();
       }
       timestamp++;
-    }
-
-    if (tablet.rowSize != 0) {
-      try {
-        session.insertRelationalTablet(tablet);
-      } catch (IoTDBConnectionException e) {
-        assertEquals(
-            "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
-            e.getMessage());
-      }
-      tablet.reset();
     }
 
     assertNull(session.tableModelDeviceIdToEndpoint);
@@ -1116,9 +1094,7 @@ public class SessionCacheLeaderTest {
         try {
           session.insertRelationalTablet(tablet);
         } catch (IoTDBConnectionException e) {
-          assertEquals(
-              "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
-              e.getMessage());
+          Assert.fail(e.getMessage());
         }
         tablet.reset();
       }
@@ -1147,24 +1123,11 @@ public class SessionCacheLeaderTest {
         try {
           session.insertRelationalTablet(tablet);
         } catch (IoTDBConnectionException e) {
-          assertEquals(
-              "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
-              e.getMessage());
+          Assert.fail(e.getMessage());
         }
         tablet.reset();
       }
       timestamp++;
-    }
-
-    if (tablet.rowSize != 0) {
-      try {
-        session.insertRelationalTablet(tablet);
-      } catch (IoTDBConnectionException e) {
-        assertEquals(
-            "the session connection = TEndPoint(ip:127.0.0.1, port:55560) is broken",
-            e.getMessage());
-      }
-      tablet.reset();
     }
 
     assertEquals(3, session.tableModelDeviceIdToEndpoint.size());

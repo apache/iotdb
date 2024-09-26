@@ -69,8 +69,9 @@ public interface ISession extends AutoCloseable {
   void open(
       boolean enableRPCCompression,
       int connectionTimeoutInMs,
-      INodeSupplier nodeSupplier,
-      Map<IDeviceID, TEndPoint> tabletModelDeviceIdToEndpoint)
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      Map<IDeviceID, TEndPoint> tabletModelDeviceIdToEndpoint,
+      INodeSupplier nodeSupplier)
       throws IoTDBConnectionException;
 
   void close() throws IoTDBConnectionException;

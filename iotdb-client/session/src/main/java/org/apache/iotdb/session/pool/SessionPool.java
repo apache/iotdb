@@ -709,16 +709,13 @@ public class SessionPool implements ISessionPool {
       session = constructNewSession();
 
       try {
-        if (sqlDialect.equals("tree")) {
-          session.open(
-              enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
-        } else {
-          session.open(
-              enableCompression,
-              connectionTimeoutInMs,
-              availableNodes,
-              tableModelDeviceIdToEndpoint);
-        }
+
+        session.open(
+            enableCompression,
+            connectionTimeoutInMs,
+            deviceIdToEndpoint,
+            tableModelDeviceIdToEndpoint,
+            availableNodes);
         // avoid someone has called close() the session pool
         synchronized (this) {
           if (closed) {
@@ -828,12 +825,12 @@ public class SessionPool implements ISessionPool {
   private void tryConstructNewSession() {
     Session session = constructNewSession();
     try {
-      if (sqlDialect.equals("tree")) {
-        session.open(enableCompression, connectionTimeoutInMs, deviceIdToEndpoint, availableNodes);
-      } else {
-        session.open(
-            enableCompression, connectionTimeoutInMs, availableNodes, tableModelDeviceIdToEndpoint);
-      }
+      session.open(
+          enableCompression,
+          connectionTimeoutInMs,
+          deviceIdToEndpoint,
+          tableModelDeviceIdToEndpoint,
+          availableNodes);
       // avoid someone has called close() the session pool
       synchronized (this) {
         if (closed) {

@@ -599,8 +599,9 @@ public class Session implements ISession {
   public synchronized void open(
       boolean enableRPCCompression,
       int connectionTimeoutInMs,
-      INodeSupplier nodesSupplier,
-      Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint)
+      Map<String, TEndPoint> deviceIdToEndpoint,
+      Map<IDeviceID, TEndPoint> tableModelDeviceIdToEndpoint,
+      INodeSupplier nodesSupplier)
       throws IoTDBConnectionException {
     if (!isClosed) {
       return;
@@ -613,7 +614,7 @@ public class Session implements ISession {
     defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
     isClosed = false;
     if (enableRedirection || enableQueryRedirection) {
-      this.deviceIdToEndpoint = new ConcurrentHashMap<>();
+      this.deviceIdToEndpoint = deviceIdToEndpoint;
       this.tableModelDeviceIdToEndpoint = tableModelDeviceIdToEndpoint;
       endPointToSessionConnection = new ConcurrentHashMap<>();
       endPointToSessionConnection.put(defaultEndPoint, defaultSessionConnection);
@@ -1386,26 +1387,22 @@ public class Session implements ISession {
           }
         }
       }
-
-      if (sqlDialect.equals("tree")) {
-        if (deviceIdToEndpoint != null && !deviceIdToEndpoint.isEmpty()) {
-          for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
-              it.hasNext(); ) {
-            Entry<String, TEndPoint> entry = it.next();
-            if (entry.getValue().equals(endPoint)) {
-              it.remove();
-            }
+      if (deviceIdToEndpoint != null && !deviceIdToEndpoint.isEmpty()) {
+        for (Iterator<Entry<String, TEndPoint>> it = deviceIdToEndpoint.entrySet().iterator();
+            it.hasNext(); ) {
+          Entry<String, TEndPoint> entry = it.next();
+          if (entry.getValue().equals(endPoint)) {
+            it.remove();
           }
         }
-      } else {
-        if (tableModelDeviceIdToEndpoint != null && !tableModelDeviceIdToEndpoint.isEmpty()) {
-          for (Iterator<Entry<IDeviceID, TEndPoint>> it =
-                  tableModelDeviceIdToEndpoint.entrySet().iterator();
-              it.hasNext(); ) {
-            Entry<IDeviceID, TEndPoint> entry = it.next();
-            if (entry.getValue().equals(endPoint)) {
-              it.remove();
-            }
+      }
+      if (tableModelDeviceIdToEndpoint != null && !tableModelDeviceIdToEndpoint.isEmpty()) {
+        for (Iterator<Entry<IDeviceID, TEndPoint>> it =
+                tableModelDeviceIdToEndpoint.entrySet().iterator();
+            it.hasNext(); ) {
+          Entry<IDeviceID, TEndPoint> entry = it.next();
+          if (entry.getValue().equals(endPoint)) {
+            it.remove();
           }
         }
       }
@@ -1418,7 +1415,6 @@ public class Session implements ISession {
       if (endpoint.ip.equals("0.0.0.0")) {
         return;
       }
-      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       if (!deviceIdToEndpoint.containsKey(deviceId)
           || !deviceIdToEndpoint.get(deviceId).equals(endpoint)) {
         deviceIdToEndpoint.put(deviceId, endpoint);
@@ -1430,7 +1426,6 @@ public class Session implements ISession {
                 try {
                   return constructSessionConnection(this, endpoint, zoneId);
                 } catch (IoTDBConnectionException ex) {
-                  exceptionReference.set(ex);
                   return null;
                 }
               });
@@ -1446,7 +1441,6 @@ public class Session implements ISession {
       if (endpoint.ip.equals("0.0.0.0")) {
         return;
       }
-      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
       if (!tableModelDeviceIdToEndpoint.containsKey(deviceId)
           || !tableModelDeviceIdToEndpoint.get(deviceId).equals(endpoint)) {
         tableModelDeviceIdToEndpoint.put(deviceId, endpoint);
@@ -1458,7 +1452,6 @@ public class Session implements ISession {
                 try {
                   return constructSessionConnection(this, endpoint, zoneId);
                 } catch (IoTDBConnectionException ex) {
-                  exceptionReference.set(ex);
                   return null;
                 }
               });
@@ -2829,8 +2822,7 @@ public class Session implements ISession {
   @SuppressWarnings({
     "squid:S3776"
   }) // ignore Cognitive Complexity of methods should not be too high
-  private <T> void insertRelationalTabletByGroup(
-      Map<SessionConnection, Tablet> relationalTabletGroup)
+  private void insertRelationalTabletByGroup(Map<SessionConnection, Tablet> relationalTabletGroup)
       throws IoTDBConnectionException, StatementExecutionException {
     List<CompletableFuture<Void>> completableFutures =
         relationalTabletGroup.entrySet().stream()
@@ -2886,6 +2878,9 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          if (errMsgBuilder.length() > 0) {
+            errMsgBuilder.append(";");
+          }
           errMsgBuilder.append(cause.getMessage());
         }
       }
@@ -4061,6 +4056,9 @@ public class Session implements ISession {
         if (cause instanceof IoTDBConnectionException) {
           throw (IoTDBConnectionException) cause;
         } else {
+          if (errMsgBuilder.length() > 0) {
+            errMsgBuilder.append(";");
+          }
           errMsgBuilder.append(cause.getMessage());
         }
       }
