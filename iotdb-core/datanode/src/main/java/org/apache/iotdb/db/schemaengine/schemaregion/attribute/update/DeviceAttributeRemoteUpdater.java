@@ -153,5 +153,7 @@ public class DeviceAttributeRemoteUpdater {
       container.deserialize(inputStream);
       attributeUpdateMap.put(endPoint, container);
     }
+
+    version.set(ReadWriteIOUtils.readLong(inputStream));
   }
 }
