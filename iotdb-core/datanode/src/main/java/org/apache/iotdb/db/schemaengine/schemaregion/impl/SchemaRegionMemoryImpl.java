@@ -536,23 +536,31 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       isRecovering = true;
 
-      final long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
+      long snapshotStartTime = System.currentTimeMillis();
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeStore.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
       logger.info(
           "Device attribute snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
+          System.currentTimeMillis() - snapshotStartTime);
 
-      final long tagSnapshotStartTime = System.currentTimeMillis();
+      snapshotStartTime = System.currentTimeMillis();
+      deviceAttributeRemoteUpdater = new DeviceAttributeRemoteUpdater(regionStatistics);
+      deviceAttributeRemoteUpdater.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath);
+      logger.info(
+          "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
+          schemaRegionId,
+          System.currentTimeMillis() - snapshotStartTime);
+
+      snapshotStartTime = System.currentTimeMillis();
       tagManager =
           TagManager.loadFromSnapshot(latestSnapshotRootDir, schemaRegionDirPath, regionStatistics);
       logger.info(
           "Tag snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - tagSnapshotStartTime);
+          System.currentTimeMillis() - snapshotStartTime);
 
-      final long mTreeSnapshotStartTime = System.currentTimeMillis();
+      snapshotStartTime = System.currentTimeMillis();
       mtree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
@@ -588,7 +596,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       logger.info(
           "MTree snapshot loading of schemaRegion {} costs {}ms.",
           schemaRegionId,
-          System.currentTimeMillis() - mTreeSnapshotStartTime);
+          System.currentTimeMillis() - snapshotStartTime);
 
       isRecovering = false;
       initialized = true;
