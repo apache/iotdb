@@ -23,6 +23,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -60,7 +61,16 @@ public class UpdateClearContainer implements UpdateContainer {
 
   @Override
   public byte[] getUpdateContent() {
-    return null;
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(tableNames.size(), outputStream);
+      for (final String tableName : tableNames) {
+        ReadWriteIOUtils.write(tableName, outputStream);
+      }
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return outputStream.toByteArray();
   }
 
   @Override
