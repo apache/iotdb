@@ -1374,14 +1374,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           tableName,
           deviceId,
           () -> deviceAttributeStore.createAttribute(attributeNameList, attributeValueList),
-          pointer ->
-              updateAttribute(
-                  databaseName,
-                  tableName,
-                  deviceId,
-                  pointer,
-                  attributeNameList,
-                  attributeValueList));
+          pointer -> {
+            updateAttribute(
+                databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
+            deviceAttributeRemoteUpdater.addVersion();
+          });
     }
     writeToMLog(node);
   }
@@ -1415,6 +1412,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       }
     }
     writeToMLog(updateNode);
+    deviceAttributeRemoteUpdater.addVersion();
   }
 
   private DeviceAttributeUpdater constructDevicePredicateUpdater(

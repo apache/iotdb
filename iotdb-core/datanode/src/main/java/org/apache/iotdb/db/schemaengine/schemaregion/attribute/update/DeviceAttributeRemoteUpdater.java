@@ -61,6 +61,14 @@ public class DeviceAttributeRemoteUpdater {
     this.regionStatistics = regionStatistics;
   }
 
+  /////////////////////////////// Service ///////////////////////////////
+
+  public void addVersion() {
+    version.incrementAndGet();
+  }
+
+  /////////////////////////////// Snapshot ///////////////////////////////
+
   public synchronized boolean createSnapshot(final File targetDir) {
     final File snapshotTmp =
         SystemFileFactory.INSTANCE.getFile(
@@ -155,6 +163,8 @@ public class DeviceAttributeRemoteUpdater {
 
     version.set(ReadWriteIOUtils.readLong(inputStream));
   }
+
+  /////////////////////////////// Memory ///////////////////////////////
 
   private boolean requestMemory(final long size) {
     return Objects.isNull(regionStatistics) || regionStatistics.requestMemory(size);
