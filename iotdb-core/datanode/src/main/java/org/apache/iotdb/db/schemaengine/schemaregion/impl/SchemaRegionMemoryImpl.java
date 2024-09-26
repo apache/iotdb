@@ -68,6 +68,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.DeviceAttributeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.IDeviceAttributeStore;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.DeviceAttributeRemoteUpdater;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Deserializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.FakeCRC32Serializer;
 import org.apache.iotdb.db.schemaengine.schemaregion.logfile.SchemaLogReader;
@@ -191,6 +192,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private MTreeBelowSGMemoryImpl mtree;
   private TagManager tagManager;
   private IDeviceAttributeStore deviceAttributeStore;
+  private DeviceAttributeRemoteUpdater deviceAttributeRemoteUpdater;
 
   // region Interfaces and Implementation of initialization、snapshot、recover and clear
   public SchemaRegionMemoryImpl(ISchemaRegionParams schemaRegionParams) throws MetadataException {
@@ -241,6 +243,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       isRecovering = true;
 
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
+      deviceAttributeRemoteUpdater = new DeviceAttributeRemoteUpdater(regionStatistics);
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mtree =
           new MTreeBelowSGMemoryImpl(
@@ -461,7 +464,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   // currently, this method is only used for cluster-ratis mode
   @Override
-  public synchronized boolean createSnapshot(File snapshotDir) {
+  public synchronized boolean createSnapshot(final File snapshotDir) {
     if (!initialized) {
       logger.warn(
           "Failed to create snapshot of schemaRegion {}, because the schemaRegion has not been initialized.",
@@ -470,34 +473,52 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     logger.info("Start create snapshot of schemaRegion {}", schemaRegionId);
     boolean isSuccess;
-    long startTime = System.currentTimeMillis();
+    boolean currentResult;
+    final long startTime = System.currentTimeMillis();
 
-    long mtreeSnapshotStartTime = System.currentTimeMillis();
+    long snapshotStartTime = System.currentTimeMillis();
     isSuccess = mtree.createSnapshot(snapshotDir);
     logger.info(
-        "MTree snapshot creation of schemaRegion {} costs {}ms.",
+        "MTree snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
-        System.currentTimeMillis() - mtreeSnapshotStartTime);
+        System.currentTimeMillis() - snapshotStartTime,
+        isSuccess);
 
-    long tagSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && tagManager.createSnapshot(snapshotDir);
+    snapshotStartTime = System.currentTimeMillis();
+    currentResult = tagManager.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
     logger.info(
-        "Tag snapshot creation of schemaRegion {} costs {}ms.",
+        "Tag snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
-        System.currentTimeMillis() - tagSnapshotStartTime);
+        System.currentTimeMillis() - snapshotStartTime,
+        currentResult);
 
-    long deviceAttributeSnapshotStartTime = System.currentTimeMillis();
-    isSuccess = isSuccess && deviceAttributeStore.createSnapshot(snapshotDir);
+    snapshotStartTime = System.currentTimeMillis();
+    currentResult = deviceAttributeStore.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
     logger.info(
-        "Device attribute snapshot creation of schemaRegion {} costs {}ms",
+        "Device attribute snapshot creation of schemaRegion {} costs {}ms. Status: {}",
         schemaRegionId,
-        System.currentTimeMillis() - deviceAttributeSnapshotStartTime);
+        System.currentTimeMillis() - snapshotStartTime,
+        currentResult);
+
+    snapshotStartTime = System.currentTimeMillis();
+    currentResult = deviceAttributeRemoteUpdater.createSnapshot(snapshotDir);
+    isSuccess = isSuccess && currentResult;
+    logger.info(
+        "Device attribute remote updater snapshot creation of schemaRegion {} costs {}ms. Status: {}",
+        schemaRegionId,
+        System.currentTimeMillis() - snapshotStartTime,
+        currentResult);
 
     logger.info(
         "Snapshot creation of schemaRegion {} costs {}ms.",
         schemaRegionId,
         System.currentTimeMillis() - startTime);
-    logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+
+    if (isSuccess) {
+      logger.info("Successfully create snapshot of schemaRegion {}", schemaRegionId);
+    }
 
     return isSuccess;
   }

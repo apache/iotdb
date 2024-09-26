@@ -21,6 +21,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceAttributeRemoteUpdater {
@@ -29,5 +31,15 @@ public class DeviceAttributeRemoteUpdater {
 
   public DeviceAttributeRemoteUpdater(final MemSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
+  }
+
+  public synchronized boolean createSnapshot(final File targetDir) {
+    // TODO
+    return true;
+  }
+
+  public void loadFromSnapshot(final File snapshotDir, final String sgSchemaDirPath)
+      throws IOException {
+    // TODO
   }
 }
