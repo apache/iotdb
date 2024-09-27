@@ -318,12 +318,36 @@ public class DeletionExprMain {
     parallelExpr(configurer, exprArgs1.length, (i) -> argName1 + ":" + exprArgs1[i] +";" + argName2 + ":" + exprArgs2[i], true);
   }
 
-  public static void main(String[] args) throws ExecutionException, InterruptedException {
-    maxFileCntThreshold = 30;
+  private static void testTsFileGenInterval() throws ExecutionException, InterruptedException {
+    String argName = "tsFileGenerationInterval";
+    long[] exprArgs = new long[]{
+        10_000_000L,
+        20_000_000L,
+        40_000_000L,
+        80_000_000L,
+        160_000_000L,
+    };
+    Configurer configurer = (expr, j) -> {
+      expr.config.generateTsFileInterval = exprArgs[j];
+      expr.config.partialDeletionStep = (long) (expr.config.tsfileRange / (
+          1.0 * expr.config.generateTsFileInterval / expr.config.generatePartialDeletionInterval));
+      expr.config.deletionStartTime = 1000 * expr.config.generateTsFileInterval;
+      expr.config.rangeQueryStep = expr.config.tsfileRange / (expr.config.generateTsFileInterval
+          / expr.config.rangeQueryInterval);
+      expr.config.rangeQueryOffset = -expr.config.rangeQueryRange
+          + expr.config.deletionStartTime / expr.config.generateTsFileInterval
+          * expr.config.tsfileRange;
+    };
+    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], false);
+  }
 
-//    testSizeThreshold();
+  public static void main(String[] args) throws ExecutionException, InterruptedException {
+    maxFileCntThreshold = 100;
+
+    testSizeThreshold();
 //    testQueryInterval();
 //    testSimulationTime();
-    testDeletionRatio();
+//    testDeletionRatio();
+//    testTsFileGenInterval();
   }
 }
