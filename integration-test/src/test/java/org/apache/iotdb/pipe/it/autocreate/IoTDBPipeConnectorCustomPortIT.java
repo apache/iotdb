@@ -38,7 +38,6 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
@@ -78,14 +77,7 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
   @Test
   public void testAsyncPortRange() {
     doTest(
-        "iotdb-thrift-async-connector",
-        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "range",
-        "1024",
-        "1224",
-        0,
-        2000,
-        2);
+        "iotdb-thrift-async-connector", receiverEnv.getIP() + ":" + receiverEnv.getPort(), "range");
   }
 
   @Test
@@ -93,25 +85,13 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
     doTest(
         "iotdb-thrift-async-connector",
         receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "candidate",
-        "1024",
-        "1224",
-        30,
-        2000,
-        2);
+        "candidate");
   }
 
   @Test
   public void testSyncThriftPortRange() {
     doTest(
-        "iotdb-thrift-sync-connector",
-        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "range",
-        "1024",
-        "1224",
-        30,
-        2000,
-        2);
+        "iotdb-thrift-sync-connector", receiverEnv.getIP() + ":" + receiverEnv.getPort(), "range");
   }
 
   @Test
@@ -119,12 +99,7 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
     doTest(
         "iotdb-thrift-sync-connector",
         receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "candidate",
-        "1024",
-        "1224",
-        30,
-        2000,
-        2);
+        "candidate");
   }
 
   @Test
@@ -132,12 +107,7 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
     doTest(
         "iotdb-air-gap-connector",
         receiverEnv.getIP() + ":" + receiverEnv.getDataNodeWrapper(0).getPipeAirGapReceiverPort(),
-        "range",
-        "1024",
-        "1224",
-        30,
-        2000,
-        2);
+        "range");
   }
 
   @Test
@@ -145,23 +115,10 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
     doTest(
         "iotdb-air-gap-connector",
         receiverEnv.getIP() + ":" + receiverEnv.getDataNodeWrapper(0).getPipeAirGapReceiverPort(),
-        "candidate",
-        "1024",
-        "1224",
-        30,
-        2000,
-        2);
+        "candidate");
   }
 
-  private void doTest(
-      final String connector,
-      final String urls,
-      final String strategy,
-      final String min,
-      final String max,
-      final int candidateNum,
-      final long sleepTime,
-      final int resultNum) {
+  private void doTest(final String connector, final String urls, final String strategy) {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       final Map<String, String> extractorAttributes = new HashMap<>();
@@ -173,14 +130,14 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
       connectorAttributes.put("node-urls", urls);
       connectorAttributes.put("send-port.restriction-strategy", strategy);
       if (strategy.equals("range")) {
-        connectorAttributes.put("send-port.range.min", min);
-        connectorAttributes.put("send-port.range.max", max);
+        connectorAttributes.put("send-port.range.min", "1024");
+        connectorAttributes.put("send-port.range.max", "1524");
       } else {
         StringBuilder candidateBuilder = new StringBuilder();
-        for (int i = 0; i < candidateNum; i++) {
+        for (int i = 0; i < 30; i++) {
           candidateBuilder.append(1024 + i).append(",");
         }
-        candidateBuilder.append(1024 + candidateNum);
+        candidateBuilder.append(1024 + 30);
         connectorAttributes.put("send-port.candidate", candidateBuilder.toString());
       }
 
@@ -192,7 +149,7 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
-      Thread.sleep(sleepTime);
+      Thread.sleep(2000);
       TestUtils.tryExecuteNonQueriesWithRetry(
           senderEnv,
           Arrays.asList(
@@ -202,8 +159,8 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.**",
-          resultNum == 0 ? "Time," : "count(root.db.d1.s1),",
-          resultNum == 0 ? new HashSet<>() : Collections.singleton(resultNum + ","));
+          "count(root.db.d1.s1),",
+          Collections.singleton("2,"));
 
     } catch (Exception e) {
       Assert.fail();
