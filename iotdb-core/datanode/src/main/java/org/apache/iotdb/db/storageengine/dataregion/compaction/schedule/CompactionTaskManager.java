@@ -119,7 +119,7 @@ public class CompactionTaskManager implements IService {
   @Override
   public synchronized void start() {
     if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount() > 0
+        && IoTDBDescriptor.getInstance().getConfig().getTotalCompactionThreadCount() > 0
         && (config.isEnableSeqSpaceCompaction()
             || config.isEnableUnseqSpaceCompaction()
             || config.isEnableCrossSpaceCompaction())) {
@@ -130,10 +130,8 @@ public class CompactionTaskManager implements IService {
   }
 
   private void initThreadPool() {
-    int normalCompactionThreadNum =
-        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
-    int lightweightCompactionThreadNum =
-        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    int normalCompactionThreadNum = config.getNormalCompactionThreadCount();
+    int lightweightCompactionThreadNum = config.getNormalCompactionThreadCount();
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
@@ -143,7 +141,7 @@ public class CompactionTaskManager implements IService {
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 (normalCompactionThreadNum + lightweightCompactionThreadNum)
-                    * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
+                    * config.getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_TASK.getName());
     this.subCompactionTaskExecutionPool.disableErrorLog();
     for (int i = 0; i < normalCompactionThreadNum; ++i) {
@@ -255,8 +253,8 @@ public class CompactionTaskManager implements IService {
     // If the queue size accounts for less than 0.8 of the total capacity, select cross space
     // compaction task
     int waitingQueueRestSize =
-        multiWorkerTypeCompactionTaskQueues.getMaxSize()
-            - multiWorkerTypeCompactionTaskQueues.size();
+        multiWorkerTypeCompactionTaskQueues.getMaxSize(CompactionWorkerType.NORMAL_TASK_WORKER)
+            - multiWorkerTypeCompactionTaskQueues.size(CompactionWorkerType.NORMAL_TASK_WORKER);
     return 5 * waitingQueueRestSize >= multiWorkerTypeCompactionTaskQueues.size();
   }
 

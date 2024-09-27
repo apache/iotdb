@@ -747,7 +747,7 @@ public class IoTDBConfig {
    * Distinguish whether the compaction task is a small task based on the size of the data that
    * needs to be read and written in compaction.
    */
-  private long smallCompactionTaskFileSize = 100 * 1024 * 1024;
+  private long smallCompactionTaskFileSizeInBytes = 100 * 1024 * 1024;
 
   /**
    * How many chunk will be compact in aligned series compaction, 10 by default. Set to
@@ -2154,6 +2154,10 @@ public class IoTDBConfig {
     this.enable13DataInsertAdapt = enable13DataInsertAdapt;
   }
 
+  public int getTotalCompactionThreadCount() {
+    return normalCompactionThreadCount + lightweightCompactionThreadCount;
+  }
+
   public int getNormalCompactionThreadCount() {
     return normalCompactionThreadCount;
   }
@@ -2170,12 +2174,12 @@ public class IoTDBConfig {
     this.lightweightCompactionThreadCount = lightweightCompactionThreadCount;
   }
 
-  public long getSmallCompactionTaskFileSize() {
-    return smallCompactionTaskFileSize;
+  public long getSmallCompactionTaskFileSizeInBytes() {
+    return smallCompactionTaskFileSizeInBytes;
   }
 
-  public void setSmallCompactionTaskFileSize(long smallCompactionTaskFileSize) {
-    this.smallCompactionTaskFileSize = smallCompactionTaskFileSize;
+  public void setSmallCompactionTaskFileSizeInBytes(long smallCompactionTaskFileSizeInBytes) {
+    this.smallCompactionTaskFileSizeInBytes = smallCompactionTaskFileSizeInBytes;
   }
 
   public int getCompactionMaxAlignedSeriesNumInOneBatch() {

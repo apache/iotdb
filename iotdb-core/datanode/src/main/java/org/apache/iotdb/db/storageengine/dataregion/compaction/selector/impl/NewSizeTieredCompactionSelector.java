@@ -69,7 +69,7 @@ public class NewSizeTieredCompactionSelector extends SizeTieredCompactionSelecto
                 "system")
             .getValue();
     long maxDiskSizeForTempFiles =
-        (long) availableDiskSpaceInByte / config.getNormalCompactionThreadCount();
+        (long) availableDiskSpaceInByte / config.getTotalCompactionThreadCount();
     maxDiskSizeForTempFiles =
         maxDiskSizeForTempFiles == 0 ? Long.MAX_VALUE : maxDiskSizeForTempFiles;
     this.maxLevelGap = config.getMaxLevelGapInInnerCompaction();

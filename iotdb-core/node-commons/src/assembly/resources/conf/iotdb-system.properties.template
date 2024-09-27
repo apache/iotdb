@@ -1288,11 +1288,23 @@ max_cross_compaction_candidate_file_size=5368709120
 # Datatype: int
 min_cross_compaction_unseq_file_level=1
 
-# How many threads will be set up to perform compaction, 10 by default.
+# How many threads will be set up to perform any compaction task, 8 by default.
 # Set to 1 when less than or equal to 0.
 # effectiveMode: hot_reload
 # Datatype: int
-compaction_thread_count=10
+normal_compaction_thread_count=8
+
+# How many threads will be set up to perform small compaction task, 2 by default.
+# Set to 1 when less than or equal to 0.
+# effectiveMode: hot_reload
+# Datatype: int
+lightweight_compaction_thread_count=2
+
+# Distinguish whether the compaction task is a small task based on the size of the
+# data that needs to be read and written in compaction.
+# effectiveMode: hot_reload
+# Datatype: long
+small_compaction_task_file_size_in_bytes=104857600
 
 # How many chunk will be compacted in aligned series compaction, 10 by default.
 # Set to Integer.MAX_VALUE when less than or equal to 0.

@@ -619,11 +619,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "lightweight_compaction_thread_count",
                 Integer.toString(conf.getLightweightCompactionThreadCount()))));
-    conf.setSmallCompactionTaskFileSize(
+    conf.setSmallCompactionTaskFileSizeInBytes(
         Long.parseLong(
             properties.getProperty(
-                "small_compaction_task_file_size",
-                Long.toString(conf.getSmallCompactionTaskFileSize()))));
+                "small_compaction_task_file_size_in_bytes",
+                Long.toString(conf.getSmallCompactionTaskFileSizeInBytes()))));
     int maxConcurrentAlignedSeriesInCompaction =
         Integer.parseInt(
             properties.getProperty(
@@ -1428,15 +1428,15 @@ public class IoTDBDescriptor {
         compactionMaxAlignedSeriesNumInOneBatch
             != conf.getCompactionMaxAlignedSeriesNumInOneBatch();
 
-    // update small_compaction_task_file_size
-    long smallCompactionTaskFileSize = conf.getSmallCompactionTaskFileSize();
-    conf.setSmallCompactionTaskFileSize(
+    // update small_compaction_task_file_size_in_bytes
+    long smallCompactionTaskFileSize = conf.getSmallCompactionTaskFileSizeInBytes();
+    conf.setSmallCompactionTaskFileSizeInBytes(
         Long.parseLong(
             properties.getProperty(
-                "small_compaction_task_file_size",
+                "small_compaction_task_file_size_in_bytes",
                 ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "small_compaction_task_file_sizej"))));
-    configModified |= smallCompactionTaskFileSize != conf.getSmallCompactionTaskFileSize();
+                    "small_compaction_task_file_size_in_bytes"))));
+    configModified |= smallCompactionTaskFileSize != conf.getSmallCompactionTaskFileSizeInBytes();
 
     return configModified;
   }

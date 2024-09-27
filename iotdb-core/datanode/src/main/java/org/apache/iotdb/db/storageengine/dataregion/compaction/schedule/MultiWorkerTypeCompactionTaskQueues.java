@@ -99,8 +99,17 @@ public class MultiWorkerTypeCompactionTaskQueues {
     return queues.stream().anyMatch(queue -> queue.contains(compactionTask));
   }
 
+  public int getMaxSize(CompactionWorkerType type) {
+    return workerQueueMap.get(type).stream().mapToInt(CompactionTaskQueue::getMaxSize).sum();
+  }
+
+  public int size(CompactionWorkerType type) {
+    return workerQueueMap.get(type).stream().mapToInt(CompactionTaskQueue::size).sum();
+  }
+
   public void put(AbstractCompactionTask compactionTask) throws InterruptedException {
-    if (compactionTask.getCompactionRewriteFileSize() > config.getSmallCompactionTaskFileSize()) {
+    if (compactionTask.getCompactionRewriteFileSize()
+        > config.getSmallCompactionTaskFileSizeInBytes()) {
       candidateNormalCompactionTaskQueue.put(compactionTask);
     } else {
       candidateLightweightCompactionTaskQueue.put(compactionTask);

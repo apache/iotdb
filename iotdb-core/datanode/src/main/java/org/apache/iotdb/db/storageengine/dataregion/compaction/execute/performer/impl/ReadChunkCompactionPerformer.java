@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
@@ -49,6 +50,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
+  private static IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> targetResources;
   private CompactionTaskSummary summary;
@@ -60,8 +62,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private final long memoryBudgetForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-              / IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount()
-              * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
+              / conf.getTotalCompactionThreadCount()
+              * conf.getChunkMetadataSizeProportion());
   private Schema schema = null;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {

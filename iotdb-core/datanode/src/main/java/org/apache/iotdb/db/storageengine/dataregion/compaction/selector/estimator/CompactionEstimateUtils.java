@@ -147,7 +147,7 @@ public class CompactionEstimateUtils {
 
   public static boolean shouldAccurateEstimate(long roughEstimatedMemCost) {
     return roughEstimatedMemCost > 0
-        && IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount()
+        && IoTDBDescriptor.getInstance().getConfig().getTotalCompactionThreadCount()
                 * roughEstimatedMemCost
             < SystemInfo.getInstance().getMemorySizeForCompaction();
   }
