@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.db.expr;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.expr.conf.SimulationConfig;
 import org.apache.iotdb.db.expr.distribution.FixedIntervalGenerator;
 import org.apache.iotdb.db.expr.entity.SimDeletion;
@@ -42,6 +33,15 @@ import org.apache.iotdb.db.expr.simulator.SimpleSimulator;
 
 import org.apache.tsfile.read.common.TimeRange;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 public class DeletionExprMain {
 
   private SimulationConfig config;
@@ -51,6 +51,7 @@ public class DeletionExprMain {
   private long maxTimestamp;
   private ExprReport report;
   private static int maxFileCntThreshold = 30;
+  private static int cntThresholdStep = 1;
 
   public DeletionExprMain() {
     init();
@@ -60,8 +61,7 @@ public class DeletionExprMain {
   public void init() {
     config = new SimulationConfig();
     simulator = new SimpleSimulator(config);
-    simpleModAllocator = new SimpleModAllocator(config,
-        simulator.getSimulationContext());
+    simpleModAllocator = new SimpleModAllocator(config, simulator.getSimulationContext());
     maxStep = 10000;
     maxTimestamp = Long.MAX_VALUE;
   }
@@ -86,8 +86,10 @@ public class DeletionExprMain {
     GenerateDeletionEvent generatePartialDeletionEvent =
         new GenerateDeletionEvent(
             config,
-            new SimDeletion(new TimeRange(config.partialDeletionOffset,
-                config.partialDeletionOffset + config.partialDeletionRange)),
+            new SimDeletion(
+                new TimeRange(
+                    config.partialDeletionOffset,
+                    config.partialDeletionOffset + config.partialDeletionRange)),
             config.partialDeletionStep,
             new FixedIntervalGenerator(config.generatePartialDeletionInterval));
     generatePartialDeletionEvent.generateTimestamp = config.deletionStartTime;
@@ -104,15 +106,19 @@ public class DeletionExprMain {
     ExecuteRangeQueryEvent executeRangeQueryEvent =
         new ExecuteRangeQueryEvent(
             config,
-            new TimeRange(config.rangeQueryOffset,
-                config.rangeQueryRange + config.rangeQueryOffset),
+            new TimeRange(
+                config.rangeQueryOffset, config.rangeQueryRange + config.rangeQueryOffset),
             config.rangeQueryStep,
             new FixedIntervalGenerator(config.rangeQueryInterval));
-    ExecuteLastPointQueryEvent executeLastPointQueryEvent = new ExecuteLastPointQueryEvent(config,
-        new TimeRange(0, 1), new FixedIntervalGenerator(config.pointQueryInterval));
-    ExecuteRangeQueryEvent executeFullQueryEvent = new ExecuteRangeQueryEvent(config,
-        new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE), 0,
-        new FixedIntervalGenerator(config.fullQueryInterval));
+    ExecuteLastPointQueryEvent executeLastPointQueryEvent =
+        new ExecuteLastPointQueryEvent(
+            config, new TimeRange(0, 1), new FixedIntervalGenerator(config.pointQueryInterval));
+    ExecuteRangeQueryEvent executeFullQueryEvent =
+        new ExecuteRangeQueryEvent(
+            config,
+            new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE),
+            0,
+            new FixedIntervalGenerator(config.fullQueryInterval));
     events.add(executeRangeQueryEvent);
     events.add(executeLastPointQueryEvent);
     events.add(executeFullQueryEvent);
@@ -134,18 +140,21 @@ public class DeletionExprMain {
     if (printState) {
       System.out.println(simulator);
       System.out.println(simulator.getStatistics());
-      System.out.println(simulator.getSimulationContext().modFileManager.modFileList.stream()
-          .map(s -> s.mods.size()).collect(
-              Collectors.toList()));
-      System.out.println(simulator.getSimulationContext().modFileManager.modFileList.stream()
-          .map(s -> s.tsfileReferences.size()).collect(
-              Collectors.toList()));
+      System.out.println(
+          simulator.getSimulationContext().modFileManager.modFileList.stream()
+              .map(s -> s.mods.size())
+              .collect(Collectors.toList()));
+      System.out.println(
+          simulator.getSimulationContext().modFileManager.modFileList.stream()
+              .map(s -> s.tsfileReferences.size())
+              .collect(Collectors.toList()));
     }
   }
 
   private void writeReport() {
-    report.deletionWriteTime = simulator.getStatistics().partialDeletionExecutedTime
-        + simulator.getStatistics().fullDeletionExecutedTime;
+    report.deletionWriteTime =
+        simulator.getStatistics().partialDeletionExecutedTime
+            + simulator.getStatistics().fullDeletionExecutedTime;
     report.deletionTimeList.add(report.deletionWriteTime);
     report.deletionReadTime = simulator.getStatistics().queryReadDeletionTime;
     report.queryTimeList.add(report.deletionReadTime);
@@ -188,7 +197,7 @@ public class DeletionExprMain {
     }
 
     // use modFileCntThreshold as the x-axis
-    for (int i = 1; i < maxFileCntThreshold; i++) {
+    for (int i = 1; i < maxFileCntThreshold; i+=cntThresholdStep) {
       initExpr(expr);
       configurer.configure(expr, exprNum);
       expr.config.modFileCntThreshold = i;
@@ -210,30 +219,40 @@ public class DeletionExprMain {
     expr.config.generatePartialDeletionInterval = 2_000_000;
     expr.config.partialDeletionRange = expr.config.tsfileRange * 3;
     expr.config.partialDeletionOffset = -expr.config.partialDeletionRange;
-    expr.config.partialDeletionStep = (long) (expr.config.tsfileRange / (
-        1.0 * expr.config.generateTsFileInterval / expr.config.generatePartialDeletionInterval));
+    expr.config.partialDeletionStep =
+        (long)
+            (expr.config.tsfileRange
+                / (1.0
+                * expr.config.generateTsFileInterval
+                / expr.config.generatePartialDeletionInterval));
 
     expr.config.generateTsFileInterval = 10_000_000;
     expr.config.modFileSizeThreshold = 64 * 1024;
     expr.config.deletionStartTime = 1000 * expr.config.generateTsFileInterval;
-//    expr.config.queryRange = maxTimestamp;
-//    expr.config.queryStep = 0;
+    //    expr.config.queryRange = maxTimestamp;
+    //    expr.config.queryStep = 0;
     expr.config.rangeQueryRange = expr.config.tsfileRange * 1000;
-    expr.config.rangeQueryStep = expr.config.tsfileRange / (expr.config.generateTsFileInterval
-        / expr.config.rangeQueryInterval);
-    expr.config.rangeQueryOffset = -expr.config.rangeQueryRange
-        + expr.config.deletionStartTime / expr.config.generateTsFileInterval
-        * expr.config.tsfileRange;
+    expr.config.rangeQueryStep =
+        expr.config.tsfileRange
+            / (expr.config.generateTsFileInterval / expr.config.rangeQueryInterval);
+    expr.config.rangeQueryOffset =
+        -expr.config.rangeQueryRange
+            + expr.config.deletionStartTime
+            / expr.config.generateTsFileInterval
+            * expr.config.tsfileRange;
   }
 
-  private static void parallelExpr(Configurer configurer, int exprNum, Function<Integer, String> argsToString, boolean runBaseline)
+  private static void parallelExpr(
+      Configurer configurer,
+      int exprNum,
+      Function<Integer, String> argsToString,
+      boolean runBaseline)
       throws ExecutionException, InterruptedException {
     ExecutorService service = Executors.newCachedThreadPool();
     List<Future<ExprReport>> asyncReports = new ArrayList<>();
     for (int i = 0; i < exprNum; i++) {
       int finalI = i;
-      asyncReports.add(service.submit(() -> oneExpr(configurer,
-          finalI, runBaseline)));
+      asyncReports.add(service.submit(() -> oneExpr(configurer, finalI, runBaseline)));
     }
 
     for (Future<ExprReport> asyncReport : asyncReports) {
@@ -249,81 +268,109 @@ public class DeletionExprMain {
 
   private static void testSizeThreshold() throws ExecutionException, InterruptedException {
     String argName = "sizeThreshold";
-    long[] exprArgs = new long[]{
-        16 * 1024,
-        32 * 1024,
-        64 * 1024,
-        128 * 1024,
-        256 * 1024,
-    };
-    Configurer configurer = (expr, j) -> {
-      expr.config.modFileSizeThreshold = exprArgs[j];
-    };
+    long[] exprArgs =
+        new long[]{
+            16 * 1024, 32 * 1024, 64 * 1024, 128 * 1024, 256 * 1024,
+        };
+    Configurer configurer =
+        (expr, j) -> {
+          expr.config.modFileSizeThreshold = exprArgs[j];
+        };
     parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], true);
   }
 
   private static void testQueryInterval() throws ExecutionException, InterruptedException {
     String argName = "queryInterval";
-    long[] exprArgs = new long[]{
-        500_000,
-        1000_000,
-        1500_000,
-        2000_000,
-        2500_000
-    };
-    Configurer configurer = (expr, j) -> {
-      expr.config.pointQueryInterval = exprArgs[j];
-      expr.config.rangeQueryInterval = exprArgs[j];
-      expr.config.fullQueryInterval = exprArgs[j];
-    };
+    long[] exprArgs = new long[]{500_000, 1000_000, 1500_000, 2000_000, 2500_000};
+    Configurer configurer =
+        (expr, j) -> {
+          expr.config.pointQueryInterval = exprArgs[j];
+          expr.config.rangeQueryInterval = exprArgs[j];
+          expr.config.fullQueryInterval = exprArgs[j];
+        };
     parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], true);
   }
 
   private static void testSimulationTime() throws ExecutionException, InterruptedException {
     String argName = "simulationTime";
-    long[] exprArgs = new long[]{
-        24 * 60 * 60 * 1000 * 1000L,
-        2 * 24 * 60 * 60 * 1000 * 1000L,
-        3 * 24 * 60 * 60 * 1000 * 1000L,
-        4 * 24 * 60 * 60 * 1000 * 1000L,
-        5 * 24 * 60 * 60 * 1000 * 1000L
-    };
-    Configurer configurer = (expr, j) -> {
-      expr.maxTimestamp = exprArgs[j];
-    };
+    long[] exprArgs =
+        new long[]{
+            24 * 60 * 60 * 1000 * 1000L,
+            2 * 24 * 60 * 60 * 1000 * 1000L,
+            3 * 24 * 60 * 60 * 1000 * 1000L,
+            4 * 24 * 60 * 60 * 1000 * 1000L,
+            5 * 24 * 60 * 60 * 1000 * 1000L
+        };
+    Configurer configurer =
+        (expr, j) -> {
+          expr.maxTimestamp = exprArgs[j];
+        };
     parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], false);
   }
 
   private static void testDeletionRatio() throws ExecutionException, InterruptedException {
     String argName1 = "fullDeletionInterval";
-    long[] exprArgs1 = new long[]{
-        200_000_000,
-        20_000_000,
-        2_000_000,
-        2_000_000,
-        2_000_000
-    };
+    long[] exprArgs1;
+    exprArgs1 = new long[]{200_000_000, 20_000_000, 2_000_000, 2_000_000, 2_000_000};
+//    exprArgs1 = new long[]{2_000_000, 2_000_000};
     String argName2 = "partialDeletionInterval";
-    long[] exprArgs2 = new long[]{
-        2_000_000,
-        2_000_000,
-        2_000_000,
-        20_000_000,
-        200_000_000,
+    long[] exprArgs2;
+    exprArgs2 = new long[]{
+        2_000_000, 2_000_000, 2_000_000, 20_000_000, 200_000_000,
     };
-    Configurer configurer = (expr, j) -> {
-      expr.config.generateFullDeletionInterval = exprArgs1[j];
-      expr.config.generatePartialDeletionInterval = exprArgs2[j];
-    };
-    parallelExpr(configurer, exprArgs1.length, (i) -> argName1 + ":" + exprArgs1[i] +";" + argName2 + ":" + exprArgs2[i], true);
+//    exprArgs2 =
+//        new long[]{
+//            20_000_000, 200_000_000,
+//        };
+    Configurer configurer =
+        (expr, j) -> {
+          expr.config.generateFullDeletionInterval = exprArgs1[j];
+          expr.config.generatePartialDeletionInterval = exprArgs2[j];
+          expr.config.partialDeletionStep =
+              (long)
+                  (expr.config.tsfileRange
+                      / (1.0
+                      * expr.config.generateTsFileInterval
+                      / expr.config.generatePartialDeletionInterval));
+        };
+    parallelExpr(
+        configurer,
+        exprArgs1.length,
+        (i) -> argName1 + ":" + exprArgs1[i] + ";" + argName2 + ":" + exprArgs2[i],
+        true);
   }
 
-  public static void main(String[] args) throws ExecutionException, InterruptedException {
-    maxFileCntThreshold = 30;
+  private static void testTsFileGenInterval() throws ExecutionException, InterruptedException {
+    String argName = "tsFileGenerationInterval";
+    long[] exprArgs = new long[]{
+        10_000_000L,
+        20_000_000L,
+        40_000_000L,
+        80_000_000L,
+        160_000_000L,
+    };
+    Configurer configurer = (expr, j) -> {
+      expr.config.generateTsFileInterval = exprArgs[j];
+      expr.config.partialDeletionStep = (long) (expr.config.tsfileRange / (
+          1.0 * expr.config.generateTsFileInterval / expr.config.generatePartialDeletionInterval));
+      expr.config.rangeQueryStep = expr.config.tsfileRange / (expr.config.generateTsFileInterval
+          / expr.config.rangeQueryInterval);
+      expr.config.rangeQueryOffset = -expr.config.rangeQueryRange
+          + expr.config.deletionStartTime / expr.config.generateTsFileInterval
+          * expr.config.tsfileRange;
+    };
+    parallelExpr(configurer, exprArgs.length, (i) -> argName + ":" + exprArgs[i], true);
+  }
 
-//    testSizeThreshold();
-//    testQueryInterval();
-//    testSimulationTime();
-    testDeletionRatio();
+
+  public static void main(String[] args) throws ExecutionException, InterruptedException {
+    maxFileCntThreshold = 101;
+    cntThresholdStep = 5;
+
+        testSizeThreshold();
+    //    testQueryInterval();
+    //    testSimulationTime();
+//    testDeletionRatio();
+//    testTsFileGenInterval();
   }
 }

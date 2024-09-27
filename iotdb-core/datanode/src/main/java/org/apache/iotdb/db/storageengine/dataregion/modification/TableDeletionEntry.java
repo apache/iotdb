@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.tsfile.read.common.TimeRange;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import org.apache.tsfile.read.common.TimeRange;
 
 public class TableDeletionEntry extends ModEntry {
   private DeletionPredicate predicate;

@@ -141,7 +141,8 @@ public class CompactionUtils {
         continue;
       }
       Set<Modification> seqModifications =
-          new HashSet<>(ModificationFileV1.getCompactionMods(seqResources.get(i)).getModifications());
+          new HashSet<>(
+              ModificationFileV1.getCompactionMods(seqResources.get(i)).getModifications());
       modifications.addAll(seqModifications);
       updateOneTargetMods(targetResource, modifications);
       if (!modifications.isEmpty()) {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import java.nio.channels.FileChannel;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
@@ -65,6 +64,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -111,11 +111,13 @@ public class TsFileResource {
 
   private ModificationFile modFile;
   private long modFileOffset;
+
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFileV1 oldModFile;
 
   @SuppressWarnings("squid:S3077")
   private volatile ModificationFileV1 compactionModFile;
+
   private ModFileManager modFileManager;
   // the start pos of mod file path in this TsFileResource
   private long modFilePathOffset = -1;
@@ -248,7 +250,8 @@ public class TsFileResource {
     fsFactory.moveFile(src, dest);
   }
 
-  private void serializeTo(BufferedOutputStream outputStream, FileOutputStream fileOutputStream) throws IOException {
+  private void serializeTo(BufferedOutputStream outputStream, FileOutputStream fileOutputStream)
+      throws IOException {
     ReadWriteIOUtils.write(VERSION_NUMBER, outputStream);
     timeIndex.serialize(outputStream);
 
@@ -310,9 +313,7 @@ public class TsFileResource {
     modFilePathDeserialized = true;
   }
 
-  /**
-   * deserialize only the mod file related fields from the tail of the file.
-   */
+  /** deserialize only the mod file related fields from the tail of the file. */
   private void deserializeModFilePath() throws IOException {
     if (modFilePathDeserialized) {
       return;
@@ -351,7 +352,8 @@ public class TsFileResource {
       try (FileChannel fileChannel = FileChannel.open(resFile.toPath())) {
         fileChannel.truncate(modFilePathOffset);
       }
-      FileOutputStream fileOutputStream = new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX, true);
+      FileOutputStream fileOutputStream =
+          new FileOutputStream(file + RESOURCE_SUFFIX + TEMP_SUFFIX, true);
       BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream);
       try {
         ReadWriteIOUtils.writeVar(modFile.getFile().getAbsolutePath(), outputStream);

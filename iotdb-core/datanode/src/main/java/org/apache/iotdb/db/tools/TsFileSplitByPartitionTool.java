@@ -106,7 +106,8 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     reader = new TsFileSequenceReader(file);
     partitionWriterMap = new HashMap<>();
     if (FSFactoryProducer.getFSFactory().getFile(file + ModificationFileV1.FILE_SUFFIX).exists()) {
-      oldModification = (List<Modification>) resourceToBeRewritten.getOldModFile().getModifications();
+      oldModification =
+          (List<Modification>) resourceToBeRewritten.getOldModFile().getModifications();
       modsIterator = oldModification.iterator();
     }
   }

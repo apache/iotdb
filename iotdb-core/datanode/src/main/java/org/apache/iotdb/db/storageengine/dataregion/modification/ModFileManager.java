@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,21 +33,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * A ModFileManager manages the ModificationFiles of a Time Partition.
- */
+/** A ModFileManager manages the ModificationFiles of a Time Partition. */
 @SuppressWarnings({"SynchronizationOnLocalVariableOrMethodParameter"})
 public class ModFileManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ModFileManager.class);
   // levelNum -> modFileNum -> modFile
-  private final Map<Long, TreeMap<Long, ModificationFile>> allLevelModsFileMap = new ConcurrentHashMap<>();
+  private final Map<Long, TreeMap<Long, ModificationFile>> allLevelModsFileMap =
+      new ConcurrentHashMap<>();
 
   private final int levelModFileCntThreshold;
   private final long singleModFileSizeThreshold;
@@ -55,15 +56,17 @@ public class ModFileManager {
     String name = file.getName();
     long[] levelNumAndModNum = ModificationFile.parseFileName(name);
 
-    ModificationFile modificationFile = allLevelModsFileMap.computeIfAbsent(levelNumAndModNum[0],
-        k -> new TreeMap<>()).computeIfAbsent(levelNumAndModNum[1], k -> new ModificationFile(file, resource));
+    ModificationFile modificationFile =
+        allLevelModsFileMap
+            .computeIfAbsent(levelNumAndModNum[0], k -> new TreeMap<>())
+            .computeIfAbsent(levelNumAndModNum[1], k -> new ModificationFile(file, resource));
     modificationFile.addReference(resource);
     return modificationFile;
   }
 
   private long maxModNum(long levelNum) {
-    TreeMap<Long, ModificationFile> levelModFileMap = allLevelModsFileMap.computeIfAbsent(
-        levelNum, k -> new TreeMap<>());
+    TreeMap<Long, ModificationFile> levelModFileMap =
+        allLevelModsFileMap.computeIfAbsent(levelNum, k -> new TreeMap<>());
     if (levelModFileMap.isEmpty()) {
       return -1;
     } else {
@@ -126,12 +129,15 @@ public class ModFileManager {
     TsFileID tsFileID = resource.getTsFileID();
     long levelNum = tsFileID.getInnerCompactionCount();
     long nextModNum = maxModNum(levelNum) + 1;
-    File file = new File(resource.getTsFile().getParentFile(), ModificationFile.composeFileName(levelNum, nextModNum));
-    TreeMap<Long, ModificationFile> levelModsFileMap = this.allLevelModsFileMap.computeIfAbsent(
-        levelNum,
-        k -> new TreeMap<>());
+    File file =
+        new File(
+            resource.getTsFile().getParentFile(),
+            ModificationFile.composeFileName(levelNum, nextModNum));
+    TreeMap<Long, ModificationFile> levelModsFileMap =
+        this.allLevelModsFileMap.computeIfAbsent(levelNum, k -> new TreeMap<>());
     synchronized (levelModsFileMap) {
-      return levelModsFileMap.computeIfAbsent(nextModNum, k -> new ModificationFile(file, resource));
+      return levelModsFileMap.computeIfAbsent(
+          nextModNum, k -> new ModificationFile(file, resource));
     }
   }
 
@@ -139,11 +145,12 @@ public class ModFileManager {
     for (TreeMap<Long, ModificationFile> levelModFileMap : allLevelModsFileMap.values()) {
       List<Long> modFilesToRemove = new ArrayList<>();
       synchronized (levelModFileMap) {
-        levelModFileMap.forEach((modNum, modFile) -> {
-          if (!modFile.hasReference()) {
-            modFilesToRemove.add(modNum);
-          }
-        });
+        levelModFileMap.forEach(
+            (modNum, modFile) -> {
+              if (!modFile.hasReference()) {
+                modFilesToRemove.add(modNum);
+              }
+            });
       }
 
       synchronized (levelModFileMap) {

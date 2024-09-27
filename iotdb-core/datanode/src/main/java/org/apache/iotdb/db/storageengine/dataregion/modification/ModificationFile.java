@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedOutputStream;
 import java.io.EOFException;
 import java.io.File;
@@ -34,9 +39,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ModificationFile implements AutoCloseable {
 
@@ -47,8 +49,8 @@ public class ModificationFile implements AutoCloseable {
   private FileChannel channel;
   private OutputStream fileOutputStream;
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-  private final Set<TsFileResource> tsFileRefs = new ConcurrentSkipListSet<>(Comparator.comparing(
-      TsFileResource::getTsFilePath));
+  private final Set<TsFileResource> tsFileRefs =
+      new ConcurrentSkipListSet<>(Comparator.comparing(TsFileResource::getTsFilePath));
 
   public ModificationFile(File file, TsFileResource firstResource) {
     this.file = file;
@@ -82,6 +84,7 @@ public class ModificationFile implements AutoCloseable {
 
   /**
    * Add a TsFile to the reference set only if the set is not empty.
+   *
    * @param tsFile TsFile to be added
    * @return true if the TsFile is successfully added, false if the reference set is empty.
    */
@@ -101,6 +104,7 @@ public class ModificationFile implements AutoCloseable {
 
   /**
    * Remove the references of the given TsFiles.
+   *
    * @param tsFiles references to remove
    * @return true if the ref set is empty after removal, false otherwise
    */

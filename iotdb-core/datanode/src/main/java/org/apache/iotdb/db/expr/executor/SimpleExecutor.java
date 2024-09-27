@@ -102,12 +102,13 @@ public class SimpleExecutor implements EventExecutor<SimpleContext> {
     simpleContext.getStatistics().queryExecutedCnt++;
     simpleContext.getStatistics().queryExecutedTime += event.getTimeConsumption();
     simpleContext.getStatistics().queryReadDeletionTime += Math.round(event.readDeletionTimeSum);
-    simpleContext.getStatistics().queryReadDeletionSeekTime += Math.round(
-        event.readDeletionSeekTimeSum);
-    simpleContext.getStatistics().queryReadDeletionTransTime += Math.round(
-        event.readDeletionTransTimeSum);
-//    System.out.println(
-//        simpleContext.getSimulator().currentStep + " " + simpleContext.getSimulator().currentTimestamp
-//            + " " + event.readDeletionSeekTimeSum + " " + event.readDeletionTransTimeSum);
+    simpleContext.getStatistics().queryReadDeletionSeekTime +=
+        Math.round(event.readDeletionSeekTimeSum);
+    simpleContext.getStatistics().queryReadDeletionTransTime +=
+        Math.round(event.readDeletionTransTimeSum);
+    //    System.out.println(
+    //        simpleContext.getSimulator().currentStep + " " +
+    // simpleContext.getSimulator().currentTimestamp
+    //            + " " + event.readDeletionSeekTimeSum + " " + event.readDeletionTransTimeSum);
   }
 }

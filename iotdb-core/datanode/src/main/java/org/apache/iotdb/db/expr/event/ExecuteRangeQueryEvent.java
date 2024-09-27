@@ -78,8 +78,7 @@ public class ExecuteRangeQueryEvent extends Event {
         1.0 * deletions.size() * config.deletionSizeInByte / config.IoBandwidthBytesPerTimestamp;
     readDeletionTransTimeSum += transTime;
     readDeletionSeekTimeSum += config.IoSeekTimestamp;
-    return transTime
-        + config.IoSeekTimestamp;
+    return transTime + config.IoSeekTimestamp;
   }
 
   @Override

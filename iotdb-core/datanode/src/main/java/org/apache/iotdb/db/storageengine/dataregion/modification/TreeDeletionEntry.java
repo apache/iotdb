@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class TreeDeletionEntry extends ModEntry {
   private PartialPath pathPattern;

@@ -26,7 +26,7 @@ public class GenerateDeletionEvent extends Event {
       long step,
       Supplier<Long> intervalGenerator) {
     super(config);
-    
+
     this.currentDeletion = currentDeletion;
     this.step = step;
     this.intervalGenerator = intervalGenerator;

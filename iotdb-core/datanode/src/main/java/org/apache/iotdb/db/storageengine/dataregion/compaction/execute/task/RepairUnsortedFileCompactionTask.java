@@ -207,7 +207,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     } else {
       if (sourceFile.modFileExists()) {
         Files.createLink(
-            new File(filesView.targetFilesInPerformer.get(0).getOldModFile().getFilePath()).toPath(),
+            new File(filesView.targetFilesInPerformer.get(0).getOldModFile().getFilePath())
+                .toPath(),
             new File(sourceFile.getOldModFile().getFilePath()).toPath());
       }
     }
