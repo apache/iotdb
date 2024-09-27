@@ -25,11 +25,13 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class CountAccumulator implements Accumulator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CountAccumulator.class);
   private long countState = 0;
 
   @Override
   public long getEstimatedSize() {
-    return RamUsageEstimator.sizeOf(countState);
+    return INSTANCE_SIZE;
   }
 
   @Override

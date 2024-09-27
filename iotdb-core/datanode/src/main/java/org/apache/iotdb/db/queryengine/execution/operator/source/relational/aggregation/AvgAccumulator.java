@@ -35,6 +35,8 @@ import java.io.IOException;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AvgAccumulator implements Accumulator {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AvgAccumulator.class);
   private final TSDataType argumentDataType;
   private long countValue;
   private double sumValue;
@@ -46,7 +48,7 @@ public class AvgAccumulator implements Accumulator {
 
   @Override
   public long getEstimatedSize() {
-    return RamUsageEstimator.sizeOf(1L);
+    return INSTANCE_SIZE;
   }
 
   @Override
