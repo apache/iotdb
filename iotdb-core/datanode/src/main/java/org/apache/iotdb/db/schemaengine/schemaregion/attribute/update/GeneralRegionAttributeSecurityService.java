@@ -21,12 +21,52 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class GeneralRegionAttributeSecurityService {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
 
   private static final ScheduledExecutorService SECURITY_SERVICE_EXECUTOR =
       IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
           ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
+
+  private Future<?> executorFuture;
+
+  public synchronized void start() {
+    if (executorFuture == null) {
+      executorFuture =
+          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+              SECURITY_SERVICE_EXECUTOR,
+              this::execute,
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
+              TimeUnit.SECONDS);
+      LOGGER.info("General region attribute security service is started successfully.");
+    }
+  }
+
+  public synchronized void stop() {
+    if (executorFuture != null) {
+      executorFuture.cancel(false);
+      executorFuture = null;
+      LOGGER.info("General region attribute security service is stopped successfully.");
+    }
+  }
+
+  private void execute() {
+    // TODO
+  }
 }
