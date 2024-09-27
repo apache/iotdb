@@ -138,7 +138,7 @@ public class PipeStatementDataTypeConvertExecutionVisitor
                     FSFactoryProducer.getFSFactory()
                         .getFile(file.getAbsoluteFile() + ModificationFile.FILE_SUFFIX));
 
-                // delete file is exist
+                // delete file if exist
                 FileUtils.deleteQuietly(file);
               });
     }

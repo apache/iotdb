@@ -183,7 +183,7 @@ public class LoadTsFileStatement extends Statement {
     return typeMismatchDetected;
   }
 
-  public void setTypeMismatchDetected(boolean typeMismatchDetected) {
+  public void setTypeMismatchDetected(final boolean typeMismatchDetected) {
     this.typeMismatchDetected = typeMismatchDetected;
   }
 

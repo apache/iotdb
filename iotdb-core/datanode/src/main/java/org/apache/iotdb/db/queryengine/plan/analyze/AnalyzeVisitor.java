@@ -3020,14 +3020,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               e.getMessage() == null ? e.getClass().getName() : e.getMessage());
       logger.warn(exceptionMessage, e);
       final Analysis analysis = new Analysis();
-      analysis.setFinishQueryAfterAnalyze(true);
-      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
 
       if (loadTsFileStatement.isShouldConvertDataTypeOnTypeMismatch()) {
         loadTsFileStatement.setTypeMismatchDetected(true);
         analysis.setRealStatement(loadTsFileStatement);
         analysis.setFinishQueryAfterAnalyze(false);
+        return analysis;
       }
+
+      analysis.setFinishQueryAfterAnalyze(true);
+      analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
       return analysis;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
