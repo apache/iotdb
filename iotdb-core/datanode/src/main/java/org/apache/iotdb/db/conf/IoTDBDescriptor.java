@@ -1072,6 +1072,12 @@ public class IoTDBDescriptor {
                 "datanode_table_cache_semaphore_permit_num",
                 String.valueOf(conf.getDataNodeTableCacheSemaphorePermitNum()))));
 
+    conf.setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_interval_seconds",
+                String.valueOf(conf.getGeneralRegionAttributeSecurityServiceIntervalSeconds()))));
+
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
   }

@@ -1044,6 +1044,8 @@ public class IoTDBConfig {
 
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
+  private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
+
   private String readConsistencyLevel = "strong";
 
   /** Maximum execution time of a DriverTask */
@@ -3463,6 +3465,16 @@ public class IoTDBConfig {
 
   public void setDataNodeTableCacheSemaphorePermitNum(int dataNodeTableCacheSemaphorePermitNum) {
     this.dataNodeTableCacheSemaphorePermitNum = dataNodeTableCacheSemaphorePermitNum;
+  }
+
+  public long getGeneralRegionAttributeSecurityServiceIntervalSeconds() {
+    return generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public void setGeneralRegionAttributeSecurityServiceIntervalSeconds(
+      long generalRegionAttributeSecurityServiceIntervalSeconds) {
+    this.generalRegionAttributeSecurityServiceIntervalSeconds =
+        generalRegionAttributeSecurityServiceIntervalSeconds;
   }
 
   public String getReadConsistencyLevel() {
