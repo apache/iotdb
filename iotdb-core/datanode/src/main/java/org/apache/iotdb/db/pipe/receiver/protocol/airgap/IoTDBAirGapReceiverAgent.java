@@ -66,7 +66,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
   public void start() throws StartupException {
     try {
       serverSocket = new ServerSocket(PipeConfig.getInstance().getPipeAirGapReceiverPort());
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new StartupException(e);
     }
 
@@ -80,7 +80,7 @@ public class IoTDBAirGapReceiverAgent implements IService {
   public void stop() {
     try {
       serverSocket.close();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       LOGGER.warn("Failed to close IoTDBAirGapReceiverAgent's server socket", e);
     }
 

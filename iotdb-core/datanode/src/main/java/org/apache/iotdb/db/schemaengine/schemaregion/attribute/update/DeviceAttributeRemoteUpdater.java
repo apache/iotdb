@@ -66,15 +66,26 @@ public class DeviceAttributeRemoteUpdater {
       final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
     targetDataNodeLocations.forEach(
         pair -> {
-          if (attributeUpdateMap.containsKey(pair.getLeft())) {
-            updateMemory(
-                attributeUpdateMap
-                    .get(pair.getLeft())
-                    .updateAttribute(tableName, deviceId, attributeMap));
-          } else {
-
+          if (!attributeUpdateMap.containsKey(pair.getLeft())) {
+            final UpdateContainer newContainer;
+            if (!regionStatistics.isAllowToCreateNewSeries()) {
+              newContainer = new UpdateClearContainer();
+              requestMemory(UpdateClearContainer.INSTANCE_SIZE);
+            } else {
+              newContainer = new UpdateDetailContainer();
+              requestMemory(UpdateDetailContainer.INSTANCE_SIZE);
+            }
+            attributeUpdateMap.put(pair.getLeft(), newContainer);
           }
+          updateMemory(
+              attributeUpdateMap
+                  .get(pair.getLeft())
+                  .updateAttribute(tableName, deviceId, attributeMap));
         });
+  }
+
+  public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {
+    targetDataNodeLocations.add(dataNodeLocation);
   }
 
   public void addVersionAndNotifySend() {
