@@ -22,11 +22,14 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -40,8 +43,11 @@ public class GeneralRegionAttributeSecurityService {
           ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
 
   private Future<?> executorFuture;
+  private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
 
-  public synchronized void start() {
+  public synchronized void startBroadcast(final SchemaRegionId id) {
+    regionLeaders.add(id);
+
     if (executorFuture == null) {
       executorFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
@@ -58,7 +64,9 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  public synchronized void stop() {
+  public synchronized void stopBroadcast(final SchemaRegionId id) {
+    regionLeaders.remove(id);
+
     if (executorFuture != null) {
       executorFuture.cancel(false);
       executorFuture = null;
@@ -68,5 +76,22 @@ public class GeneralRegionAttributeSecurityService {
 
   private void execute() {
     // TODO
+  }
+
+  /////////////////////////////// SingleTon ///////////////////////////////
+
+  private GeneralRegionAttributeSecurityService() {
+    // Do nothing
+  }
+
+  private static final class GeneralRegionAttributeSecurityServiceHolder {
+    private static final GeneralRegionAttributeSecurityService INSTANCE =
+        new GeneralRegionAttributeSecurityService();
+
+    private GeneralRegionAttributeSecurityServiceHolder() {}
+  }
+
+  public static GeneralRegionAttributeSecurityService getInstance() {
+    return GeneralRegionAttributeSecurityServiceHolder.INSTANCE;
   }
 }

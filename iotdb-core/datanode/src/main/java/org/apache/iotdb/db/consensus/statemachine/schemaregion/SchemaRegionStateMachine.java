@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManage
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.tools.schema.SchemaRegionSnapshotParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -65,6 +66,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {
     // Stop leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance()
+        .stopBroadcast(schemaRegion.getSchemaRegionId());
   }
 
   @Override
@@ -90,6 +93,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
     // Shutdown leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance()
+        .stopBroadcast(schemaRegion.getSchemaRegionId());
 
     logger.info(
         "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
@@ -107,6 +112,8 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
     // Activate leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderReady(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance()
+        .startBroadcast(schemaRegion.getSchemaRegionId());
 
     logger.info(
         "Current node [nodeId: {}] as schema region leader [regionId: {}] is ready to work",
