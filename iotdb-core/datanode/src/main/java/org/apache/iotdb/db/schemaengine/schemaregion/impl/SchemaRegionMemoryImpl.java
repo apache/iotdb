@@ -1412,8 +1412,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         mtree.updateTableDevice(pattern, batchUpdater);
       }
     }
-    writeToMLog(updateNode);
     deviceAttributeRemoteUpdater.addVersionAndNotifySend();
+    writeToMLog(updateNode);
   }
 
   private DeviceAttributeUpdater constructDevicePredicateUpdater(

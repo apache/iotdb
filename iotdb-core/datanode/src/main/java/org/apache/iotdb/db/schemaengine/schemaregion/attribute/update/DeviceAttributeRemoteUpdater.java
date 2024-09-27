@@ -39,7 +39,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,12 +50,15 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DeviceAttributeRemoteUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
 
-  private final Set<Pair<TEndPoint, Integer>> targetDataNodeLocations =
-      Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<Pair<TEndPoint, Integer>> targetDataNodeLocations = new HashSet<>();
   private final ConcurrentMap<TEndPoint, UpdateContainer> attributeUpdateMap =
       new ConcurrentHashMap<>();
   private final AtomicLong version = new AtomicLong(0);
+
+  // Volatiles
   private final MemSchemaRegionStatistics regionStatistics;
+  private final Map<TEndPoint, UpdateContainerStatistics> updateContainerStatistics =
+      new HashMap<>();
 
   public DeviceAttributeRemoteUpdater(final MemSchemaRegionStatistics regionStatistics) {
     this.regionStatistics = regionStatistics;
@@ -64,6 +68,9 @@ public class DeviceAttributeRemoteUpdater {
 
   public void update(
       final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
+    // Degrade
+    if (!regionStatistics.isAllowToCreateNewSeries()) {}
+
     targetDataNodeLocations.forEach(
         pair -> {
           if (!attributeUpdateMap.containsKey(pair.getLeft())) {

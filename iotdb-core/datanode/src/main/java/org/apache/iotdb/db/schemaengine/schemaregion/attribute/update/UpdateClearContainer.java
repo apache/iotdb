@@ -23,6 +23,8 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.concurrent.ThreadSafe;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@ThreadSafe
 public class UpdateClearContainer implements UpdateContainer {
 
   static final long INSTANCE_SIZE =

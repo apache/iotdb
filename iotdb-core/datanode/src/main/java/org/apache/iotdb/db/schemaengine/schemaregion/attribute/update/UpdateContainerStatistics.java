@@ -19,30 +19,19 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
-import org.apache.tsfile.utils.Pair;
+public class UpdateContainerStatistics {
+  private long lastUpdateTime = System.currentTimeMillis();
+  private long size = 0;
 
-import javax.annotation.concurrent.ThreadSafe;
+  private void update() {
+    lastUpdateTime = System.currentTimeMillis();
+  }
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.Map;
+  private void addSize(final long increment) {
+    this.size += increment;
+  }
 
-@ThreadSafe
-public interface UpdateContainer {
-
-  long updateAttribute(
-      final String tableName, final String[] deviceId, final Map<String, String> updatedAttributes);
-
-  // Only this method is not synchronize called and is called by GRASS thread
-  byte[] getUpdateContent();
-
-  Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
-
-  void serialize(final OutputStream outputstream) throws IOException;
-
-  void deserialize(final InputStream inputStream) throws IOException;
-
-  long ramBytesUsed();
+  long getDegradePriority() {
+    return size * (System.currentTimeMillis() - lastUpdateTime);
+  }
 }
