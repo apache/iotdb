@@ -110,8 +110,8 @@ public class DeviceAttributeRemoteUpdater {
 
   public void afterUpdate() {
     version.incrementAndGet();
-    GeneralRegionAttributeSecurityService.getInstance().notifyBroadCast();
     degrade();
+    GeneralRegionAttributeSecurityService.getInstance().notifyBroadCast();
   }
 
   private void degrade() {
