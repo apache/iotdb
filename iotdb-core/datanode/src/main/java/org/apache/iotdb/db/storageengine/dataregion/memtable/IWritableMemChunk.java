@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
@@ -32,34 +33,34 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public interface IWritableMemChunk extends WALEntryValue {
 
-  void putLong(long t, long v);
+  boolean putLongWithFlushCheck(long t, long v);
 
-  void putInt(long t, int v);
+  boolean putIntWithFlushCheck(long t, int v);
 
-  void putFloat(long t, float v);
+  boolean putFloatWithFlushCheck(long t, float v);
 
-  void putDouble(long t, double v);
+  boolean putDoubleWithFlushCheck(long t, double v);
 
   boolean putBinaryWithFlushCheck(long t, Binary v);
 
-  void putBoolean(long t, boolean v);
+  boolean putBooleanWithFlushCheck(long t, boolean v);
 
   boolean putAlignedValueWithFlushCheck(long t, Object[] v);
 
-  void putLongs(long[] t, long[] v, BitMap bitMap, int start, int end);
+  boolean putLongsWithFlushCheck(long[] t, long[] v, BitMap bitMap, int start, int end);
 
-  void putInts(long[] t, int[] v, BitMap bitMap, int start, int end);
+  boolean putIntsWithFlushCheck(long[] t, int[] v, BitMap bitMap, int start, int end);
 
-  void putFloats(long[] t, float[] v, BitMap bitMap, int start, int end);
+  boolean putFloatsWithFlushCheck(long[] t, float[] v, BitMap bitMap, int start, int end);
 
-  void putDoubles(long[] t, double[] v, BitMap bitMap, int start, int end);
+  boolean putDoublesWithFlushCheck(long[] t, double[] v, BitMap bitMap, int start, int end);
 
   boolean putBinariesWithFlushCheck(long[] t, Binary[] v, BitMap bitMap, int start, int end);
 
-  void putBooleans(long[] t, boolean[] v, BitMap bitMap, int start, int end);
+  boolean putBooleansWithFlushCheck(long[] t, boolean[] v, BitMap bitMap, int start, int end);
 
   boolean putAlignedValuesWithFlushCheck(
-      long[] t, Object[] v, BitMap[] bitMaps, int start, int end);
+      long[] t, Object[] v, BitMap[] bitMaps, int start, int end, TSStatus[] results);
 
   boolean writeWithFlushCheck(long insertTime, Object objectValue);
 
@@ -79,7 +80,8 @@ public interface IWritableMemChunk extends WALEntryValue {
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
       int start,
-      int end);
+      int end,
+      TSStatus[] results);
 
   long count();
 
@@ -110,9 +112,11 @@ public interface IWritableMemChunk extends WALEntryValue {
    *
    * <p>This interface should be synchronized for concurrent with sortTvListForFlush
    *
+   * @param ignoreAllNullRows whether to ignore all null rows, true for tree model, false for table
+   *     model
    * @return sorted tv list
    */
-  TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList);
+  TVList getSortedTvListForQuery(List<IMeasurementSchema> schemaList, boolean ignoreAllNullRows);
 
   /**
    * served for flush requests. The logic is just same as getSortedTVListForQuery, but without add

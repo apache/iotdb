@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.plugin.meta;
 
-import org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.ConfigNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,6 +56,6 @@ public class PipePluginMetaTest {
     DataNodePipePluginMetaKeeper keeper = new DataNodePipePluginMetaKeeper();
     Assert.assertEquals(
         BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginClass(),
-        keeper.getPluginClass(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
+        keeper.getBuiltinPluginClass(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName()));
   }
 }

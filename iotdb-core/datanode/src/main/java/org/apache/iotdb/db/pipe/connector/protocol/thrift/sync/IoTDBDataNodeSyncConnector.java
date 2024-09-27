@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -86,21 +87,30 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
       final String trustStorePath,
       final String trustStorePwd,
       final boolean useLeaderCache,
-      final String loadBalanceStrategy) {
+      final String loadBalanceStrategy,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
-            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
+            nodeUrls,
+            useSSL,
+            Objects.nonNull(trustStorePath) ? IoTDBConfig.addDataHomeDir(trustStorePath) : null,
+            trustStorePwd,
+            useLeaderCache,
+            loadBalanceStrategy,
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
     return clientManager;
   }
 
   protected void doTransferWrapper(
       final PipeSchemaRegionWritePlanEvent pipeSchemaRegionWritePlanEvent) throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
+        IoTDBDataNodeSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeSchemaRegionWritePlanEvent.increaseReferenceCount(
-          IoTDBDataNodeSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeSchemaRegionWritePlanEvent);
     } finally {
       pipeSchemaRegionWritePlanEvent.decreaseReferenceCount(

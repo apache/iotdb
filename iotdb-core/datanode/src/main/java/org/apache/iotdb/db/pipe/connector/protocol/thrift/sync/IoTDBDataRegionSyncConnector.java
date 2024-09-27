@@ -268,12 +268,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
   private void doTransferWrapper(
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -336,12 +336,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(pipeRawTabletInsertionEvent);
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(
@@ -395,12 +395,12 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
 
   private void doTransferWrapper(final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionSyncConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionSyncConnector.class.getName())) {
-        return;
-      }
       doTransfer(
           Collections.singletonMap(
               new Pair<>(
@@ -490,6 +490,11 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
     }
 
     LOGGER.info("Successfully transferred file {}.", tsFile);
+  }
+
+  @Override
+  public synchronized void discardEventsOfPipe(final String pipeNameToDrop, final int regionId) {
+    tabletBatchBuilder.discardEventsOfPipe(pipeNameToDrop, regionId);
   }
 
   @Override

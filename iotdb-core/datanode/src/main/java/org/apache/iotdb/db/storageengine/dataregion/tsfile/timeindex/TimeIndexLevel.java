@@ -23,21 +23,26 @@ public enum TimeIndexLevel {
   /** v0.12 file to time index (small memory foot print) */
   V012_FILE_TIME_INDEX,
 
-  /** device to time index (large memory foot print) */
-  DEVICE_TIME_INDEX,
+  /** plain device to time index (large memory foot print) */
+  PLAIN_DEVICE_TIME_INDEX,
 
   /** file to time index (small memory foot print) */
-  FILE_TIME_INDEX;
+  FILE_TIME_INDEX,
+
+  /** array device to time index (large memory foot print) */
+  ARRAY_DEVICE_TIME_INDEX;
 
   public ITimeIndex getTimeIndex() {
     switch (this) {
       case V012_FILE_TIME_INDEX:
         throw new IllegalStateException("V012_FILE_TIME_INDEX should never appear");
+      case PLAIN_DEVICE_TIME_INDEX:
+        return new PlainDeviceTimeIndex();
       case FILE_TIME_INDEX:
         return new FileTimeIndex();
-      case DEVICE_TIME_INDEX:
+      case ARRAY_DEVICE_TIME_INDEX:
       default:
-        return new DeviceTimeIndex();
+        return new ArrayDeviceTimeIndex();
     }
   }
 

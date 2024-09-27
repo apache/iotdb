@@ -35,7 +35,7 @@ import java.util.Arrays;
 
 public class ConfigNodeConfig {
 
-  /** ClusterId, the default value "defaultCluster" will be changed after join cluster. */
+  /** ClusterName, the default value "defaultCluster" will be changed after join cluster. */
   private volatile String clusterName = "defaultCluster";
 
   /** ConfigNodeId, the default value -1 will be changed after join cluster. */
@@ -308,14 +308,10 @@ public class ConfigNodeConfig {
     pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
+  public static String addHomeDir(String dir) {
+    final String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && !homeDir.isEmpty()) {
+      dir = !homeDir.endsWith(File.separator) ? homeDir + File.separatorChar + dir : homeDir + dir;
     }
     return dir;
   }

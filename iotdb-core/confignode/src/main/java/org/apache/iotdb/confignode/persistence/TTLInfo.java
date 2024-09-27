@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -108,20 +109,22 @@ public class TTLInfo implements SnapshotProcessor {
   }
 
   public TSStatus unsetTTL(SetTTLPlan plan) {
+    TSStatus status;
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(plan.getPathPattern());
-      if (plan.isDataBase()) {
+      status = ttlCache.unsetTTL(plan.getPathPattern());
+      if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode() && plan.isDataBase()) {
         // unset ttl to path.**
-        ttlCache.unsetTTL(
-            new PartialPath(plan.getPathPattern())
-                .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
-                .getNodes());
+        status =
+            ttlCache.unsetTTL(
+                new PartialPath(plan.getPathPattern())
+                    .concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)
+                    .getNodes());
       }
     } finally {
       lock.writeLock().unlock();
     }
-    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    return status;
   }
 
   public ShowTTLResp showTTL(ShowTTLPlan plan) {
@@ -208,6 +211,11 @@ public class TTLInfo implements SnapshotProcessor {
         && this.showTTL(new ShowTTLPlan())
             .getPathTTLMap()
             .equals(other.showTTL(new ShowTTLPlan()).getPathTTLMap());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getTTLCount(), showTTL(new ShowTTLPlan()).getPathTTLMap());
   }
 
   @TestOnly

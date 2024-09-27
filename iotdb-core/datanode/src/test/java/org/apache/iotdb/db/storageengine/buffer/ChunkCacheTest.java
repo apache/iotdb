@@ -30,7 +30,7 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.DoubleStatistics;
@@ -41,6 +41,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
@@ -115,7 +116,7 @@ public class ChunkCacheTest {
               false);
 
       ChunkMetadata chunkMetadataKey =
-          new ChunkMetadata("sensor0", TSDataType.DOUBLE, 25, new DoubleStatistics());
+          new ChunkMetadata("sensor0", TSDataType.DOUBLE, null, null, 26, new DoubleStatistics());
       chunkMetadataKey.setVersion(0);
 
       // get cache
@@ -176,7 +177,7 @@ public class ChunkCacheTest {
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
-      for (MeasurementSchema measurementSchema : measurementSchemas) {
+      for (IMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
@@ -191,8 +192,8 @@ public class ChunkCacheTest {
                   String.valueOf(i + valueOffset)));
         }
         fileWriter.write(record);
-        tsFileResource.updateStartTime(new PlainDeviceID(deviceIds[j]), i);
-        tsFileResource.updateEndTime(new PlainDeviceID(deviceIds[j]), i);
+        tsFileResource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
+        tsFileResource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIds[j]), i);
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();

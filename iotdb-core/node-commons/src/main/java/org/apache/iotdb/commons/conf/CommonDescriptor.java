@@ -213,9 +213,6 @@ public class CommonDescriptor {
         Boolean.parseBoolean(
             properties.getProperty(
                 "enable_last_cache", Boolean.toString(config.isLastCacheEnable()))));
-    if (config.getSchemaEngineMode().equals("Rocksdb_based")) {
-      config.setLastCacheEnable(false);
-    }
 
     config.setTagAttributeTotalSize(
         Integer.parseInt(
@@ -251,6 +248,12 @@ public class CommonDescriptor {
   }
 
   private void loadPipeProps(Properties properties) {
+    config.setPipeNonForwardingEventsProgressReportInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_non_forwarding_events_progress_report_interval",
+                Integer.toString(config.getPipeNonForwardingEventsProgressReportInterval()))));
+
     config.setPipeHardlinkBaseDirName(
         properties.getProperty("pipe_hardlink_base_dir_name", config.getPipeHardlinkBaseDirName()));
     config.setPipeHardlinkTsFileDirName(
@@ -269,12 +272,23 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_data_structure_tablet_row_size",
                 String.valueOf(config.getPipeDataStructureTabletRowSize()))));
+    config.setPipeDataStructureTabletSizeInBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_data_structure_tablet_size_in_bytes",
+                String.valueOf(config.getPipeDataStructureTabletSizeInBytes()))));
     config.setPipeDataStructureTabletMemoryBlockAllocationRejectThreshold(
         Double.parseDouble(
             properties.getProperty(
                 "pipe_data_structure_tablet_memory_block_allocation_reject_threshold",
                 String.valueOf(
                     config.getPipeDataStructureTabletMemoryBlockAllocationRejectThreshold()))));
+
+    config.setPipeRealTimeQueuePollHistoryThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_realtime_queue_poll_history_threshold",
+                Integer.toString(config.getPipeRealTimeQueuePollHistoryThreshold()))));
 
     config.setPipeSubtaskExecutorMaxThreadNum(
         Integer.parseInt(
@@ -306,6 +320,11 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_subtask_executor_cron_heartbeat_event_interval_seconds",
                 String.valueOf(config.getPipeSubtaskExecutorCronHeartbeatEventIntervalSeconds()))));
+    config.setPipeSubtaskExecutorForcedRestartIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_subtask_executor_forced_restart_interval_ms",
+                String.valueOf(config.getPipeSubtaskExecutorForcedRestartIntervalMs()))));
 
     config.setPipeExtractorAssignerDisruptorRingBufferSize(
         Integer.parseInt(
@@ -391,11 +410,17 @@ public class CommonDescriptor {
             properties.getProperty(
                 "pipe_all_sinks_rate_limit_bytes_per_second",
                 String.valueOf(config.getPipeAllSinksRateLimitBytesPerSecond()))));
-    config.setPipeEndPointRateLimiterDropCheckIntervalMs(
+    config.setRateLimiterHotReloadCheckIntervalMs(
         Integer.parseInt(
             properties.getProperty(
-                "pipe_end_point_rate_limiter_drop_check_interval_ms",
-                String.valueOf(config.getPipeEndPointRateLimiterDropCheckIntervalMs()))));
+                "rate_limiter_hot_reload_check_interval_ms",
+                String.valueOf(config.getRateLimiterHotReloadCheckIntervalMs()))));
+
+    config.setPipeConnectorRequestSliceThresholdBytes(
+        Integer.parseInt(
+            properties.getProperty(
+                "pipe_connector_request_slice_threshold_bytes",
+                String.valueOf(config.getPipeConnectorRequestSliceThresholdBytes()))));
 
     config.setSeperatedPipeHeartbeatEnabled(
         Boolean.parseBoolean(
@@ -640,6 +665,16 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_read_file_buffer_size",
                 String.valueOf(config.getSubscriptionReadFileBufferSize()))));
+    config.setSubscriptionReadTabletBufferSize(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_read_tablet_buffer_size",
+                String.valueOf(config.getSubscriptionReadTabletBufferSize()))));
+    config.setSubscriptionTsFileDeduplicationWindowSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_ts_file_deduplication_window_seconds",
+                String.valueOf(config.getSubscriptionTsFileDeduplicationWindowSeconds()))));
   }
 
   public void loadRetryProperties(Properties properties) throws IOException {

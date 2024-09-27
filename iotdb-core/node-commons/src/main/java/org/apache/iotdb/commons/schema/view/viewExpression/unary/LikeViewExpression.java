@@ -23,19 +23,22 @@ import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpressionType;
 import org.apache.iotdb.commons.schema.view.viewExpression.visitor.ViewExpressionVisitor;
 
+import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.regex.Pattern;
+import java.util.Optional;
+
+import static org.apache.tsfile.common.regexp.LikePattern.getEscapeCharacter;
 
 public class LikeViewExpression extends UnaryViewExpression {
 
   // region member variables and init functions
   private final String patternString;
-  private final Pattern pattern;
+  private final LikePattern pattern;
 
   private final boolean isNot;
 
@@ -43,11 +46,11 @@ public class LikeViewExpression extends UnaryViewExpression {
     super(expression);
     this.patternString = patternString;
     this.isNot = isNot;
-    pattern = this.compile();
+    pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
   }
 
   public LikeViewExpression(
-      ViewExpression expression, String patternString, Pattern pattern, boolean isNot) {
+      ViewExpression expression, String patternString, LikePattern pattern, boolean isNot) {
     super(expression);
     this.patternString = patternString;
     this.pattern = pattern;
@@ -58,7 +61,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     super(ViewExpression.deserialize(byteBuffer));
     patternString = ReadWriteIOUtils.readString(byteBuffer);
     isNot = ReadWriteIOUtils.readBool(byteBuffer);
-    pattern = compile();
+    pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
   }
 
   public LikeViewExpression(InputStream inputStream) {
@@ -66,7 +69,7 @@ public class LikeViewExpression extends UnaryViewExpression {
     try {
       patternString = ReadWriteIOUtils.readString(inputStream);
       isNot = ReadWriteIOUtils.readBool(inputStream);
-      pattern = compile();
+      pattern = LikePattern.compile(patternString, getEscapeCharacter(Optional.of("\\")));
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -115,66 +118,11 @@ public class LikeViewExpression extends UnaryViewExpression {
     return patternString;
   }
 
-  public Pattern getPattern() {
+  public LikePattern getPattern() {
     return pattern;
   }
 
   public boolean isNot() {
     return isNot;
-  }
-
-  /**
-   * This Method is for un-escaping strings except '\' before special string '%', '_', '\', because
-   * we need to use '\' to judge whether to replace this to regexp string
-   */
-  private String unescapeString(String value) {
-    StringBuilder stringBuilder = new StringBuilder();
-    for (int i = 0; i < value.length(); i++) {
-      String ch = String.valueOf(value.charAt(i));
-      if ("\\".equals(ch)) {
-        if (i < value.length() - 1) {
-          String nextChar = String.valueOf(value.charAt(i + 1));
-          if ("%".equals(nextChar) || "_".equals(nextChar) || "\\".equals(nextChar)) {
-            stringBuilder.append(ch);
-          }
-          if ("\\".equals(nextChar)) {
-            i++;
-          }
-        }
-      } else {
-        stringBuilder.append(ch);
-      }
-    }
-    return stringBuilder.toString();
-  }
-
-  /**
-   * The main idea of this part comes from
-   * https://codereview.stackexchange.com/questions/36861/convert-sql-like-to-regex/36864
-   */
-  private Pattern compile() {
-    String unescapeValue = unescapeString(patternString);
-    String specialRegexString = ".^$*+?{}[]|()";
-    StringBuilder patternBuilder = new StringBuilder();
-    patternBuilder.append("^");
-    for (int i = 0; i < unescapeValue.length(); i++) {
-      String ch = String.valueOf(unescapeValue.charAt(i));
-      if (specialRegexString.contains(ch)) {
-        ch = "\\" + unescapeValue.charAt(i);
-      }
-      if (i == 0
-          || !"\\".equals(String.valueOf(unescapeValue.charAt(i - 1)))
-          || i >= 2
-              && "\\\\"
-                  .equals(
-                      patternBuilder.substring(
-                          patternBuilder.length() - 2, patternBuilder.length()))) {
-        patternBuilder.append(ch.replace("%", ".*?").replace("_", "."));
-      } else {
-        patternBuilder.append(ch);
-      }
-    }
-    patternBuilder.append("$");
-    return Pattern.compile(patternBuilder.toString());
   }
 }

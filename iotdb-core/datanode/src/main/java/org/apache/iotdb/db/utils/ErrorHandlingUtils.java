@@ -21,9 +21,11 @@ package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
+import org.apache.iotdb.db.exception.ainode.ModelException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -97,8 +99,14 @@ public class ErrorHandlingUtils {
       if (status.getCode() != TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
         String message =
             String.format(
-                "Status code: %s, Query Statement: %s failed", status.getCode(), operation);
-        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()) {
+                "Status code: %s, Query Statement: %s failed because %s",
+                status.getCode(), operation, status.getMessage());
+        if (status.getCode() == TSStatusCode.SQL_PARSE_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.SEMANTIC_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode()
+            || status.getCode() == TSStatusCode.ILLEGAL_PATH.getStatusCode()
+            || status.getCode() == TSStatusCode.NUMERIC_VALUE_OUT_OF_RANGE.getStatusCode()
+            || status.getCode() == TSStatusCode.DIVISION_BY_ZERO.getStatusCode()) {
           LOGGER.warn(message);
         } else {
           LOGGER.warn(message, e);
@@ -148,6 +156,10 @@ public class ErrorHandlingUtils {
             ((IoTDBException) t.getCause()).getErrorCode(), rootCause.getMessage());
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
+    } else if (t instanceof IoTDBRuntimeException) {
+      return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
+    } else if (t instanceof ModelException) {
+      return RpcUtils.getStatus(((ModelException) t).getStatusCode(), rootCause.getMessage());
     } else if (t instanceof MemoryNotEnoughException) {
       return RpcUtils.getStatus(TSStatusCode.QUOTA_MEM_QUERY_NOT_ENOUGH, rootCause.getMessage());
     }

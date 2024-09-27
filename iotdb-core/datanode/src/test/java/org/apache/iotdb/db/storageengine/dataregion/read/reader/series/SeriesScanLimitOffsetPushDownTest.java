@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.read.reader.series;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
@@ -47,7 +48,7 @@ public class SeriesScanLimitOffsetPushDownTest extends AbstractSeriesScanTest {
     scanOptionsBuilder.withPushDownOffset(offset);
     SeriesScanUtil seriesScanUtil =
         new SeriesScanUtil(
-            scanPath,
+            IFullPath.convertToIFullPath(scanPath),
             scanOrder,
             scanOptionsBuilder.build(),
             EnvironmentUtils.TEST_QUERY_FI_CONTEXT);

@@ -47,5 +47,5 @@ public interface IMeasurementMNode<N extends IMNode<N>> extends IMNode<N> {
 
   MeasurementPath getMeasurementPath();
 
-  public abstract boolean isLogicalView();
+  boolean isLogicalView();
 }

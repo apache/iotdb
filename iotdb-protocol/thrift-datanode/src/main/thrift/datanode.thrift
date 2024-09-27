@@ -133,6 +133,7 @@ struct TSendFragmentInstanceResp {
   1: required bool accepted
   2: optional string message
   3: optional bool needRetry
+  4: optional common.TSStatus status
 }
 
 struct TSendSinglePlanNodeReq {
@@ -164,6 +165,7 @@ struct TFragmentInstanceInfoResp {
   2: optional i64 endTime
   3: optional list<string> failedMessages
   4: optional list<binary> failureInfoList
+  5: optional common.TSStatus errorCode
 }
 
 struct TCancelQueryReq {
@@ -282,7 +284,7 @@ struct TDataNodeHeartbeatResp {
   2: required string status
   3: optional string statusReason
   4: optional map<common.TConsensusGroupId, bool> judgedLeaders
-  5: optional TLoadSample loadSample
+  5: optional common.TLoadSample loadSample
   6: optional map<i32, i64> regionSeriesUsageMap
   7: optional map<i32, i64> regionDeviceUsageMap
   8: optional map<i32, i64> regionDisk
@@ -313,18 +315,6 @@ enum TSchemaLimitLevel{
     TIMESERIES
 }
 
-struct TLoadSample {
-  // Percentage of occupied cpu in DataNode
-  1: required double cpuUsageRate
-  // Percentage of occupied memory space in DataNode
-  2: required double memoryUsageRate
-  // Percentage of occupied disk space in DataNode
-  3: required double diskUsageRate
-  // The size of free disk space
-  // Unit: Byte
-  4: required double freeDiskSpace
-}
-
 struct TRegionRouteReq {
   1: required i64 timestamp
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
@@ -333,6 +323,11 @@ struct TRegionRouteReq {
 struct TUpdateTemplateReq {
   1: required byte type
   2: required binary templateInfo
+}
+
+struct TUpdateTableReq {
+  1: required byte type
+  2: required binary tableInfo
 }
 
 struct TTsFilePieceReq {
@@ -541,6 +536,37 @@ struct TExecuteCQ {
   7: required string username
 }
 
+// ====================================================
+// AI Node
+// ====================================================
+
+struct TFetchMoreDataReq{
+    1: required i64 queryId
+    2: optional i64 timeout
+    3: optional i32 fetchSize
+}
+
+struct TFetchMoreDataResp{
+    1: required common.TSStatus status
+    2: optional list<binary> tsDataset
+    3: optional bool hasMoreData
+}
+
+struct TFetchTimeseriesReq {
+  1: required string queryBody
+  2: optional i32 fetchSize
+  3: optional i64 timeout
+}
+
+struct TFetchTimeseriesResp {
+  1: required common.TSStatus status
+  2: optional i64 queryId
+  3: optional list<string> columnNameList
+  4: optional list<string> columnTypeList
+  5: optional map<string, i32> columnNameIndexMap
+  6: optional list<binary> tsDataset
+  7: optional bool hasMoreData
+}
 /**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
@@ -592,7 +618,13 @@ struct TQueryStatistics {
   29: i64 pageReadersDecodeNonAlignedDiskCount,
   30: i64 pageReadersDecodeNonAlignedDiskTime,
   31: i64 pageReadersDecodeNonAlignedMemCount,
-  32: i64 pageReadersDecodeNonAlignedMemTime
+  32: i64 pageReadersDecodeNonAlignedMemTime,
+  33: i64 pageReaderMaxUsedMemorySize
+
+  34: i64 alignedTimeSeriesMetadataModificationCount
+  35: i64 alignedTimeSeriesMetadataModificationTime
+  36: i64 nonAlignedTimeSeriesMetadataModificationCount
+  37: i64 nonAlignedTimeSeriesMetadataModificationTime
 }
 
 
@@ -618,6 +650,7 @@ struct TFetchFragmentInstanceStatisticsResp {
   15: optional string ip
   16: optional string state
 }
+
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -999,6 +1032,11 @@ service IDataNodeRPCService {
   * Fetch fragment instance statistics for EXPLAIN ANALYZE
   */
   TFetchFragmentInstanceStatisticsResp fetchFragmentInstanceStatistics(TFetchFragmentInstanceStatisticsReq req)
+
+  /**
+  * Update Table Cache
+  */
+  common.TSStatus updateTable(TUpdateTableReq req)
 
   common.TTestConnectionResp submitTestConnectionTask(common.TNodeLocations nodeLocations)
 

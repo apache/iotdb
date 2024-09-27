@@ -66,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.CrossSeriesAggregationDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 
 import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
@@ -136,7 +137,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s",
-            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
+            node.getAlignedPath().getIDeviceID(), node.getAlignedPath().getMeasurementList()));
 
     long limit = node.getPushDownLimit();
     long offset = node.getPushDownOffset();
@@ -187,7 +188,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s",
-            node.getAlignedPath().getDevice(), node.getAlignedPath().getMeasurementList()));
+            node.getAlignedPath().getIDeviceID(), node.getAlignedPath().getMeasurementList()));
     for (int i = 0; i < node.getAggregationDescriptorList().size(); i++) {
       AggregationDescriptor descriptor = node.getAggregationDescriptorList().get(i);
       boxValue.add(
@@ -507,7 +508,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
               "%s -> %s %s",
               sourceTargetPathPair.left,
               sourceTargetPathPair.right,
-              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getDevice())
+              targetDeviceToAlignedMap.get(sourceTargetPathPair.right.getIDeviceID().toString())
                   ? "[ALIGNED]"
                   : ""));
     }
@@ -533,7 +534,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s",
-            node.getSeriesPath().getDevice(), node.getSeriesPath().getMeasurementList()));
+            node.getSeriesPath().getIDeviceID(), node.getSeriesPath().getMeasurementList()));
     if (StringUtil.isNotBlank(node.getOutputViewPath())) {
       boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
     }
@@ -600,6 +601,221 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
         String.format(
             "ColumnGeneratorParameterType: %s",
             node.getColumnGeneratorParameter().getGeneratorType()));
+    return render(node, boxValue, context);
+  }
+
+  // =============== Methods below are used for table model ================
+  @Override
+  public List<String> visitTableScan(TableScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TableScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    if (node.getTimePredicate().isPresent()) {
+      boxValue.add(String.format("TimePredicate: %s", node.getTimePredicate().get()));
+    }
+    if (node.getPushDownPredicate() != null) {
+      boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
+    }
+    boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
+    boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
+    boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
+    boxValue.add(
+        String.format(
+            "RegionId: %s",
+            node.getRegionReplicaSet() == null
+                ? ""
+                : node.getRegionReplicaSet().getRegionId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAggregation(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Aggregation-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    int i = 0;
+    for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
+        aggregation : node.getAggregations().values()) {
+      boxValue.add(
+          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+    }
+    boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    if (node.isStreamable()) {
+      boxValue.add("Streamable: true");
+      boxValue.add(String.format("PreGroupedSymbols: %s", node.getPreGroupedSymbols()));
+    }
+    boxValue.add(String.format("Step: %s", node.getStep()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitAggregationTableScan(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("AggregationTableScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("QualifiedTableName: %s", node.getQualifiedObjectName().toString()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    int i = 0;
+    for (org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation
+        aggregation : node.getAggregations().values()) {
+      boxValue.add(
+          String.format("Aggregator-%d: %s", i++, aggregation.getResolvedFunction().toString()));
+    }
+    boxValue.add(String.format("GroupingKeys: %s", node.getGroupingKeys()));
+    if (node.isStreamable()) {
+      boxValue.add("Streamable: true");
+      boxValue.add(String.format("PreGroupedSymbols: %s", node.getPreGroupedSymbols()));
+    }
+    boxValue.add(String.format("Step: %s", node.getStep()));
+
+    if (node.getProjection() != null) {
+      boxValue.add(
+          String.format("Project-Expressions: %s", node.getProjection().getMap().values()));
+    }
+
+    boxValue.add(String.format("DeviceEntriesSize: %s", node.getDeviceEntries().size()));
+    boxValue.add(String.format("ScanOrder: %s", node.getScanOrder()));
+    if (node.getPushDownPredicate() != null) {
+      boxValue.add(String.format("PushDownPredicate: %s", node.getPushDownPredicate()));
+    }
+    boxValue.add(String.format("PushDownOffset: %s", node.getPushDownOffset()));
+    boxValue.add(String.format("PushDownLimit: %s", node.getPushDownLimit()));
+    boxValue.add(String.format("PushDownLimitToEachDevice: %s", node.isPushLimitToEachDevice()));
+    boxValue.add(
+        String.format(
+            "RegionId: %s",
+            node.getRegionReplicaSet() == null
+                ? ""
+                : node.getRegionReplicaSet().getRegionId().getId()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitFilter(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Filter-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Predicate: %s", node.getPredicate()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitProject(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Project-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("Expressions: %s", node.getAssignments().getMap().values()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitOutput(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("OutputNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputColumns-%s", node.getOutputColumnNames()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLimit(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Limit-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Count: %s", node.getCount()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitOffset(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Offset-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("Count: %s", node.getCount()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Sort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitStreamSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("StreamSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(String.format("StreamCompareKeyEndIndex: %s", node.getStreamCompareKeyEndIndex()));
+    boxValue.add(String.format("OrderByAllIdsAndTime: %s", node.isOrderByAllIdsAndTime()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitMergeSort(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("MergeSort-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitCollect(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Collect-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTopK(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("TopK-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OrderingScheme: %s", node.getOrderingScheme()));
+    boxValue.add(String.format("Count: %s", node.getCount()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitJoin(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode node,
+      GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Join-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    boxValue.add(String.format("JoinCriteria: %s", node.getCriteria()));
+    boxValue.add(String.format("LeftOutputSymbols: %s", node.getLeftOutputSymbols()));
+    boxValue.add(String.format("RightOutputSymbols: %s", node.getRightOutputSymbols()));
+    if (node.getFilter().isPresent()) {
+      boxValue.add(
+          String.format("Filter: %s", node.getFilter().map(v -> v.toString()).orElse(null)));
+    }
     return render(node, boxValue, context);
   }
 

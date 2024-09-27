@@ -85,8 +85,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
     return this;
   }
 
@@ -231,6 +230,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     return this;
   }
@@ -333,6 +337,12 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
     return this;
   }
 }

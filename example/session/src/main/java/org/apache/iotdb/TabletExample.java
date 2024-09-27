@@ -24,6 +24,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.BufferedReader;
@@ -89,9 +90,11 @@ public class TabletExample {
             case BOOLEAN:
               ret.get(measurement).add(Boolean.parseBoolean(items[idx]));
               break;
+            case DATE:
             case INT32:
               ret.get(measurement).add(Integer.parseInt(items[idx]));
               break;
+            case TIMESTAMP:
             case INT64:
               ret.get(measurement).add(Long.parseLong(items[idx]));
               break;
@@ -101,6 +104,8 @@ public class TabletExample {
             case DOUBLE:
               ret.get(measurement).add(Double.parseDouble(items[idx]));
               break;
+            case STRING:
+            case BLOB:
             case TEXT:
               ret.get(measurement).add(BytesUtils.valueOf(items[idx]));
               break;
@@ -148,7 +153,7 @@ public class TabletExample {
       measureTSTypeInfos.put("s3", TSDataType.DOUBLE);
       measureTSTypeInfos.put("s4", TSDataType.INT64);
       measureTSTypeInfos.put("s5", TSDataType.TEXT);
-      List<MeasurementSchema> schemas = new ArrayList<>();
+      List<IMeasurementSchema> schemas = new ArrayList<>();
       measureTSTypeInfos.forEach((mea, type) -> schemas.add(new MeasurementSchema(mea, type)));
 
       System.out.println(

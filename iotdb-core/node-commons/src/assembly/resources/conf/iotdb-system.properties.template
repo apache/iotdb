@@ -154,6 +154,7 @@ data_replication_factor=1
 # 1. org.apache.iotdb.consensus.simple.SimpleConsensus   (The data_replication_factor can only be set to 1)
 # 2. org.apache.iotdb.consensus.iot.IoTConsensus
 # 3. org.apache.iotdb.consensus.ratis.RatisConsensus
+# 4. org.apache.iotdb.consensus.iot.IoTConsensusV2
 # effectiveMode: first_start
 # Datatype: string
 data_region_consensus_protocol_class=org.apache.iotdb.consensus.iot.IoTConsensus
@@ -187,18 +188,18 @@ cn_system_dir=data/confignode/system
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 cn_consensus_dir=data/confignode/consensus
 
-# pipe_receiver_file_dir
+# cn_pipe_receiver_file_dir
 # If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/${cn_system_dir}/pipe/receiver).
 # If it is absolute, system will save the data in the exact location it points to.
 # If it is relative, system will save the data in the relative path directory it indicates under the IoTDB folder.
-# Note: If pipe_receiver_file_dir is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
+# Note: If cn_pipe_receiver_file_dir is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-# pipe_receiver_file_dir=data\\confignode\\system\\pipe\\receiver
+# cn_pipe_receiver_file_dir=data\\confignode\\system\\pipe\\receiver
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
-pipe_receiver_file_dir=data/confignode/system/pipe/receiver
+cn_pipe_receiver_file_dir=data/confignode/system/pipe/receiver
 
 # system dir
 # If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/data/datanode/system).
@@ -304,33 +305,33 @@ dn_sync_dir=data/datanode/sync
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
 sort_tmp_dir=data/datanode/tmp
 
-# pipe_receiver_file_dirs
+# dn_pipe_receiver_file_dirs
 # If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/${dn_system_dir}/pipe/receiver).
 # If it is absolute, system will save the data in the exact location it points to.
 # If it is relative, system will save the data in the relative path directory it indicates under the IoTDB folder.
 # If there are more than one directory, please separate them by commas ",".
-# Note: If pipe_receiver_file_dirs is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
+# Note: If dn_pipe_receiver_file_dirs is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-# pipe_receiver_file_dirs=data\\datanode\\system\\pipe\\receiver
+# dn_pipe_receiver_file_dirs=data\\datanode\\system\\pipe\\receiver
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
-pipe_receiver_file_dirs=data/datanode/system/pipe/receiver
+dn_pipe_receiver_file_dirs=data/datanode/system/pipe/receiver
 
-# pipe_consensus_receiver_file_dirs
+# iot_consensus_v2_receiver_file_dirs
 # If this property is unset, system will save the data in the default relative path directory under the IoTDB folder(i.e., %IOTDB_HOME%/${dn_system_dir}/pipe/consensus/receiver).
 # If it is absolute, system will save the data in the exact location it points to.
 # If it is relative, system will save the data in the relative path directory it indicates under the IoTDB folder.
 # If there are more than one directory, please separate them by commas ",".
-# Note: If pipe_consensus_receiver_file_dirs is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
+# Note: If iot_consensus_v2_receiver_file_dirs is assigned an empty string(i.e.,zero-size), it will be handled as a relative path.
 # effectiveMode: restart
 # For windows platform
 # If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute. Otherwise, it is relative.
-# pipe_consensus_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver
+# iot_consensus_v2_receiver_file_dirs=data\\datanode\\system\\pipe\\consensus\\receiver
 # For Linux platform
 # If its prefix is "/", then the path is absolute. Otherwise, it is relative.
-pipe_consensus_receiver_file_dirs=data/datanode/system/pipe/consensus/receiver
+iot_consensus_v2_receiver_file_dirs=data/datanode/system/pipe/consensus/receiver
 
 ####################
 ### Metric Configuration
@@ -451,7 +452,7 @@ cn_max_client_count_for_each_node_in_client_manager=300
 # Datatype: int
 dn_session_timeout_threshold=0
 
-# weather enable thrift compression
+# whether enable thrift compression
 # effectiveMode: restart
 # Datatype: boolean
 dn_rpc_thrift_compression_enable=false
@@ -1042,6 +1043,7 @@ expired_data_ratio=0.3
 timestamp_precision=ms
 
 # When the timestamp precision check is enabled, the timestamps those are over 13 digits for ms precision, or over 16 digits for us precision are not allowed to be inserted.
+# For all precisions, ms, us and ns, the timestamps cannot exceed the range of [-9223372036854775808, 9223372036854775807], regardless of whether the check is enabled or not.
 # effectiveMode: first_start
 # Datatype: Boolean
 timestamp_precision_check_enabled=true
@@ -1170,6 +1172,11 @@ enable_unseq_space_compaction=true
 # Datatype: boolean
 enable_cross_space_compaction=true
 
+# enable auto repair unsorted file by compaction
+# effectiveMode: hot_reload
+# Datatype: boolean
+enable_auto_repair_compaction=true
+
 # the selector of cross space compaction task
 # effectiveMode: restart
 # Options: rewrite
@@ -1181,9 +1188,9 @@ cross_selector=rewrite
 cross_performer=fast
 
 # the selector of inner sequence space compaction task
-# effectiveMode: restart
-# Options: size_tiered
-inner_seq_selector=size_tiered
+# effectiveMode: hod_reload
+# Options: size_tiered_single_target,size_tiered_multi_target
+inner_seq_selector=size_tiered_multi_target
 
 # the performer of inner sequence space compaction task
 # effectiveMode: restart
@@ -1191,9 +1198,9 @@ inner_seq_selector=size_tiered
 inner_seq_performer=read_chunk
 
 # the selector of inner unsequence space compaction task
-# effectiveMode: restart
-# Options: size_tiered
-inner_unseq_selector=size_tiered
+# effectiveMode: hot_reload
+# Options: size_tiered_single_target,size_tiered_multi_target
+inner_unseq_selector=size_tiered_multi_target
 
 # the performer of inner unsequence space compaction task
 # effectiveMode: restart
@@ -1221,6 +1228,23 @@ candidate_compaction_task_queue_size=50
 # Datatype: long, Unit: byte
 target_compaction_file_size=2147483648
 
+# The total file size limit in inner space compaction.
+# default is 10GB
+# effectiveMode: hot_reload
+# Datatype: long, Unit: byte
+inner_compaction_total_file_size_threshold=10737418240
+
+# The total file num limit in inner space compaction.
+# default is 100
+# effectiveMode: hot_reload
+# Datatype: int
+inner_compaction_total_file_num_threshold=100
+
+# The max level gap in inner compaction selection, default is 2.
+# effectiveMode: hot_reload
+# Datatype: int
+max_level_gap_in_inner_compaction=2
+
 # The target chunk size in compaction and when memtable reaches this threshold, flush the memtable to disk.
 # default is 1MB
 # effectiveMode: restart
@@ -1242,10 +1266,10 @@ chunk_size_lower_bound_in_compaction=128
 # Datatype: long
 chunk_point_num_lower_bound_in_compaction=100
 
-# The max file when selecting inner space compaction candidate files
+# The file num requirement when selecting inner space compaction candidate files
 # effectiveMode: hot_reload
 # Datatype: int
-max_inner_compaction_candidate_file_num=30
+inner_compaction_candidate_file_num=30
 
 # The max file when selecting cross space compaction candidate files
 # At least one unseq file with it's overlapped seq files will be selected even exceeded this number
@@ -1269,6 +1293,12 @@ min_cross_compaction_unseq_file_level=1
 # effectiveMode: hot_reload
 # Datatype: int
 compaction_thread_count=10
+
+# How many chunk will be compacted in aligned series compaction, 10 by default.
+# Set to Integer.MAX_VALUE when less than or equal to 0.
+# effectiveMode: hot_reload
+# Datatype: int
+compaction_max_aligned_series_num_in_one_batch=10
 
 # The interval of compaction task schedule
 # effectiveMode: restart
@@ -1310,7 +1340,7 @@ inner_compaction_task_selection_disk_redundancy=0.05
 # When the size of the mods file corresponding to TsFile exceeds this value, inner compaction tasks containing mods files are selected first.
 # effectiveMode: hot_reload
 # DataType: long
-inner_compaction_task_selection_mods_file_threshold=10485760
+inner_compaction_task_selection_mods_file_threshold=131072
 
 # The number of threads to be set up to select compaction task.
 # effectiveMode: hot_reload
@@ -1474,7 +1504,10 @@ max_number_of_points_in_page=10000
 # Datatype: int
 pattern_matching_threshold=1000000
 
-# Floating-point precision
+# Floating-point precision of query results.
+# Only effective for RLE and TS_2DIFF encodings.
+# Due to the limitation of machine precision, some values may not be interpreted strictly.
+# E.g.: 1.111111 with precision=3 will be shown as 1.11100001
 # effectiveMode: hot_reload
 # Datatype: int
 float_precision=2
@@ -1778,12 +1811,20 @@ schema_region_ratis_periodic_snapshot_interval=86400
 data_region_ratis_periodic_snapshot_interval=86400
 
 ####################
-### Fast IoTConsensus Configuration
+### IoTConsensusV2 Configuration
 ####################
-# Default event buffer size for connector and receiver in pipe consensus
-# effectiveMode: hot_reload
+# Default event buffer size for connector and receiver in iot consensus v2
+# effectiveMode: restart
 # DataType: int
-fast_iot_consensus_pipeline_size=5
+iot_consensus_v2_pipeline_size=5
+
+# IoTConsensusV2 mode.
+# These consensus protocol modes are currently supported:
+# 1. batch
+# 2. stream
+# effectiveMode: restart
+# Datatype: string
+iot_consensus_v2_mode=batch
 
 ####################
 ### Procedure Configuration
@@ -1863,6 +1904,48 @@ load_clean_up_task_execution_delay_time_seconds=1800
 # effectiveMode: hot_reload
 # Datatype: int
 load_write_throughput_bytes_per_second=-1
+
+# Whether to enable the active listening mode for tsfile loading.
+# effectiveMode: hot_reload
+# Datatype: Boolean
+load_active_listening_enable=true
+
+# The directory to be actively listened for tsfile loading.
+# Multiple directories should be separated by a ','.
+# The default directory is 'ext/load/pending'.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_dirs=ext\\load\\pending
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_dirs=ext/load/pending
+
+# The directory where tsfile are moved if the active listening mode fails to load them.
+# Only one directory can be configured.
+# effectiveMode: hot_reload
+# Datatype: String
+# For windows platform
+# If its prefix is a drive specifier followed by "\\", or if its prefix is "\\\\", then the path is absolute.
+# Otherwise, it is relative.
+# load_active_listening_fail_dir=ext\\load\\failed
+# For Linux platform
+# If its prefix is "/", then the path is absolute. Otherwise, it is relative.
+load_active_listening_fail_dir=ext/load/failed
+
+# The maximum number of threads that can be used to load tsfile actively.
+# The default value, when this parameter is commented out, is the minimum of 8 or the number of CPU cores.
+# effectiveMode: restart
+# Datatype: int
+load_active_listening_max_thread_num=8
+
+# The interval specified in seconds for the active listening mode to check the directory specified in load_active_listening_dirs.
+# The active listening mode will check the directory every load_active_listening_check_interval_seconds seconds.
+# effectiveMode: restart
+# Datatype: int
+load_active_listening_check_interval_seconds=5
 
 ####################
 ### Dispatch Retry Configuration

@@ -48,11 +48,12 @@ public class TTLScheduleTask implements Callable<Void> {
   }
 
   @Override
+  @SuppressWarnings("java:S2142")
   public Void call() throws Exception {
     while (true) {
       try {
         Thread.sleep(ttlCheckInterval);
-        if (!StorageEngine.getInstance().isAllSgReady()) {
+        if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
           continue;
         }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);

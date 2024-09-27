@@ -32,10 +32,19 @@ public class SubscriptionPipeEmptyEvent implements SubscriptionPipeEvents {
   public void ack() {}
 
   @Override
-  public void cleanup() {}
+  public void cleanUp() {}
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionEmptyPipeEvent";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    return 0;
   }
 }

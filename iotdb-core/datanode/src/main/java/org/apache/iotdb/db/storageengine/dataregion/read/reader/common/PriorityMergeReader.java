@@ -26,7 +26,6 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.reader.IPointReader;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.PriorityQueue;
 
 /** This class implements {@link IPointReader} for data sources with different priorities. */
@@ -62,7 +61,10 @@ public class PriorityMergeReader implements IPointReader {
   public void addReader(IPointReader reader, long priority) throws IOException {
     if (reader.hasNextTimeValuePair()) {
       heap.add(
-          new Element(reader, reader.nextTimeValuePair(), new MergeReaderPriority(priority, 0)));
+          new Element(
+              reader,
+              reader.nextTimeValuePair(),
+              new MergeReaderPriority(Long.MAX_VALUE, priority, 0, false)));
     } else {
       reader.close();
     }
@@ -186,40 +188,5 @@ public class PriorityMergeReader implements IPointReader {
       memoryReservationManager.releaseMemoryCumulatively(usedMemorySize);
     }
     usedMemorySize = 0;
-  }
-
-  public static class MergeReaderPriority implements Comparable<MergeReaderPriority> {
-    long version;
-    long offset;
-
-    public MergeReaderPriority(long version, long offset) {
-      this.version = version;
-      this.offset = offset;
-    }
-
-    @Override
-    public int compareTo(MergeReaderPriority o) {
-      if (version < o.version) {
-        return -1;
-      }
-      return ((version > o.version) ? 1 : (Long.compare(offset, o.offset)));
-    }
-
-    @Override
-    public boolean equals(Object object) {
-      if (this == object) {
-        return true;
-      }
-      if (object == null || getClass() != object.getClass()) {
-        return false;
-      }
-      MergeReaderPriority that = (MergeReaderPriority) object;
-      return (this.version == that.version && this.offset == that.offset);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(version, offset);
-    }
   }
 }

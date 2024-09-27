@@ -104,6 +104,24 @@ public class SessionManager implements SessionManagerMBean {
       String zoneId,
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion) {
+    return login(
+        session,
+        username,
+        password,
+        zoneId,
+        tsProtocolVersion,
+        clientVersion,
+        IClientSession.SqlDialect.TREE);
+  }
+
+  public BasicOpenSessionResp login(
+      IClientSession session,
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion,
+      IClientSession.SqlDialect sqlDialect) {
     TSStatus loginStatus;
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -116,8 +134,8 @@ public class SessionManager implements SessionManagerMBean {
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
       } else {
+        session.setSqlDialect(sqlDialect);
         supplySession(session, username, ZoneId.of(zoneId), clientVersion);
-
         openSessionResp
             .sessionId(session.getId())
             .setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode())
@@ -357,7 +375,12 @@ public class SessionManager implements SessionManagerMBean {
 
   public SessionInfo getSessionInfo(IClientSession session) {
     return new SessionInfo(
-        session.getId(), session.getUsername(), session.getZoneId(), session.getClientVersion());
+        session.getId(),
+        session.getUsername(),
+        session.getZoneId(),
+        session.getClientVersion(),
+        session.getDatabaseName(),
+        session.getSqlDialect());
   }
 
   @Override

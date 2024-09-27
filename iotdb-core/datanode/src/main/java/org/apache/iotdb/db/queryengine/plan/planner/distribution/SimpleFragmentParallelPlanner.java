@@ -106,8 +106,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
                 dataNodeFIMap.get(fragmentInstance.getHostDataNode()).size()));
 
     // compute dataNodeSeriesScanNum in LastQueryScanNode
-    if (analysis.getStatement() instanceof QueryStatement
-        && ((QueryStatement) analysis.getStatement()).isLastQuery()) {
+    if (analysis.getTreeStatement() instanceof QueryStatement
+        && ((QueryStatement) analysis.getTreeStatement()).isLastQuery()) {
       final Map<Path, AtomicInteger> pathSumMap = new HashMap<>();
       dataNodeFIMap
           .values()
@@ -183,11 +183,11 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
           return v;
         });
 
-    if (analysis.getStatement() instanceof QueryStatement
-        || analysis.getStatement() instanceof ExplainAnalyzeStatement
-        || analysis.getStatement() instanceof ShowQueriesStatement
-        || (analysis.getStatement() instanceof ShowTimeSeriesStatement
-            && ((ShowTimeSeriesStatement) analysis.getStatement()).isOrderByHeat())) {
+    if (analysis.getTreeStatement() instanceof QueryStatement
+        || analysis.getTreeStatement() instanceof ExplainAnalyzeStatement
+        || analysis.getTreeStatement() instanceof ShowQueriesStatement
+        || (analysis.getTreeStatement() instanceof ShowTimeSeriesStatement
+            && ((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByHeat())) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
@@ -214,12 +214,12 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     if (availableDataNodes.isEmpty()) {
       String errorMsg =
           String.format(
-              "all replicas for region[%s] are not available in these DataNodes[%s]",
+              "All replicas for region[%s] are not available in these DataNodes[%s]",
               regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
       throw new IllegalArgumentException(errorMsg);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
-      logger.info("available replicas: " + availableDataNodes);
+      logger.info("available replicas: {}", availableDataNodes);
     }
     int targetIndex;
     if (!selectRandomDataNode || queryContext.getSession() == null) {

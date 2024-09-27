@@ -138,12 +138,14 @@ public class CompactionTaskManager implements IService {
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
+    this.taskExecutionPool.disableErrorLog();
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
                 compactionThreadNum
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_TASK.getName());
+    this.subCompactionTaskExecutionPool.disableErrorLog();
     for (int i = 0; i < compactionThreadNum; ++i) {
       taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
     }

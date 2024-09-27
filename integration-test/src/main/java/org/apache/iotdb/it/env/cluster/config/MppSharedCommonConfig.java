@@ -118,10 +118,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setMaxInnerCompactionCandidateFileNum(
-      int maxInnerCompactionCandidateFileNum) {
-    cnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
-    dnConfig.setMaxInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+  public CommonConfig setInnerCompactionCandidateFileNum(int maxInnerCompactionCandidateFileNum) {
+    cnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
+    dnConfig.setInnerCompactionCandidateFileNum(maxInnerCompactionCandidateFileNum);
     return this;
   }
 
@@ -328,6 +327,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setWalBufferSize(int walBufferSize) {
+    cnConfig.setWalBufferSize(walBufferSize);
+    dnConfig.setWalBufferSize(walBufferSize);
+    return this;
+  }
+
+  @Override
   public CommonConfig setDegreeOfParallelism(int degreeOfParallelism) {
     cnConfig.setDegreeOfParallelism(degreeOfParallelism);
     dnConfig.setDegreeOfParallelism(degreeOfParallelism);
@@ -475,6 +481,14 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setPipeMetaSyncerSyncIntervalMinutes(long pipeMetaSyncerSyncIntervalMinutes) {
     dnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
     cnConfig.setPipeMetaSyncerSyncIntervalMinutes(pipeMetaSyncerSyncIntervalMinutes);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeConnectorRequestSliceThresholdBytes(
+      int pipeConnectorRequestSliceThresholdBytes) {
+    dnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
+    cnConfig.setPipeConnectorRequestSliceThresholdBytes(pipeConnectorRequestSliceThresholdBytes);
     return this;
   }
 }

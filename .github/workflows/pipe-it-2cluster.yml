@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
+      - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -12,6 +13,7 @@ on:
     branches:
       - master
       - 'rel/1.*'
+      - 'rc/1.*'
     paths-ignore:
       - 'docs/**'
       - 'site/**'
@@ -24,6 +26,7 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
+  MAVEN_ARGS: --batch-mode --no-transfer-progress
   DEVELOCITY_ACCESS_KEY: ${{ secrets.GE_ACCESS_TOKEN }}
 
 jobs:
@@ -55,7 +58,8 @@ jobs:
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
           -DClusterConfigurations=${{ matrix.cluster }},${{ matrix.cluster }} \
           -pl integration-test \
-          -am -PMultiClusterIT2AutoCreateSchema
+          -am -PMultiClusterIT2AutoCreateSchema \
+          -ntp
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -73,6 +77,15 @@ jobs:
         cluster1: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         cluster2: [LightWeightStandaloneMode, ScalableSingleNodeMode, HighPerformanceMode]
         os: [ ubuntu-latest ]
+        exclude:
+          - cluster1: LightWeightStandaloneMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: LightWeightStandaloneMode
+            cluster2: ScalableSingleNodeMode
+          - cluster1: ScalableSingleNodeMode
+            cluster2: LightWeightStandaloneMode
+          - cluster1: HighPerformanceMode
+            cluster2: LightWeightStandaloneMode
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -92,7 +105,8 @@ jobs:
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
-          -am -PMultiClusterIT2ManualCreateSchema
+          -am -PMultiClusterIT2ManualCreateSchema \
+          -ntp
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -100,7 +114,7 @@ jobs:
           name: cluster-log-manual-create-schema-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30
-  subscription:
+  subscription-arch-verification:
     strategy:
       fail-fast: false
       max-parallel: 15
@@ -129,11 +143,88 @@ jobs:
           -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
           -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
           -pl integration-test \
-          -am -PMultiClusterIT2Subscription
+          -am -PMultiClusterIT2SubscriptionArchVerification \
+          -ntp
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: cluster-log-subscription-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  subscription-regression-consumer:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [ 17 ]
+        # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
+        cluster1: [ ScalableSingleNodeMode ]
+        cluster2: [ ScalableSingleNodeMode ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+          -pl integration-test \
+          -am -PMultiClusterIT2SubscriptionRegressionConsumer \
+          -ntp
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-subscription-regression-consumer-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
+          path: integration-test/target/cluster-logs
+          retention-days: 30
+  subscription-regression-misc:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        java: [ 17 ]
+        # do not use HighPerformanceMode here, otherwise some tests will cause the GH runner to receive a shutdown signal
+        cluster1: [ ScalableSingleNodeMode ]
+        cluster2: [ ScalableSingleNodeMode ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: ${{ matrix.java }}
+      - name: IT Test
+        shell: bash
+        # we do not compile client-cpp for saving time, it is tested in client.yml
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: |
+          mvn clean verify \
+          -P with-integration-tests \
+          -DskipUTs \
+          -DintegrationTest.forkCount=1 -DConfigNodeMaxHeapSize=256 -DDataNodeMaxHeapSize=1024 -DDataNodeMaxDirectMemorySize=768 \
+          -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
+          -pl integration-test \
+          -am -PMultiClusterIT2SubscriptionRegressionMisc \
+          -ntp
+      - name: Upload Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cluster-log-subscription-regression-misc-java${{ matrix.java }}-${{ runner.os }}-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
           path: integration-test/target/cluster-logs
           retention-days: 30

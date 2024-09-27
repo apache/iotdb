@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.commons.schema.filter.impl;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
@@ -27,16 +28,17 @@ import org.apache.tsfile.enums.TSDataType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DataTypeFilter extends SchemaFilter {
 
   private final TSDataType dataType;
 
-  public DataTypeFilter(TSDataType dataType) {
+  public DataTypeFilter(final TSDataType dataType) {
     this.dataType = dataType;
   }
 
-  public DataTypeFilter(ByteBuffer byteBuffer) {
+  public DataTypeFilter(final ByteBuffer byteBuffer) {
     this.dataType = TSDataType.deserializeFrom(byteBuffer);
   }
 
@@ -45,7 +47,7 @@ public class DataTypeFilter extends SchemaFilter {
   }
 
   @Override
-  public <C> boolean accept(SchemaFilterVisitor<C> visitor, C node) {
+  public <C> Boolean accept(final SchemaFilterVisitor<C> visitor, final C node) {
     return visitor.visitDataTypeFilter(this, node);
   }
 
@@ -55,12 +57,29 @@ public class DataTypeFilter extends SchemaFilter {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
+  protected void serialize(final ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
   }
 
   @Override
-  public void serialize(DataOutputStream stream) throws IOException {
+  protected void serialize(final DataOutputStream stream) throws IOException {
     dataType.serializeTo(stream);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final DataTypeFilter that = (DataTypeFilter) o;
+    return Objects.equals(dataType, that.dataType);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(dataType);
   }
 }

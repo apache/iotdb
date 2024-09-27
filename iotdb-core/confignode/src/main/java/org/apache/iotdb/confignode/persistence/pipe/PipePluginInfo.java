@@ -21,12 +21,12 @@ package org.apache.iotdb.confignode.persistence.pipe;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.executable.ExecutableManager;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.ConfigNodePipePluginMetaKeeper;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeExtractorConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
-import org.apache.iotdb.commons.pipe.plugin.meta.ConfigNodePipePluginMetaKeeper;
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
-import org.apache.iotdb.commons.pipe.plugin.service.PipePluginExecutableManager;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -48,6 +48,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,9 +58,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_EXTRACTOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.DO_NOTHING_PROCESSOR;
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_EXTRACTOR;
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
 
 public class PipePluginInfo implements SnapshotProcessor {
 
@@ -91,26 +93,38 @@ public class PipePluginInfo implements SnapshotProcessor {
 
   /////////////////////////////// Validator ///////////////////////////////
 
-  public void validateBeforeCreatingPipePlugin(
-      final String pluginName, final String jarName, final String jarMD5) {
+  /**
+   * @return true if the pipe plugin is already created and the isSetIfNotExistsCondition is true,
+   *     false otherwise
+   * @throws PipeException if the pipe plugin is already created and the isSetIfNotExistsCondition
+   *     is false
+   */
+  public boolean validateBeforeCreatingPipePlugin(
+      final String pluginName, final boolean isSetIfNotExistsCondition) {
     // both build-in and user defined pipe plugin should be unique
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      if (isSetIfNotExistsCondition) {
+        return true;
+      }
       throw new PipeException(
           String.format(
               "Failed to create PipePlugin [%s], the same name PipePlugin has been created",
               pluginName));
     }
-
-    if (pipePluginMetaKeeper.jarNameExistsAndMatchesMd5(jarName, jarMD5)) {
-      throw new PipeException(
-          String.format(
-              "Failed to create PipePlugin [%s], the same name Jar [%s] but different MD5 [%s] has existed",
-              pluginName, jarName, jarMD5));
-    }
+    return false;
   }
 
-  public void validateBeforeDroppingPipePlugin(final String pluginName) {
+  /**
+   * @return true if the pipe plugin is not created and the isSetIfExistsCondition is true, false
+   *     otherwise
+   * @throws PipeException if the pipe plugin is not created and the isSetIfExistsCondition is false
+   */
+  public boolean validateBeforeDroppingPipePlugin(
+      final String pluginName, final boolean isSetIfExistsCondition) {
     if (!pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
+      if (isSetIfExistsCondition) {
+        return true;
+      }
       throw new PipeException(
           String.format(
               "Failed to drop PipePlugin [%s], this PipePlugin has not been created", pluginName));
@@ -121,6 +135,7 @@ public class PipePluginInfo implements SnapshotProcessor {
               "Failed to drop PipePlugin [%s], the PipePlugin is a built-in PipePlugin",
               pluginName));
     }
+    return false;
   }
 
   public boolean isJarNeededToBeSavedWhenCreatingPipePlugin(final String jarName) {
@@ -187,8 +202,9 @@ public class PipePluginInfo implements SnapshotProcessor {
           pipePluginMeta.getJarName(), pipePluginMeta.getJarMD5());
 
       if (createPipePluginPlan.getJarFile() != null) {
-        pipePluginExecutableManager.saveToInstallDir(
+        pipePluginExecutableManager.savePluginToInstallDir(
             ByteBuffer.wrap(createPipePluginPlan.getJarFile().getValues()),
+            createPipePluginPlan.getPipePluginMeta().getPluginName(),
             pipePluginMeta.getJarName());
       }
 
@@ -208,9 +224,21 @@ public class PipePluginInfo implements SnapshotProcessor {
     final String pluginName = dropPipePluginPlan.getPluginName();
 
     if (pipePluginMetaKeeper.containsPipePlugin(pluginName)) {
-      pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(
-          pipePluginMetaKeeper.getPipePluginMeta(pluginName).getJarName());
+      String jarName = pipePluginMetaKeeper.getPipePluginMeta(pluginName).getJarName();
+      pipePluginMetaKeeper.removeJarNameAndMd5IfPossible(jarName);
       pipePluginMetaKeeper.removePipePluginMeta(pluginName);
+
+      try {
+        pipePluginExecutableManager.removePluginFileUnderLibRoot(pluginName, jarName);
+      } catch (IOException e) {
+        final String errorMessage =
+            String.format(
+                "Failed to execute dropPipePlugin(%s) on config nodes, because of %s",
+                pluginName, e);
+        LOGGER.warn(errorMessage, e);
+        return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(errorMessage);
+      }
     }
 
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -225,11 +253,32 @@ public class PipePluginInfo implements SnapshotProcessor {
   public JarResp getPipePluginJar(final GetPipePluginJarPlan getPipePluginJarPlan) {
     try {
       final List<ByteBuffer> jarList = new ArrayList<>();
+      final PipePluginExecutableManager manager = PipePluginExecutableManager.getInstance();
+
       for (final String jarName : getPipePluginJarPlan.getJarNames()) {
-        jarList.add(
-            ExecutableManager.transferToBytebuffer(
-                PipePluginExecutableManager.getInstance()
-                    .getFileStringUnderInstallByName(jarName)));
+        String pluginName = pipePluginMetaKeeper.getPluginNameByJarName(jarName);
+        if (pluginName == null) {
+          throw new PipeException(String.format("%s does not exist", jarName));
+        }
+
+        String jarPath = manager.getPluginInstallPathV2(pluginName, jarName);
+
+        boolean isJarExistedInV2Dir = Files.exists(Paths.get(jarPath));
+        if (!isJarExistedInV2Dir) {
+          jarPath = manager.getPluginInstallPathV1(jarName);
+        }
+
+        if (!Files.exists(Paths.get(jarPath))) {
+          throw new PipeException(String.format("%s does not exist", jarName));
+        }
+
+        ByteBuffer byteBuffer = ExecutableManager.transferToBytebuffer(jarPath);
+        if (!isJarExistedInV2Dir) {
+          pipePluginExecutableManager.savePluginToInstallDir(
+              byteBuffer.duplicate(), pluginName, jarName);
+        }
+
+        jarList.add(byteBuffer);
       }
       return new JarResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), jarList);
     } catch (final Exception e) {

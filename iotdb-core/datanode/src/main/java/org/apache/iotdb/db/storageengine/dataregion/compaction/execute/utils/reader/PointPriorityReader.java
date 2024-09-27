@@ -58,7 +58,7 @@ public class PointPriorityReader {
         new PriorityQueue<>(
             (o1, o2) -> {
               int timeCompare = Long.compare(o1.timestamp, o2.timestamp);
-              return timeCompare != 0 ? timeCompare : Long.compare(o2.priority, o1.priority);
+              return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
     this.isAligned = isAligned;
   }

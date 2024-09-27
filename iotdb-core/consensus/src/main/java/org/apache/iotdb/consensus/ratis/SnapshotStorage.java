@@ -155,24 +155,24 @@ public class SnapshotStorage implements StateMachineStorage {
     }
     TermIndex snapshotTermIndex = Utils.getTermIndexFromDir(latestSnapshotDir);
 
-    List<Path> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
+    List<File> actualSnapshotFiles = applicationStateMachine.getSnapshotFiles(latestSnapshotDir);
     if (actualSnapshotFiles == null) {
       return null;
     }
 
     List<FileInfo> fileInfos = new ArrayList<>();
-    for (Path file : actualSnapshotFiles) {
-      if (file.endsWith(".md5")) {
+    for (File file : actualSnapshotFiles) {
+      if (file.getName().endsWith(".md5")) {
         continue;
       }
       FileInfo fileInfo;
       try {
         if (getSnapshotDir() == null) {
           // For regions that place the snapshot in default sm folder, use relative path
-          fileInfo = new FileInfo(file, null);
+          fileInfo = new FileInfo(file.toPath(), null);
         } else {
           // For regions that have a separate snapshot installation path, use absolute path
-          fileInfo = new FileInfo(file.toRealPath(), null);
+          fileInfo = new FileInfo(file.toPath().toRealPath(), null);
         }
       } catch (IOException e) {
         logger.warn("{} cannot resolve real path of {} due to ", this, file, e);

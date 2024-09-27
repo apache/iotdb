@@ -42,15 +42,24 @@ public class SubscriptionPipeTsFilePlainEvent implements SubscriptionPipeEvents 
   }
 
   @Override
-  public void cleanup() {
+  public void cleanUp() {
     // clear the reference count of event
     tsFileInsertionEvent.clearReferenceCount(this.getClass().getName());
   }
+
+  /////////////////////////////// stringify ///////////////////////////////
 
   @Override
   public String toString() {
     return "SubscriptionPipeTsFilePlainEvent{tsFileInsertionEvent="
         + tsFileInsertionEvent.coreReportMessage()
         + "}";
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  @Override
+  public int getPipeEventCount() {
+    return 1;
   }
 }

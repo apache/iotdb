@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.model.DeviceStartEndTime;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -32,10 +32,10 @@ import java.util.Iterator;
  */
 public class TsFileDeviceStartEndTimeIterator {
 
-  private final DeviceTimeIndex deviceTimeIndex;
+  private final ArrayDeviceTimeIndex deviceTimeIndex;
   private final Iterator<IDeviceID> currentDevice;
 
-  public TsFileDeviceStartEndTimeIterator(DeviceTimeIndex deviceTimeIndex) {
+  public TsFileDeviceStartEndTimeIterator(ArrayDeviceTimeIndex deviceTimeIndex) {
     this.deviceTimeIndex = deviceTimeIndex;
     this.currentDevice = deviceTimeIndex.getDevices().iterator();
   }

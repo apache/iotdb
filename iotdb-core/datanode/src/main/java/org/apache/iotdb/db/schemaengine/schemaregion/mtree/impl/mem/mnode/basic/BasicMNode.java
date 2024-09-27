@@ -84,7 +84,8 @@ public class BasicMNode implements IMemMNode {
   }
 
   String concatFullPath() {
-    StringBuilder builder = new StringBuilder(getName());
+    StringBuilder builder = new StringBuilder();
+    builder.insert(0, getName());
     IMemMNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();

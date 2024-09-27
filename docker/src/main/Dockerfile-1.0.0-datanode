@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:17-jre-focal
 ARG version=1.0.0
 ARG target=apache-iotdb-${version}-datanode-bin
 
@@ -29,8 +29,8 @@ RUN apt update \
 COPY target/${target}.zip /
 RUN cd / && unzip ${target}.zip \
   && rm ${target}.zip \
-  && mv ${target} iotdb
-#  && mv apache-iotdb-${version}-server-bin iotdb
+#  && mv ${target} iotdb
+  && mv apache-iotdb-${version}-server-bin iotdb
 
 ENV IOTDB_HOME=/iotdb VERSION=${version}
 WORKDIR ${IOTDB_HOME}/sbin

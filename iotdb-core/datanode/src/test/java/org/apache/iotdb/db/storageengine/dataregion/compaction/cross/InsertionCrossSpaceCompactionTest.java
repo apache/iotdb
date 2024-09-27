@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
@@ -94,7 +95,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     seqResources.add(seqResource1);
     seqResources.add(seqResource2);
     unseqResources.add(unseqResource1);
@@ -136,7 +138,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     seqResources.add(seqResource1);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
@@ -176,7 +179,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     seqResources.add(seqResource1);
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
@@ -220,7 +224,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     seqResources.add(seqResource1);
     seqResources.add(seqResource2);
     unseqResources.add(unseqResource1);
@@ -258,7 +263,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
     unseqResource1.setStatusForTest(TsFileResourceStatus.NORMAL);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector(COMPACTION_TEST_SG, "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, new CompactionScheduleContext());
     unseqResources.add(unseqResource1);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
@@ -513,7 +519,8 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
     public int executeInsertionCompaction() throws InterruptedException {
       return super.executeInsertionCompaction(
-          new ArrayList<>(this.getTsFileManager().getTimePartitions()));
+          new ArrayList<>(this.getTsFileManager().getTimePartitions()),
+          new CompactionScheduleContext());
     }
   }
 }

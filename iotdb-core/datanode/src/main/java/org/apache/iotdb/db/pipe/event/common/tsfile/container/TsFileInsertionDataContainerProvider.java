@@ -19,17 +19,16 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container;
 
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.pattern.IoTDBPipePattern;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBPipePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.query.TsFileInsertionQueryDataContainer;
 import org.apache.iotdb.db.pipe.event.common.tsfile.container.scan.TsFileInsertionScanDataContainer;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 
 import java.io.File;
 import java.io.IOException;
@@ -115,7 +114,7 @@ public class TsFileInsertionDataContainerProvider {
     return deviceIsAlignedMap.entrySet().stream()
         .filter(
             entry -> {
-              final String deviceId = ((PlainDeviceID) entry.getKey()).toStringID();
+              final IDeviceID deviceId = entry.getKey();
               return pattern.coversDevice(deviceId) || pattern.mayOverlapWithDevice(deviceId);
             })
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

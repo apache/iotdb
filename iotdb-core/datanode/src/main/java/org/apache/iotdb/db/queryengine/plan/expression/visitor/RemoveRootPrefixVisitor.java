@@ -40,6 +40,6 @@ public class RemoveRootPrefixVisitor extends ReconstructVisitor<Void> {
     String[] newPartialNodes = new String[newPartialNodesLength];
     System.arraycopy(rawPartialNodes, 1, newPartialNodes, 0, newPartialNodesLength);
 
-    return new TimeSeriesOperand(new PartialPath(newPartialNodes));
+    return new TimeSeriesOperand(new PartialPath(newPartialNodes), timeSeriesOperand.getType());
   }
 }

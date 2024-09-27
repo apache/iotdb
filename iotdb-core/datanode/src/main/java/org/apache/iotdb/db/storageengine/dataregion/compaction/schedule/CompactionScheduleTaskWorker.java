@@ -48,11 +48,12 @@ public class CompactionScheduleTaskWorker implements Callable<Void> {
   }
 
   @Override
+  @SuppressWarnings("java:S2142")
   public Void call() {
     while (true) {
       try {
         Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs());
-        if (!StorageEngine.getInstance().isAllSgReady()) {
+        if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
           continue;
         }
         List<DataRegion> dataRegionListSnapshot = new ArrayList<>(dataRegionList);

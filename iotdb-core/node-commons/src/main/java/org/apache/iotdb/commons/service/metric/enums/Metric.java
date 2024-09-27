@@ -133,6 +133,8 @@ public enum Metric {
   UNTRANSFERRED_TABLET_COUNT("untransferred_tablet_count"),
   UNTRANSFERRED_TSFILE_COUNT("untransferred_tsfile_count"),
   UNTRANSFERRED_HEARTBEAT_COUNT("untransferred_heartbeat_count"),
+  PIPE_DATANODE_RECEIVER("pipe_datanode_receiver"),
+  PIPE_CONFIGNODE_RECEIVER("pipe_confignode_receiver"),
   PIPE_EXTRACTOR_TABLET_SUPPLY("pipe_extractor_tablet_supply"),
   PIPE_EXTRACTOR_TSFILE_SUPPLY("pipe_extractor_tsfile_supply"),
   PIPE_EXTRACTOR_HEARTBEAT_SUPPLY("pipe_extractor_heartbeat_supply"),
@@ -170,6 +172,8 @@ public enum Metric {
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),
   SUBSCRIPTION_EVENT_TRANSFER("subscription_event_transfer"),
   // load related
+  ACTIVE_LOADING_FILES_NUMBER("active_loading_files_number"),
+  ACTIVE_LOADING_FILES_SIZE("active_loading_files_size"),
   LOAD_MEM("load_mem"),
   LOAD_DISK_IO("load_disk_io"),
   LOAD_TIME_COST("load_time_cost"),

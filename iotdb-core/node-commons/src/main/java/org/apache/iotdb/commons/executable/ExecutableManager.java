@@ -232,6 +232,9 @@ public class ExecutableManager {
     try {
       Path path = Paths.get(destination);
       if (!Files.exists(path)) {
+        if (!Files.exists(path.getParent())) {
+          Files.createDirectories(path.getParent());
+        }
         Files.createFile(path);
       }
       // FileOutPutStream is not in append mode by default, so the file will be overridden if it

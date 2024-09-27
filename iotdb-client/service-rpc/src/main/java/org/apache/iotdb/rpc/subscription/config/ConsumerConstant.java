@@ -50,6 +50,11 @@ public class ConsumerConstant {
   public static final String FILE_SAVE_FSYNC_KEY = "file-save-fsync";
   public static final boolean FILE_SAVE_FSYNC_DEFAULT_VALUE = false;
 
+  public static final String THRIFT_MAX_FRAME_SIZE_KEY = "thrift-max-frame-size";
+
+  public static final String MAX_POLL_PARALLELISM_KEY = "max-poll-parallelism";
+  public static final int MAX_POLL_PARALLELISM_DEFAULT_VALUE = 1;
+
   /////////////////////////////// pull consumer ///////////////////////////////
 
   public static final String AUTO_COMMIT_KEY = "auto-commit";
@@ -65,8 +70,7 @@ public class ConsumerConstant {
   public static final String CONSUME_LISTENER_KEY = "consume-listener";
 
   public static final String AUTO_POLL_INTERVAL_MS_KEY = "auto-poll-interval-ms";
-  public static final long AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE = 5_000L;
-  public static final long AUTO_POLL_INTERVAL_MS_MIN_VALUE = 500L;
+  public static final long AUTO_POLL_INTERVAL_MS_DEFAULT_VALUE = 100L;
 
   public static final String AUTO_POLL_TIMEOUT_MS_KEY = "auto-poll-timeout-ms";
   public static final long AUTO_POLL_TIMEOUT_MS_DEFAULT_VALUE = 10_000L;

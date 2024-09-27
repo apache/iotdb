@@ -27,14 +27,16 @@ public class DatabaseNotSetException extends MetadataException {
   private static final long serialVersionUID = 3739300272099030533L;
 
   public DatabaseNotSetException(String path) {
-    super(String.format("Database is not set for current seriesPath: [%s]", path));
-    this.errorCode = TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
+    super(
+        String.format("Database is not set for current seriesPath: [%s]", path),
+        TSStatusCode.DATABASE_NOT_EXIST.getStatusCode());
   }
 
   public DatabaseNotSetException(String path, boolean isUserException) {
-    super(String.format("Database is not set for current seriesPath: [%s]", path));
-    this.isUserException = isUserException;
-    this.errorCode = TSStatusCode.DATABASE_NOT_EXIST.getStatusCode();
+    super(
+        String.format("Database is not set for current seriesPath: [%s]", path),
+        TSStatusCode.DATABASE_NOT_EXIST.getStatusCode(),
+        isUserException);
   }
 
   public DatabaseNotSetException(String path, String reason) {

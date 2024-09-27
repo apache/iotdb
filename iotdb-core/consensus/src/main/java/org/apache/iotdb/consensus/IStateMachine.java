@@ -29,7 +29,6 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
 
@@ -69,6 +68,15 @@ public interface IStateMachine {
   DataSet read(IConsensusRequest request);
 
   /**
+   * Release all resources related to the region. Currently, we only check pipe related resources.
+   *
+   * @return true if all resources are released successfully
+   */
+  default boolean hasReleaseAllRegionRelatedResource(ConsensusGroupId groupId) {
+    return true;
+  }
+
+  /**
    * Take a snapshot of current statemachine. All files are required to be stored under snapshotDir,
    * which is a subdirectory of the StorageDir in Consensus
    *
@@ -91,6 +99,15 @@ public interface IStateMachine {
   }
 
   /**
+   * Clear snapshot of current statemachine.
+   *
+   * @return true if all snapshot dir delete successfully
+   */
+  default boolean clearSnapshot() {
+    throw new UnsupportedOperationException("not implemented yet");
+  }
+
+  /**
    * Load the latest snapshot from given dir.
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
@@ -108,7 +125,7 @@ public interface IStateMachine {
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    * @return List of real snapshot files.
    */
-  default List<Path> getSnapshotFiles(File latestSnapshotRootDir) {
+  default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     return Utils.listAllRegularFilesRecursively(latestSnapshotRootDir);
   }
 
@@ -139,6 +156,11 @@ public interface IStateMachine {
 
     /** Notify the {@link IStateMachine} that this server becomes ready after changed to leader. */
     default void notifyLeaderReady() {
+      // do nothing default
+    }
+
+    /** Notify the {@link IStateMachine} that this server is no longer the leader. */
+    default void notifyNotLeader() {
       // do nothing default
     }
   }

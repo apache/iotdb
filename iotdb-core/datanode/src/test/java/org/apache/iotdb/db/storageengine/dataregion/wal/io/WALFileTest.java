@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.io;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -45,12 +46,15 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class WALFileTest {
 
@@ -64,6 +68,8 @@ public class WALFileTest {
   public void setUp() throws Exception {
     if (walFile.exists()) {
       Files.delete(walFile.toPath());
+    } else {
+      walFile.getParentFile().mkdirs();
     }
   }
 
@@ -154,6 +160,18 @@ public class WALFileTest {
     assertEquals(expectedWALEntries, actualWALEntries);
   }
 
+  @Test
+  public void testReadMetadataFromBrokenFile() throws IOException {
+    ILogWriter walWriter = new WALWriter(walFile);
+    final FileChannel fileChannel1 = FileChannel.open(walFile.toPath());
+    assertThrows(IOException.class, () -> WALMetaData.readFromWALFile(walFile, fileChannel1));
+    walWriter.close();
+    FileChannel fileChannel2 = FileChannel.open(walFile.toPath());
+    WALMetaData walMetaData = WALMetaData.readFromWALFile(walFile, fileChannel2);
+    fileChannel2.close();
+    assertTrue(walMetaData.getMemTablesId().isEmpty());
+  }
+
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
@@ -163,23 +181,27 @@ public class WALFileTest {
           TSDataType.INT64,
           TSDataType.INT32,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
         };
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[8];
     columns[0] = 1.0;
     columns[1] = 2.0f;
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
     columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+    columns[6] = new Binary("jj" + 0, TSFileConfig.STRING_CHARSET);
+    columns[7] = new Binary("kk" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode insertRowNode =
         new InsertRowNode(
             new PlanNodeId(""),
             new PartialPath(devicePath),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
             dataTypes,
             time,
             columns,
@@ -193,6 +215,8 @@ public class WALFileTest {
           new MeasurementSchema("s4", dataTypes[3]),
           new MeasurementSchema("s5", dataTypes[4]),
           new MeasurementSchema("s6", dataTypes[5]),
+          new MeasurementSchema("s7", dataTypes[6]),
+          new MeasurementSchema("s8", dataTypes[7]),
         };
     insertRowNode.setMeasurementSchemas(schemas);
     return insertRowNode;
@@ -208,23 +232,27 @@ public class WALFileTest {
           TSDataType.INT64,
           TSDataType.INT32,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
         };
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[8];
     columns[0] = 1.0;
     columns[1] = 2.0f;
     columns[2] = 10000L;
     columns[3] = 100;
     columns[4] = false;
     columns[5] = new Binary("hh" + 0, TSFileConfig.STRING_CHARSET);
+    columns[6] = new Binary("jj" + 0, TSFileConfig.STRING_CHARSET);
+    columns[7] = new Binary("kk" + 0, TSFileConfig.STRING_CHARSET);
 
     InsertRowNode insertRowNode =
         new InsertRowNode(
             new PlanNodeId(""),
             new PartialPath(devicePath),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
             dataTypes,
             time,
             columns,
@@ -238,6 +266,8 @@ public class WALFileTest {
           new MeasurementSchema("s4", dataTypes[3]),
           new MeasurementSchema("s5", dataTypes[4]),
           new MeasurementSchema("s6", dataTypes[5]),
+          new MeasurementSchema("s7", dataTypes[6]),
+          new MeasurementSchema("s8", dataTypes[7]),
         };
     insertRowNode.setMeasurementSchemas(schemas);
     insertRowsNode.addOneInsertRowNode(insertRowNode, 0);
@@ -248,7 +278,7 @@ public class WALFileTest {
             new PlanNodeId(""),
             new PartialPath(devicePath),
             false,
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
             dataTypes,
             time,
             columns,
@@ -271,16 +301,20 @@ public class WALFileTest {
           TSDataType.INT64,
           TSDataType.INT32,
           TSDataType.BOOLEAN,
-          TSDataType.TEXT
+          TSDataType.TEXT,
+          TSDataType.STRING,
+          TSDataType.BLOB
         };
 
-    Object[] columns = new Object[6];
+    Object[] columns = new Object[8];
     columns[0] = new double[4];
     columns[1] = new float[4];
     columns[2] = new long[4];
     columns[3] = new int[4];
     columns[4] = new boolean[4];
     columns[5] = new Binary[4];
+    columns[6] = new Binary[4];
+    columns[7] = new Binary[4];
 
     for (int r = 0; r < 4; r++) {
       ((double[]) columns[0])[r] = 1.0 + r;
@@ -289,6 +323,8 @@ public class WALFileTest {
       ((int[]) columns[3])[r] = 100 + r;
       ((boolean[]) columns[4])[r] = (r % 2 == 0);
       ((Binary[]) columns[5])[r] = new Binary("hh" + r, TSFileConfig.STRING_CHARSET);
+      ((Binary[]) columns[6])[r] = new Binary("jj" + r, TSFileConfig.STRING_CHARSET);
+      ((Binary[]) columns[7])[r] = new Binary("kk" + r, TSFileConfig.STRING_CHARSET);
     }
 
     BitMap[] bitMaps = new BitMap[dataTypes.length];
@@ -306,13 +342,15 @@ public class WALFileTest {
           new MeasurementSchema("s4", dataTypes[3]),
           new MeasurementSchema("s5", dataTypes[4]),
           new MeasurementSchema("s6", dataTypes[5]),
+          new MeasurementSchema("s7", dataTypes[6]),
+          new MeasurementSchema("s8", dataTypes[7]),
         };
 
     return new InsertTabletNode(
         new PlanNodeId(""),
         new PartialPath(devicePath),
         false,
-        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+        new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8"},
         dataTypes,
         schemas,
         times,
@@ -325,7 +363,7 @@ public class WALFileTest {
     DeleteDataNode deleteDataNode =
         new DeleteDataNode(
             new PlanNodeId(""),
-            Collections.singletonList(new PartialPath(devicePath)),
+            Collections.singletonList(new MeasurementPath(devicePath, "**")),
             Long.MIN_VALUE,
             Long.MAX_VALUE);
     deleteDataNode.setSearchIndex(100L);

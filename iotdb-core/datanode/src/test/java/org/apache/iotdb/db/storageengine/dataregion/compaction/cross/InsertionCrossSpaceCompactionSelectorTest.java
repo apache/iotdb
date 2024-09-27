@@ -25,17 +25,19 @@ import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.DeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.PlainDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
@@ -72,7 +74,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompaction() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -90,7 +92,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -100,9 +103,82 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   }
 
   @Test
+  public void testInsertionCompactionWithCachedDeviceInfoAndUnclosedResource()
+      throws InterruptedException, IOException {
+    CompactionScheduleContext context = new CompactionScheduleContext();
+
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
+
+    TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
+    seqResource1.getTsFile().createNewFile();
+    seqResource1.updateStartTime(d1, 10);
+    seqResource1.updateEndTime(d1, 20);
+    seqResource1.serialize();
+
+    TsFileResource seqResource2 = createTsFileResource("3-3-0-0.tsfile", true);
+    seqResource2.getTsFile().createNewFile();
+    seqResource2.updateStartTime(d1, 40);
+    seqResource2.updateEndTime(d1, 50);
+    seqResource2.serialize();
+
+    // unclosed
+    TsFileResource seqResource3 = createTsFileResource("6-6-0-0.tsfile", true);
+    seqResource3.getTsFile().createNewFile();
+    seqResource3.setStatusForTest(TsFileResourceStatus.UNCLOSED);
+    seqResource3.updateStartTime(d1, 70);
+
+    seqResources.add(seqResource1);
+    seqResources.add(seqResource2);
+    seqResources.add(seqResource3);
+    TsFileResource unseqResource1 = createTsFileResource("5-5-1-0.tsfile", false);
+    unseqResource1.getTsFile().createNewFile();
+    unseqResource1.updateStartTime(d1, 30);
+    unseqResource1.updateEndTime(d1, 35);
+    unseqResource1.updateStartTime(d3, 10);
+    unseqResource1.updateEndTime(d3, 20);
+    unseqResource1.serialize();
+    unseqResources.add(unseqResource1);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    Phaser phaser = new Phaser(1);
+    int submitTaskNum =
+        CompactionScheduler.scheduleInsertionCompaction(tsFileManager, 0, phaser, context);
+    Assert.assertEquals(1, submitTaskNum);
+    // perform insertion compaction
+    phaser.awaitAdvanceInterruptibly(phaser.arrive());
+
+    // unclosed file has sealed
+    seqResource3.updateEndTime(d1, 80);
+    seqResource3.updateStartTime(d2, 10);
+    seqResource3.updateEndTime(d2, 20);
+    seqResource3.setStatusForTest(TsFileResourceStatus.NORMAL);
+
+    TsFileResource unseqResource2 = createTsFileResource("7-7-1-0.tsfile", false);
+    unseqResource2.getTsFile().createNewFile();
+    unseqResource2.updateStartTime(d2, 10);
+    unseqResource2.updateEndTime(d2, 20);
+    unseqResource2.serialize();
+    tsFileManager.keepOrderInsert(unseqResource2, false);
+    // Should not select unseq resource2
+    // The unclosed resource should not be cached. Otherwise, the results here will be incorrect.
+    // seq resource3: d1[70, 80] d2[10, 20]
+    // unseq resource2 d2[10, 20]
+
+    submitTaskNum =
+        CompactionScheduler.scheduleInsertionCompaction(tsFileManager, 0, phaser, context);
+    Assert.assertEquals(0, submitTaskNum);
+    Assert.assertTrue(
+        TsFileResourceUtils.validateTsFileResourcesHasNoOverlap(tsFileManager.getTsFileList(true)));
+  }
+
+  @Test
   public void testSimpleInsertionCompactionWithMultiUnseqFiles()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -124,7 +200,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -136,7 +213,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithFirstUnseqFileCannotSelect()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -159,20 +236,18 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertEquals(unseqResource2, result.toInsertUnSeqFile);
-    Assert.assertEquals(seqResource1, result.prevSeqFile);
-    Assert.assertEquals(seqResource2, result.nextSeqFile);
-    Assert.assertEquals(unseqResource1, result.firstUnSeqFileInParitition);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
   public void testSimpleInsertionCompactionWithFirstUnseqFileInvalid()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -196,7 +271,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -206,7 +282,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithFirstTwoUnseqFileCannotSelect()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -233,20 +309,19 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
-    Assert.assertEquals(unseqResource3, result.toInsertUnSeqFile);
-    Assert.assertEquals(seqResource1, result.prevSeqFile);
-    Assert.assertEquals(seqResource2, result.nextSeqFile);
-    Assert.assertEquals(unseqResource1, result.firstUnSeqFileInParitition);
+    Assert.assertFalse(result.isValid());
   }
 
   @Test
   public void testSimpleInsertionCompactionWithUnseqDeviceNotExistInSeqSpace()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1"), d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1"),
+        d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -264,7 +339,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -276,7 +352,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithUnseqFileInsertFirstInSeqSpace()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -294,7 +370,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -306,7 +383,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithUnseqFileInsertLastInSeqSpace()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -324,7 +401,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -335,7 +413,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithCloseTimestamp() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -353,7 +431,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -362,7 +441,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithOverlap() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -380,7 +459,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -390,7 +470,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithPrevSeqFileInvalidCompactionCandidate()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -412,7 +492,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -422,7 +503,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testSimpleInsertionCompactionWithNextSeqFileInvalidCompactionCandidate()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -444,7 +525,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -453,7 +535,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testSimpleInsertionCompactionWithManySeqFiles() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -479,7 +561,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -491,9 +574,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -523,7 +606,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -535,9 +619,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices2()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -567,7 +651,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -578,8 +663,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertLast1() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -603,7 +688,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -612,8 +698,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertLast2() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -643,7 +729,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -652,8 +739,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertFirst() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -671,7 +758,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource result =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -681,9 +769,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices3()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -713,7 +801,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -725,9 +814,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices4()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -759,7 +848,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -771,9 +861,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices5()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -805,7 +895,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -817,9 +908,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevices6()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -847,7 +938,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -859,9 +951,9 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionCompactionWithManySeqFilesManyDevicesWithOverlap()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
     seqResource1.updateEndTime(d1, 20);
@@ -895,7 +987,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -904,8 +997,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithNoSeqFiles() throws MergeException, IOException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource unseqResource1 = createTsFileResource("1-1-0-0.tsfile", false);
     unseqResource1.updateStartTime(d1, 10);
@@ -991,7 +1084,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource;
 
     int i = 1;
@@ -1029,8 +1123,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithNoUnseqFiles() throws MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1053,7 +1147,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     seqResources.add(seqResource3);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1067,8 +1162,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   // can be inserted into seq file list.
   @Test
   public void testInsertionSelectorWithOverlapUnseqFile() throws MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     // 1. prevSeqFileIndex == nextSeqFileIndex
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
@@ -1099,7 +1194,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     unseqResources.add(unseqResource1);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1126,225 +1222,11 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     Assert.assertEquals(null, task.firstUnSeqFileInParitition);
   }
 
-  // unseq file 1 is overlap, while unseq file 2 4 5 7 is nonOverlap
-  @Test
-  public void testInsertionSelectorWithNonOverlapUnseqFile() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
-    IDeviceID d4 = new PlainDeviceID("root.testsg.d4");
-    IDeviceID d5 = new PlainDeviceID("root.testsg.d5");
-
-    TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
-    seqResource1.updateStartTime(d1, 10);
-    seqResource1.updateEndTime(d1, 20);
-    seqResource1.updateStartTime(d2, 20);
-    seqResource1.updateEndTime(d2, 30);
-    seqResource1.serialize();
-    createTsFileByResource(seqResource1);
-
-    TsFileResource seqResource2 = createTsFileResource("200-200-0-0.tsfile", true);
-    seqResource2.updateStartTime(d1, 30);
-    seqResource2.updateEndTime(d1, 40);
-    seqResource2.updateStartTime(d2, 40);
-    seqResource2.updateEndTime(d2, 50);
-    seqResource2.serialize();
-    createTsFileByResource(seqResource2);
-
-    TsFileResource seqResource3 = createTsFileResource("300-300-0-0.tsfile", true);
-    seqResource3.updateStartTime(d1, 50);
-    seqResource3.updateEndTime(d1, 60);
-    seqResource3.updateStartTime(d2, 60);
-    seqResource3.updateEndTime(d2, 70);
-    seqResource3.serialize();
-    createTsFileByResource(seqResource3);
-
-    TsFileResource seqResource4 = createTsFileResource("400-400-0-0.tsfile", true);
-    seqResource4.updateStartTime(d1, 70);
-    seqResource4.updateEndTime(d1, 80);
-    seqResource4.updateStartTime(d2, 80);
-    seqResource4.updateEndTime(d2, 90);
-    seqResource4.serialize();
-    createTsFileByResource(seqResource4);
-
-    TsFileResource seqResource5 = createTsFileResource("500-500-0-0.tsfile", true);
-    seqResource5.updateStartTime(d1, 90);
-    seqResource5.updateEndTime(d1, 100);
-    seqResource5.updateStartTime(d2, 100);
-    seqResource5.updateEndTime(d2, 110);
-    seqResource5.serialize();
-    createTsFileByResource(seqResource5);
-
-    TsFileResource seqResource6 = createTsFileResource("600-600-0-0.tsfile", true);
-    seqResource6.updateStartTime(d1, 110);
-    seqResource6.updateEndTime(d1, 120);
-    seqResource6.updateStartTime(d2, 120);
-    seqResource6.updateEndTime(d2, 130);
-    seqResource6.serialize();
-    createTsFileByResource(seqResource6);
-
-    TsFileResource seqResource7 = createTsFileResource("700-700-0-0.tsfile", true);
-    seqResource7.updateStartTime(d1, 130);
-    seqResource7.updateEndTime(d1, 140);
-    seqResource7.updateStartTime(d2, 140);
-    seqResource7.updateEndTime(d2, 150);
-    seqResource7.serialize();
-    createTsFileByResource(seqResource7);
-
-    seqResources.add(seqResource1);
-    seqResources.add(seqResource2);
-    seqResources.add(seqResource3);
-    seqResources.add(seqResource4);
-    seqResources.add(seqResource5);
-    seqResources.add(seqResource6);
-    seqResources.add(seqResource7);
-
-    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
-    unseqResource1.updateStartTime(d1, 42);
-    unseqResource1.updateEndTime(d1, 45);
-    unseqResource1.updateStartTime(d2, 31);
-    unseqResource1.updateEndTime(d2, 97);
-    unseqResource1.serialize();
-    createTsFileByResource(unseqResource1);
-
-    TsFileResource unseqResource2 = createTsFileResource("10-10-0-0.tsfile", false);
-    unseqResource2.updateStartTime(d1, 42);
-    unseqResource2.updateEndTime(d1, 45);
-    unseqResource2.updateStartTime(d2, 51);
-    unseqResource2.updateEndTime(d2, 57);
-    unseqResource2.serialize();
-    createTsFileByResource(unseqResource2);
-
-    TsFileResource unseqResource3 = createTsFileResource("11-11-0-0.tsfile", false);
-    unseqResource3.updateStartTime(d1, 42);
-    unseqResource3.updateEndTime(d1, 45);
-    unseqResource3.updateStartTime(d2, 91);
-    unseqResource3.updateEndTime(d2, 97);
-    unseqResource3.serialize();
-    createTsFileByResource(unseqResource3);
-
-    // nonOverlap unseq file, whose device is not contained in seq files
-    TsFileResource unseqResource4 = createTsFileResource("12-12-0-0.tsfile", false);
-    unseqResource4.updateStartTime(d3, 4);
-    unseqResource4.updateEndTime(d3, 155);
-    unseqResource4.serialize();
-    createTsFileByResource(unseqResource4);
-
-    TsFileResource unseqResource5 = createTsFileResource("13-13-0-0.tsfile", false);
-    unseqResource5.updateStartTime(d1, 2);
-    unseqResource5.updateEndTime(d1, 9);
-    unseqResource5.updateStartTime(d4, 31);
-    unseqResource5.updateEndTime(d4, 97);
-    unseqResource5.serialize();
-    createTsFileByResource(unseqResource5);
-
-    TsFileResource unseqResource6 = createTsFileResource("14-14-0-0.tsfile", false);
-    unseqResource6.updateStartTime(d1, 42);
-    unseqResource6.updateEndTime(d1, 45);
-    unseqResource6.updateStartTime(d2, 91);
-    unseqResource6.updateEndTime(d2, 97);
-    unseqResource6.updateStartTime(d5, 31);
-    unseqResource6.updateEndTime(d5, 97);
-    unseqResource6.serialize();
-    createTsFileByResource(unseqResource6);
-
-    TsFileResource unseqResource7 = createTsFileResource("15-15-0-0.tsfile", false);
-    unseqResource7.updateStartTime(d1, 222);
-    unseqResource7.updateEndTime(d1, 250);
-    unseqResource7.updateStartTime(d2, 981);
-    unseqResource7.updateEndTime(d2, 987);
-    unseqResource7.updateStartTime(d5, 31);
-    unseqResource7.updateEndTime(d5, 97);
-    unseqResource7.serialize();
-    createTsFileByResource(unseqResource7);
-
-    unseqResources.add(unseqResource1);
-    unseqResources.add(unseqResource2);
-    unseqResources.add(unseqResource3);
-    unseqResources.add(unseqResource4);
-    unseqResources.add(unseqResource5);
-    unseqResources.add(unseqResource6);
-    unseqResources.add(unseqResource7);
-
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-
-    RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-
-    int i = 1;
-    while (i < 6) {
-      InsertionCrossCompactionTaskResource taskResource =
-          selector.selectOneInsertionTask(
-              new CrossSpaceCompactionCandidate(
-                  tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)));
-      if (i < 5) {
-        Assert.assertTrue(taskResource.isValid());
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(0), taskResource.firstUnSeqFileInParitition);
-      } else {
-        Assert.assertFalse(taskResource.isValid());
-      }
-
-      if (i == 1) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(1), taskResource.toInsertUnSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(1), taskResource.prevSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(2), taskResource.nextSeqFile);
-      } else if (i == 2) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(2), taskResource.toInsertUnSeqFile);
-        Assert.assertEquals(null, taskResource.prevSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(0), taskResource.nextSeqFile);
-      } else if (i == 3) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(2), taskResource.toInsertUnSeqFile);
-        Assert.assertNull(taskResource.prevSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(0), taskResource.nextSeqFile);
-      } else if (i == 4) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(3), taskResource.toInsertUnSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(9), taskResource.prevSeqFile);
-        Assert.assertNull(taskResource.nextSeqFile);
-      } else {
-        Assert.assertNull(taskResource.prevSeqFile);
-        Assert.assertNull(taskResource.nextSeqFile);
-        Assert.assertNull(taskResource.firstUnSeqFileInParitition);
-        Assert.assertNull(taskResource.toInsertUnSeqFile);
-      }
-
-      if (taskResource.isValid()) {
-        InsertionCrossSpaceCompactionTask task =
-            new InsertionCrossSpaceCompactionTask(
-                new Phaser(1),
-                0,
-                tsFileManager,
-                taskResource,
-                tsFileManager.getNextCompactionTaskId());
-        task.start();
-      }
-      if (i == 1) {
-        Assert.assertEquals(8, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(6, tsFileManager.getTsFileList(false).size());
-      } else if (i == 2) {
-        Assert.assertEquals(9, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(5, tsFileManager.getTsFileList(false).size());
-      } else if (i == 3) {
-        Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(4, tsFileManager.getTsFileList(false).size());
-      } else {
-        Assert.assertEquals(11, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
-      }
-      i++;
-    }
-  }
-
   @Test
   public void testInsertionIntoCompactingSeqFiles() throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1416,7 +1298,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1452,8 +1335,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithUnclosedSeqFile() throws MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1504,7 +1387,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     unseqResources.add(unseqResource2);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1535,8 +1419,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
 
   @Test
   public void testInsertionSelectorWithUnclosedUnSeqFile() throws MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1587,7 +1471,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     unseqResources.add(unseqResource2);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1600,8 +1485,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithNoSeqFilesAndFileTimeIndex()
       throws MergeException, IOException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource unseqResource1 = createTsFileResource("1-1-0-0.tsfile", false);
     unseqResource1.updateStartTime(d1, 10);
@@ -1688,7 +1573,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource taskResource;
 
     int i = 1;
@@ -1727,8 +1613,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithNoUnseqFilesAndFileTimeIndex()
       throws MergeException, IOException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -1755,7 +1641,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     degradeTimeIndex();
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1770,8 +1657,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithOverlapUnseqFileAndFileTimeIndex()
       throws MergeException, IOException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     // 1. prevSeqFileIndex == nextSeqFileIndex
     TsFileResource seqResource1 = createTsFileResource("1-1-0-0.tsfile", true);
@@ -1808,7 +1695,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     degradeTimeIndex();
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -1840,229 +1728,12 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     Assert.assertEquals(null, task.firstUnSeqFileInParitition);
   }
 
-  // unseq file 1 is overlap, while unseq file 2 4 5 7 is nonOverlap
-  @Test
-  public void testInsertionSelectorWithNonOverlapUnseqFileAndFileTimeIndex()
-      throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
-    IDeviceID d4 = new PlainDeviceID("root.testsg.d4");
-    IDeviceID d5 = new PlainDeviceID("root.testsg.d5");
-
-    TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
-    seqResource1.updateStartTime(d1, 10);
-    seqResource1.updateEndTime(d1, 20);
-    seqResource1.updateStartTime(d2, 20);
-    seqResource1.updateEndTime(d2, 30);
-    seqResource1.serialize();
-    createTsFileByResource(seqResource1);
-
-    TsFileResource seqResource2 = createTsFileResource("200-200-0-0.tsfile", true);
-    seqResource2.updateStartTime(d1, 30);
-    seqResource2.updateEndTime(d1, 40);
-    seqResource2.updateStartTime(d2, 40);
-    seqResource2.updateEndTime(d2, 50);
-    seqResource2.serialize();
-    createTsFileByResource(seqResource2);
-
-    TsFileResource seqResource3 = createTsFileResource("300-300-0-0.tsfile", true);
-    seqResource3.updateStartTime(d1, 50);
-    seqResource3.updateEndTime(d1, 60);
-    seqResource3.updateStartTime(d2, 60);
-    seqResource3.updateEndTime(d2, 70);
-    seqResource3.serialize();
-    createTsFileByResource(seqResource3);
-
-    TsFileResource seqResource4 = createTsFileResource("400-400-0-0.tsfile", true);
-    seqResource4.updateStartTime(d1, 70);
-    seqResource4.updateEndTime(d1, 80);
-    seqResource4.updateStartTime(d2, 80);
-    seqResource4.updateEndTime(d2, 90);
-    seqResource4.serialize();
-    createTsFileByResource(seqResource4);
-
-    TsFileResource seqResource5 = createTsFileResource("500-500-0-0.tsfile", true);
-    seqResource5.updateStartTime(d1, 90);
-    seqResource5.updateEndTime(d1, 100);
-    seqResource5.updateStartTime(d2, 100);
-    seqResource5.updateEndTime(d2, 110);
-    seqResource5.serialize();
-    createTsFileByResource(seqResource5);
-
-    TsFileResource seqResource6 = createTsFileResource("600-600-0-0.tsfile", true);
-    seqResource6.updateStartTime(d1, 110);
-    seqResource6.updateEndTime(d1, 120);
-    seqResource6.updateStartTime(d2, 120);
-    seqResource6.updateEndTime(d2, 130);
-    seqResource6.serialize();
-    createTsFileByResource(seqResource6);
-
-    TsFileResource seqResource7 = createTsFileResource("700-700-0-0.tsfile", true);
-    seqResource7.updateStartTime(d1, 130);
-    seqResource7.updateEndTime(d1, 140);
-    seqResource7.updateStartTime(d2, 140);
-    seqResource7.updateEndTime(d2, 150);
-    seqResource7.serialize();
-    createTsFileByResource(seqResource7);
-
-    seqResources.add(seqResource1);
-    seqResources.add(seqResource2);
-    seqResources.add(seqResource3);
-    seqResources.add(seqResource4);
-    seqResources.add(seqResource5);
-    seqResources.add(seqResource6);
-    seqResources.add(seqResource7);
-
-    TsFileResource unseqResource1 = createTsFileResource("9-9-0-0.tsfile", false);
-    unseqResource1.updateStartTime(d1, 42);
-    unseqResource1.updateEndTime(d1, 45);
-    unseqResource1.updateStartTime(d2, 31);
-    unseqResource1.updateEndTime(d2, 97);
-    unseqResource1.serialize();
-    createTsFileByResource(unseqResource1);
-
-    TsFileResource unseqResource2 = createTsFileResource("10-10-0-0.tsfile", false);
-    unseqResource2.updateStartTime(d1, 42);
-    unseqResource2.updateEndTime(d1, 45);
-    unseqResource2.updateStartTime(d2, 51);
-    unseqResource2.updateEndTime(d2, 57);
-    unseqResource2.serialize();
-    createTsFileByResource(unseqResource2);
-
-    TsFileResource unseqResource3 = createTsFileResource("11-11-0-0.tsfile", false);
-    unseqResource3.updateStartTime(d1, 42);
-    unseqResource3.updateEndTime(d1, 45);
-    unseqResource3.updateStartTime(d2, 91);
-    unseqResource3.updateEndTime(d2, 97);
-    unseqResource3.serialize();
-    createTsFileByResource(unseqResource3);
-
-    // nonOverlap unseq file, whose device is not contained in seq files
-    TsFileResource unseqResource4 = createTsFileResource("12-12-0-0.tsfile", false);
-    unseqResource4.updateStartTime(d3, 4);
-    unseqResource4.updateEndTime(d3, 155);
-    unseqResource4.serialize();
-    createTsFileByResource(unseqResource4);
-
-    TsFileResource unseqResource5 = createTsFileResource("13-13-0-0.tsfile", false);
-    unseqResource5.updateStartTime(d1, 2);
-    unseqResource5.updateEndTime(d1, 9);
-    unseqResource5.updateStartTime(d4, 31);
-    unseqResource5.updateEndTime(d4, 97);
-    unseqResource5.serialize();
-    createTsFileByResource(unseqResource5);
-
-    TsFileResource unseqResource6 = createTsFileResource("14-14-0-0.tsfile", false);
-    unseqResource6.updateStartTime(d1, 42);
-    unseqResource6.updateEndTime(d1, 45);
-    unseqResource6.updateStartTime(d2, 91);
-    unseqResource6.updateEndTime(d2, 97);
-    unseqResource6.updateStartTime(d5, 31);
-    unseqResource6.updateEndTime(d5, 97);
-    unseqResource6.serialize();
-    createTsFileByResource(unseqResource6);
-
-    TsFileResource unseqResource7 = createTsFileResource("15-15-0-0.tsfile", false);
-    unseqResource7.updateStartTime(d1, 222);
-    unseqResource7.updateEndTime(d1, 250);
-    unseqResource7.updateStartTime(d2, 981);
-    unseqResource7.updateEndTime(d2, 987);
-    unseqResource7.updateStartTime(d5, 31);
-    unseqResource7.updateEndTime(d5, 97);
-    unseqResource7.serialize();
-    createTsFileByResource(unseqResource7);
-
-    unseqResources.add(unseqResource1);
-    unseqResources.add(unseqResource2);
-    unseqResources.add(unseqResource3);
-    unseqResources.add(unseqResource4);
-    unseqResources.add(unseqResource5);
-    unseqResources.add(unseqResource6);
-    unseqResources.add(unseqResource7);
-
-    degradeTimeIndex();
-
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-
-    RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
-
-    int i = 1;
-    while (i < 6) {
-      InsertionCrossCompactionTaskResource taskResource =
-          selector.selectOneInsertionTask(
-              new CrossSpaceCompactionCandidate(
-                  tsFileManager.getTsFileList(true), tsFileManager.getTsFileList(false)));
-      if (i < 5) {
-        Assert.assertTrue(taskResource.isValid());
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(0), taskResource.firstUnSeqFileInParitition);
-      } else {
-        Assert.assertFalse(taskResource.isValid());
-      }
-
-      if (i == 1) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(1), taskResource.toInsertUnSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(1), taskResource.prevSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(2), taskResource.nextSeqFile);
-      } else if (i == 2) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(2), taskResource.toInsertUnSeqFile);
-        Assert.assertEquals(null, taskResource.prevSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(0), taskResource.nextSeqFile);
-      } else if (i == 3) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(2), taskResource.toInsertUnSeqFile);
-        Assert.assertNull(taskResource.prevSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(0), taskResource.nextSeqFile);
-      } else if (i == 4) {
-        Assert.assertEquals(
-            tsFileManager.getTsFileList(false).get(3), taskResource.toInsertUnSeqFile);
-        Assert.assertEquals(tsFileManager.getTsFileList(true).get(9), taskResource.prevSeqFile);
-        Assert.assertNull(taskResource.nextSeqFile);
-      } else {
-        Assert.assertNull(taskResource.prevSeqFile);
-        Assert.assertNull(taskResource.nextSeqFile);
-        Assert.assertNull(taskResource.firstUnSeqFileInParitition);
-        Assert.assertNull(taskResource.toInsertUnSeqFile);
-      }
-
-      if (taskResource.isValid()) {
-        InsertionCrossSpaceCompactionTask task =
-            new InsertionCrossSpaceCompactionTask(
-                new Phaser(1),
-                0,
-                tsFileManager,
-                taskResource,
-                tsFileManager.getNextCompactionTaskId());
-        task.start();
-      }
-      if (i == 1) {
-        Assert.assertEquals(8, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(6, tsFileManager.getTsFileList(false).size());
-      } else if (i == 2) {
-        Assert.assertEquals(9, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(5, tsFileManager.getTsFileList(false).size());
-      } else if (i == 3) {
-        Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(4, tsFileManager.getTsFileList(false).size());
-      } else {
-        Assert.assertEquals(11, tsFileManager.getTsFileList(true).size());
-        Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
-      }
-      i++;
-    }
-  }
-
   @Test
   public void testInsertionIntoCompactingSeqFilesAndFileTimeIndex()
       throws IOException, MergeException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
-    IDeviceID d3 = new PlainDeviceID("root.testsg.d3");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
+    IDeviceID d3 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d3");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2135,7 +1806,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     tsFileManager.addAll(unseqResources, false);
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -2172,8 +1844,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithUnclosedSeqFileAndFileTimeIndex()
       throws MergeException, IOException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2232,7 +1904,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     degradeTimeIndex();
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -2266,8 +1939,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   @Test
   public void testInsertionSelectorWithUnclosedUnSeqFileAndFileTimeIndex()
       throws MergeException, IOException {
-    IDeviceID d1 = new PlainDeviceID("root.testsg.d1");
-    IDeviceID d2 = new PlainDeviceID("root.testsg.d2");
+    IDeviceID d1 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d1");
+    IDeviceID d2 = IDeviceID.Factory.DEFAULT_FACTORY.create("root.testsg.d2");
 
     TsFileResource seqResource1 = createTsFileResource("100-100-0-0.tsfile", true);
     seqResource1.updateStartTime(d1, 10);
@@ -2326,7 +1999,8 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
     degradeTimeIndex();
 
     RewriteCrossSpaceCompactionSelector selector =
-        new RewriteCrossSpaceCompactionSelector("root.testsg", "0", 0, tsFileManager);
+        new RewriteCrossSpaceCompactionSelector(
+            "root.testsg", "0", 0, tsFileManager, new CompactionScheduleContext());
     InsertionCrossCompactionTaskResource task =
         selector.selectOneInsertionTask(
             new CrossSpaceCompactionCandidate(seqResources, unseqResources));
@@ -2339,7 +2013,7 @@ public class InsertionCrossSpaceCompactionSelectorTest extends AbstractCompactio
   private TsFileResource createTsFileResource(String name, boolean seq) {
     String filePath = (seq ? SEQ_DIRS : UNSEQ_DIRS) + File.separator + name;
     TsFileResource resource = new TsFileResource();
-    resource.setTimeIndex(new DeviceTimeIndex());
+    resource.setTimeIndex(new ArrayDeviceTimeIndex());
     resource.setFile(new File(filePath));
     resource.setStatusForTest(TsFileResourceStatus.NORMAL);
     resource.setSeq(seq);

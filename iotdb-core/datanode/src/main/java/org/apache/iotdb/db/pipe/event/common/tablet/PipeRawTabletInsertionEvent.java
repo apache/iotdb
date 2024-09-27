@@ -21,16 +21,19 @@ package org.apache.iotdb.db.pipe.event.common.tablet;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Objects;
@@ -49,7 +52,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   private TabletInsertionDataContainer dataContainer;
 
-  private ProgressIndex overridingProgressIndex;
+  private volatile ProgressIndex overridingProgressIndex;
 
   private PipeRawTabletInsertionEvent(
       final Tablet tablet,
@@ -109,7 +112,10 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
-    allocatedMemoryBlock = PipeDataNodeResourceManager.memory().forceAllocateWithRetry(tablet);
+    allocatedMemoryBlock =
+        PipeDataNodeResourceManager.memory()
+            .forceAllocateForTabletWithRetry(
+                PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet));
     return true;
   }
 
@@ -119,7 +125,7 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
     // Record the deviceId before the memory is released,
     // for later possibly updating the leader cache.
-    deviceId = tablet.deviceId;
+    deviceId = tablet.getDeviceId();
 
     // Actually release the occupied memory.
     tablet = null;
@@ -131,6 +137,9 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   protected void reportProgress() {
     if (needToReport) {
       super.reportProgress();
+      if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
+      }
     }
   }
 
@@ -194,7 +203,8 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     final String deviceId = getDeviceId();
-    return Objects.isNull(deviceId) || pipePattern.mayOverlapWithDevice(deviceId);
+    return Objects.isNull(deviceId)
+        || pipePattern.mayOverlapWithDevice(IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId));
   }
 
   public void markAsNeedToReport() {
@@ -203,7 +213,11 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
 
   public String getDeviceId() {
     // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
-    return Objects.nonNull(tablet) ? tablet.deviceId : deviceId;
+    return Objects.nonNull(tablet) ? tablet.getDeviceId() : deviceId;
+  }
+
+  public EnrichedEvent getSourceEvent() {
+    return sourceEvent;
   }
 
   /////////////////////////// TabletInsertionEvent ///////////////////////////
@@ -260,7 +274,14 @@ public class PipeRawTabletInsertionEvent extends EnrichedEvent implements Tablet
   }
 
   public boolean hasNoNeedParsingAndIsEmpty() {
-    return !shouldParseTimeOrPattern() && tablet.rowSize == 0;
+    return !shouldParseTimeOrPattern() && isTabletEmpty(tablet);
+  }
+
+  public static boolean isTabletEmpty(final Tablet tablet) {
+    return Objects.isNull(tablet)
+        || tablet.rowSize == 0
+        || Objects.isNull(tablet.getSchemas())
+        || tablet.getSchemas().isEmpty();
   }
 
   /////////////////////////// Object ///////////////////////////

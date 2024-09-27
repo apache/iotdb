@@ -27,17 +27,10 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
 
-  public static final String MAGIC_STRING_V1 = "WAL";
-  public static final String MAGIC_STRING_V2 = "V2-WAL";
-  public static final int MAGIC_STRING_V1_BYTES =
-      MAGIC_STRING_V1.getBytes(StandardCharsets.UTF_8).length;
-  public static final int MAGIC_STRING_V2_BYTES =
-      MAGIC_STRING_V2.getBytes(StandardCharsets.UTF_8).length;
   private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
   // wal files' metadata
   protected final WALMetaData metaData = new WALMetaData();
@@ -50,6 +43,7 @@ public class WALWriter extends LogWriter {
 
   public WALWriter(File logFile, WALFileVersion version) throws IOException {
     super(logFile, version);
+    this.version = version;
   }
 
   /**
@@ -70,28 +64,23 @@ public class WALWriter extends LogWriter {
 
   private void endFile() throws IOException {
     WALSignalEntry endMarker = new WALSignalEntry(WALEntryType.WAL_FILE_INFO_END_MARKER);
-    int metaDataSize = metaData.serializedSize();
-    ByteBuffer buffer =
-        ByteBuffer.allocate(
-            endMarker.serializedSize()
-                + metaDataSize
-                + Integer.BYTES
-                + (version != WALFileVersion.V2 ? MAGIC_STRING_V1_BYTES : MAGIC_STRING_V2_BYTES));
+    ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
     // mark info part ends
-    endMarker.serialize(buffer);
+    endMarker.serialize(markerBuffer);
+    write(markerBuffer, false);
+    int metaDataSize = metaData.serializedSize();
+
+    ByteBuffer buffer =
+        ByteBuffer.allocate(metaDataSize + Integer.BYTES + version.getVersionBytes().length);
     // flush meta data
     metaData.serialize(buffer);
     buffer.putInt(metaDataSize);
     // add magic string
-    buffer.put(
-        (version != WALFileVersion.V2 ? MAGIC_STRING_V1 : MAGIC_STRING_V2)
-            .getBytes(StandardCharsets.UTF_8));
-    size += buffer.position();
+    buffer.put(version.getVersionBytes());
     writeMetadata(buffer);
   }
 
   private void writeMetadata(ByteBuffer buffer) throws IOException {
-    size += buffer.position();
     buffer.flip();
     logChannel.write(buffer);
   }

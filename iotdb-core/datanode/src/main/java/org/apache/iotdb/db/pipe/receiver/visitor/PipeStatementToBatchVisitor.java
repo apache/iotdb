@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.MeasurementGroup;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.MeasurementGroup;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
@@ -115,15 +115,16 @@ public class PipeStatementToBatchVisitor extends StatementVisitor<Optional<State
                 statement.getPath().getDevicePath(),
                 devicePath -> new Pair<>(false, new MeasurementGroup()))
             .getRight();
-    group.addMeasurement(
+    if (group.addMeasurement(
         statement.getPath().getMeasurement(),
         statement.getDataType(),
         statement.getEncoding(),
-        statement.getCompressor());
-    group.addAttributes(statement.getAttributes());
-    group.addTags(statement.getTags());
-    group.addProps(statement.getProps());
-    group.addAlias(statement.getAlias());
+        statement.getCompressor())) {
+      group.addAttributes(statement.getAttributes());
+      group.addTags(statement.getTags());
+      group.addProps(statement.getProps());
+      group.addAlias(statement.getAlias());
+    }
   }
 
   private void addAlignedTimeSeriesToBatchStatement(
@@ -136,16 +137,18 @@ public class PipeStatementToBatchVisitor extends StatementVisitor<Optional<State
                 statement.getDevicePath(), devicePath -> new Pair<>(true, new MeasurementGroup()))
             .getRight();
     for (int i = 0; i < statement.getMeasurements().size(); ++i) {
-      group.addMeasurement(
+      if (group.addMeasurement(
           statement.getMeasurements().get(i),
           statement.getDataTypes().get(i),
           statement.getEncodings().get(i),
-          statement.getCompressors().get(i));
-      group.addProps(new HashMap<>());
+          statement.getCompressors().get(i))) {
+        group.addProps(new HashMap<>());
+        // Non-null lists
+        group.addTags(statement.getTagsList().get(i));
+        group.addAttributes(statement.getAttributesList().get(i));
+        group.addAlias(statement.getAliasList().get(i));
+      }
     }
-    statement.getTagsList().forEach(group::addTags);
-    statement.getAttributesList().forEach(group::addAttributes);
-    statement.getAliasList().forEach(group::addAlias);
   }
 
   @Override

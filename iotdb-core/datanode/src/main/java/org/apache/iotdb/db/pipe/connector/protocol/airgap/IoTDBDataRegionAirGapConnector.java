@@ -150,12 +150,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
       final AirGapSocket socket,
       final PipeInsertNodeTabletInsertionEvent pipeInsertNodeTabletInsertionEvent)
       throws PipeException, WALPipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeInsertNodeTabletInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeInsertNodeTabletInsertionEvent);
     } finally {
       pipeInsertNodeTabletInsertionEvent.decreaseReferenceCount(
@@ -195,12 +195,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   private void doTransferWrapper(
       final AirGapSocket socket, final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeRawTabletInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeRawTabletInsertionEvent);
     } finally {
       pipeRawTabletInsertionEvent.decreaseReferenceCount(
@@ -233,12 +233,12 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
   private void doTransferWrapper(
       final AirGapSocket socket, final PipeTsFileInsertionEvent pipeTsFileInsertionEvent)
       throws PipeException, IOException {
+    // We increase the reference count for this event to determine if the event may be released.
+    if (!pipeTsFileInsertionEvent.increaseReferenceCount(
+        IoTDBDataRegionAirGapConnector.class.getName())) {
+      return;
+    }
     try {
-      // We increase the reference count for this event to determine if the event may be released.
-      if (!pipeTsFileInsertionEvent.increaseReferenceCount(
-          IoTDBDataRegionAirGapConnector.class.getName())) {
-        return;
-      }
       doTransfer(socket, pipeTsFileInsertionEvent);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(

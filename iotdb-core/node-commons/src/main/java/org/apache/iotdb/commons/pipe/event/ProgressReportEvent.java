@@ -20,8 +20,8 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.pipe.pattern.PipePattern;
-import org.apache.iotdb.commons.pipe.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 
 /**
  * {@link ProgressReportEvent} is an {@link EnrichedEvent} that is used only for progress report. It
@@ -87,5 +87,10 @@ public class ProgressReportEvent extends EnrichedEvent {
   @Override
   public boolean mayEventPathsOverlappedWithPattern() {
     return true;
+  }
+
+  @Override
+  public String toString() {
+    return "ProgressReportEvent - " + super.toString();
   }
 }

@@ -22,21 +22,28 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropPipePlugin;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.DropPipePluginStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 public class DropPipePluginTask implements IConfigTask {
 
-  private final String pluginName;
+  private final DropPipePluginStatement dropPipePluginStatement;
 
   public DropPipePluginTask(DropPipePluginStatement dropPipePluginStatement) {
-    this.pluginName = dropPipePluginStatement.getPluginName();
+    this.dropPipePluginStatement = dropPipePluginStatement;
+  }
+
+  public DropPipePluginTask(DropPipePlugin node) {
+    dropPipePluginStatement = new DropPipePluginStatement();
+    dropPipePluginStatement.setPluginName(node.getPluginName());
+    dropPipePluginStatement.setIfExists(node.hasIfExistsCondition());
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropPipePlugin(pluginName);
+    return configTaskExecutor.dropPipePlugin(dropPipePluginStatement);
   }
 }

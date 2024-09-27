@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -37,9 +38,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.protocol.thrift.impl.DataNodeRegionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateMultiTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
@@ -119,7 +120,7 @@ public class DataNodeInternalRPCServiceImplTest {
     CreateTimeSeriesNode createTimeSeriesNode =
         new CreateTimeSeriesNode(
             new PlanNodeId("0"),
-            new PartialPath("root.ln.wf01.wt01.status"),
+            new MeasurementPath("root.ln.wf01.wt01.status"),
             TSDataType.BOOLEAN,
             TSEncoding.PLAIN,
             CompressionType.SNAPPY,
@@ -245,10 +246,10 @@ public class DataNodeInternalRPCServiceImplTest {
     CreateMultiTimeSeriesNode createMultiTimeSeriesNode =
         new CreateMultiTimeSeriesNode(
             new PlanNodeId("0"),
-            new ArrayList<PartialPath>() {
+            new ArrayList<MeasurementPath>() {
               {
-                add(new PartialPath("root.ln.d3.s1"));
-                add(new PartialPath("root.ln.d3.s2"));
+                add(new MeasurementPath("root.ln.d3.s1"));
+                add(new MeasurementPath("root.ln.d3.s2"));
               }
             },
             new ArrayList<TSDataType>() {

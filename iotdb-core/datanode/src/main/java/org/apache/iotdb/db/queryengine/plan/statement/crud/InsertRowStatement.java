@@ -32,14 +32,22 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.IMeasurementSchemaInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InsertRow;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.db.utils.annotations.TableModel;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -59,18 +67,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   private static final Logger LOGGER = LoggerFactory.getLogger(InsertRowStatement.class);
 
-  private static final byte TYPE_RAW_STRING = -1;
-  private static final byte TYPE_NULL = -2;
+  protected static final byte TYPE_RAW_STRING = -1;
+  protected static final byte TYPE_NULL = -2;
 
-  private long time;
-  private Object[] values;
-  private boolean isNeedInferType = false;
+  protected long time;
+  protected Object[] values;
+  protected boolean isNeedInferType = false;
 
   /**
    * This param record whether the source of logical view is aligned. Only used when there are
    * views.
    */
-  private boolean[] measurementIsAligned;
+  protected boolean[] measurementIsAligned;
+
+  private IDeviceID deviceID;
 
   public InsertRowStatement() {
     super();
@@ -83,7 +93,7 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public List<PartialPath> getPaths() {
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = devicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatAsMeasurementPath(m);
       ret.add(fullPath);
     }
     return ret;
@@ -181,12 +191,6 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @Override
   protected boolean checkAndCastDataType(int columnIndex, TSDataType dataType) {
     if (CommonUtils.checkCanCastType(dataTypes[columnIndex], dataType)) {
-      LOGGER.warn(
-          "Inserting to {}.{} : Cast from {} to {}",
-          devicePath,
-          measurements[columnIndex],
-          dataTypes[columnIndex],
-          dataType);
       values[columnIndex] =
           CommonUtils.castValue(dataTypes[columnIndex], dataType, values[columnIndex]);
       dataTypes[columnIndex] = dataType;
@@ -221,7 +225,11 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
       // parse string value to specific type
       dataTypes[i] = measurementSchemas[i].getType();
       try {
-        values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        // if the type is binary and the value is already binary, do not convert
+        if (values[i] instanceof String
+            || values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
+          values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        }
       } catch (Exception e) {
         LOGGER.warn(
             "data type of {}.{} is not consistent, "
@@ -234,7 +242,8 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         if (!IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
           throw e;
         } else {
-          markFailedMeasurement(i, e);
+          markFailedMeasurement(
+              i, new SemanticException(e, TSStatusCode.DATA_TYPE_MISMATCH.getStatusCode()));
         }
       }
     }
@@ -259,6 +268,20 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     measurements[index] = null;
     dataTypes[index] = null;
     values[index] = null;
+  }
+
+  @Override
+  public void removeAllFailedMeasurementMarks() {
+    if (failedMeasurementIndex2Info == null) {
+      return;
+    }
+    failedMeasurementIndex2Info.forEach(
+        (index, info) -> {
+          measurements[index] = info.getMeasurement();
+          dataTypes[index] = info.getDataType();
+          values[index] = info.getValue();
+        });
+    failedMeasurementIndex2Info.clear();
   }
 
   @Override
@@ -349,10 +372,14 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
 
   @Override
   public TSDataType getDataType(int index) {
-    if (isNeedInferType) {
-      return TypeInferenceUtils.getPredictedDataType(values[index], true);
-    } else {
+    if (isNeedInferType && (dataTypes == null || dataTypes[index] == null)) {
+      if (dataTypes == null) {
+        dataTypes = new TSDataType[measurements.length];
+      }
+      dataTypes[index] = TypeInferenceUtils.getPredictedDataType(values[index], true);
       return dataTypes[index];
+    } else {
+      return dataTypes != null ? dataTypes[index] : null;
     }
   }
 
@@ -443,5 +470,44 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   public Pair<Integer, Integer> getRangeOfLogicalViewSchemaListRecorded() {
     return new Pair<>(
         this.recordedBeginOfLogicalViewSchemaList, this.recordedEndOfLogicalViewSchemaList);
+  }
+
+  @TableModel
+  public IDeviceID getTableDeviceID() {
+    if (deviceID == null) {
+      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      deviceIdSegments[0] = this.getTableName();
+      for (int i = 0; i < getIdColumnIndices().size(); i++) {
+        final Integer columnIndex = getIdColumnIndices().get(i);
+        deviceIdSegments[i + 1] =
+            values[columnIndex] != null ? values[columnIndex].toString() : null;
+      }
+      deviceID = Factory.DEFAULT_FACTORY.create(deviceIdSegments);
+    }
+
+    return deviceID;
+  }
+
+  @TableModel
+  @Override
+  public Statement toRelationalStatement(MPPQueryContext context) {
+    return new InsertRow(this, context);
+  }
+
+  @TableModel
+  @Override
+  public void insertColumn(int pos, ColumnSchema columnSchema) {
+    super.insertColumn(pos, columnSchema);
+    Object[] tmpValues = new Object[values.length + 1];
+    System.arraycopy(values, 0, tmpValues, 0, pos);
+    System.arraycopy(values, pos, tmpValues, pos + 1, values.length - pos);
+    values = tmpValues;
+  }
+
+  @TableModel
+  @Override
+  public void swapColumn(int src, int target) {
+    super.swapColumn(src, target);
+    CommonUtils.swapArray(values, src, target);
   }
 }

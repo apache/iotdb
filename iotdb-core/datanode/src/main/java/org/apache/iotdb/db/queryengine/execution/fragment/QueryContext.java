@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Modification;
@@ -62,6 +61,10 @@ public class QueryContext {
 
   private volatile boolean isInterrupted = false;
 
+  // for table model, it will be false
+  // for tree model, it will be true
+  private boolean ignoreAllNullRows = true;
+
   private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
 
   public QueryContext() {}
@@ -78,6 +81,7 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
+  // if the mods file does not exist, do not add it to the cache
   private boolean checkIfModificationExists(TsFileResource tsFileResource) {
     if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
       return false;
@@ -106,16 +110,14 @@ public class QueryContext {
   }
 
   public List<Modification> getPathModifications(
-      TsFileResource tsFileResource, IDeviceID deviceID, String measurement)
-      throws IllegalPathException {
+      TsFileResource tsFileResource, IDeviceID deviceID, String measurement) {
     // if the mods file does not exist, do not add it to the cache
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
     return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile())
-            .getOverlapped(new PartialPath(deviceID, measurement)));
+        getAllModifications(tsFileResource.getModFile()).getOverlapped(deviceID, measurement));
   }
 
   public List<Modification> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
@@ -131,29 +133,15 @@ public class QueryContext {
   }
 
   /**
-   * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
-   * them from 'modFile' and put then into the cache.
-   */
-  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
-    // if the mods file does not exist, do not add it to the cache
-    if (!checkIfModificationExists(tsFileResource)) {
-      return Collections.emptyList();
-    }
-
-    return ModificationFile.sortAndMerge(
-        getAllModifications(tsFileResource.getModFile()).getOverlapped(path));
-  }
-
-  /**
    * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
   public List<List<Modification>> getPathModifications(
-      TsFileResource tsFileResource, AlignedPath path) {
-    int n = path.getMeasurementList().size();
+      TsFileResource tsFileResource, IDeviceID deviceID, List<String> measurementList) {
+    int n = measurementList.size();
     List<List<Modification>> ans = new ArrayList<>(n);
-    for (int i = 0; i < n; i++) {
-      ans.add(getPathModifications(tsFileResource, path.getPathWithMeasurement(i)));
+    for (String s : measurementList) {
+      ans.add(getPathModifications(tsFileResource, deviceID, s));
     }
     return ans;
   }
@@ -198,5 +186,13 @@ public class QueryContext {
 
   public void setQueryStatistics(QueryStatistics queryStatistics) {
     this.queryStatistics = queryStatistics;
+  }
+
+  public boolean isIgnoreAllNullRows() {
+    return ignoreAllNullRows;
+  }
+
+  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
+    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 }

@@ -34,6 +34,7 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 
 import java.io.IOException;
 
+@SuppressWarnings("java:S2177")
 public class UDTFAbs extends UDTFMath {
 
   @Override
@@ -62,6 +63,14 @@ public class UDTFAbs extends UDTFMath {
       case DOUBLE:
         collector.putDouble(time, Math.abs(row.getDouble(0)));
         break;
+      case BLOB:
+      case STRING:
+      case TIMESTAMP:
+      case TEXT:
+      case DATE:
+      case BOOLEAN:
+      case VECTOR:
+      case UNKNOWN:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -88,6 +97,12 @@ public class UDTFAbs extends UDTFMath {
         return Math.abs(row.getFloat(0));
       case DOUBLE:
         return Math.abs(row.getDouble(0));
+      case DATE:
+      case BOOLEAN:
+      case TEXT:
+      case TIMESTAMP:
+      case STRING:
+      case BLOB:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
@@ -115,6 +130,12 @@ public class UDTFAbs extends UDTFMath {
       case DOUBLE:
         transformDouble(columns, builder);
         return;
+      case BLOB:
+      case STRING:
+      case TEXT:
+      case TIMESTAMP:
+      case BOOLEAN:
+      case DATE:
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

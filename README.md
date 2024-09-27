@@ -171,7 +171,7 @@ Mainly on the ARM-based models:
 
 Building `Thrift` requires us to add two more dependencies to the picture.
 
-This however is only needed when enabling the `compile-cpp` profile:
+This however is only needed when enabling the `with-cpp` profile:
 
     brew install boost
     brew install bison
@@ -293,7 +293,7 @@ After being built, the IoTDB cli is located at the folder "cli/target".
 
 ### Build Others
 
-Use `-P compile-cpp` for compiling the cpp client. (For more details, read client-cpp's Readme file.)
+Use `-P with-cpp` for compiling the cpp client. (For more details, read client-cpp's Readme file.)
 
 **NOTE: Directories "`thrift/target/generated-sources/thrift`", "`thrift-sync/target/generated-sources/thrift`",
 "`thrift-cluster/target/generated-sources/thrift`", "`thrift-influxdb/target/generated-sources/thrift`" 

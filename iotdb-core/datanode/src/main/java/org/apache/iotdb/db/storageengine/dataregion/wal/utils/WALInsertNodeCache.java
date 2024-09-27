@@ -24,6 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.metric.PipeWALInsertNodeCacheMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
@@ -44,7 +45,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -81,17 +81,6 @@ public class WALInsertNodeCache {
         PipeDataNodeResourceManager.memory()
             .tryAllocate(requestedAllocateSize)
             .setShrinkMethod(oldMemory -> Math.max(oldMemory / 2, 1))
-            .setShrinkCallback(
-                (oldMemory, newMemory) -> {
-                  memoryUsageCheatFactor.updateAndGet(
-                      factor -> factor * ((double) oldMemory / newMemory));
-                  isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
-                  LOGGER.info(
-                      "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
-                      dataRegionId,
-                      oldMemory,
-                      newMemory);
-                })
             .setExpandMethod(
                 oldMemory -> Math.min(Math.max(oldMemory, 1) * 2, requestedAllocateSize))
             .setExpandCallback(
@@ -113,8 +102,15 @@ public class WALInsertNodeCache {
             .weigher(
                 (Weigher<WALEntryPosition, Pair<ByteBuffer, InsertNode>>)
                     (position, pair) -> {
-                      final long weightInLong =
-                          (long) (position.getSize() * memoryUsageCheatFactor.get());
+                      long weightInLong = 0L;
+                      if (pair.right != null) {
+                        weightInLong =
+                            (long)
+                                (InsertNodeMemoryEstimator.sizeOf(pair.right)
+                                    * memoryUsageCheatFactor.get());
+                      } else {
+                        weightInLong = (long) (position.getSize() * memoryUsageCheatFactor.get());
+                      }
                       if (weightInLong <= 0) {
                         return Integer.MAX_VALUE;
                       }
@@ -123,6 +119,27 @@ public class WALInsertNodeCache {
                     })
             .recordStats()
             .build(new WALInsertNodeCacheLoader());
+    allocatedMemoryBlock.setShrinkCallback(
+        (oldMemory, newMemory) -> {
+          memoryUsageCheatFactor.updateAndGet(factor -> factor * ((double) oldMemory / newMemory));
+          isBatchLoadEnabled.set(newMemory >= CONFIG.getWalFileSizeThresholdInByte());
+          LOGGER.info(
+              "WALInsertNodeCache.allocatedMemoryBlock of dataRegion {} has shrunk from {} to {}.",
+              dataRegionId,
+              oldMemory,
+              newMemory);
+          if (CONFIG.getWALCacheShrinkClearEnabled()) {
+            try {
+              lruCache.cleanUp();
+            } catch (Exception e) {
+              LOGGER.warn(
+                  "Failed to clear WALInsertNodeCache for dataRegion ID: {}.", dataRegionId, e);
+              return;
+            }
+            LOGGER.info(
+                "Successfully cleared WALInsertNodeCache for dataRegion ID: {}.", dataRegionId);
+          }
+        });
     PipeWALInsertNodeCacheMetrics.getInstance().register(this, dataRegionId);
   }
 
@@ -273,9 +290,7 @@ public class WALInsertNodeCache {
 
         // batch load when wal file is sealed
         long position = 0;
-        try (final FileChannel channel = walEntryPosition.openReadFileChannel();
-            final WALByteBufReader walByteBufReader =
-                new WALByteBufReader(walEntryPosition.getWalFile(), channel)) {
+        try (final WALByteBufReader walByteBufReader = new WALByteBufReader(walEntryPosition)) {
           while (walByteBufReader.hasNext()) {
             // see WALInfoEntry#serialize, entry type + memtable id + plan node type
             final ByteBuffer buffer = walByteBufReader.next();

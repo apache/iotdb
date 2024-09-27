@@ -125,11 +125,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   protected final MppJVMConfig jvmConfig;
   protected final int clusterIndex;
   protected final boolean isMultiCluster;
-  private Process instance;
+  protected Process instance;
   private final String nodeAddress;
   private int nodePort;
-  private int metricPort;
-  private long startTime;
+  private final int metricPort;
+  private final long startTime;
   private List<String> killPoints = new ArrayList<>();
 
   /**
@@ -523,7 +523,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
-  public final int getMetricPort() {
+  public int getMetricPort() {
     return this.metricPort;
   }
 
@@ -540,7 +540,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     return getNodePath() + File.separator + dirName + File.separator + fileName;
   }
 
-  private String getLogPath() {
+  protected String getLogPath() {
     return getLogDirPath() + File.separator + getId() + ".log";
   }
 
@@ -645,11 +645,11 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
     output.print(sb);
   }
 
-  private String getTestLogDirName() {
+  protected String getTestLogDirName() {
     if (testMethodName == null) {
       return testClassName;
     }
-    return testClassName + "_" + testMethodName;
+    return testClassName + File.separator + testMethodName;
   }
 
   public void setKillPoints(List<String> killPoints) {

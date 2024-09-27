@@ -46,6 +46,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
+import static org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -54,9 +57,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstan
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.SINK_LEADER_CACHE_ENABLE_KEY;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_CONNECTOR;
-import static org.apache.iotdb.commons.pipe.plugin.builtin.BuiltinPipePlugin.IOTDB_THRIFT_SSL_SINK;
 
 public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
@@ -65,7 +65,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   protected IoTDBSyncClientManager clientManager;
 
   @Override
-  public void validate(PipeParameterValidator validator) throws Exception {
+  public void validate(final PipeParameterValidator validator) throws Exception {
     super.validate(validator);
 
     final PipeParameters parameters = validator.getParameters();
@@ -90,7 +90,8 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   @Override
-  public void customize(PipeParameters parameters, PipeConnectorRuntimeConfiguration configuration)
+  public void customize(
+      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
       throws Exception {
     super.customize(parameters, configuration);
 
@@ -116,16 +117,25 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
 
     clientManager =
         constructClient(
-            nodeUrls, useSSL, trustStorePath, trustStorePwd, useLeaderCache, loadBalanceStrategy);
+            nodeUrls,
+            useSSL,
+            trustStorePath,
+            trustStorePwd,
+            useLeaderCache,
+            loadBalanceStrategy,
+            shouldReceiverConvertOnTypeMismatch,
+            loadTsFileStrategy);
   }
 
   protected abstract IoTDBSyncClientManager constructClient(
-      List<TEndPoint> nodeUrls,
-      boolean useSSL,
-      String trustStorePath,
-      String trustStorePwd,
-      boolean useLeaderCache,
-      String loadBalanceStrategy);
+      final List<TEndPoint> nodeUrls,
+      final boolean useSSL,
+      final String trustStorePath,
+      final String trustStorePwd,
+      final boolean useLeaderCache,
+      final String loadBalanceStrategy,
+      final boolean shouldReceiverConvertOnTypeMismatch,
+      final String loadTsFileStrategy);
 
   @Override
   public void handshake() throws Exception {
@@ -136,7 +146,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   public void heartbeat() {
     try {
       handshake();
-    } catch (Exception e) {
+    } catch (final Exception e) {
       LOGGER.warn(
           "Failed to reconnect to target server, because: {}. Try to reconnect later.",
           e.getMessage(),
@@ -181,7 +191,7 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
           resp =
               PipeTransferFilePieceResp.fromTPipeTransferResp(
                   clientAndStatus.getLeft().pipeTransfer(req));
-        } catch (Exception e) {
+        } catch (final Exception e) {
           clientAndStatus.setRight(false);
           throw new PipeConnectionException(
               String.format(
@@ -219,10 +229,10 @@ public abstract class IoTDBSslSyncConnector extends IoTDBConnector {
   }
 
   protected abstract PipeTransferFilePieceReq getTransferSingleFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException;
+      final String fileName, final long position, final byte[] payLoad) throws IOException;
 
   protected abstract PipeTransferFilePieceReq getTransferMultiFilePieceReq(
-      String fileName, long position, byte[] payLoad) throws IOException;
+      final String fileName, final long position, final byte[] payLoad) throws IOException;
 
   @Override
   public void close() {

@@ -22,6 +22,8 @@ package org.apache.iotdb.commons.utils;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +33,9 @@ import java.nio.file.Paths;
 import java.util.stream.Stream;
 
 public class JVMCommonUtils {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(JVMCommonUtils.class);
+
   /** Default executor pool maximum size. */
   public static final int MAX_EXECUTOR_POOL_SIZE = Math.max(100, getCpuCores() * 5);
 
@@ -62,13 +67,30 @@ public class JVMCommonUtils {
   public static long getUsableSpace(String dir) {
     File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
     dirFile.mkdirs();
-    return dirFile.getFreeSpace();
+    return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
   }
 
   public static double getDiskFreeRatio(String dir) {
-    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    dirFile.mkdirs();
-    return 1.0 * dirFile.getFreeSpace() / dirFile.getTotalSpace();
+    File dirFile = new File(dir);
+    if (!dirFile.mkdirs()) {
+      // This may solve getFreeSpace() == 0?
+      dirFile = new File(dir);
+    }
+    long freeSpace =
+        IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
+    if (freeSpace == 0) {
+      LOGGER.warn("Cannot get free space for {} after retries, please check the disk status", dir);
+    }
+    long totalSpace = dirFile.getTotalSpace();
+    double ratio = 1.0 * freeSpace / totalSpace;
+    if (ratio <= diskSpaceWarningThreshold) {
+      LOGGER.warn(
+          "{} is above the warning threshold, free space {}, total space {}",
+          dir,
+          freeSpace,
+          totalSpace);
+    }
+    return ratio;
   }
 
   public static boolean hasSpace(String dir) {

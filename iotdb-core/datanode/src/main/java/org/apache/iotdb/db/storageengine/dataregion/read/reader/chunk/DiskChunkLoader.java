@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -95,8 +96,12 @@ public class DiskChunkLoader implements IChunkLoader {
       return chunkReader;
     } finally {
       long time = System.nanoTime() - t1;
-      context.getQueryStatistics().constructNonAlignedChunkReadersDiskCount.getAndAdd(1);
-      context.getQueryStatistics().constructNonAlignedChunkReadersDiskTime.getAndAdd(time);
+      context.getQueryStatistics().getConstructNonAlignedChunkReadersDiskCount().getAndAdd(1);
+      context.getQueryStatistics().getConstructNonAlignedChunkReadersDiskTime().getAndAdd(time);
     }
+  }
+
+  public TsFileID getTsFileID() {
+    return resource.getTsFileID();
   }
 }

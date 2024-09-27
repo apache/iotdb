@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.container.query;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.Path;
@@ -31,7 +34,9 @@ import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.IExpression;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.IOException;
@@ -40,6 +45,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> {
@@ -47,19 +53,22 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
   private final TsFileReader tsFileReader;
   private final Map<String, TSDataType> measurementDataTypeMap;
 
-  private final String deviceId;
+  private final IDeviceID deviceId;
   private final List<String> measurements;
 
   private final IExpression timeFilterExpression;
 
   private final QueryDataSet queryDataSet;
 
+  private final PipeMemoryBlock allocatedBlockForTablet;
+
   TsFileInsertionQueryDataTabletIterator(
       final TsFileReader tsFileReader,
       final Map<String, TSDataType> measurementDataTypeMap,
-      final String deviceId,
+      final IDeviceID deviceId,
       final List<String> measurements,
-      final IExpression timeFilterExpression)
+      final IExpression timeFilterExpression,
+      final PipeMemoryBlock allocatedBlockForTablet)
       throws IOException {
     this.tsFileReader = tsFileReader;
     this.measurementDataTypeMap = measurementDataTypeMap;
@@ -77,6 +86,8 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
     this.timeFilterExpression = timeFilterExpression;
 
     this.queryDataSet = buildQueryDataSet();
+
+    this.allocatedBlockForTablet = Objects.requireNonNull(allocatedBlockForTablet);
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {
@@ -110,18 +121,41 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
   }
 
   private Tablet buildNextTablet() throws IOException {
-    final List<MeasurementSchema> schemas = new ArrayList<>();
+    final List<IMeasurementSchema> schemas = new ArrayList<>();
     for (final String measurement : measurements) {
       final TSDataType dataType =
           measurementDataTypeMap.get(deviceId + TsFileConstant.PATH_SEPARATOR + measurement);
       schemas.add(new MeasurementSchema(measurement, dataType));
     }
-    final Tablet tablet =
-        new Tablet(deviceId, schemas, PipeConfig.getInstance().getPipeDataStructureTabletRowSize());
-    tablet.initBitMaps();
 
+    Tablet tablet = null;
+    if (!queryDataSet.hasNext()) {
+      tablet =
+          new Tablet(
+              // Used for tree model
+              deviceId.toString(), schemas, 1);
+      tablet.initBitMaps();
+      // Ignore the memory cost of tablet
+      PipeDataNodeResourceManager.memory().forceResize(allocatedBlockForTablet, 0);
+      return tablet;
+    }
+
+    boolean isFirstRow = true;
     while (queryDataSet.hasNext()) {
       final RowRecord rowRecord = queryDataSet.next();
+      if (isFirstRow) {
+        // Calculate row count and memory size of the tablet based on the first row
+        Pair<Integer, Integer> rowCountAndMemorySize =
+            PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(rowRecord);
+        tablet =
+            new Tablet(
+                // Used for tree model
+                deviceId.toString(), schemas, rowCountAndMemorySize.getLeft());
+        tablet.initBitMaps();
+        PipeDataNodeResourceManager.memory()
+            .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
+        isFirstRow = false;
+      }
 
       final int rowIndex = tablet.rowSize;
 
@@ -134,7 +168,7 @@ public class TsFileInsertionQueryDataTabletIterator implements Iterator<Tablet> 
         tablet.addValue(
             measurements.get(i),
             rowIndex,
-            field == null ? null : field.getObjectValue(field.getDataType()));
+            field == null ? null : field.getObjectValue(schemas.get(i).getType()));
       }
 
       tablet.rowSize++;

@@ -30,5 +30,9 @@ public interface SubscriptionPipeEvents {
 
   void ack();
 
-  void cleanup();
+  void cleanUp();
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  int getPipeEventCount();
 }

@@ -64,6 +64,7 @@ public class StatusUtils {
     NEED_RETRY.add(TSStatusCode.NO_AVAILABLE_REGION_GROUP.getStatusCode());
     NEED_RETRY.add(TSStatusCode.LACK_PARTITION_ALLOCATION.getStatusCode());
     NEED_RETRY.add(TSStatusCode.NO_ENOUGH_DATANODE.getStatusCode());
+    NEED_RETRY.add(TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode());
   }
 
   /**
@@ -205,13 +206,16 @@ public class StatusUtils {
   }
 
   public static boolean needRetry(TSStatus status) {
+    // succeed operation should never retry
+    if (status == null || status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return false;
+    }
     // always retry while node is in not running case
     if (!COMMON_CONFIG.isRunning()) {
       return true;
-    } else if (status == null) {
-      return false;
+    } else {
+      return needRetryHelper(status);
     }
-    return needRetryHelper(status);
   }
 
   public static boolean needRetryHelper(TSStatus status) {

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.procedure.impl.pipe.plugin;
 
-import org.apache.iotdb.commons.pipe.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.apache.tsfile.utils.Binary;
@@ -41,7 +41,7 @@ public class CreatePipePluginProcedureTest {
     PipePluginMeta pipePluginMeta =
         new PipePluginMeta("test", "test.class", false, "test.jar", "testMD5test");
     CreatePipePluginProcedure proc =
-        new CreatePipePluginProcedure(pipePluginMeta, new byte[] {1, 2, 3});
+        new CreatePipePluginProcedure(pipePluginMeta, new byte[] {1, 2, 3}, false);
 
     try {
       proc.serialize(outputStream);

@@ -39,7 +39,7 @@ import java.util.Set;
 public class TopicMeta {
 
   private String topicName;
-  private long creationTime; // raw timestamp based on system timestamp precision
+  private long creationTime; // unit in ms
   private TopicConfig config;
 
   private Set<String> subscribedConsumerGroupIds;
@@ -182,7 +182,7 @@ public class TopicMeta {
     // path
     extractorAttributes.putAll(config.getAttributesWithPathOrPattern());
     // time
-    extractorAttributes.putAll(config.getAttributesWithTimeRange(creationTime));
+    extractorAttributes.putAll(config.getAttributesWithTimeRange());
     // realtime mode
     extractorAttributes.putAll(config.getAttributesWithRealtimeMode());
     // source mode
@@ -201,6 +201,7 @@ public class TopicMeta {
     connectorAttributes.put("sink", "subscription-sink");
     connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
     connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
+    connectorAttributes.putAll(config.getAttributesWithSinkFormat());
     return connectorAttributes;
   }
 

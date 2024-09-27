@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.common.header;
 
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+
 import com.google.common.primitives.Bytes;
 import org.apache.tsfile.enums.TSDataType;
 
@@ -36,6 +39,7 @@ public class DatasetHeader {
   public static final DatasetHeader EMPTY_HEADER = new DatasetHeader(new ArrayList<>(), false);
 
   // column names, data types and aliases of result dataset
+  // !!attention!! there may exist duplicated column names in table model
   private final List<ColumnHeader> columnHeaders;
 
   // indicate whether the result dataset contain timestamp column
@@ -43,6 +47,7 @@ public class DatasetHeader {
 
   // map from output column to output tsBlock index
   private Map<String, Integer> columnToTsBlockIndexMap;
+  private List<Integer> columnIndex2TsBlockColumnIndexList;
 
   // cached field for create response
   private List<String> respColumns;
@@ -55,6 +60,11 @@ public class DatasetHeader {
   public DatasetHeader(List<ColumnHeader> columnHeaders, boolean isIgnoreTimestamp) {
     this.columnHeaders = columnHeaders;
     this.isIgnoreTimestamp = isIgnoreTimestamp;
+    int size = columnHeaders.size();
+    this.columnIndex2TsBlockColumnIndexList = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      columnIndex2TsBlockColumnIndexList.add(i);
+    }
   }
 
   public List<ColumnHeader> getColumnHeaders() {
@@ -65,10 +75,33 @@ public class DatasetHeader {
     return isIgnoreTimestamp;
   }
 
-  public void setColumnToTsBlockIndexMap(List<String> outputColumnNames) {
-    this.columnToTsBlockIndexMap = new HashMap<>();
+  public void setTreeColumnToTsBlockIndexMap(List<String> outputColumnNames) {
+    this.columnToTsBlockIndexMap = new HashMap<>(outputColumnNames.size());
     for (int i = 0; i < outputColumnNames.size(); i++) {
       columnToTsBlockIndexMap.put(outputColumnNames.get(i), i);
+    }
+
+    this.columnIndex2TsBlockColumnIndexList = new ArrayList<>(columnHeaders.size());
+    for (ColumnHeader columnHeader : columnHeaders) {
+      columnIndex2TsBlockColumnIndexList.add(
+          columnToTsBlockIndexMap.get(columnHeader.getColumnName()));
+    }
+  }
+
+  public void setTableColumnToTsBlockIndexMap(OutputNode outputNode) {
+    List<Symbol> childOutputSymbols = outputNode.getChild().getOutputSymbols();
+    Map<Symbol, Integer> outputSymbolsIndexMap = new HashMap<>(childOutputSymbols.size());
+    for (int i = 0; i < childOutputSymbols.size(); i++) {
+      outputSymbolsIndexMap.put(childOutputSymbols.get(i), i);
+    }
+
+    this.columnToTsBlockIndexMap = new HashMap<>();
+    this.columnIndex2TsBlockColumnIndexList =
+        new ArrayList<>(outputNode.getOutputColumnNames().size());
+    for (int i = 0; i < outputNode.getOutputColumnNames().size(); i++) {
+      int index = outputSymbolsIndexMap.get(outputNode.getOutputSymbols().get(i));
+      columnToTsBlockIndexMap.put(outputNode.getOutputColumnNames().get(i), index);
+      columnIndex2TsBlockColumnIndexList.add(index);
     }
   }
 
@@ -140,6 +173,10 @@ public class DatasetHeader {
       outputValueColumnCount = columnNameSet.size();
     }
     return outputValueColumnCount;
+  }
+
+  public List<Integer> getColumnIndex2TsBlockColumnIndexList() {
+    return columnIndex2TsBlockColumnIndexList;
   }
 
   @Override

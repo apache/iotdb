@@ -20,6 +20,7 @@
 package org.apache.iotdb.isession.pool;
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.isession.IPooledSession;
 import org.apache.iotdb.isession.template.Template;
 import org.apache.iotdb.isession.util.SystemStatus;
 import org.apache.iotdb.isession.util.Version;
@@ -557,6 +558,8 @@ public interface ISessionPool {
   void setQueryTimeout(long timeoutInMs);
 
   long getQueryTimeout();
+
+  IPooledSession getPooledSession() throws IoTDBConnectionException;
 
   /**
    * @deprecated

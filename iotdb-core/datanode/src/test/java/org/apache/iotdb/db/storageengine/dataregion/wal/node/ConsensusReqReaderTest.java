@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.wal.node;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -113,7 +114,7 @@ public class ConsensusReqReaderTest {
     walNode.log(0, insertRowNode); // 3
     walNode.rollWALFile();
     // _3-3-1.wal
-    insertRowNode.setDevicePath(new PartialPath(devicePath + "test"));
+    insertRowNode.setTargetPath(new PartialPath(devicePath + "test"));
     walNode.log(0, insertRowNode); // 3
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {4});
     insertTabletNode.setSearchIndex(4);
@@ -786,7 +787,7 @@ public class ConsensusReqReaderTest {
   private DeleteDataNode getDeleteDataNode(String devicePath) throws IllegalPathException {
     return new DeleteDataNode(
         new PlanNodeId(""),
-        Collections.singletonList(new PartialPath(devicePath)),
+        Collections.singletonList(new MeasurementPath(devicePath, "**")),
         Long.MIN_VALUE,
         Long.MAX_VALUE);
   }
