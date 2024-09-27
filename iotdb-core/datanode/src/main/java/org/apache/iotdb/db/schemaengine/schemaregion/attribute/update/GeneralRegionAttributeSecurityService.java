@@ -46,9 +46,7 @@ public class GeneralRegionAttributeSecurityService {
   private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
 
   public synchronized void startBroadcast(final SchemaRegionId id) {
-    regionLeaders.add(id);
-
-    if (executorFuture == null) {
+    if (regionLeaders.isEmpty()) {
       executorFuture =
           ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
               SECURITY_SERVICE_EXECUTOR,
@@ -62,12 +60,14 @@ public class GeneralRegionAttributeSecurityService {
               TimeUnit.SECONDS);
       LOGGER.info("General region attribute security service is started successfully.");
     }
+
+    regionLeaders.add(id);
   }
 
   public synchronized void stopBroadcast(final SchemaRegionId id) {
     regionLeaders.remove(id);
 
-    if (executorFuture != null) {
+    if (regionLeaders.isEmpty()) {
       executorFuture.cancel(false);
       executorFuture = null;
       LOGGER.info("General region attribute security service is stopped successfully.");
