@@ -34,5 +34,5 @@ public interface SubscriptionPipeEvents {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  int getPipeEventCount(final boolean forCommitRate);
+  int getPipeEventCount(final boolean forRemainingTime);
 }

@@ -76,9 +76,9 @@ public class SubscriptionPipeTsFileBatchEvents implements SubscriptionPipeEvents
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   @Override
-  public int getPipeEventCount(final boolean forCommitRate) {
+  public int getPipeEventCount(final boolean forRemainingTime) {
     // Since multiple events will share the same batch, equal division is performed here.
     // If it is not exact, round up to remain pessimistic.
-    return (batch.getPipeEventCount(forCommitRate) + count - 1) / count;
+    return (batch.getPipeEventCount(forRemainingTime) + count - 1) / count;
   }
 }

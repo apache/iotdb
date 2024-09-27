@@ -89,8 +89,10 @@ public abstract class SubscriptionPipeEventBatch {
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
-  public int getPipeEventCount(final boolean forCommitRate) {
+  public int getPipeEventCount(final boolean forRemainingTime) {
     return (int)
-        enrichedEvents.stream().filter(event -> !forCommitRate || event.needToCommitRate()).count();
+        enrichedEvents.stream()
+            .filter(event -> !forRemainingTime || event.needToCommitRate())
+            .count();
   }
 }

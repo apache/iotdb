@@ -417,8 +417,8 @@ public class SubscriptionEvent {
 
   /////////////////////////////// APIs provided for metric framework ///////////////////////////////
 
-  public int getPipeEventCount(final boolean forCommitRate) {
-    return pipeEvents.getPipeEventCount(forCommitRate);
+  public int getPipeEventCount(final boolean forRemainingTime) {
+    return pipeEvents.getPipeEventCount(forRemainingTime);
   }
 
   /////////////////////////////// object ///////////////////////////////

@@ -369,7 +369,7 @@ public class SubscriptionBroker {
     prefetchingQueue.executePrefetch();
   }
 
-  public int getPipeEventCount(final String topicName, final boolean forCommitRate) {
+  public int getPipeEventCount(final String topicName, final boolean forRemainingTime) {
     final SubscriptionPrefetchingQueue prefetchingQueue =
         topicNameToPrefetchingQueue.get(topicName);
     if (Objects.isNull(prefetchingQueue)) {
@@ -386,6 +386,6 @@ public class SubscriptionBroker {
           brokerId);
       return 0;
     }
-    return prefetchingQueue.getPipeEventCount(forCommitRate);
+    return prefetchingQueue.getPipeEventCount(forRemainingTime);
   }
 }

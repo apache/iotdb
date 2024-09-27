@@ -541,13 +541,13 @@ public abstract class SubscriptionPrefetchingQueue {
     return commitIdGenerator.get();
   }
 
-  public int getPipeEventCount(final boolean forCommitRate) {
+  public int getPipeEventCount(final boolean forRemainingTime) {
     final AtomicInteger count = new AtomicInteger(0);
     try {
       inputPendingQueue.forEach(
           event -> {
             if (event instanceof EnrichedEvent
-                && (!forCommitRate || ((EnrichedEvent) event).needToCommitRate())) {
+                && (!forRemainingTime || ((EnrichedEvent) event).needToCommitRate())) {
               count.incrementAndGet();
             }
           });
@@ -562,11 +562,11 @@ public abstract class SubscriptionPrefetchingQueue {
     }
     return count.get()
         + prefetchingQueue.stream()
-            .map(event -> event.getPipeEventCount(forCommitRate))
+            .map(event -> event.getPipeEventCount(forRemainingTime))
             .reduce(Integer::sum)
             .orElse(0)
         + inFlightEvents.values().stream()
-            .map(event -> event.getPipeEventCount(forCommitRate))
+            .map(event -> event.getPipeEventCount(forRemainingTime))
             .reduce(Integer::sum)
             .orElse(0);
   }
