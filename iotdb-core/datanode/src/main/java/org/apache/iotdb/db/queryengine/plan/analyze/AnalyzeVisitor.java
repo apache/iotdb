@@ -3022,6 +3022,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       final Analysis analysis = new Analysis();
       analysis.setFinishQueryAfterAnalyze(true);
       analysis.setFailStatus(RpcUtils.getStatus(TSStatusCode.LOAD_FILE_ERROR, exceptionMessage));
+
+      if (loadTsFileStatement.isShouldConvertDataTypeOnTypeMismatch()) {
+        loadTsFileStatement.setTypeMismatchDetected(true);
+        analysis.setRealStatement(loadTsFileStatement);
+        analysis.setFinishQueryAfterAnalyze(false);
+      }
       return analysis;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()

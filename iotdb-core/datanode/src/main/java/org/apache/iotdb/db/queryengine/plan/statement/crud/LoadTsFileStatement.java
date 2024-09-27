@@ -49,7 +49,7 @@ public class LoadTsFileStatement extends Statement {
 
   private Map<String, String> loadAttributes;
   private boolean shouldConvertDataTypeOnTypeMismatch;
-  private boolean secondLoad;
+  private boolean typeMismatchDetected;
 
   private final List<File> tsFiles;
   private final List<TsFileResource> resources;
@@ -179,12 +179,12 @@ public class LoadTsFileStatement extends Statement {
     return shouldConvertDataTypeOnTypeMismatch;
   }
 
-  public boolean isSecondLoad() {
-    return this.secondLoad;
+  public boolean isTypeMismatchDetected() {
+    return typeMismatchDetected;
   }
 
-  public void setSecondLoad(final boolean secondLoad) {
-    this.secondLoad = secondLoad;
+  public void setTypeMismatchDetected(boolean typeMismatchDetected) {
+    this.typeMismatchDetected = typeMismatchDetected;
   }
 
   public void setLoadAttributes(final Map<String, String> loadAttributes) {

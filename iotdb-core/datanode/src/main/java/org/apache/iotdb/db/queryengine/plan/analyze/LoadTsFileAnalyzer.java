@@ -212,6 +212,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       final String exceptionMessage;
 
       if (loadTsFileStatement.isShouldConvertDataTypeOnTypeMismatch()) {
+        loadTsFileStatement.setTypeMismatchDetected(true);
         analysis.setFinishQueryAfterAnalyze(false);
         analysis.setRealStatement(loadTsFileStatement);
 
@@ -675,8 +676,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           }
 
           // check datatype
-          if (!loadTsFileStatement.isShouldConvertDataTypeOnTypeMismatch()
-              && !tsFileSchema.getType().equals(iotdbSchema.getType())) {
+          if (!tsFileSchema.getType().equals(iotdbSchema.getType())) {
             throw new VerifyMetadataException(
                 String.format(
                     "Measurement %s%s%s datatype not match, TsFile: %s, IoTDB: %s",

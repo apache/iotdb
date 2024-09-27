@@ -175,15 +175,11 @@ public class LoadTsFileScheduler implements IScheduler {
         final LoadSingleTsFileNode node = tsFileNodeList.get(i);
         final String filePath = node.getTsFileResource().getTsFilePath();
 
-        if (node.getLoadTsFileStatement().isSecondLoad()) {
-          break;
-        }
-
-        if (node.getLoadTsFileStatement().isShouldConvertDataTypeOnTypeMismatch()) {
+        if (node.getLoadTsFileStatement().isShouldConvertDataTypeOnTypeMismatch()
+            && node.getLoadTsFileStatement().isTypeMismatchDetected()) {
           final long startTime = System.nanoTime();
 
           try {
-            node.getLoadTsFileStatement().setSecondLoad(true);
             STATEMENT_DATA_TYPE_CONVERT_EXECUTION_VISITOR.visitLoadFile(
                 node.getLoadTsFileStatement(),
                 new TSStatus(TSStatusCode.LOAD_FILE_ERROR.getStatusCode()));

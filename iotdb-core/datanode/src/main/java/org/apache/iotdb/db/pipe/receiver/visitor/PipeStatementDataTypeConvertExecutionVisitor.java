@@ -104,6 +104,8 @@ public class PipeStatementDataTypeConvertExecutionVisitor
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
                       .constructStatement());
+
+          System.out.println("current statement is: " + statement);
           TSStatus result = statementExecutor.execute(statement);
 
           // Retry once if the write process is rejected
@@ -124,21 +126,23 @@ public class PipeStatementDataTypeConvertExecutionVisitor
     }
 
     if (loadTsFileStatement.isDeleteAfterLoad()) {
-      loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
+      loadTsFileStatement
+          .getTsFiles()
+          .forEach(
+              file -> {
+                // delete resource if exist
+                FileUtils.deleteQuietly(
+                    FSFactoryProducer.getFSFactory()
+                        .getFile(file.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX));
 
-      if (loadTsFileStatement.isSecondLoad()) {
-        loadTsFileStatement
-            .getTsFiles()
-            .forEach(
-                file -> {
-                  FileUtils.deleteQuietly(
-                      FSFactoryProducer.getFSFactory()
-                          .getFile(file.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX));
-                  FileUtils.deleteQuietly(
-                      FSFactoryProducer.getFSFactory()
-                          .getFile(file.getAbsoluteFile() + ModificationFile.FILE_SUFFIX));
-                });
-      }
+                // delete mods if exist
+                FileUtils.deleteQuietly(
+                    FSFactoryProducer.getFSFactory()
+                        .getFile(file.getAbsoluteFile() + ModificationFile.FILE_SUFFIX));
+
+                // delete file is exist
+                FileUtils.deleteQuietly(file);
+              });
     }
 
     LOGGER.warn(
