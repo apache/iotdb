@@ -31,6 +31,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class GeneralRegionAttributeSecurityService {
   private static final Logger LOGGER =
@@ -42,6 +45,9 @@ public class GeneralRegionAttributeSecurityService {
 
   private Future<?> executorFuture;
   private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
+  private final ReentrantLock lock = new ReentrantLock();
+  private final Condition condition = lock.newCondition();
+  private volatile boolean skipNext = false;
 
   public void startBroadcast(final SchemaRegionId id) {
     if (regionLeaders.isEmpty()) {
@@ -62,22 +68,35 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  public synchronized void notifyBroadCast() {
-    notifyAll();
+  public void notifyBroadCast() {
+    if (lock.tryLock()) {
+      try {
+        condition.signalAll();
+      } finally {
+        lock.unlock();
+      }
+    } else {
+      skipNext = true;
+    }
   }
 
-  private synchronized void execute() {
-
+  private void execute() {
+    lock.lock();
     try {
-      wait(
-          IoTDBDescriptor.getInstance()
-              .getConfig()
-              .getGeneralRegionAttributeSecurityServiceIntervalSeconds());
+      if (!skipNext) {
+        condition.await(
+            IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
+            TimeUnit.SECONDS);
+      }
+      skipNext = false;
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.warn(
           "Interrupted when waiting for the next attribute broadcasting: {}", e.getMessage());
     } finally {
+      lock.unlock();
       securityServiceExecutor.submit(this::execute);
     }
   }
