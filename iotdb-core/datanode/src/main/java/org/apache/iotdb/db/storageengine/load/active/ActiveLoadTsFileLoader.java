@@ -212,6 +212,11 @@ public class ActiveLoadTsFileLoader {
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
           filePair.getLeft(),
           filePair.getRight());
+    } else if (status.getMessage() != null && status.getMessage().contains("read only")) {
+      LOGGER.info(
+          "Error occurred when loading tsfile {} (isGeneratedByPipe = {}) due to the system is read only",
+          filePair.getLeft(),
+          filePair.getRight());
     } else {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
@@ -234,6 +239,11 @@ public class ActiveLoadTsFileLoader {
     if (e.getMessage() != null && e.getMessage().contains("memory")) {
       LOGGER.info(
           "Rejecting auto load tsfile {} (isGeneratedByPipe = {}) due to memory constraints, will retry later.",
+          filePair.getLeft(),
+          filePair.getRight());
+    } else if (e.getMessage() != null && e.getMessage().contains("read only")) {
+      LOGGER.info(
+          "Error occurred when loading tsfile {} (isGeneratedByPipe = {}) due to the system is read only",
           filePair.getLeft(),
           filePair.getRight());
     } else {
