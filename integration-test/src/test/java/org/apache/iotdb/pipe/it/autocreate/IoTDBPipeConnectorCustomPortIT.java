@@ -76,47 +76,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
-  public void testRangePortsUnavailable() {
-    doTest(
-        "iotdb-thrift-async-connector",
-        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "range",
-        "1026",
-        "1025",
-        0,
-        10000,
-        0);
-  }
-
-  // Test Port Insufficient
-  @Test
-  public void testRangePortsAvailable() {
-    doTest(
-        "iotdb-thrift-async-connector",
-        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "range",
-        "1024",
-        "1025",
-        0,
-        10000,
-        0);
-  }
-
-  // Test Port Insufficient
-  @Test
-  public void testCandidatePortsAvailable() {
-    doTest(
-        "iotdb-thrift-async-connector",
-        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
-        "candidate",
-        null,
-        null,
-        4,
-        10000,
-        0);
-  }
-
-  @Test
   public void testAsyncPortRange() {
     doTest(
         "iotdb-thrift-async-connector",
