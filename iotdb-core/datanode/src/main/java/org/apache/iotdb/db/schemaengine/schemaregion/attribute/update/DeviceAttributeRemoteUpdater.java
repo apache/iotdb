@@ -72,31 +72,6 @@ public class DeviceAttributeRemoteUpdater {
 
   public void update(
       final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
-    // Degrade
-    if (!regionStatistics.isAllowToCreateNewSeries()) {
-      final TreeSet<TEndPoint> degradeSet =
-          new TreeSet<>(
-              Comparator.comparingLong(v -> updateContainerStatistics.get(v).getDegradePriority())
-                  .reversed());
-      updateContainerStatistics.forEach(
-          (k, v) -> {
-            if (v.needDegrade()) {
-              degradeSet.add(k);
-            }
-          });
-      for (final TEndPoint endPoint : degradeSet) {
-        if (regionStatistics.isAllowToCreateNewSeries()) {
-          break;
-        }
-        final UpdateClearContainer newContainer =
-            ((UpdateDetailContainer) attributeUpdateMap.get(endPoint)).degrade();
-        updateMemory(
-            newContainer.ramBytesUsed() - updateContainerStatistics.get(endPoint).getSize());
-        attributeUpdateMap.put(endPoint, newContainer);
-        updateContainerStatistics.remove(endPoint);
-      }
-    }
-
     targetDataNodeLocations.forEach(
         pair -> {
           if (!attributeUpdateMap.containsKey(pair.getLeft())) {
@@ -133,9 +108,36 @@ public class DeviceAttributeRemoteUpdater {
     targetDataNodeLocations.add(dataNodeLocation);
   }
 
-  public void addVersionAndNotifySend() {
+  public void afterUpdate() {
     version.incrementAndGet();
     GeneralRegionAttributeSecurityService.getInstance().notifyBroadCast();
+    degrade();
+  }
+
+  private void degrade() {
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      final TreeSet<TEndPoint> degradeSet =
+          new TreeSet<>(
+              Comparator.comparingLong(v -> updateContainerStatistics.get(v).getDegradePriority())
+                  .reversed());
+      updateContainerStatistics.forEach(
+          (k, v) -> {
+            if (v.needDegrade()) {
+              degradeSet.add(k);
+            }
+          });
+      for (final TEndPoint endPoint : degradeSet) {
+        if (regionStatistics.isAllowToCreateNewSeries()) {
+          break;
+        }
+        final UpdateClearContainer newContainer =
+            ((UpdateDetailContainer) attributeUpdateMap.get(endPoint)).degrade();
+        updateMemory(
+            newContainer.ramBytesUsed() - updateContainerStatistics.get(endPoint).getSize());
+        attributeUpdateMap.put(endPoint, newContainer);
+        updateContainerStatistics.remove(endPoint);
+      }
+    }
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

@@ -1377,7 +1377,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           pointer -> {
             updateAttribute(
                 databaseName, tableName, deviceId, pointer, attributeNameList, attributeValueList);
-            deviceAttributeRemoteUpdater.addVersionAndNotifySend();
+            deviceAttributeRemoteUpdater.afterUpdate();
           });
     }
     writeToMLog(node);
@@ -1412,7 +1412,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         mtree.updateTableDevice(pattern, batchUpdater);
       }
     }
-    deviceAttributeRemoteUpdater.addVersionAndNotifySend();
+    deviceAttributeRemoteUpdater.afterUpdate();
     writeToMLog(updateNode);
   }
 
