@@ -25,6 +25,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.ICompactionSelector;
@@ -327,6 +328,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @Override
   public List<CrossCompactionTaskResource> selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFilelist) {
+    if (!CompactionUtils.isDiskHasSpace()) {
+      return Collections.emptyList();
+    }
     return selectCrossSpaceTask(sequenceFileList, unsequenceFilelist, false);
   }
 

@@ -69,11 +69,17 @@ public class RepairDataFileScanUtil {
   private boolean hasUnsortedData;
   private boolean isBrokenFile;
   private long previousTime;
+  private boolean printLog;
 
   public RepairDataFileScanUtil(TsFileResource resource) {
+    this(resource, false);
+  }
+
+  public RepairDataFileScanUtil(TsFileResource resource, boolean printLog) {
     this.resource = resource;
     this.hasUnsortedData = false;
     this.previousTime = Long.MIN_VALUE;
+    this.printLog = printLog;
   }
 
   public void scanTsFile() {
@@ -99,6 +105,12 @@ public class RepairDataFileScanUtil {
       }
     } catch (CompactionLastTimeCheckFailedException lastTimeCheckFailedException) {
       this.hasUnsortedData = true;
+      if (printLog) {
+        logger.error(
+            "File {} has unsorted data: ",
+            resource.getTsFile().getPath(),
+            lastTimeCheckFailedException);
+      }
     } catch (Exception e) {
       // ignored the exception caused by thread interrupt
       if (Thread.currentThread().isInterrupted()) {
