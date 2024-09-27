@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class GeneralRegionAttributeSecurityService {
@@ -44,6 +45,7 @@ public class GeneralRegionAttributeSecurityService {
 
   private Future<?> executorFuture;
   private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
+  private final Semaphore serviceSemaphore = new Semaphore(1);
 
   public synchronized void startBroadcast(final SchemaRegionId id) {
     if (regionLeaders.isEmpty()) {
