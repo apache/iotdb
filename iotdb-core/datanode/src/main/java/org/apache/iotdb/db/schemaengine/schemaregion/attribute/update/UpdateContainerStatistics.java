@@ -32,11 +32,19 @@ public class UpdateContainerStatistics {
     lastUpdateTime = System.currentTimeMillis();
   }
 
+  long getSize() {
+    return size;
+  }
+
   void addSize(final long increment) {
     this.size += increment;
   }
 
+  boolean needDegrade() {
+    return size >= MIN_DEGRADE_MEMORY;
+  }
+
   long getDegradePriority() {
-    return size >= MIN_DEGRADE_MEMORY ? size * (System.currentTimeMillis() - lastUpdateTime) : 0;
+    return size * (System.currentTimeMillis() - lastUpdateTime);
   }
 }

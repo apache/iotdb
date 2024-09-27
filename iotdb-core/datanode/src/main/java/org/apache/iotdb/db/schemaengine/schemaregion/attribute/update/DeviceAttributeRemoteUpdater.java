@@ -39,10 +39,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -57,6 +59,8 @@ public class DeviceAttributeRemoteUpdater {
 
   // Volatiles
   private final MemSchemaRegionStatistics regionStatistics;
+
+  // Only exist for update detail container
   private final Map<TEndPoint, UpdateContainerStatistics> updateContainerStatistics =
       new HashMap<>();
 
@@ -69,7 +73,28 @@ public class DeviceAttributeRemoteUpdater {
   public void update(
       final String tableName, final String[] deviceId, final Map<String, String> attributeMap) {
     // Degrade
-    if (!regionStatistics.isAllowToCreateNewSeries()) {}
+    if (!regionStatistics.isAllowToCreateNewSeries()) {
+      final TreeSet<TEndPoint> degradeSet =
+          new TreeSet<>(
+              Comparator.comparingLong(v -> updateContainerStatistics.get(v).getDegradePriority()));
+      updateContainerStatistics.forEach(
+          (k, v) -> {
+            if (v.needDegrade()) {
+              degradeSet.add(k);
+            }
+          });
+      for (final TEndPoint endPoint : degradeSet) {
+        if (regionStatistics.isAllowToCreateNewSeries()) {
+          break;
+        }
+        final UpdateClearContainer newContainer =
+            ((UpdateDetailContainer) attributeUpdateMap.get(endPoint)).degrade();
+        updateMemory(
+            newContainer.ramBytesUsed() - updateContainerStatistics.get(endPoint).getSize());
+        attributeUpdateMap.put(endPoint, newContainer);
+        updateContainerStatistics.remove(endPoint);
+      }
+    }
 
     targetDataNodeLocations.forEach(
         pair -> {
@@ -81,15 +106,20 @@ public class DeviceAttributeRemoteUpdater {
             } else {
               newContainer = new UpdateDetailContainer();
               requestMemory(UpdateDetailContainer.INSTANCE_SIZE);
+              updateContainerStatistics.put(pair.getLeft(), new UpdateContainerStatistics());
             }
             attributeUpdateMap.put(pair.getLeft(), newContainer);
-            updateContainerStatistics.put(pair.getLeft(), new UpdateContainerStatistics());
           }
           final long size =
               attributeUpdateMap
                   .get(pair.getLeft())
                   .updateAttribute(tableName, deviceId, attributeMap);
-          updateContainerStatistics.get(pair.getLeft()).addSize(size);
+          updateContainerStatistics.computeIfPresent(
+              pair.getLeft(),
+              (k, v) -> {
+                v.addSize(size);
+                return v;
+              });
           updateMemory(size);
         });
   }
