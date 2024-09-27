@@ -50,6 +50,8 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   private static final long TARGET_CHUNK_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private static final long MAX_SERIES_POINT_NUMBER =
+      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
@@ -340,6 +342,7 @@ public class WritableMemChunk implements IWritableMemChunk {
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
     long binarySizePerChunk = 0;
+    int pointNumPerChunk = 0;
     for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
       long time = list.getTime(sortedRowIndex);
 
@@ -377,29 +380,33 @@ public class WritableMemChunk implements IWritableMemChunk {
           Binary value = list.getBinary(sortedRowIndex);
           chunkWriterImpl.write(time, value);
           binarySizePerChunk += getBinarySize(value);
-          if (binarySizePerChunk > TARGET_CHUNK_SIZE) {
-            chunkWriterImpl.sealCurrentPage();
-            chunkWriterImpl.clearPageWriter();
-            try {
-              ioTaskQueue.put(chunkWriterImpl);
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            }
-            chunkWriterImpl = createIChunkWriter();
-            binarySizePerChunk = 0;
-          }
           break;
         default:
           LOGGER.error("WritableMemChunk does not support data type: {}", tsDataType);
           break;
       }
+      pointNumPerChunk++;
+      if (pointNumPerChunk > MAX_SERIES_POINT_NUMBER || binarySizePerChunk > TARGET_CHUNK_SIZE) {
+        chunkWriterImpl.sealCurrentPage();
+        chunkWriterImpl.clearPageWriter();
+        try {
+          ioTaskQueue.put(chunkWriterImpl);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+        chunkWriterImpl = createIChunkWriter();
+        binarySizePerChunk = 0;
+        pointNumPerChunk = 0;
+      }
     }
-    chunkWriterImpl.sealCurrentPage();
-    chunkWriterImpl.clearPageWriter();
-    try {
-      ioTaskQueue.put(chunkWriterImpl);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    if (pointNumPerChunk != 0) {
+      chunkWriterImpl.sealCurrentPage();
+      chunkWriterImpl.clearPageWriter();
+      try {
+        ioTaskQueue.put(chunkWriterImpl);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
   }
 

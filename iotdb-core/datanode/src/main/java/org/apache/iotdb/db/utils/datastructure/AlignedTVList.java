@@ -721,11 +721,6 @@ public abstract class AlignedTVList extends TVList {
     }
   }
 
-  @Override
-  public boolean reachChunkSizeOrPointNumThreshold() {
-    return reachMaxChunkSizeFlag || rowCount >= MAX_SERIES_POINT_NUMBER;
-  }
-
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void putAlignedValues(

@@ -51,8 +51,6 @@ public abstract class TVList implements WALEntryValue {
   protected static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
   protected static final long TARGET_CHUNK_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  protected static final long MAX_SERIES_POINT_NUMBER =
-      IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   // list of timestamp array, add 1 when expanded -> data point timestamp array
   // index relation: arrayIndex -> elementIndex
   protected List<long[]> timestamps;
@@ -157,7 +155,7 @@ public abstract class TVList implements WALEntryValue {
   }
 
   public boolean reachChunkSizeOrPointNumThreshold() {
-    return rowCount >= MAX_SERIES_POINT_NUMBER;
+    return false;
   }
 
   public void putBoolean(long time, boolean value) {
