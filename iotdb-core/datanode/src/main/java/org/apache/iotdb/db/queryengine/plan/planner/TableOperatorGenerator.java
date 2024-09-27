@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOpera
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -902,6 +903,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitAggregationTableScan(
       AggregationTableScanNode node, LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableAggregationTableScanOperator.class.getSimpleName());
     throw new UnsupportedOperationException("Agg-BE not supported");
   }
 }
