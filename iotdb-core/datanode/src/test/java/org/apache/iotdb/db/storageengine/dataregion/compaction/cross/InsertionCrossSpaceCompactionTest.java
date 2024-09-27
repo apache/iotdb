@@ -24,11 +24,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InsertionCrossSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionWorker;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.MultiWorkerTypeCompactionTaskQueues;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorker;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorkerType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -56,9 +55,11 @@ import java.util.concurrent.Phaser;
 
 public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
 
-  private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new FixedPriorityBlockingQueue<>(50, new DefaultCompactionTaskComparatorImpl());
-  private final CompactionWorker worker = new CompactionWorker(0, candidateCompactionTaskQueue);
+  private final MultiWorkerTypeCompactionTaskQueues candidateCompactionTaskQueue =
+      new MultiWorkerTypeCompactionTaskQueues();
+  private final CompactionWorker worker =
+      new CompactionWorker(
+          0, candidateCompactionTaskQueue, CompactionWorkerType.NORMAL_TASK_WORKER);
 
   private boolean enableInsertionCrossSpaceCompaction;
 
@@ -116,7 +117,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
             0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
-    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertTrue(
+        worker.processOneCompactionTask(
+            candidateCompactionTaskQueue.tryTakeCompactionTask(
+                CompactionWorkerType.NORMAL_TASK_WORKER)));
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
@@ -158,7 +162,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
             0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
-    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertTrue(
+        worker.processOneCompactionTask(
+            candidateCompactionTaskQueue.tryTakeCompactionTask(
+                CompactionWorkerType.NORMAL_TASK_WORKER)));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
@@ -199,7 +206,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
             0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
-    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertTrue(
+        worker.processOneCompactionTask(
+            candidateCompactionTaskQueue.tryTakeCompactionTask(
+                CompactionWorkerType.NORMAL_TASK_WORKER)));
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(1));
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
@@ -245,7 +255,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
             0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
-    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertTrue(
+        worker.processOneCompactionTask(
+            candidateCompactionTaskQueue.tryTakeCompactionTask(
+                CompactionWorkerType.NORMAL_TASK_WORKER)));
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(seqResource1, tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(seqResource2, tsFileManager.getTsFileList(true).get(2));
@@ -282,7 +295,10 @@ public class InsertionCrossSpaceCompactionTest extends AbstractCompactionTest {
             0);
     task.setSourceFilesToCompactionCandidate();
     candidateCompactionTaskQueue.put(task);
-    Assert.assertTrue(worker.processOneCompactionTask(candidateCompactionTaskQueue.take()));
+    Assert.assertTrue(
+        worker.processOneCompactionTask(
+            candidateCompactionTaskQueue.tryTakeCompactionTask(
+                CompactionWorkerType.NORMAL_TASK_WORKER)));
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     Assert.assertTrue(tsFileManager.getTsFileList(false).isEmpty());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);

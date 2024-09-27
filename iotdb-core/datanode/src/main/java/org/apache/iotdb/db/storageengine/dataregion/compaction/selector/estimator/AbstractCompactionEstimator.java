@@ -65,7 +65,7 @@ public abstract class AbstractCompactionEstimator {
   protected long memoryBudgetForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+              / IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
 
   protected abstract long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo);

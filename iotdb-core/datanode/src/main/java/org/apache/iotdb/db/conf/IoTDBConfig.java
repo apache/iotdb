@@ -732,10 +732,22 @@ public class IoTDBConfig {
   private int compactionReadOperationPerSec = 0;
 
   /**
-   * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
-   * equal to 0.
+   * How many thread will be set up to perform any compaction task, 8 by default. Set to 1 when less
+   * than or equal to 0.
    */
-  private int compactionThreadCount = 10;
+  private int normalCompactionThreadCount = 8;
+
+  /**
+   * How many thread will be set up to perform small compaction task, 2 by default. Set to 1 when
+   * less than or equal to 0.
+   */
+  private int lightweightCompactionThreadCount = 2;
+
+  /**
+   * Distinguish whether the compaction task is a small task based on the size of the data that
+   * needs to be read and written in compaction.
+   */
+  private long smallCompactionTaskFileSize = 100 * 1024 * 1024;
 
   /**
    * How many chunk will be compact in aligned series compaction, 10 by default. Set to
@@ -2142,12 +2154,28 @@ public class IoTDBConfig {
     this.enable13DataInsertAdapt = enable13DataInsertAdapt;
   }
 
-  public int getCompactionThreadCount() {
-    return compactionThreadCount;
+  public int getNormalCompactionThreadCount() {
+    return normalCompactionThreadCount;
   }
 
-  public void setCompactionThreadCount(int compactionThreadCount) {
-    this.compactionThreadCount = compactionThreadCount;
+  public void setNormalCompactionThreadCount(int normalCompactionThreadCount) {
+    this.normalCompactionThreadCount = normalCompactionThreadCount;
+  }
+
+  public int getLightweightCompactionThreadCount() {
+    return lightweightCompactionThreadCount;
+  }
+
+  public void setLightweightCompactionThreadCount(int lightweightCompactionThreadCount) {
+    this.lightweightCompactionThreadCount = lightweightCompactionThreadCount;
+  }
+
+  public long getSmallCompactionTaskFileSize() {
+    return smallCompactionTaskFileSize;
+  }
+
+  public void setSmallCompactionTaskFileSize(long smallCompactionTaskFileSize) {
+    this.smallCompactionTaskFileSize = smallCompactionTaskFileSize;
   }
 
   public int getCompactionMaxAlignedSeriesNumInOneBatch() {

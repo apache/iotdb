@@ -32,8 +32,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
-import org.apache.iotdb.db.utils.datastructure.FixedPriorityBlockingQueue;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorker;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.worker.CompactionWorkerType;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
@@ -72,9 +72,9 @@ public class CompactionTaskManager implements IService {
   // The thread pool that executes the sub compaction task.
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
-  private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new CompactionTaskQueue(
-          config.getCandidateCompactionTaskQueueSize(), new DefaultCompactionTaskComparatorImpl());
+  private final MultiWorkerTypeCompactionTaskQueues multiWorkerTypeCompactionTaskQueues =
+      new MultiWorkerTypeCompactionTaskQueues();
+
   // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
   private final Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
@@ -119,35 +119,44 @@ public class CompactionTaskManager implements IService {
   @Override
   public synchronized void start() {
     if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0
+        && IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount() > 0
         && (config.isEnableSeqSpaceCompaction()
             || config.isEnableUnseqSpaceCompaction()
             || config.isEnableCrossSpaceCompaction())) {
       initThreadPool();
-      candidateCompactionTaskQueue.regsitPollLastHook(
-          AbstractCompactionTask::resetCompactionCandidateStatusForAllSourceFiles);
-      candidateCompactionTaskQueue.regsitPollLastHook(AbstractCompactionTask::handleTaskCleanup);
       init = true;
     }
     logger.info("Compaction task manager started.");
   }
 
   private void initThreadPool() {
-    int compactionThreadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount();
+    int normalCompactionThreadNum =
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
+    int lightweightCompactionThreadNum =
+        IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount();
     this.taskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                compactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
+                normalCompactionThreadNum, ThreadName.COMPACTION_WORKER.getName());
     this.taskExecutionPool.disableErrorLog();
     this.subCompactionTaskExecutionPool =
         (WrappedThreadPoolExecutor)
             IoTDBThreadPoolFactory.newFixedThreadPool(
-                compactionThreadNum
+                (normalCompactionThreadNum + lightweightCompactionThreadNum)
                     * IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum(),
                 ThreadName.COMPACTION_SUB_TASK.getName());
     this.subCompactionTaskExecutionPool.disableErrorLog();
-    for (int i = 0; i < compactionThreadNum; ++i) {
-      taskExecutionPool.submit(new CompactionWorker(i, candidateCompactionTaskQueue));
+    for (int i = 0; i < normalCompactionThreadNum; ++i) {
+      taskExecutionPool.submit(
+          new CompactionWorker(
+              i, multiWorkerTypeCompactionTaskQueues, CompactionWorkerType.NORMAL_TASK_WORKER));
+    }
+    for (int i = 0; i < lightweightCompactionThreadNum; i++) {
+      taskExecutionPool.submit(
+          new CompactionWorker(
+              normalCompactionThreadNum + i,
+              multiWorkerTypeCompactionTaskQueues,
+              CompactionWorkerType.LIGHTWEIGHT_TASK_WORKER));
     }
   }
 
@@ -160,7 +169,7 @@ public class CompactionTaskManager implements IService {
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
-      candidateCompactionTaskQueue.clear();
+      multiWorkerTypeCompactionTaskQueues.clear();
     }
   }
 
@@ -181,7 +190,7 @@ public class CompactionTaskManager implements IService {
     if (taskExecutionPool != null) {
       WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;
       taskExecutionPool = null;
-      candidateCompactionTaskQueue.clear();
+      multiWorkerTypeCompactionTaskQueues.clear();
       while (true) {
         int totalSize = 0;
         for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
@@ -246,12 +255,14 @@ public class CompactionTaskManager implements IService {
     // If the queue size accounts for less than 0.8 of the total capacity, select cross space
     // compaction task
     int waitingQueueRestSize =
-        candidateCompactionTaskQueue.getMaxSize() - candidateCompactionTaskQueue.size();
-    return 5 * waitingQueueRestSize >= candidateCompactionTaskQueue.size();
+        multiWorkerTypeCompactionTaskQueues.getMaxSize()
+            - multiWorkerTypeCompactionTaskQueues.size();
+    return 5 * waitingQueueRestSize >= multiWorkerTypeCompactionTaskQueues.size();
   }
 
   public boolean isWaitingQueueFull() {
-    return candidateCompactionTaskQueue.size() == candidateCompactionTaskQueue.getMaxSize();
+    return multiWorkerTypeCompactionTaskQueues.size()
+        == multiWorkerTypeCompactionTaskQueues.getMaxSize();
   }
 
   /**
@@ -264,11 +275,11 @@ public class CompactionTaskManager implements IService {
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
       throws InterruptedException {
     if (init
-        && !candidateCompactionTaskQueue.contains(compactionTask)
+        && !multiWorkerTypeCompactionTaskQueues.contains(compactionTask)
         && !isTaskRunning(compactionTask)
         && compactionTask.setSourceFilesToCompactionCandidate()
         && compactionTask.getCompactionConfigVersion() >= getCurrentCompactionConfigVersion()) {
-      candidateCompactionTaskQueue.put(compactionTask);
+      multiWorkerTypeCompactionTaskQueues.put(compactionTask);
       return true;
     }
     return false;
@@ -347,7 +358,7 @@ public class CompactionTaskManager implements IService {
 
     storageGroupTasks.remove(storageGroupName);
 
-    candidateCompactionTaskQueue.clear();
+    multiWorkerTypeCompactionTaskQueues.clear();
     return compactionTaskOfCurSG;
   }
 
@@ -369,11 +380,11 @@ public class CompactionTaskManager implements IService {
   }
 
   public int getTotalTaskCount() {
-    return getExecutingTaskCount() + candidateCompactionTaskQueue.size();
+    return getExecutingTaskCount() + multiWorkerTypeCompactionTaskQueues.size();
   }
 
   public int getCompactionCandidateTaskCount() {
-    return candidateCompactionTaskQueue.size();
+    return multiWorkerTypeCompactionTaskQueues.size();
   }
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
@@ -400,7 +411,7 @@ public class CompactionTaskManager implements IService {
   private void getWaitingTaskStatus(
       Map<CompactionTaskType, Map<CompactionTaskStatus, Integer>> statistic) {
     List<AbstractCompactionTask> waitingTaskList =
-        this.candidateCompactionTaskQueue.getAllElementAsList();
+        this.multiWorkerTypeCompactionTaskQueues.getAllElementAsList();
     for (AbstractCompactionTask task : waitingTaskList) {
       statistic
           .computeIfAbsent(
@@ -439,7 +450,7 @@ public class CompactionTaskManager implements IService {
 
   public void restart() throws InterruptedException {
     stopAllCompactionWorker = true;
-    if (IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount() > 0) {
+    if (IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount() > 0) {
       if (subCompactionTaskExecutionPool != null) {
         this.subCompactionTaskExecutionPool.shutdownNow();
         if (!this.subCompactionTaskExecutionPool.awaitTermination(
@@ -461,7 +472,7 @@ public class CompactionTaskManager implements IService {
       }
       initThreadPool();
       finishedTaskNum.set(0);
-      candidateCompactionTaskQueue.clear();
+      multiWorkerTypeCompactionTaskQueues.clear();
       init = true;
     }
     init = true;
@@ -471,7 +482,7 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void clearCandidateQueue() {
-    candidateCompactionTaskQueue.clear();
+    multiWorkerTypeCompactionTaskQueues.clear();
   }
 
   @TestOnly

@@ -74,7 +74,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     long memorySizeForEachWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                / IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion()
                 / targetResources.size());
     for (int i = 0; i < targetResources.size(); i++) {

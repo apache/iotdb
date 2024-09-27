@@ -256,4 +256,11 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   public CompactionTaskType getCompactionTaskType() {
     return CompactionTaskType.REPAIR;
   }
+
+  @Override
+  public long getCompactionRewriteFileSize() {
+    return sourceFile.getTsFileRepairStatus() == TsFileRepairStatus.NEED_TO_REPAIR_BY_MOVE
+        ? 0
+        : sourceFile.getTsFileSize();
+  }
 }

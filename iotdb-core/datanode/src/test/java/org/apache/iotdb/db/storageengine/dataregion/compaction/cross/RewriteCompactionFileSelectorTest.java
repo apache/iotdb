@@ -70,7 +70,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setMinCrossCompactionUnseqFileLevel(0);
-    IoTDBDescriptor.getInstance().getConfig().setCompactionThreadCount(1);
+    IoTDBDescriptor.getInstance().getConfig().setNormalCompactionThreadCount(1);
     SystemInfo.getInstance().setMemorySizeForCompaction(1000 * 1024 * 1024);
   }
 
@@ -334,7 +334,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       long originMemoryBudget = SystemInfo.getInstance().getMemorySizeForCompaction();
       SystemInfo.getInstance()
           .setMemorySizeForCompaction(
-              29000L * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+              29000L * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
       try {
         RewriteCrossSpaceCompactionSelector selector =
             new RewriteCrossSpaceCompactionSelector(
@@ -418,7 +418,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
@@ -491,7 +491,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
@@ -564,7 +564,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
@@ -640,7 +640,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
@@ -719,7 +719,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());
@@ -951,7 +951,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
             500L
                 * 1024
                 * 1024
-                * IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount());
+                * IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount());
     try {
       RewriteCrossSpaceCompactionSelector selector =
           new RewriteCrossSpaceCompactionSelector("", "", 0, null, new CompactionScheduleContext());

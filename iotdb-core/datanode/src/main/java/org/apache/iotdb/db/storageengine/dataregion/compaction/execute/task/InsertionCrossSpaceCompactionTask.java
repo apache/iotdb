@@ -381,4 +381,9 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
       holdWriteLockList.add(tsFileResource);
     }
   }
+
+  @Override
+  public long getCompactionRewriteFileSize() {
+    return 0;
+  }
 }

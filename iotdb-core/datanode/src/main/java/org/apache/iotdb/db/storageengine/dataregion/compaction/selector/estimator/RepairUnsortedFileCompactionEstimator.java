@@ -40,7 +40,7 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
     long sizeForFileWriter =
         (long)
             ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-                / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+                / IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount()
                 * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
     cost += sizeForFileWriter;
 

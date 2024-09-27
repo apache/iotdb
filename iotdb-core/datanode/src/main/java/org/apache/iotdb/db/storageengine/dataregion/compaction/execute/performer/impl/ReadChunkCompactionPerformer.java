@@ -60,7 +60,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private final long memoryBudgetForFileWriter =
       (long)
           ((double) SystemInfo.getInstance().getMemorySizeForCompaction()
-              / IoTDBDescriptor.getInstance().getConfig().getCompactionThreadCount()
+              / IoTDBDescriptor.getInstance().getConfig().getNormalCompactionThreadCount()
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
   private Schema schema = null;
 

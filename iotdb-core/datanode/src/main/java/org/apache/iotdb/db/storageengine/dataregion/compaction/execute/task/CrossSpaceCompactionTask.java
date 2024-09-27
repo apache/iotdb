@@ -448,4 +448,9 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   public void setCompactionConfigVersion(long compactionConfigVersion) {
     this.compactionConfigVersion = Math.min(this.compactionConfigVersion, compactionConfigVersion);
   }
+
+  @Override
+  public long getCompactionRewriteFileSize() {
+    return (long) (selectedSeqFileSize + selectedUnseqFileSize);
+  }
 }

@@ -55,6 +55,28 @@ public class CompactionTaskQueue extends FixedPriorityBlockingQueue<AbstractComp
     }
   }
 
+  public AbstractCompactionTask tryTake() throws InterruptedException {
+    final ReentrantLock lock = this.lock;
+    while (true) {
+      AbstractCompactionTask task = null;
+      lock.lockInterruptibly();
+      try {
+        if (queue.isEmpty()) {
+          return null;
+        }
+        task = queue.pollFirst();
+      } finally {
+        lock.unlock();
+      }
+      boolean prepareTaskSuccess = prepareTask(task);
+      if (!prepareTaskSuccess) {
+        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        continue;
+      }
+      return task;
+    }
+  }
+
   private boolean prepareTask(AbstractCompactionTask task) throws InterruptedException {
     if (task == null) {
       return false;
