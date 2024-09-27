@@ -17,10 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.protocol.thrift.impl;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.mpp.rpc.thrift.IAINodeInternalRPCService;
+import com.google.common.collect.ImmutableList;
 
-public interface IAINodeRPCServiceWithHandler extends IAINodeInternalRPCService.Iface {
-  void handleExit();
+import java.util.List;
+
+public abstract class PipeStatement extends Statement {
+
+  protected PipeStatement() {
+    super(null);
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
+    return ImmutableList.of();
+  }
 }

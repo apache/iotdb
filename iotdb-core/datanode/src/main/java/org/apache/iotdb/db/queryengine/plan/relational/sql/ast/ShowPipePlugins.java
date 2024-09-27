@@ -17,29 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write.cq;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import static com.google.common.base.MoreObjects.toStringHelper;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
+public class ShowPipePlugins extends PipeStatement {
 
-import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.SHOW_CQ;
-
-public class ShowCQPlan extends ConfigPhysicalPlan {
-
-  public ShowCQPlan() {
-    super(SHOW_CQ);
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitShowPipePlugins(this, context);
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeShort(getType().getPlanType());
+  public int hashCode() {
+    return 0;
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    // no customized field to deserialize from
+  public boolean equals(Object obj) {
+    return obj instanceof ShowPipePlugins;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).toString();
   }
 }

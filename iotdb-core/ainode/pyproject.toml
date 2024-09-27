@@ -21,7 +21,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "apache-iotdb-ainode"
-version = "1.4.0.dev"
+version = "2.0.0.dev"
 description = "Apache IoTDB AINode"
 readme = "README.md"
 authors = ["Apache Software Foundation <dev@iotdb.apache.org>"]

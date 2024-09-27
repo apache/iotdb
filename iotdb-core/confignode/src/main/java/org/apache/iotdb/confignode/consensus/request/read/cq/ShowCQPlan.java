@@ -17,6 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.confignode.consensus.request.read.cq;
 
-public interface AINodeRPCServiceMBean {}
+import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
+
+import static org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType.SHOW_CQ;
+
+public class ShowCQPlan extends ConfigPhysicalReadPlan {
+
+  public ShowCQPlan() {
+    super(SHOW_CQ);
+  }
+}

@@ -23,16 +23,23 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import javax.annotation.Nonnull;
+
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -47,9 +54,13 @@ public class DataNodeTableCache implements ITableCache {
 
   private final Map<String, Map<String, TsTable>> databaseTableMap = new ConcurrentHashMap<>();
 
-  private final Map<String, Map<String, TsTable>> preUpdateTableMap = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Pair<TsTable, Long>>> preUpdateTableMap =
+      new ConcurrentHashMap<>();
 
   private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+  private final Semaphore fetchTableSemaphore =
+      new Semaphore(
+          IoTDBDescriptor.getInstance().getConfig().getDataNodeTableCacheSemaphorePermitNum());
 
   private DataNodeTableCache() {
     // Do nothing
@@ -76,38 +87,52 @@ public class DataNodeTableCache implements ITableCache {
           TsTableInternalRPCUtil.deserializeTableInitializationInfo(tableInitializationBytes);
       final Map<String, List<TsTable>> usingMap = tableInfo.left;
       final Map<String, List<TsTable>> preCreateMap = tableInfo.right;
-      saveUpdatedTableInfo(usingMap, databaseTableMap);
-      saveUpdatedTableInfo(preCreateMap, preUpdateTableMap);
+      usingMap.forEach(
+          (key, value) ->
+              databaseTableMap.put(
+                  PathUtils.unQualifyDatabaseName(key),
+                  value.stream()
+                      .collect(
+                          Collectors.toMap(
+                              TsTable::getTableName,
+                              Function.identity(),
+                              (v1, v2) -> v2,
+                              ConcurrentHashMap::new))));
+      preCreateMap.forEach(
+          (key, value) ->
+              preUpdateTableMap.put(
+                  PathUtils.unQualifyDatabaseName(key),
+                  value.stream()
+                      .collect(
+                          Collectors.toMap(
+                              TsTable::getTableName,
+                              table -> new Pair<>(table, 0L),
+                              (v1, v2) -> v2,
+                              ConcurrentHashMap::new))));
       LOGGER.info("Init DataNodeTableCache successfully");
     } finally {
       readWriteLock.writeLock().unlock();
     }
   }
 
-  private void saveUpdatedTableInfo(
-      final Map<String, List<TsTable>> tableMap,
-      final Map<String, Map<String, TsTable>> localTableMap) {
-    tableMap.forEach(
-        (key, value) ->
-            localTableMap.put(
-                key,
-                value.stream()
-                    .collect(
-                        Collectors.toMap(
-                            TsTable::getTableName,
-                            Function.identity(),
-                            (v1, v2) -> v2,
-                            ConcurrentHashMap::new))));
-  }
-
   @Override
   public void preUpdateTable(String database, final TsTable table) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       preUpdateTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-          .put(table.getTableName(), table);
+          .compute(
+              table.getTableName(),
+              (k, v) -> {
+                if (Objects.isNull(v)) {
+                  return new Pair<>(table, 0L);
+                } else {
+                  v.setLeft(table);
+                  v.setRight(v.getRight() + 1);
+                  return v;
+                }
+              });
       LOGGER.info("Pre-update table {}.{} successfully", database, table);
     } finally {
       readWriteLock.writeLock().unlock();
@@ -116,7 +141,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void rollbackUpdateTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       removeTableFromPreUpdateMap(database, tableName);
@@ -133,24 +158,19 @@ public class DataNodeTableCache implements ITableCache {
           if (v == null) {
             throw new IllegalStateException();
           }
-          v.remove(tableName);
-          if (v.isEmpty()) {
-            return null;
-          } else {
-            return v;
-          }
+          v.get(tableName).setLeft(null);
+          return v;
         });
   }
 
   @Override
   public void commitUpdateTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable table = preUpdateTableMap.get(database).get(tableName);
       databaseTableMap
           .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
-          .put(tableName, table);
+          .put(tableName, preUpdateTableMap.get(database).get(tableName).getLeft());
       removeTableFromPreUpdateMap(database, tableName);
       LOGGER.info("Commit-update table {}.{} successfully", database, tableName);
     } finally {
@@ -160,7 +180,7 @@ public class DataNodeTableCache implements ITableCache {
 
   @Override
   public void invalid(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
       databaseTableMap.remove(database);
@@ -170,27 +190,134 @@ public class DataNodeTableCache implements ITableCache {
     }
   }
 
+  public TsTable getTableInWrite(final String database, final String tableName) {
+    final TsTable result = getTableInCache(database, tableName);
+    return Objects.nonNull(result) ? result : getTable(database, tableName);
+  }
+
+  /**
+   * The following logic can handle the cases when configNode failed to clear some table in {@link
+   * #preUpdateTableMap}, due to the failure of "commit" or rollback of "pre-update".
+   */
   public TsTable getTable(String database, final String tableName) {
-    database = PathUtils.qualifyDatabaseName(database);
+    database = PathUtils.unQualifyDatabaseName(database);
+    final Map<String, Map<String, Long>> preUpdateTables =
+        mayGetTableInPreUpdateMap(database, tableName);
+    if (Objects.nonNull(preUpdateTables)) {
+      updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
+    }
+    return getTableInCache(database, tableName);
+  }
+
+  private Map<String, Map<String, Long>> mayGetTableInPreUpdateMap(
+      final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      if (databaseTableMap.containsKey(database)) {
-        return databaseTableMap.get(database).get(tableName);
-      }
-      return null;
+      return preUpdateTableMap.containsKey(database)
+              && preUpdateTableMap.get(database).containsKey(tableName)
+          ? preUpdateTableMap.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          entry.getValue().entrySet().stream()
+                              .collect(
+                                  Collectors.toMap(
+                                      Map.Entry::getKey,
+                                      innerEntry -> innerEntry.getValue().getRight()))))
+          : null;
     } finally {
       readWriteLock.readLock().unlock();
     }
   }
 
-  public Optional<List<TsTable>> getTables(String database) {
-    database = PathUtils.qualifyDatabaseName(database);
+  private Map<String, Map<String, TsTable>> getTablesInConfigNode(
+      final Map<String, Map<String, Long>> tableInput) {
+    Map<String, Map<String, TsTable>> result = Collections.emptyMap();
+    try {
+      fetchTableSemaphore.acquire();
+      final TFetchTableResp resp =
+          ClusterConfigTaskExecutor.getInstance()
+              .fetchTables(
+                  tableInput.entrySet().stream()
+                      .collect(
+                          Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().keySet())));
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+        result = TsTableInternalRPCUtil.deserializeTsTableFetchResult(resp.getTableInfoMap());
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Interrupted when trying to acquire semaphore when trying to get tables from configNode, ignore.");
+    } catch (final Exception e) {
+      fetchTableSemaphore.release();
+      throw e;
+    }
+    fetchTableSemaphore.release();
+    return result;
+  }
+
+  private void updateTable(
+      final Map<String, Map<String, TsTable>> fetchedTables,
+      final Map<String, Map<String, Long>> previousVersions) {
+    readWriteLock.writeLock().lock();
+    try {
+      fetchedTables.forEach(
+          (database, tableInfoMap) -> {
+            if (preUpdateTableMap.containsKey(database)) {
+              tableInfoMap.forEach(
+                  (tableName, tsTable) -> {
+                    final Pair<TsTable, Long> existingPair =
+                        preUpdateTableMap.get(database).get(tableName);
+                    if (Objects.isNull(existingPair)
+                        || !Objects.equals(
+                            existingPair.getRight(),
+                            previousVersions.get(database).get(tableName))) {
+                      return;
+                    }
+                    existingPair.setLeft(null);
+                    if (Objects.nonNull(tsTable)) {
+                      databaseTableMap
+                          .computeIfAbsent(database, k -> new ConcurrentHashMap<>())
+                          .put(tableName, tsTable);
+                    } else if (databaseTableMap.containsKey(database)) {
+                      databaseTableMap.get(database).remove(tableName);
+                    }
+                  });
+            }
+          });
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  private TsTable getTableInCache(final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      final Map<String, TsTable> tableMap = databaseTableMap.get(database);
-      return tableMap != null ? Optional.of(new ArrayList<>(tableMap.values())) : Optional.empty();
+      return databaseTableMap.containsKey(database)
+          ? databaseTableMap.get(database).get(tableName)
+          : null;
     } finally {
       readWriteLock.readLock().unlock();
+    }
+  }
+
+  // Database shall not start with "root"
+  public String tryGetInternColumnName(
+      final @Nonnull String database,
+      final @Nonnull String tableName,
+      final @Nonnull String columnName) {
+    if (columnName.isEmpty()) {
+      return columnName;
+    }
+    try {
+      return databaseTableMap
+          .get(database)
+          .get(tableName)
+          .getColumnSchema(columnName)
+          .getColumnName();
+    } catch (final Exception e) {
+      return columnName;
     }
   }
 
@@ -210,9 +337,9 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   private Pair<String, String> checkTableExistenceOnGivenPath(
-      final String path, final Map<String, Map<String, TsTable>> tableMap) {
+      final String path, final Map<String, ? extends Map<String, ?>> tableMap) {
     final int dbStartIndex = PATH_ROOT.length() + 1;
-    for (final Map.Entry<String, Map<String, TsTable>> dbEntry : tableMap.entrySet()) {
+    for (final Map.Entry<String, ? extends Map<String, ?>> dbEntry : tableMap.entrySet()) {
       final String database = dbEntry.getKey();
       if (!(path.startsWith(database, dbStartIndex)
           && path.charAt(dbStartIndex + database.length()) == PATH_SEPARATOR)) {

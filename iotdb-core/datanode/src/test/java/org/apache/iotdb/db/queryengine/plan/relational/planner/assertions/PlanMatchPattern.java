@@ -256,7 +256,7 @@ public final class PlanMatchPattern {
   }
 
   // Attention: Now we only pass aliases according to outputSymbols, but we don't verify the output
-  // column if exists in Table because there maybe partial Agg-result.
+  // column if exists in Table and their order because there maybe partial Agg-result.
   public static PlanMatchPattern aggregationTableScan(
       GroupingSetDescriptor groupingSets,
       List<String> preGroupedSymbols,

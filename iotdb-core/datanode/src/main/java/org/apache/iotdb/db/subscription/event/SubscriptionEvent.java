@@ -415,6 +415,12 @@ public class SubscriptionEvent {
     return pipeEvents.getTsFile().getName();
   }
 
+  /////////////////////////////// APIs provided for metric framework ///////////////////////////////
+
+  public int getPipeEventCount() {
+    return pipeEvents.getPipeEventCount();
+  }
+
   /////////////////////////////// object ///////////////////////////////
 
   @Override

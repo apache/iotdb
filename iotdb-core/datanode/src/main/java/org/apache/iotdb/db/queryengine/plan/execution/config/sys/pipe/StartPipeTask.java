@@ -22,6 +22,8 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.sys.pipe;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.StartPipeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -32,6 +34,11 @@ public class StartPipeTask implements IConfigTask {
 
   public StartPipeTask(StartPipeStatement startPipeStatement) {
     this.startPipeStatement = startPipeStatement;
+  }
+
+  public StartPipeTask(StartPipe node) {
+    startPipeStatement = new StartPipeStatement(StatementType.START_PIPE);
+    startPipeStatement.setPipeName(node.getPipeName());
   }
 
   @Override

@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -93,7 +94,7 @@ public abstract class IoTDBDataNodeSyncConnector extends IoTDBSslSyncConnector {
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
             useSSL,
-            trustStorePath,
+            Objects.nonNull(trustStorePath) ? IoTDBConfig.addDataHomeDir(trustStorePath) : null,
             trustStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
