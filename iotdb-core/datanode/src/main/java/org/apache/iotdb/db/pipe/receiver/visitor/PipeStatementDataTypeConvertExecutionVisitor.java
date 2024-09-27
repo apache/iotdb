@@ -104,8 +104,6 @@ public class PipeStatementDataTypeConvertExecutionVisitor
               new PipeConvertedInsertTabletStatement(
                   PipeTransferTabletRawReq.toTPipeTransferRawReq(tablet, false)
                       .constructStatement());
-
-          System.out.println("current statement is: " + statement);
           TSStatus result = statementExecutor.execute(statement);
 
           // Retry once if the write process is rejected
