@@ -1078,6 +1078,12 @@ public class IoTDBDescriptor {
                 "general_region_attribute_security_service_interval_seconds",
                 String.valueOf(conf.getGeneralRegionAttributeSecurityServiceIntervalSeconds()))));
 
+    conf.setDetailContainerMinDegradeMemoryInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "detail_container_min_degrade_memory_in_bytes",
+                String.valueOf(conf.getDetailContainerMinDegradeMemoryInBytes()))));
+
     loadIoTConsensusProps(properties);
     loadIoTConsensusV2Props(properties);
   }

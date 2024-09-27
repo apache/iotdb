@@ -1045,6 +1045,7 @@ public class IoTDBConfig {
   private int dataNodeTableCacheSemaphorePermitNum = 5;
 
   private long generalRegionAttributeSecurityServiceIntervalSeconds = 30L;
+  private long detailContainerMinDegradeMemoryInBytes = 1024 * 1024L;
 
   private String readConsistencyLevel = "strong";
 
@@ -3475,6 +3476,15 @@ public class IoTDBConfig {
       long generalRegionAttributeSecurityServiceIntervalSeconds) {
     this.generalRegionAttributeSecurityServiceIntervalSeconds =
         generalRegionAttributeSecurityServiceIntervalSeconds;
+  }
+
+  public long getDetailContainerMinDegradeMemoryInBytes() {
+    return detailContainerMinDegradeMemoryInBytes;
+  }
+
+  public void setDetailContainerMinDegradeMemoryInBytes(
+      long detailContainerMinDegradeMemoryInBytes) {
+    this.detailContainerMinDegradeMemoryInBytes = detailContainerMinDegradeMemoryInBytes;
   }
 
   public String getReadConsistencyLevel() {

@@ -83,11 +83,14 @@ public class DeviceAttributeRemoteUpdater {
               requestMemory(UpdateDetailContainer.INSTANCE_SIZE);
             }
             attributeUpdateMap.put(pair.getLeft(), newContainer);
+            updateContainerStatistics.put(pair.getLeft(), new UpdateContainerStatistics());
           }
-          updateMemory(
+          final long size =
               attributeUpdateMap
                   .get(pair.getLeft())
-                  .updateAttribute(tableName, deviceId, attributeMap));
+                  .updateAttribute(tableName, deviceId, attributeMap);
+          updateContainerStatistics.get(pair.getLeft()).addSize(size);
+          updateMemory(size);
         });
   }
 
