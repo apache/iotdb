@@ -49,7 +49,8 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
@@ -760,11 +761,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Operator leftChild = node.getLeftChild().accept(this, context);
     Operator rightChild = node.getRightChild().accept(this, context);
 
+    int leftTimeColumnPosition =
+        node.getLeftChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getLeft());
     int[] leftOutputSymbolIdx = new int[node.getLeftOutputSymbols().size()];
     for (int i = 0; i < leftOutputSymbolIdx.length; i++) {
       leftOutputSymbolIdx[i] =
           node.getLeftChild().getOutputSymbols().indexOf(node.getLeftOutputSymbols().get(i));
     }
+    int rightTimeColumnPosition =
+        node.getRightChild().getOutputSymbols().indexOf(node.getCriteria().get(0).getRight());
     int[] rightOutputSymbolIdx = new int[node.getRightOutputSymbols().size()];
     for (int i = 0; i < rightOutputSymbolIdx.length; i++) {
       rightOutputSymbolIdx[i] =
@@ -772,11 +777,24 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
-      return new InnerJoinOperator(
+      return new TableInnerJoinOperator(
           operatorContext,
           leftChild,
+          leftTimeColumnPosition,
           leftOutputSymbolIdx,
           rightChild,
+          rightTimeColumnPosition,
+          rightOutputSymbolIdx,
+          ASC_TIME_COMPARATOR,
+          dataTypes);
+    } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.FULL) {
+      return new TableFullOuterJoinOperator(
+          operatorContext,
+          leftChild,
+          leftTimeColumnPosition,
+          leftOutputSymbolIdx,
+          rightChild,
+          rightTimeColumnPosition,
           rightOutputSymbolIdx,
           ASC_TIME_COMPARATOR,
           dataTypes);
