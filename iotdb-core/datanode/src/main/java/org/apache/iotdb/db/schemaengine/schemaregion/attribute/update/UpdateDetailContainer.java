@@ -158,35 +158,6 @@ public class UpdateDetailContainer implements UpdateContainer {
     }
   }
 
-  @Override
-  public long ramBytesUsed() {
-    final AtomicLong result = new AtomicLong(INSTANCE_SIZE);
-
-    // Do not use "sizeOfMap" to save time and ensure that the calculated bytes is the same as
-    // previous calculation's sum
-    updateMap.forEach(
-        (name, value) -> {
-          result.addAndGet(
-              RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                  + RamUsageEstimator.sizeOf(name)
-                  + MAP_SIZE);
-          value.forEach(
-              (device, attributes) -> {
-                result.addAndGet(
-                    RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                        + RamUsageEstimator.sizeOf(device)
-                        + MAP_SIZE);
-                attributes.forEach(
-                    (k, v) ->
-                        result.addAndGet(
-                            RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
-                                + RamUsageEstimator.sizeOf(k)
-                                + RamUsageEstimator.sizeOf(v)));
-              });
-        });
-    return result.get();
-  }
-
   UpdateClearContainer degrade() {
     return new UpdateClearContainer(updateMap.keySet());
   }

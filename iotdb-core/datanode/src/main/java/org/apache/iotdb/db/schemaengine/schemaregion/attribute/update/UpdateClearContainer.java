@@ -97,8 +97,7 @@ public class UpdateClearContainer implements UpdateContainer {
     }
   }
 
-  @Override
-  public long ramBytesUsed() {
+  long ramBytesUsed() {
     return INSTANCE_SIZE
         + tableNames.stream().mapToLong(RamUsageEstimator::sizeOf).reduce(0L, Long::sum);
   }
