@@ -20,7 +20,6 @@
 package org.apache.iotdb.commons.pipe.connector.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorConfig;
 import org.apache.iotdb.commons.pipe.connector.compressor.PipeCompressorFactory;
@@ -219,9 +218,6 @@ public abstract class IoTDBConnector implements PipeConnector {
             CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET, customSendPortStrategy),
         customSendPortStrategy);
 
-    final int requiredPortsNum =
-        CommonDescriptor.getInstance().getConfig().getPipeAsyncConnectorMaxClientNumber();
-
     if (CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(customSendPortStrategy)) {
       minSendPortRange =
           parameters.getIntOrDefault(
@@ -255,15 +251,6 @@ public abstract class IoTDBConnector implements PipeConnector {
           minSendPortRange,
           MAX_PORT,
           maxSendPortRange);
-
-      final int maxUsablePortsNum = maxSendPortRange - minSendPortRange + 1;
-      validator.validate(
-          arg -> (int) arg[0] >= (int) arg[1],
-          String.format(
-              "Not enough available ports: There are %d available ports but require %d.",
-              maxUsablePortsNum, requiredPortsNum),
-          maxUsablePortsNum,
-          requiredPortsNum);
     } else {
       this.candidatePorts =
           parseCandidatePorts(
@@ -271,15 +258,10 @@ public abstract class IoTDBConnector implements PipeConnector {
                   Arrays.asList(
                       CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY, SINK_IOTDB_SEND_PORT_CANDIDATE_KEY),
                   CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE));
-      final int maxUsablePortsNum = candidatePorts.size();
       validator.validate(
-          arg -> (int) arg[0] > (int) arg[1],
-          String.format(
-              "Not enough available ports: There are %d available ports but require %d.",
-              maxUsablePortsNum, requiredPortsNum),
-          maxUsablePortsNum,
-          requiredPortsNum);
-
+          arg -> (int) arg > 0,
+          "The number of candidate ports must be greater than 0.",
+          candidatePorts.size());
       validator.validate(
           arg -> (int) arg[0] >= MIN_PORT && (int) arg[1] <= MAX_PORT,
           String.format(
