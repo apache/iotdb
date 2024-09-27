@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -136,16 +137,27 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitFill(FillNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      return newNode;
+    }
+
+    @Override
     public PlanNode visitTableScan(TableScanNode node, Context context) {
       context.setTableScanNode(node);
       return node;
     }
 
+    @Override
     public PlanNode visitAggregation(AggregationNode node, Context context) {
       context.setCanTransform(false);
       return visitSingleChildProcess(node, context);
     }
 
+    @Override
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
       context.setCanTransform(false);
       return visitTableScan(node, context);
@@ -154,6 +166,7 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
   private static class Context {
     private TableScanNode tableScanNode;
+
     private boolean canTransform = true;
 
     public TableScanNode getTableScanNode() {
@@ -170,6 +183,10 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
     public void setCanTransform(boolean canTransform) {
       this.canTransform = canTransform;
+    }
+
+    public boolean isCanTransform() {
+      return canTransform;
     }
   }
 }

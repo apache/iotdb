@@ -994,7 +994,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
     Optional<Fill> fill = Optional.empty();
     if (ctx.fillClause() != null) {
-      fill = visitIfPresent(ctx.fillClause(), Fill.class);
+      fill = visitIfPresent(ctx.fillClause().fillMethod(), Fill.class);
     }
 
     Optional<OrderBy> orderBy = Optional.empty();
@@ -1061,12 +1061,13 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       }
 
       if (ctx.INTEGER_VALUE() != null) {
-        helperColumnIndex = new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.getText());
+        helperColumnIndex =
+            new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.INTEGER_VALUE().getText());
       }
     } else {
       if (ctx.INTEGER_VALUE() != null) {
         throw new SemanticException(
-            "Don't need to specify helper column index while timeDuration parameter is not specified.");
+            "Don't need to specify helper column index while timeDuration parameter is not specified");
       }
     }
     return new Fill(getLocation(ctx), timeDuration, helperColumnIndex);
@@ -1076,7 +1077,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   public Node visitLinearFill(RelationalSqlParser.LinearFillContext ctx) {
     if (ctx.INTEGER_VALUE() != null) {
       return new Fill(
-          getLocation(ctx), new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.getText()));
+          getLocation(ctx),
+          new LongLiteral(getLocation(ctx.INTEGER_VALUE()), ctx.INTEGER_VALUE().getText()));
     } else {
       return new Fill(getLocation(ctx));
     }

@@ -58,7 +58,7 @@ public class CastToTimestampLiteralVisitor extends AstVisitor<Long, Void> {
 
   @Override
   protected Long visitDoubleLiteral(DoubleLiteral node, Void context) {
-    return null;
+    return (long) node.getValue();
   }
 
   @Override

@@ -104,14 +104,14 @@ public class PreviousFillNode extends FillNode {
   }
 
   public static PreviousFillNode deserialize(ByteBuffer byteBuffer) {
-    boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean hasValue = ReadWriteIOUtils.readBool(byteBuffer);
     TimeDuration timeDuration = null;
-    if (!isNull) {
+    if (hasValue) {
       timeDuration = TimeDuration.deserialize(byteBuffer);
     }
-    isNull = ReadWriteIOUtils.readBool(byteBuffer);
+    hasValue = ReadWriteIOUtils.readBool(byteBuffer);
     Symbol helperColumn = null;
-    if (!isNull) {
+    if (hasValue) {
       helperColumn = Symbol.deserialize(byteBuffer);
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);

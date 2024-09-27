@@ -195,6 +195,8 @@ public class StatementAnalyzer {
   private final StatementAnalyzerFactory statementAnalyzerFactory;
 
   private Analysis analysis;
+
+  private boolean hasFillInParentScope = false;
   private final MPPQueryContext queryContext;
 
   private final AccessControl accessControl;
@@ -508,6 +510,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
       Scope withScope = analyzeWith(node, context);
+      hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
 
       if (node.getFill().isPresent()) {
@@ -521,7 +524,8 @@ public class StatementAnalyzer {
 
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
-            && !node.getOffset().isPresent()) {
+            && !node.getOffset().isPresent()
+            && hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
@@ -698,6 +702,14 @@ public class StatementAnalyzer {
               });
       withQuery
           .getQuery()
+          .getFill()
+          .ifPresent(
+              orderBy -> {
+                throw new SemanticException(
+                    "immediate FILL clause in recursive query is not supported");
+              });
+      withQuery
+          .getQuery()
           .getOrderBy()
           .ifPresent(
               orderBy -> {
@@ -790,6 +802,7 @@ public class StatementAnalyzer {
     protected Scope visitQuerySpecification(QuerySpecification node, Optional<Scope> scope) {
       // TODO: extract candidate names from SELECT, WHERE, HAVING, GROUP BY and ORDER BY expressions
       // to pass down to analyzeFrom
+      hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
 
       Scope sourceScope = analyzeFrom(node, scope);
 
@@ -802,9 +815,12 @@ public class StatementAnalyzer {
 
       Scope outputScope = computeAndAssignOutputScope(node, scope, sourceScope);
 
-      if (node.getFill().isPresent()) {
-        analyzeFill(node.getFill().get(), outputScope);
-      }
+      node.getFill()
+          .ifPresent(
+              fill -> {
+                Scope fillScope = computeAndAssignFillScope(fill, sourceScope, outputScope);
+                analyzeFill(fill, fillScope);
+              });
 
       List<Expression> orderByExpressions = emptyList();
       Optional<Scope> orderByScope = Optional.empty();
@@ -816,7 +832,8 @@ public class StatementAnalyzer {
 
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
-            && !node.getOffset().isPresent()) {
+            && !node.getOffset().isPresent()
+            && hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(
@@ -1471,6 +1488,18 @@ public class StatementAnalyzer {
       return orderByScope;
     }
 
+    private Scope computeAndAssignFillScope(Fill node, Scope sourceScope, Scope outputScope) {
+      // Fill should "see" both output and FROM fields during initial analysis and
+      // non-aggregation query planning
+      Scope fillScope =
+          Scope.builder()
+              .withParent(sourceScope)
+              .withRelationType(outputScope.getRelationId(), outputScope.getRelationType())
+              .build();
+      analysis.setScope(node, fillScope);
+      return fillScope;
+    }
+
     @Override
     protected Scope visitSubqueryExpression(SubqueryExpression node, Optional<Scope> context) {
       return process(node.getQuery(), context);
@@ -2098,7 +2127,7 @@ public class StatementAnalyzer {
       Analysis.FillAnalysis fillAnalysis;
       if (node.getFillMethod() == FillPolicy.PREVIOUS) {
         if (node.getTimeDurationThreshold().isPresent()) {
-          FieldReference helperColumn = getHelperColumn(node, scope);
+          FieldReference helperColumn = getHelperColumn(node, scope, FillPolicy.PREVIOUS);
           ExpressionAnalyzer.analyzeExpression(
               metadata,
               queryContext,
@@ -2131,7 +2160,7 @@ public class StatementAnalyzer {
             correlationSupport);
         fillAnalysis = new Analysis.ValueFillAnalysis(literal);
       } else if (node.getFillMethod() == FillPolicy.LINEAR) {
-        FieldReference helperColumn = getHelperColumn(node, scope);
+        FieldReference helperColumn = getHelperColumn(node, scope, FillPolicy.LINEAR);
         ExpressionAnalyzer.analyzeExpression(
             metadata,
             queryContext,
@@ -2151,19 +2180,21 @@ public class StatementAnalyzer {
       analysis.setFill(node, fillAnalysis);
     }
 
-    private FieldReference getHelperColumn(Fill node, Scope scope) {
+    private FieldReference getHelperColumn(Fill node, Scope scope, FillPolicy fillMethod) {
       FieldReference helperColumn;
       if (node.getIndex().isPresent()) {
         long ordinal = node.getIndex().get().getParsedValue();
         if (ordinal < 1 || ordinal > scope.getRelationType().getVisibleFieldCount()) {
           throw new SemanticException(
-              String.format("LINEAR FILL position %s is not in select list", ordinal));
+              String.format(
+                  "%s FILL position %s is not in select list", fillMethod.name(), ordinal));
         } else if (!isTimestampType(
-            scope.getRelationType().getFieldByIndex((int) ordinal).getType())) {
+            scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType())) {
           throw new SemanticException(
               String.format(
-                  "Type of helper column for LINEAR FILL should only be TIMESTAMP, but type of the column you specify is %s",
-                  scope.getRelationType().getFieldByIndex((int) ordinal).getType()));
+                  "Type of helper column for %s FILL should only be TIMESTAMP, but type of the column you specify is %s",
+                  fillMethod.name(),
+                  scope.getRelationType().getFieldByIndex((int) ordinal - 1).getType()));
         } else {
           helperColumn = new FieldReference(toIntExact(ordinal - 1));
         }
@@ -2179,7 +2210,9 @@ public class StatementAnalyzer {
         }
         if (index == -1) {
           throw new SemanticException(
-              "Cannot infer the helper column for LINEAR FILL, there exists no column whose type is TIMESTAMP");
+              String.format(
+                  "Cannot infer the helper column for %s FILL, there exists no column whose type is TIMESTAMP",
+                  fillMethod.name()));
         }
         helperColumn = new FieldReference(index);
       }

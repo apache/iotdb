@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -142,6 +143,9 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitFill(FillNode node, PlanContext context) {
+    if (!(node instanceof ValueFillNode)) {
+      context.clearExpectedOrderingScheme();
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
@@ -154,6 +158,7 @@ public class TableDistributedPlanGenerator
     }
 
     node.setChild(mergeChildrenViaCollectOrMergeSort(childOrdering, childrenNodes));
+    context.setHasSeenFill(true);
     return Collections.singletonList(node);
   }
 
@@ -227,8 +232,7 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitTopK(TopKNode node, PlanContext context) {
-    context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortProperty = true;
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     checkArgument(
@@ -259,8 +263,7 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitSort(SortNode node, PlanContext context) {
-    context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortProperty = true;
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -285,8 +288,7 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitStreamSort(StreamSortNode node, PlanContext context) {
-    context.expectedOrderingScheme = node.getOrderingScheme();
-    context.hasSortProperty = true;
+    context.setExpectedOrderingScheme(node.getOrderingScheme());
     nodeOrderingMap.put(node.getPlanNodeId(), node.getOrderingScheme());
 
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
@@ -825,6 +827,7 @@ public class TableDistributedPlanGenerator
 
   public static class PlanContext {
     final Map<PlanNodeId, NodeDistribution> nodeDistributionMap;
+    boolean hasSeenFill = false;
     boolean hasExchangeNode = false;
     boolean hasSortProperty = false;
     OrderingScheme expectedOrderingScheme;
@@ -836,6 +839,20 @@ public class TableDistributedPlanGenerator
 
     public NodeDistribution getNodeDistribution(PlanNodeId nodeId) {
       return this.nodeDistributionMap.get(nodeId);
+    }
+
+    public void clearExpectedOrderingScheme() {
+      expectedOrderingScheme = null;
+      hasSortProperty = false;
+    }
+
+    public void setExpectedOrderingScheme(OrderingScheme expectedOrderingScheme) {
+      this.expectedOrderingScheme = expectedOrderingScheme;
+      hasSortProperty = true;
+    }
+
+    public void setHasSeenFill(boolean hasSeenFill) {
+      this.hasSeenFill = hasSeenFill;
     }
   }
 }

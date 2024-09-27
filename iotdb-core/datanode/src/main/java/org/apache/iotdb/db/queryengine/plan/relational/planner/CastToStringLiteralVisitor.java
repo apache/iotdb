@@ -50,7 +50,7 @@ public class CastToStringLiteralVisitor extends AstVisitor<Binary, Void> {
 
   @Override
   protected Binary visitBooleanLiteral(BooleanLiteral node, Void context) {
-    return new Binary(BytesUtils.boolToBytes(node.getValue()));
+    return new Binary(String.valueOf(node.getValue()), charset);
   }
 
   @Override
@@ -60,7 +60,7 @@ public class CastToStringLiteralVisitor extends AstVisitor<Binary, Void> {
 
   @Override
   protected Binary visitDoubleLiteral(DoubleLiteral node, Void context) {
-    return new Binary(BytesUtils.doubleToBytes(node.getValue()));
+    return new Binary(String.valueOf(node.getValue()), charset);
   }
 
   @Override
@@ -70,7 +70,7 @@ public class CastToStringLiteralVisitor extends AstVisitor<Binary, Void> {
 
   @Override
   protected Binary visitBinaryLiteral(BinaryLiteral node, Void context) {
-    return new Binary(node.toHexString(), charset);
+    return new Binary(BytesUtils.parseBlobByteArrayToString(node.getValue()), charset);
   }
 
   @Override

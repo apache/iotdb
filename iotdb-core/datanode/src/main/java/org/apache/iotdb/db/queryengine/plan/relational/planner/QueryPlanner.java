@@ -119,6 +119,8 @@ public class QueryPlanner {
   public RelationPlan plan(Query query) {
     PlanBuilder builder = planQueryBody(query.getQueryBody());
 
+    builder = fill(builder, query.getFill());
+
     // TODO result is :input[0], :input[1], :input[2]
     List<Analysis.SelectExpression> selectExpressions = analysis.getSelectExpressions(query);
     List<Expression> outputs =
@@ -132,8 +134,6 @@ public class QueryPlanner {
           builder.appendProjections(
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
-
-    builder = fill(builder, query.getFill());
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, query.getOrderBy(), analysis.getOrderByExpressions(query));
     builder = sort(builder, orderingScheme);
@@ -166,6 +166,23 @@ public class QueryPlanner {
     }
 
     List<Expression> outputs = outputExpressions(selectExpressions);
+
+    if (node.getFill().isPresent()) {
+      // Add projections for the outputs of SELECT, but stack them on top of the ones from the FROM
+      // clause so both are visible
+      // when resolving the ORDER BY clause.
+      builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+      // The new scope is the composite of the fields from the FROM and SELECT clause (local nested
+      // scopes). Fields from the bottom of
+      // the scope stack need to be placed first to match the expected layout for nested scopes.
+      List<Symbol> newFields = new ArrayList<>(builder.getTranslations().getFieldSymbolsList());
+
+      outputs.stream().map(builder::translate).forEach(newFields::add);
+
+      builder = builder.withScope(analysis.getScope(node.getFill().get()), newFields);
+      builder = fill(builder, node.getFill());
+    }
+
     if (node.getOrderBy().isPresent()) {
       // ORDER BY requires outputs of SELECT to be visible.
       // For queries with aggregation, it also requires grouping keys and translated aggregations.
@@ -201,7 +218,6 @@ public class QueryPlanner {
               Iterables.concat(orderBy, outputs), symbolAllocator, queryContext);
     }
 
-    builder = fill(builder, node.getFill());
     Optional<OrderingScheme> orderingScheme =
         orderingScheme(builder, node.getOrderBy(), analysis.getOrderByExpressions(node));
     builder = sort(builder, orderingScheme);
