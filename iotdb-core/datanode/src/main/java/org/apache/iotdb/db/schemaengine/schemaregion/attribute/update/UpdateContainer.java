@@ -32,6 +32,7 @@ public interface UpdateContainer {
   long updateAttribute(
       final String tableName, final String[] deviceId, final Map<String, String> updatedAttributes);
 
+  // Only this method is not synchronize called and is called by GRASS thread
   byte[] getUpdateContent();
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
