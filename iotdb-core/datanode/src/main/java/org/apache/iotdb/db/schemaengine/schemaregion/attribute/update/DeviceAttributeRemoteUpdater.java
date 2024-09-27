@@ -76,7 +76,8 @@ public class DeviceAttributeRemoteUpdater {
     if (!regionStatistics.isAllowToCreateNewSeries()) {
       final TreeSet<TEndPoint> degradeSet =
           new TreeSet<>(
-              Comparator.comparingLong(v -> updateContainerStatistics.get(v).getDegradePriority()));
+              Comparator.comparingLong(v -> updateContainerStatistics.get(v).getDegradePriority())
+                  .reversed());
       updateContainerStatistics.forEach(
           (k, v) -> {
             if (v.needDegrade()) {
