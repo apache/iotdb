@@ -28,6 +28,7 @@ import org.apache.iotdb.service.rpc.thrift.TSConnectionInfoResp;
 import org.apache.thrift.TException;
 import org.apache.tsfile.write.record.Tablet;
 
+/** NOTICE: IPooledSession is specific to the table model. */
 public interface IPooledSession extends AutoCloseable {
 
   Version getVersion();

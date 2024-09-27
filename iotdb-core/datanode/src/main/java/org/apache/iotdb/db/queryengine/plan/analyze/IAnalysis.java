@@ -66,6 +66,8 @@ public interface IAnalysis {
 
   DataPartition getDataPartitionInfo();
 
+  List<TEndPoint> getRedirectNodeList();
+
   void setRedirectNodeList(List<TEndPoint> redirectNodeList);
 
   void addEndPointToRedirectNodeList(TEndPoint endPoint);
