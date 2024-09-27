@@ -66,10 +66,7 @@ public class UpdateClearContainer implements UpdateContainer {
   public byte[] getUpdateContent() {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
-      ReadWriteIOUtils.write(tableNames.size(), outputStream);
-      for (final String tableName : tableNames) {
-        ReadWriteIOUtils.write(tableName, outputStream);
-      }
+      serialize(outputStream);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
     }
