@@ -62,6 +62,10 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
+  public synchronized void notifyBroadCast() {
+    notifyAll();
+  }
+
   private synchronized void execute() {
 
     try {
