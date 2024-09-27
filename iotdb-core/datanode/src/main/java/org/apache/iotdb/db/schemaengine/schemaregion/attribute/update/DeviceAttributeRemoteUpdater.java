@@ -77,8 +77,9 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
-  public void addVersion() {
+  public void addVersionAndNotifySend() {
     version.incrementAndGet();
+    GeneralRegionAttributeSecurityService.getInstance().notifyAll();
   }
 
   /////////////////////////////// Snapshot ///////////////////////////////

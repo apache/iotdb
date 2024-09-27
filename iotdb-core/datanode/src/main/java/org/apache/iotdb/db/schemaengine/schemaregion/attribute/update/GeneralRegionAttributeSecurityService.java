@@ -21,7 +21,6 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
@@ -30,43 +29,30 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 public class GeneralRegionAttributeSecurityService {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(GeneralRegionAttributeSecurityService.class);
 
-  private static final ScheduledExecutorService SECURITY_SERVICE_EXECUTOR =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+  private final ExecutorService securityServiceExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
 
   private Future<?> executorFuture;
   private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
-  private final Semaphore serviceSemaphore = new Semaphore(1);
 
-  public synchronized void startBroadcast(final SchemaRegionId id) {
+  public void startBroadcast(final SchemaRegionId id) {
     if (regionLeaders.isEmpty()) {
-      executorFuture =
-          ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-              SECURITY_SERVICE_EXECUTOR,
-              this::execute,
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getGeneralRegionAttributeSecurityServiceIntervalSeconds(),
-              TimeUnit.SECONDS);
+      executorFuture = securityServiceExecutor.submit(this::execute);
       LOGGER.info("General region attribute security service is started successfully.");
     }
 
     regionLeaders.add(id);
   }
 
-  public synchronized void stopBroadcast(final SchemaRegionId id) {
+  public void stopBroadcast(final SchemaRegionId id) {
     regionLeaders.remove(id);
 
     if (regionLeaders.isEmpty()) {
@@ -76,8 +62,20 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  private void execute() {
-    // TODO
+  private synchronized void execute() {
+
+    try {
+      wait(
+          IoTDBDescriptor.getInstance()
+              .getConfig()
+              .getGeneralRegionAttributeSecurityServiceIntervalSeconds());
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn(
+          "Interrupted when waiting for the next attribute broadcasting: {}", e.getMessage());
+    } finally {
+      securityServiceExecutor.submit(this::execute);
+    }
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
