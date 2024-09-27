@@ -84,6 +84,10 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
+  public Map<TEndPoint, byte[]> getSendBuffer() {
+    return null;
+  }
+
   public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {
     targetDataNodeLocations.add(dataNodeLocation);
   }
