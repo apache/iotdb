@@ -76,6 +76,20 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
   }
 
   @Test
+  public void testRangePortsUnavailable() {
+    doTest(
+        "iotdb-thrift-async-connector",
+        receiverEnv.getIP() + ":" + receiverEnv.getPort(),
+        "range",
+        "1026",
+        "1025",
+        0,
+        10000,
+        0);
+  }
+
+  // Test Port Insufficient
+  @Test
   public void testRangePortsAvailable() {
     doTest(
         "iotdb-thrift-async-connector",
@@ -84,11 +98,11 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1025",
         0,
-        "16",
         10000,
         0);
   }
 
+  // Test Port Insufficient
   @Test
   public void testCandidatePortsAvailable() {
     doTest(
@@ -98,7 +112,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         null,
         null,
         4,
-        "16",
         10000,
         0);
   }
@@ -112,7 +125,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1224",
         0,
-        "3",
         2000,
         2);
   }
@@ -126,7 +138,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1224",
         30,
-        "1",
         2000,
         2);
   }
@@ -140,7 +151,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1224",
         30,
-        "1",
         2000,
         2);
   }
@@ -154,7 +164,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1224",
         30,
-        "1",
         2000,
         2);
   }
@@ -168,7 +177,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1224",
         30,
-        "1",
         2000,
         2);
   }
@@ -182,7 +190,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         "1024",
         "1224",
         30,
-        "1",
         2000,
         2);
   }
@@ -194,7 +201,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
       final String min,
       final String max,
       final int candidateNum,
-      final String tasks,
       final long sleepTime,
       final int resultNum) {
     try (final SyncConfigNodeIServiceClient client =
@@ -218,7 +224,6 @@ public class IoTDBPipeConnectorCustomPortIT extends AbstractPipeDualAutoIT {
         candidateBuilder.append(1024 + candidateNum);
         connectorAttributes.put("send-port.candidate", candidateBuilder.toString());
       }
-      connectorAttributes.put("parallel.tasks", tasks);
 
       final TSStatus status =
           client.createPipe(

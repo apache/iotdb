@@ -159,8 +159,7 @@ public abstract class IoTDBAirGapConnector extends IoTDBConnector {
       // Close the socket if necessary
       if (sockets.get(i) != null) {
         try {
-          final Socket socket = sockets.set(i, null);
-          socket.close();
+          sockets.set(i, null).close();
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to close socket with target server ip: {}, port: {}, because: {}. Ignore it.",

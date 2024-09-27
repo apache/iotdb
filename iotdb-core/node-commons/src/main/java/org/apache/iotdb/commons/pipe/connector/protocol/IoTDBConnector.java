@@ -232,7 +232,7 @@ public abstract class IoTDBConnector implements PipeConnector {
               Arrays.asList(CONNECTOR_IOTDB_SEND_PORT_MAX_KEY, SINK_IOTDB_SEND_PORT_MAX_KEY),
               CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE);
       validator.validate(
-          args -> (int) args[0] < (int) args[1],
+          args -> (int) args[0] <= (int) args[1],
           String.format(
               "%s must be less than or equal to %s, but got %d > %d.",
               SINK_IOTDB_SEND_PORT_MIN_KEY,
@@ -546,7 +546,6 @@ public abstract class IoTDBConnector implements PipeConnector {
     if (candidate == null || candidate.isEmpty()) {
       return Collections.emptyList();
     }
-    System.out.println(candidate);
     return Arrays.stream(candidate.split(","))
         .map(String::trim)
         .map(Integer::parseInt)

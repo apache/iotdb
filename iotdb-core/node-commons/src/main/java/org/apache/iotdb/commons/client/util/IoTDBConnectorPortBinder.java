@@ -45,8 +45,8 @@ public class IoTDBConnectorPortBinder {
             customSendPortStrategy);
     boolean portFound = false;
     int index = 0;
-    boolean isNotEnd = true;
-    while (isNotEnd) {
+    boolean searching = isRange || !candidatePorts.isEmpty();
+    while (searching) {
       int port = isRange ? minSendPortRange + index : candidatePorts.get(index);
       try {
         consumer.accept(port);
@@ -55,7 +55,7 @@ public class IoTDBConnectorPortBinder {
       } catch (Exception ignored) {
       }
       index++;
-      isNotEnd = isRange ? port <= maxSendPortRange : candidatePorts.size() > index;
+      searching = isRange ? port <= maxSendPortRange : candidatePorts.size() > index;
     }
     if (!portFound) {
       String exceptionMessage =
