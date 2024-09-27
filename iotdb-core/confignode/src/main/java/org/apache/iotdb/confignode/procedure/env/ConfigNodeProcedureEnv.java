@@ -113,7 +113,7 @@ public class ConfigNodeProcedureEnv {
 
   private final RegionMaintainHandler regionMaintainHandler;
 
-  private final RemoveDataNodeManager removeDataNodeManager;
+  private final RemoveDataNodeHandler removeDataNodeHandler;
 
   private final ReentrantLock removeConfigNodeLock;
 
@@ -121,7 +121,7 @@ public class ConfigNodeProcedureEnv {
     this.configManager = configManager;
     this.scheduler = scheduler;
     this.regionMaintainHandler = new RegionMaintainHandler(configManager);
-    this.removeDataNodeManager = new RemoveDataNodeManager(configManager);
+    this.removeDataNodeHandler = new RemoveDataNodeHandler(configManager);
     this.removeConfigNodeLock = new ReentrantLock();
   }
 
@@ -836,8 +836,8 @@ public class ConfigNodeProcedureEnv {
     return regionMaintainHandler;
   }
 
-  public RemoveDataNodeManager getRemoveDataNodeManager() {
-    return removeDataNodeManager;
+  public RemoveDataNodeHandler getRemoveDataNodeManager() {
+    return removeDataNodeHandler;
   }
 
   private ConsensusManager getConsensusManager() {

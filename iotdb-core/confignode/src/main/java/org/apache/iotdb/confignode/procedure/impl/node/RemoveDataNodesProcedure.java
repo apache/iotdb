@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeManager;
+import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
@@ -76,11 +76,11 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
       return Flow.NO_MORE_STATE;
     }
 
-    RemoveDataNodeManager manager = env.getRemoveDataNodeManager();
+    RemoveDataNodeHandler removeDataNodeHandler = env.getRemoveDataNodeManager();
     try {
       switch (state) {
         case REGION_REPLICA_CHECK:
-          if (manager.checkEnoughDataNodeAfterRemoving(removedDataNodes)) {
+          if (removeDataNodeHandler.checkEnoughDataNodeAfterRemoving(removedDataNodes)) {
             setNextState(RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE);
           } else {
             LOG.error(
@@ -91,11 +91,11 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
             return Flow.NO_MORE_STATE;
           }
         case REMOVE_DATA_NODE_PREPARE:
-          removedDataNodes.parallelStream()
-              .forEach(
-                  removedDataNode ->
-                      manager.changeDataNodeStatus(removedDataNode, NodeStatus.Removing));
-          regionMigrationPlans = manager.getRegionMigrationPlans(removedDataNodes);
+          Map<Integer, NodeStatus> removedNodeStatusMap = new HashMap<>();
+          removedDataNodes.forEach(
+              dataNode -> removedNodeStatusMap.put(dataNode.getDataNodeId(), NodeStatus.Removing));
+          removeDataNodeHandler.changeDataNodeStatus(removedDataNodes, removedNodeStatusMap);
+          regionMigrationPlans = removeDataNodeHandler.getRegionMigrationPlans(removedDataNodes);
           LOG.info(
               "{}, DataNode regions to be removed is {}",
               REMOVE_DATANODE_PROCESS,
@@ -103,7 +103,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:
-          manager.broadcastDataNodeStatusChange(removedDataNodes);
+          removeDataNodeHandler.broadcastDataNodeStatusChange(removedDataNodes);
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
@@ -197,12 +197,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
           "{}, Start to roll back the DataNodes status: {}",
           REMOVE_DATANODE_PROCESS,
           rollBackDataNodes);
-      rollBackDataNodes.parallelStream()
-          .forEach(
-              removedDataNode ->
-                  env.getRemoveDataNodeManager()
-                      .changeDataNodeStatus(
-                          removedDataNode, nodeStatusMap.get(removedDataNode.getDataNodeId())));
+      env.getRemoveDataNodeManager().changeDataNodeStatus(rollBackDataNodes, nodeStatusMap);
       env.getRemoveDataNodeManager().broadcastDataNodeStatusChange(rollBackDataNodes);
       LOG.info(
           "{}, Roll back the DataNodes status successfully: {}",
@@ -253,15 +248,9 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
     removedDataNodes.forEach(
         dataNode -> ThriftCommonsSerDeUtils.serializeTDataNodeLocation(dataNode, stream));
     stream.writeInt(regionMigrationPlans.size());
-    regionMigrationPlans.forEach(
-        regionMigrationPlan -> {
-          ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
-              regionMigrationPlan.getRegionId(), stream);
-          ThriftCommonsSerDeUtils.serializeTDataNodeLocation(
-              regionMigrationPlan.getFromDataNode(), stream);
-          ThriftCommonsSerDeUtils.serializeTDataNodeLocation(
-              regionMigrationPlan.getToDataNode(), stream);
-        });
+    for (RegionMigrationPlan regionMigrationPlan : regionMigrationPlans) {
+      regionMigrationPlan.serialize(stream);
+    }
     stream.writeInt(nodeStatusMap.size());
     for (Map.Entry<Integer, NodeStatus> entry : nodeStatusMap.entrySet()) {
       stream.writeInt(entry.getKey());
@@ -281,15 +270,7 @@ public class RemoveDataNodesProcedure extends AbstractNodeProcedure<RemoveDataNo
       int regionMigrationPlanSize = byteBuffer.getInt();
       regionMigrationPlans = new ArrayList<>(regionMigrationPlanSize);
       for (int i = 0; i < regionMigrationPlanSize; i++) {
-        TConsensusGroupId regionId =
-            ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer);
-        TDataNodeLocation fromDataNode =
-            ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
-        RegionMigrationPlan regionMigrationPlan =
-            RegionMigrationPlan.create(regionId, fromDataNode);
-        regionMigrationPlan.setToDataNode(
-            ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer));
-        regionMigrationPlans.add(regionMigrationPlan);
+        regionMigrationPlans.add(RegionMigrationPlan.deserialize(byteBuffer));
       }
       int nodeStatusMapSize = byteBuffer.getInt();
       nodeStatusMap = new HashMap<>(nodeStatusMapSize);

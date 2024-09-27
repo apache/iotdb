@@ -22,16 +22,12 @@
 IF "%~1"=="--help" (
     echo The script will remove one or more DataNodes.
     echo Before removing DataNodes, ensure that the cluster has at least the number of data/schema replicas DataNodes.
-    echo Usage:
-    echo Remove one or more DataNodes with datanode_id
-    echo ./sbin/remove-datanode.bat [datanode_id ...]
+    echo Usage: ./sbin/remove-datanode.sh [DataNode_ID ...]
+    echo Remove one or more DataNodes by specifying their IDs.
+    echo Example:
+    echo   ./sbin/remove-datanode.sh 1         # Remove DataNode with ID 1
+    echo   ./sbin/remove-datanode.sh 1 2 3     # Remove DataNodes with IDs 1, 2, and 3
     EXIT /B 0
-)
-
-REM Ensure that at least one DataNode ID is provided
-IF "%~1"=="" (
-    echo Error: At least one DataNode ID must be provided.
-    EXIT /B 1
 )
 
 REM Check for duplicate DataNode IDs

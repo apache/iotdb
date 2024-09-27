@@ -30,12 +30,12 @@ import org.junit.runner.RunWith;
 @RunWith(IoTDBTestRunner.class)
 public class IoTDBRemoveDataNodeNormalIT extends IoTDBRemoveDataNodeITFramework {
   @Test
-  public void success1C3DTest() throws Exception {
-    successTest(2, 2, 1, 3, 1, 2);
+  public void success1C4DTest() throws Exception {
+    successTest(2, 2, 1, 4, 1, 2);
   }
 
   @Test
   public void fail1C3DTest() throws Exception {
-    failTest(2, 2, 1, 3, 2, 2);
+    failTest(3, 3, 1, 3, 1, 2);
   }
 }

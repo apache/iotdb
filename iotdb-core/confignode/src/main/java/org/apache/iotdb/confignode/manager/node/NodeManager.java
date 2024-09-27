@@ -74,7 +74,7 @@ import org.apache.iotdb.confignode.manager.partition.PartitionMetrics;
 import org.apache.iotdb.confignode.manager.pipe.coordinator.PipeManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.persistence.node.NodeInfo;
-import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeManager;
+import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
@@ -376,14 +376,15 @@ public class NodeManager {
    * @return DataNodeToStatusResp, where the TSStatus will be SUCCEED_STATUS if the request is
    *     accepted, or DATANODE_NOT_EXIST if any DataNode does not exist.
    */
-  public synchronized DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+  public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     configManager.getProcedureManager().getEnv().getSubmitRegionMigrateLock().lock();
     LOGGER.info("NodeManager start to remove DataNode {}", removeDataNodePlan);
     try {
       // Checks if the RemoveDataNode request is valid
-      RemoveDataNodeManager manager =
+      RemoveDataNodeHandler removeDataNodeHandler =
           configManager.getProcedureManager().getEnv().getRemoveDataNodeManager();
-      DataNodeToStatusResp preCheckStatus = manager.checkRemoveDataNodeRequest(removeDataNodePlan);
+      DataNodeToStatusResp preCheckStatus =
+          removeDataNodeHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
       if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error(
             "The remove DataNode request check failed. req: {}, check result: {}",
@@ -398,7 +399,7 @@ public class NodeManager {
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         dataSet.setStatus(
             new TSStatus(TSStatusCode.REMOVE_DATANODE_ERROR.getStatusCode())
-                .setMessage("Fail to do transfer of the DataNodes"));
+                .setMessage("Migrate the service on the removed DataNodes failed"));
         return dataSet;
       }
 

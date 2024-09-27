@@ -154,7 +154,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       removeConfigNodeId = CONF.getConfigNodeId();
     } else {
       if (nodeIds.size() != 1) {
-        throw new IoTDBException("Invalid node-id", -1);
+        throw new IoTDBException(
+            "It is not allowed to delete multiple ConfigNodes at the same time.", -1);
       }
       removeConfigNodeId = nodeIds.iterator().next();
     }

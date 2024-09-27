@@ -35,7 +35,8 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.CnToDnRequestType;
-import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
@@ -66,9 +67,9 @@ import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
 import static org.apache.iotdb.db.service.RegionMigrateService.isFailed;
 import static org.apache.iotdb.db.service.RegionMigrateService.isSucceed;
 
-public class RemoveDataNodeManager {
+public class RemoveDataNodeHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(RemoveDataNodeManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RemoveDataNodeHandler.class);
 
   private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
@@ -76,7 +77,7 @@ public class RemoveDataNodeManager {
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
 
-  public RemoveDataNodeManager(ConfigManager configManager) {
+  public RemoveDataNodeHandler(ConfigManager configManager) {
     this.configManager = configManager;
     dataNodeClientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -91,21 +92,22 @@ public class RemoveDataNodeManager {
    * @return true if the number of DataNodes is enough, false otherwise
    */
   public boolean checkEnoughDataNodeAfterRemoving(List<TDataNodeLocation> removedDataNodes) {
-    final int availableDatanodeSize =
+    int availableDatanodeSize =
         configManager
             .getNodeManager()
             .filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.ReadOnly)
             .size();
 
-    int dataNodeNumAfterRemoving = availableDatanodeSize;
-    for (TDataNodeLocation removedDatanode : removedDataNodes) {
-      if (configManager.getLoadManager().getNodeStatus(removedDatanode.getDataNodeId())
-          != NodeStatus.Unknown) {
-        dataNodeNumAfterRemoving = availableDatanodeSize - 1;
-      }
-    }
+    int removedDataNodeSize =
+        (int)
+            removedDataNodes.stream()
+                .filter(
+                    x ->
+                        configManager.getLoadManager().getNodeStatus(x.getDataNodeId())
+                            != NodeStatus.Unknown)
+                .count();
 
-    return dataNodeNumAfterRemoving >= NodeInfo.getMinimumDataNode();
+    return availableDatanodeSize - removedDataNodeSize >= NodeInfo.getMinimumDataNode();
   }
 
   /**
@@ -113,49 +115,58 @@ public class RemoveDataNodeManager {
    * DataNode from receiving read or write requests when it is being removed or is in a restricted
    * state.
    *
-   * @param dataNodeLocation the location of the DataNode whose status needs to be changed
-   * @param status the new status to assign to the DataNode (e.g., Removing, Running, etc.)
+   * @param removedDataNodes the location of the DataNodes whose status need to be changed
+   * @param nodeStatusMap the new status to assign to the DataNode (e.g., Removing, Running, etc.)
    */
-  public void changeDataNodeStatus(TDataNodeLocation dataNodeLocation, NodeStatus status) {
-    // Send request to update NodeStatus on the DataNode to be removed
-    if (configManager.getLoadManager().getNodeStatus(dataNodeLocation.getDataNodeId())
-        == NodeStatus.Unknown) {
-      SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithGivenRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              status.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS,
-              1);
-    } else {
-      SyncDataNodeClientPool.getInstance()
-          .sendSyncRequestToDataNodeWithRetry(
-              dataNodeLocation.getInternalEndPoint(),
-              status.getStatus(),
-              CnToDnRequestType.SET_SYSTEM_STATUS);
+  public void changeDataNodeStatus(
+      List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap) {
+    LOGGER.info(
+        "{}, Begin to change DataNode status, nodeStatusMap: {}",
+        REMOVE_DATANODE_PROCESS,
+        nodeStatusMap);
+
+    DataNodeAsyncRequestContext<String, TSStatus> changeDataNodeStatusContext =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.SET_SYSTEM_STATUS);
+
+    for (TDataNodeLocation dataNode : removedDataNodes) {
+      changeDataNodeStatusContext.putRequest(
+          dataNode.getDataNodeId(), nodeStatusMap.get(dataNode.getDataNodeId()).getStatus());
+      changeDataNodeStatusContext.putNodeLocation(dataNode.getDataNodeId(), dataNode);
     }
 
-    long currentTime = System.nanoTime();
-    // Force updating NodeStatus to NodeStatus.Removing
-    configManager
-        .getLoadManager()
-        .forceUpdateNodeCache(
-            NodeType.DataNode,
-            dataNodeLocation.getDataNodeId(),
-            new NodeHeartbeatSample(currentTime, status));
-    Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
-        new TreeMap<>();
-    // Force update RegionStatus to NodeStatus.Removing
-    configManager
-        .getPartitionManager()
-        .getAllReplicaSets(dataNodeLocation.getDataNodeId())
-        .forEach(
-            replicaSet ->
-                removingHeartbeatSampleMap.put(
-                    replicaSet.getRegionId(),
-                    Collections.singletonMap(
-                        dataNodeLocation.getDataNodeId(),
-                        new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
-    configManager.getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(changeDataNodeStatusContext);
+
+    for (Map.Entry<Integer, TSStatus> entry :
+        changeDataNodeStatusContext.getResponseMap().entrySet()) {
+      long currentTime = System.nanoTime();
+
+      int dataNodeId = entry.getKey();
+      NodeStatus nodeStatus = nodeStatusMap.get(dataNodeId);
+
+      // Force updating NodeStatus to NodeStatus.Removing
+      configManager
+          .getLoadManager()
+          .forceUpdateNodeCache(
+              NodeType.DataNode, dataNodeId, new NodeHeartbeatSample(currentTime, nodeStatus));
+
+      if (nodeStatus == NodeStatus.Removing) {
+        Map<TConsensusGroupId, Map<Integer, RegionHeartbeatSample>> removingHeartbeatSampleMap =
+            new TreeMap<>();
+        // Force update RegionStatus to NodeStatus.Removing
+        configManager
+            .getPartitionManager()
+            .getAllReplicaSets(entry.getKey())
+            .forEach(
+                replicaSet ->
+                    removingHeartbeatSampleMap.put(
+                        replicaSet.getRegionId(),
+                        Collections.singletonMap(
+                            dataNodeId,
+                            new RegionHeartbeatSample(currentTime, RegionStatus.Removing))));
+        configManager.getLoadManager().forceUpdateRegionGroupCache(removingHeartbeatSampleMap);
+      }
+    }
   }
 
   /**
@@ -198,21 +209,27 @@ public class RemoveDataNodeManager {
             .filter(node -> !dataNodes.contains(node.getLocation()))
             .collect(Collectors.toList());
 
+    DataNodeAsyncRequestContext<TCleanDataNodeCacheReq, TSStatus> cleanDataNodeCacheContext =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.CLEAN_DATA_NODE_CACHE);
+
     for (TDataNodeConfiguration node : otherOnlineDataNodes) {
       TCleanDataNodeCacheReq disableReq = new TCleanDataNodeCacheReq(dataNodes);
-      TSStatus status =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithRetry(
-                      node.getLocation().getInternalEndPoint(),
-                      disableReq,
-                      CnToDnRequestType.CLEAN_DATA_NODE_CACHE);
-      if (!isSucceed(status)) {
+      cleanDataNodeCacheContext.putRequest(node.getLocation().getDataNodeId(), disableReq);
+      cleanDataNodeCacheContext.putNodeLocation(
+          node.getLocation().getDataNodeId(), node.getLocation());
+    }
+
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(cleanDataNodeCacheContext);
+
+    for (Map.Entry<Integer, TSStatus> entry :
+        cleanDataNodeCacheContext.getResponseMap().entrySet()) {
+      if (!isSucceed(entry.getValue())) {
         LOGGER.error(
-            "{}, BroadcastDataNodeStatusChange meets error, dataNode: {}, error: {}",
+            "{}, BroadcastDataNodeStatusChange meets error, status change dataNodes: {}, error datanode: {}",
             REMOVE_DATANODE_PROCESS,
             dataNodesString,
-            status);
+            entry.getValue());
         return;
       }
     }
@@ -253,30 +270,34 @@ public class RemoveDataNodeManager {
    * @param removedDataNodes the list of DataNodeLocations to be stopped
    */
   public void stopDataNodes(List<TDataNodeLocation> removedDataNodes) {
-    removedDataNodes.parallelStream().forEach(this::stopDataNode);
-  }
 
-  /**
-   * Stops the specified old DataNode.
-   *
-   * @param dataNode the old DataNode to be stopped
-   */
-  public void stopDataNode(TDataNodeLocation dataNode) {
     LOGGER.info(
-        "{}, Begin to stop DataNode and kill the DataNode process {}",
+        "{}, Begin to stop DataNodes and kill the DataNode process: {}",
         REMOVE_DATANODE_PROCESS,
-        dataNode);
-    TSStatus status =
-        (TSStatus)
-            SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithGivenRetry(
-                    dataNode.getInternalEndPoint(), dataNode, CnToDnRequestType.STOP_DATA_NODE, 2);
-    configManager.getLoadManager().removeNodeCache(dataNode.getDataNodeId());
-    LOGGER.info(
-        "{}, Stop Data Node result: {}, stoppedDataNode: {}",
-        REMOVE_DATANODE_PROCESS,
-        status,
-        dataNode);
+        removedDataNodes);
+
+    DataNodeAsyncRequestContext<TDataNodeLocation, TSStatus> stopDataNodesContext =
+        new DataNodeAsyncRequestContext<>(CnToDnRequestType.STOP_DATA_NODE);
+
+    for (TDataNodeLocation dataNode : removedDataNodes) {
+      stopDataNodesContext.putRequest(dataNode.getDataNodeId(), dataNode);
+      stopDataNodesContext.putNodeLocation(dataNode.getDataNodeId(), dataNode);
+    }
+
+    CnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestWithRetry(stopDataNodesContext);
+
+    for (Map.Entry<Integer, TSStatus> entry : stopDataNodesContext.getResponseMap().entrySet()) {
+      configManager.getLoadManager().removeNodeCache(entry.getKey());
+      if (!isSucceed(entry.getValue())) {
+        LOGGER.error(
+            "{}, Stop Data Node meets error, error datanode: {}",
+            REMOVE_DATANODE_PROCESS,
+            entry.getValue());
+      } else {
+        LOGGER.info("{}, Stop Data Node {} success.", REMOVE_DATANODE_PROCESS, entry.getKey());
+      }
+    }
   }
 
   /**

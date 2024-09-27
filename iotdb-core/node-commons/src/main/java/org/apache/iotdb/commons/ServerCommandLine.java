@@ -41,7 +41,7 @@ public abstract class ServerCommandLine {
       Option.builder("r")
           .longOpt("remove")
           .desc(
-              "remove one or more nodes (with the given nodeIds or the node started on the current machine, if omitted)")
+              "Remove node(with the given nodeIds or the node started on the current machine, if omitted). Note that the DataNode allows for the removal of multiple nodes at once, the ConfigNode can only remove one node at a time.")
           .hasArgs()
           .type(Number.class)
           .argName("nodeIds")
