@@ -1594,8 +1594,8 @@ public class IoTDBDescriptor {
     if (old_throttleThreshold != null) {
       LOGGER.warn(
           "The throttle threshold params: {} is deprecated, please use {}",
-          old_throttleThreshold,
-          DEFAULT_WAL_THRESHOLD_NAME[0]);
+          DEFAULT_WAL_THRESHOLD_NAME[0],
+          DEFAULT_WAL_THRESHOLD_NAME[1]);
       return old_throttleThreshold;
     }
     return prop.getProperty(
