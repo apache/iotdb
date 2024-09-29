@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.NewSizeTieredCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SizeTieredCompactionSelector;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 @SuppressWarnings("squid:S6548")
@@ -46,15 +47,16 @@ public enum InnerSequenceCompactionSelector {
       String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
-      CompactionScheduleContext context) {
+      CompactionScheduleContext context,
+      ModFileManager modFileManager) {
     switch (this) {
       case SIZE_TIERED_MULTI_TARGET:
         return new NewSizeTieredCompactionSelector(
-            storageGroupName, dataRegionId, timePartition, true, tsFileManager, context);
+            storageGroupName, dataRegionId, timePartition, true, tsFileManager, context, modFileManager);
       case SIZE_TIERED_SINGLE_TARGET:
       default:
         return new SizeTieredCompactionSelector(
-            storageGroupName, dataRegionId, timePartition, true, tsFileManager);
+            storageGroupName, dataRegionId, timePartition, true, tsFileManager, modFileManager);
     }
   }
 }

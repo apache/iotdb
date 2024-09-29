@@ -25,7 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.RepairUnsortedFileCompactionEstimator;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -196,6 +196,8 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         filesView.targetFilesInPerformer,
         filesView.sourceFilesInCompactionPerformer,
         Collections.emptyList());
+
+    filesView.targetFilesInPerformer.get(0).inheritModFile(sourceFile);
     CompactionUtils.moveTargetFile(
         filesView.targetFilesInPerformer,
         CompactionTaskType.REPAIR,
@@ -206,10 +208,9 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
         storageGroupName,
         dataRegionId);
 
-    filesView.targetFilesInPerformer.get(0).inheritModFile(sourceFile);
     if (!rewriteFile && sourceFile.oldModFileExists()) {
       Files.createLink(
-          new File(filesView.targetFilesInPerformer.get(0).getOldModFile().getFilePath()).toPath(),
+          new File(ModificationFileV1.getNormalMods(filesView.targetFilesInPerformer.get(0)).getFilePath()).toPath(),
           new File(sourceFile.getOldModFile().getFilePath()).toPath());
     }
   }

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.Rew
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.InsertionCrossCompactionTaskResource;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -94,7 +95,7 @@ public class CompactionScheduler {
    * @return the count of submitted task
    */
   public static int scheduleCompaction(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context)
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context, ModFileManager modFileManager)
       throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
@@ -104,10 +105,10 @@ public class CompactionScheduler {
     int trySubmitCount = 0;
     try {
       trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, context);
+          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, context, modFileManager);
       trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, context);
-      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, context);
+          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, context, modFileManager);
+      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, context, modFileManager);
       trySubmitCount +=
           tryToSubmitSettleCompactionTask(tsFileManager, timePartition, context, false);
     } catch (InterruptedException e) {
@@ -121,7 +122,7 @@ public class CompactionScheduler {
   @TestOnly
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
       throws InterruptedException {
-    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleContext());
+    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleContext(), new ModFileManager(config.getLevelModFileCntThreshold(), config.getSingleModFileSizeThreshold()));
   }
 
   public static int scheduleInsertionCompaction(
@@ -144,7 +145,8 @@ public class CompactionScheduler {
       TsFileManager tsFileManager,
       long timePartition,
       boolean sequence,
-      CompactionScheduleContext context)
+      CompactionScheduleContext context,
+      ModFileManager modFileManager)
       throws InterruptedException {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
         || (!config.isEnableUnseqSpaceCompaction() && !sequence)) {
@@ -162,13 +164,13 @@ public class CompactionScheduler {
           config
               .getInnerSequenceCompactionSelector()
               .createInstance(
-                  storageGroupName, dataRegionId, timePartition, tsFileManager, context);
+                  storageGroupName, dataRegionId, timePartition, tsFileManager, context, modFileManager);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
               .createInstance(
-                  storageGroupName, dataRegionId, timePartition, tsFileManager, context);
+                  storageGroupName, dataRegionId, timePartition, tsFileManager, context, modFileManager);
     }
     long startTime = System.currentTimeMillis();
     List<InnerSpaceCompactionTask> innerSpaceTaskList =
@@ -262,7 +264,7 @@ public class CompactionScheduler {
   }
 
   private static int tryToSubmitCrossSpaceCompactionTask(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context)
+      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context, ModFileManager modFileManager)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;
@@ -302,7 +304,8 @@ public class CompactionScheduler {
                   .getCrossCompactionPerformer()
                   .createInstance(),
               memoryCost.get(i),
-              tsFileManager.getNextCompactionTaskId());
+              tsFileManager.getNextCompactionTaskId(),
+              modFileManager);
       task.setCompactionConfigVersion(compactionConfigVersionWhenSelectTask);
       trySubmitCount = addTaskToWaitingQueue(Collections.singletonList(task));
     }

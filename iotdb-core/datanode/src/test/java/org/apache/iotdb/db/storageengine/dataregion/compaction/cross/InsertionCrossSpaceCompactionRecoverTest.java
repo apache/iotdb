@@ -154,12 +154,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(unseqResource1.getTsFile().exists());
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertTrue(unseqResource1.getOldModFile().exists());
-    Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
+    Assert.assertTrue(unseqResource1.newModFileExists());
+    Assert.assertNull(unseqResource1.getCompactionModFile());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.oldModFileExists());
+    Assert.assertFalse(targetFile.modFileExists());
   }
 
   @Test
@@ -231,7 +231,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
       Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (unseqResource1.getOldModFile().exists()) {
+      if (unseqResource1.getOldModFileIntern().exists()) {
         Files.createLink(
             new File(targetTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath(),
             new File(sourceTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
@@ -244,12 +244,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertFalse(unseqResource1.getTsFile().exists());
     Assert.assertFalse(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertFalse(unseqResource1.getOldModFile().exists());
+    Assert.assertFalse(unseqResource1.getOldModFileIntern().exists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.oldModFileExists());
+    Assert.assertFalse(targetFile.modFileExists());
   }
 
   @Test
@@ -324,7 +324,7 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
       Files.createLink(
           new File(targetTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath(),
           new File(sourceTsFile.getPath() + TsFileResource.RESOURCE_SUFFIX).toPath());
-      if (unseqResource1.getOldModFile().exists()) {
+      if (unseqResource1.getOldModFileIntern().exists()) {
         Files.createLink(
             new File(targetTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath(),
             new File(sourceTsFile.getPath() + ModificationFileV1.FILE_SUFFIX).toPath());
@@ -337,12 +337,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertFalse(unseqResource1.getTsFile().exists());
     Assert.assertFalse(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertFalse(unseqResource1.getOldModFile().exists());
+    Assert.assertFalse(unseqResource1.getOldModFileIntern().exists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertTrue(targetFile.tsFileExists());
     Assert.assertTrue(targetFile.resourceFileExists());
-    Assert.assertTrue(targetFile.oldModFileExists());
+    Assert.assertTrue(targetFile.modFileExists());
   }
 
   @Test
@@ -419,12 +419,12 @@ public class InsertionCrossSpaceCompactionRecoverTest extends AbstractCompaction
     Assert.assertTrue(unseqResource1.getTsFile().exists());
     Assert.assertTrue(
         new File(unseqResource1.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-    Assert.assertTrue(unseqResource1.getOldModFile().exists());
+    Assert.assertTrue(unseqResource1.getOldModFileIntern().exists());
     Assert.assertFalse(unseqResource1.getCompactionModFile().exists());
 
     Assert.assertFalse(targetFile.tsFileExists());
     Assert.assertFalse(targetFile.resourceFileExists());
-    Assert.assertFalse(targetFile.oldModFileExists());
+    Assert.assertFalse(targetFile.modFileExists());
   }
 
   private TsFileResource createTsFileResource(String name, boolean seq) {

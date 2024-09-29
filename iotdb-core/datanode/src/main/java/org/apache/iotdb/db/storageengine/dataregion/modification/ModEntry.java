@@ -22,15 +22,19 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
 import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-public abstract class ModEntry implements StreamSerializable {
+public abstract class ModEntry implements StreamSerializable, BufferSerializable,
+    Comparable<ModEntry> {
+
   protected ModType modType;
   protected TimeRange timeRange;
 
-  public ModEntry(ModType modType) {
+  protected ModEntry(ModType modType) {
     this.modType = modType;
   }
 
@@ -42,15 +46,37 @@ public abstract class ModEntry implements StreamSerializable {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.put(modType.getTypeNum());
+    ReadWriteIOUtils.write(timeRange.getMin(), buffer);
+    ReadWriteIOUtils.write(timeRange.getMax(), buffer);
+  }
+
+  @Override
   public void deserialize(InputStream stream) throws IOException {
     this.timeRange = new TimeRange(ReadWriteIOUtils.readLong(stream),
-    ReadWriteIOUtils.readLong(stream));
+        ReadWriteIOUtils.readLong(stream));
   }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    this.timeRange = new TimeRange(ReadWriteIOUtils.readLong(buffer),
+        ReadWriteIOUtils.readLong(buffer));
+  }
+
+  public abstract boolean matchesFull(PartialPath path);
 
   public static ModEntry createFrom(InputStream stream) throws IOException {
     ModType modType = ModType.deserialize(stream);
     ModEntry entry = modType.newEntry();
     entry.deserialize(stream);
+    return entry;
+  }
+
+  public static ModEntry createFrom(ByteBuffer buffer) {
+    ModType modType = ModType.deserialize(buffer);
+    ModEntry entry = modType.newEntry();
+    entry.deserialize(buffer);
     return entry;
   }
 
@@ -66,6 +92,10 @@ public abstract class ModEntry implements StreamSerializable {
 
     public byte getTypeNum() {
       return typeNum;
+    }
+
+    public long getSerializedSize() {
+      return Byte.BYTES;
     }
 
     public ModEntry newEntry() {
@@ -106,5 +136,13 @@ public abstract class ModEntry implements StreamSerializable {
           throw new IllegalArgumentException("Unknown ModType: " + typeNum);
       }
     }
+  }
+
+  public TimeRange getTimeRange() {
+    return timeRange;
+  }
+
+  public ModType getType() {
+    return modType;
   }
 }

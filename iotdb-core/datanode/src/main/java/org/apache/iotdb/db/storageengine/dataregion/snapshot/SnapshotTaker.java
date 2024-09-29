@@ -202,14 +202,19 @@ public class SnapshotTaker {
         }
         File snapshotTsFile = getSnapshotFilePathForTsFile(tsFile, snapshotId);
         // create hard link for tsfile, resource, mods
+        File snapthosResFile = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
         createHardLink(snapshotTsFile, tsFile);
         createHardLink(
             new File(snapshotTsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-            new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
-        if (resource.getOldModFile().exists()) {
+            snapthosResFile);
+        if (resource.oldModFileExists()) {
           copyFile(
               new File(snapshotTsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX),
               new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX));
+        }
+        // add reference to the Mod file to prevent it from being deleted
+        if (resource.newModFileExists()) {
+          resource.getModFile().addReference(new TsFileResource(snapthosResFile));
         }
       }
       return true;

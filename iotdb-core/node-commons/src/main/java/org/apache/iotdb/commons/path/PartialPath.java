@@ -57,6 +57,11 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   private static final Logger logger = LoggerFactory.getLogger(PartialPath.class);
   private static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
 
+  private boolean isSetHasWildcard = false;
+  private boolean hasWildcard = false;
+  private boolean isSetEndsWithMultiWildcard = false;
+  private boolean endsWithMultiWildcard = false;
+
   protected String[] nodes;
 
   public PartialPath() {}
@@ -119,13 +124,34 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public boolean hasWildcard() {
+    if (isSetHasWildcard) {
+      return hasWildcard;
+    }
+
     for (String node : nodes) {
       // *, ** , d*, *d*
       if (PathPatternUtil.hasWildcard(node)) {
-        return true;
+        hasWildcard = true;
+        break;
       }
     }
-    return false;
+    isSetHasWildcard = true;
+    return hasWildcard;
+  }
+
+  /**
+   *
+   * @return true if ends with "**"
+   */
+  public boolean endsWithMultiWildcard() {
+    if (isSetEndsWithMultiWildcard) {
+      return endsWithMultiWildcard;
+    }
+    if (PathPatternUtil.isMultiLevelMatchWildcard(nodes[nodes.length - 1])) {
+      endsWithMultiWildcard = true;
+    }
+    isSetEndsWithMultiWildcard = true;
+    return endsWithMultiWildcard;
   }
 
   public boolean hasMultiLevelMatchWildcard() {
@@ -746,20 +772,27 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return nodes[0];
   }
 
+  private String calculateDevice() {
+    if (nodes.length == 1) {
+      return "";
+    }
+    if (endsWithMultiWildcard) {
+      return getFullPath();
+    }
+    StringBuilder s = new StringBuilder(nodes[0]);
+    for (int i = 1; i < nodes.length - 1; i++) {
+      s.append(TsFileConstant.PATH_SEPARATOR);
+      s.append(nodes[i]);
+    }
+    return s.toString();
+  }
+
   @Override
   public String getDevice() {
     if (device != null) {
       return device;
     } else {
-      if (nodes.length == 1) {
-        return "";
-      }
-      StringBuilder s = new StringBuilder(nodes[0]);
-      for (int i = 1; i < nodes.length - 1; i++) {
-        s.append(TsFileConstant.PATH_SEPARATOR);
-        s.append(nodes[i]);
-      }
-      device = s.toString();
+      device = calculateDevice();
     }
     return device;
   }
@@ -824,6 +857,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   public PartialPath getDevicePath() {
+    if (endsWithMultiWildcard) {
+      return this;
+    }
     return new PartialPath(Arrays.copyOf(nodes, nodes.length - 1));
   }
 

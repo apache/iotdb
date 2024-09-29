@@ -23,10 +23,15 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
@@ -50,7 +55,7 @@ public class QueryContext {
    * use this field because each call of Modification.getModifications() return a copy of the
    * Modifications, and we do not want it to create multiple copies within a query.
    */
-  private final Map<String, PatternTreeMap<Modification, ModsSerializer>> fileModCache =
+  private final Map<String, PatternTreeMap<ModEntry, ModsSerializer>> fileModCache =
       new ConcurrentHashMap<>();
 
   protected long queryId;
@@ -83,29 +88,29 @@ public class QueryContext {
       return false;
     }
 
-    ModificationFileV1 modFile = tsFileResource.getOldModFile();
-    if (!modFile.exists()) {
+    ModificationFile modFile = tsFileResource.getModFile();
+    if (modFile != null) {
       nonExistentModFiles.add(tsFileResource.getTsFileID());
       return false;
     }
     return true;
   }
 
-  private PatternTreeMap<Modification, ModsSerializer> getAllModifications(
-      ModificationFileV1 modFile) {
+  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(
+      TsFileResource tsFileResource) {
     return fileModCache.computeIfAbsent(
-        modFile.getFilePath(),
+        tsFileResource.getTsFilePath(),
         k -> {
-          PatternTreeMap<Modification, ModsSerializer> modifications =
+          PatternTreeMap<ModEntry, ModsSerializer> modifications =
               PatternTreeMapFactory.getModsPatternTreeMap();
-          for (Modification modification : modFile.getModificationsIter()) {
-            modifications.append(modification.getPath(), modification);
-          }
+          tsFileResource.getModEntryIterator().forEachRemaining(
+              modEntry -> modifications.append(((TreeDeletionEntry) modEntry).getPathPattern(), modEntry)
+          );
           return modifications;
         });
   }
 
-  public List<Modification> getPathModifications(
+  public List<ModEntry> getPathModifications(
       TsFileResource tsFileResource, IDeviceID deviceID, String measurement)
       throws IllegalPathException {
     // if the mods file does not exist, do not add it to the cache
@@ -113,20 +118,20 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationFileV1.sortAndMerge(
-        getAllModifications(tsFileResource.getOldModFile())
+    return ModificationUtils.sortAndMerge(
+        getAllModifications(tsFileResource)
             .getOverlapped(new PartialPath(deviceID, measurement)));
   }
 
-  public List<Modification> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
+  public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
       throws IllegalPathException {
     // if the mods file does not exist, do not add it to the cache
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
-    return ModificationFileV1.sortAndMerge(
-        getAllModifications(tsFileResource.getOldModFile())
+    return ModificationUtils.sortAndMerge(
+        getAllModifications(tsFileResource)
             .getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
@@ -134,24 +139,24 @@ public class QueryContext {
    * Find the modifications of timeseries 'path' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<Modification> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
+  public List<ModEntry> getPathModifications(TsFileResource tsFileResource, PartialPath path) {
     // if the mods file does not exist, do not add it to the cache
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
 
-    return ModificationFileV1.sortAndMerge(
-        getAllModifications(tsFileResource.getOldModFile()).getOverlapped(path));
+    return ModificationUtils.sortAndMerge(
+        getAllModifications(tsFileResource).getOverlapped(path));
   }
 
   /**
    * Find the modifications of all aligned 'paths' in 'modFile'. If they are not in the cache, read
    * them from 'modFile' and put then into the cache.
    */
-  public List<List<Modification>> getPathModifications(
+  public List<List<ModEntry>> getPathModifications(
       TsFileResource tsFileResource, AlignedPath path) {
     int n = path.getMeasurementList().size();
-    List<List<Modification>> ans = new ArrayList<>(n);
+    List<List<ModEntry>> ans = new ArrayList<>(n);
     for (int i = 0; i < n; i++) {
       ans.add(getPathModifications(tsFileResource, path.getPathWithMeasurement(i)));
     }

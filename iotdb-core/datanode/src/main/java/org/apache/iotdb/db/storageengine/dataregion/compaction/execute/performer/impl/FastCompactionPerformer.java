@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import java.util.Iterator;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
@@ -39,6 +40,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastCrossCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.FastInnerCompactionWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -86,7 +90,7 @@ public class FastCompactionPerformer
   private List<TsFileResource> targetFiles;
 
   // tsFile name -> modifications
-  private Map<String, PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer>>
+  private Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
       modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
@@ -330,15 +334,16 @@ public class FastCompactionPerformer
 
   private void readModification(List<TsFileResource> resources) {
     for (TsFileResource resource : resources) {
-      if (resource.getOldModFile() == null || !resource.getOldModFile().exists()) {
+      Iterator<ModEntry> modEntryIterator = resource.getModEntryIterator();
+      if (!modEntryIterator.hasNext()) {
         continue;
       }
       // read mods
-      PatternTreeMap<Modification, PatternTreeMapFactory.ModsSerializer> modifications =
+      PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> modifications =
           PatternTreeMapFactory.getModsPatternTreeMap();
-      for (Modification modification : resource.getOldModFile().getModificationsIter()) {
-        modifications.append(modification.getPath(), modification);
-      }
+      modEntryIterator.forEachRemaining(
+          modification -> modifications.append(((TreeDeletionEntry) modification).getPathPattern(), modification)
+      );
       modificationCache.put(resource.getTsFile().getName(), modifications);
     }
   }

@@ -55,13 +55,19 @@ public class ModificationFile implements AutoCloseable {
     tsFileRefs.add(firstResource);
   }
 
+  @SuppressWarnings("java:S2093") // cannot use try-with-resource, should not close here
   public void write(ModEntry entry) throws IOException {
-    if (fileOutputStream == null) {
-      fileOutputStream = new BufferedOutputStream(Files.newOutputStream(file.toPath()));
-      channel = FileChannel.open(file.toPath());
+    lock.writeLock().lock();
+    try {
+      if (fileOutputStream == null) {
+        fileOutputStream = new BufferedOutputStream(Files.newOutputStream(file.toPath()));
+        channel = FileChannel.open(file.toPath());
+      }
+      entry.serialize(fileOutputStream);
+      channel.force(false);
+    } finally {
+      lock.writeLock().unlock();
     }
-    entry.serialize(fileOutputStream);
-    channel.force(false);
   }
 
   public Iterator<ModEntry> getModIterator() throws IOException {
@@ -70,10 +76,15 @@ public class ModificationFile implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    fileOutputStream.close();
-    fileOutputStream = null;
-    channel.close();
-    channel = null;
+    lock.writeLock().lock();
+    try {
+      fileOutputStream.close();
+      fileOutputStream = null;
+      channel.close();
+      channel = null;
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   public File getFile() {
@@ -130,6 +141,10 @@ public class ModificationFile implements AutoCloseable {
     return new long[] {levelNum, modNum};
   }
 
+  public long getSize() {
+    return file.length();
+  }
+
   public class ModIterator implements Iterator<ModEntry>, AutoCloseable {
     private InputStream inputStream;
     private ModEntry nextEntry;
@@ -140,6 +155,10 @@ public class ModificationFile implements AutoCloseable {
 
     @Override
     public void close() {
+      if (inputStream == null) {
+        return;
+      }
+
       try {
         inputStream.close();
       } catch (IOException e) {
@@ -157,6 +176,7 @@ public class ModificationFile implements AutoCloseable {
       if (nextEntry == null) {
         try {
           if (inputStream.available() == 0) {
+            close();
             return false;
           }
           nextEntry = ModEntry.createFrom(inputStream);

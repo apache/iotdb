@@ -36,6 +36,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTablet
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAlignedChunkHandleImpl;
@@ -544,7 +545,7 @@ public abstract class AbstractMemTable implements IMemTable {
       QueryContext context,
       PartialPath fullPath,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemtable)
+      List<Pair<ModEntry, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException {
     return ResourceByPathUtils.getResourceInstance(fullPath)
         .getReadOnlyMemChunkFromMemTable(context, this, modsToMemtable, ttlLowerBound);
@@ -556,7 +557,7 @@ public abstract class AbstractMemTable implements IMemTable {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetaDataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemTabled) {
+      List<Pair<ModEntry, IMemTable>> modsToMemTable) {
 
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath.getDevicePath());
 
@@ -568,10 +569,10 @@ public abstract class AbstractMemTable implements IMemTable {
         return;
       }
       List<TimeRange> deletionList = new ArrayList<>();
-      if (modsToMemTabled != null) {
+      if (modsToMemTable != null) {
         deletionList =
             ModificationUtils.constructDeletionList(
-                (MeasurementPath) fullPath, this, modsToMemTabled, ttlLowerBound);
+                (MeasurementPath) fullPath, this, modsToMemTable, ttlLowerBound);
       }
       getMemChunkHandleFromMemTable(
           deviceID, measurementId, chunkMetaDataMap, memChunkHandleMap, deletionList);
@@ -580,10 +581,10 @@ public abstract class AbstractMemTable implements IMemTable {
         return;
       }
       List<List<TimeRange>> deletionList = new ArrayList<>();
-      if (modsToMemTabled != null) {
+      if (modsToMemTable != null) {
         deletionList =
             ModificationUtils.constructDeletionList(
-                (AlignedPath) fullPath, this, modsToMemTabled, ttlLowerBound);
+                (AlignedPath) fullPath, this, modsToMemTable, ttlLowerBound);
       }
 
       getMemAlignedChunkHandleFromMemTable(
@@ -602,7 +603,7 @@ public abstract class AbstractMemTable implements IMemTable {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemTable)
       throws MetadataException {
 
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = getMemTableMap();
@@ -620,7 +621,7 @@ public abstract class AbstractMemTable implements IMemTable {
           chunkMetadataMap,
           memChunkHandleMap,
           ttlLowerBound,
-          modsToMemTabled);
+          modsToMemTable);
     } else {
       getMemChunkHandleFromMemTable(
           deviceID,
@@ -628,7 +629,7 @@ public abstract class AbstractMemTable implements IMemTable {
           chunkMetadataMap,
           memChunkHandleMap,
           ttlLowerBound,
-          modsToMemTabled);
+          modsToMemTable);
     }
   }
 
@@ -696,7 +697,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, List<IChunkMetadata>> chunkMetadataList,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemTabled)
       throws IllegalPathException {
 
     AlignedWritableMemChunk memChunk = writableMemChunkGroup.getAlignedMemChunk();
@@ -730,7 +731,7 @@ public abstract class AbstractMemTable implements IMemTable {
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
       long ttlLowerBound,
-      List<Pair<Modification, IMemTable>> modsToMemTabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemTabled)
       throws IllegalPathException {
 
     for (Entry<String, IWritableMemChunk> entry :
@@ -864,17 +865,16 @@ public abstract class AbstractMemTable implements IMemTable {
   /**
    * Delete data by path and timeStamp.
    *
-   * @param originalPath the original path pattern or full path to be used to match timeseries, e.g.
+   * @param pathToDelete the original path pattern or full path to be used to match timeseries, e.g.
    *     root.sg.**, root.sg.*.s, root.sg.d.s
-   * @param devicePath one of the device path patterns generated by original path, e.g. given
-   *     original path root.sg.** and the device path may be root.sg or root.sg.**
    * @param startTimestamp the lower-bound of deletion time.
    * @param endTimestamp the upper-bound of deletion time
    */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void delete(
-      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
+      PartialPath pathToDelete, long startTimestamp, long endTimestamp) {
+    PartialPath devicePath = pathToDelete.getDevicePath();
     if (devicePath.hasWildcard()) {
       // In cluster mode without IDTable, the input devicePath may be a devicePathPattern
       List<Pair<PartialPath, IWritableMemChunkGroup>> targetDeviceList = new ArrayList<>();
@@ -891,7 +891,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
       for (Pair<PartialPath, IWritableMemChunkGroup> targetDevice : targetDeviceList) {
         deleteDataInChunkGroup(
-            targetDevice.right, originalPath, targetDevice.left, startTimestamp, endTimestamp);
+            targetDevice.right, pathToDelete, targetDevice.left, startTimestamp, endTimestamp);
       }
     } else {
       // TODO:[DELETE]
@@ -900,7 +900,7 @@ public abstract class AbstractMemTable implements IMemTable {
       if (memChunkGroup == null) {
         return;
       }
-      deleteDataInChunkGroup(memChunkGroup, originalPath, devicePath, startTimestamp, endTimestamp);
+      deleteDataInChunkGroup(memChunkGroup, pathToDelete, devicePath, startTimestamp, endTimestamp);
     }
   }
 

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Cros
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskQueue;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.DefaultCompactionTaskComparatorImpl;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -86,7 +87,7 @@ public class CompactionWorkerTest {
             unsequenceFiles,
             null,
             1024L * 1024L * 1024L * 50L,
-            0);
+            0, new ModFileManager());
     CrossSpaceCompactionTask taskMock = Mockito.spy(task);
     Mockito.doReturn(true).when(taskMock).start();
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
@@ -143,7 +144,7 @@ public class CompactionWorkerTest {
       tsFileManager.addAll(unsequenceFiles, false);
       CrossSpaceCompactionTask task =
           new CrossSpaceCompactionTask(
-              0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
+              0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0, new ModFileManager());
       CrossSpaceCompactionTask taskMock = Mockito.spy(task);
       Mockito.doReturn(true).when(taskMock).start();
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
@@ -199,7 +200,7 @@ public class CompactionWorkerTest {
     // fail to check valid when tsfile manager is not allowed to compaction in cross task
     CrossSpaceCompactionTask task =
         new CrossSpaceCompactionTask(
-            0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0);
+            0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0, new ModFileManager());
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(task);
@@ -238,7 +239,7 @@ public class CompactionWorkerTest {
 
     // fail to check valid when tsfile manager is not allowed to compaction in inner task
     InnerSpaceCompactionTask innerTask =
-        new InnerSpaceCompactionTask(0L, tsFileManager, sequenceFiles, true, null, 0L);
+        new InnerSpaceCompactionTask(0L, tsFileManager, sequenceFiles, true, null, 0L, new ModFileManager());
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(innerTask);

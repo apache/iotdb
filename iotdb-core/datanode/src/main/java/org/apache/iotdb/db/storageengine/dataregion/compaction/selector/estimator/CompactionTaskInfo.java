@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -40,10 +41,7 @@ public class CompactionTaskInfo {
     this.fileInfoList = fileInfoList;
     this.resources = resources;
     for (TsFileResource resource : resources) {
-      ModificationFileV1 modificationFile = resource.getOldModFile();
-      if (modificationFile.exists()) {
-        modificationFileSize += modificationFile.getSize();
-      }
+      modificationFileSize += resource.getModFileTotalSizeByte();
       this.totalFileSize += resource.getTsFileSize();
     }
     for (FileInfo fileInfo : fileInfoList) {

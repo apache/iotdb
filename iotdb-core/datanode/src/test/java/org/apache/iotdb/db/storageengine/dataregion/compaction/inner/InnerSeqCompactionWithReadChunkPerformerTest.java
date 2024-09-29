@@ -1123,30 +1123,30 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
       TsFileResource resource = sourceResources.get(i);
       resource.resetModFile();
       Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertTrue(resource.getOldModFile().exists());
+      Assert.assertTrue(resource.getOldModFileIntern().exists());
       if (i < 2) {
-        Assert.assertEquals(3, resource.getOldModFile().getModifications().size());
+        Assert.assertEquals(3, resource.getOldModFileIntern().getModifications().size());
         Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
       } else if (i < 3) {
-        Assert.assertEquals(2, resource.getOldModFile().getModifications().size());
+        Assert.assertEquals(2, resource.getOldModFileIntern().getModifications().size());
         Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
       } else {
-        Assert.assertEquals(1, resource.getOldModFile().getModifications().size());
+        Assert.assertEquals(1, resource.getOldModFileIntern().getModifications().size());
         Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
       }
     }
     task.start();
     for (TsFileResource resource : sourceResources) {
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getOldModFile().exists());
+      Assert.assertFalse(resource.getOldModFileIntern().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
     resource.resetModFile();
-    Assert.assertTrue(resource.getOldModFile().exists());
-    Assert.assertEquals(2, resource.getOldModFile().getModifications().size());
+    Assert.assertTrue(resource.getOldModFileIntern().exists());
+    Assert.assertEquals(2, resource.getOldModFileIntern().getModifications().size());
     Assert.assertFalse(resource.getCompactionModFile().exists());
   }
 }

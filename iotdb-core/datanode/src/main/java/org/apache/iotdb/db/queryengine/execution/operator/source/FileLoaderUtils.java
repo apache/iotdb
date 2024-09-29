@@ -25,6 +25,7 @@ import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.db.storageengine.dataregion.read.reader.chunk.DiskChunkLoader;
@@ -103,7 +104,7 @@ public class FileLoaderUtils {
                     context.isDebug());
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
-          List<Modification> pathModifications = context.getPathModifications(resource, seriesPath);
+          List<ModEntry> pathModifications = context.getPathModifications(resource, seriesPath);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
@@ -299,7 +300,7 @@ public class FileLoaderUtils {
           // set modifications to each aligned path
           alignedTimeSeriesMetadata =
               new AlignedTimeSeriesMetadata(timeColumn, valueTimeSeriesMetadataList);
-          List<List<Modification>> pathModifications =
+          List<List<ModEntry>> pathModifications =
               setModifications(resource, alignedTimeSeriesMetadata, alignedPath, context);
 
           alignedTimeSeriesMetadata.setChunkMetadataLoader(
@@ -311,7 +312,7 @@ public class FileLoaderUtils {
     return alignedTimeSeriesMetadata;
   }
 
-  private static List<List<Modification>> setModifications(
+  private static List<List<ModEntry>> setModifications(
       TsFileResource resource,
       AlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
       AlignedPath alignedPath,
@@ -319,11 +320,11 @@ public class FileLoaderUtils {
     long startTime = System.nanoTime();
     List<TimeseriesMetadata> valueTimeSeriesMetadataList =
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList();
-    List<List<Modification>> res = new ArrayList<>();
+    List<List<ModEntry>> res = new ArrayList<>();
     boolean modified = false;
     for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
       if (valueTimeSeriesMetadataList.get(i) != null) {
-        List<Modification> pathModifications =
+        List<ModEntry> pathModifications =
             context.getPathModifications(resource, alignedPath.getPathWithMeasurement(i));
         valueTimeSeriesMetadataList.get(i).setModified(!pathModifications.isEmpty());
         res.add(pathModifications);

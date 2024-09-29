@@ -255,8 +255,8 @@ public class IoTDBDataRegionAirGapConnector extends IoTDBDataNodeAirGapConnector
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
     // 1. Transfer file piece by piece, and mod if needed
-    if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
-      final File modFile = pipeTsFileInsertionEvent.getModFile();
+    if (pipeTsFileInsertionEvent.isWithOldMod() && supportModsIfIsDataNodeReceiver) {
+      final File modFile = pipeTsFileInsertionEvent.getOldModFile();
       transferFilePieces(pipeName, creationTime, modFile, socket, true);
       transferFilePieces(pipeName, creationTime, tsFile, socket, true);
       // 2. Transfer file seal signal with mod, which means the file is transferred completely

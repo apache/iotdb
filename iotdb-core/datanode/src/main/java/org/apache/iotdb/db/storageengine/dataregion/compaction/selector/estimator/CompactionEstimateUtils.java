@@ -110,9 +110,7 @@ public class CompactionEstimateUtils {
     Map<IDeviceID, Long> deviceMetadataSizeMap = new HashMap<>();
     try {
       for (TsFileResource resource : resources) {
-        if (resource.oldModFileExists()) {
-          cost += resource.getOldModFile().getSize();
-        }
+        cost += resource.getModFileTotalSizeByte();
         try (CompactionTsFileReader reader =
             new CompactionTsFileReader(resource.getTsFilePath(), taskType)) {
           for (Map.Entry<IDeviceID, Long> entry : getDeviceMetadataSizeMap(reader).entrySet()) {

@@ -174,20 +174,6 @@ public class CompactionRecoverTask {
       }
     }
 
-    // delete compaction mods files
-    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
-    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
-    }
-    try {
-      CompactionUtils.deleteCompactionModsFile(sourceTsFileResourceList, Collections.emptyList());
-    } catch (IOException e) {
-      LOGGER.error(
-          "{} [Compaction][Recover] Exception occurs while deleting compaction mods file",
-          fullStorageGroupName,
-          e);
-      return false;
-    }
     return true;
   }
 

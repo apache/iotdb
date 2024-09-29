@@ -27,6 +27,9 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.slf4j.Logger;
@@ -45,6 +48,12 @@ public class ModFileManager {
   private final int levelModFileCntThreshold;
   private final long singleModFileSizeThreshold;
 
+  @TestOnly
+  public ModFileManager() {
+    this.levelModFileCntThreshold = IoTDBDescriptor.getInstance().getConfig().getLevelModFileCntThreshold();
+    this.singleModFileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getSingleModFileSizeThreshold();
+  }
+
   public ModFileManager(int levelModFileCntThreshold, long singleModFileSizeThreshold) {
     this.levelModFileCntThreshold = levelModFileCntThreshold;
     this.singleModFileSizeThreshold = singleModFileSizeThreshold;
@@ -56,9 +65,31 @@ public class ModFileManager {
     long[] levelNumAndModNum = ModificationFile.parseFileName(name);
 
     ModificationFile modificationFile = allLevelModsFileMap.computeIfAbsent(levelNumAndModNum[0],
-        k -> new TreeMap<>()).computeIfAbsent(levelNumAndModNum[1], k -> new ModificationFile(file, resource));
+            k -> new TreeMap<>())
+        .computeIfAbsent(levelNumAndModNum[1], k -> {
+          FileMetrics.getInstance().increaseModFileNum(1);
+          FileMetrics.getInstance().increaseModFileSize(file.length());
+          return new ModificationFile(file, resource);
+        });
     modificationFile.addReference(resource);
     return modificationFile;
+  }
+
+  public void removeModFile(ModificationFile modificationFile) {
+    File file = modificationFile.getFile();
+    String name = file.getName();
+    long[] levelNumAndModNum = ModificationFile.parseFileName(name);
+    allLevelModsFileMap.get(levelNumAndModNum[0])
+        .remove(levelNumAndModNum[1]);
+
+    try {
+      modificationFile.close();
+      FileMetrics.getInstance().decreaseModFileNum(1);
+      FileMetrics.getInstance().decreaseModFileSize(modificationFile.getSize());
+      FileUtils.deleteFileOrDirectory(modificationFile.getFile());
+    } catch (Exception e) {
+      LOGGER.warn("Failed to close mod file {}", modificationFile.getFile(), e);
+    }
   }
 
   private long maxModNum(long levelNum) {
@@ -73,10 +104,10 @@ public class ModFileManager {
 
   /**
    * Allocate a Mod File by newing or sharing to the give TsFile.
+   *
    * @param resource tsFile to allocate
    */
-  @SuppressWarnings("DuplicatedCode")
-  public ModificationFile allocate(TsFileResource resource) throws IOException {
+  public ModificationFile allocate(TsFileResource resource) {
     TsFileID tsFileID = resource.getTsFileID();
     long levelNum = tsFileID.getInnerCompactionCount();
 
@@ -86,28 +117,16 @@ public class ModFileManager {
     ModificationFile allocatedModFile;
     while (prev != null || next != null) {
       if (prev != null) {
-        ModificationFile prevModFile = prev.getModFile();
-        if (prevModFile != null) {
-          if (shouldAllocateNew(prevModFile, levelNum)) {
-            allocatedModFile = allocateNew(resource);
-          } else {
-            allocatedModFile = prevModFile;
-            allocatedModFile.addReference(resource);
-          }
+        allocatedModFile = allocate(resource, prev, levelNum);
+        if (allocatedModFile != null) {
           return allocatedModFile;
         }
         prev = prev.getPrev();
       }
 
       if (next != null) {
-        ModificationFile nextModFile = next.getModFile();
-        if (nextModFile != null) {
-          if (shouldAllocateNew(nextModFile, levelNum)) {
-            allocatedModFile = allocateNew(resource);
-          } else {
-            allocatedModFile = nextModFile;
-            allocatedModFile.addReference(resource);
-          }
+        allocatedModFile = allocate(resource, next, levelNum);
+        if (allocatedModFile != null) {
           return allocatedModFile;
         }
         next = next.getNext();
@@ -116,6 +135,21 @@ public class ModFileManager {
 
     // no mod file found, allocate a new one
     return allocateNew(resource);
+  }
+
+  private ModificationFile allocate(TsFileResource target, TsFileResource shareCandidate,
+      long levelNum) {
+    ModificationFile allocatedModFile = null;
+    ModificationFile prevModFile = shareCandidate.getModFile();
+    if (prevModFile != null) {
+      if (shouldAllocateNew(prevModFile, levelNum)) {
+        allocatedModFile = allocateNew(target);
+      } else {
+        allocatedModFile = prevModFile;
+        allocatedModFile.addReference(target);
+      }
+    }
+    return allocatedModFile;
   }
 
   private boolean shouldAllocateNew(ModificationFile modificationFile, long levelNum) {
@@ -131,8 +165,9 @@ public class ModFileManager {
   }
 
   /**
-   * Force to allocate a new Mod File for the TsFile.
-   * This will NOT set any fields of the TsFileResource.
+   * Force to allocate a new Mod File for the TsFile. This will NOT set any fields of the
+   * TsFileResource.
+   *
    * @param resource TsFile to allocate.
    * @return the newly allocated Mod File.
    */
@@ -140,13 +175,16 @@ public class ModFileManager {
     TsFileID tsFileID = resource.getTsFileID();
     long levelNum = tsFileID.getInnerCompactionCount();
     long nextModNum = maxModNum(levelNum) + 1;
-    File file = new File(resource.getTsFile().getParentFile(), ModificationFile.composeFileName(levelNum, nextModNum));
+    File file = new File(resource.getTsFile().getParentFile(),
+        ModificationFile.composeFileName(levelNum, nextModNum));
     TreeMap<Long, ModificationFile> levelModsFileMap = this.allLevelModsFileMap.computeIfAbsent(
         levelNum,
         k -> new TreeMap<>());
     synchronized (levelModsFileMap) {
+      FileMetrics.getInstance().increaseModFileNum(1);
       // use the provided file as the initial reference to avoid a newly created Mod File being cleaned
-      return levelModsFileMap.computeIfAbsent(nextModNum, k -> new ModificationFile(file, resource));
+      return levelModsFileMap.computeIfAbsent(nextModNum,
+          k -> new ModificationFile(file, resource));
     }
   }
 
@@ -162,10 +200,12 @@ public class ModFileManager {
       }
 
       synchronized (levelModFileMap) {
-        for (Long l : modFilesToRemove) {
-          ModificationFile remove = levelModFileMap.remove(l);
+        for (Long fileNum : modFilesToRemove) {
+          ModificationFile remove = levelModFileMap.remove(fileNum);
           try {
             remove.close();
+            FileMetrics.getInstance().decreaseModFileNum(1);
+            FileMetrics.getInstance().decreaseModFileSize(remove.getSize());
             FileUtils.deleteFileOrDirectory(remove.getFile());
           } catch (Exception e) {
             LOGGER.warn("Failed to close mod file {}", remove.getFile(), e);

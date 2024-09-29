@@ -328,8 +328,8 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         true);
     Assert.assertTrue(targetResource.getTsFile().exists());
     Assert.assertTrue(targetResource.resourceFileExists());
-    Assert.assertTrue(targetResource.getOldModFile().exists());
-    Collection<Modification> modifications = targetResource.getOldModFile().getModifications();
+    Assert.assertTrue(targetResource.getOldModFileIntern().exists());
+    Collection<Modification> modifications = targetResource.getOldModFileIntern().getModifications();
     Assert.assertEquals(seqResources.size(), modifications.size());
     for (Modification modification : modifications) {
       Assert.assertEquals(deviceIds[0], modification.getDevice());
@@ -341,7 +341,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.resourceFileExists());
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getOldModFile().exists());
+      Assert.assertFalse(resource.getOldModFileIntern().exists());
     }
 
     Assert.assertTrue(tsFileManager.isAllowCompaction());
@@ -399,13 +399,13 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         true);
     Assert.assertTrue(targetResource.getTsFile().exists());
     Assert.assertTrue(targetResource.resourceFileExists());
-    Assert.assertFalse(targetResource.getOldModFile().exists());
+    Assert.assertFalse(targetResource.getOldModFileIntern().exists());
 
     seqResources.remove(0);
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.resourceFileExists());
       Assert.assertFalse(resource.getTsFile().exists());
-      Assert.assertFalse(resource.getOldModFile().exists());
+      Assert.assertFalse(resource.getOldModFileIntern().exists());
     }
 
     Assert.assertTrue(tsFileManager.isAllowCompaction());
@@ -469,15 +469,15 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         true);
     Assert.assertFalse(targetResource.getTsFile().exists());
     Assert.assertFalse(targetResource.resourceFileExists());
-    Assert.assertFalse(targetResource.getOldModFile().exists());
+    Assert.assertFalse(targetResource.getOldModFileIntern().exists());
 
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
       Assert.assertTrue(resource.resourceFileExists());
       Assert.assertTrue(resource.getTsFile().exists());
-      Assert.assertTrue(resource.getOldModFile().exists());
+      Assert.assertTrue(resource.getOldModFileIntern().exists());
       Assert.assertFalse(ModificationFileV1.getCompactionMods(resource).exists());
-      Collection<Modification> modifications = resource.getOldModFile().getModifications();
+      Collection<Modification> modifications = resource.getOldModFileIntern().getModifications();
       Assert.assertEquals(2, modifications.size());
       for (Modification modification : modifications) {
         Assert.assertEquals(deviceIds[0], modification.getDevice());
@@ -558,7 +558,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertFalse(resource.getOldModFile().exists());
+      Assert.assertFalse(resource.getOldModFileIntern().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // the target file will be deleted
@@ -634,7 +634,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
-      Assert.assertTrue(resource.getOldModFile().exists());
+      Assert.assertTrue(resource.getOldModFileIntern().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
     // tmp target file, target file and target resource file should be deleted after compaction

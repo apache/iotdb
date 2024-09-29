@@ -95,8 +95,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
 
-    Assert.assertFalse(tsFileManager.getTsFileList(true).get(0).getOldModFile().exists());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFile().exists());
+    Assert.assertFalse(tsFileManager.getTsFileList(true).get(0).getOldModFileIntern().exists());
+    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFileIntern().exists());
 
     // select second time
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -111,8 +111,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFile().exists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFile().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFileIntern().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFileIntern().exists());
     }
 
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -247,7 +247,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFile().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFileIntern().exists());
     }
   }
 
@@ -295,7 +295,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     Assert.assertTrue(unseqTasks.get(0).start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFile().exists());
+    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFileIntern().exists());
 
     // select third time
     // all seq files is partial_deleted
@@ -366,8 +366,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFile().exists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFile().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFileIntern().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFileIntern().exists());
     }
 
     // select third time
@@ -567,7 +567,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       addFileMods(seqResources.get(7), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
     }
     for (TsFileResource resource : seqResources) {
-      resource.getOldModFile().close();
+      resource.getOldModFileIntern().close();
     }
 
     // compact all_deleted file and partial_deleted file 0
@@ -629,8 +629,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(3, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(3, tsFileManager.getTsFileList(false).size());
 
-    Assert.assertFalse(tsFileManager.getTsFileList(true).get(0).getOldModFile().exists());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFile().exists());
+    Assert.assertFalse(tsFileManager.getTsFileList(true).get(0).getOldModFileIntern().exists());
+    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFileIntern().exists());
 
     // select second time
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -645,8 +645,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
     Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFile().exists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFile().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFileIntern().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFileIntern().exists());
     }
 
     seqTasks = settleSelector.selectSettleTask(seqResources);
@@ -783,7 +783,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, tsFileManager.getTsFileList(true).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFile().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFileIntern().exists());
     }
   }
 
@@ -831,7 +831,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
     Assert.assertTrue(unseqTasks.get(0).start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(false).size());
-    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFile().exists());
+    Assert.assertFalse(tsFileManager.getTsFileList(false).get(0).getOldModFileIntern().exists());
 
     // select third time
     // all seq files is partial_deleted
@@ -902,8 +902,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     Assert.assertEquals(2, tsFileManager.getTsFileList(false).size());
 
     for (int i = 0; i < 2; i++) {
-      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFile().exists());
-      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFile().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(true).get(i).getOldModFileIntern().exists());
+      Assert.assertFalse(tsFileManager.getTsFileList(false).get(i).getOldModFileIntern().exists());
     }
 
     // select third time
@@ -1106,7 +1106,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       addFileMods(seqResources.get(7), path, Long.MAX_VALUE, Long.MIN_VALUE, Long.MAX_VALUE);
     }
     for (TsFileResource resource : seqResources) {
-      resource.getOldModFile().close();
+      resource.getOldModFileIntern().close();
     }
 
     // compact all_deleted file and partial_deleted file 0
@@ -1138,7 +1138,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   private void addFileMods(
       TsFileResource resource, PartialPath path, long fileOffset, long startTime, long endTime)
       throws IOException {
-    try (ModificationFileV1 modificationFile = resource.getOldModFile()) {
+    try (ModificationFileV1 modificationFile = resource.getOldModFileIntern()) {
       modificationFile.write(new Deletion(path, fileOffset, startTime, endTime));
     }
   }

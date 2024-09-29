@@ -307,8 +307,11 @@ public class PipeTsFileResourceManager {
     lock.lock();
     try {
       increaseFileReference(resource.getTsFile(), true, resource);
-      if (withMods && resource.getOldModFile().exists()) {
+      if (withMods && resource.oldModFileExists()) {
         increaseFileReference(new File(resource.getOldModFile().getFilePath()), false, null);
+      }
+      if (withMods && resource.newModFileExists()) {
+        increaseFileReference(resource.getModFile().getFile(), false, null);
       }
     } finally {
       lock.unlock();
@@ -321,9 +324,11 @@ public class PipeTsFileResourceManager {
       final File pinnedFile = getHardlinkOrCopiedFileInPipeDir(resource.getTsFile());
       decreaseFileReference(pinnedFile);
 
-      final File modFile = new File(pinnedFile + ModificationFileV1.FILE_SUFFIX);
-      if (modFile.exists()) {
-        decreaseFileReference(modFile);
+      if (resource.oldModFileExists()) {
+        decreaseFileReference(new File(resource.getOldModFile().getFilePath()));
+      }
+      if (resource.newModFileExists()) {
+        decreaseFileReference(resource.getModFile().getFile());
       }
     } finally {
       lock.unlock();

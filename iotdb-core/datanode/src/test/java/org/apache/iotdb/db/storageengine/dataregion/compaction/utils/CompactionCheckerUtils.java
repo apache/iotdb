@@ -133,7 +133,7 @@ public class CompactionCheckerUtils {
           List<Modification> seriesModifications = new LinkedList<>();
 
           if (!"".equals(path.getMeasurement())) {
-            for (Modification modification : tsFileResource.getOldModFile().getModifications()) {
+            for (Modification modification : tsFileResource.getOldModFileIntern().getModifications()) {
               if (modification.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
                 seriesModifications.add(modification);
               }

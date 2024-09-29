@@ -99,6 +99,7 @@ public abstract class AbstractCompactionTask {
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.serialId = serialId;
+    this.modFileManager = modFileManager;
   }
 
   public abstract List<TsFileResource> getAllSourceTsFiles();
@@ -517,6 +518,7 @@ public abstract class AbstractCompactionTask {
     for (int i = 1; i < targetFiles.size(); i++) {
       // do not persist the modification file path now because the resource is incomplete
       targetFiles.get(i).setModFile(modificationFile, false);
+      modificationFile.addReference(targetFiles.get(i));
     }
     // mark the mod file as the compaction mod file for all source files
     for (List<TsFileResource> sourceFiles : allSourceFiles) {

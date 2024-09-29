@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -83,7 +84,7 @@ public abstract class ResourceByPathUtils {
   public abstract ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound)
       throws QueryProcessException, IOException;
 
@@ -180,7 +181,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
@@ -241,7 +242,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       TsFileResource tsFileResource,
       QueryContext context,
       long timeLowerBound) {
-    List<List<Modification>> modifications =
+    List<List<ModEntry>> modifications =
         context.getPathModifications(tsFileResource, partialPath);
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
@@ -327,7 +328,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       QueryContext context,
       IMemTable memTable,
-      List<Pair<Modification, IMemTable>> modsToMemtable,
+      List<Pair<ModEntry, IMemTable>> modsToMemtable,
       long timeLowerBound)
       throws QueryProcessException, IOException {
     Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
@@ -363,7 +364,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       TsFileResource tsFileResource,
       QueryContext context,
       long timeLowerBound) {
-    List<Modification> modifications = context.getPathModifications(tsFileResource, partialPath);
+    List<ModEntry> modifications = context.getPathModifications(tsFileResource, partialPath);
 
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(

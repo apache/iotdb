@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparat
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.RewriteCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossCompactionTaskResource;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.CrossSpaceCompactionCandidate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -214,7 +215,8 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                   .getCrossCompactionPerformer()
                   .createInstance(),
               1000,
-              tsFileManager.getNextCompactionTaskId());
+              tsFileManager.getNextCompactionTaskId(),
+              new ModFileManager());
       // set file status to COMPACTION_CANDIDATE
       Assert.assertTrue(crossSpaceCompactionTask.setSourceFilesToCompactionCandidate());
 
@@ -367,7 +369,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be true");
@@ -480,7 +482,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be false");
@@ -580,7 +582,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE and add into queue
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("fail to set status to compaction candidate.");
@@ -704,7 +706,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be true");
@@ -821,7 +823,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be false");
@@ -928,7 +930,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE and add into queue
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("fail to set status to compaction candidate.");
@@ -1191,7 +1193,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be true");
@@ -1304,7 +1306,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be false");
@@ -1408,7 +1410,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE and add into queue
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("fail to set status to compaction candidate.");
@@ -1529,7 +1531,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be true");
@@ -1646,7 +1648,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE
                 if (crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("set status should be false");
@@ -1753,7 +1755,7 @@ public class CrossSpaceCompactionSelectorTest extends AbstractCompactionTest {
                             .getCrossCompactionPerformer()
                             .createInstance(),
                         crossCompactionTaskResource.getTotalMemoryCost(),
-                        tsFileManager.getNextCompactionTaskId());
+                        tsFileManager.getNextCompactionTaskId(), new ModFileManager());
                 // set file status to COMPACTION_CANDIDATE and add into queue
                 if (!crossSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                   throw new RuntimeException("fail to set status to compaction candidate.");

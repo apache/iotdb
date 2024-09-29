@@ -183,10 +183,10 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFile()
+        .getOldModFileIntern()
         .write(
             new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
-    seqResource1.getOldModFile().close();
+    seqResource1.getOldModFileIntern().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -228,10 +228,10 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFile()
+        .getOldModFileIntern()
         .write(
             new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, Long.MAX_VALUE));
-    seqResource1.getOldModFile().close();
+    seqResource1.getOldModFileIntern().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -320,9 +320,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFile()
+        .getOldModFileIntern()
         .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 250000));
-    seqResource1.getOldModFile().close();
+    seqResource1.getOldModFileIntern().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -366,9 +366,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFile()
+        .getOldModFileIntern()
         .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 25000));
-    seqResource1.getOldModFile().close();
+    seqResource1.getOldModFileIntern().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(
@@ -450,9 +450,9 @@ public class BatchedAlignedSeriesReadChunkCompactionTest extends AbstractCompact
             true);
     seqResources.add(seqResource1);
     seqResource1
-        .getOldModFile()
+        .getOldModFileIntern()
         .write(new Deletion(new PartialPath("root.testsg.d0", "s2"), Long.MAX_VALUE, 15000));
-    seqResource1.getOldModFile().close();
+    seqResource1.getOldModFileIntern().close();
 
     TsFileResource seqResource2 =
         generateSingleAlignedSeriesFile(

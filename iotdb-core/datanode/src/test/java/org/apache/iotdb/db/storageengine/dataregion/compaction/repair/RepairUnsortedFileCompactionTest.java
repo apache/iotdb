@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.repair;
 
+import java.util.Iterator;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -34,6 +35,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
@@ -75,6 +80,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
   private boolean enableCrossSpaceCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+
+  private ModFileManager modFileManager = new ModFileManager();
 
   @Before
   public void setUp()
@@ -303,7 +310,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
             Arrays.asList(seqResource1, seqResource2),
             true,
             new ReadChunkCompactionPerformer(),
-            0);
+            0,
+            modFileManager);
     Assert.assertFalse(task.start());
 
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
@@ -313,7 +321,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionScheduleContext summary = new CompactionScheduleContext();
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
+    CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary, modFileManager);
     Assert.assertEquals(2, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
 
     int waitSecond = 20;
@@ -378,7 +386,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
             Arrays.asList(unSeqResource1, unSeqResource2),
             false,
             new FastCompactionPerformer(false),
-            0);
+            0,
+            modFileManager);
     Assert.assertFalse(task.start());
 
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
@@ -388,7 +397,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionScheduleContext summary = new CompactionScheduleContext();
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
+    CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary, modFileManager);
     Assert.assertEquals(2, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
 
     int waitSecond = 20;
@@ -454,7 +463,8 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
             Collections.singletonList(unSeqResource1),
             new FastCompactionPerformer(true),
             0,
-            0);
+            0,
+            modFileManager);
     Assert.assertFalse(task.start());
 
     for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
@@ -464,7 +474,7 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     long initialFinishedCompactionTaskNum =
         CompactionTaskManager.getInstance().getFinishedTaskNum();
     CompactionScheduleContext summary = new CompactionScheduleContext();
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary);
+    CompactionScheduler.scheduleCompaction(tsFileManager, 0, summary, modFileManager);
     Assert.assertEquals(1, summary.getSubmitSeqInnerSpaceCompactionTaskNum());
     Assert.assertEquals(1, summary.getSubmitUnseqInnerSpaceCompactionTaskNum());
 
@@ -559,10 +569,10 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
       writer.endChunkGroup();
       writer.endFile();
     }
-    ModificationFileV1 modFile = seqResource2.getOldModFile();
-    Deletion writedModification =
-        new Deletion(new PartialPath("root.testsg.d1.s1"), Long.MAX_VALUE, 15);
-    modFile.write(writedModification);
+    ModificationFile modFile = seqResource2.getModFileMayAllocate();
+    TreeDeletionEntry writtenModification =
+        new TreeDeletionEntry(new PartialPath("root.testsg.d1.s1"), 15);
+    modFile.write(writtenModification);
     modFile.close();
 
     seqResources.add(seqResource1);
@@ -579,12 +589,14 @@ public class RepairUnsortedFileCompactionTest extends AbstractRepairDataTest {
     TsFileResource targetResource = tsFileManager.getTsFileList(false).get(0);
     Assert.assertTrue(TsFileResourceUtils.validateTsFileDataCorrectness(targetResource));
     Assert.assertTrue(TsFileResourceUtils.validateTsFileResourceCorrectness(targetResource));
-    Assert.assertTrue(targetResource.oldModFileExists());
-    Assert.assertEquals(1, targetResource.getOldModFile().getModifications().size());
-    Deletion modification =
-        (Deletion) targetResource.getOldModFile().getModifications().iterator().next();
-    Assert.assertEquals(writedModification.getFileOffset(), modification.getFileOffset());
-    Assert.assertEquals(writedModification.getEndTime(), modification.getEndTime());
+
+    modFile = targetResource.getModFile();
+    Assert.assertNotNull(modFile);
+    Iterator<ModEntry> modIterator = modFile.getModIterator();
+    Assert.assertTrue(modIterator.hasNext());
+    TreeDeletionEntry modification =
+        (TreeDeletionEntry) modIterator.next();
+    Assert.assertEquals(writtenModification, modification);
   }
 
   @Test

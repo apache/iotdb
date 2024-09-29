@@ -295,7 +295,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
 
   private void doTransfer(PipeTsFileInsertionEvent pipeTsFileInsertionEvent) throws PipeException {
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
-    final File modFile = pipeTsFileInsertionEvent.getModFile();
+    final File modFile = pipeTsFileInsertionEvent.getOldModFile();
     final TPipeConsensusTransferResp resp;
 
     try (final SyncPipeConsensusServiceClient syncPipeConsensusServiceClient =
@@ -307,7 +307,7 @@ public class PipeConsensusSyncConnector extends IoTDBConnector {
           new TConsensusGroupId(TConsensusGroupType.DataRegion, consensusGroupId);
 
       // 1. Transfer tsFile, and mod file if exists
-      if (pipeTsFileInsertionEvent.isWithMod()) {
+      if (pipeTsFileInsertionEvent.isWithOldMod()) {
         transferFilePieces(
             modFile, syncPipeConsensusServiceClient, true, tCommitId, tConsensusGroupId);
         transferFilePieces(

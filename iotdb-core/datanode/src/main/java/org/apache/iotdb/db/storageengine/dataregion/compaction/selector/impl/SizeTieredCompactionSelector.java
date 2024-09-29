@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.comparator.ICompactionTaskComparator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerSeqSpaceSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.IInnerUnseqSpaceSelector;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileRepairStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -66,18 +67,21 @@ public class SizeTieredCompactionSelector
   protected boolean sequence;
   protected TsFileManager tsFileManager;
   protected boolean hasNextTimePartition;
+  protected ModFileManager modFileManager;
 
   public SizeTieredCompactionSelector(
       String storageGroupName,
       String dataRegionId,
       long timePartition,
       boolean sequence,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      ModFileManager modFileManager) {
     this.storageGroupName = storageGroupName;
     this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.sequence = sequence;
     this.tsFileManager = tsFileManager;
+    this.modFileManager = modFileManager;
     hasNextTimePartition = tsFileManager.hasNextTimePartition(timePartition, sequence);
   }
 
@@ -265,6 +269,7 @@ public class SizeTieredCompactionSelector
         fileResources,
         sequence,
         createCompactionPerformer(),
-        tsFileManager.getNextCompactionTaskId());
+        tsFileManager.getNextCompactionTaskId(),
+        modFileManager);
   }
 }

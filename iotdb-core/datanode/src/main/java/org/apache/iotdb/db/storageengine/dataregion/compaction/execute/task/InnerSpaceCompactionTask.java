@@ -466,16 +466,12 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             new File(newFile.getTsFilePath() + ModificationFileV1.FILE_SUFFIX).toPath(),
             new File(oldFile.getTsFilePath() + ModificationFileV1.FILE_SUFFIX).toPath());
       }
-      newFile.inheritModFile(oldFile);
       newFile.deserialize();
     }
     CompactionUtils.moveTargetFile(
         filesView.targetFilesInPerformer,
         getCompactionTaskType(),
         storageGroupName + "-" + dataRegionId);
-
-    CompactionUtils.combineModsInInnerCompaction(
-        filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
   }
 
   public void recover() {

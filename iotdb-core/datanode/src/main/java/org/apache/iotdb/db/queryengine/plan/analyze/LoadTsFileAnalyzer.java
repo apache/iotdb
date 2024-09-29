@@ -56,6 +56,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -697,7 +699,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     private Map<IDeviceID, Boolean> tsFileDevice2IsAligned;
     private Set<PartialPath> alreadySetDatabases;
 
-    private Collection<Modification> currentModifications;
+    private Collection<ModEntry> currentModifications;
     private ITimeIndex currentTimeIndex;
 
     private long batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes = 0;
@@ -774,9 +776,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     public void setCurrentModificationsAndTimeIndex(TsFileResource resource) throws IOException {
       clearModificationsAndTimeIndex();
 
-      currentModifications = resource.getOldModFile().getModifications();
-      for (final Modification modification : currentModifications) {
-        currentModificationsMemoryUsageSizeInBytes += ((Deletion) modification).getSerializedSize();
+      currentModifications = new ArrayList<>();
+      resource.getModEntryIterator().forEachRemaining(
+          currentModifications::add
+      );
+      for (final ModEntry modification : currentModifications) {
+        currentModificationsMemoryUsageSizeInBytes += ((TreeDeletionEntry) modification).getSerializedSize();
       }
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 

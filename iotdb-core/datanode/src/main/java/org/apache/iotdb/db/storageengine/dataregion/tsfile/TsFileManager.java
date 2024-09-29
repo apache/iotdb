@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
@@ -49,6 +53,10 @@ public class TsFileManager {
   // time partition -> double linked list of tsfiles
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
+  /**
+   * time partition id -> ModFileManager
+   */
+  private final Map<Long, ModFileManager> timePartitionModFileManagerMap = new ConcurrentHashMap<>();
 
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
@@ -202,6 +210,9 @@ public class TsFileManager {
       selectedMap
           .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
           .add(tsFileResource);
+      if (tsFileResource.getModFileManager() == null) {
+        tsFileResource.setModFileManager(getModFileManager(tsFileResource.getTimePartition()));
+      }
     } finally {
       writeUnlock();
     }
@@ -214,6 +225,9 @@ public class TsFileManager {
       selectedMap
           .computeIfAbsent(tsFileResource.getTimePartition(), o -> new TsFileResourceList())
           .keepOrderInsert(tsFileResource);
+      if (tsFileResource.getModFileManager() == null) {
+        tsFileResource.setModFileManager(getModFileManager(tsFileResource.getTimePartition()));
+      }
     } finally {
       writeUnlock();
     }
@@ -256,10 +270,14 @@ public class TsFileManager {
             sequenceFiles
                 .computeIfAbsent(timePartition, t -> new TsFileResourceList())
                 .keepOrderInsert(resource);
+
           } else {
             unsequenceFiles
                 .computeIfAbsent(timePartition, t -> new TsFileResourceList())
                 .keepOrderInsert(resource);
+          }
+          if (resource.getModFileManager() == null) {
+            resource.setModFileManager(getModFileManager(resource.getTimePartition()));
           }
           FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(resource);
         }
@@ -420,5 +438,14 @@ public class TsFileManager {
       resourceListLock.readLock().unlock();
     }
     return maxFileTimestamp;
+  }
+
+  public ModFileManager getModFileManager(long timePartitionId) {
+    // TODO: conclude better arguments from the previous partition
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    long singleModFileSizeThreshold = config.getSingleModFileSizeThreshold();
+    int levelModFileCntThreshold = config.getLevelModFileCntThreshold();
+    return timePartitionModFileManagerMap.computeIfAbsent(timePartitionId,
+        tid -> new ModFileManager(levelModFileCntThreshold, singleModFileSizeThreshold));
   }
 }

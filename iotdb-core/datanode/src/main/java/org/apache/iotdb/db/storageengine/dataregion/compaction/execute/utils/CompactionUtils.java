@@ -117,79 +117,6 @@ public class CompactionUtils {
     targetResource.closeWithoutSettingStatus();
   }
 
-  /**
-   * Collect all the compaction modification files of source files, and combines them as the
-   * modification file of target file.
-   *
-   * @throws IOException if io errors occurred
-   */
-  public static void combineModsInInnerCompaction(
-      Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
-    Set<Modification> modifications = new HashSet<>();
-    for (TsFileResource mergeTsFile : sourceFiles) {
-      try (ModificationFileV1 sourceCompactionModificationFile =
-          ModificationFileV1.getCompactionMods(mergeTsFile)) {
-        modifications.addAll(sourceCompactionModificationFile.getModifications());
-      }
-    }
-    updateOneTargetMods(targetTsFile, modifications);
-    if (!modifications.isEmpty()) {
-      FileMetrics.getInstance().increaseModFileNum(1);
-      FileMetrics.getInstance().increaseModFileSize(targetTsFile.getOldModFile().getSize());
-    }
-  }
-
-  public static void combineModsInInnerCompaction(
-      Collection<TsFileResource> sourceFiles, List<TsFileResource> targetTsFiles)
-      throws IOException {
-    Set<Modification> modifications = new HashSet<>();
-    for (TsFileResource mergeTsFile : sourceFiles) {
-      try (ModificationFileV1 sourceCompactionModificationFile =
-          ModificationFileV1.getCompactionMods(mergeTsFile)) {
-        modifications.addAll(sourceCompactionModificationFile.getModifications());
-      }
-    }
-    for (TsFileResource targetTsFile : targetTsFiles) {
-      updateOneTargetMods(targetTsFile, modifications);
-      if (!modifications.isEmpty()) {
-        FileMetrics.getInstance().increaseModFileNum(1);
-        FileMetrics.getInstance().increaseModFileSize(targetTsFile.getOldModFile().getSize());
-      }
-    }
-  }
-
-  private static void updateOneTargetMods(
-      TsFileResource targetFile, Set<Modification> modifications) throws IOException {
-    if (!modifications.isEmpty()) {
-      try (ModificationFileV1 modificationFile = ModificationFileV1.getNormalMods(targetFile)) {
-        for (Modification modification : modifications) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          modification.setFileOffset(Long.MAX_VALUE);
-          modificationFile.write(modification);
-        }
-      }
-    }
-  }
-
-  public static void deleteCompactionModsFile(
-      List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList)
-      throws IOException {
-    for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
-      ModificationFileV1 modificationFile = seqFile.getCompactionModFile();
-      if (modificationFile.exists()) {
-        modificationFile.remove();
-      }
-    }
-    for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
-      ModificationFileV1 modificationFile = unseqFile.getCompactionModFile();
-      if (modificationFile.exists()) {
-        modificationFile.remove();
-      }
-    }
-  }
-
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
     logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
@@ -202,30 +129,6 @@ public class CompactionUtils {
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
     return result;
-  }
-
-  /**
-   * Delete all modification files for source files.
-   *
-   * @throws IOException if io errors occurred
-   */
-  public static void deleteModificationForSourceFile(
-      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
-    for (TsFileResource tsFileResource : sourceFiles) {
-      ModificationFileV1 compactionModificationFile =
-          ModificationFileV1.getCompactionMods(tsFileResource);
-      if (compactionModificationFile.exists()) {
-        compactionModificationFile.remove();
-      }
-
-      ModificationFileV1 normalModification = ModificationFileV1.getNormalMods(tsFileResource);
-      if (normalModification.exists()) {
-        FileMetrics.getInstance().decreaseModFileNum(1);
-        FileMetrics.getInstance().decreaseModFileSize(tsFileResource.getOldModFile().getSize());
-        normalModification.remove();
-      }
-    }
   }
 
   public static void updateResource(
@@ -288,10 +191,6 @@ public class CompactionUtils {
   public static void deleteSourceTsFileAndUpdateFileMetrics(
       List<TsFileResource> resources, boolean seq) {
     for (TsFileResource resource : resources) {
-      if (resource.getOldModFile().exists()) {
-        FileMetrics.getInstance().decreaseModFileNum(1);
-        FileMetrics.getInstance().decreaseModFileSize(resource.getOldModFile().getSize());
-      }
       if (!resource.remove()) {
         logger.warn(
             "[Compaction] delete file failed, file path is {}",

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.pipe.extractor.dataregion.realtime.assigner.PipeTimeP
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -58,8 +57,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   private File tsFile;
 
   // This is true iff the modFile exists and should be transferred
-  private boolean isWithMod;
-  private File modFile;
+  private boolean isWithOldMod;
+  private File oldModFile;
+  private boolean isWithNewMod;
+  private File newModFile;
 
   private final boolean isLoaded;
   private final boolean isGeneratedByPipe;
@@ -97,7 +98,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
 
   public PipeTsFileInsertionEvent(
       final TsFileResource resource,
-      final boolean isWithMod,
+      final boolean shouldWithMod,
       final boolean isLoaded,
       final boolean isGeneratedByPipe,
       final boolean isGeneratedByHistoricalExtractor,
@@ -112,9 +113,10 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     this.resource = resource;
     tsFile = resource.getTsFile();
 
-    final ModificationFileV1 modFile = resource.getOldModFile();
-    this.isWithMod = isWithMod && modFile.exists();
-    this.modFile = this.isWithMod ? new File(modFile.getFilePath()) : null;
+    this.isWithOldMod = shouldWithMod && resource.oldModFileExists();
+    this.oldModFile = this.isWithOldMod ? new File(resource.getOldModFile().getFilePath()) : null;
+    this.isWithNewMod = shouldWithMod && resource.newModFileExists();
+    this.newModFile = this.isWithNewMod ? resource.getModFile().getFile() : null;
 
     this.isLoaded = isLoaded;
     this.isGeneratedByPipe = isGeneratedByPipe;
@@ -197,18 +199,18 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     return tsFile;
   }
 
-  public File getModFile() {
-    return modFile;
+  public File getOldModFile() {
+    return oldModFile;
   }
 
-  public boolean isWithMod() {
-    return isWithMod;
+  public boolean isWithOldMod() {
+    return isWithOldMod;
   }
 
   // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
   // can't be set to true
   public void disableMod4NonTransferPipes(final boolean isWithMod) {
-    this.isWithMod = isWithMod && this.isWithMod;
+    this.isWithOldMod = isWithMod && this.isWithOldMod;
   }
 
   public boolean isLoaded() {
@@ -241,15 +243,15 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     try {
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
-      if (isWithMod) {
-        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, null);
+      if (isWithOldMod) {
+        oldModFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(oldModFile, false, null);
       }
       return true;
     } catch (final Exception e) {
       LOGGER.warn(
           String.format(
               "Increase reference count for TsFile %s or modFile %s error. Holder Message: %s",
-              tsFile, modFile, holderMessage),
+              tsFile, oldModFile, holderMessage),
           e);
       return false;
     }
@@ -259,8 +261,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     try {
       PipeDataNodeResourceManager.tsfile().decreaseFileReference(tsFile);
-      if (isWithMod) {
-        PipeDataNodeResourceManager.tsfile().decreaseFileReference(modFile);
+      if (isWithOldMod) {
+        PipeDataNodeResourceManager.tsfile().decreaseFileReference(oldModFile);
       }
       return true;
     } catch (final Exception e) {
@@ -322,7 +324,7 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
       final long endTime) {
     return new PipeTsFileInsertionEvent(
         resource,
-        isWithMod,
+        isWithOldMod,
         isLoaded,
         isGeneratedByPipe,
         isGeneratedByHistoricalExtractor,

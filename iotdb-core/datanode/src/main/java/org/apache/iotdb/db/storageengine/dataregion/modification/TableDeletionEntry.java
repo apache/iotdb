@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.tsfile.read.common.TimeRange;
 
 public class TableDeletionEntry extends ModEntry {
@@ -43,9 +45,47 @@ public class TableDeletionEntry extends ModEntry {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    super.serialize(buffer);
+    predicate.serialize(buffer);
+  }
+
+  @Override
   public void deserialize(InputStream stream) throws IOException {
     super.deserialize(stream);
     predicate = new DeletionPredicate();
     predicate.deserialize(stream);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    super.deserialize(buffer);
+    predicate = new DeletionPredicate();
+    predicate.deserialize(buffer);
+  }
+
+  @Override
+  public boolean matchesFull(PartialPath path) {
+    return false;
+  }
+
+  @Override
+  public String toString() {
+    return "TableDeletionEntry{" +
+        "predicate=" + predicate +
+        ", timeRange=" + timeRange +
+        '}';
+  }
+
+  @Override
+  public int compareTo(ModEntry o) {
+    if (this.getType() != o.getType()) {
+      return Byte.compare(this.getType().getTypeNum(), o.getType().getTypeNum());
+    }
+    return 0;
+  }
+
+  public TableDeletionEntry clone() {
+    return new TableDeletionEntry(predicate, new TimeRange(timeRange.getMin(), timeRange.getMax()));
   }
 }

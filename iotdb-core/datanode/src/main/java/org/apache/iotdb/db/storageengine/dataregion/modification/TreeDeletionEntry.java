@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Comparator;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
@@ -28,6 +30,7 @@ import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class TreeDeletionEntry extends ModEntry {
+
   private PartialPath pathPattern;
 
   public TreeDeletionEntry() {
@@ -44,6 +47,17 @@ public class TreeDeletionEntry extends ModEntry {
     this.timeRange = timeRange;
   }
 
+  public TreeDeletionEntry(PartialPath path, long endTime) {
+    this();
+    this.pathPattern = path;
+    this.timeRange = new TimeRange(Long.MIN_VALUE, endTime);
+  }
+
+  public TreeDeletionEntry(TreeDeletionEntry another) {
+    this(another.pathPattern,
+        new TimeRange(another.timeRange.getMin(), another.timeRange.getMax()));
+  }
+
   public TreeDeletionEntry(Deletion deletion) {
     this(deletion.getPath(), deletion.getTimeRange());
   }
@@ -55,6 +69,12 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    super.serialize(buffer);
+    ReadWriteIOUtils.writeVar(pathPattern.getFullPath(), buffer);
+  }
+
+  @Override
   public void deserialize(InputStream stream) throws IOException {
     super.deserialize(stream);
     try {
@@ -62,5 +82,59 @@ public class TreeDeletionEntry extends ModEntry {
     } catch (IllegalPathException e) {
       throw new IOException(e);
     }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    super.deserialize(buffer);
+    try {
+      this.pathPattern = new PartialPath(ReadWriteIOUtils.readVarIntString(buffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException(e);
+    }
+  }
+
+  @Override
+  public boolean matchesFull(PartialPath path) {
+    return pathPattern.matchFullPath(path);
+  }
+
+  @Override
+  public String toString() {
+    return "TreeDeletionEntry{" +
+        "pathPattern=" + pathPattern +
+        ", timeRange=" + timeRange +
+        '}';
+  }
+
+  public PartialPath getPathPattern() {
+    return pathPattern;
+  }
+
+  @Override
+  public int compareTo(ModEntry o) {
+    if (this.getType() != o.getType()) {
+      return Byte.compare(this.getType().getTypeNum(), o.getType().getTypeNum());
+    }
+    TreeDeletionEntry o1 = (TreeDeletionEntry) o;
+    return Comparator.comparing(TreeDeletionEntry::getPathPattern)
+        .thenComparing(TreeDeletionEntry::getTimeRange).compare(this, o1);
+  }
+
+  public boolean intersects(TreeDeletionEntry deletion) {
+    if (super.equals(deletion)) {
+      return this.timeRange.intersects(deletion.getTimeRange());
+    } else {
+      return false;
+    }
+  }
+
+  public void merge(TreeDeletionEntry deletion) {
+    this.timeRange.merge(deletion.getTimeRange());
+  }
+
+  public long getSerializedSize() {
+    return modType.getSerializedSize() + Integer.BYTES
+        + (long) pathPattern.getFullPath().length() * Character.BYTES;
   }
 }
