@@ -31,15 +31,6 @@ import java.io.IOException;
 public class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
 
   private static final byte[] intPlaceHolder = new byte[4];
-  private final int limit;
-
-  public RewritableByteArrayOutputStream(final int limit) {
-    this.limit = limit;
-  }
-
-  public boolean exceedCapacity(final int newGrowth) {
-    return newGrowth + count > limit;
-  }
 
   public void writeWithLength(final byte[] bytes) throws IOException {
     ReadWriteIOUtils.write(bytes.length, this);

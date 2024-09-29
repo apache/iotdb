@@ -110,6 +110,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
@@ -1492,7 +1493,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo() {
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final AtomicInteger limit) {
     // TODO
     return null;
   }

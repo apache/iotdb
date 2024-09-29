@@ -21,6 +21,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.tsfile.utils.Pair;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
 public interface UpdateContainer {
@@ -39,7 +41,7 @@ public interface UpdateContainer {
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
   // thrift threshold and low bandwidth
   // The "limitBytes" shall be at least 4 for a "0" to indicate empty
-  byte[] getUpdateContent(final int limitBytes);
+  byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes);
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
 

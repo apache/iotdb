@@ -24,6 +24,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.IOException;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 @ThreadSafe
@@ -100,29 +102,32 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent(final int limitBytes) {
-    final RewritableByteArrayOutputStream outputStream =
-        new RewritableByteArrayOutputStream(limitBytes);
+  public byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes) {
+    final RewritableByteArrayOutputStream outputStream = new RewritableByteArrayOutputStream();
     try {
-      serializeWithLimit(outputStream);
+      serializeWithLimit(outputStream, limitBytes);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
     }
     return outputStream.toByteArray();
   }
 
-  private void serializeWithLimit(final RewritableByteArrayOutputStream outputStream)
+  private void serializeWithLimit(
+      final RewritableByteArrayOutputStream outputStream, final AtomicInteger limitBytes)
       throws IOException {
     ReadWriteIOUtils.write((byte) 1, outputStream);
     final int mapSizeOffset = outputStream.skipInt();
     int mapEntryCount = 0;
+    int newSize;
     for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
         tableEntry : updateMap.entrySet()) {
       final byte[] tableEntryBytes = tableEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET);
-      if (outputStream.exceedCapacity(2 * Integer.BYTES + tableEntryBytes.length)) {
+      newSize = 2 * Integer.BYTES + tableEntryBytes.length;
+      if (limitBytes.get() < newSize) {
         outputStream.rewrite(mapEntryCount, mapSizeOffset);
         return;
       }
+      limitBytes.addAndGet(-newSize);
       ++mapEntryCount;
       outputStream.writeWithLength(tableEntryBytes);
       final int deviceSizeOffset = outputStream.skipInt();
@@ -133,15 +138,16 @@ public class UpdateDetailContainer implements UpdateContainer {
             Arrays.stream(deviceEntry.getKey())
                 .map(str -> str.getBytes(TSFileConfig.STRING_CHARSET))
                 .toArray(byte[][]::new);
-        if (outputStream.exceedCapacity(
+
+        newSize =
             (Integer.BYTES * (deviceIdBytes.length + 2))
-                + Arrays.stream(deviceIdBytes)
-                    .map(bytes -> bytes.length)
-                    .reduce(0, Integer::sum))) {
+                + Arrays.stream(deviceIdBytes).map(bytes -> bytes.length).reduce(0, Integer::sum);
+        if (limitBytes.get() < newSize) {
           outputStream.rewrite(mapEntryCount, mapSizeOffset);
           outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
           return;
         }
+        limitBytes.addAndGet(-newSize);
         ++deviceEntryCount;
         ReadWriteIOUtils.write(deviceEntry.getKey().length, outputStream);
         for (final byte[] node : deviceIdBytes) {
@@ -152,13 +158,14 @@ public class UpdateDetailContainer implements UpdateContainer {
         for (final Map.Entry<String, String> attributeKV : deviceEntry.getValue().entrySet()) {
           final byte[] keyBytes = attributeKV.getKey().getBytes(TSFileConfig.STRING_CHARSET);
           final byte[] valueBytes = attributeKV.getValue().getBytes(TSFileConfig.STRING_CHARSET);
-          if (outputStream.exceedCapacity(
-              2 * Integer.BYTES + keyBytes.length + valueBytes.length)) {
+          newSize = 2 * Integer.BYTES + keyBytes.length + valueBytes.length;
+          if (limitBytes.get() < newSize) {
             outputStream.rewrite(mapEntryCount, mapSizeOffset);
             outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
             outputStream.rewrite(attributeCount, attributeOffset);
             return;
           }
+          limitBytes.addAndGet(-newSize);
           outputStream.writeWithLength(keyBytes);
           outputStream.writeWithLength(valueBytes);
           ++attributeCount;

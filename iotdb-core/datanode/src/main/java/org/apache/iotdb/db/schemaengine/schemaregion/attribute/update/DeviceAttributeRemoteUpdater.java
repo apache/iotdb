@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -48,6 +47,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -102,7 +102,7 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final int limit) {
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final AtomicInteger limit) {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail
     // container because the update map is read by GRASS thread, and the container's size may change
     // during the read process
@@ -111,14 +111,7 @@ public class DeviceAttributeRemoteUpdater {
         attributeUpdateMap.entrySet().stream()
             .collect(
                 Collectors.toMap(
-                    Map.Entry::getKey,
-                    entry ->
-                        entry
-                            .getValue()
-                            .getUpdateContent(
-                                CommonDescriptor.getInstance()
-                                    .getConfig()
-                                    .getPipeConnectorRequestSliceThresholdBytes()))));
+                    Map.Entry::getKey, entry -> entry.getValue().getUpdateContent(limit))));
   }
 
   public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {

@@ -133,6 +133,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
@@ -1563,8 +1564,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo() {
-    return deviceAttributeRemoteUpdater.getAttributeUpdateInfo(0);
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final AtomicInteger limit) {
+    return deviceAttributeRemoteUpdater.getAttributeUpdateInfo(limit);
   }
 
   // endregion

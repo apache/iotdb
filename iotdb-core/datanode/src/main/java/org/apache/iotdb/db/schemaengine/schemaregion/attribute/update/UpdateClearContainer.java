@@ -23,6 +23,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
 import java.io.ByteArrayOutputStream;
@@ -34,6 +35,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
 public class UpdateClearContainer implements UpdateContainer {
@@ -63,7 +65,7 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent(final int limitBytes) {
+  public byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes) {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       serialize(outputStream);

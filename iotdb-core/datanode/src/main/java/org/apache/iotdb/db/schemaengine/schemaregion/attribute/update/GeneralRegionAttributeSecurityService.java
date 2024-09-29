@@ -22,6 +22,7 @@ package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -85,11 +87,17 @@ public class GeneralRegionAttributeSecurityService {
   private void execute() {
     lock.lock();
     try {
+      final AtomicInteger limit =
+          new AtomicInteger(
+              CommonDescriptor.getInstance()
+                  .getConfig()
+                  .getPipeConnectorRequestSliceThresholdBytes());
       final Map<SchemaRegionId, Pair<Long, Map<TEndPoint, byte[]>>> attributeUpdateCommitMap =
           regionLeaders.stream()
               .collect(
                   Collectors.toMap(
-                      ISchemaRegion::getSchemaRegionId, ISchemaRegion::getAttributeUpdateInfo));
+                      ISchemaRegion::getSchemaRegionId,
+                      schemaRegion -> schemaRegion.getAttributeUpdateInfo(limit)));
 
       // Send
 
