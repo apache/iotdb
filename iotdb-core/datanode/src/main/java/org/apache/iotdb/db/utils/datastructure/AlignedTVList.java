@@ -1375,6 +1375,9 @@ public abstract class AlignedTVList extends TVList {
         index = i;
       }
     }
+    if (maxSize == 0) {
+      return 0;
+    }
     if (bitMaps == null || bitMaps.get(index) == null) {
       pointNum = rowCount;
     } else {
