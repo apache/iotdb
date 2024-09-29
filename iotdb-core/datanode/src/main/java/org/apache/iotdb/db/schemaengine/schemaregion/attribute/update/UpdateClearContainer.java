@@ -27,17 +27,14 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
@@ -79,8 +76,8 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   private void serializeWithLimit(
-          final RewritableByteArrayOutputStream outputStream, final AtomicInteger limitBytes)
-          throws IOException {
+      final RewritableByteArrayOutputStream outputStream, final AtomicInteger limitBytes)
+      throws IOException {
     ReadWriteIOUtils.write((byte) 0, outputStream);
     final int setSizeOffset = outputStream.skipInt();
     int setEntryCount = 0;
