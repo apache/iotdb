@@ -26,10 +26,10 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class GeneralRegionAttributeSecurityService {
   private static final Logger LOGGER =
@@ -84,7 +85,13 @@ public class GeneralRegionAttributeSecurityService {
   private void execute() {
     lock.lock();
     try {
-      final Map<SchemaRegionId, Map<TEndPoint, byte[]>> attributeUpdateCommitMap = new HashMap<>();
+      final Map<SchemaRegionId, Pair<Long, Map<TEndPoint, byte[]>>> attributeUpdateCommitMap =
+          regionLeaders.stream()
+              .collect(
+                  Collectors.toMap(
+                      ISchemaRegion::getSchemaRegionId, ISchemaRegion::getAttributeUpdateMap));
+
+      // Send
 
       if (!skipNext) {
         condition.await(
