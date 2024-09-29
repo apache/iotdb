@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -43,7 +42,6 @@ public class GeneralRegionAttributeSecurityService {
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
 
-  private Future<?> executorFuture;
   private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
@@ -51,7 +49,7 @@ public class GeneralRegionAttributeSecurityService {
 
   public void startBroadcast(final SchemaRegionId id) {
     if (regionLeaders.isEmpty()) {
-      executorFuture = securityServiceExecutor.submit(this::execute);
+      securityServiceExecutor.submit(this::execute);
       LOGGER.info("General region attribute security service is started successfully.");
     }
 
@@ -62,8 +60,7 @@ public class GeneralRegionAttributeSecurityService {
     regionLeaders.remove(id);
 
     if (regionLeaders.isEmpty()) {
-      executorFuture.cancel(false);
-      executorFuture = null;
+      securityServiceExecutor.shutdown();
       LOGGER.info("General region attribute security service is stopped successfully.");
     }
   }
