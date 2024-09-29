@@ -92,6 +92,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
 public class CnToDnInternalServiceAsyncRequestManager
     extends DataNodeInternalServiceRequestManager<CnToDnAsyncRequestType> {
@@ -359,18 +363,30 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnAsyncRequestType.UPDATE_TABLE,
-        (req, client, handler) ->
-            client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnRequestType.CLEAN_DATA_NODE_CACHE,
-        (req, client, handler) ->
-            client.cleanDataNodeCache(
-                (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnRequestType.STOP_DATA_NODE,
-        (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
+      actionMapBuilder.put(
+              CnToDnAsyncRequestType.UPDATE_TABLE,
+              (req, client, handler) ->
+                      client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+      actionMapBuilder.put(
+              CnToDnAsyncRequestType.CLEAN_DATA_NODE_CACHE,
+              (req, client, handler) ->
+                      client.cleanDataNodeCache(
+                              (TCleanDataNodeCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
+      actionMapBuilder.put(
+              CnToDnAsyncRequestType.STOP_DATA_NODE,
+              (req, client, handler) -> client.stopDataNode((DataNodeTSStatusRPCHandler) handler));
+  }
+
+  @Override
+  protected void checkActionMapCompleteness() {
+    List<CnToDnAsyncRequestType> lackList =
+        Arrays.stream(CnToDnAsyncRequestType.values())
+            .filter(type -> !actionMap.containsKey(type))
+            .collect(Collectors.toList());
+    if (!lackList.isEmpty()) {
+      LOGGER.error("These request types must be added to actionMap: {}", lackList);
+      System.exit(-1);
+    }
   }
 
   @Override
