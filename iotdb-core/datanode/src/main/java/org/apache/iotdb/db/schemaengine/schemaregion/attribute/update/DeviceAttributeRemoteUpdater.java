@@ -102,6 +102,10 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
+  public long getVersion() {
+    return version.get();
+  }
+
   public Map<TEndPoint, byte[]> getSendBuffer() {
     return attributeUpdateMap.entrySet().stream()
         .collect(
