@@ -343,6 +343,15 @@ struct TLoadCommandReq {
     4: optional binary progressIndex
 }
 
+struct TAttributeUpdateReq {
+  1:required map<i32, TSchemaRegionAttributeInfo> attributeUpdateMap
+}
+
+struct TSchemaRegionAttributeInfo {
+  1:required i64 version
+  2:required binary body
+}
+
 struct TLoadResp {
   1: required bool accepted
   2: optional string message
@@ -682,6 +691,8 @@ service IDataNodeRPCService {
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
   TLoadResp sendLoadCommand(TLoadCommandReq req);
+
+  common.TSStatus updateAttribute(TAttributeUpdateReq req);
 
 
   // -----------------------------------For Config Node-----------------------------------------------
