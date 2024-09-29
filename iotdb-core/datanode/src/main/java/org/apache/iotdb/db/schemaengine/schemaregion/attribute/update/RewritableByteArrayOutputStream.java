@@ -28,30 +28,26 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 @NotThreadSafe
-public class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
+class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
 
   private static final byte[] intPlaceHolder = new byte[4];
 
-  public void writeWithLength(final byte[] bytes) throws IOException {
+  void writeWithLength(final byte[] bytes) throws IOException {
     ReadWriteIOUtils.write(bytes.length, this);
     write(bytes);
   }
 
-  public int skipInt() throws IOException {
+  int skipInt() throws IOException {
     final int result = count;
     write(intPlaceHolder);
     return result;
   }
 
-  public void rewrite(final int n, final int off) {
+  void rewrite(final int n, final int off) {
     byte[] bytes = BytesUtils.intToBytes(n);
     if ((off < 0) || (off > buf.length - bytes.length)) {
       throw new IndexOutOfBoundsException();
     }
     System.arraycopy(bytes, 0, buf, off, bytes.length);
-  }
-
-  public int getCount() {
-    return count;
   }
 }

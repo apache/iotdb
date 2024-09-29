@@ -115,7 +115,7 @@ public class DeviceAttributeRemoteUpdater {
         continue;
       }
       // type(1) + size(4)
-      if (limit.get() < 5) {
+      if (limit.get() <= 5) {
         break;
       }
       limit.addAndGet(-5);
