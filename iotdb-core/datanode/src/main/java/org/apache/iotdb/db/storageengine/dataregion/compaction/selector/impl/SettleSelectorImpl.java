@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
@@ -216,10 +218,18 @@ public class SettleSelectorImpl implements ISettleSelector {
     for (IDeviceID device : ((ArrayDeviceTimeIndex) timeIndex).getDevices()) {
       // check expired device by ttl
       // TODO: remove deviceId conversion
-      long deviceTTL = DataNodeTTLCache.getInstance().getTTL(device);
-      boolean hasSetTTL = deviceTTL != Long.MAX_VALUE;
+
+      long ttl;
+      if (context.isIgnoreAllNullRows()) {
+        ttl = DataNodeTreeTTLCache.getInstance().getTTL(device);
+      } else {
+        TsTable tsTable =
+            DataNodeTableCache.getInstance().getTable(storageGroupName, device.getTableName());
+        ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+      }
+      boolean hasSetTTL = ttl != Long.MAX_VALUE;
       boolean isDeleted =
-          !timeIndex.isDeviceAlive(device, deviceTTL)
+          !timeIndex.isDeviceAlive(device, ttl)
               || isDeviceDeletedByMods(
                   modifications,
                   device,
@@ -234,8 +244,7 @@ public class SettleSelectorImpl implements ISettleSelector {
         }
         long outdatedTimeDiff = currentTime - timeIndex.getEndTime(device);
         hasExpiredTooLong =
-            hasExpiredTooLong
-                || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * deviceTTL);
+            hasExpiredTooLong || outdatedTimeDiff > Math.min(config.getMaxExpiredTime(), 3 * ttl);
       }
 
       if (isDeleted) {

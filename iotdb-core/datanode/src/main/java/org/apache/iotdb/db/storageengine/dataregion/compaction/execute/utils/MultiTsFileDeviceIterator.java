@@ -24,8 +24,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -73,6 +75,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private long timeLowerBoundForCurrentDevice;
   private boolean ignoreAllNullRows = true;
+  private final String databaseName;
 
   /**
    * Used for compaction with read chunk performer.
@@ -81,6 +84,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    */
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources, boolean ignoreAllNullRows)
       throws IOException {
+    this.databaseName = tsFileResources.get(0).getDatabaseName();
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
     // sort the files from the oldest to the newest
@@ -119,6 +123,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
+    this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -144,6 +149,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
+    this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort tsfiles from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
@@ -216,10 +222,17 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     for (TsFileResource resource : toBeRemovedResources) {
       deviceIteratorMap.remove(resource);
     }
+    long ttl;
 
-    timeLowerBoundForCurrentDevice =
-        CommonDateTimeUtils.currentTime()
-            - DataNodeTTLCache.getInstance().getTTL(currentDevice.getLeft());
+    IDeviceID deviceID = currentDevice.left;
+    if (!ignoreAllNullRows) {
+      String tableName = deviceID.getTableName();
+      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+      ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+    } else {
+      ttl = DataNodeTreeTTLCache.getInstance().getTTL(deviceID);
+    }
+    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttl;
     return currentDevice;
   }
 

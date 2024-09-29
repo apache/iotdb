@@ -52,7 +52,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -861,20 +861,20 @@ public class StorageEngine implements IService {
     long ttl = req.getTTL();
     boolean isDataBase = req.isDataBase;
     if (ttl == TTLCache.NULL_TTL) {
-      DataNodeTTLCache.getInstance().unsetTTL(path);
+      DataNodeTreeTTLCache.getInstance().unsetTTL(path);
       if (isDataBase) {
         // unset ttl to path.**
         String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
         pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-        DataNodeTTLCache.getInstance().unsetTTL(pathWithWildcard);
+        DataNodeTreeTTLCache.getInstance().unsetTTL(pathWithWildcard);
       }
     } else {
-      DataNodeTTLCache.getInstance().setTTL(path, ttl);
+      DataNodeTreeTTLCache.getInstance().setTTL(path, ttl);
       if (isDataBase) {
         // set ttl to path.**
         String[] pathWithWildcard = Arrays.copyOf(path, path.length + 1);
         pathWithWildcard[pathWithWildcard.length - 1] = IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-        DataNodeTTLCache.getInstance().setTTL(pathWithWildcard, ttl);
+        DataNodeTreeTTLCache.getInstance().setTTL(pathWithWildcard, ttl);
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

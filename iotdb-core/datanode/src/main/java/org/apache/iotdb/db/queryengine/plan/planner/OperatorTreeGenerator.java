@@ -158,7 +158,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils;
 import org.apache.iotdb.db.queryengine.plan.analyze.TemplatedInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.leaf.TimeSeriesOperand;
@@ -2812,7 +2812,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     } else if (!LastQueryUtil.satisfyFilter(
         updateFilterUsingTTL(
             context.getGlobalTimeFilter(),
-            DataNodeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes())),
+            DataNodeTreeTTLCache.getInstance().getTTL(seriesPath.getDevicePath().getNodes())),
         timeValuePair)) { // cached last value is not satisfied
 
       if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -3027,7 +3027,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       } else if (!LastQueryUtil.satisfyFilter(
           updateFilterUsingTTL(
               context.getGlobalTimeFilter(),
-              DataNodeTTLCache.getInstance().getTTL(devicePath.getNodes())),
+              DataNodeTreeTTLCache.getInstance().getTTL(devicePath.getNodes())),
           timeValuePair)) { // cached last value is not satisfied
 
         if (!isFilterGtOrGe(context.getGlobalTimeFilter())) {
@@ -3723,7 +3723,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       PartialPath devicePath = entry.getKey();
       IDeviceID deviceID = devicePath.getIDeviceID();
       deviceIDToContext.put(deviceID, entry.getValue());
-      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
+      ttlCache.put(deviceID, DataNodeTreeTTLCache.getInstance().getTTL(deviceID));
     }
     ActiveDeviceRegionScanOperator regionScanOperator =
         new ActiveDeviceRegionScanOperator(
@@ -3764,7 +3764,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       Map<String, TimeseriesContext> timeseriesSchemaInfoMap =
           getTimeseriesSchemaInfoMap(entryMap, dataDriverContext);
       timeseriesToSchemaInfo.put(deviceID, timeseriesSchemaInfoMap);
-      ttlCache.put(deviceID, DataNodeTTLCache.getInstance().getTTL(deviceID));
+      ttlCache.put(deviceID, DataNodeTreeTTLCache.getInstance().getTTL(deviceID));
     }
     ActiveTimeSeriesRegionScanOperator regionScanOperator =
         new ActiveTimeSeriesRegionScanOperator(

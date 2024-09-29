@@ -112,6 +112,27 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testInsertWithTTL() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg1 (id1 string id, s1 int32 measurement)");
+      statement.execute("alter table sg1 set properties TTL=1");
+      statement.execute(
+          String.format(
+              "insert into sg1(id1,time,s1) values('d1',%s,2)", System.currentTimeMillis() - 10000));
+      statement.execute("flush");
+      ResultSet rs1 = statement.executeQuery("select time, s1 from sg1 where id1 = 'd1'");
+      rs1.next();
+      System.out.println(rs1.getTime(1));
+      System.out.println(rs1.getInt(2));
+//      assertFalse(rs1.next());
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testInsertTimeAtAnyIndex() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {

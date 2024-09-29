@@ -30,21 +30,21 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DataNodeTTLCache {
+public class DataNodeTreeTTLCache {
   private final TTLCache ttlCache;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private DataNodeTTLCache() {
+  private DataNodeTreeTTLCache() {
     ttlCache = new TTLCache();
   }
 
-  public static DataNodeTTLCache getInstance() {
+  public static DataNodeTreeTTLCache getInstance() {
     return DataNodeTTLCacheHolder.INSTANCE;
   }
 
   private static class DataNodeTTLCacheHolder {
-    private static final DataNodeTTLCache INSTANCE = new DataNodeTTLCache();
+    private static final DataNodeTreeTTLCache INSTANCE = new DataNodeTreeTTLCache();
   }
 
   @TestOnly
@@ -78,7 +78,7 @@ public class DataNodeTTLCache {
   public long getTTL(IDeviceID deviceID) {
     lock.readLock().lock();
     try {
-      return ttlCache.getClosestTTL(CommonUtils.deviceIdToStringArray(deviceID));
+      return getTTL(CommonUtils.deviceIdToStringArray(deviceID));
     } finally {
       lock.readLock().unlock();
     }

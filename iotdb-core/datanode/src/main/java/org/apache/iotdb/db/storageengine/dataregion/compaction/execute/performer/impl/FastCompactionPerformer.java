@@ -22,9 +22,11 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -136,14 +138,16 @@ public class FastCompactionPerformer
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
+        long ttl;
+        if (ignoreAllNullRows) {
+          ttl = DataNodeTreeTTLCache.getInstance().getTTL(device);
+        } else {
+          TsTable tsTable =
+              DataNodeTableCache.getInstance().getTable(getDatabaseName(), device.getTableName());
+          ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+        }
         sortedSourceFiles.removeIf(
-            x ->
-                x.definitelyNotContains(device)
-                    || !x.isDeviceAlive(
-                        device,
-                        DataNodeTTLCache.getInstance()
-                            // TODO: remove deviceId conversion
-                            .getTTL(device)));
+            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
         sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device)));
 
         if (sortedSourceFiles.isEmpty()) {
@@ -347,5 +351,11 @@ public class FastCompactionPerformer
       }
       modificationCache.put(resource.getTsFile().getName(), modifications);
     }
+  }
+
+  public String getDatabaseName() {
+    return !seqFiles.isEmpty()
+        ? seqFiles.get(0).getDatabaseName()
+        : unseqFiles.get(0).getDatabaseName();
   }
 }
