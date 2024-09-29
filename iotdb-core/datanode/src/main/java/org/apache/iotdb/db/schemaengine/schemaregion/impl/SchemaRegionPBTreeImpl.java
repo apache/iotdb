@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -1488,6 +1489,12 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
       String table, List<Object[]> devicePathList) throws MetadataException {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap() {
+    // TODO
+    return null;
   }
 
   // endregion

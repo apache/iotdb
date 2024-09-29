@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -1559,6 +1560,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       final String table, final List<Object[]> devicePathList) {
     return mtree.getTableDeviceReader(
         table, devicePathList, (pointer, name) -> deviceAttributeStore.getAttribute(pointer, name));
+  }
+
+  @Override
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap() {
+    return deviceAttributeRemoteUpdater.getAttributeUpdateMap(0);
   }
 
   // endregion

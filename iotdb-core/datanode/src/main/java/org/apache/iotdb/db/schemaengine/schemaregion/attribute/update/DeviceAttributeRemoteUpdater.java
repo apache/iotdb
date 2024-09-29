@@ -102,22 +102,20 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
-  public long getVersion() {
-    return version.get();
-  }
-
-  public Map<TEndPoint, byte[]> getSendBuffer() {
-    return attributeUpdateMap.entrySet().stream()
-        .collect(
-            Collectors.toMap(
-                Map.Entry::getKey,
-                entry ->
-                    entry
-                        .getValue()
-                        .getUpdateContent(
-                            CommonDescriptor.getInstance()
-                                .getConfig()
-                                .getPipeConnectorRequestSliceThresholdBytes())));
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap(final int limit) {
+    return new Pair<>(
+        version.get(),
+        attributeUpdateMap.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry ->
+                        entry
+                            .getValue()
+                            .getUpdateContent(
+                                CommonDescriptor.getInstance()
+                                    .getConfig()
+                                    .getPipeConnectorRequestSliceThresholdBytes()))));
   }
 
   public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {
