@@ -30,7 +30,7 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.execution.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
@@ -1193,11 +1193,11 @@ public class OperatorMemoryTest {
     PlanNodeId planNodeId = new PlanNodeId("1");
     driverContext.addOperatorContext(1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1249,11 +1249,11 @@ public class OperatorMemoryTest {
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1322,11 +1322,11 @@ public class OperatorMemoryTest {
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),
@@ -1402,11 +1402,11 @@ public class OperatorMemoryTest {
                 AggregationStep.FINAL,
                 Collections.singletonList(new TimeSeriesOperand(measurementPath))));
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TreeAggregator> aggregators = new ArrayList<>();
     aggregationDescriptors.forEach(
         o ->
             aggregators.add(
-                new Aggregator(
+                new TreeAggregator(
                     AccumulatorFactory.createBuiltinAccumulator(
                         o.getAggregationType(),
                         Collections.singletonList(measurementPath.getSeriesType()),

@@ -51,13 +51,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableAggregationTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableFullOuterJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Accumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAggregator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -946,7 +945,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode node, Operator child, TypeProvider typeProvider, OperatorContext context) {
 
     Map<Symbol, AggregationNode.Aggregation> aggregationMap = node.getAggregations();
-    ImmutableList.Builder<Aggregator> aggregatorBuilder = new ImmutableList.Builder<>();
+    ImmutableList.Builder<TableAggregator> aggregatorBuilder = new ImmutableList.Builder<>();
     Map<Symbol, Integer> childLayout =
         makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
 
@@ -955,7 +954,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             symbol ->
                 aggregatorBuilder.add(
                     buildAggregator(
-                        childLayout, aggregationMap.get(symbol), node.getStep(), typeProvider)));
+                        symbol,
+                        childLayout,
+                        aggregationMap.get(symbol),
+                        node.getStep(),
+                        typeProvider)));
     return new AggregationOperator(context, child, aggregatorBuilder.build());
   }
 
@@ -969,7 +972,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return outputMappings.buildOrThrow();
   }
 
-  private Aggregator buildAggregator(
+  private TableAggregator buildAggregator(
+      Symbol aggregationSymbol,
       Map<Symbol, Integer> childLayout,
       AggregationNode.Aggregation aggregation,
       AggregationNode.Step step,
@@ -999,10 +1003,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             Collections.emptyMap(),
             true);
 
-    return new Aggregator(
+    return new TableAggregator(
         accumulator,
         step,
-        getTSDataType(aggregation.getResolvedFunction().getSignature().getReturnType()),
+        getTSDataType(typeProvider.getTableModelType(aggregationSymbol)),
         argumentChannels,
         OptionalInt.empty());
   }
@@ -1016,16 +1020,17 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TableAggregationTableScanOperator.class.getSimpleName());
+                AggregationTableScanNode.class.getSimpleName());
 
-    List<Aggregator> aggregators = new ArrayList<>();
+    List<TableAggregator> aggregators = new ArrayList<>();
 
     // TODO fix childLayout
     Map<Symbol, Integer> childLayout = new HashMap<>();
 
     for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
-      Aggregator aggregator =
-          buildAggregator(childLayout, entry.getValue(), node.getStep(), context.getTypeProvider());
+      TableAggregator aggregator =
+          buildAggregator(
+              null, childLayout, entry.getValue(), node.getStep(), context.getTypeProvider());
       aggregators.add(aggregator);
     }
 

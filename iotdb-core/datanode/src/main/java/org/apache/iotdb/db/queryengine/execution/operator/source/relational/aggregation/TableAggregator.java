@@ -27,14 +27,14 @@ import java.util.OptionalInt;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
-public class Aggregator {
+public class TableAggregator {
   private final Accumulator accumulator;
   private final AggregationNode.Step step;
   private final TSDataType outputType;
   private final int[] inputChannels;
   private final OptionalInt maskChannel;
 
-  public Aggregator(
+  public TableAggregator(
       Accumulator accumulator,
       AggregationNode.Step step,
       TSDataType outputType,

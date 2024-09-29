@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.driver.DriverContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
@@ -97,10 +97,10 @@ public class LastQueryTreeSortOperatorTest {
   @Test
   public void testLastQuerySortOperatorAsc() {
     try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath2 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
@@ -225,10 +225,10 @@ public class LastQueryTreeSortOperatorTest {
   @Test
   public void testLastQuerySortOperatorDesc() {
     try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
+      List<TreeAggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath2 =
           new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
       Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");

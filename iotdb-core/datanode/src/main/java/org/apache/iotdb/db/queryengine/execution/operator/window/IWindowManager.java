@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.window;
 
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -98,9 +98,9 @@ public interface IWindowManager {
    * @param aggregators the list of aggregators
    * @return Aggregation result column type list.
    */
-  default List<TSDataType> getResultDataTypes(List<Aggregator> aggregators) {
+  default List<TSDataType> getResultDataTypes(List<TreeAggregator> aggregators) {
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     return dataTypes;
@@ -115,7 +115,7 @@ public interface IWindowManager {
    * @param aggregators the list of aggregators
    * @return TsBlockBuilder of resultSet
    */
-  TsBlockBuilder createResultTsBlockBuilder(List<Aggregator> aggregators);
+  TsBlockBuilder createResultTsBlockBuilder(List<TreeAggregator> aggregators);
 
   /**
    * Used to append a row of aggregation result into the resultSet.
@@ -127,7 +127,8 @@ public interface IWindowManager {
    * @param resultTsBlockBuilder tsBlockBuilder for resultSet
    * @param aggregators the list of aggregators
    */
-  void appendAggregationResult(TsBlockBuilder resultTsBlockBuilder, List<Aggregator> aggregators);
+  void appendAggregationResult(
+      TsBlockBuilder resultTsBlockBuilder, List<TreeAggregator> aggregators);
 
   /**
    * Especially for TimeWindow, if there are no points belong to last TimeWindow, the last
@@ -160,7 +161,7 @@ public interface IWindowManager {
    * @param endTime if the window doesn't need to output endTime, just assign -1 to endTime.
    */
   default void outputAggregators(
-      List<Aggregator> aggregators,
+      List<TreeAggregator> aggregators,
       TsBlockBuilder resultTsBlockBuilder,
       long startTime,
       long endTime) {
@@ -173,7 +174,7 @@ public interface IWindowManager {
       columnBuilders[0].writeLong(endTime);
       columnIndex = 1;
     }
-    for (Aggregator aggregator : aggregators) {
+    for (TreeAggregator aggregator : aggregators) {
       ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
       columnBuilder[0] = columnBuilders[columnIndex++];
       if (columnBuilder.length > 1) {

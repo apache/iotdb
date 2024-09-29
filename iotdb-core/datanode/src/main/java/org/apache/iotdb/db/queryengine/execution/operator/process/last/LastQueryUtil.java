@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.queryengine.execution.operator.process.last;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.db.queryengine.execution.aggregation.Aggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.LastValueDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.MaxTimeDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 
@@ -130,33 +130,33 @@ public class LastQueryUtil {
     return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
   }
 
-  public static List<Aggregator> createAggregators(TSDataType dataType) {
+  public static List<TreeAggregator> createAggregators(TSDataType dataType) {
     // max_time, last_value
-    List<Aggregator> aggregators = new ArrayList<>(2);
+    List<TreeAggregator> aggregators = new ArrayList<>(2);
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new MaxTimeDescAccumulator(),
             AggregationStep.SINGLE,
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)})));
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new LastValueDescAccumulator(dataType),
             AggregationStep.SINGLE,
             Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)})));
     return aggregators;
   }
 
-  public static List<Aggregator> createAggregators(TSDataType dataType, int valueColumnIndex) {
+  public static List<TreeAggregator> createAggregators(TSDataType dataType, int valueColumnIndex) {
     // max_time, last_value
-    List<Aggregator> aggregators = new ArrayList<>(2);
+    List<TreeAggregator> aggregators = new ArrayList<>(2);
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new MaxTimeDescAccumulator(),
             AggregationStep.SINGLE,
             Collections.singletonList(
                 new InputLocation[] {new InputLocation(0, valueColumnIndex)})));
     aggregators.add(
-        new Aggregator(
+        new TreeAggregator(
             new LastValueDescAccumulator(dataType),
             AggregationStep.SINGLE,
             Collections.singletonList(
