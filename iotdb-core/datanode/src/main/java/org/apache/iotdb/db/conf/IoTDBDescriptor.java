@@ -102,6 +102,10 @@ public class IoTDBDescriptor {
 
   private static final double MIN_DIR_USE_PROPORTION = 0.5;
 
+  private static final String[] DEFAULT_WAL_THRESHOLD_NAME = {
+    "iot_consensus_throttle_threshold_in_byte", "wal_throttle_threshold_in_byte"
+  };
+
   static {
     URL systemConfigUrl = getPropsUrl(CommonConfig.SYSTEM_CONFIG_NAME);
     URL configNodeUrl = getPropsUrl(CommonConfig.OLD_CONFIG_NODE_CONFIG_NAME);
@@ -1569,12 +1573,7 @@ public class IoTDBDescriptor {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
-    long throttleDownThresholdInByte =
-        Long.parseLong(
-            properties.getProperty(
-                "iot_consensus_throttle_threshold_in_byte",
-                ConfigurationFileUtils.getConfigurationDefaultValue(
-                    "iot_consensus_throttle_threshold_in_byte")));
+    long throttleDownThresholdInByte = Long.parseLong(getWalThrottleThreshold(properties));
     if (throttleDownThresholdInByte > 0) {
       conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
@@ -1588,6 +1587,43 @@ public class IoTDBDescriptor {
     if (cacheWindowInMs > 0) {
       conf.setCacheWindowTimeInMs(cacheWindowInMs);
     }
+  }
+
+  private String getWalThrottleThreshold(Properties prop) throws IOException {
+    byte bit = 0;
+    String new_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit], null);
+    String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit ^ 1], null);
+
+    // all configurations are set, return the current version prop
+    if (new_throttleThreshold != null && old_throttleThreshold != null) {
+      String version = getConfig().getIoTDBVersion();
+      LOGGER.warn(
+          "Both {} and {} are set in iotdb-system.properties, use current iotdb version config {}",
+          DEFAULT_WAL_THRESHOLD_NAME[bit],
+          DEFAULT_WAL_THRESHOLD_NAME[bit ^ 1],
+          version);
+      if (version.compareTo("1.3.3") >= 0) {
+        return new_throttleThreshold;
+      } else {
+        return old_throttleThreshold;
+      }
+    }
+    // new conf is set, return new conf
+    if (new_throttleThreshold != null) {
+      return new_throttleThreshold;
+    }
+    // old conf is set, return old conf
+    if (old_throttleThreshold != null) {
+      return old_throttleThreshold;
+    }
+    // default throttle threshold
+    for (String name : DEFAULT_WAL_THRESHOLD_NAME) {
+      String throttleThreshold = ConfigurationFileUtils.getConfigurationDefaultValue(name);
+      if (throttleThreshold != null) {
+        return throttleThreshold;
+      }
+    }
+    return null;
   }
 
   public long getThrottleThresholdWithDirs() {

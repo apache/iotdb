@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -31,6 +32,7 @@ import java.net.URLStreamHandler;
 import java.net.URLStreamHandlerFactory;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 public class IoTDBDescriptorTest {
   private final String confPath = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
@@ -57,6 +59,14 @@ public class IoTDBDescriptorTest {
     } else {
       System.clearProperty(IoTDBConstant.IOTDB_CONF);
     }
+  }
+
+  @Test
+  public void testWalThreshold() throws QueryProcessException {
+    Properties properties = new Properties();
+    IoTDBDescriptor.getInstance().loadHotModifiedProps(properties);
+    Assert.assertTrue(
+        IoTDBDescriptor.getInstance().getConfig().getWalFileSizeThresholdInByte() > 0);
   }
 
   @Test
