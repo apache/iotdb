@@ -68,6 +68,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateMatchedSchemaCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
@@ -260,6 +261,11 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.fetchSchemaBlackList(
                 (TFetchSchemaBlackListReq) req, (FetchSchemaBlackListRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnRequestType.INVALIDATE_SCHEMA_CACHE,
+        (req, client, handler) ->
+            client.invalidateSchemaCache(
+                (TInvalidateCacheReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnRequestType.INVALIDATE_MATCHED_SCHEMA_CACHE,
         (req, client, handler) ->
