@@ -167,6 +167,7 @@ import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -441,22 +442,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req) {
+  public TSchemaFetchResponse fetchSchema(final TSchemaFetchRequest req) {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public TLoadResp sendTsFilePieceNode(TTsFilePieceReq req) {
+  public TLoadResp sendTsFilePieceNode(final TTsFilePieceReq req) {
     LOGGER.info("Receive load node from uuid {}.", req.uuid);
 
-    ConsensusGroupId groupId =
+    final ConsensusGroupId groupId =
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.consensusGroupId);
-    LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
+    final LoadTsFilePieceNode pieceNode = (LoadTsFilePieceNode) PlanNodeType.deserialize(req.body);
     if (pieceNode == null) {
       return createTLoadResp(
           new TSStatus(TSStatusCode.DESERIALIZE_PIECE_OF_TSFILE_ERROR.getStatusCode()));
     }
-    TSStatus resultStatus =
+    final TSStatus resultStatus =
         StorageEngine.getInstance()
             .writeLoadTsFileNode((DataRegionId) groupId, pieceNode, req.uuid);
 
@@ -464,7 +465,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TLoadResp sendLoadCommand(TLoadCommandReq req) {
+  public TLoadResp sendLoadCommand(final TLoadCommandReq req) {
     final ProgressIndex progressIndex;
     if (req.isSetProgressIndex()) {
       progressIndex = ProgressIndexType.deserializeFrom(ByteBuffer.wrap(req.getProgressIndex()));
@@ -484,9 +485,15 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 progressIndex));
   }
 
-  private TLoadResp createTLoadResp(TSStatus resultStatus) {
-    boolean isAccepted = RpcUtils.SUCCESS_STATUS.equals(resultStatus);
-    TLoadResp loadResp = new TLoadResp(isAccepted);
+  @Override
+  public TSStatus updateAttribute(final TAttributeUpdateReq req) {
+    // TODO
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  private TLoadResp createTLoadResp(final TSStatus resultStatus) {
+    final boolean isAccepted = RpcUtils.SUCCESS_STATUS.equals(resultStatus);
+    final TLoadResp loadResp = new TLoadResp(isAccepted);
     if (!isAccepted) {
       loadResp.setMessage(resultStatus.getMessage());
       loadResp.setStatus(resultStatus);
@@ -495,7 +502,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus createSchemaRegion(TCreateSchemaRegionReq req) {
+  public TSStatus createSchemaRegion(final TCreateSchemaRegionReq req) {
     return regionManager.createSchemaRegion(req.getRegionReplicaSet(), req.getStorageGroup());
   }
 
