@@ -1599,10 +1599,9 @@ public class IoTDBDescriptor {
           DEFAULT_WAL_THRESHOLD_NAME[bit]);
       return old_throttleThreshold;
     }
-    String new_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit], null);
-    return new_throttleThreshold != null
-        ? new_throttleThreshold
-        : ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[bit]);
+    return prop.getProperty(
+        DEFAULT_WAL_THRESHOLD_NAME[bit],
+        ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[bit]));
   }
 
   public long getThrottleThresholdWithDirs() {
