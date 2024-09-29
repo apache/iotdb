@@ -107,6 +107,7 @@ public class UpdateDetailContainer implements UpdateContainer {
     final RewritableByteArrayOutputStream outputStream =
         new RewritableByteArrayOutputStream(limitBytes);
     try {
+      ReadWriteIOUtils.write((byte) 1, outputStream);
       serializeWithLimit(outputStream);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
@@ -179,6 +180,7 @@ public class UpdateDetailContainer implements UpdateContainer {
 
   @Override
   public void serialize(final OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write((byte) 1, outputStream);
     ReadWriteIOUtils.write(updateMap.size(), outputStream);
     for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
         tableEntry : updateMap.entrySet()) {

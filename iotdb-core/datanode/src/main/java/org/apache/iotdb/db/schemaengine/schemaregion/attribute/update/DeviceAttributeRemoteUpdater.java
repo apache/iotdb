@@ -210,7 +210,6 @@ public class DeviceAttributeRemoteUpdater {
     ReadWriteIOUtils.write(attributeUpdateMap.size(), outputStream);
     for (final Map.Entry<TEndPoint, UpdateContainer> entry : attributeUpdateMap.entrySet()) {
       ThriftCommonsSerDeUtils.serializeTEndPoint(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue() instanceof UpdateDetailContainer, outputStream);
       entry.getValue().serialize(outputStream);
     }
 

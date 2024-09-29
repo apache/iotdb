@@ -68,6 +68,7 @@ public class UpdateClearContainer implements UpdateContainer {
 
   @Override
   public void serialize(final OutputStream outputstream) throws IOException {
+    ReadWriteIOUtils.write((byte) 0, outputstream);
     ReadWriteIOUtils.write(tableNames.size(), outputstream);
     for (final String tableName : tableNames) {
       ReadWriteIOUtils.write(tableName, outputstream);
