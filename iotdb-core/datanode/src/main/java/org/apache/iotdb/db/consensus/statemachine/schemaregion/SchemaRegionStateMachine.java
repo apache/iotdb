@@ -53,7 +53,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   private static final FragmentInstanceManager QUERY_INSTANCE_MANAGER =
       FragmentInstanceManager.getInstance();
 
-  public SchemaRegionStateMachine(ISchemaRegion schemaRegion) {
+  public SchemaRegionStateMachine(final ISchemaRegion schemaRegion) {
     this.schemaRegion = schemaRegion;
   }
 
@@ -71,7 +71,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void notifyLeaderChanged(ConsensusGroupId groupId, int newLeaderId) {
+  public void notifyLeaderChanged(final ConsensusGroupId groupId, final int newLeaderId) {
     if (newLeaderId != IoTDBDescriptor.getInstance().getConfig().getDataNodeId()) {
       logger.info(
           "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
@@ -84,7 +84,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void notifyNotLeader() {
-    int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     logger.info(
         "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
             + "start cleaning up related services.",
@@ -127,7 +127,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public boolean takeSnapshot(File snapshotDir) {
+  public boolean takeSnapshot(final File snapshotDir) {
     if (schemaRegion.createSnapshot(snapshotDir)
         && PipeDataNodeAgent.runtime()
             .schemaListener(schemaRegion.getSchemaRegionId())
@@ -139,7 +139,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
+  public void loadSnapshot(final File latestSnapshotRootDir) {
     schemaRegion.loadSnapshot(latestSnapshotRootDir);
     PipeDataNodeAgent.runtime()
         .schemaListener(schemaRegion.getSchemaRegionId())
@@ -149,14 +149,14 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
     listen2Snapshot4PipeListener(false);
   }
 
-  public void listen2Snapshot4PipeListener(boolean isTmp) {
-    Pair<Path, Path> snapshotPaths =
+  public void listen2Snapshot4PipeListener(final boolean isTmp) {
+    final Pair<Path, Path> snapshotPaths =
         SchemaRegionSnapshotParser.getSnapshotPaths(
             Utils.fromConsensusGroupIdToRaftGroupId(schemaRegion.getSchemaRegionId())
                 .getUuid()
                 .toString(),
             isTmp);
-    SchemaRegionListeningQueue listener =
+    final SchemaRegionListeningQueue listener =
         PipeDataNodeAgent.runtime().schemaListener(schemaRegion.getSchemaRegionId());
     if (Objects.isNull(snapshotPaths) || Objects.isNull(snapshotPaths.getLeft())) {
       if (listener.isOpened()) {
@@ -176,27 +176,28 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
-  public TSStatus write(IConsensusRequest request) {
+  public TSStatus write(final IConsensusRequest request) {
     try {
-      TSStatus result = ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
+      final TSStatus result =
+          ((PlanNode) request).accept(new SchemaExecutionVisitor(), schemaRegion);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         PipeDataNodeAgent.runtime()
             .schemaListener(schemaRegion.getSchemaRegionId())
             .tryListenToNode((PlanNode) request);
       }
       return result;
-    } catch (IllegalArgumentException e) {
+    } catch (final IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
   @Override
-  public DataSet read(IConsensusRequest request) {
-    FragmentInstance fragmentInstance;
+  public DataSet read(final IConsensusRequest request) {
+    final FragmentInstance fragmentInstance;
     try {
       fragmentInstance = getFragmentInstance(request);
-    } catch (IllegalArgumentException e) {
+    } catch (final IllegalArgumentException e) {
       logger.error(e.getMessage());
       return null;
     }

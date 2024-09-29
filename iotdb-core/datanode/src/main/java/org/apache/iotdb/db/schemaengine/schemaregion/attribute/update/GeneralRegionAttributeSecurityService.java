@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -27,7 +28,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -80,6 +83,8 @@ public class GeneralRegionAttributeSecurityService {
   private void execute() {
     lock.lock();
     try {
+      final Map<SchemaRegionId, Map<TEndPoint, byte[]>> attributeUpdateCommitMap = new HashMap<>();
+
       if (!skipNext) {
         condition.await(
             IoTDBDescriptor.getInstance()
