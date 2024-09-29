@@ -52,6 +52,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class DeviceAttributeRemoteUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
+  private static final int UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES = 1024;
 
   private final Set<Pair<TEndPoint, Integer>> targetDataNodeLocations = new HashSet<>();
   private final ConcurrentMap<TEndPoint, UpdateContainer> attributeUpdateMap =
@@ -107,6 +108,13 @@ public class DeviceAttributeRemoteUpdater {
     // during the read process
     final Map<TEndPoint, byte[]> updateBytes = new HashMap<>();
     for (final Map.Entry<TEndPoint, UpdateContainer> entry : attributeUpdateMap.entrySet()) {
+      // If the remaining capacity is too low we just send clear container first
+      // Because they require less capacity
+      if (limit.get() < UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES
+          && entry.getValue() instanceof UpdateDetailContainer) {
+        continue;
+      }
+      // type(1) + size(4)
       if (limit.get() < 5) {
         break;
       }
