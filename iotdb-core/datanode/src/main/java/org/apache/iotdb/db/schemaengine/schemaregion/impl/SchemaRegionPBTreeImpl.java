@@ -1492,7 +1492,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap() {
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo() {
     // TODO
     return null;
   }

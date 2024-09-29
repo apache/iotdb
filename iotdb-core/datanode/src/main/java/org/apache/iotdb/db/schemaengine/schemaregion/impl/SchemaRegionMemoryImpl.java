@@ -1563,8 +1563,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap() {
-    return deviceAttributeRemoteUpdater.getAttributeUpdateMap(0);
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo() {
+    return deviceAttributeRemoteUpdater.getAttributeUpdateInfo(0);
   }
 
   // endregion

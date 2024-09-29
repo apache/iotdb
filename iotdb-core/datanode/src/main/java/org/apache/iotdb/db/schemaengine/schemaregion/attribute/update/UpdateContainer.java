@@ -23,7 +23,6 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -40,15 +39,7 @@ public interface UpdateContainer {
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
   // thrift threshold and low bandwidth
   // The "limitBytes" shall be at least 4 for a "0" to indicate empty
-  default byte[] getUpdateContent(final int limitBytes) {
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      serialize(outputStream);
-    } catch (final IOException ignored) {
-      // ByteArrayOutputStream won't throw IOException
-    }
-    return outputStream.toByteArray();
-  }
+  byte[] getUpdateContent(final int limitBytes);
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
 

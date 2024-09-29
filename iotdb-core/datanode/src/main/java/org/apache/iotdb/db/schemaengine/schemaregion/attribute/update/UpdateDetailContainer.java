@@ -101,13 +101,9 @@ public class UpdateDetailContainer implements UpdateContainer {
 
   @Override
   public byte[] getUpdateContent(final int limitBytes) {
-    if (limitBytes < 0) {
-      return UpdateContainer.super.getUpdateContent(limitBytes);
-    }
     final RewritableByteArrayOutputStream outputStream =
         new RewritableByteArrayOutputStream(limitBytes);
     try {
-      ReadWriteIOUtils.write((byte) 1, outputStream);
       serializeWithLimit(outputStream);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
@@ -117,6 +113,7 @@ public class UpdateDetailContainer implements UpdateContainer {
 
   private void serializeWithLimit(final RewritableByteArrayOutputStream outputStream)
       throws IOException {
+    ReadWriteIOUtils.write((byte) 1, outputStream);
     final int mapSizeOffset = outputStream.skipInt();
     int mapEntryCount = 0;
     for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>

@@ -102,7 +102,10 @@ public class DeviceAttributeRemoteUpdater {
         });
   }
 
-  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap(final int limit) {
+  public Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final int limit) {
+    // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail
+    // container because the update map is read by GRASS thread, and the container's size may change
+    // during the read process
     return new Pair<>(
         version.get(),
         attributeUpdateMap.entrySet().stream()

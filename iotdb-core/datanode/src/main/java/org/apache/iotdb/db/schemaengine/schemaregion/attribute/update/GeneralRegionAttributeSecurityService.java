@@ -89,7 +89,7 @@ public class GeneralRegionAttributeSecurityService {
           regionLeaders.stream()
               .collect(
                   Collectors.toMap(
-                      ISchemaRegion::getSchemaRegionId, ISchemaRegion::getAttributeUpdateMap));
+                      ISchemaRegion::getSchemaRegionId, ISchemaRegion::getAttributeUpdateInfo));
 
       // Send
 

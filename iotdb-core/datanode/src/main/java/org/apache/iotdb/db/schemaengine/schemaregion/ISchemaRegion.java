@@ -352,7 +352,7 @@ public interface ISchemaRegion {
       final String table, final List<Object[]> devicePathList) throws MetadataException;
 
   // region Interfaces for AttributeUpdate
-  Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateMap();
+  Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo();
 
   // endregion
 }

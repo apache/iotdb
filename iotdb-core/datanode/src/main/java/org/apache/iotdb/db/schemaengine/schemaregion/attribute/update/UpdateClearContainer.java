@@ -25,6 +25,7 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -59,6 +60,17 @@ public class UpdateClearContainer implements UpdateContainer {
       final String[] deviceId,
       final Map<String, String> updatedAttributes) {
     return tableNames.add(tableName) ? RamUsageEstimator.sizeOf(tableName) : 0;
+  }
+
+  @Override
+  public byte[] getUpdateContent(final int limitBytes) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      serialize(outputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return outputStream.toByteArray();
   }
 
   @Override
