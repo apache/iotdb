@@ -501,9 +501,9 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
           }
         }
         alignedChunkWriter.write(times, pointsInPage, 0);
-        alignedChunkWriter.sealCurrentPage();
-        alignedChunkWriter.clearPageWriter();
       }
+      alignedChunkWriter.sealCurrentPage();
+      alignedChunkWriter.clearPageWriter();
       try {
         ioTaskQueue.put(alignedChunkWriter);
       } catch (InterruptedException e) {
