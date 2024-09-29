@@ -266,6 +266,14 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
         final TsPrimitiveType primitiveType = data.getVector()[i];
         if (Objects.isNull(primitiveType)) {
           tablet.bitMaps[i].mark(rowIndex);
+          final TSDataType type = tablet.getSchemas().get(i).getType();
+          if (type == TSDataType.TEXT || type == TSDataType.BLOB || type == TSDataType.STRING) {
+            ((Binary[]) columns[i])[rowIndex] = Binary.EMPTY_VALUE;
+            continue;
+          }
+          if (type == TSDataType.DATE) {
+            ((LocalDate[]) columns[i])[rowIndex] = LocalDate.of(1000, 1, 1);
+          }
           continue;
         }
         switch (tablet.getSchemas().get(i).getType()) {

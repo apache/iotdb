@@ -262,12 +262,7 @@ public class SessionUtils {
       case STRING:
       case BLOB:
         Binary[] binaryValues = (Binary[]) tablet.values[i];
-        final int emptyValueLength = Binary.EMPTY_VALUE.getLength();
         for (int index = 0; index < tablet.rowSize; index++) {
-          if (binaryValues[index] == null) {
-            valueBuffer.putInt(emptyValueLength);
-            continue;
-          }
           valueBuffer.putInt(binaryValues[index].getLength());
           valueBuffer.put(binaryValues[index].getValues());
         }
