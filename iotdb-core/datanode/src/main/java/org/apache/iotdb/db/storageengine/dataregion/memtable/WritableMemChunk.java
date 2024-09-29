@@ -50,7 +50,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   private static final long TARGET_CHUNK_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
-  private static final long MAX_SERIES_POINT_NUMBER =
+  private static final long MAX_NUMBER_OF_POINTS_IN_CHUNK =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
   private static final Logger LOGGER = LoggerFactory.getLogger(WritableMemChunk.class);
 
@@ -386,7 +386,8 @@ public class WritableMemChunk implements IWritableMemChunk {
           break;
       }
       pointNumPerChunk++;
-      if (pointNumPerChunk > MAX_SERIES_POINT_NUMBER || binarySizePerChunk > TARGET_CHUNK_SIZE) {
+      if (pointNumPerChunk > MAX_NUMBER_OF_POINTS_IN_CHUNK
+          || binarySizePerChunk > TARGET_CHUNK_SIZE) {
         chunkWriterImpl.sealCurrentPage();
         chunkWriterImpl.clearPageWriter();
         try {

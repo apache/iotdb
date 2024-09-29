@@ -57,8 +57,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   private static final int MAX_NUMBER_OF_POINTS_IN_PAGE =
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-  private static final long MAX_SERIES_POINT_NUMBER =
+  private static final long MAX_NUMBER_OF_POINTS_IN_CHUNK =
       IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
+  private static final long TARGET_CHUNK_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
 
@@ -333,6 +335,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void encode(LinkedBlockingQueue<Object> ioTaskQueue) {
     BitMap rowBitMap = list.getRowBitMap();
+    int avgBinaryPointSize = list.getAvgBinaryPointSize();
+    int maxNumberOfPointsInBinaryChunk =
+        avgBinaryPointSize > 0 ? (int) (TARGET_CHUNK_SIZE / avgBinaryPointSize) : Integer.MAX_VALUE;
+
     boolean[] timeDuplicateInfo = null;
 
     // Eg.((0,9,12),(13,15)) means this TVList contains 2 chunks,
@@ -354,7 +360,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         pageRange.add(sortedRowIndex);
         pointNumInPage = 0;
       }
-      if (pointNumInChunk == MAX_SERIES_POINT_NUMBER) {
+      if (pointNumInChunk == MAX_NUMBER_OF_POINTS_IN_CHUNK
+          || pointNumInChunk >= maxNumberOfPointsInBinaryChunk) {
         if (pointNumInPage != 0) {
           pageRange.add(sortedRowIndex);
           pointNumInPage = 0;
@@ -386,14 +393,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       chunkRange.add(pageRange);
     }
 
-    handleEncoding(ioTaskQueue, chunkRange, timeDuplicateInfo);
+    handleEncoding(ioTaskQueue, chunkRange, timeDuplicateInfo, rowBitMap);
   }
 
   private void handleEncoding(
       LinkedBlockingQueue<Object> ioTaskQueue,
       List<List<Integer>> chunkRange,
-      boolean[] timeDuplicateInfo) {
-    BitMap rowBitMap = list.getRowBitMap();
+      boolean[] timeDuplicateInfo,
+      BitMap rowBitMap) {
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
