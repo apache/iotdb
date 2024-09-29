@@ -39,6 +39,7 @@ public interface UpdateContainer {
   // Only this method is not synchronize called and is called by GRASS thread
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
   // thrift threshold and low bandwidth
+  // The "limitBytes" shall be at least 4 for a "0" to indicate empty
   default byte[] getUpdateContent(final int limitBytes) {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -29,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -115,15 +117,37 @@ public class UpdateDetailContainer implements UpdateContainer {
   private void serializeWithLimit(final RewritableByteArrayOutputStream outputStream)
       throws IOException {
     final int mapSizeOffset = outputStream.skipInt();
+    int mapEntryCount = 0;
     for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
         tableEntry : updateMap.entrySet()) {
-      ReadWriteIOUtils.write(tableEntry.getKey(), outputStream);
+      final byte[] tableEntryBytes = tableEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET);
+      if (!outputStream.checkCapacity(2 * Integer.BYTES + tableEntryBytes.length)) {
+        outputStream.rewrite(mapEntryCount, mapSizeOffset);
+        return;
+      }
+      ++mapEntryCount;
+      outputStream.writeWithLength(tableEntryBytes);
       final int deviceSizeOffset = outputStream.skipInt();
+      int deviceEntryCount = 0;
       for (final Map.Entry<String[], ConcurrentMap<String, String>> deviceEntry :
           tableEntry.getValue().entrySet()) {
+        final byte[][] deviceIdBytes =
+            Arrays.stream(deviceEntry.getKey())
+                .map(str -> str.getBytes(TSFileConfig.STRING_CHARSET))
+                .toArray(byte[][]::new);
+        if (!outputStream.checkCapacity(
+            (Integer.BYTES * (deviceIdBytes.length + 1))
+                + Arrays.stream(deviceIdBytes)
+                    .map(bytes -> bytes.length)
+                    .reduce(0, Integer::sum))) {
+          outputStream.rewrite(mapEntryCount, mapSizeOffset);
+          outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
+          return;
+        }
+        ++deviceEntryCount;
         ReadWriteIOUtils.write(deviceEntry.getKey().length, outputStream);
-        for (final String node : deviceEntry.getKey()) {
-          ReadWriteIOUtils.write(node, outputStream);
+        for (final byte[] node : deviceIdBytes) {
+          outputStream.writeWithLength(node);
         }
         ReadWriteIOUtils.write(deviceEntry.getValue(), outputStream);
       }

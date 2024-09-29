@@ -20,10 +20,14 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.tsfile.utils.BytesUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
+import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+@NotThreadSafe
 public class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
 
   private static final byte[] intPlaceHolder = new byte[4];
@@ -33,21 +37,22 @@ public class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
     this.limit = limit;
   }
 
-  public synchronized boolean tryWrite(final byte[] content) throws IOException {
-    if (content.length + count <= limit) {
-      write(content);
-      return true;
-    }
-    return false;
+  public boolean checkCapacity(final int newGrowth) {
+    return newGrowth + count <= limit;
   }
 
-  public synchronized int skipInt() throws IOException {
+  public void writeWithLength(final byte[] bytes) throws IOException {
+    ReadWriteIOUtils.write(bytes.length, this);
+    write(bytes);
+  }
+
+  public int skipInt() throws IOException {
     final int result = count;
     write(intPlaceHolder);
     return result;
   }
 
-  public synchronized void rewrite(final int n, final int off) {
+  public void rewrite(final int n, final int off) {
     byte[] bytes = BytesUtils.intToBytes(n);
     if ((off < 0) || (off > buf.length - bytes.length)) {
       throw new IndexOutOfBoundsException();
