@@ -511,6 +511,15 @@ struct TPipeSubscribeResp {
   4:optional list<binary> body
 }
 
+struct TAttributeUpdateReq {
+  1:required map<i32, TSchemaRegionAttributeInfo> attributeUpdateMap
+}
+
+struct TSchemaRegionAttributeInfo {
+  1:required i64 version
+  2:required binary body
+}
+
 struct TSBackupConfigurationResp {
   1: required common.TSStatus status
   2: optional bool enableOperationSync
@@ -663,6 +672,8 @@ service IClientRPCService {
   TPipeTransferResp pipeTransfer(TPipeTransferReq req);
 
   TPipeSubscribeResp pipeSubscribe(TPipeSubscribeReq req);
+
+  common.TSStatus updateAttribute(TAttributeUpdateReq req);
 
   TSBackupConfigurationResp getBackupConfiguration();
 

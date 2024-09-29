@@ -106,8 +106,6 @@ public class GeneralRegionAttributeSecurityService {
         attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
       }
 
-      
-
       // Send
 
       if (!skipNext) {
