@@ -60,6 +60,7 @@ public class SqlConstant {
   public static final String FIRST = "first";
   public static final String FIRST_BY = "first_by";
   public static final String LAST_BY = "last_by";
+  public static final String LAST = "last";
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
@@ -78,11 +79,6 @@ public class SqlConstant {
 
   // names of scalar functions
   public static final String DIFF = "diff";
-
-  public static final String MAX = "max";
-  public static final String MIN = "min";
-  public static final String FIRST = "first";
-  public static final String LAST = "last";
 
   public static final String CAST_FUNCTION = "CAST";
   public static final String CAST_TYPE = "type";
