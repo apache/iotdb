@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,22 +46,22 @@ public class GeneralRegionAttributeSecurityService {
       IoTDBThreadPoolFactory.newSingleThreadExecutor(
           ThreadName.GENERAL_REGION_ATTRIBUTE_SECURITY_SERVICE.getName());
 
-  private final Set<SchemaRegionId> regionLeaders = new HashSet<>();
+  private final Set<ISchemaRegion> regionLeaders = new HashSet<>();
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition condition = lock.newCondition();
   private volatile boolean skipNext = false;
 
-  public void startBroadcast(final SchemaRegionId id) {
+  public void startBroadcast(final ISchemaRegion schemaRegion) {
     if (regionLeaders.isEmpty()) {
       securityServiceExecutor.submit(this::execute);
       LOGGER.info("General region attribute security service is started successfully.");
     }
 
-    regionLeaders.add(id);
+    regionLeaders.add(schemaRegion);
   }
 
-  public void stopBroadcast(final SchemaRegionId id) {
-    regionLeaders.remove(id);
+  public void stopBroadcast(final ISchemaRegion schemaRegion) {
+    regionLeaders.remove(schemaRegion);
 
     if (regionLeaders.isEmpty()) {
       securityServiceExecutor.shutdown();

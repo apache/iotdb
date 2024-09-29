@@ -66,8 +66,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
   public void stop() {
     // Stop leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
-    GeneralRegionAttributeSecurityService.getInstance()
-        .stopBroadcast(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance().stopBroadcast(schemaRegion);
   }
 
   @Override
@@ -93,8 +92,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
     // Shutdown leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderUnavailable(schemaRegion.getSchemaRegionId());
-    GeneralRegionAttributeSecurityService.getInstance()
-        .stopBroadcast(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance().stopBroadcast(schemaRegion);
 
     logger.info(
         "Current node [nodeId: {}] is no longer the schema region leader [regionId: {}], "
@@ -112,8 +110,7 @@ public class SchemaRegionStateMachine extends BaseStateMachine {
 
     // Activate leader related service for schema pipe
     PipeDataNodeAgent.runtime().notifySchemaLeaderReady(schemaRegion.getSchemaRegionId());
-    GeneralRegionAttributeSecurityService.getInstance()
-        .startBroadcast(schemaRegion.getSchemaRegionId());
+    GeneralRegionAttributeSecurityService.getInstance().startBroadcast(schemaRegion);
 
     logger.info(
         "Current node [nodeId: {}] as schema region leader [regionId: {}] is ready to work",
