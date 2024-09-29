@@ -84,12 +84,15 @@ import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
-import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTriggerLocationReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /** Asynchronously send RPC requests to DataNodes. See queryengine.thrift for more details. */
 public class CnToDnInternalServiceAsyncRequestManager
@@ -358,10 +361,18 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.TEST_CONNECTION,
         (req, client, handler) ->
             client.testConnectionEmptyRPC((DataNodeTSStatusRPCHandler) handler));
-    actionMapBuilder.put(
-        CnToDnAsyncRequestType.UPDATE_TABLE,
-        (req, client, handler) ->
-            client.updateTable((TUpdateTableReq) req, (DataNodeTSStatusRPCHandler) handler));
+  }
+
+  @Override
+  protected void checkActionMapCompleteness() {
+    List<CnToDnAsyncRequestType> lackList =
+        Arrays.stream(CnToDnAsyncRequestType.values())
+            .filter(type -> !actionMap.containsKey(type))
+            .collect(Collectors.toList());
+    if (!lackList.isEmpty()) {
+      LOGGER.error("These request types must be added to actionMap: {}", lackList);
+      System.exit(-1);
+    }
   }
 
   @Override
