@@ -31,6 +31,7 @@ import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -39,7 +40,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 public class GeneralRegionAttributeSecurityService {
   private static final Logger LOGGER =
@@ -94,12 +94,19 @@ public class GeneralRegionAttributeSecurityService {
               CommonDescriptor.getInstance()
                   .getConfig()
                   .getPipeConnectorRequestSliceThresholdBytes());
+
       final Map<SchemaRegionId, Pair<Long, Map<TEndPoint, byte[]>>> attributeUpdateCommitMap =
-          regionLeaders.stream()
-              .collect(
-                  Collectors.toMap(
-                      ISchemaRegion::getSchemaRegionId,
-                      schemaRegion -> schemaRegion.getAttributeUpdateInfo(limit)));
+          new HashMap<>();
+      for (final ISchemaRegion regionLeader : regionLeaders) {
+        final Pair<Long, Map<TEndPoint, byte[]>> currentResult =
+            regionLeader.getAttributeUpdateInfo(limit);
+        if (currentResult.getRight().isEmpty()) {
+          break;
+        }
+        attributeUpdateCommitMap.put(regionLeader.getSchemaRegionId(), currentResult);
+      }
+
+      
 
       // Send
 
