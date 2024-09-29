@@ -738,7 +738,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     node.getTimeDuration()
         .ifPresent(
             timeDuration -> {
-              boxValue.add(String.format("HelperColumn: %s", node.getHelperColumn()));
+              boxValue.add(String.format("HelperColumn: %s", node.getHelperColumn().get()));
               boxValue.add(String.format("TimeDuration: %s", timeDuration));
             });
     return render(node, boxValue, context);

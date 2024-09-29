@@ -31,7 +31,8 @@ public class IdentityLinearFill implements ILinearFill {
   }
 
   @Override
-  public boolean needPrepareForNext(long rowIndex, Column valueColumn) {
+  public boolean needPrepareForNext(
+      long rowIndex, Column valueColumn, int lastRowIndexForNonNullHelperColumn) {
     return false;
   }
 

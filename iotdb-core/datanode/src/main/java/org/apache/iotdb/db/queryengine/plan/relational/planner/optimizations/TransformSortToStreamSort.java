@@ -29,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -134,15 +133,6 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       return orderingScheme.getOrderings().size() == streamSortIndex + 1
           || TIMESTAMP_EXPRESSION_STRING.equalsIgnoreCase(
               orderingScheme.getOrderBy().get(streamSortIndex + 1).getName());
-    }
-
-    @Override
-    public PlanNode visitFill(FillNode node, Context context) {
-      PlanNode newNode = node.clone();
-      for (PlanNode child : node.getChildren()) {
-        newNode.addChild(child.accept(this, context));
-      }
-      return newNode;
     }
 
     @Override

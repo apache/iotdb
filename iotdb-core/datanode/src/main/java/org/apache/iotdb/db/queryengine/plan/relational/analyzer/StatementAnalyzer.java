@@ -525,7 +525,7 @@ public class StatementAnalyzer {
         if ((queryBodyScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
             && !node.getOffset().isPresent()
-            && hasFillInParentScope) {
+            && !hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(node.getOrderBy().get());
           warningCollector.add(
@@ -791,6 +791,7 @@ public class StatementAnalyzer {
       StatementAnalyzer analyzer =
           statementAnalyzerFactory.createStatementAnalyzer(
               analysis, queryContext, sessionContext, warningCollector, CorrelationSupport.ALLOWED);
+      analyzer.hasFillInParentScope = hasFillInParentScope;
       Scope queryScope =
           analyzer.analyze(
               node.getQuery(),
@@ -833,7 +834,7 @@ public class StatementAnalyzer {
         if ((sourceScope.getOuterQueryParent().isPresent() || !isTopLevel)
             && !node.getLimit().isPresent()
             && !node.getOffset().isPresent()
-            && hasFillInParentScope) {
+            && !hasFillInParentScope) {
           // not the root scope and ORDER BY is ineffective
           analysis.markRedundantOrderBy(orderBy);
           warningCollector.add(

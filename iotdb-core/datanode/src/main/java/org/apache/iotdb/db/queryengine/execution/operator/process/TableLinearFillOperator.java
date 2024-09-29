@@ -48,6 +48,23 @@ public class TableLinearFillOperator extends AbstractLinearFillOperator {
   }
 
   @Override
+  Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock) {
+    Column helperColumn = getHelperColumn(tsBlock);
+    int size = tsBlock.getPositionCount();
+    if (!helperColumn.mayHaveNull()) {
+      return size - 1;
+    } else {
+      int i = size - 1;
+      for (; i >= 0; i--) {
+        if (!helperColumn.isNull(i)) {
+          break;
+        }
+      }
+      return i;
+    }
+  }
+
+  @Override
   public long ramBytesUsed() {
     return super.ramBytesUsed() + Integer.BYTES;
   }

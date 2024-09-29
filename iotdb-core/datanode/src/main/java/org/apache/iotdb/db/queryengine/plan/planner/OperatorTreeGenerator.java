@@ -96,11 +96,17 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.Fl
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.IntLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.linear.LongLinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BinaryPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.BooleanPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.DoublePreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.FloatPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.IntPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.queryengine.execution.operator.process.fill.previous.LongPreviousFillWithTimeDuration;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.HorizontallyConcatOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
@@ -1387,7 +1393,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       ZoneId zoneId) {
     IFillFilter filter;
     if (timeDurationThreshold == null) {
-      filter = IFillFilter.TRUE;
+      filter = null;
     } else if (!timeDurationThreshold.containsMonth()) {
       filter = new FixedIntervalFillFilter(timeDurationThreshold.nonMonthDuration);
     } else {
@@ -1424,26 +1430,42 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new BooleanPreviousFill()
+                  : new BooleanPreviousFillWithTimeDuration(filter);
           break;
         case TEXT:
         case STRING:
         case BLOB:
-          previousFill[i] = new BinaryPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new BinaryPreviousFill()
+                  : new BinaryPreviousFillWithTimeDuration(filter);
           break;
         case INT32:
         case DATE:
-          previousFill[i] = new IntPreviousFill(filter);
+          previousFill[i] =
+              filter == null ? new IntPreviousFill() : new IntPreviousFillWithTimeDuration(filter);
           break;
         case INT64:
         case TIMESTAMP:
-          previousFill[i] = new LongPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new LongPreviousFill()
+                  : new LongPreviousFillWithTimeDuration(filter);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new FloatPreviousFill()
+                  : new FloatPreviousFillWithTimeDuration(filter);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill(filter);
+          previousFill[i] =
+              filter == null
+                  ? new DoublePreviousFill()
+                  : new DoublePreviousFillWithTimeDuration(filter);
           break;
         default:
           throw new IllegalArgumentException(UNKNOWN_DATATYPE + inputDataTypes.get(i));

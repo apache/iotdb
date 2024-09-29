@@ -48,6 +48,8 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
 
   private final List<Long> cachedRowIndex;
 
+  private final List<Integer> cachedLastRowIndexForNonNullHelperColumn;
+
   private long currentRowIndex = 0;
   // next TsBlock Index for each Column
   private final int[] nextTsBlockIndex;
@@ -71,6 +73,7 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
     this.outputColumnCount = fillArray.length;
     this.cachedTsBlock = new ArrayList<>();
     this.cachedRowIndex = new ArrayList<>();
+    this.cachedLastRowIndexForNonNullHelperColumn = new ArrayList<>();
     this.nextTsBlockIndex = new int[outputColumnCount];
     Arrays.fill(this.nextTsBlockIndex, 1);
     this.canCallNext = false;
@@ -101,18 +104,23 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
       } else { // otherwise, we cache it
         cachedTsBlock.add(nextTsBlock);
         cachedRowIndex.add(currentRowIndex);
+        cachedLastRowIndexForNonNullHelperColumn.add(
+            getLastRowIndexForNonNullHelperColumn(nextTsBlock));
         currentRowIndex += nextTsBlock.getPositionCount();
       }
     }
 
     TsBlock originTsBlock = cachedTsBlock.get(0);
-    long currentEndRowIndex = cachedRowIndex.get(0) + originTsBlock.getPositionCount() - 1;
+    long currentEndRowIndex =
+        cachedRowIndex.get(0) + cachedLastRowIndexForNonNullHelperColumn.get(0);
     // Step 1: judge whether we can fill current TsBlock, if TsBlock that we can get is not enough,
     // we just return null
     for (int columnIndex = 0; columnIndex < outputColumnCount; columnIndex++) {
       // current valueColumn can't be filled using current information
       if (fillArray[columnIndex].needPrepareForNext(
-          currentEndRowIndex, originTsBlock.getColumn(columnIndex))) {
+          currentEndRowIndex,
+          originTsBlock.getColumn(columnIndex),
+          cachedLastRowIndexForNonNullHelperColumn.get(0))) {
         // current cached TsBlock is not enough to fill this column
         while (!isCachedTsBlockEnough(columnIndex, currentEndRowIndex)) {
           // if we failed to get next TsBlock
@@ -133,6 +141,7 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
     // Step 2: fill current TsBlock
     originTsBlock = cachedTsBlock.remove(0);
     long startRowIndex = cachedRowIndex.remove(0);
+    cachedLastRowIndexForNonNullHelperColumn.remove(0);
     Column[] columns = new Column[outputColumnCount];
     for (int i = 0; i < outputColumnCount; i++) {
       columns[i] =
@@ -149,6 +158,9 @@ abstract class AbstractLinearFillOperator implements ProcessOperator {
   }
 
   abstract Column getHelperColumn(TsBlock tsBlock);
+
+  // -1 means all values of helper column in @param{tsBlock} are null
+  abstract Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock);
 
   @Override
   public boolean hasNext() throws Exception {

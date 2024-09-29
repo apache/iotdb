@@ -54,6 +54,7 @@ public class IoTDBFillTableIT {
             + " values(4, 'd1', 'text4', 'string4', X'cafebabe04', 4, '2024-10-04')",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5) "
             + " values(5, 'd1', 5, 55, 5.5, 55.5, false)",
+        "flush",
         "INSERT INTO table1(time,device_id,s1,s2,s3,s4,s5) "
             + " values(7, 'd1', 7, 77, 7.7, 77.7, true)",
         "INSERT INTO table1(time,device_id,s6,s7,s8,s9,s10) "
@@ -170,28 +171,22 @@ public class IoTDBFillTableIT {
 
     // case 6: all without time filter using previous fill with timeDuration with helper column
     // index
-    // TODO need fix
-    //    expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3", "s4", "s5", "s6",
-    // "s7", "s8", "s9", "s10"};
-    //    retArray =
-    //        new String[] {
-    //
-    // "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
-    //
-    // "1970-01-01T00:00:00.002Z,d1,2,22,2.2,11.1,false,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
-    //
-    // "1970-01-01T00:00:00.003Z,d1,2,22,2.2,11.1,false,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
-    //
-    // "1970-01-01T00:00:00.004Z,d1,2,22,2.2,11.1,false,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
-    //
-    // "1970-01-01T00:00:00.005Z,d1,5,55,5.5,11.1,false,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
-    //            "1970-01-01T00:00:00.007Z,d1,7,77,7.7,11.1,true,null,null,null,null,null,",
-    //
-    // "1970-01-01T00:00:00.008Z,d1,7,77,7.7,11.1,true,text8,string1,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
-    //        };
-    //    tableResultSetEqualTest(
-    //        "select * from table1 FILL(PREVIOUS(11), 2ms)", expectedHeader, retArray,
-    // DATABASE_NAME);
+    expectedHeader =
+        new String[] {
+          "time", "device_id", "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"
+        };
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
+          "1970-01-01T00:00:00.002Z,d1,2,22,2.2,22.2,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,1,11,1.1,11.1,true,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.004Z,d1,null,null,null,null,null,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
+          "1970-01-01T00:00:00.005Z,d1,5,55,5.5,55.5,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,7,77,7.7,77.7,true,null,null,null,null,null,",
+          "1970-01-01T00:00:00.008Z,d1,null,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+        };
+    tableResultSetEqualTest(
+        "select * from table1 FILL(PREVIOUS(11), 2ms)", expectedHeader, retArray, DATABASE_NAME);
 
     // case7: all without time filter using previous fill with order by time desc
     expectedHeader =
@@ -328,31 +323,24 @@ public class IoTDBFillTableIT {
         retArray,
         DATABASE_NAME);
 
-    // case 6: all without time filter using linear fill with helper column
-    // index
-    // TODO need fix
-    //    expectedHeader = new String[] {"time", "device_id", "s1", "s2", "s3", "s5", "s6",
-    // "s7", "s8", "s9", "s10"};
-    //    retArray =
-    //        new String[] {
-    //
-    // "1970-01-01T00:00:00.001Z,d1,1,11,1.1,11.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
-    //
-    // "1970-01-01T00:00:00.002Z,d1,2,22,2.2,11.1,false,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
-    //
-    // "1970-01-01T00:00:00.003Z,d1,2,22,2.2,11.1,false,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
-    //
-    // "1970-01-01T00:00:00.004Z,d1,2,22,2.2,11.1,false,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
-    //
-    // "1970-01-01T00:00:00.005Z,d1,5,55,5.5,11.1,false,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
-    //            "1970-01-01T00:00:00.007Z,d1,7,77,7.7,11.1,true,null,null,null,null,null,",
-    //
-    // "1970-01-01T00:00:00.008Z,d1,7,77,7.7,11.1,true,text8,string1,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
-    //        };
-    //    tableResultSetEqualTest(
-    //        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR(10))",
-    // expectedHeader, retArray,
-    // DATABASE_NAME);
+    // case 6: all without time filter using linear fill with helper column index
+    expectedHeader =
+        new String[] {"time", "device_id", "s1", "s2", "s3", "s5", "s6", "s7", "s8", "s9", "s10"};
+    retArray =
+        new String[] {
+          "1970-01-01T00:00:00.001Z,d1,1,11,1.1,true,text1,string1,0xcafebabe01,1970-01-01T00:00:00.001Z,2024-10-01,",
+          "1970-01-01T00:00:00.002Z,d1,2,22,2.2,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.003Z,d1,null,null,null,null,text3,string3,0xcafebabe03,1970-01-01T00:00:00.003Z,2024-10-03,",
+          "1970-01-01T00:00:00.004Z,d1,null,null,null,null,text4,string4,0xcafebabe04,1970-01-01T00:00:00.004Z,2024-10-04,",
+          "1970-01-01T00:00:00.005Z,d1,5,55,5.5,false,null,null,null,null,null,",
+          "1970-01-01T00:00:00.007Z,d1,7,77,7.7,true,null,null,null,null,null,",
+          "1970-01-01T00:00:00.008Z,d1,null,null,null,null,text8,string8,0xcafebabe08,1970-01-01T00:00:00.008Z,2024-10-08,",
+        };
+    tableResultSetEqualTest(
+        "select time,device_id,s1,s2,s3,s5,s6,s7,s8,s9,s10 from table1 FILL(LINEAR(10))",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
 
     // case7: all without time filter using linear fill with order by time desc
     expectedHeader =

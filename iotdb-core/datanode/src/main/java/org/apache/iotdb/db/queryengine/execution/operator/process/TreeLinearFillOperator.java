@@ -37,4 +37,9 @@ public class TreeLinearFillOperator extends AbstractLinearFillOperator {
   Column getHelperColumn(TsBlock tsBlock) {
     return tsBlock.getTimeColumn();
   }
+
+  @Override
+  Integer getLastRowIndexForNonNullHelperColumn(TsBlock tsBlock) {
+    return tsBlock.getPositionCount() - 1;
+  }
 }
