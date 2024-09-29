@@ -36,7 +36,9 @@ public interface UpdateContainer {
       final String tableName, final String[] deviceId, final Map<String, String> updatedAttributes);
 
   // Only this method is not synchronize called and is called by GRASS thread
-  byte[] getUpdateContent();
+  // A piece of "updateContent" won't exceed "limitBytes" in order to handle
+  // thrift threshold and low bandwidth
+  byte[] getUpdateContent(final long limitBytes);
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
 

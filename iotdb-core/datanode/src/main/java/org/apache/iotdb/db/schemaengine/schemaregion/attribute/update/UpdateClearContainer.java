@@ -63,7 +63,7 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent() {
+  public byte[] getUpdateContent(final long limitBytes) {
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       serialize(outputStream);

@@ -98,7 +98,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent() {
+  public byte[] getUpdateContent(final long limitBytes) {
     return null;
   }
 
