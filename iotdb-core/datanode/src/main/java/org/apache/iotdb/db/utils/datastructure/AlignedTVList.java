@@ -1367,10 +1367,30 @@ public abstract class AlignedTVList extends TVList {
 
   public int getAvgBinaryPointSize() {
     long maxSize = 0;
-    for (long size : memoryBinaryChunkSize) {
-      maxSize = Math.max(maxSize, size);
+    int index = 0;
+    int pointNum = 0;
+    for (int i = 0; i < memoryBinaryChunkSize.length; i++) {
+      if (memoryBinaryChunkSize[i] > maxSize) {
+        maxSize = memoryBinaryChunkSize[i];
+        index = i;
+      }
     }
-    return (int) (maxSize / rowCount);
+    if (bitMaps == null || bitMaps.get(index) == null) {
+      pointNum = rowCount;
+    } else {
+      for (int i = 0; i < rowCount; i++) {
+        int arrayIndex = i / ARRAY_SIZE;
+        if (bitMaps.get(index).get(arrayIndex) == null) {
+          pointNum++;
+        } else {
+          int elementIndex = i % ARRAY_SIZE;
+          if (!bitMaps.get(index).get(arrayIndex).isMarked(elementIndex)) {
+            pointNum++;
+          }
+        }
+      }
+    }
+    return (int) (maxSize / pointNum);
   }
 
   public List<List<BitMap>> getBitMaps() {
