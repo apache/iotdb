@@ -66,7 +66,7 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithRetry(
-      TEndPoint endPoint, Object req, CnToDnRequestType requestType) {
+      TEndPoint endPoint, Object req, CnToDnSyncRequestType requestType) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -85,7 +85,7 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithGivenRetry(
-      TEndPoint endPoint, Object req, CnToDnRequestType requestType, int retryNum) {
+      TEndPoint endPoint, Object req, CnToDnSyncRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -104,7 +104,7 @@ public class SyncDataNodeClientPool {
   }
 
   private Object executeSyncRequest(
-      CnToDnRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
+      CnToDnSyncRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
       throws TException {
     switch (requestType) {
       case INVALIDATE_PARTITION_CACHE:
