@@ -128,8 +128,7 @@ public class RepairTimePartitionScanTask implements Callable<Void> {
               sourceFile,
               latch,
               sourceFile.isSeq(),
-              tsFileManager.getNextCompactionTaskId(),
-              timePartition.getDatabaseName().startsWith("root."));
+              tsFileManager.getNextCompactionTaskId());
       if (!submitRepairFileTaskSafely(task)) {
         latch.countDown();
       }

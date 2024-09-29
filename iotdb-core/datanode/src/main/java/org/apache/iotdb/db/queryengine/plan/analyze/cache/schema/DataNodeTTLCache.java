@@ -20,75 +20,82 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DataNodeTreeTTLCache {
-  private final TTLCache ttlCache;
+public class DataNodeTTLCache {
+  private final TTLCache treeModelTTLCache;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-  private DataNodeTreeTTLCache() {
-    ttlCache = new TTLCache();
+  private DataNodeTTLCache() {
+    treeModelTTLCache = new TTLCache();
   }
 
-  public static DataNodeTreeTTLCache getInstance() {
+  public static DataNodeTTLCache getInstance() {
     return DataNodeTTLCacheHolder.INSTANCE;
   }
 
   private static class DataNodeTTLCacheHolder {
-    private static final DataNodeTreeTTLCache INSTANCE = new DataNodeTreeTTLCache();
+    private static final DataNodeTTLCache INSTANCE = new DataNodeTTLCache();
   }
 
   @TestOnly
-  public void setTTL(String path, long ttl) throws IllegalPathException {
+  public void setTTLForTree(String path, long ttl) throws IllegalPathException {
     lock.writeLock().lock();
     try {
-      ttlCache.setTTL(PathUtils.splitPathToDetachedNodes(path), ttl);
+      treeModelTTLCache.setTTL(PathUtils.splitPathToDetachedNodes(path), ttl);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void setTTL(String[] path, long ttl) {
+  public void setTTLForTree(String[] path, long ttl) {
     lock.writeLock().lock();
     try {
-      ttlCache.setTTL(path, ttl);
+      treeModelTTLCache.setTTL(path, ttl);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void unsetTTL(String[] path) {
+  public void unsetTTLForTree(String[] path) {
     lock.writeLock().lock();
     try {
-      ttlCache.unsetTTL(path);
+      treeModelTTLCache.unsetTTL(path);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public long getTTL(IDeviceID deviceID) {
+  public long getTTLForTree(IDeviceID deviceID) {
     lock.readLock().lock();
     try {
-      return getTTL(CommonUtils.deviceIdToStringArray(deviceID));
+      return getTTLForTree(CommonUtils.deviceIdToStringArray(deviceID));
     } finally {
       lock.readLock().unlock();
     }
   }
 
+  public long getTTLForTable(String database, String table) {
+    TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, table);
+    return tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+  }
+
   /** Get ttl with time precision conversion. */
-  public long getTTL(String[] path) {
+  public long getTTLForTree(String[] path) {
     lock.readLock().lock();
     try {
-      long ttl = ttlCache.getClosestTTL(path);
+      long ttl = treeModelTTLCache.getClosestTTL(path);
       return ttl == Long.MAX_VALUE
           ? ttl
           : CommonDateTimeUtils.convertMilliTimeWithPrecision(
@@ -99,10 +106,10 @@ public class DataNodeTreeTTLCache {
   }
 
   /** Get ttl without time precision conversion. */
-  public long getTTLInMS(String[] path) {
+  public long getTTLInMSForTree(String[] path) {
     lock.readLock().lock();
     try {
-      return ttlCache.getClosestTTL(path);
+      return treeModelTTLCache.getClosestTTL(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -112,10 +119,10 @@ public class DataNodeTreeTTLCache {
    * Get ttl of one specific path node without time precision conversion. If this node does not set
    * ttl, then return -1.
    */
-  public long getNodeTTLInMS(String path) throws IllegalPathException {
+  public long getNodeTTLInMSForTree(String path) throws IllegalPathException {
     lock.readLock().lock();
     try {
-      return ttlCache.getLastNodeTTL(PathUtils.splitPathToDetachedNodes(path));
+      return treeModelTTLCache.getLastNodeTTL(PathUtils.splitPathToDetachedNodes(path));
     } finally {
       lock.readLock().unlock();
     }
@@ -123,10 +130,10 @@ public class DataNodeTreeTTLCache {
 
   /** Clear all ttl of cache. */
   @TestOnly
-  public void clearAllTTL() {
+  public void clearAllTTLForTree() {
     lock.writeLock().lock();
     try {
-      ttlCache.clear();
+      treeModelTTLCache.clear();
     } finally {
       lock.writeLock().unlock();
     }

@@ -36,10 +36,9 @@ public class RepairUnsortedFileCompactionPerformer extends ReadPointCompactionPe
 
   private final boolean rewriteFile;
 
-  public RepairUnsortedFileCompactionPerformer(boolean rewriteFile, boolean ignoreAllNullRows) {
+  public RepairUnsortedFileCompactionPerformer(boolean rewriteFile) {
     super();
     this.rewriteFile = rewriteFile;
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override

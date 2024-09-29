@@ -108,7 +108,6 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     } else {
       performer = new ReadPointCompactionPerformer();
     }
-    performer.setIgnoreAllNullRows(false);
     return performer;
   }
 

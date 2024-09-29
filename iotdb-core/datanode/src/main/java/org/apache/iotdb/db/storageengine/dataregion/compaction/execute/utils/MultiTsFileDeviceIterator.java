@@ -24,10 +24,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.Deletion;
@@ -73,8 +71,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
+  private boolean ignoreAllNullRows;
   private long timeLowerBoundForCurrentDevice;
-  private boolean ignoreAllNullRows = true;
   private final String databaseName;
 
   /**
@@ -82,8 +80,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @throws IOException if io error occurred
    */
-  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources, boolean ignoreAllNullRows)
-      throws IOException {
+  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.databaseName = tsFileResources.get(0).getDatabaseName();
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
@@ -108,7 +105,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       throw e;
     }
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -117,10 +113,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public MultiTsFileDeviceIterator(
-      List<TsFileResource> seqResources,
-      List<TsFileResource> unseqResources,
-      boolean ignoreAllNullRows)
-      throws IOException {
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
@@ -133,7 +126,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       readerMap.put(tsFileResource, reader);
       deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
     }
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   /**
@@ -144,8 +136,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      Map<TsFileResource, TsFileSequenceReader> readerMap,
-      boolean ignoreAllNullRows)
+      Map<TsFileResource, TsFileSequenceReader> readerMap)
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
@@ -154,7 +145,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
-    this.ignoreAllNullRows = ignoreAllNullRows;
 
     CompactionType type = null;
     if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
@@ -225,12 +215,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     long ttl;
 
     IDeviceID deviceID = currentDevice.left;
+    boolean isAligned = currentDevice.right;
+    ignoreAllNullRows = !isAligned || deviceID.getTableName().startsWith("root.");
     if (!ignoreAllNullRows) {
-      String tableName = deviceID.getTableName();
-      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
-      ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+      ttl = DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
     } else {
-      ttl = DataNodeTreeTTLCache.getInstance().getTTL(deviceID);
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
     timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttl;
     return currentDevice;

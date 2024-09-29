@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -43,13 +42,12 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegionInfo;
@@ -2214,17 +2212,10 @@ public class TsFileProcessor {
   }
 
   private long getQueryTimeLowerBound(IDeviceID deviceID) {
-    long ttl;
-    DataRegion dataRegion = dataRegionInfo.getDataRegion();
-    if (dataRegion.isTreeModel()) {
-      ttl = DataNodeTreeTTLCache.getInstance().getTTL(deviceID);
-    } else {
-      TsTable tsTable =
-          DataNodeTableCache.getInstance()
-              .getTable(dataRegion.getDatabaseName(), deviceID.getTableName());
-      ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
-    }
-    return ttl != Long.MAX_VALUE ? CommonDateTimeUtils.currentTime() - ttl : Long.MIN_VALUE;
+    long deviceTTL = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    return deviceTTL != Long.MAX_VALUE
+        ? CommonDateTimeUtils.currentTime() - deviceTTL
+        : Long.MIN_VALUE;
   }
 
   public long getTimeRangeId() {

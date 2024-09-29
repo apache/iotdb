@@ -29,7 +29,6 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -54,7 +53,7 @@ import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.QueryResourceMetricSet;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeSchemaCache;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
@@ -314,8 +313,6 @@ public class DataRegion implements IDataRegionForQuery {
 
   private final AtomicBoolean isCompactionSelecting = new AtomicBoolean(false);
 
-  private boolean isTreeModel;
-
   private static final QueryResourceMetricSet QUERY_RESOURCE_METRIC_SET =
       QueryResourceMetricSet.getInstance();
 
@@ -336,7 +333,6 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = dataRegionId;
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
-    this.isTreeModel = this.databaseName.startsWith("root.");
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
@@ -387,7 +383,6 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = id;
     this.tsFileManager = new TsFileManager(databaseName, id, "");
     this.partitionMaxFileVersions = new HashMap<>();
-    this.isTreeModel = this.databaseName.startsWith("root.");
     partitionMaxFileVersions.put(0L, 0L);
   }
 
@@ -774,10 +769,6 @@ public class DataRegion implements IDataRegionForQuery {
         }
       }
     }
-  }
-
-  public boolean isTreeModel() {
-    return isTreeModel;
   }
 
   /** check if the tsfile's time is smaller than system current time. */
@@ -2774,7 +2765,7 @@ public class DataRegion implements IDataRegionForQuery {
       // Sort the time partition from largest to smallest
       timePartitions.sort(Comparator.reverseOrder());
 
-      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
+      CompactionScheduleContext context = new CompactionScheduleContext();
 
       // schedule insert compaction
       trySubmitCount += executeInsertionCompaction(timePartitions, context);
@@ -2817,7 +2808,7 @@ public class DataRegion implements IDataRegionForQuery {
     logger.info("[TTL] {}-{} Start ttl checking.", databaseName, dataRegionId);
     int trySubmitCount = 0;
     try {
-      CompactionScheduleContext context = new CompactionScheduleContext(this.isTreeModel);
+      CompactionScheduleContext context = new CompactionScheduleContext();
       List<Long> timePartitions = new ArrayList<>(tsFileManager.getTimePartitions());
       // Sort the time partition from smallest to largest
       Collections.sort(timePartitions);
@@ -3941,14 +3932,10 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private long getTTL(InsertNode insertNode) {
-    long ttl;
-    if (isTreeModel) {
-      ttl = DataNodeTreeTTLCache.getInstance().getTTL(insertNode.getDeviceID());
+    if (insertNode.getTableName() == null) {
+      return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getDeviceID());
     } else {
-      TsTable tsTable =
-          DataNodeTableCache.getInstance().getTable(databaseName, insertNode.getTableName());
-      ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+      return DataNodeTTLCache.getInstance().getTTLForTable(databaseName, insertNode.getTableName());
     }
-    return ttl;
   }
 }

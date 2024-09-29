@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -59,7 +59,7 @@ public class TTLQueryTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    DataNodeTreeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
   }
 
   /** Device d1, d3 and d5 is deleted by TTL. */
@@ -107,12 +107,12 @@ public class TTLQueryTest extends AbstractCompactionTest {
     Assert.assertTrue(sourceDatas.get(pathList.get(2)).get(0).getTimestamp() < 1707137815000L);
 
     // set ttl
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 315360000000L);
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3", 315360000000L);
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", 315360000000L);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 315360000000L);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3", 315360000000L);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", 315360000000L);
 
     queryDataSource =
         dataRegion.query(pathList, null, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
@@ -171,12 +171,12 @@ public class TTLQueryTest extends AbstractCompactionTest {
                 COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0"),
             new MeasurementSchema("s2", getDataType(2))));
 
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 1L);
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3", 1);
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", 1);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 1L);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d3", 1);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d5", 1);
     queryDataSource =
         dataRegion.query(pathList, null, EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());

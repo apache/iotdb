@@ -22,11 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
-import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICrossCompactionPerformer;
@@ -93,7 +91,6 @@ public class FastCompactionPerformer
       modificationCache = new ConcurrentHashMap<>();
 
   private final boolean isCrossCompaction;
-  private boolean ignoreAllNullRows = true;
 
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
@@ -118,7 +115,7 @@ public class FastCompactionPerformer
   public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
     try (MultiTsFileDeviceIterator deviceIterator =
-            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap, ignoreAllNullRows);
+            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(targetFiles, seqFiles, readerCacheMap)
@@ -132,19 +129,21 @@ public class FastCompactionPerformer
         checkThreadInterrupted();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
         IDeviceID device = deviceInfo.left;
+        boolean isAligned = deviceInfo.right;
         // sort the resources by the start time of current device from old to new, and remove
         // resource that does not contain the current device. Notice: when the level of time index
         // is file, there will be a false positive judgment problem, that is, the device does not
         // actually exist but the judgment return device being existed.
         sortedSourceFiles.addAll(seqFiles);
         sortedSourceFiles.addAll(unseqFiles);
+        boolean isTreeModel = !isAligned || device.getTableName().startsWith("root.");
         long ttl;
-        if (ignoreAllNullRows) {
-          ttl = DataNodeTreeTTLCache.getInstance().getTTL(device);
+        if (isTreeModel) {
+          ttl = DataNodeTTLCache.getInstance().getTTLForTree(device);
         } else {
-          TsTable tsTable =
-              DataNodeTableCache.getInstance().getTable(getDatabaseName(), device.getTableName());
-          ttl = tsTable == null ? Long.MAX_VALUE : tsTable.getTableTTL();
+          ttl =
+              DataNodeTTLCache.getInstance()
+                  .getTTLForTable(getDatabaseName(), device.getTableName());
         }
         sortedSourceFiles.removeIf(
             x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
@@ -155,11 +154,10 @@ public class FastCompactionPerformer
           continue;
         }
 
-        boolean isAligned = deviceInfo.right;
         compactionWriter.startChunkGroup(device, isAligned);
 
         if (isAligned) {
-          compactAlignedSeries(device, deviceIterator, compactionWriter);
+          compactAlignedSeries(device, deviceIterator, compactionWriter, isTreeModel);
         } else {
           compactNonAlignedSeries(device, deviceIterator, compactionWriter);
         }
@@ -185,7 +183,8 @@ public class FastCompactionPerformer
   private void compactAlignedSeries(
       IDeviceID deviceId,
       MultiTsFileDeviceIterator deviceIterator,
-      AbstractCompactionWriter fastCrossCompactionWriter)
+      AbstractCompactionWriter fastCrossCompactionWriter,
+      boolean ignoreAllNullRows)
       throws PageException, IOException, WriteProcessException, IllegalPathException {
     // measurement -> tsfile resource -> timeseries metadata <startOffset, endOffset>, including
     // empty value chunk metadata
@@ -300,11 +299,6 @@ public class FastCompactionPerformer
               + "should be FastCompactionTaskSummary");
     }
     this.subTaskSummary = (FastCompactionTaskSummary) summary;
-  }
-
-  @Override
-  public void setIgnoreAllNullRows(boolean ignoreAllNullRows) {
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   @Override

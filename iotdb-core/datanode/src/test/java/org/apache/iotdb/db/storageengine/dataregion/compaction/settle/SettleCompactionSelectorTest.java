@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
@@ -59,7 +59,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    DataNodeTreeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
     TsFileGeneratorUtils.useMultiType = originUseMultiType;
   }
 
@@ -272,8 +272,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 100);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 100);
     generateModsFile(1, 10, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(1, 10, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
 
@@ -341,8 +341,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 100);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d1", 100);
     generateModsFile(1, 10, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(1, 10, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
 
@@ -401,8 +401,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
 
     // add one device ttl
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0", 100);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d0", 100);
 
     // select first time， none partial_deleted and all_deleted files
     // add device mods with already outdated device
@@ -820,8 +820,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001", 100);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001", 100);
     generateModsFile(1, 10, seqResources, Long.MIN_VALUE, Long.MAX_VALUE, true);
     generateModsFile(1, 10, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE, true);
 
@@ -889,8 +889,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001", 100);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10001", 100);
     generateModsFile(1, 10, seqResources, Long.MIN_VALUE, Long.MAX_VALUE, true);
     generateModsFile(1, 10, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE, true);
 
@@ -949,8 +949,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
     tsFileManager.addAll(unseqResources, false);
 
     // add one device ttl
-    DataNodeTreeTTLCache.getInstance()
-        .setTTL(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000", 100);
+    DataNodeTTLCache.getInstance()
+        .setTTLForTree(COMPACTION_TEST_SG + IoTDBConstant.PATH_SEPARATOR + "d10000", 100);
 
     // select first time， none partial_deleted and all_deleted files
     // add device mods with already outdated device

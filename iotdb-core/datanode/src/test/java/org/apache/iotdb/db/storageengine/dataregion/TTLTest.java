@@ -35,7 +35,7 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTreeTTLCache;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
@@ -108,7 +108,7 @@ public class TTLTest {
     dataRegion.abortCompaction();
     EnvironmentUtils.cleanEnv();
     CommonDescriptor.getInstance().getConfig().setTimePartitionInterval(prevPartitionInterval);
-    DataNodeTreeTTLCache.getInstance().clearAllTTL();
+    DataNodeTTLCache.getInstance().clearAllTTLForTree();
   }
 
   @Test
@@ -129,7 +129,7 @@ public class TTLTest {
 
     // ok without ttl
     dataRegion.insert(node);
-    DataNodeTreeTTLCache.getInstance().setTTL(sg1, 1000);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1, 1000);
     // with ttl
     node.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
@@ -194,7 +194,7 @@ public class TTLTest {
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    DataNodeTreeTTLCache.getInstance().setTTL(sg1, 500);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1, 500);
 
     // files after ttl
     dataSource =
@@ -228,7 +228,7 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    DataNodeTreeTTLCache.getInstance().setTTL(sg1, 1);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1, 1);
     dataSource =
         dataRegion.query(
             Collections.singletonList(mockMeasurementPath()),
@@ -325,7 +325,7 @@ public class TTLTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    DataNodeTreeTTLCache.getInstance().setTTL(sg1, 500);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1, 500);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
@@ -416,7 +416,7 @@ public class TTLTest {
     assertEquals(4, dataRegion.getSequenceFileList().size());
     assertEquals(4, dataRegion.getUnSequenceFileList().size());
 
-    DataNodeTreeTTLCache.getInstance().setTTL(sg1, 1);
+    DataNodeTTLCache.getInstance().setTTLForTree(sg1, 1);
     for (long timePartition : dataRegion.getTimePartitions()) {
       CompactionScheduler.tryToSubmitSettleCompactionTask(
           dataRegion.getTsFileManager(), timePartition, new CompactionScheduleContext(), true);
