@@ -1590,18 +1590,17 @@ public class IoTDBDescriptor {
   }
 
   private String getWalThrottleThreshold(Properties prop) throws IOException {
-    byte bit = 1;
-    String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit ^ 1], null);
+    String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[0], null);
     if (old_throttleThreshold != null) {
       LOGGER.warn(
           "The throttle threshold params: {} is deprecated, please use {}",
           old_throttleThreshold,
-          DEFAULT_WAL_THRESHOLD_NAME[bit]);
+          DEFAULT_WAL_THRESHOLD_NAME[0]);
       return old_throttleThreshold;
     }
     return prop.getProperty(
-        DEFAULT_WAL_THRESHOLD_NAME[bit],
-        ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[bit]));
+        DEFAULT_WAL_THRESHOLD_NAME[1],
+        ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[1]));
   }
 
   public long getThrottleThresholdWithDirs() {
