@@ -49,7 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 public class DeviceAttributeRemoteUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
@@ -106,12 +105,15 @@ public class DeviceAttributeRemoteUpdater {
     // Note that the "updateContainerStatistics" is unsafe to use here for whole read of detail
     // container because the update map is read by GRASS thread, and the container's size may change
     // during the read process
-    return new Pair<>(
-        version.get(),
-        attributeUpdateMap.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey, entry -> entry.getValue().getUpdateContent(limit))));
+    final Map<TEndPoint, byte[]> updateBytes = new HashMap<>();
+    for (final Map.Entry<TEndPoint, UpdateContainer> entry : attributeUpdateMap.entrySet()) {
+      if (limit.get() < 5) {
+        break;
+      }
+      limit.addAndGet(-5);
+      updateBytes.put(entry.getKey(), entry.getValue().getUpdateContent(limit));
+    }
+    return new Pair<>(version.get(), updateBytes);
   }
 
   public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {

@@ -40,7 +40,7 @@ public interface UpdateContainer {
   // Only this method is not synchronize called and is called by GRASS thread
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
   // thrift threshold and low bandwidth
-  // The "limitBytes" shall be at least 4 for a "0" to indicate empty
+  // The "limitBytes" shall be at least 5 for a "type" and "0" to indicate empty
   byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes);
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
