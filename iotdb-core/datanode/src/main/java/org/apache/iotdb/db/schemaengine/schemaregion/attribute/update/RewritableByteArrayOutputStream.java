@@ -37,8 +37,8 @@ public class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
     this.limit = limit;
   }
 
-  public boolean checkCapacity(final int newGrowth) {
-    return newGrowth + count <= limit;
+  public boolean exceedCapacity(final int newGrowth) {
+    return newGrowth + count > limit;
   }
 
   public void writeWithLength(final byte[] bytes) throws IOException {

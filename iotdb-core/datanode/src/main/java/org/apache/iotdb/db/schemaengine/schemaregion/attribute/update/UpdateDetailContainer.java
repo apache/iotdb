@@ -121,7 +121,7 @@ public class UpdateDetailContainer implements UpdateContainer {
     for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
         tableEntry : updateMap.entrySet()) {
       final byte[] tableEntryBytes = tableEntry.getKey().getBytes(TSFileConfig.STRING_CHARSET);
-      if (!outputStream.checkCapacity(2 * Integer.BYTES + tableEntryBytes.length)) {
+      if (outputStream.exceedCapacity(2 * Integer.BYTES + tableEntryBytes.length)) {
         outputStream.rewrite(mapEntryCount, mapSizeOffset);
         return;
       }
@@ -135,8 +135,8 @@ public class UpdateDetailContainer implements UpdateContainer {
             Arrays.stream(deviceEntry.getKey())
                 .map(str -> str.getBytes(TSFileConfig.STRING_CHARSET))
                 .toArray(byte[][]::new);
-        if (!outputStream.checkCapacity(
-            (Integer.BYTES * (deviceIdBytes.length + 1))
+        if (outputStream.exceedCapacity(
+            (Integer.BYTES * (deviceIdBytes.length + 2))
                 + Arrays.stream(deviceIdBytes)
                     .map(bytes -> bytes.length)
                     .reduce(0, Integer::sum))) {
@@ -149,7 +149,23 @@ public class UpdateDetailContainer implements UpdateContainer {
         for (final byte[] node : deviceIdBytes) {
           outputStream.writeWithLength(node);
         }
-        ReadWriteIOUtils.write(deviceEntry.getValue(), outputStream);
+        final int attributeOffset = outputStream.skipInt();
+        int attributeCount = 0;
+        for (final Map.Entry<String, String> attributeKV : deviceEntry.getValue().entrySet()) {
+          final byte[] keyBytes = attributeKV.getKey().getBytes(TSFileConfig.STRING_CHARSET);
+          final byte[] valueBytes = attributeKV.getValue().getBytes(TSFileConfig.STRING_CHARSET);
+          if (outputStream.exceedCapacity(
+              2 * Integer.BYTES + keyBytes.length + valueBytes.length)) {
+            outputStream.rewrite(mapEntryCount, mapSizeOffset);
+            outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
+            outputStream.rewrite(attributeCount, attributeOffset);
+            return;
+          }
+          outputStream.writeWithLength(keyBytes);
+          outputStream.writeWithLength(valueBytes);
+          ++attributeCount;
+        }
+        outputStream.rewrite(deviceEntry.getValue().size(), attributeOffset);
       }
       outputStream.rewrite(tableEntry.getValue().size(), deviceSizeOffset);
     }
