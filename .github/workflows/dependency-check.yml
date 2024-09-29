@@ -56,4 +56,4 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
       - name: Do the dependency check
         shell: bash
-        run: mvn verify -Dmaven.test.skip=true -DdependencyCheck.skip=false -Dmdep.analyze.skip=true
+        run: mvn verify -Dmaven.test.skip=true -Dmdep.analyze.skip=true -P enable-sbom-check
