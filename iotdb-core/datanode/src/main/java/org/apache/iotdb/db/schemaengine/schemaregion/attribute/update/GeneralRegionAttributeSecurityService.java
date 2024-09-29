@@ -87,6 +87,8 @@ public class GeneralRegionAttributeSecurityService {
   private void execute() {
     lock.lock();
     try {
+      // All the "detailContainer"'s size will add up to at most "limit"
+      // UpdateClearContainer and version / TEndPoint are not calculated
       final AtomicInteger limit =
           new AtomicInteger(
               CommonDescriptor.getInstance()
