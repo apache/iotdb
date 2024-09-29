@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.header.ColumnHeader;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
+import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.queryengine.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeService;
@@ -1015,6 +1017,170 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 TableAggregationTableScanOperator.class.getSimpleName());
-    throw new UnsupportedOperationException("Agg-BE not supported");
+
+    List<Aggregator> aggregators = new ArrayList<>();
+
+    // TODO fix childLayout
+    Map<Symbol, Integer> childLayout = new HashMap<>();
+
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : node.getAggregations().entrySet()) {
+      Aggregator aggregator =
+          buildAggregator(childLayout, entry.getValue(), node.getStep(), context.getTypeProvider());
+      aggregators.add(aggregator);
+    }
+
+    List<Symbol> outputColumnNames = node.getOutputSymbols();
+    int outputColumnCount = outputColumnNames.size();
+    List<ColumnSchema> columnSchemas = new ArrayList<>(outputColumnCount);
+    int[] columnsIndexArray = new int[outputColumnCount];
+    Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
+    Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
+    List<String> measurementColumnNames = new ArrayList<>();
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    int measurementColumnCount = 0;
+    int idx = 0;
+    for (Symbol columnName : outputColumnNames) {
+      ColumnSchema schema =
+          requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
+
+      switch (schema.getColumnCategory()) {
+        case ID:
+        case ATTRIBUTE:
+          columnsIndexArray[idx++] =
+              requireNonNull(
+                  idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+          columnSchemas.add(schema);
+          break;
+        case MEASUREMENT:
+          columnsIndexArray[idx++] = measurementColumnCount;
+          measurementColumnCount++;
+          measurementColumnNames.add(columnName.getName());
+          measurementSchemas.add(
+              new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+          columnSchemas.add(schema);
+          break;
+        case TIME:
+          columnsIndexArray[idx++] = -1;
+          columnSchemas.add(schema);
+          break;
+        default:
+          throw new IllegalArgumentException(
+              "Unexpected column category: " + schema.getColumnCategory());
+      }
+    }
+
+    Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (!outputSet.contains(entry.getKey())
+          && entry.getValue().getColumnCategory() == MEASUREMENT) {
+        measurementColumnCount++;
+        measurementColumnNames.add(entry.getKey().getName());
+        measurementSchemas.add(
+            new MeasurementSchema(
+                entry.getValue().getName(), getTSDataType(entry.getValue().getType())));
+      }
+    }
+
+    SeriesScanOptions.Builder scanOptionsBuilder =
+        node.getTimePredicate()
+            .map(timePredicate -> getSeriesScanOptionsBuilder(context, timePredicate))
+            .orElse(new SeriesScanOptions.Builder());
+    scanOptionsBuilder.withPushDownLimit(node.getPushDownLimit());
+    scanOptionsBuilder.withPushDownOffset(node.getPushDownOffset());
+    scanOptionsBuilder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
+    scanOptionsBuilder.withAllSensors(new HashSet<>(measurementColumnNames));
+
+    Expression pushDownPredicate = node.getPushDownPredicate();
+    if (pushDownPredicate != null) {
+      scanOptionsBuilder.withPushDownFilter(
+          convertPredicateToFilter(pushDownPredicate, measurementColumnNames, columnSchemaMap));
+    }
+
+    ITimeRangeIterator timeRangeIterator =
+        new SingleTimeWindowIterator(Long.MIN_VALUE, Long.MAX_VALUE);
+
+    return new TableAggregationTableScanOperator(
+        node.getPlanNodeId(),
+        operatorContext,
+        columnSchemas,
+        columnsIndexArray,
+        measurementColumnCount,
+        node.getDeviceEntries(),
+        node.getScanOrder(),
+        scanOptionsBuilder.build(),
+        measurementColumnNames,
+        measurementSchemas,
+        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+        // TODO if it equals subSensor variable
+        measurementColumnCount,
+        aggregators,
+        timeRangeIterator,
+        false,
+        null,
+        calculateMaxAggregationResultSize(),
+        true);
+
+    // throw new UnsupportedOperationException("Agg-BE not supported");
   }
+
+  public static long calculateMaxAggregationResultSize(
+      // List<? extends AggregationDescriptor> aggregationDescriptors,
+      // ITimeRangeIterator timeRangeIterator
+      ) {
+    // TODO perfect max aggregation result size logic
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+
+    //    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
+    //    for (AggregationDescriptor descriptor : aggregationDescriptors) {
+    //      List<TSDataType> outPutDataTypes =
+    //              descriptor.getOutputColumnNames().stream()
+    //                      .map(typeProvider::getTableModelType)
+    //                      .collect(Collectors.toList());
+    //      for (TSDataType tsDataType : outPutDataTypes) {
+    //        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType);
+    //      }
+    //    }
+    //
+    //    return Math.min(
+    //            TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes(),
+    //            Math.min(
+    //                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+    //                    timeRangeIterator.getTotalIntervalNum())
+    //                    * timeValueColumnsSizePerLine);
+  }
+
+  //  private void aaa(AggregationTableScanNode node) {
+  //    Map<Symbol, Integer> childLayout = new HashMap<>();
+  //
+  //    for (Symbol columnName : node.getoutputColumnNames) {
+  //      ColumnSchema schema =
+  //              requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
+  //
+  //      switch (schema.getColumnCategory()) {
+  //        case ID:
+  //        case ATTRIBUTE:
+  //          columnsIndexArray[idx++] =
+  //                  requireNonNull(
+  //                          idAndAttributeColumnsIndexMap.get(columnName), columnName + " is
+  // null");
+  //          columnSchemas.add(schema);
+  //          break;
+  //        case MEASUREMENT:
+  //          columnsIndexArray[idx++] = measurementColumnCount;
+  //          measurementColumnCount++;
+  //          measurementColumnNames.add(columnName.getName());
+  //          measurementSchemas.add(
+  //                  new MeasurementSchema(schema.getName(), getTSDataType(schema.getType())));
+  //          columnSchemas.add(schema);
+  //          break;
+  //        case TIME:
+  //          columnsIndexArray[idx++] = -1;
+  //          columnSchemas.add(schema);
+  //          break;
+  //        default:
+  //          throw new IllegalArgumentException(
+  //                  "Unexpected column category: " + schema.getColumnCategory());
+  //      }
+  //    }
+  //  }
 }
