@@ -159,7 +159,7 @@ public class ConfigNodeConfig {
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Procedure Evict ttl. */
-  private int procedureCompletedEvictTTL = 800;
+  private int procedureCompletedEvictTTL = 60;
 
   /** Procedure completed clean interval. */
   private int procedureCompletedCleanInterval = 30;
