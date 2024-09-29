@@ -94,7 +94,7 @@ public abstract class AsyncRequestManager<RequestType, NodeLocation, Client> {
     sendAsyncRequest(requestContext, 1, null);
   }
 
-  private void sendAsyncRequest(
+  public void sendAsyncRequest(
       AsyncRequestContext<?, ?, RequestType, NodeLocation> requestContext,
       int retryNum,
       Long timeoutInMs) {
