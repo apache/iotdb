@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.CnToDnRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -66,7 +65,7 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithRetry(
-      TEndPoint endPoint, Object req, CnToDnRequestType requestType) {
+      TEndPoint endPoint, Object req, CnToDnSyncRequestType requestType) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < DEFAULT_RETRY_NUM; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -85,7 +84,7 @@ public class SyncDataNodeClientPool {
   }
 
   public Object sendSyncRequestToDataNodeWithGivenRetry(
-      TEndPoint endPoint, Object req, CnToDnRequestType requestType, int retryNum) {
+      TEndPoint endPoint, Object req, CnToDnSyncRequestType requestType, int retryNum) {
     Throwable lastException = new TException();
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
@@ -104,7 +103,7 @@ public class SyncDataNodeClientPool {
   }
 
   private Object executeSyncRequest(
-      CnToDnRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
+      CnToDnSyncRequestType requestType, SyncDataNodeInternalServiceClient client, Object req)
       throws TException {
     switch (requestType) {
       case INVALIDATE_PARTITION_CACHE:
