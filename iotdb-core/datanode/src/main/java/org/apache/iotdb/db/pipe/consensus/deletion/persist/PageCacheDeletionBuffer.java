@@ -55,7 +55,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * an easier way to maintain and understand.
  */
 public class PageCacheDeletionBuffer implements DeletionBuffer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TwoStageDeletionBuffer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PageCacheDeletionBuffer.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // Buffer config keep consistent with WAL.
   private static final int ONE_THIRD_WAL_BUFFER_SIZE = config.getWalBufferSize() / 3;
@@ -91,7 +91,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   private volatile File logFile;
   private volatile FileOutputStream logStream;
   private volatile FileChannel logChannel;
-  // Max progressIndex among current .deletion file. Used by PersistTask for naming .deletion file.
+  // Max progressIndex among current .deletion file.
   private ProgressIndex maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
   // Max progressIndex among last .deletion file. Used by PersistTask for naming .deletion file.
   // Since deletions are written serially, DAL is also written serially. This ensures that the
@@ -251,6 +251,45 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     }
   }
 
+  @Override
+  public void close() {
+    isClosed = true;
+    // Force sync existing data in memory to disk.
+    // first waiting serialize and sync tasks finished, then release all resources
+    waitUntilFlushAllDeletionsOrTimeOut();
+    if (persistThread != null) {
+      shutdownThread(persistThread);
+    }
+    // clean buffer
+    MmapUtil.clean(serializeBuffer);
+  }
+
+  private void waitUntilFlushAllDeletionsOrTimeOut() {
+    long currentTime = System.currentTimeMillis();
+    while (!isAllDeletionFlushed()
+        && System.currentTimeMillis() - currentTime < MAX_WAIT_CLOSE_TIME_IN_MS) {
+      try {
+        Thread.sleep(50);
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted when waiting for all deletions flushed.");
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private void shutdownThread(ExecutorService thread) {
+    ThreadName threadName = ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE;
+    thread.shutdown();
+    try {
+      if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
+        LOGGER.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
+      }
+    } catch (InterruptedException e) {
+      LOGGER.warn("Thread {} still doesn't exit after 30s", threadName.getName());
+      Thread.currentThread().interrupt();
+    }
+  }
+
   private class PersistTask implements Runnable {
     // Batch size in current task, used to roll back.
     private final AtomicInteger currentTaskBatchSize = new AtomicInteger(0);
@@ -273,7 +312,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     }
 
     private boolean serializeDeletionToBatchBuffer(DeletionResource deletionResource) {
-      LOGGER.info(
+      LOGGER.debug(
           "Deletion persist-{}: serialize deletion resource {}", dataRegionId, deletionResource);
       ByteBuffer buffer = deletionResource.serialize();
       // if working buffer doesn't have enough space
@@ -349,45 +388,6 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
         resetTaskAttribute();
         switchLoggingFile();
       }
-    }
-  }
-
-  @Override
-  public void close() {
-    isClosed = true;
-    // Force sync existing data in memory to disk.
-    // first waiting serialize and sync tasks finished, then release all resources
-    waitUntilFlushAllDeletionsOrTimeOut();
-    if (persistThread != null) {
-      shutdownThread(persistThread);
-    }
-    // clean buffer
-    MmapUtil.clean(serializeBuffer);
-  }
-
-  private void waitUntilFlushAllDeletionsOrTimeOut() {
-    long currentTime = System.currentTimeMillis();
-    while (!isAllDeletionFlushed()
-        && System.currentTimeMillis() - currentTime < MAX_WAIT_CLOSE_TIME_IN_MS) {
-      try {
-        Thread.sleep(50);
-      } catch (InterruptedException e) {
-        LOGGER.error("Interrupted when waiting for all deletions flushed.");
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
-  private void shutdownThread(ExecutorService thread) {
-    ThreadName threadName = ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE;
-    thread.shutdown();
-    try {
-      if (!thread.awaitTermination(30, TimeUnit.SECONDS)) {
-        LOGGER.warn("Waiting thread {} to be terminated is timeout", threadName.getName());
-      }
-    } catch (InterruptedException e) {
-      LOGGER.warn("Thread {} still doesn't exit after 30s", threadName.getName());
-      Thread.currentThread().interrupt();
     }
   }
 }

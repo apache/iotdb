@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.consensus.index.impl.RecoverProgressIndex;
 import org.apache.iotdb.commons.pipe.datastructure.PersistentResource;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 
 import org.slf4j.Logger;
@@ -126,7 +125,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public ByteBuffer serialize() {
-    ByteBuffer deletion = deleteDataNode.serializeToByteBuffer();
+    ByteBuffer deletion = deleteDataNode.serializeToDAL();
     final ByteBuffer result = ByteBuffer.allocate(deletion.limit());
     result.put(deletion);
     return result;
@@ -134,7 +133,7 @@ public class DeletionResource implements PersistentResource {
 
   public static DeletionResource deserialize(
       final ByteBuffer buffer, final Consumer<DeletionResource> removeHook) throws IOException {
-    DeleteDataNode node = (DeleteDataNode) PlanNodeType.deserialize(buffer);
+    DeleteDataNode node = DeleteDataNode.deserializeFromDAL(buffer);
     return new DeletionResource(node, removeHook);
   }
 

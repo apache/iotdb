@@ -184,14 +184,14 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
       throws PipeException {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeDeleteDataNodeEvent.increaseReferenceCount(
-        IoTDBDataNodeSyncConnector.class.getName())) {
+        IoTDBDataRegionSyncConnector.class.getName())) {
       return;
     }
     try {
       doTransfer(pipeDeleteDataNodeEvent);
     } finally {
       pipeDeleteDataNodeEvent.decreaseReferenceCount(
-          IoTDBDataNodeSyncConnector.class.getName(), false);
+          IoTDBDataRegionSyncConnector.class.getName(), false);
     }
   }
 

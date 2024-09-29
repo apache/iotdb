@@ -41,8 +41,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class ProgressIndexDataNodeManager implements ProgressIndexManager {
-  private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+  private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
 
   public ProgressIndexDataNodeManager() {
     this.groupId2MaxProgressIndex = new ConcurrentHashMap<>();
@@ -106,8 +106,6 @@ public class ProgressIndexDataNodeManager implements ProgressIndexManager {
                       (value == null ? MinimumProgressIndex.INSTANCE : value)
                           .updateToMinimumEqualOrIsAfterProgressIndex(finalMaxProgressIndex));
             });
-
-    // TODO: update deletion progress index
   }
 
   @Override
