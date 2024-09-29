@@ -465,9 +465,7 @@ public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContain
       throws IOException {
     if (!valueChunkList.isEmpty()) {
       final Chunk timeChunk = timeChunkList.get(lastIndex);
-      if (timeChunk.getData().position() > 0) {
-        timeChunk.getData().rewind();
-      }
+      timeChunk.getData().rewind();
       currentIsMultiPage = isMultiPageList.get(lastIndex);
       chunkReader =
           currentIsMultiPage
