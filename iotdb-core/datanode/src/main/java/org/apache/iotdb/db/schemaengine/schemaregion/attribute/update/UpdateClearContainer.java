@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -31,10 +32,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @ThreadSafe
@@ -66,13 +69,34 @@ public class UpdateClearContainer implements UpdateContainer {
 
   @Override
   public byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes) {
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    final RewritableByteArrayOutputStream outputStream = new RewritableByteArrayOutputStream();
     try {
-      serialize(outputStream);
+      serializeWithLimit(outputStream, limitBytes);
     } catch (final IOException ignored) {
       // ByteArrayOutputStream won't throw IOException
     }
     return outputStream.toByteArray();
+  }
+
+  private void serializeWithLimit(
+          final RewritableByteArrayOutputStream outputStream, final AtomicInteger limitBytes)
+          throws IOException {
+    ReadWriteIOUtils.write((byte) 0, outputStream);
+    final int setSizeOffset = outputStream.skipInt();
+    int setEntryCount = 0;
+    int newSize;
+    for (final String tableName : tableNames) {
+      final byte[] tableBytes = tableName.getBytes(TSFileConfig.STRING_CHARSET);
+      newSize = Integer.BYTES + tableBytes.length;
+      if (limitBytes.get() < newSize) {
+        outputStream.rewrite(setEntryCount, setSizeOffset);
+        return;
+      }
+      limitBytes.addAndGet(-newSize);
+      ++setEntryCount;
+      outputStream.writeWithLength(tableBytes);
+    }
+    outputStream.rewrite(tableNames.size(), setSizeOffset);
   }
 
   @Override
@@ -81,11 +105,11 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public void serialize(final OutputStream outputstream) throws IOException {
-    ReadWriteIOUtils.write((byte) 0, outputstream);
-    ReadWriteIOUtils.write(tableNames.size(), outputstream);
+  public void serialize(final OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write((byte) 0, outputStream);
+    ReadWriteIOUtils.write(tableNames.size(), outputStream);
     for (final String tableName : tableNames) {
-      ReadWriteIOUtils.write(tableName, outputstream);
+      ReadWriteIOUtils.write(tableName, outputStream);
     }
   }
 
