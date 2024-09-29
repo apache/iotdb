@@ -71,6 +71,11 @@ public abstract class IoTDBClientManager {
     this.candidatePorts = candidatePorts;
   }
 
+  protected IoTDBClientManager(List<TEndPoint> endPointList, boolean useLeaderCache) {
+    this.endPointList = endPointList;
+    this.useLeaderCache = useLeaderCache;
+  }
+
   public boolean supportModsIfIsDataNodeReceiver() {
     return supportModsIfIsDataNodeReceiver;
   }

@@ -54,8 +54,8 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   private final boolean printLogWhenEncounterException;
 
-  private final TEndPoint endpoint;
-  private final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
+  private final AsyncTEndPoint endpoint;
+  private final ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
 
   private final AtomicBoolean shouldReturnSelf = new AtomicBoolean(true);
 
@@ -63,9 +63,9 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
 
   public AsyncPipeDataTransferServiceClient(
       ThriftClientProperty property,
-      TEndPoint endpoint,
+      AsyncTEndPoint endpoint,
       TAsyncClientManager tClientManager,
-      ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
+      ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
       String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
@@ -192,39 +192,23 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   }
 
   public static class Factory
-      extends AsyncThriftClientFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
-
-    private final int minSendPortRange;
-
-    private final int maxSendPortRange;
-
-    private final List<Integer> candidatePorts;
-
-    private final String customSendPortStrategy;
+      extends AsyncThriftClientFactory<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> {
 
     public Factory(
-        ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
+        ClientManager<AsyncTEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
         ThriftClientProperty thriftClientProperty,
-        String threadName,
-        String customSendPortStrategy,
-        int minSendPortRange,
-        int maxSendPortRange,
-        List<Integer> candidatePorts) {
+        String threadName) {
       super(clientManager, thriftClientProperty, threadName);
-      this.customSendPortStrategy = customSendPortStrategy;
-      this.minSendPortRange = minSendPortRange;
-      this.maxSendPortRange = maxSendPortRange;
-      this.candidatePorts = candidatePorts;
     }
 
     @Override
     public void destroyObject(
-        TEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
+        AsyncTEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
       pooledObject.getObject().close();
     }
 
     @Override
-    public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(TEndPoint endPoint)
+    public PooledObject<AsyncPipeDataTransferServiceClient> makeObject(AsyncTEndPoint endPoint)
         throws Exception {
       return new DefaultPooledObject<>(
           new AsyncPipeDataTransferServiceClient(
@@ -232,15 +216,15 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
               endPoint,
               tManagers[clientCnt.incrementAndGet() % tManagers.length],
               clientManager,
-              customSendPortStrategy,
-              minSendPortRange,
-              maxSendPortRange,
-              candidatePorts));
+              endPoint.getCustomSendPortStrategy(),
+              endPoint.getMaxSendPortRange(),
+              endPoint.getMaxSendPortRange(),
+              endPoint.getCandidatePorts()));
     }
 
     @Override
     public boolean validateObject(
-        TEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
+        AsyncTEndPoint endPoint, PooledObject<AsyncPipeDataTransferServiceClient> pooledObject) {
       return pooledObject.getObject().isReady();
     }
   }

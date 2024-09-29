@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.connector.protocol.thrift.async;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncTEndPoint;
 import org.apache.iotdb.commons.pipe.connector.protocol.IoTDBConnector;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
@@ -70,6 +71,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_LEADER_CACHE_ENABLE_KEY;
@@ -120,17 +122,23 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
 
     clientManager =
         new IoTDBDataNodeAsyncClientManager(
-            nodeUrls,
+            nodeUrls.stream()
+                .map(
+                    tEndPoint ->
+                        new AsyncTEndPoint(
+                            tEndPoint.getIp(),
+                            tEndPoint.getPort(),
+                            minSendPortRange,
+                            maxSendPortRange,
+                            candidatePorts,
+                            customSendPortStrategy))
+                .collect(Collectors.toList()),
             parameters.getBooleanOrDefault(
                 Arrays.asList(SINK_LEADER_CACHE_ENABLE_KEY, CONNECTOR_LEADER_CACHE_ENABLE_KEY),
                 CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE),
             loadBalanceStrategy,
             shouldReceiverConvertOnTypeMismatch,
-            loadTsFileStrategy,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
-            candidatePorts);
+            loadTsFileStrategy);
 
     if (isTabletBatchModeEnabled) {
       tabletBatchBuilder = new PipeTransferBatchReqBuilder(parameters);
@@ -263,7 +271,7 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
       final PipeTransferTabletBatchEventHandler pipeTransferTabletBatchEventHandler) {
     AsyncPipeDataTransferServiceClient client = null;
     try {
-      client = clientManager.borrowClient(endPoint);
+      client = clientManager.borrowClient((AsyncTEndPoint) endPoint);
       pipeTransferTabletBatchEventHandler.transfer(client);
     } catch (final Exception ex) {
       logOnClientException(client, ex);
@@ -383,7 +391,15 @@ public class IoTDBDataRegionAsyncConnector extends IoTDBConnector {
   //////////////////////////// Leader cache update ////////////////////////////
 
   public void updateLeaderCache(final String deviceId, final TEndPoint endPoint) {
-    clientManager.updateLeaderCache(deviceId, endPoint);
+    clientManager.updateLeaderCache(
+        deviceId,
+        new AsyncTEndPoint(
+            endPoint.getIp(),
+            endPoint.getPort(),
+            minSendPortRange,
+            maxSendPortRange,
+            candidatePorts,
+            customSendPortStrategy));
   }
 
   //////////////////////////// Exception handlers ////////////////////////////
