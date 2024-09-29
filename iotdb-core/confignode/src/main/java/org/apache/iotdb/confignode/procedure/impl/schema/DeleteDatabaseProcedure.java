@@ -155,15 +155,15 @@ public class DeleteDatabaseProcedure
               MetricService.getInstance(), deleteDatabaseSchema.getName());
 
           // try sync delete schemaengine region
-          DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> asyncClientHandler =
+          DataNodeAsyncRequestContext<TConsensusGroupId, TSStatus> requestContext =
               new DataNodeAsyncRequestContext<>(CnToDnRequestType.DELETE_REGION);
           Map<Integer, RegionDeleteTask> schemaRegionDeleteTaskMap = new HashMap<>();
           int requestIndex = 0;
           for (TRegionReplicaSet schemaRegionReplicaSet : schemaRegionReplicaSets) {
             for (TDataNodeLocation dataNodeLocation :
                 schemaRegionReplicaSet.getDataNodeLocations()) {
-              asyncClientHandler.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
-              asyncClientHandler.putNodeLocation(requestIndex, dataNodeLocation);
+              requestContext.putRequest(requestIndex, schemaRegionReplicaSet.getRegionId());
+              requestContext.putNodeLocation(requestIndex, dataNodeLocation);
               schemaRegionDeleteTaskMap.put(
                   requestIndex,
                   new RegionDeleteTask(dataNodeLocation, schemaRegionReplicaSet.getRegionId()));
@@ -172,19 +172,18 @@ public class DeleteDatabaseProcedure
           }
           if (!schemaRegionDeleteTaskMap.isEmpty()) {
             CnToDnInternalServiceAsyncRequestManager.getInstance()
-                .sendAsyncRequestWithRetry(asyncClientHandler);
-            for (Map.Entry<Integer, TSStatus> entry :
-                asyncClientHandler.getResponseMap().entrySet()) {
+                .sendAsyncRequestWithRetry(requestContext);
+            for (Map.Entry<Integer, TSStatus> entry : requestContext.getResponseMap().entrySet()) {
               if (entry.getValue().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 LOG.info(
                     "[DeleteDatabaseProcedure] Successfully delete SchemaRegion[{}] on {}",
-                    asyncClientHandler.getRequest(entry.getKey()),
+                    requestContext.getRequest(entry.getKey()),
                     schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
                 schemaRegionDeleteTaskMap.remove(entry.getKey());
               } else {
                 LOG.warn(
                     "[DeleteDatabaseProcedure] Failed to delete SchemaRegion[{}] on {}. Submit to async deletion.",
-                    asyncClientHandler.getRequest(entry.getKey()),
+                    requestContext.getRequest(entry.getKey()),
                     schemaRegionDeleteTaskMap.get(entry.getKey()).getTargetDataNode());
               }
             }

@@ -278,7 +278,7 @@ public class RouteBalancer implements IClusterStatusSubscriber {
               requestIndex.incrementAndGet();
             });
     CnToDnInternalServiceAsyncRequestManager.getInstance()
-        .sendAsyncRequest(invalidateSchemaCacheRequestHandler, 1, 100L);
+        .sendAsyncRequest(invalidateSchemaCacheRequestHandler);
   }
 
   public synchronized void balanceRegionLeaderAndPriority() {
