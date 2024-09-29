@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -48,6 +49,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 public class DeviceAttributeRemoteUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
@@ -101,7 +103,17 @@ public class DeviceAttributeRemoteUpdater {
   }
 
   public Map<TEndPoint, byte[]> getSendBuffer() {
-    return null;
+    return attributeUpdateMap.entrySet().stream()
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey,
+                entry ->
+                    entry
+                        .getValue()
+                        .getUpdateContent(
+                            CommonDescriptor.getInstance()
+                                .getConfig()
+                                .getPipeConnectorRequestSliceThresholdBytes())));
   }
 
   public void addLocation(final Pair<TEndPoint, Integer> dataNodeLocation) {
