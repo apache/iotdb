@@ -23,6 +23,7 @@ import org.apache.tsfile.utils.Pair;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -38,7 +39,15 @@ public interface UpdateContainer {
   // Only this method is not synchronize called and is called by GRASS thread
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
   // thrift threshold and low bandwidth
-  byte[] getUpdateContent(final long limitBytes);
+  default byte[] getUpdateContent(final long limitBytes) {
+    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      serialize(outputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return outputStream.toByteArray();
+  }
 
   Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer);
 

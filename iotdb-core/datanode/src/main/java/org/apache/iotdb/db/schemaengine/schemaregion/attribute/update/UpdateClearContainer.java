@@ -63,17 +63,6 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent(final long limitBytes) {
-    final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      serialize(outputStream);
-    } catch (final IOException ignored) {
-      // ByteArrayOutputStream won't throw IOException
-    }
-    return outputStream.toByteArray();
-  }
-
-  @Override
   public Pair<Integer, Boolean> updateSelfByCommitBuffer(final ByteBuffer commitBuffer) {
     return null;
   }
