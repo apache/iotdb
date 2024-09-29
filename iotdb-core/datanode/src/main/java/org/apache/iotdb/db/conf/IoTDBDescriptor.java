@@ -1590,40 +1590,19 @@ public class IoTDBDescriptor {
   }
 
   private String getWalThrottleThreshold(Properties prop) throws IOException {
-    byte bit = 0;
-    String new_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit], null);
+    byte bit = 1;
     String old_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit ^ 1], null);
-
-    // all configurations are set, return the current version prop
-    if (new_throttleThreshold != null && old_throttleThreshold != null) {
-      String version = getConfig().getIoTDBVersion();
-      LOGGER.warn(
-          "Both {} and {} are set in iotdb-system.properties, use current iotdb version config {}",
-          DEFAULT_WAL_THRESHOLD_NAME[bit],
-          DEFAULT_WAL_THRESHOLD_NAME[bit ^ 1],
-          version);
-      if (version.compareTo("1.3.3") >= 0) {
-        return new_throttleThreshold;
-      } else {
-        return old_throttleThreshold;
-      }
-    }
-    // new conf is set, return new conf
-    if (new_throttleThreshold != null) {
-      return new_throttleThreshold;
-    }
-    // old conf is set, return old conf
     if (old_throttleThreshold != null) {
+      LOGGER.warn(
+          "The throttle threshold params: {} is deprecated, please use {}",
+          old_throttleThreshold,
+          DEFAULT_WAL_THRESHOLD_NAME[bit]);
       return old_throttleThreshold;
     }
-    // default throttle threshold
-    for (String name : DEFAULT_WAL_THRESHOLD_NAME) {
-      String throttleThreshold = ConfigurationFileUtils.getConfigurationDefaultValue(name);
-      if (throttleThreshold != null) {
-        return throttleThreshold;
-      }
-    }
-    return null;
+    String new_throttleThreshold = prop.getProperty(DEFAULT_WAL_THRESHOLD_NAME[bit], null);
+    return new_throttleThreshold != null
+        ? new_throttleThreshold
+        : ConfigurationFileUtils.getConfigurationDefaultValue(DEFAULT_WAL_THRESHOLD_NAME[bit]);
   }
 
   public long getThrottleThresholdWithDirs() {
