@@ -98,8 +98,38 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public byte[] getUpdateContent(final long limitBytes) {
-    return null;
+  public byte[] getUpdateContent(final int limitBytes) {
+    if (limitBytes < 0) {
+      return UpdateContainer.super.getUpdateContent(limitBytes);
+    }
+    final RewritableByteArrayOutputStream outputStream =
+        new RewritableByteArrayOutputStream(limitBytes);
+    try {
+      serializeWithLimit(outputStream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return outputStream.toByteArray();
+  }
+
+  private void serializeWithLimit(final RewritableByteArrayOutputStream outputStream)
+      throws IOException {
+    final int mapSizeOffset = outputStream.skipInt();
+    for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
+        tableEntry : updateMap.entrySet()) {
+      ReadWriteIOUtils.write(tableEntry.getKey(), outputStream);
+      final int deviceSizeOffset = outputStream.skipInt();
+      for (final Map.Entry<String[], ConcurrentMap<String, String>> deviceEntry :
+          tableEntry.getValue().entrySet()) {
+        ReadWriteIOUtils.write(deviceEntry.getKey().length, outputStream);
+        for (final String node : deviceEntry.getKey()) {
+          ReadWriteIOUtils.write(node, outputStream);
+        }
+        ReadWriteIOUtils.write(deviceEntry.getValue(), outputStream);
+      }
+      outputStream.rewrite(tableEntry.getValue().size(), deviceSizeOffset);
+    }
+    outputStream.rewrite(updateMap.size(), mapSizeOffset);
   }
 
   @Override
@@ -108,18 +138,19 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public void serialize(final OutputStream outputstream) throws IOException {
-    ReadWriteIOUtils.write(updateMap.size(), outputstream);
+  public void serialize(final OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(updateMap.size(), outputStream);
     for (final Map.Entry<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
         tableEntry : updateMap.entrySet()) {
-      ReadWriteIOUtils.write(tableEntry.getKey(), outputstream);
+      ReadWriteIOUtils.write(tableEntry.getKey(), outputStream);
+      ReadWriteIOUtils.write(tableEntry.getValue().size(), outputStream);
       for (final Map.Entry<String[], ConcurrentMap<String, String>> deviceEntry :
           tableEntry.getValue().entrySet()) {
-        ReadWriteIOUtils.write(deviceEntry.getKey().length, outputstream);
+        ReadWriteIOUtils.write(deviceEntry.getKey().length, outputStream);
         for (final String node : deviceEntry.getKey()) {
-          ReadWriteIOUtils.write(node, outputstream);
+          ReadWriteIOUtils.write(node, outputStream);
         }
-        ReadWriteIOUtils.write(deviceEntry.getValue(), outputstream);
+        ReadWriteIOUtils.write(deviceEntry.getValue(), outputStream);
       }
     }
   }

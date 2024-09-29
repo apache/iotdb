@@ -19,23 +19,43 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
+import org.apache.tsfile.utils.BytesUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
 
-  private static final byte[] longPlaceHolder = new byte[4];
+  private static final byte[] intPlaceHolder = new byte[4];
+  private final int limit;
 
-  public synchronized int skipLong() throws IOException {
+  public RewritableByteArrayOutputStream(final int limit) {
+    this.limit = limit;
+  }
+
+  public synchronized boolean tryWrite(final byte[] content) throws IOException {
+    if (content.length + count <= limit) {
+      write(content);
+      return true;
+    }
+    return false;
+  }
+
+  public synchronized int skipInt() throws IOException {
     final int result = count;
-    write(longPlaceHolder);
+    write(intPlaceHolder);
     return result;
   }
 
-  public synchronized void rewrite(final byte[] b, final int off) {
-    if ((off < 0) || (off > buf.length - b.length)) {
+  public synchronized void rewrite(final int n, final int off) {
+    byte[] bytes = BytesUtils.intToBytes(n);
+    if ((off < 0) || (off > buf.length - bytes.length)) {
       throw new IndexOutOfBoundsException();
     }
-    System.arraycopy(b, 0, buf, off, b.length);
+    System.arraycopy(bytes, 0, buf, off, bytes.length);
+  }
+
+  public int getCount() {
+    return count;
   }
 }
