@@ -70,6 +70,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap = new HashMap<>();
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
+  private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
 
   /**
@@ -207,11 +208,19 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       deviceIteratorMap.remove(resource);
     }
 
-    timeLowerBoundForCurrentDevice =
-        CommonDateTimeUtils.currentTime()
-            - DataNodeTTLCache.getInstance()
-                .getTTL(((PlainDeviceID) currentDevice.getLeft()).toStringID());
+    ttlForCurrentDevice =
+        DataNodeTTLCache.getInstance()
+            .getTTL(((PlainDeviceID) currentDevice.getLeft()).toStringID());
+    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
+  }
+
+  public long getTTLForCurrentDevice() {
+    return ttlForCurrentDevice;
+  }
+
+  public long getTimeLowerBoundForCurrentDevice() {
+    return timeLowerBoundForCurrentDevice;
   }
 
   /**
