@@ -180,6 +180,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
       record.addField(series, TSDataType.MIN_MAX_INT64);
 
+      // clear
+      pathExecutors.clear();
+      pathExecutors = null;
+      System.gc();
+
     } catch (QueryProcessException e) {
       logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
       throw new IOException(e.getMessage(), e);

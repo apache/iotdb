@@ -32,8 +32,8 @@ public class MySample_fsw_motivation {
   public static void main(String[] args) {
     String file = "tmp.csv";
     String out = "tmp-fsw.csv";
-    int[] noutList = new int[]{7};
-    double[] epsilonList = new double[]{3.342602252960205};
+    int[] noutList = new int[] {7};
+    double[] epsilonList = new double[] {3.342602252960205};
 
     for (int nout : noutList) {
       boolean hasHeader = false;
@@ -42,14 +42,10 @@ public class MySample_fsw_motivation {
         TimeSeries ts =
             TimeSeriesReader.getMyTimeSeries(
                 inputStream, delimiter, false, -1, 0, hasHeader, false);
-//        double epsilon = getFSWParam(nout, ts, 1e-6);
+        //        double epsilon = getFSWParam(nout, ts, 1e-6);
         double epsilon = epsilonList[0];
         List<Point> reducedPoints = FSW.reducePoints(ts.data, epsilon);
-        System.out.println(
-            "epsilon="
-                + epsilon
-                + ",actual m="
-                + reducedPoints.size());
+        System.out.println("epsilon=" + epsilon + ",actual m=" + reducedPoints.size());
         try (PrintWriter writer = new PrintWriter(new FileWriter(out))) {
           for (Point p : reducedPoints) {
             writer.println(p.getTimestamp() + "," + p.getValue());
