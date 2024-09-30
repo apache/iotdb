@@ -20,9 +20,10 @@
 
 if [ "$#" -eq 1 ] && [ "$1" == "--help" ]; then
     echo "The script will remove one or more DataNodes."
-    echo "Before removing DataNodes, ensure that the cluster has at least the number of data/schema replicas DataNodes."
+    echo "Before removing DataNodes, ensure that the cluster has at least the required number of data/schema replicas DataNodes."
     echo "Usage: ./sbin/remove-datanode.sh [DataNode_ID ...]"
     echo "Remove one or more DataNodes by specifying their IDs."
+    echo "Note that this datanode is removed by default if DataNode_ID is not specified."
     echo "Example:"
     echo "  ./sbin/remove-datanode.sh 1         # Remove DataNode with ID 1"
     echo "  ./sbin/remove-datanode.sh 1 2 3     # Remove DataNodes with IDs 1, 2, and 3"

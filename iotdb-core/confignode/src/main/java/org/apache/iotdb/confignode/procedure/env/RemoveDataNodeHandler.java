@@ -23,12 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.ClientPoolFactory;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.cluster.RegionStatus;
@@ -75,14 +71,8 @@ public class RemoveDataNodeHandler {
 
   private final ConfigManager configManager;
 
-  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> dataNodeClientManager;
-
   public RemoveDataNodeHandler(ConfigManager configManager) {
     this.configManager = configManager;
-    dataNodeClientManager =
-        new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-            .createClientManager(
-                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
   /**
@@ -111,12 +101,13 @@ public class RemoveDataNodeHandler {
   }
 
   /**
-   * Changes the status of the specified DataNode to the given status. This is done to prevent the
-   * DataNode from receiving read or write requests when it is being removed or is in a restricted
-   * state.
+   * Changes the status of a batch of specified DataNodes to the given status. This is done to
+   * prevent the DataNodes from receiving read or write requests when they are being removed or are
+   * in a restricted state.
    *
-   * @param removedDataNodes the location of the DataNodes whose status need to be changed
-   * @param nodeStatusMap the new status to assign to the DataNode (e.g., Removing, Running, etc.)
+   * @param removedDataNodes the locations of the DataNodes whose statuses need to be changed
+   * @param nodeStatusMap a map containing the new status to assign to each DataNode (e.g.,
+   *     Removing, Running, etc.)
    */
   public void changeDataNodeStatus(
       List<TDataNodeLocation> removedDataNodes, Map<Integer, NodeStatus> nodeStatusMap) {
