@@ -28,16 +28,17 @@ public class UpdateContainerStatistics {
   private long lastUpdateTime = System.currentTimeMillis();
   private long size = 0;
 
-  private void update() {
-    lastUpdateTime = System.currentTimeMillis();
-  }
-
   long getSize() {
     return size;
   }
 
   void addSize(final long increment) {
     this.size += increment;
+  }
+
+  void decreaseSize(final long decrement) {
+    this.size -= decrement;
+    lastUpdateTime = System.currentTimeMillis();
   }
 
   boolean needDegrade() {

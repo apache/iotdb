@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -134,9 +135,39 @@ public class DeviceAttributeRemoteUpdater {
                 attributeUpdateMap.computeIfPresent(
                     location,
                     (dataNode, container) -> {
-                      container.updateSelfByCommitBuffer(bytes);
+                      if (container instanceof UpdateDetailContainer
+                          || version.get() == node.getVersion()) {
+                        final Pair<Integer, Boolean> result =
+                            container.updateSelfByCommitContainer(getContainer(bytes));
+                        releaseMemory(result.getLeft());
+                        // isEmpty
+                        if (result.getRight()) {
+                          releaseMemory(
+                              container instanceof UpdateDetailContainer
+                                  ? UpdateDetailContainer.INSTANCE_SIZE
+                                  : UpdateClearContainer.INSTANCE_SIZE);
+                          updateContainerStatistics.remove(dataNode);
+                        } else if (updateContainerStatistics.containsKey(dataNode)) {
+                          updateContainerStatistics.get(dataNode).decreaseSize(result.getLeft());
+                        }
+                      }
                       return container;
                     })));
+  }
+
+  private UpdateContainer getContainer(final byte[] bytes) {
+    final ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
+    UpdateContainer result = null;
+    try {
+      result =
+          ReadWriteIOUtils.readBool(inputStream)
+              ? new UpdateDetailContainer()
+              : new UpdateClearContainer();
+      result.deserialize(inputStream);
+    } catch (final IOException ignore) {
+      // ByteArrayInputStream won't throw IOException
+    }
+    return result;
   }
 
   public void addLocation(final TDataNodeLocation dataNodeLocation) {

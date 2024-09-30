@@ -39,10 +39,11 @@ public interface UpdateContainer {
   // Only this method is not synchronize called and is called by GRASS thread
   // A piece of "updateContent" won't exceed "limitBytes" in order to handle
   // thrift threshold and low bandwidth
+  // Note that a "piece" returned is also a complete "updateContainer"'s serialized bytes
   // The "limitBytes" shall be at least 5 for a "type" and "0" to indicate empty
   byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes);
 
-  Pair<Integer, Boolean> updateSelfByCommitBuffer(final byte[] commitBuffer);
+  Pair<Integer, Boolean> updateSelfByCommitContainer(final UpdateContainer commitBuffer);
 
   void serialize(final OutputStream outputstream) throws IOException;
 
