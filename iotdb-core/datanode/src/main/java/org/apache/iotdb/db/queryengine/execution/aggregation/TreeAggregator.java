@@ -43,7 +43,7 @@ public class TreeAggregator implements IAggregator {
   // In some intermediate result input, inputLocation[] should include two columns
   protected List<InputLocation[]> inputLocationList;
   protected final AggregationStep step;
-  protected static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
+  public static final QueryExecutionMetricSet QUERY_EXECUTION_METRICS =
       QueryExecutionMetricSet.getInstance();
 
   // Used for SeriesAggregateScanOperator

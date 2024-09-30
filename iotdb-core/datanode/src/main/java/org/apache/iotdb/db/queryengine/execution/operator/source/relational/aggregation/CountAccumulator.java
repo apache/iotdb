@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -71,6 +72,19 @@ public class CountAccumulator implements Accumulator {
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
     columnBuilder.writeLong(countState);
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
+    countState += statistics.getCount();
   }
 
   @Override

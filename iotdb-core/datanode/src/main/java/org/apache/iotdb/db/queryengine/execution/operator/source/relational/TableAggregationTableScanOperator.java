@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
-import org.apache.iotdb.db.queryengine.execution.aggregation.TreeAggregator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesAggregationScanOperator;
@@ -371,19 +370,21 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   }
 
   protected void calcFromStatistics(Statistics timeStatistics, Statistics[] valueStatistics) {
-    for (TreeAggregator aggregator : aggregators) {
+    for (TableAggregator aggregator : aggregators) {
       if (aggregator.hasFinalResult()) {
         continue;
       }
-      aggregator.processStatistics(timeStatistics, valueStatistics);
+      aggregator.processStatistics(valueStatistics);
     }
   }
+
+  boolean canUseStatistics = true;
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromFile() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextFile()) {
+    while (seriesScanUtil.hasNextFile()) {
       if (canUseStatistics && seriesScanUtil.canUseCurrentFileStatistics()) {
         Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
         if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -424,7 +425,7 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
   protected boolean readAndCalcFromChunk() throws IOException {
     // start stopwatch
     long start = System.nanoTime();
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && seriesScanUtil.hasNextChunk()) {
+    while (seriesScanUtil.hasNextChunk()) {
       if (canUseStatistics && seriesScanUtil.canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
         if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
@@ -460,6 +461,8 @@ public class TableAggregationTableScanOperator extends AbstractSeriesAggregation
     }
     return false;
   }
+
+  long leftRuntimeOfOneNextCall = Long.MAX_VALUE;
 
   @SuppressWarnings({"squid:S3776", "squid:S135", "squid:S3740"})
   protected boolean readAndCalcFromPage() throws IOException {

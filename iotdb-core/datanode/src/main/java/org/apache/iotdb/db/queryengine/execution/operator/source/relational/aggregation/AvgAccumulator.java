@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.tsfile.utils.Binary;
@@ -179,6 +181,28 @@ public class AvgAccumulator implements Accumulator {
       columnBuilder.appendNull();
     } else {
       columnBuilder.writeDouble(sumValue / countValue);
+    }
+  }
+
+  @Override
+  public boolean hasFinalResult() {
+    return false;
+  }
+
+  @Override
+  public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
+    initResult = true;
+    countValue += statistics.getCount();
+    if (statistics instanceof IntegerStatistics) {
+      sumValue += statistics.getSumLongValue();
+    } else {
+      sumValue += statistics.getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
     }
   }
 
