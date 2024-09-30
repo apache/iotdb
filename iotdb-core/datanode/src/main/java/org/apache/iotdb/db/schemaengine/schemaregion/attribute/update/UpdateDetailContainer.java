@@ -210,7 +210,21 @@ public class UpdateDetailContainer implements UpdateContainer {
                               thisAttributes.remove(k);
                             }
                           });
+                      if (thisAttributes.isEmpty()) {
+                        result.addAndGet(
+                            RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                                + RamUsageEstimator.sizeOf(device)
+                                + MAP_SIZE);
+                        thisDeviceMap.remove(device);
+                      }
                     });
+                if (thisDeviceMap.isEmpty()) {
+                  result.addAndGet(
+                      RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY
+                          + RamUsageEstimator.sizeOf(table)
+                          + MAP_SIZE);
+                  this.updateMap.remove(table);
+                }
               });
     }
     return null;
