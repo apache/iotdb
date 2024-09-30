@@ -38,12 +38,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -149,7 +155,39 @@ public class TableModelPlanner implements IPlanner {
 
   @Override
   public void setRedirectInfo(
-      IAnalysis analysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {}
+      IAnalysis iAnalysis, TEndPoint localEndPoint, TSStatus tsstatus, TSStatusCode statusCode) {
+    Analysis analysis = (Analysis) iAnalysis;
+    if (!(analysis.getStatement() instanceof WrappedInsertStatement)) {
+      return;
+    }
+    InsertBaseStatement insertStatement =
+        ((WrappedInsertStatement) analysis.getStatement()).getInnerTreeStatement();
+
+    if (!analysis.isFinishQueryAfterAnalyze()) {
+      // Table Model Session only supports insertTablet
+      if (insertStatement instanceof InsertTabletStatement) {
+        if (statusCode == TSStatusCode.SUCCESS_STATUS) {
+          boolean needRedirect = false;
+          List<TEndPoint> redirectNodeList = analysis.getRedirectNodeList();
+          List<TSStatus> subStatus = new ArrayList<>(redirectNodeList.size());
+          for (TEndPoint endPoint : redirectNodeList) {
+            // redirect writing only if the redirectEndPoint is not the current node
+            if (!localEndPoint.equals(endPoint)) {
+              subStatus.add(
+                  RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS).setRedirectNode(endPoint));
+              needRedirect = true;
+            } else {
+              subStatus.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+            }
+          }
+          if (needRedirect) {
+            tsstatus.setCode(TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode());
+            tsstatus.setSubStatus(subStatus);
+          }
+        }
+      }
+    }
+  }
 
   private static class NopAccessControl implements AccessControl {}
 }

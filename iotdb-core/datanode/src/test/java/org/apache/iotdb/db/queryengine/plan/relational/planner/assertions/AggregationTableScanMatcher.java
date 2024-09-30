@@ -20,6 +20,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 
+import com.google.common.collect.ImmutableSet;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -80,10 +82,11 @@ public class AggregationTableScanMatcher extends TableScanMatcher {
     }
 
     if (!outputSymbols.isEmpty()
-        && !outputSymbols.equals(
-            aggregationTableScanNode.getOutputSymbols().stream()
-                .map(Symbol::getName)
-                .collect(Collectors.toList()))) {
+        && !ImmutableSet.copyOf(outputSymbols)
+            .equals(
+                aggregationTableScanNode.getOutputSymbols().stream()
+                    .map(Symbol::getName)
+                    .collect(Collectors.toSet()))) {
       return NO_MATCH;
     }
 

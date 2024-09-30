@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
+import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
@@ -41,7 +44,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.IntToLongFunction;
 
 public class RelationalInsertTabletNode extends InsertTabletNode {
@@ -137,6 +142,44 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
         values,
         subTimes.length,
         columnCategories);
+  }
+
+  protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
+      Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
+    Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
+    Map<IDeviceID, TEndPoint> endPointMap = new HashMap<>();
+
+    for (Map.Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
+      final IDeviceID deviceID = entry.getKey();
+      final PartitionSplitInfo splitInfo = entry.getValue();
+      final List<TRegionReplicaSet> replicaSets =
+          analysis
+              .getDataPartitionInfo()
+              .getDataRegionReplicaSetForWriting(
+                  deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
+      splitInfo.replicaSets = replicaSets;
+      // collect redirectInfo
+      endPointMap.put(
+          deviceID,
+          replicaSets
+              .get(replicaSets.size() - 1)
+              .getDataNodeLocations()
+              .get(0)
+              .getClientRpcEndPoint());
+      for (int i = 0; i < replicaSets.size(); i++) {
+        List<Integer> subRanges =
+            splitMap.computeIfAbsent(replicaSets.get(i), x -> new ArrayList<>());
+        subRanges.add(splitInfo.ranges.get(2 * i));
+        subRanges.add(splitInfo.ranges.get(2 * i + 1));
+      }
+    }
+    List<TEndPoint> redirectNodeList = new ArrayList<>(times.length);
+    for (int i = 0; i < times.length; i++) {
+      IDeviceID deviceId = getDeviceID(i);
+      redirectNodeList.add(endPointMap.get(deviceId));
+    }
+    analysis.setRedirectNodeList(redirectNodeList);
+    return splitMap;
   }
 
   public static RelationalInsertTabletNode deserialize(ByteBuffer byteBuffer) {

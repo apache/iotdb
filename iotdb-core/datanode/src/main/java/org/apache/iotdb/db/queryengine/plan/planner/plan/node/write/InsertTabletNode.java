@@ -248,7 +248,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return deviceIDSplitInfoMap;
   }
 
-  private Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
+  protected Map<TRegionReplicaSet, List<Integer>> splitByReplicaSet(
       Map<IDeviceID, PartitionSplitInfo> deviceIDSplitInfoMap, IAnalysis analysis) {
     Map<TRegionReplicaSet, List<Integer>> splitMap = new HashMap<>();
 
@@ -1189,12 +1189,12 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return deviceID;
   }
 
-  private static class PartitionSplitInfo {
+  protected static class PartitionSplitInfo {
 
     // for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
-    private List<Integer> ranges = new ArrayList<>();
-    private List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
-    private List<TRegionReplicaSet> replicaSets;
+    List<Integer> ranges = new ArrayList<>();
+    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+    List<TRegionReplicaSet> replicaSets;
   }
 
   /**

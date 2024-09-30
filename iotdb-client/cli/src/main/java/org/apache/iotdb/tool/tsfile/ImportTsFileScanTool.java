@@ -86,7 +86,9 @@ public class ImportTsFileScanTool {
   }
 
   public static int getSourceFullPathLength() {
-    return ImportTsFileScanTool.sourceFullPath.length();
+    return new File(sourceFullPath).isDirectory()
+        ? ImportTsFileScanTool.sourceFullPath.length()
+        : new File(ImportTsFileScanTool.sourceFullPath).getParent().length();
   }
 
   public static int getTsFileQueueSize() {

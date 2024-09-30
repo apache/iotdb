@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.utils;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.AbstractCompactionTask;
@@ -51,19 +52,22 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
       SystemInfo.getInstance().getTotalFileLimitForCompaction();
 
   @Before
-  public void setup() {
+  public void setup()
+      throws IOException, InterruptedException, MetadataException, WriteProcessException {
     SystemInfo.getInstance().getCompactionMemoryCost().set(0);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().setMemorySizeForCompaction(2000);
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(50);
+    super.setUp();
   }
 
   @After
-  public void teardown() {
+  public void teardown() throws StorageEngineException, IOException {
     SystemInfo.getInstance().getCompactionMemoryCost().set(0);
     SystemInfo.getInstance().getCompactionFileNumCost().set(0);
     SystemInfo.getInstance().setMemorySizeForCompaction(originalMemorySizeForCompaction);
     SystemInfo.getInstance().setTotalFileLimitForCompactionTask(originalFileNumLimitForCompaction);
+    super.tearDown();
   }
 
   @Test

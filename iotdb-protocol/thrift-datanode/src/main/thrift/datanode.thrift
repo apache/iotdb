@@ -1058,16 +1058,3 @@ service MPPDataExchangeService {
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
 }
-
-service IAINodeInternalRPCService{
- /**
-  * Fecth the data of the specified time series
-  */
-  TFetchTimeseriesResp fetchTimeseries(TFetchTimeseriesReq req)
-
-  /**
-  * Fetch rest data for a specified fetchTimeseries
-  */
-  TFetchMoreDataResp fetchMoreData(TFetchMoreDataReq req)
-
-}
