@@ -32,6 +32,7 @@ import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class GeneralRegionAttributeSecurityService {
   private static final Logger LOGGER =
@@ -133,7 +135,7 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  private Set<TDataNodeLocation> sendUpdateRequest(
+  private Set<Integer> sendUpdateRequest(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final AsyncRequestContext<TAttributeUpdateReq, TSStatus, DnToDnRequestType, TDataNodeLocation>
@@ -161,7 +163,11 @@ public class GeneralRegionAttributeSecurityService {
             IoTDBDescriptor.getInstance()
                 .getConfig()
                 .getGeneralRegionAttributeSecurityServiceTimeoutSeconds());
-    return clientHandler.getResponseMap();
+
+    return clientHandler.getResponseMap().entrySet().stream()
+        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .map(Map.Entry::getKey)
+        .collect(Collectors.toSet());
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
