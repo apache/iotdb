@@ -140,7 +140,6 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
-   *
    * @return true if ends with "**"
    */
   public boolean endsWithMultiWildcard() {
