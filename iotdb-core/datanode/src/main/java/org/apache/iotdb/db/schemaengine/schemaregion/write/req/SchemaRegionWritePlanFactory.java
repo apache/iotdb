@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
@@ -100,6 +101,8 @@ public class SchemaRegionWritePlanFactory {
         return CreateOrUpdateTableDeviceNode.MOCK_INSTANCE;
       case UPDATE_TABLE_DEVICE_ATTRIBUTE:
         return TableDeviceAttributeUpdateNode.MOCK_INSTANCE;
+      case COMMIT_UPDATE_TABLE_DEVICE_ATTRIBUTE:
+        return TableDeviceAttributeCommitUpdateNode.MOCK_INSTANCE;
       default:
         throw new UnsupportedOperationException(
             String.format(

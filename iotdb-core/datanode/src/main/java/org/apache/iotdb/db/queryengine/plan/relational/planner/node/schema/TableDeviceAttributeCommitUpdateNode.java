@@ -24,6 +24,9 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -36,13 +39,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TableDeviceAttributeCommitNode extends PlanNode {
+public class TableDeviceAttributeCommitUpdateNode extends PlanNode implements ISchemaRegionPlan {
 
   private final long version;
   private final Map<TDataNodeLocation, byte[]> commitMap;
   private final Set<Integer> shrunkNodes;
 
-  public TableDeviceAttributeCommitNode(
+  public static final TableDeviceAttributeCommitUpdateNode MOCK_INSTANCE =
+      new TableDeviceAttributeCommitUpdateNode(new PlanNodeId(""), 0L, null, null);
+
+  public TableDeviceAttributeCommitUpdateNode(
       final PlanNodeId id,
       final long version,
       final Map<TDataNodeLocation, byte[]> commitMap,
@@ -82,7 +88,7 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return new TableDeviceAttributeCommitNode(id, version, commitMap, shrunkNodes);
+    return new TableDeviceAttributeCommitUpdateNode(id, version, commitMap, shrunkNodes);
   }
 
   @Override
@@ -152,6 +158,16 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
       shrunkNodes.add(ReadWriteIOUtils.readInt(buffer));
     }
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TableDeviceAttributeCommitNode(planNodeId, version, commitMap, shrunkNodes);
+    return new TableDeviceAttributeCommitUpdateNode(planNodeId, version, commitMap, shrunkNodes);
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.COMMIT_UPDATE_TABLE_DEVICE_ATTRIBUTE;
+  }
+
+  @Override
+  public <R, C> R accept(final SchemaRegionPlanVisitor<R, C> visitor, final C context) {
+    return visitor.visitCommitUpdateTableDeviceAttribute(this, context);
   }
 }

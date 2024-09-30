@@ -31,7 +31,7 @@ import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestM
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
@@ -130,7 +130,7 @@ public class GeneralRegionAttributeSecurityService {
             if (!new RegionWriteExecutor()
                 .execute(
                     schemaRegionId,
-                    new TableDeviceAttributeCommitNode(
+                    new TableDeviceAttributeCommitUpdateNode(
                         new PlanNodeId(""),
                         pair.getLeft(),
                         pair.getRight(),
