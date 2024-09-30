@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -95,10 +95,10 @@ public class GeneralRegionAttributeSecurityService {
                   .getConfig()
                   .getPipeConnectorRequestSliceThresholdBytes());
 
-      final Map<SchemaRegionId, Pair<Long, Map<TEndPoint, byte[]>>> attributeUpdateCommitMap =
-          new HashMap<>();
+      final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
+          attributeUpdateCommitMap = new HashMap<>();
       for (final ISchemaRegion regionLeader : regionLeaders) {
-        final Pair<Long, Map<TEndPoint, byte[]>> currentResult =
+        final Pair<Long, Map<TDataNodeLocation, byte[]>> currentResult =
             regionLeader.getAttributeUpdateInfo(limit);
         if (currentResult.getRight().isEmpty()) {
           break;

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -353,7 +353,7 @@ public interface ISchemaRegion {
       final String table, final List<Object[]> devicePathList) throws MetadataException;
 
   // region Interfaces for AttributeUpdate
-  Pair<Long, Map<TEndPoint, byte[]>> getAttributeUpdateInfo(final AtomicInteger limit);
+  Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(final AtomicInteger limit);
 
   // endregion
 }
