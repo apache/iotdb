@@ -20,17 +20,25 @@
 package org.apache.iotdb.db.schemaengine.schemaregion.attribute.update;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.request.AsyncRequestContext;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -124,6 +132,34 @@ public class GeneralRegionAttributeSecurityService {
       lock.unlock();
       securityServiceExecutor.submit(this::execute);
     }
+  }
+
+  private Set<TDataNodeLocation> sendUpdateRequest(
+      Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> attributeUpdateCommitMap) {
+    final AsyncRequestContext<TAttributeUpdateReq, TSStatus, DnToDnRequestType, TDataNodeLocation>
+        clientHandler = new AsyncRequestContext<>(DnToDnRequestType.UPDATE_ATTRIBUTE);
+
+    attributeUpdateCommitMap.forEach(
+        (id, pair) ->
+            pair.getRight()
+                .forEach(
+                    (location, bytes) -> {
+                      clientHandler.putNodeLocation(location.getDataNodeId(), location);
+                      clientHandler
+                          .putRequestIfAbsent(
+                              location.getDataNodeId(), new TAttributeUpdateReq(new HashMap<>()))
+                          .getAttributeUpdateMap()
+                          .put(
+                              id.getId(),
+                              new TSchemaRegionAttributeInfo(
+                                  pair.getLeft(), ByteBuffer.wrap(bytes)));
+                    }));
+
+    DnToDnInternalServiceAsyncRequestManager.getInstance()
+        .sendAsyncRequestToNodeWithRetryAndTimeoutInMs(
+            clientHandler,
+            PipeConfig.getInstance().getPipeMetaSyncerSyncIntervalMinutes() * 60 * 1000 * 2 / 3);
+    return clientHandler.getResponseMap();
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
