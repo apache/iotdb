@@ -40,6 +40,7 @@ import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.schemaengine.metric.ISchemaRegionMetric;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
@@ -1495,8 +1496,12 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public Pair<Long, Map<TDataNodeLocation, byte[]>> getAttributeUpdateInfo(
       final AtomicInteger limit) {
-    // TODO
-    return null;
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void commitUpdateAttribute(final TableDeviceAttributeCommitNode node) {
+    throw new UnsupportedOperationException();
   }
 
   // endregion

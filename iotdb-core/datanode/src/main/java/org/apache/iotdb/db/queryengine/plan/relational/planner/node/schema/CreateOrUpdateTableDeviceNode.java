@@ -286,7 +286,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
 
   @Override
   public <R, C> R accept(final PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitCreateTableDevice(this, context);
+    return visitor.visitCreateOrUpdateTableDevice(this, context);
   }
 
   @Override

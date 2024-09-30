@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitNode;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 
 import org.apache.tsfile.utils.Pair;
@@ -124,6 +125,10 @@ public class DeviceAttributeRemoteUpdater {
       updateBytes.put(entry.getKey(), entry.getValue().getUpdateContent(limit));
     }
     return new Pair<>(version.get(), updateBytes);
+  }
+
+  public void commit(final TableDeviceAttributeCommitNode node) {
+    // TODO
   }
 
   public void addLocation(final TDataNodeLocation dataNodeLocation) {

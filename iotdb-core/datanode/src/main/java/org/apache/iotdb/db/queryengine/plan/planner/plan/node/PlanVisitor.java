@@ -121,6 +121,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
@@ -501,7 +502,8 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
-  public R visitCreateTableDevice(final CreateOrUpdateTableDeviceNode node, final C context) {
+  public R visitCreateOrUpdateTableDevice(
+      final CreateOrUpdateTableDeviceNode node, final C context) {
     return visitPlan(node, context);
   }
 
@@ -519,6 +521,11 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitTableDeviceQueryCount(final TableDeviceQueryCountNode node, final C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitTableDeviceAttributeCommit(
+      final TableDeviceAttributeCommitNode node, final C context) {
     return visitPlan(node, context);
   }
 

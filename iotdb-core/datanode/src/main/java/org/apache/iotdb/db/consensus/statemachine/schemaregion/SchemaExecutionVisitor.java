@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeOperateSchemaQueueNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateAlignedTimeSeriesPlan;
@@ -580,7 +581,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   }
 
   @Override
-  public TSStatus visitCreateTableDevice(
+  public TSStatus visitCreateOrUpdateTableDevice(
       final CreateOrUpdateTableDeviceNode node, final ISchemaRegion schemaRegion) {
     try {
       // todo implement storage for device of diverse data types
@@ -602,6 +603,13 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       logger.error(e.getMessage(), e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
+  }
+
+  @Override
+  public TSStatus visitTableDeviceAttributeCommit(
+      final TableDeviceAttributeCommitNode node, final ISchemaRegion schemaRegion) {
+    schemaRegion.commitUpdateAttribute(node);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
