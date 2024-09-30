@@ -396,12 +396,12 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       return;
     }
 
+    final long startHistoricalExtractionTime = System.currentTimeMillis();
     dataRegion.writeLock(
         "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
     try {
       List<PersistentResource> resourceList = new ArrayList<>();
       // Flush TsFiles
-      final long startHistoricalExtractionTime = System.currentTimeMillis();
       flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
       // Extract TsFiles
       extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
