@@ -29,6 +29,9 @@ import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.db.protocol.client.dn.DnToDnRequestType;
+import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeCommitNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionAttributeInfo;
@@ -39,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -118,6 +122,23 @@ public class GeneralRegionAttributeSecurityService {
 
       // Send
       sendUpdateRequest(attributeUpdateCommitMap);
+
+      // Commit
+      // TODO: Execute in parallel by thread pool
+      attributeUpdateCommitMap.forEach(
+          (schemaRegionId, pair) -> {
+            if (!new RegionWriteExecutor()
+                .execute(
+                    schemaRegionId,
+                    new TableDeviceAttributeCommitNode(
+                        new PlanNodeId(""),
+                        pair.getLeft(),
+                        pair.getRight(),
+                        Collections.emptySet()))
+                .isAccepted()) {
+              LOGGER.warn("Failed to write attribute commit message to region {}.", schemaRegionId);
+            }
+          });
 
       if (!skipNext) {
         condition.await(

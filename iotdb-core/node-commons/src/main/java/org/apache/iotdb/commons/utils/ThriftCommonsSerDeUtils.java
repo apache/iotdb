@@ -59,7 +59,7 @@ public class ThriftCommonsSerDeUtils {
     return new TBinaryProtocol(new TIOStreamTransport(stream));
   }
 
-  private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
+  private static TBinaryProtocol generateWriteProtocol(final ByteBuffer buffer)
       throws TTransportException {
     TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
@@ -70,7 +70,7 @@ public class ThriftCommonsSerDeUtils {
     return new TBinaryProtocol(new TIOStreamTransport(stream));
   }
 
-  private static TBinaryProtocol generateReadProtocol(ByteBuffer buffer)
+  private static TBinaryProtocol generateReadProtocol(final ByteBuffer buffer)
       throws TTransportException {
     TTransport transport = generateTByteBuffer(buffer);
     return new TBinaryProtocol(transport);
@@ -79,6 +79,14 @@ public class ThriftCommonsSerDeUtils {
   public static void serializeTEndPoint(final TEndPoint endPoint, final OutputStream stream) {
     try {
       endPoint.write(generateWriteProtocol(stream));
+    } catch (final TException e) {
+      throw new ThriftSerDeException("Write TEndPoint failed: ", e);
+    }
+  }
+
+  public static void serializeTEndPoint(final TEndPoint endPoint, final ByteBuffer buffer) {
+    try {
+      endPoint.write(generateWriteProtocol(buffer));
     } catch (final TException e) {
       throw new ThriftSerDeException("Write TEndPoint failed: ", e);
     }

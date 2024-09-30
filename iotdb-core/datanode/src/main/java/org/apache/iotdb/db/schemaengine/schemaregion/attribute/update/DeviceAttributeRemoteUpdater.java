@@ -54,6 +54,8 @@ public class DeviceAttributeRemoteUpdater {
   private static final Logger logger = LoggerFactory.getLogger(DeviceAttributeRemoteUpdater.class);
   private static final int UPDATE_DETAIL_CONTAINER_SEND_MIN_LIMIT_BYTES = 1024;
 
+  // All the data node locations shall only have internal endpoint with all the other endpoints set
+  // to null
   private final Set<TDataNodeLocation> targetDataNodeLocations = new HashSet<>();
   private final ConcurrentMap<TDataNodeLocation, UpdateContainer> attributeUpdateMap =
       new ConcurrentHashMap<>();

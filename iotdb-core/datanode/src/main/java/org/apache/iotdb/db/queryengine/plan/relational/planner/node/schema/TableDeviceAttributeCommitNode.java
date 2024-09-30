@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -28,24 +30,26 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class TableDeviceAttributeCommitNode extends PlanNode {
 
   private final long version;
-  private final byte[] commitBuffer;
+  private final Map<TDataNodeLocation, byte[]> commitMap;
   private final Set<Integer> shrunkNodes;
 
-  protected TableDeviceAttributeCommitNode(
+  public TableDeviceAttributeCommitNode(
       final PlanNodeId id,
       final long version,
-      final byte[] commitBuffer,
+      final Map<TDataNodeLocation, byte[]> commitMap,
       final Set<Integer> shrunkNodes) {
     super(id);
     this.version = version;
-    this.commitBuffer = commitBuffer;
+    this.commitMap = commitMap;
     this.shrunkNodes = shrunkNodes;
   }
 
@@ -53,8 +57,8 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
     return version;
   }
 
-  public byte[] getCommitBuffer() {
-    return commitBuffer;
+  public Map<TDataNodeLocation, byte[]> getCommitMap() {
+    return commitMap;
   }
 
   public Set<Integer> getShrunkNodes() {
@@ -78,7 +82,7 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
 
   @Override
   public PlanNode clone() {
-    return new TableDeviceAttributeCommitNode(id, version, commitBuffer, shrunkNodes);
+    return new TableDeviceAttributeCommitNode(id, version, commitMap, shrunkNodes);
   }
 
   @Override
@@ -95,8 +99,13 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
   protected void serializeAttributes(final ByteBuffer byteBuffer) {
     getType().serialize(byteBuffer);
     ReadWriteIOUtils.write(version, byteBuffer);
-    ReadWriteIOUtils.write(commitBuffer.length, byteBuffer);
-    byteBuffer.put(commitBuffer);
+    ReadWriteIOUtils.write(commitMap.size(), byteBuffer);
+    for (final Map.Entry<TDataNodeLocation, byte[]> entry : commitMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().getDataNodeId(), byteBuffer);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(entry.getKey().getInternalEndPoint(), byteBuffer);
+      ReadWriteIOUtils.write(entry.getValue().length, byteBuffer);
+      byteBuffer.put(entry.getValue());
+    }
     ReadWriteIOUtils.write(shrunkNodes.size(), byteBuffer);
     for (final Integer nodeId : shrunkNodes) {
       ReadWriteIOUtils.write(nodeId, byteBuffer);
@@ -107,8 +116,13 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
   protected void serializeAttributes(final DataOutputStream stream) throws IOException {
     getType().serialize(stream);
     ReadWriteIOUtils.write(version, stream);
-    ReadWriteIOUtils.write(commitBuffer.length, stream);
-    stream.write(commitBuffer);
+    ReadWriteIOUtils.write(commitMap.size(), stream);
+    for (final Map.Entry<TDataNodeLocation, byte[]> entry : commitMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey().getDataNodeId(), stream);
+      ThriftCommonsSerDeUtils.serializeTEndPoint(entry.getKey().getInternalEndPoint(), stream);
+      ReadWriteIOUtils.write(entry.getValue().length, stream);
+      stream.write(entry.getValue());
+    }
     ReadWriteIOUtils.write(shrunkNodes.size(), stream);
     for (final Integer nodeId : shrunkNodes) {
       ReadWriteIOUtils.write(nodeId, stream);
@@ -117,14 +131,27 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
     final long version = ReadWriteIOUtils.readLong(buffer);
-    final byte[] commitBuffer = new byte[ReadWriteIOUtils.readInt(buffer)];
-    buffer.get(commitBuffer);
-    final int size = ReadWriteIOUtils.readInt(buffer);
+    int size = ReadWriteIOUtils.readInt(buffer);
+    final Map<TDataNodeLocation, byte[]> commitMap = new HashMap<>(size);
+    for (int i = 0; i < size; ++i) {
+      final TDataNodeLocation location =
+          new TDataNodeLocation(
+              ReadWriteIOUtils.readInt(buffer),
+              null,
+              ThriftCommonsSerDeUtils.deserializeTEndPoint(buffer),
+              null,
+              null,
+              null);
+      final byte[] commitBuffer = new byte[ReadWriteIOUtils.readInt(buffer)];
+      buffer.get(commitBuffer);
+      commitMap.put(location, commitBuffer);
+    }
+    size = ReadWriteIOUtils.readInt(buffer);
     final Set<Integer> shrunkNodes = new HashSet<>();
     for (int i = 0; i < size; ++i) {
       shrunkNodes.add(ReadWriteIOUtils.readInt(buffer));
     }
     final PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TableDeviceAttributeCommitNode(planNodeId, version, commitBuffer, shrunkNodes);
+    return new TableDeviceAttributeCommitNode(planNodeId, version, commitMap, shrunkNodes);
   }
 }
