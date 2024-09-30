@@ -1082,6 +1082,12 @@ public class IoTDBDescriptor {
                 "general_region_attribute_security_service_interval_seconds",
                 String.valueOf(conf.getGeneralRegionAttributeSecurityServiceIntervalSeconds()))));
 
+    conf.setGeneralRegionAttributeSecurityServiceTimeoutSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "general_region_attribute_security_service_timeout_seconds",
+                String.valueOf(conf.getGeneralRegionAttributeSecurityServiceTimeoutSeconds()))));
+
     conf.setDetailContainerMinDegradeMemoryInBytes(
         Long.parseLong(
             properties.getProperty(
