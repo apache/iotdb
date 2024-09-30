@@ -72,6 +72,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Pair<IDeviceID, Boolean> currentDevice = null;
   private boolean ignoreAllNullRows;
+  private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
   private final String databaseName;
 
@@ -212,18 +213,26 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     for (TsFileResource resource : toBeRemovedResources) {
       deviceIteratorMap.remove(resource);
     }
-    long ttl;
 
     IDeviceID deviceID = currentDevice.left;
     boolean isAligned = currentDevice.right;
     ignoreAllNullRows = !isAligned || deviceID.getTableName().startsWith("root.");
     if (!ignoreAllNullRows) {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
+      ttlForCurrentDevice =
+          DataNodeTTLCache.getInstance().getTTLForTable(databaseName, deviceID.getTableName());
     } else {
-      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+      ttlForCurrentDevice = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
     }
-    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttl;
+    timeLowerBoundForCurrentDevice = CommonDateTimeUtils.currentTime() - ttlForCurrentDevice;
     return currentDevice;
+  }
+
+  public long getTTLForCurrentDevice() {
+    return ttlForCurrentDevice;
+  }
+
+  public long getTimeLowerBoundForCurrentDevice() {
+    return timeLowerBoundForCurrentDevice;
   }
 
   /**
