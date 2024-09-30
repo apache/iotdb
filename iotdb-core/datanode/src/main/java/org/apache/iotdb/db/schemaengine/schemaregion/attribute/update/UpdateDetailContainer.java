@@ -45,6 +45,8 @@ public class UpdateDetailContainer implements UpdateContainer {
   static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(UpdateClearContainer.class) + MAP_SIZE;
 
+  // <@Nonnull TableName, <deviceId(@Nullable deviceNodes), <@Nonnull attributeKey, @Nullable
+  // attributeValue>>>
   private final ConcurrentMap<String, ConcurrentMap<String[], ConcurrentMap<String, String>>>
       updateMap = new ConcurrentHashMap<>();
 
@@ -178,6 +180,39 @@ public class UpdateDetailContainer implements UpdateContainer {
 
   @Override
   public Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer) {
+    final AtomicLong result = new AtomicLong(0);
+    if (commitContainer instanceof UpdateDetailContainer) {
+      ((UpdateDetailContainer) commitContainer)
+          .updateMap.forEach(
+              (table, commitMap) -> {
+                if (!this.updateMap.containsKey(table)) {
+                  return;
+                }
+                final ConcurrentMap<String[], ConcurrentMap<String, String>> thisDeviceMap =
+                    this.updateMap.get(table);
+                commitMap.forEach(
+                    (device, attributes) -> {
+                      if (!thisDeviceMap.containsKey(device)) {
+                        return;
+                      }
+                      final Map<String, String> thisAttributes = thisDeviceMap.get(device);
+                      attributes.forEach(
+                          (k, v) -> {
+                            if (!thisAttributes.containsKey(k)) {
+                              return;
+                            }
+                            final String thisV = thisAttributes.get(k);
+                            if (Objects.equals(thisV, v)) {
+                              result.addAndGet(
+                                  RamUsageEstimator.sizeOf(k)
+                                      + RamUsageEstimator.sizeOf(thisV)
+                                      + RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY);
+                              thisAttributes.remove(k);
+                            }
+                          });
+                    });
+              });
+    }
     return null;
   }
 

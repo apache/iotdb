@@ -32,6 +32,10 @@ class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
 
   private static final byte[] intPlaceHolder = new byte[4];
 
+  void writeNull() throws IOException {
+    ReadWriteIOUtils.write(ReadWriteIOUtils.NO_BYTE_TO_READ, this);
+  }
+
   void writeWithLength(final byte[] bytes) throws IOException {
     ReadWriteIOUtils.write(bytes.length, this);
     write(bytes);
