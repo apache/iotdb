@@ -178,7 +178,8 @@ public class DeleteDataNode extends SearchNode implements WALEntryValue {
 
     // DeleteDataNode has no child
     int ignoredChildrenSize = ReadWriteIOUtils.readInt(byteBuffer);
-    return new DeleteDataNode(planNodeId, pathList, deleteStartTime, deleteEndTime);
+    return new DeleteDataNode(
+        planNodeId, pathList, deleteStartTime, deleteEndTime, deserializedIndex);
   }
 
   public ByteBuffer serializeToDAL() {
