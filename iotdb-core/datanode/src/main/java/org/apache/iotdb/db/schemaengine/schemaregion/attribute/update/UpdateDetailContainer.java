@@ -227,7 +227,7 @@ public class UpdateDetailContainer implements UpdateContainer {
                 }
               });
     }
-    return null;
+    return new Pair<>(result.get(), updateMap.isEmpty());
   }
 
   @Override
