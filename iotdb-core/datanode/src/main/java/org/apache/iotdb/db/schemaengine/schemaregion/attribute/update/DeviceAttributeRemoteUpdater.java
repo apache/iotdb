@@ -141,7 +141,7 @@ public class DeviceAttributeRemoteUpdater {
                             container.updateSelfByCommitContainer(getContainer(bytes));
                         releaseMemory(result.getLeft());
                         // isEmpty
-                        if (result.getRight()) {
+                        if (Boolean.TRUE.equals(result.getRight())) {
                           releaseMemory(
                               container instanceof UpdateDetailContainer
                                   ? UpdateDetailContainer.INSTANCE_SIZE
