@@ -136,13 +136,12 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
-              // Log deletion event to DAL
               if (copiedEvent.getEvent() instanceof PipeDeleteDataNodeEvent) {
                 DeletionResourceManager mgr =
                     DeletionResourceManager.getInstance(extractor.getDataRegionId());
                 PipeDeleteDataNodeEvent deleteDataNodeEvent =
                     (PipeDeleteDataNodeEvent) copiedEvent.getEvent();
-                // increase deletion resource's reference
+                // increase deletion resource's reference and bind real deletionEvent
                 if (Objects.nonNull(mgr)
                     && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
                         deleteDataNodeEvent.getDeleteDataNode())) {
