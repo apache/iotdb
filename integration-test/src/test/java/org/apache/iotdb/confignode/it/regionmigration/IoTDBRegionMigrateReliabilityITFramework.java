@@ -444,7 +444,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return result;
   }
 
-  private static Map<Integer, Set<Integer>> getRegionMap(ResultSet showRegionsResult)
+  public static Map<Integer, Set<Integer>> getRegionMap(ResultSet showRegionsResult)
       throws SQLException {
     Map<Integer, Set<Integer>> regionMap = new HashMap<>();
     while (showRegionsResult.next()) {
@@ -727,7 +727,7 @@ public class IoTDBRegionMigrateReliabilityITFramework {
     return result;
   }
 
-  private static <T> T closeQuietly(T t) {
+  public static <T> T closeQuietly(T t) {
     InvocationHandler handler =
         (proxy, method, args) -> {
           try {
