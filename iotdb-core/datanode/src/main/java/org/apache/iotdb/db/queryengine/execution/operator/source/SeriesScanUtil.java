@@ -177,7 +177,18 @@ public class SeriesScanUtil implements Accountable {
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
-    scanOptions.setTTL(DataNodeTTLCache.getInstance().getTTLForTree(seriesPath.getDeviceId()));
+    long ttl;
+    if (context.isIgnoreAllNullRows()) {
+      ttl = DataNodeTTLCache.getInstance().getTTLForTree(deviceID);
+    } else {
+      String databaseName = dataSource.getDatabaseName();
+      ttl =
+          databaseName == null
+              ? Long.MAX_VALUE
+              : DataNodeTTLCache.getInstance()
+                  .getTTLForTable(databaseName, deviceID.getTableName());
+    }
+    scanOptions.setTTL(ttl);
 
     // init file index
     orderUtils.setCurSeqFileIndex(dataSource);

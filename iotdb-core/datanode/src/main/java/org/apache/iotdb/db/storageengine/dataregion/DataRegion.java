@@ -3934,7 +3934,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   private long getTTL(InsertNode insertNode) {
     if (insertNode.getTableName() == null) {
-      return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getDeviceID());
+      return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getTargetPath().getNodes());
     } else {
       return DataNodeTTLCache.getInstance().getTTLForTable(databaseName, insertNode.getTableName());
     }
