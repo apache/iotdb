@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -116,6 +117,7 @@ public class GeneralRegionAttributeSecurityService {
       }
 
       // Send
+      sendUpdateRequest(attributeUpdateCommitMap);
 
       if (!skipNext) {
         condition.await(
@@ -135,7 +137,7 @@ public class GeneralRegionAttributeSecurityService {
     }
   }
 
-  private Set<Integer> sendUpdateRequest(
+  private void sendUpdateRequest(
       final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>
           attributeUpdateCommitMap) {
     final AsyncRequestContext<TAttributeUpdateReq, TSStatus, DnToDnRequestType, TDataNodeLocation>
@@ -164,10 +166,24 @@ public class GeneralRegionAttributeSecurityService {
                 .getConfig()
                 .getGeneralRegionAttributeSecurityServiceTimeoutSeconds());
 
-    return clientHandler.getResponseMap().entrySet().stream()
-        .filter(entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        .map(Map.Entry::getKey)
-        .collect(Collectors.toSet());
+    final Set<Integer> failedDataNodes =
+        clientHandler.getResponseMap().entrySet().stream()
+            .filter(
+                entry -> entry.getValue().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toSet());
+    for (final Iterator<Map.Entry<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>>> it =
+            attributeUpdateCommitMap.entrySet().iterator();
+        it.hasNext(); ) {
+      final Map<TDataNodeLocation, byte[]> dataNodeLocationMap = it.next().getValue().getRight();
+      dataNodeLocationMap
+          .entrySet()
+          .removeIf(
+              locationEntry -> failedDataNodes.contains(locationEntry.getKey().getDataNodeId()));
+      if (dataNodeLocationMap.isEmpty()) {
+        it.remove();
+      }
+    }
   }
 
   /////////////////////////////// SingleTon ///////////////////////////////
