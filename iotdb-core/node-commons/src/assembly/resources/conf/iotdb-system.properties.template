@@ -1433,7 +1433,7 @@ delete_wal_files_period_in_ms=20000
 # If this value is set smaller than 0, it will default to 50 * 1024 * 1024 * 1024 bytes (50GB).
 # effectiveMode: hot_reload
 # Datatype: long
-iot_consensus_throttle_threshold_in_byte=53687091200
+wal_throttle_threshold_in_byte=53687091200
 
 # Maximum wait time of write cache in IoTConsensus
 # If this value is less than or equal to 0, use the default value 10 * 1000 ms (10s)
