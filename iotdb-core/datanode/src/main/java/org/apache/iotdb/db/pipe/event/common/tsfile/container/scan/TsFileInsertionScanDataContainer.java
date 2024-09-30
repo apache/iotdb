@@ -64,7 +64,7 @@ import java.util.Objects;
 
 public class TsFileInsertionScanDataContainer extends TsFileInsertionDataContainer {
 
-  private static final LocalDate EMPTY_DATE = LocalDate.of(1970, 1, 1);
+  private static final LocalDate EMPTY_DATE = LocalDate.of(1000, 1, 1);
 
   private final long startTime;
   private final long endTime;
