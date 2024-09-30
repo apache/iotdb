@@ -73,6 +73,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionMaxAlignedSeriesNumInOneBatch(maxAlignedSeriesNumInOneBatch);
+    super.setUp();
   }
 
   @After
@@ -84,6 +85,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setCompactionMaxAlignedSeriesNumInOneBatch(defaultMaxAlignedSeriesNumInOneBatch);
+    super.tearDown();
   }
 
   @Parameterized.Parameters(name = "type={0} batch_size={1}")

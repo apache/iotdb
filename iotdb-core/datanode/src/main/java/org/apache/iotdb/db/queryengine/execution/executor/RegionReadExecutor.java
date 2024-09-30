@@ -118,7 +118,8 @@ public class RegionReadExecutor {
       if (t instanceof ReadException
           || t instanceof ReadIndexException
           || t instanceof NotLeaderException
-          || t instanceof ServerNotReadyException) {
+          || t instanceof ServerNotReadyException
+          || t instanceof InterruptedException) {
         resp.setReadNeedRetry(true);
         resp.setStatus(new TSStatus(TSStatusCode.RATIS_READ_UNAVAILABLE.getStatusCode()));
       }

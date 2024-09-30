@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch {
 
   private final PipeTabletEventTsFileBatch batch;
+  private final List<EnrichedEvent> enrichedEvents;
 
   public SubscriptionPipeTsFileEventBatch(
       final int regionId,
@@ -51,11 +52,12 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       final long maxBatchSizeInBytes) {
     super(regionId, prefetchingQueue, maxDelayInMs, maxBatchSizeInBytes);
     this.batch = new PipeTabletEventTsFileBatch(maxDelayInMs, maxBatchSizeInBytes);
+    this.enrichedEvents = new ArrayList<>();
   }
 
   @Override
   public synchronized boolean onEvent(final Consumer<SubscriptionEvent> consumer) throws Exception {
-    if (batch.shouldEmit()) {
+    if (batch.shouldEmit() && !enrichedEvents.isEmpty()) {
       if (Objects.isNull(events)) {
         events = generateSubscriptionEvents();
       }
@@ -74,6 +76,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
       throws Exception {
     if (event instanceof TabletInsertionEvent) {
       batch.onEvent((TabletInsertionEvent) event); // no exceptions will be thrown
+      enrichedEvents.add(event);
       event.decreaseReferenceCount(
           SubscriptionPipeTsFileEventBatch.class.getName(),
           false); // missing releaseLastEvent decreases reference count
@@ -85,6 +88,7 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
   public synchronized void cleanUp() {
     // close batch, it includes clearing the reference count of events
     batch.close();
+    enrichedEvents.clear();
   }
 
   public synchronized void ack() {
@@ -127,5 +131,11 @@ public class SubscriptionPipeTsFileEventBatch extends SubscriptionPipeEventBatch
     final Map<String, String> coreReportMessage = super.coreReportMessage();
     coreReportMessage.put("batch", batch.toString());
     return coreReportMessage;
+  }
+
+  //////////////////////////// APIs provided for metric framework ////////////////////////////
+
+  public int getPipeEventCount() {
+    return enrichedEvents.size();
   }
 }

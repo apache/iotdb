@@ -17,6 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-public interface AINodeRPCServiceMBean {}
+import com.google.common.collect.ImmutableList;
+
+import java.util.List;
+
+public abstract class PipeStatement extends Statement {
+
+  protected PipeStatement() {
+    super(null);
+  }
+
+  @Override
+  public List<? extends Node> getChildren() {
+    return ImmutableList.of();
+  }
+}
