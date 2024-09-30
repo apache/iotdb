@@ -82,7 +82,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 // the file is deleted before selection
                 cd.await();
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager, new ModFileManager());
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new ModFileManager());
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
                 List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
@@ -146,7 +147,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager, new ModFileManager());
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new ModFileManager());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -174,7 +176,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          tsFileManager.getNextCompactionTaskId(), new ModFileManager());
+                          tsFileManager.getNextCompactionTaskId(),
+                          new ModFileManager());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
                     if (innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -252,7 +255,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager, new ModFileManager());
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new ModFileManager());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -274,7 +278,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          tsFileManager.getNextCompactionTaskId(), new ModFileManager());
+                          tsFileManager.getNextCompactionTaskId(),
+                          new ModFileManager());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                     throw new RuntimeException("set status should be true");
@@ -374,7 +379,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                 cd1.countDown();
                 cd2.await();
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager, new ModFileManager());
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new ModFileManager());
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
                 List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
@@ -442,7 +448,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager, new ModFileManager());
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new ModFileManager());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -470,7 +477,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          tsFileManager.getNextCompactionTaskId(), new ModFileManager());
+                          tsFileManager.getNextCompactionTaskId(),
+                          new ModFileManager());
                   // set file status to COMPACTION_CANDIDATE
                   if (idx == 0) {
                     if (innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
@@ -551,7 +559,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
             () -> {
               try {
                 SizeTieredCompactionSelector selector =
-                    new SizeTieredCompactionSelector("", "", 0, true, tsFileManager, new ModFileManager());
+                    new SizeTieredCompactionSelector(
+                        "", "", 0, true, tsFileManager, new ModFileManager());
                 // copy candidate source file list
                 List<TsFileResource> resources =
                     tsFileManager.getOrCreateSequenceListByTimePartition(0);
@@ -574,7 +583,8 @@ public class InnerSpaceCompactionSelectorTest extends AbstractCompactionTest {
                           task,
                           true,
                           new FastCompactionPerformer(false),
-                          tsFileManager.getNextCompactionTaskId(), new ModFileManager());
+                          tsFileManager.getNextCompactionTaskId(),
+                          new ModFileManager());
 
                   if (!innerSpaceCompactionTask.setSourceFilesToCompactionCandidate()) {
                     throw new RuntimeException("set status should be true");

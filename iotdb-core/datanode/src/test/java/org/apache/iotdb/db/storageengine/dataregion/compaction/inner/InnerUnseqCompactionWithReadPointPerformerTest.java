@@ -375,7 +375,7 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
                   Collections.singletonList(targetTsFileResource),
                   CompactionTaskType.INNER_SEQ,
                   COMPACTION_TEST_SG);
-              
+
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);

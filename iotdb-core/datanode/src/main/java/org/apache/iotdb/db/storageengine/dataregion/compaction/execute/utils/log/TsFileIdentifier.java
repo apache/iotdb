@@ -195,7 +195,8 @@ public class TsFileIdentifier {
       if (file.exists()
           || new File(file.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()
           || new File(file.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).exists()
-          || new File(file.getAbsolutePath() + ModificationFileV1.COMPACTION_FILE_SUFFIX).exists()) {
+          || new File(file.getAbsolutePath() + ModificationFileV1.COMPACTION_FILE_SUFFIX)
+              .exists()) {
         return file;
       }
     }

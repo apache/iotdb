@@ -228,15 +228,16 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.start();
 
     for (TsFileResource resource : seqResources) {
-      
+
       Assert.assertFalse(resource.newModFileExists());
     }
     for (TsFileResource resource : unseqResources) {
-      
+
       Assert.assertFalse(resource.newModFileExists());
     }
     for (TsFileResource resource : targetResources) {
@@ -245,7 +246,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
               resource
                   .getTsFilePath()
                   .replace(CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
-      
+
       Assert.assertTrue(resource.newModFileExists());
       Assert.assertEquals(4, resource.getAllModEntries().size());
     }
@@ -455,7 +456,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.start();
 
     for (TsFileResource resource : seqResources) {
@@ -596,7 +598,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.setSourceFilesToCompactionCandidate();
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
@@ -614,7 +617,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
-      
+
       if (i < 2) {
         Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.newModFileExists());
@@ -631,7 +634,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       }
     }
     for (TsFileResource resource : unseqResources) {
-      
+
       Assert.assertNull(resource.getCompactionModFile());
       Assert.assertFalse(resource.newModFileExists());
     }
@@ -715,7 +718,8 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.setSourceFilesToCompactionCandidate();
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
@@ -744,7 +748,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
         0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
-      
+
       if (i < 2) {
         Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.newModFileExists());
@@ -761,7 +765,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
       }
     }
     for (TsFileResource resource : unseqResources) {
-      
+
       Assert.assertNull(resource.getCompactionModFile());
       Assert.assertFalse(resource.newModFileExists());
     }

@@ -58,8 +58,6 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IFileScanHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.DiskAlignedChunkHandleImpl;
@@ -103,7 +101,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -1012,10 +1009,12 @@ public class TsFileProcessor {
    * <= 'timestamp' in the deletion. <br>
    *
    * <p>Delete data in both working MemTable and flushing MemTables.
+   *
    * @param nonWritableFiles if the TsFile has a resource file after locking, the TsFile should be
-   *                         added into the list
+   *     added into the list
    */
-  public void deleteDataInMemory(TreeDeletionEntry deletion, List<TsFileResource> nonWritableFiles) {
+  public void deleteDataInMemory(
+      TreeDeletionEntry deletion, List<TsFileResource> nonWritableFiles) {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -1023,10 +1022,11 @@ public class TsFileProcessor {
     }
     try {
       if (workMemTable != null) {
-        logger.info(
-            "[Deletion] Deletion {} in workMemTable",
-            deletion);
-        workMemTable.delete(deletion.getPathPattern(), deletion.getTimeRange().getMin(), deletion.getTimeRange().getMax());
+        logger.info("[Deletion] Deletion {} in workMemTable", deletion);
+        workMemTable.delete(
+            deletion.getPathPattern(),
+            deletion.getTimeRange().getMin(),
+            deletion.getTimeRange().getMax());
       }
       // Flushing memTables are immutable, only record this deletion in these memTables for read
       if (!flushingMemTables.isEmpty()) {
@@ -1481,9 +1481,7 @@ public class TsFileProcessor {
           this.tsFileResource.getModFileMayAllocate().write(entry.left);
           this.tsFileResource.getModFileMayAllocate().close();
           iterator.remove();
-          logger.info(
-              "[Deletion] Deletion {} written when flush memtable",
-              entry.left);
+          logger.info("[Deletion] Deletion {} written when flush memtable", entry.left);
         }
       }
     } catch (IOException e) {

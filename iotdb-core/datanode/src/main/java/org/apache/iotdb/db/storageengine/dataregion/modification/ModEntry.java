@@ -18,18 +18,20 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
+import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
+
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
-import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
-import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-public abstract class ModEntry implements StreamSerializable, BufferSerializable,
-    Comparable<ModEntry> {
+public abstract class ModEntry
+    implements StreamSerializable, BufferSerializable, Comparable<ModEntry> {
 
   protected ModType modType;
   protected TimeRange timeRange;
@@ -54,14 +56,14 @@ public abstract class ModEntry implements StreamSerializable, BufferSerializable
 
   @Override
   public void deserialize(InputStream stream) throws IOException {
-    this.timeRange = new TimeRange(ReadWriteIOUtils.readLong(stream),
-        ReadWriteIOUtils.readLong(stream));
+    this.timeRange =
+        new TimeRange(ReadWriteIOUtils.readLong(stream), ReadWriteIOUtils.readLong(stream));
   }
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    this.timeRange = new TimeRange(ReadWriteIOUtils.readLong(buffer),
-        ReadWriteIOUtils.readLong(buffer));
+    this.timeRange =
+        new TimeRange(ReadWriteIOUtils.readLong(buffer), ReadWriteIOUtils.readLong(buffer));
   }
 
   public long getStartTime() {

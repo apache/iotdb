@@ -408,7 +408,9 @@ public class IoTDBDataRegionSyncConnector extends IoTDBDataNodeSyncConnector {
                   pipeTsFileInsertionEvent.getCreationTime()),
               1.0),
           pipeTsFileInsertionEvent.getTsFile(),
-          pipeTsFileInsertionEvent.isWithOldMod() ? pipeTsFileInsertionEvent.getOldModFile() : null);
+          pipeTsFileInsertionEvent.isWithOldMod()
+              ? pipeTsFileInsertionEvent.getOldModFile()
+              : null);
     } finally {
       pipeTsFileInsertionEvent.decreaseReferenceCount(
           IoTDBDataRegionSyncConnector.class.getName(), false);

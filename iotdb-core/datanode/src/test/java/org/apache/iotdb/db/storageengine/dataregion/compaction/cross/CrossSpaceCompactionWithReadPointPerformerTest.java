@@ -426,7 +426,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
                     0,
-                    0, new ModFileManager());
+                    0,
+                    new ModFileManager());
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
@@ -727,7 +728,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
                     0,
-                    0, new ModFileManager());
+                    0,
+                    new ModFileManager());
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
@@ -1027,7 +1029,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new ReadPointCompactionPerformer(),
                     0,
-                    0, new ModFileManager());
+                    0,
+                    new ModFileManager());
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {

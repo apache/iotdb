@@ -183,7 +183,8 @@ public class CompactionTaskQueueTest extends AbstractCompactionTest {
             Collections.singletonList(seqResources.get(seqResources.size() - 1)),
             true,
             new ReadChunkCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     InnerSpaceCompactionTask mockTask = Mockito.spy(task);
     Mockito.doReturn(memCost).when(mockTask).getEstimatedMemoryCost();
     Mockito.doReturn(fileNum).when(mockTask).getProcessedFileNum();

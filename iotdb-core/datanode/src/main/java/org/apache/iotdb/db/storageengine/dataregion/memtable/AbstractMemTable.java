@@ -37,7 +37,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
 import org.apache.iotdb.db.storageengine.dataregion.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.IChunkHandle;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemAlignedChunkHandleImpl;
 import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.MemChunkHandleImpl;
@@ -872,8 +871,7 @@ public abstract class AbstractMemTable implements IMemTable {
    */
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
-  public void delete(
-      PartialPath pathToDelete, long startTimestamp, long endTimestamp) {
+  public void delete(PartialPath pathToDelete, long startTimestamp, long endTimestamp) {
     PartialPath devicePath = pathToDelete.getDevicePath();
     if (devicePath.hasWildcard()) {
       // In cluster mode without IDTable, the input devicePath may be a devicePathPattern

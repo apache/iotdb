@@ -172,7 +172,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
     if (sourceFile.getTsFileRepairStatus() != TsFileRepairStatus.NEED_TO_REPAIR_BY_REWRITE) {
       if (sourceFile.oldModFileExists()) {
         Files.createLink(
-            new File(ModificationFileV1.getNormalMods(filesView.targetFilesInPerformer.get(0)).getFilePath()).toPath(),
+            new File(
+                    ModificationFileV1.getNormalMods(filesView.targetFilesInPerformer.get(0))
+                        .getFilePath())
+                .toPath(),
             new File(sourceFile.getOldModFile().getFilePath()).toPath());
       }
     }

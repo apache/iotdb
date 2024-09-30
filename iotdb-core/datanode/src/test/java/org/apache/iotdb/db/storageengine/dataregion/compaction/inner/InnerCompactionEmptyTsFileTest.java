@@ -84,7 +84,8 @@ public class InnerCompactionEmptyTsFileTest extends InnerCompactionTest {
             unseqResources.subList(0, 3),
             false,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     unseqResources.get(0).readLock();
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
     Future<CompactionTaskSummary> future =

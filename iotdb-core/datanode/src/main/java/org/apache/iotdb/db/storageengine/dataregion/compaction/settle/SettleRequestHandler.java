@@ -86,11 +86,10 @@ public class SettleRequestHandler {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
       List<TsFileResource> selectedTsFileResources = context.getTsFileResourcesByFileNames();
-      if (!context.hasOldModFiles && selectedTsFileResources.stream().noneMatch(
-          TsFileResource::newModFileExists)) {
+      if (!context.hasOldModFiles
+          && selectedTsFileResources.stream().noneMatch(TsFileResource::newModFileExists)) {
         return RpcUtils.getStatus(
-            TSStatusCode.ILLEGAL_PARAMETER,
-            "Every selected TsFile does not contain a Mod file.");
+            TSStatusCode.ILLEGAL_PARAMETER, "Every selected TsFile does not contain a Mod file.");
       }
       return context.submitCompactionTask(selectedTsFileResources);
     } finally {

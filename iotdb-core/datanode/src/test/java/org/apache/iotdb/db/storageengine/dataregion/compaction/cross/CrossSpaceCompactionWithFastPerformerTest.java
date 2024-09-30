@@ -427,7 +427,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new FastCompactionPerformer(true),
                     0,
-                    0, new ModFileManager());
+                    0,
+                    new ModFileManager());
             Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources) {
@@ -728,7 +729,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new FastCompactionPerformer(true),
                     0,
-                    0, new ModFileManager());
+                    0,
+                    new ModFileManager());
             Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {
@@ -1028,7 +1030,8 @@ public class CrossSpaceCompactionWithFastPerformerTest {
                     mergeResource.getUnseqFiles(),
                     new FastCompactionPerformer(true),
                     0,
-                    0, new ModFileManager());
+                    0,
+                    new ModFileManager());
             Assert.assertTrue(compactionTask.start());
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
             for (TsFileResource seqResource : seqResources.subList(1, 4)) {

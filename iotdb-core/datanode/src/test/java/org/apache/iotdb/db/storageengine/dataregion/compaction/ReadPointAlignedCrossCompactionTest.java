@@ -273,7 +273,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -287,7 +288,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -553,7 +555,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -567,7 +570,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -832,7 +836,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -846,7 +851,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -1128,7 +1134,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -1142,7 +1149,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -1529,7 +1537,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -1543,7 +1552,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -1938,7 +1948,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -1952,7 +1963,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -2358,7 +2370,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -2372,7 +2385,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -2761,7 +2775,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -2775,7 +2790,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -3165,7 +3181,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -3179,7 +3196,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -3581,7 +3599,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -3595,7 +3614,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -4053,7 +4073,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -4067,7 +4088,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -4528,7 +4550,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -4542,7 +4565,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -5003,7 +5027,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -5017,7 +5042,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -5533,7 +5559,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -5547,7 +5574,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -6005,7 +6033,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -6019,7 +6048,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -6246,7 +6276,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -6260,7 +6291,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -6552,7 +6584,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -6566,7 +6599,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -6994,7 +7028,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -7008,7 +7043,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -7398,7 +7434,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -7412,7 +7449,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -7678,7 +7716,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -7692,7 +7731,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -7835,7 +7875,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -7849,7 +7890,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -8046,7 +8088,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -8060,7 +8103,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);
@@ -8297,7 +8341,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             unseqResources,
             new ReadPointCompactionPerformer(),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -8311,7 +8356,8 @@ public class ReadPointAlignedCrossCompactionTest extends AbstractCompactionTest 
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(innerTask.start());
     validateSeqFiles(true);
     validateTargetDatas(sourceDatas, tsDataTypes);

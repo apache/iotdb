@@ -279,7 +279,8 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG);
 
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
+        new InnerSpaceCompactionTask(
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     innerSpaceCompactionTask.recover();
     for (TsFileResource resource : sourceFiles) {
       Assert.assertTrue(resource.getTsFile().exists());
@@ -346,7 +347,8 @@ public class SizeTieredCompactionRecoverTest {
     channel.truncate(targetResource.getTsFile().length() - 100);
     channel.close();
     InnerSpaceCompactionTask recoverTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
+        new InnerSpaceCompactionTask(
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     recoverTask.recover();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {
@@ -407,7 +409,8 @@ public class SizeTieredCompactionRecoverTest {
         CompactionTaskType.INNER_SEQ,
         COMPACTION_TEST_SG);
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
+        new InnerSpaceCompactionTask(
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     innerSpaceCompactionTask.recover();
     // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
@@ -475,7 +478,8 @@ public class SizeTieredCompactionRecoverTest {
     channel.truncate(targetResource.getTsFile().length() - 100);
     channel.close();
     InnerSpaceCompactionTask innerSpaceCompactionTask =
-        new InnerSpaceCompactionTask(COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
+        new InnerSpaceCompactionTask(
+            COMPACTION_TEST_SG, "0", tsFileManager, new File(logFilePath), new ModFileManager());
     innerSpaceCompactionTask.recover();
     // all the source file should be deleted
     for (TsFileResource resource : sourceFiles) {

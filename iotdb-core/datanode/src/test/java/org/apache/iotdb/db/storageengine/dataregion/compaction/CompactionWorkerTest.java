@@ -87,7 +87,8 @@ public class CompactionWorkerTest {
             unsequenceFiles,
             null,
             1024L * 1024L * 1024L * 50L,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     CrossSpaceCompactionTask taskMock = Mockito.spy(task);
     Mockito.doReturn(true).when(taskMock).start();
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
@@ -144,7 +145,14 @@ public class CompactionWorkerTest {
       tsFileManager.addAll(unsequenceFiles, false);
       CrossSpaceCompactionTask task =
           new CrossSpaceCompactionTask(
-              0L, tsFileManager, sequenceFiles, unsequenceFiles, null, 1000, 0, new ModFileManager());
+              0L,
+              tsFileManager,
+              sequenceFiles,
+              unsequenceFiles,
+              null,
+              1000,
+              0,
+              new ModFileManager());
       CrossSpaceCompactionTask taskMock = Mockito.spy(task);
       Mockito.doReturn(true).when(taskMock).start();
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
@@ -239,7 +247,8 @@ public class CompactionWorkerTest {
 
     // fail to check valid when tsfile manager is not allowed to compaction in inner task
     InnerSpaceCompactionTask innerTask =
-        new InnerSpaceCompactionTask(0L, tsFileManager, sequenceFiles, true, null, 0L, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0L, tsFileManager, sequenceFiles, true, null, 0L, new ModFileManager());
     FixedPriorityBlockingQueue<AbstractCompactionTask> queue =
         new CompactionTaskQueue(50, new DefaultCompactionTaskComparatorImpl());
     queue.put(innerTask);

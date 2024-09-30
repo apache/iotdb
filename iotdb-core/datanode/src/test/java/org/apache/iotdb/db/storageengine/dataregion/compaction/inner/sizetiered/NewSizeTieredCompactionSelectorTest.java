@@ -32,7 +32,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.New
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -74,7 +73,6 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
           {"read_chunk"}, {"fast"},
         });
   }
-
 
   public NewSizeTieredCompactionSelectorTest(String performer) {
     this.performer = performer;
@@ -121,7 +119,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     }
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -147,7 +151,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     }
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(2, innerSpaceCompactionTasks.size());
@@ -186,7 +196,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     }
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertTrue(innerSpaceCompactionTasks.isEmpty());
@@ -219,7 +235,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     }
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -260,7 +282,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
 
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -314,7 +342,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             resource1.getTsFileSize() + resource3.getTsFileSize() + resource5.getTsFileSize() + 1);
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -365,7 +399,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     }
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -410,7 +450,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
 
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -464,7 +510,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
             resource1.getTsFileSize() + resource3.getTsFileSize() + resource5.getTsFileSize() + 1);
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -496,7 +548,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
     }
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -533,7 +591,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
         .setTargetCompactionFileSize(seqResources.get(0).getTsFileSize() + 1);
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(1, innerSpaceCompactionTasks.size());
@@ -574,7 +638,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
                 + seqResources.get(3).getTsFileSize());
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(2, innerSpaceCompactionTasks.size());
@@ -615,7 +685,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
                 + seqResources.get(3).getTsFileSize());
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(2, innerSpaceCompactionTasks.size());
@@ -660,7 +736,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
                 + seqResources.get(3).getTsFileSize());
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(2, innerSpaceCompactionTasks.size());
@@ -704,7 +786,13 @@ public class NewSizeTieredCompactionSelectorTest extends AbstractCompactionTest 
                 + seqResources.get(3).getTsFileSize());
     NewSizeTieredCompactionSelector selector =
         new NewSizeTieredCompactionSelector(
-            COMPACTION_TEST_SG, "0", 0, true, tsFileManager, new CompactionScheduleContext(), new ModFileManager());
+            COMPACTION_TEST_SG,
+            "0",
+            0,
+            true,
+            tsFileManager,
+            new CompactionScheduleContext(),
+            new ModFileManager());
     List<InnerSpaceCompactionTask> innerSpaceCompactionTasks =
         selector.selectInnerSpaceTask(seqResources);
     Assert.assertEquals(2, innerSpaceCompactionTasks.size());

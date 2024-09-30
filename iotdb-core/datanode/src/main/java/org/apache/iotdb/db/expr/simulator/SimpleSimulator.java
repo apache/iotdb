@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.expr.simulator;
 
-import java.util.List;
 import org.apache.iotdb.db.expr.conf.SimulationConfig;
 import org.apache.iotdb.db.expr.entity.SimModFileManager;
 import org.apache.iotdb.db.expr.entity.SimTsFileManager;
 import org.apache.iotdb.db.expr.event.Event;
 import org.apache.iotdb.db.expr.executor.SimpleExecutor;
 
+import java.util.List;
 import java.util.PriorityQueue;
 
 public class SimpleSimulator {
@@ -94,13 +94,18 @@ public class SimpleSimulator {
 
   @Override
   public String toString() {
-    return "SimpleSimulator{" +
-        "currentTimestamp=" + currentTimestamp +
-        "\n, currentStep=" + currentStep +
-        "\n, eventQueue=" + eventQueue +
-        "\n, maxStep=" + maxStep +
-        "\n, maxTimestamp=" + maxTimestamp +
-        '}';
+    return "SimpleSimulator{"
+        + "currentTimestamp="
+        + currentTimestamp
+        + "\n, currentStep="
+        + currentStep
+        + "\n, eventQueue="
+        + eventQueue
+        + "\n, maxStep="
+        + maxStep
+        + "\n, maxTimestamp="
+        + maxTimestamp
+        + '}';
   }
 
   public class SimpleContext implements SimulationContext {

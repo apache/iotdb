@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
+import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
+
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,10 +31,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.utils.IOUtils.BufferSerializable;
-import org.apache.iotdb.db.utils.IOUtils.StreamSerializable;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class DeletionPredicate implements StreamSerializable, BufferSerializable {
 
@@ -69,7 +71,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
         measurementNames.add(ReadWriteIOUtils.readVarIntString(stream));
       }
     } else {
-       measurementNames = Collections.emptyList();
+      measurementNames = Collections.emptyList();
     }
   }
 

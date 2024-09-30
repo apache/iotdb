@@ -58,8 +58,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -777,11 +775,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       clearModificationsAndTimeIndex();
 
       currentModifications = new ArrayList<>();
-      resource.getModEntryIterator().forEachRemaining(
-          currentModifications::add
-      );
+      resource.getModEntryIterator().forEachRemaining(currentModifications::add);
       for (final ModEntry modification : currentModifications) {
-        currentModificationsMemoryUsageSizeInBytes += ((TreeDeletionEntry) modification).getSerializedSize();
+        currentModificationsMemoryUsageSizeInBytes +=
+            ((TreeDeletionEntry) modification).getSerializedSize();
       }
       block.addMemoryUsage(currentModificationsMemoryUsageSizeInBytes);
 

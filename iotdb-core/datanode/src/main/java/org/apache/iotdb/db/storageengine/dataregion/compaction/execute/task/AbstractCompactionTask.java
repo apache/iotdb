@@ -510,9 +510,8 @@ public abstract class AbstractCompactionTask {
   }
 
   @SafeVarargs
-  protected final void allocateModFile(List<TsFileResource> targetFiles,
-      List<TsFileResource>... allSourceFiles)
-      throws IOException {
+  protected final void allocateModFile(
+      List<TsFileResource> targetFiles, List<TsFileResource>... allSourceFiles) throws IOException {
     // allocate the same mod file for all target files
     ModificationFile modificationFile = modFileManager.allocate(targetFiles.get(0));
     for (int i = 1; i < targetFiles.size(); i++) {

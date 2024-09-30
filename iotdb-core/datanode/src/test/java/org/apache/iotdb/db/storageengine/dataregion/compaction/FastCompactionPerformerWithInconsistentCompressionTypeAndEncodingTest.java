@@ -122,7 +122,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -200,7 +201,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -274,7 +276,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -325,7 +328,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -403,7 +407,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
@@ -477,7 +482,8 @@ public class FastCompactionPerformerWithInconsistentCompressionTypeAndEncodingTe
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     Assert.assertTrue(task.start());
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);

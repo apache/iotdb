@@ -23,8 +23,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.StringSerializer;
@@ -136,9 +134,11 @@ public class PatternTreeMapTest {
         new TreeDeletionEntry(new PartialPath("root.sg1.d1.s1"), 6, 10));
 
     patternTreeMap.append(
-        new PartialPath("root.**.s1"), new TreeDeletionEntry(new PartialPath("root.**.s1") ,10, 100));
+        new PartialPath("root.**.s1"),
+        new TreeDeletionEntry(new PartialPath("root.**.s1"), 10, 100));
     patternTreeMap.append(
-        new PartialPath("root.**.s1"), new TreeDeletionEntry(new PartialPath("root.**.s1"), 100, 200));
+        new PartialPath("root.**.s1"),
+        new TreeDeletionEntry(new PartialPath("root.**.s1"), 100, 200));
 
     patternTreeMap.append(
         new PartialPath("root.**"), new TreeDeletionEntry(new PartialPath("root.**"), 10, 100));
@@ -177,7 +177,8 @@ public class PatternTreeMapTest {
         new PartialPath("root.sg1.d1.s3"),
         new TreeDeletionEntry(new PartialPath("root.sg1.d1.s3"), 5, 6));
     patternTreeMap.append(
-        new PartialPath("root.sg1.d1.*"), new TreeDeletionEntry(new PartialPath("root.sg1.d1.*"), 4, 6));
+        new PartialPath("root.sg1.d1.*"),
+        new TreeDeletionEntry(new PartialPath("root.sg1.d1.*"), 4, 6));
     patternTreeMap.append(
         new PartialPath("root.sg1.d1.*.d3.s5"),
         new TreeDeletionEntry(new PartialPath("root.sg1.d1.*.d3.s5"), 4, 6));

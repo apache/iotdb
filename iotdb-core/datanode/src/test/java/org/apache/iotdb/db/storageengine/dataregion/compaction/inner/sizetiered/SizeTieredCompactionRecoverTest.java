@@ -571,7 +571,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    
+
     compactionLogger.close();
 
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, logFile, true).doCompaction();
@@ -717,7 +717,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
     }
-    
+
     seqResources.get(0).remove();
     compactionLogger.close();
 

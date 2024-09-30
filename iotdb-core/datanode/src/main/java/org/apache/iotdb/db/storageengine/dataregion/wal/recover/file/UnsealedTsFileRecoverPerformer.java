@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.recover.file;
 
-import java.util.Iterator;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -32,11 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
@@ -52,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -161,7 +157,8 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
   private Map<IDeviceID, Map<String, List<TreeDeletionEntry>>> loadModificationsForResource() {
     Map<IDeviceID, Map<String, List<TreeDeletionEntry>>> modificationsForResource = new HashMap<>();
     Iterator<ModEntry> modEntryIterator = tsFileResource.getModEntryIterator();
-    modEntryIterator.forEachRemaining( mod -> {
+    modEntryIterator.forEachRemaining(
+        mod -> {
           if (mod instanceof TreeDeletionEntry) {
             TreeDeletionEntry treeDeletionEntry = (TreeDeletionEntry) mod;
             IDeviceID deviceId = treeDeletionEntry.getPathPattern().getIDeviceID();
@@ -172,8 +169,7 @@ public class UnsealedTsFileRecoverPerformer extends AbstractTsFileRecoverPerform
                 measurementModsMap.computeIfAbsent(measurementId, n -> new ArrayList<>());
             list.add(treeDeletionEntry);
           }
-        }
-    );
+        });
     return modificationsForResource;
   }
 

@@ -27,11 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCach
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -61,7 +57,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-import org.bouncycastle.math.raw.Mod;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
 
@@ -424,9 +419,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
             r -> {
               Iterator<ModEntry> modEntryIterator = r.getModEntryIterator();
               List<ModEntry> modEntries = new LinkedList<>();
-              modEntryIterator.forEachRemaining(
-                  modEntries::add
-              );
+              modEntryIterator.forEachRemaining(modEntries::add);
               return modEntries;
             });
 
@@ -659,9 +652,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   r -> {
                     List<ModEntry> modEntries = new LinkedList<>();
                     Iterator<ModEntry> modEntryIterator = r.getModEntryIterator();
-                    modEntryIterator.forEachRemaining(
-                        modEntries::add
-                    );
+                    modEntryIterator.forEachRemaining(modEntries::add);
                     return modEntries;
                   });
           LinkedList<ModEntry> modificationForCurrentSeries = new LinkedList<>();

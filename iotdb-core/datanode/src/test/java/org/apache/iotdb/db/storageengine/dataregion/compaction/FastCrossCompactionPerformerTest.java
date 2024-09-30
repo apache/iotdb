@@ -4373,7 +4373,8 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
               unseqResources,
               new FastCompactionPerformer(true),
               1000,
-              0, new ModFileManager());
+              0,
+              new ModFileManager());
       Assert.assertTrue(task.setSourceFilesToCompactionCandidate());
 
       FixedPriorityBlockingQueue<AbstractCompactionTask> queue =

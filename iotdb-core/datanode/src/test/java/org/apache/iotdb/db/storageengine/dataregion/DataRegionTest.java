@@ -1146,7 +1146,8 @@ public class DataRegionTest {
               dataRegion.getSequenceFileList(),
               true,
               performer,
-              0, new ModFileManager());
+              0,
+              new ModFileManager());
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
       List<DataRegion> dataRegions = StorageEngine.getInstance().getAllDataRegions();

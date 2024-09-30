@@ -234,7 +234,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                   Collections.singletonList(targetTsFileResource),
                   CompactionTaskType.INNER_SEQ,
                   COMPACTION_TEST_SG);
-              
+
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               // check data
@@ -525,7 +525,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                 Collections.singletonList(targetTsFileResource),
                 CompactionTaskType.INNER_SEQ,
                 COMPACTION_TEST_SG);
-            
+
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
@@ -850,7 +850,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
                   Collections.singletonList(targetTsFileResource),
                   CompactionTaskType.INNER_SEQ,
                   COMPACTION_TEST_SG);
-              
+
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
               targetTsFileResources.add(targetTsFileResource);
               CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsFileResources);
@@ -1114,7 +1114,8 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
             sourceResources,
             true,
             new ReadChunkCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.setSourceFilesToCompactionCandidate();
     sourceResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     // delete data during compaction
@@ -1122,7 +1123,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
     vsgp.deleteByDevice(new PartialPath(fullPaths[0]), 0, 1800, 0);
     for (int i = 0; i < sourceResources.size() - 1; i++) {
       TsFileResource resource = sourceResources.get(i);
-      
+
       Assert.assertNotNull(resource.getCompactionModFile());
       Assert.assertTrue(resource.newModFileExists());
       if (i < 2) {
@@ -1145,7 +1146,7 @@ public class InnerSeqCompactionWithReadChunkPerformerTest {
 
     TsFileResource resource =
         TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
-    
+
     Assert.assertTrue(resource.newModFileExists());
     Assert.assertEquals(2, resource.getAllModEntries().size());
     Assert.assertNull(resource.getCompactionModFile());

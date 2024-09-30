@@ -30,7 +30,6 @@ import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.io.IOException;
@@ -58,16 +57,12 @@ public class TsFilePlanRedoer {
     for (PartialPath path : paths) {
       // path here is device path pattern
       recoveryMemTable.delete(
-          path,
-          deleteDataNode.getDeleteStartTime(),
-          deleteDataNode.getDeleteEndTime());
+          path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime());
       tsFileResource
           .getModFileMayAllocate()
           .write(
               new TreeDeletionEntry(
-                  path,
-                  deleteDataNode.getDeleteStartTime(),
-                  deleteDataNode.getDeleteEndTime()));
+                  path, deleteDataNode.getDeleteStartTime(), deleteDataNode.getDeleteEndTime()));
     }
   }
 

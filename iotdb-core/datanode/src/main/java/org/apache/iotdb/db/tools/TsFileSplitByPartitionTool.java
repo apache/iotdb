@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.tools;
 
-import java.util.Collections;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -63,6 +61,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -181,8 +180,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
               // a new Page
               PageHeader pageHeader =
                   reader.readPageHeader(dataType, header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              boolean needToDecode =
-                  checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
+              boolean needToDecode = checkIfNeedToDecode(measurementSchema, deviceId, pageHeader);
               needToDecodeInfo.add(needToDecode);
               ByteBuffer pageData =
                   !needToDecode
@@ -259,10 +257,9 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       TreeDeletionEntry currentDeletion = null;
       while (modsIterator.hasNext()) {
         currentDeletion = (TreeDeletionEntry) modsIterator.next();
-        if (currentDeletion
-                .matchesFull(
-                    new PartialPath(
-                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))) {
+        if (currentDeletion.matchesFull(
+            new PartialPath(
+                ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))) {
           if (pageHeader.getStartTime() <= currentDeletion.getTimeRange().getMax()
               && pageHeader.getEndTime() >= currentDeletion.getTimeRange().getMin()) {
             return true;
@@ -291,8 +288,7 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     Map<Long, ChunkWriterImpl> partitionChunkWriterMap = new HashMap<>();
     for (int i = 0; i < pageDataInChunk.size(); i++) {
       if (Boolean.TRUE.equals(needToDecodeInfoInChunk.get(i))) {
-        decodeAndWritePage(
-            deviceId, schema, pageDataInChunk.get(i), partitionChunkWriterMap);
+        decodeAndWritePage(deviceId, schema, pageDataInChunk.get(i), partitionChunkWriterMap);
       } else {
         writePage(
             schema, pageHeadersInChunk.get(i), pageDataInChunk.get(i), partitionChunkWriterMap);
@@ -373,15 +369,13 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
     PageReader pageReader =
         new PageReader(pageData, schema.getType(), valueDecoder, defaultTimeDecoder);
     // read delete time range from old modification file
-    List<TimeRange> deleteIntervalList =
-        getOldSortedDeleteIntervals(deviceId, schema);
+    List<TimeRange> deleteIntervalList = getOldSortedDeleteIntervals(deviceId, schema);
     pageReader.setDeleteIntervalList(deleteIntervalList);
     BatchData batchData = pageReader.getAllSatisfiedPageData();
     rewritePageIntoFiles(batchData, schema, partitionChunkWriterMap);
   }
 
-  private List<TimeRange> getOldSortedDeleteIntervals(
-      IDeviceID deviceId, MeasurementSchema schema)
+  private List<TimeRange> getOldSortedDeleteIntervals(IDeviceID deviceId, MeasurementSchema schema)
       throws IllegalPathException {
     if (oldModification != null) {
       ChunkMetadata chunkMetadata = new ChunkMetadata();
@@ -390,12 +384,10 @@ public class TsFileSplitByPartitionTool implements AutoCloseable {
       while (modsIterator.hasNext()) {
         currentDeletion = (TreeDeletionEntry) modsIterator.next();
         // if deletion path match the chunkPath, then add the deletion to the list
-        if (currentDeletion
-                .matchesFull(
-                    new PartialPath(
-                        ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))) {
-          chunkMetadata.insertIntoSortedDeletions(
-              currentDeletion.getTimeRange());
+        if (currentDeletion.matchesFull(
+            new PartialPath(
+                ((PlainDeviceID) deviceId).toStringID() + "." + schema.getMeasurementId()))) {
+          chunkMetadata.insertIntoSortedDeletions(currentDeletion.getTimeRange());
         }
       }
       return chunkMetadata.getDeleteIntervalList();

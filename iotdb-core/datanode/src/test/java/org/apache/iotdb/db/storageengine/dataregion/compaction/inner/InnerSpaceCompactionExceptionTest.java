@@ -29,9 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.Com
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -314,7 +312,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
     }
 
-
     seqResources.get(0).remove();
     compactionLogger.close();
 
@@ -335,8 +332,11 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     Collection<ModEntry> modifications = targetResource.getAllModEntries();
     Assert.assertEquals(seqResources.size(), modifications.size());
     for (ModEntry modification : modifications) {
-      Assert.assertEquals(deviceIds[0], ((TreeDeletionEntry) modification).getPathPattern().getDevice());
-      Assert.assertEquals(measurementSchemas[0].getMeasurementId(), ((TreeDeletionEntry) modification).getPathPattern().getMeasurement());
+      Assert.assertEquals(
+          deviceIds[0], ((TreeDeletionEntry) modification).getPathPattern().getDevice());
+      Assert.assertEquals(
+          measurementSchemas[0].getMeasurementId(),
+          ((TreeDeletionEntry) modification).getPathPattern().getMeasurement());
     }
 
     seqResources.remove(0);
@@ -474,7 +474,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     Assert.assertFalse(targetResource.newModFileExists());
 
     for (TsFileResource resource : seqResources) {
-      
+
       Assert.assertTrue(resource.resourceFileExists());
       Assert.assertTrue(resource.getTsFile().exists());
       Assert.assertTrue(resource.newModFileExists());
@@ -482,9 +482,11 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
       Collection<ModEntry> modifications = resource.getAllModEntries();
       Assert.assertEquals(2, modifications.size());
       for (ModEntry modification : modifications) {
-        Assert.assertEquals(deviceIds[0], ((TreeDeletionEntry) modification).getPathPattern().getDevice());
         Assert.assertEquals(
-            measurementSchemas[0].getMeasurementId(), ((TreeDeletionEntry) modification).getPathPattern().getMeasurement());
+            deviceIds[0], ((TreeDeletionEntry) modification).getPathPattern().getDevice());
+        Assert.assertEquals(
+            measurementSchemas[0].getMeasurementId(),
+            ((TreeDeletionEntry) modification).getPathPattern().getMeasurement());
       }
     }
 

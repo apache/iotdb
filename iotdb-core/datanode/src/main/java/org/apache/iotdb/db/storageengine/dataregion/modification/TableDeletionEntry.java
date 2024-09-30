@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.path.PartialPath;
+
+import org.apache.tsfile.read.common.TimeRange;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.tsfile.read.common.TimeRange;
 
 public class TableDeletionEntry extends ModEntry {
   private DeletionPredicate predicate;
@@ -71,10 +73,7 @@ public class TableDeletionEntry extends ModEntry {
 
   @Override
   public String toString() {
-    return "TableDeletionEntry{" +
-        "predicate=" + predicate +
-        ", timeRange=" + timeRange +
-        '}';
+    return "TableDeletionEntry{" + "predicate=" + predicate + ", timeRange=" + timeRange + '}';
   }
 
   @Override

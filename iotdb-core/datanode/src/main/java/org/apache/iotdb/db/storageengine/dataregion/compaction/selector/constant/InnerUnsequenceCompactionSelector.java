@@ -53,7 +53,13 @@ public enum InnerUnsequenceCompactionSelector {
     switch (this) {
       case SIZE_TIERED_MULTI_TARGET:
         return new NewSizeTieredCompactionSelector(
-            storageGroupName, dataRegionId, timePartition, false, tsFileManager, context, modFileManager);
+            storageGroupName,
+            dataRegionId,
+            timePartition,
+            false,
+            tsFileManager,
+            context,
+            modFileManager);
       case SIZE_TIERED_SINGLE_TARGET:
       default:
         return new SizeTieredCompactionSelector(

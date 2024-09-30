@@ -233,7 +233,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.start();
 
     for (TsFileResource resource : seqResources) {
@@ -463,7 +464,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.start();
 
     for (TsFileResource resource : targetResources) {
@@ -598,7 +600,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.setSourceFilesToCompactionCandidate();
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
@@ -632,7 +635,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       }
     }
     for (TsFileResource resource : unseqResources) {
-      
+
       Assert.assertNull(resource.getCompactionModFile());
       Assert.assertFalse(resource.newModFileExists());
     }
@@ -716,7 +719,8 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     task.setSourceFilesToCompactionCandidate();
     seqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
     unseqResources.forEach(f -> f.setStatus(TsFileResourceStatus.COMPACTING));
@@ -745,7 +749,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
         0);
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
-      
+
       if (i < 2) {
         Assert.assertNull(resource.getCompactionModFile());
         Assert.assertFalse(resource.newModFileExists());
@@ -762,7 +766,7 @@ public class RewriteCrossSpaceCompactionWithFastPerformerTest extends AbstractCo
       }
     }
     for (TsFileResource resource : unseqResources) {
-      
+
       Assert.assertNull(resource.getCompactionModFile());
       Assert.assertFalse(resource.newModFileExists());
     }

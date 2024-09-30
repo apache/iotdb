@@ -39,9 +39,10 @@ public class SimpleModAllocator {
         // can allocate more mod file
         long totalSize = prevModFile.mods.size() * config.deletionSizeInByte;
         if (totalSize > config.modFileSizeThreshold) {
-//          System.out.printf(
-//              "When allocating new Mod File, there are %d partial deletion and %d full deletion%n",
-//              prevModFile.partialDeletionCnt, prevModFile.fullDeletionCnt);
+          //          System.out.printf(
+          //              "When allocating new Mod File, there are %d partial deletion and %d full
+          // deletion%n",
+          //              prevModFile.partialDeletionCnt, prevModFile.fullDeletionCnt);
           // the previous one is already large enough, allocate a new one
           return allocateNew();
         }

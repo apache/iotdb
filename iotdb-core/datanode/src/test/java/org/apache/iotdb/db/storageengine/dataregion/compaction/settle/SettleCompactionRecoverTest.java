@@ -236,7 +236,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -325,7 +324,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -420,7 +418,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -512,7 +509,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -734,7 +730,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -900,7 +895,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -989,7 +983,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,
@@ -1084,7 +1077,6 @@ public class SettleCompactionRecoverTest extends AbstractCompactionTest {
       CompactionUtils.moveTargetFile(
           Collections.singletonList(targetResource), CompactionTaskType.SETTLE, COMPACTION_TEST_SG);
 
-      
       tsFileManager.replace(
           Collections.emptyList(),
           partialDeletedFiles,

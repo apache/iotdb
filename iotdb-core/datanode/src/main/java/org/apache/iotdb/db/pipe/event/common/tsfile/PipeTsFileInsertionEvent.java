@@ -244,7 +244,8 @@ public class PipeTsFileInsertionEvent extends EnrichedEvent implements TsFileIns
     try {
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, resource);
       if (isWithOldMod) {
-        oldModFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(oldModFile, false, null);
+        oldModFile =
+            PipeDataNodeResourceManager.tsfile().increaseFileReference(oldModFile, false, null);
       }
       return true;
     } catch (final Exception e) {

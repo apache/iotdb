@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -37,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -53,10 +53,10 @@ public class TsFileManager {
   // time partition -> double linked list of tsfiles
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
-  /**
-   * time partition id -> ModFileManager
-   */
-  private final Map<Long, ModFileManager> timePartitionModFileManagerMap = new ConcurrentHashMap<>();
+
+  /** time partition id -> ModFileManager */
+  private final Map<Long, ModFileManager> timePartitionModFileManagerMap =
+      new ConcurrentHashMap<>();
 
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
@@ -445,7 +445,8 @@ public class TsFileManager {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     long singleModFileSizeThreshold = config.getSingleModFileSizeThreshold();
     int levelModFileCntThreshold = config.getLevelModFileCntThreshold();
-    return timePartitionModFileManagerMap.computeIfAbsent(timePartitionId,
+    return timePartitionModFileManagerMap.computeIfAbsent(
+        timePartitionId,
         tid -> new ModFileManager(levelModFileCntThreshold, singleModFileSizeThreshold));
   }
 }

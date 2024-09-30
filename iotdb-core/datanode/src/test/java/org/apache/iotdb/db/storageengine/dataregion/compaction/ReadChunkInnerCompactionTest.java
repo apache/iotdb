@@ -31,7 +31,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -207,7 +206,13 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, false), tsDataTypes);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
 
     task.start();
 
@@ -389,7 +394,13 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
         readSourceFiles(createTimeseries(maxDeviceNum, maxMeasurementNum, true), tsDataTypes);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
 
     task.start();
 
@@ -417,7 +428,13 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -443,7 +460,13 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -465,7 +488,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile1
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.d1.s1"), Long.MAX_VALUE));
-    seqFile1.getModFile().close();;
+    seqFile1.getModFile().close();
+    ;
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -480,7 +504,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile2
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile2.getModFile().close();;
+    seqFile2.getModFile().close();
+    ;
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -495,13 +520,20 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile3
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile3.getModFile().close();;
+    seqFile3.getModFile().close();
+    ;
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -520,7 +552,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile1
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile1.getModFile().close();;
+    seqFile1.getModFile().close();
+    ;
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -532,7 +565,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile2
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile2.getModFile().close();;
+    seqFile2.getModFile().close();
+    ;
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -544,13 +578,20 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile3
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.d1.**"), Long.MAX_VALUE));
-    seqFile3.getModFile().close();;
+    seqFile3.getModFile().close();
+    ;
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -569,7 +610,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile1
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.**"), Long.MAX_VALUE));
-    seqFile1.getModFile().close();;
+    seqFile1.getModFile().close();
+    ;
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -581,7 +623,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile2
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.**"), Long.MAX_VALUE));
-    seqFile2.getModFile().close();;
+    seqFile2.getModFile().close();
+    ;
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -593,13 +636,20 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile3
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.**"), Long.MAX_VALUE));
-    seqFile3.getModFile().close();;
+    seqFile3.getModFile().close();
+    ;
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -621,7 +671,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile1
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.**"), Long.MAX_VALUE));
-    seqFile1.getModFile().close();;
+    seqFile1.getModFile().close();
+    ;
     TsFileResource seqFile2 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile2)) {
       writer.startChunkGroup("d1");
@@ -636,7 +687,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile2
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.**"), Long.MAX_VALUE));
-    seqFile2.getModFile().close();;
+    seqFile2.getModFile().close();
+    ;
     TsFileResource seqFile3 = createEmptyFileAndResource(true);
     try (CompactionTestFileWriter writer = new CompactionTestFileWriter(seqFile3)) {
       writer.startChunkGroup("d1");
@@ -651,13 +703,20 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqFile3
         .getModFileMayAllocate()
         .write(new TreeDeletionEntry(new PartialPath("root.testsg.**"), Long.MAX_VALUE));
-    seqFile3.getModFile().close();;
+    seqFile3.getModFile().close();
+    ;
     seqResources.add(seqFile1);
     seqResources.add(seqFile2);
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(0, tsFileManager.getTsFileList(true).size());
   }
@@ -685,7 +744,13 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
     seqResources.add(seqFile3);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
     Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
   }
@@ -719,7 +784,13 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
 
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0, new ModFileManager());
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new FastCompactionPerformer(false),
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
     Assert.assertFalse(
         new File(
@@ -806,7 +877,8 @@ public class ReadChunkInnerCompactionTest extends AbstractCompactionTest {
             Collections.singletonList(seqResources.get(0)),
             true,
             new ReadChunkCompactionPerformer(),
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);

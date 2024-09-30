@@ -145,7 +145,13 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
       }
     }
     new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0, new ModFileManager())
+            0,
+            tsFileManager,
+            seqResources,
+            true,
+            new ReadChunkCompactionPerformer(),
+            0,
+            new ModFileManager())
         .start();
     TsFileResource targetFile = tsFileManager.getTsFileList(true).get(0);
     try (TsFileSequenceReader reader =
@@ -485,7 +491,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadChunkCompactionPerformer(),
-            0L, new ModFileManager());
+            0L,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -635,7 +642,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadChunkCompactionPerformer(),
-            0L, new ModFileManager());
+            0L,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -781,7 +789,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0L, new ModFileManager());
+            0L,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -927,7 +936,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new ReadPointCompactionPerformer(),
-            0L, new ModFileManager());
+            0L,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -1082,7 +1092,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            0L, new ModFileManager());
+            0L,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);
@@ -1228,7 +1239,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
             tsFileManager.getTsFileList(true),
             true,
             new FastCompactionPerformer(false),
-            0L, new ModFileManager());
+            0L,
+            new ModFileManager());
     Assert.assertTrue(task.start());
 
     validateSeqFiles(true);

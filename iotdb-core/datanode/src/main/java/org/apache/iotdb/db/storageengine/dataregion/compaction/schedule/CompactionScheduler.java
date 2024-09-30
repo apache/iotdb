@@ -95,7 +95,10 @@ public class CompactionScheduler {
    * @return the count of submitted task
    */
   public static int scheduleCompaction(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context, ModFileManager modFileManager)
+      TsFileManager tsFileManager,
+      long timePartition,
+      CompactionScheduleContext context,
+      ModFileManager modFileManager)
       throws InterruptedException {
     if (!tsFileManager.isAllowCompaction()) {
       return 0;
@@ -105,10 +108,14 @@ public class CompactionScheduler {
     int trySubmitCount = 0;
     try {
       trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, true, context, modFileManager);
+          tryToSubmitInnerSpaceCompactionTask(
+              tsFileManager, timePartition, true, context, modFileManager);
       trySubmitCount +=
-          tryToSubmitInnerSpaceCompactionTask(tsFileManager, timePartition, false, context, modFileManager);
-      trySubmitCount += tryToSubmitCrossSpaceCompactionTask(tsFileManager, timePartition, context, modFileManager);
+          tryToSubmitInnerSpaceCompactionTask(
+              tsFileManager, timePartition, false, context, modFileManager);
+      trySubmitCount +=
+          tryToSubmitCrossSpaceCompactionTask(
+              tsFileManager, timePartition, context, modFileManager);
       trySubmitCount +=
           tryToSubmitSettleCompactionTask(tsFileManager, timePartition, context, false);
     } catch (InterruptedException e) {
@@ -122,7 +129,12 @@ public class CompactionScheduler {
   @TestOnly
   public static void scheduleCompaction(TsFileManager tsFileManager, long timePartition)
       throws InterruptedException {
-    scheduleCompaction(tsFileManager, timePartition, new CompactionScheduleContext(), new ModFileManager(config.getLevelModFileCntThreshold(), config.getSingleModFileSizeThreshold()));
+    scheduleCompaction(
+        tsFileManager,
+        timePartition,
+        new CompactionScheduleContext(),
+        new ModFileManager(
+            config.getLevelModFileCntThreshold(), config.getSingleModFileSizeThreshold()));
   }
 
   public static int scheduleInsertionCompaction(
@@ -164,13 +176,23 @@ public class CompactionScheduler {
           config
               .getInnerSequenceCompactionSelector()
               .createInstance(
-                  storageGroupName, dataRegionId, timePartition, tsFileManager, context, modFileManager);
+                  storageGroupName,
+                  dataRegionId,
+                  timePartition,
+                  tsFileManager,
+                  context,
+                  modFileManager);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
               .createInstance(
-                  storageGroupName, dataRegionId, timePartition, tsFileManager, context, modFileManager);
+                  storageGroupName,
+                  dataRegionId,
+                  timePartition,
+                  tsFileManager,
+                  context,
+                  modFileManager);
     }
     long startTime = System.currentTimeMillis();
     List<InnerSpaceCompactionTask> innerSpaceTaskList =
@@ -264,7 +286,10 @@ public class CompactionScheduler {
   }
 
   private static int tryToSubmitCrossSpaceCompactionTask(
-      TsFileManager tsFileManager, long timePartition, CompactionScheduleContext context, ModFileManager modFileManager)
+      TsFileManager tsFileManager,
+      long timePartition,
+      CompactionScheduleContext context,
+      ModFileManager modFileManager)
       throws InterruptedException {
     if (!config.isEnableCrossSpaceCompaction()) {
       return 0;

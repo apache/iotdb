@@ -556,7 +556,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       addFileMods(seqResources.get(7), path, Long.MIN_VALUE, Long.MAX_VALUE);
     }
     for (TsFileResource resource : seqResources) {
-      resource.getModFile().close();;
+      resource.getModFile().close();
+      ;
     }
 
     // compact all_deleted file and partial_deleted file 0
@@ -1084,7 +1085,8 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
       addFileMods(seqResources.get(7), path, Long.MIN_VALUE, Long.MAX_VALUE);
     }
     for (TsFileResource resource : seqResources) {
-      resource.getModFile().close();;
+      resource.getModFile().close();
+      ;
     }
 
     // compact all_deleted file and partial_deleted file 0
@@ -1113,8 +1115,7 @@ public class SettleCompactionSelectorTest extends AbstractCompactionTest {
 
   // endregion
 
-  private void addFileMods(
-      TsFileResource resource, PartialPath path, long startTime, long endTime)
+  private void addFileMods(TsFileResource resource, PartialPath path, long startTime, long endTime)
       throws IOException {
     try (ModificationFile modificationFile = resource.getModFileMayAllocate()) {
       modificationFile.write(new TreeDeletionEntry(path, startTime, endTime));

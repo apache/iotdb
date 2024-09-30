@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
+
+import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
-import org.apache.tsfile.read.common.TimeRange;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 public class TreeDeletionEntry extends ModEntry {
 
@@ -54,8 +56,8 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   public TreeDeletionEntry(TreeDeletionEntry another) {
-    this(another.pathPattern,
-        new TimeRange(another.timeRange.getMin(), another.timeRange.getMax()));
+    this(
+        another.pathPattern, new TimeRange(another.timeRange.getMin(), another.timeRange.getMax()));
   }
 
   public TreeDeletionEntry(Deletion deletion) {
@@ -101,10 +103,7 @@ public class TreeDeletionEntry extends ModEntry {
 
   @Override
   public String toString() {
-    return "TreeDeletionEntry{" +
-        "pathPattern=" + pathPattern +
-        ", timeRange=" + timeRange +
-        '}';
+    return "TreeDeletionEntry{" + "pathPattern=" + pathPattern + ", timeRange=" + timeRange + '}';
   }
 
   public PartialPath getPathPattern() {
@@ -118,7 +117,8 @@ public class TreeDeletionEntry extends ModEntry {
     }
     TreeDeletionEntry o1 = (TreeDeletionEntry) o;
     return Comparator.comparing(TreeDeletionEntry::getPathPattern)
-        .thenComparing(TreeDeletionEntry::getTimeRange).compare(this, o1);
+        .thenComparing(TreeDeletionEntry::getTimeRange)
+        .compare(this, o1);
   }
 
   public boolean intersects(TreeDeletionEntry deletion) {
@@ -134,7 +134,8 @@ public class TreeDeletionEntry extends ModEntry {
   }
 
   public long getSerializedSize() {
-    return modType.getSerializedSize() + Integer.BYTES
+    return modType.getSerializedSize()
+        + Integer.BYTES
         + (long) pathPattern.getFullPath().length() * Character.BYTES;
   }
 }

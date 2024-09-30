@@ -92,7 +92,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   public CrossSpaceCompactionTask(
-      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile, ModFileManager modFileManager) {
+      String databaseName,
+      String dataRegionId,
+      TsFileManager tsFileManager,
+      File logFile,
+      ModFileManager modFileManager) {
     super(databaseName, dataRegionId, 0L, tsFileManager, 0L, modFileManager);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;

@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.expr.event;
 
+import org.apache.iotdb.db.expr.conf.SimulationConfig;
+import org.apache.iotdb.db.expr.simulator.SimulationContext;
+
+import org.apache.tsfile.read.common.TimeRange;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
-import org.apache.iotdb.db.expr.conf.SimulationConfig;
-import org.apache.iotdb.db.expr.entity.SimDeletion;
-import org.apache.iotdb.db.expr.entity.SimTsFile;
-import org.apache.iotdb.db.expr.simulator.SimulationContext;
-import org.apache.tsfile.read.common.TimeRange;
 
 public class ExecuteLastPointQueryEvent extends ExecuteRangeQueryEvent {
 
@@ -39,7 +39,7 @@ public class ExecuteLastPointQueryEvent extends ExecuteRangeQueryEvent {
     long currentTimestamp = context.getSimulator().currentTimestamp;
     long lastTsFileVersion = currentTimestamp / context.getConfig().generateTsFileInterval;
     long lastTsFileTime = lastTsFileVersion * context.getConfig().tsfileRange;
-    return new TimeRange(lastTsFileTime,lastTsFileTime + 1);
+    return new TimeRange(lastTsFileTime, lastTsFileTime + 1);
   }
 
   @Override

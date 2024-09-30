@@ -25,10 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -103,9 +100,12 @@ public class QueryContext {
         k -> {
           PatternTreeMap<ModEntry, ModsSerializer> modifications =
               PatternTreeMapFactory.getModsPatternTreeMap();
-          tsFileResource.getModEntryIterator().forEachRemaining(
-              modEntry -> modifications.append(((TreeDeletionEntry) modEntry).getPathPattern(), modEntry)
-          );
+          tsFileResource
+              .getModEntryIterator()
+              .forEachRemaining(
+                  modEntry ->
+                      modifications.append(
+                          ((TreeDeletionEntry) modEntry).getPathPattern(), modEntry));
           return modifications;
         });
   }
@@ -119,8 +119,7 @@ public class QueryContext {
     }
 
     return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource)
-            .getOverlapped(new PartialPath(deviceID, measurement)));
+        getAllModifications(tsFileResource).getOverlapped(new PartialPath(deviceID, measurement)));
   }
 
   public List<ModEntry> getPathModifications(TsFileResource tsFileResource, IDeviceID deviceID)
@@ -131,8 +130,7 @@ public class QueryContext {
     }
 
     return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource)
-            .getDeviceOverlapped(new PartialPath(deviceID)));
+        getAllModifications(tsFileResource).getDeviceOverlapped(new PartialPath(deviceID)));
   }
 
   /**
@@ -145,8 +143,7 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    return ModificationUtils.sortAndMerge(
-        getAllModifications(tsFileResource).getOverlapped(path));
+    return ModificationUtils.sortAndMerge(getAllModifications(tsFileResource).getOverlapped(path));
   }
 
   /**

@@ -38,7 +38,6 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionC
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManager;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -804,7 +803,8 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     Assert.assertFalse(task.start());
     Assert.assertFalse(
         new File(

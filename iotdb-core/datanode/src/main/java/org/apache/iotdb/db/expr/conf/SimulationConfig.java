@@ -21,8 +21,10 @@ public class SimulationConfig {
 
   public long generatePartialDeletionInterval = 20_000_000L;
   public long generateFullDeletionInterval = 20_000_000L;
-  // the first deletion ranges from [partialDeletionOffset, partialDeletionRange + partialDeletionOffset],
-  // and the next one ranges from [partialDeletionOffset + partialDeletionStep, partialDeletionRange + partialDeletionOffset + partialDeletionStep],
+  // the first deletion ranges from [partialDeletionOffset, partialDeletionRange +
+  // partialDeletionOffset],
+  // and the next one ranges from [partialDeletionOffset + partialDeletionStep, partialDeletionRange
+  // + partialDeletionOffset + partialDeletionStep],
   // and so on
   public long partialDeletionRange = tsfileRange * 3;
   public long partialDeletionStep = tsfileRange / 2;

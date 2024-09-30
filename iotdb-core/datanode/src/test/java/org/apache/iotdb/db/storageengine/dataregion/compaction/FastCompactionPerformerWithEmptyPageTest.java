@@ -117,7 +117,8 @@ public class FastCompactionPerformerWithEmptyPageTest extends AbstractCompaction
             Arrays.asList(unseqFile1),
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
     try {
       Assert.assertTrue(task.start());
     } catch (Exception e) {

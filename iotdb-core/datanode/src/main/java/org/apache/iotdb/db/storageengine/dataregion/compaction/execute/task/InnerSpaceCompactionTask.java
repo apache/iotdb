@@ -115,7 +115,11 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   public InnerSpaceCompactionTask(
-      String databaseName, String dataRegionId, TsFileManager tsFileManager, File logFile, ModFileManager modFileManager) {
+      String databaseName,
+      String dataRegionId,
+      TsFileManager tsFileManager,
+      File logFile,
+      ModFileManager modFileManager) {
     super(databaseName, dataRegionId, 0L, tsFileManager, 0L, modFileManager);
     this.logFile = logFile;
     this.needRecoverTaskInfoFromLogFile = true;

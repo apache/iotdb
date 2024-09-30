@@ -78,9 +78,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     seqResources.get(0).readLock();
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     Future<CompactionTaskSummary> summaryFuture = null;
@@ -117,9 +119,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     seqResources.get(0).readLock();
     Future<CompactionTaskSummary> summaryFuture = null;
     try {
@@ -157,9 +161,11 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     InnerSpaceCompactionTask task2 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     seqResources.get(0).readLock();
     Assert.assertTrue(manager.addTaskToWaitingQueue(task1));
@@ -183,7 +189,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     CompactionTaskManager manager = CompactionTaskManager.getInstance();
     manager.restart();
     seqResources.get(0).readLock();
@@ -212,7 +219,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, performer, 0, new ModFileManager());
     seqResources.get(0).readLock();
     CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
 
@@ -243,7 +251,8 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
             unseqResources,
             new FastCompactionPerformer(true),
             0,
-            0, new ModFileManager());
+            0,
+            new ModFileManager());
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.isCompactionCandidate());
