@@ -147,6 +147,7 @@ public class DeviceAttributeRemoteUpdater {
                                   ? UpdateDetailContainer.INSTANCE_SIZE
                                   : UpdateClearContainer.INSTANCE_SIZE);
                           updateContainerStatistics.remove(dataNode);
+                          return null;
                         } else if (updateContainerStatistics.containsKey(dataNode)) {
                           updateContainerStatistics.get(dataNode).decreaseSize(result.getLeft());
                         }
