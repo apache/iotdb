@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -78,11 +77,10 @@ public class DataNodeTTLCache {
   }
 
   public long getTTLForTree(IDeviceID deviceID) {
-    lock.readLock().lock();
     try {
-      return getTTLForTree(CommonUtils.deviceIdToStringArray(deviceID));
-    } finally {
-      lock.readLock().unlock();
+      return getTTLForTree(PathUtils.splitPathToDetachedNodes(deviceID.toString()));
+    } catch (IllegalPathException e) {
+      return Long.MAX_VALUE;
     }
   }
 
@@ -93,16 +91,11 @@ public class DataNodeTTLCache {
 
   /** Get ttl with time precision conversion. */
   public long getTTLForTree(String[] path) {
-    lock.readLock().lock();
-    try {
-      long ttl = treeModelTTLCache.getClosestTTL(path);
-      return ttl == Long.MAX_VALUE
-          ? ttl
-          : CommonDateTimeUtils.convertMilliTimeWithPrecision(
-              ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
-    } finally {
-      lock.readLock().unlock();
-    }
+    long ttl = getTTLInMSForTree(path);
+    return ttl == Long.MAX_VALUE
+        ? ttl
+        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
   }
 
   /** Get ttl without time precision conversion. */

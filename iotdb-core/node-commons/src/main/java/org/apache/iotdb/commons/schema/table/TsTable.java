@@ -155,7 +155,8 @@ public class TsTable {
   }
 
   public long getTableTTLInMS() {
-    return Long.parseLong(getPropValue(TTL_PROPERTY).orElse(Long.MAX_VALUE + ""));
+    return Long.parseLong(
+        getPropValue(TTL_PROPERTY.toLowerCase(Locale.ENGLISH)).orElse(Long.MAX_VALUE + ""));
   }
 
   public Optional<String> getPropValue(final String propKey) {

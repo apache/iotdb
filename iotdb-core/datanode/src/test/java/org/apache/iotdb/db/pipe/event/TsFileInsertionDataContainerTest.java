@@ -559,10 +559,10 @@ public class TsFileInsertionDataContainerTest {
       final boolean isQuery,
       final int expectedCount) {
     try (final TsFileInsertionDataContainer tsFileContainer =
-             isQuery
-                 ? new TsFileInsertionQueryDataContainer(tsFile, pattern, startTime, endTime)
-                 : new TsFileInsertionScanDataContainer(
-                 tsFile, pattern, startTime, endTime, null, null)) {
+        isQuery
+            ? new TsFileInsertionQueryDataContainer(tsFile, pattern, startTime, endTime)
+            : new TsFileInsertionScanDataContainer(
+                tsFile, pattern, startTime, endTime, null, null)) {
       final AtomicInteger count1 = new AtomicInteger(0);
       final AtomicInteger count2 = new AtomicInteger(0);
       final AtomicInteger count3 = new AtomicInteger(0);

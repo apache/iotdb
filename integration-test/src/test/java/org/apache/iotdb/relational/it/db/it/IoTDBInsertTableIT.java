@@ -112,27 +112,6 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
-  public void testInsertWithTTL() {
-    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        Statement statement = connection.createStatement()) {
-      statement.execute("use \"test\"");
-      statement.execute("create table sg1 (id1 string id, s1 int32 measurement)");
-      statement.execute("alter table sg1 set properties TTL=1");
-      statement.execute(
-          String.format(
-              "insert into sg1(id1,time,s1) values('d1',%s,2)", System.currentTimeMillis() - 10000));
-      statement.execute("flush");
-      ResultSet rs1 = statement.executeQuery("select time, s1 from sg1 where id1 = 'd1'");
-      rs1.next();
-      System.out.println(rs1.getTime(1));
-      System.out.println(rs1.getInt(2));
-//      assertFalse(rs1.next());
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void testInsertTimeAtAnyIndex() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -897,6 +876,50 @@ public class IoTDBInsertTableIT {
       assertEquals("1", rs1.getString("ss1"));
       assertEquals(1, rs1.getInt("ss2"));
       assertFalse(rs1.next());
+    }
+  }
+
+  @Test
+  public void testInsertWithTTL() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute("create table sg22 (id1 string id, s1 int32 measurement)");
+      statement.execute("alter table sg22 set properties TTL=1");
+      statement.execute(
+          String.format(
+              "insert into sg22(id1,time,s1) values('d1',%s,2)",
+              System.currentTimeMillis() - 10000));
+      fail();
+    } catch (Exception ignored) {
+    }
+  }
+
+  @Test
+  public void testInsertTabletWithTTL()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection(BaseEnv.TABLE_SQL_DIALECT)) {
+      session.executeNonQueryStatement("use \"test\"");
+      session.executeNonQueryStatement("create table sg23 (id1 string id, s1 int32 measurement)");
+      session.executeNonQueryStatement("alter table sg23 set properties TTL=1");
+
+      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      schemaList.add(new MeasurementSchema("id1", TSDataType.STRING));
+      schemaList.add(new MeasurementSchema("s1", TSDataType.INT32));
+      final List<ColumnType> columnTypes = Arrays.asList(ColumnType.ID, ColumnType.MEASUREMENT);
+
+      long timestamp = 0;
+      Tablet tablet = new Tablet("sg23", schemaList, columnTypes, 15);
+
+      for (long row = 0; row < 3; row++) {
+        int rowIndex = tablet.rowSize++;
+        tablet.addTimestamp(rowIndex, timestamp + row);
+        tablet.addValue("id1", rowIndex, "id:" + row);
+        tablet.addValue("s1", rowIndex, row);
+      }
+      session.insertRelationalTablet(tablet, true);
+      fail();
+    } catch (Exception ignored) {
     }
   }
 
