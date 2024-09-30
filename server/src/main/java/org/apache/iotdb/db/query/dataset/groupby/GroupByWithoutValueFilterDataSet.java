@@ -368,6 +368,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     curStartTime = endTime;
     hasCachedTimeInterval = false;
 
+    //    times = null;
+    //    values = null;
+    pathExecutors.clear();
+    pathExecutors = null;
+    System.gc();
+
     return record;
   }
 

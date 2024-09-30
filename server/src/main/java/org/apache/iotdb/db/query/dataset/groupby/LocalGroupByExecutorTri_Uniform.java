@@ -219,6 +219,7 @@ public class LocalGroupByExecutorTri_Uniform implements GroupByExecutor {
     System.out.println(
         "traversed points=" + IOMonitor2.DCP_D_getAllSatisfiedPageData_traversedPointNum);
 
+    timeSeries = null;
     return results;
   }
 

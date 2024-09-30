@@ -143,6 +143,8 @@ public class LocalGroupByExecutorTri_Visval implements GroupByExecutor {
 
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
     minValueAggrResult.updateResult(new MinMaxInfo<>(series.toString(), 0));
+
+    points = null;
     return results;
   }
 

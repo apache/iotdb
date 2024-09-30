@@ -61,7 +61,7 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
   private final List<AggregateResult> results = new ArrayList<>();
 
   // keys: 0,1,...,(int) Math.floor((endTime * 1.0 - startTime) / interval)-1
-  private final Map<Integer, List<ChunkSuit4Tri>> splitChunkList = new HashMap<>();
+  private Map<Integer, List<ChunkSuit4Tri>> splitChunkList = new HashMap<>();
 
   private final long p1t = CONFIG.getP1t();
   private final double p1v = CONFIG.getP1v();
@@ -413,6 +413,9 @@ public class LocalGroupByExecutorTri_ILTS implements GroupByExecutor {
     series_final.append(pnv).append("[").append(pnt).append("]").append(",");
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
     minValueAggrResult.updateResult(new MinMaxInfo<>(series_final.toString(), 0));
+
+    splitChunkList.clear();
+    splitChunkList = null;
 
     return results;
   }

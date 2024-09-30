@@ -176,8 +176,8 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
       long startTime,
       long endTime,
       long interval,
-      List<Long> times,
-      List<Double> values)
+      List<Long> times, // for MinMaxLTTB
+      List<Double> values) // for MinMaxLTTB
       throws IOException {
     int tmpLastReadPos = 0;
     // use list without the notion of chunks
@@ -223,6 +223,8 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
         values.add(null);
       }
     }
+
+    timeSeries = null;
   }
 
   @Override
@@ -323,6 +325,8 @@ public class LocalGroupByExecutorTri_MinMax implements GroupByExecutor {
 
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
     minValueAggrResult.updateResult(new MinMaxInfo<>(series.toString(), 0));
+
+    timeSeries = null;
 
     return results;
   }

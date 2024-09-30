@@ -176,6 +176,7 @@ public class LocalGroupByExecutorTri_SimPiece implements GroupByExecutor {
     MinValueAggrResult minValueAggrResult = (MinValueAggrResult) results.get(0);
     minValueAggrResult.updateResult(new MinMaxInfo<>(series.toString(), 0));
 
+    timeSeries = null;
     return results;
   }
 
