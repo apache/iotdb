@@ -20,9 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -88,5 +93,28 @@ public final class CoalesceExpression extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  // =============== serialize =================
+  @Override
+  public TableExpressionType getExpressionType() {
+    return TableExpressionType.COALESCE;
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(operands.size(), stream);
+    for (Expression operand : operands) {
+      serialize(operand, stream);
+    }
+  }
+
+  public CoalesceExpression(ByteBuffer byteBuffer) {
+    super(null);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    this.operands = new ArrayList<>(size);
+    while (size-- > 0) {
+      operands.add(deserialize(byteBuffer));
+    }
   }
 }

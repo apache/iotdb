@@ -136,28 +136,29 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipePattern(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
-              if (copiedEvent.getEvent() instanceof PipeDeleteDataNodeEvent) {
-                DeletionResourceManager mgr =
-                    DeletionResourceManager.getInstance(extractor.getDataRegionId());
-                PipeDeleteDataNodeEvent deleteDataNodeEvent =
-                    (PipeDeleteDataNodeEvent) copiedEvent.getEvent();
-                // increase deletion resource's reference and bind real deletionEvent
-                if (Objects.nonNull(mgr)
-                    && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
-                        deleteDataNodeEvent.getDeleteDataNode())) {
-                  deleteDataNodeEvent.setDeletionResource(
-                      mgr.increaseResourceReferenceAndGet(
-                          ((PipeDeleteDataNodeEvent) event.getEvent()).getDeleteDataNode()));
-                }
-              }
-
               final EnrichedEvent innerEvent = copiedEvent.getEvent();
+
               if (innerEvent instanceof PipeTsFileInsertionEvent) {
                 final PipeTsFileInsertionEvent tsFileInsertionEvent =
                     (PipeTsFileInsertionEvent) innerEvent;
                 tsFileInsertionEvent.disableMod4NonTransferPipes(
                     extractor.isShouldTransferModFile());
                 bindOrUpdateProgressIndexForTsFileInsertionEvent(tsFileInsertionEvent);
+              }
+
+              if (innerEvent instanceof PipeDeleteDataNodeEvent) {
+                final PipeDeleteDataNodeEvent deleteDataNodeEvent =
+                    (PipeDeleteDataNodeEvent) innerEvent;
+                final DeletionResourceManager manager =
+                    DeletionResourceManager.getInstance(extractor.getDataRegionId());
+                // increase deletion resource's reference and bind real deleteEvent
+                if (Objects.nonNull(manager)
+                    && DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(
+                        deleteDataNodeEvent.getDeleteDataNode())) {
+                  deleteDataNodeEvent.setDeletionResource(
+                      manager.increaseResourceReferenceAndGet(
+                          ((PipeDeleteDataNodeEvent) event.getEvent()).getDeleteDataNode()));
+                }
               }
 
               if (!copiedEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {

@@ -133,6 +133,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTriggerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TFetchTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -214,6 +215,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
@@ -381,9 +383,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus setDatabase(TDatabaseSchema databaseSchema) {
+  public TSStatus setDatabase(final TDatabaseSchema databaseSchema) {
     TSStatus errorResp = null;
-    boolean isSystemDatabase = databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
+    final boolean isSystemDatabase =
+        databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
 
     if (databaseSchema.getTTL() < 0) {
       errorResp =
@@ -463,9 +466,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     databaseSchema.setMaxSchemaRegionGroupNum(databaseSchema.getMinSchemaRegionGroupNum());
     databaseSchema.setMaxDataRegionGroupNum(databaseSchema.getMinDataRegionGroupNum());
 
-    DatabaseSchemaPlan setPlan =
+    final DatabaseSchemaPlan setPlan =
         new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, databaseSchema);
-    TSStatus resp = configManager.setDatabase(setPlan);
+    final TSStatus resp = configManager.setDatabase(setPlan);
 
     // Print log to record the ConfigNode that performs the set SetDatabaseRequest
     LOGGER.info("Execute SetDatabase: {} with result: {}", databaseSchema, resp);
@@ -1303,5 +1306,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowTableResp showTables(final String database) {
     return configManager.showTables(database);
+  }
+
+  @Override
+  public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
+    return configManager.fetchTables(fetchTableMap);
   }
 }

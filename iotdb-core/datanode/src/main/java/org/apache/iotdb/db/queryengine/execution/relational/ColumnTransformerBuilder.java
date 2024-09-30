@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityCo
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.CoalesceColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBinaryMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InBooleanMultiColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.InDoubleMultiColumnTransformer;
@@ -1283,7 +1284,27 @@ public class ColumnTransformerBuilder
 
   @Override
   protected ColumnTransformer visitCoalesceExpression(CoalesceExpression node, Context context) {
-    throw new UnsupportedOperationException(String.format(UNSUPPORTED_EXPRESSION, node));
+    if (!context.cache.containsKey(node)) {
+      if (context.hasSeen.containsKey(node)) {
+        ColumnTransformer columnTransformer = context.hasSeen.get(node);
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                columnTransformer.getType(),
+                context.originSize + context.commonTransformerList.size());
+        columnTransformer.addReferenceCount();
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(getTSDataType(columnTransformer.getType()));
+        context.cache.put(node, identity);
+      } else {
+        List<ColumnTransformer> children =
+            node.getChildren().stream().map(c -> process(c, context)).collect(Collectors.toList());
+        context.cache.put(node, new CoalesceColumnTransformer(children.get(0).getType(), children));
+      }
+    }
+    ColumnTransformer res = context.cache.get(node);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override

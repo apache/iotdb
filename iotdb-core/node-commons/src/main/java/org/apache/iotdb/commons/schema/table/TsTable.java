@@ -189,10 +189,10 @@ public class TsTable {
     return stream.toByteArray();
   }
 
-  public void serialize(OutputStream stream) throws IOException {
+  public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(columnSchemaMap.size(), stream);
-    for (TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
+    for (final TsTableColumnSchema columnSchema : columnSchemaMap.values()) {
       TsTableColumnSchemaUtil.serialize(columnSchema, stream);
     }
     ReadWriteIOUtils.write(props, stream);

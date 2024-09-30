@@ -31,6 +31,7 @@ import org.apache.iotdb.db.pipe.agent.task.execution.PipeConnectorSubtaskExecuto
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtask;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeConnectorSubtaskLifeCycle;
 import org.apache.iotdb.db.pipe.agent.task.subtask.connector.PipeRealtimePriorityBlockingQueue;
+import org.apache.iotdb.db.pipe.metric.PipeDataNodeRemainingEventAndTimeMetrics;
 import org.apache.iotdb.db.pipe.metric.PipeDataRegionEventCounter;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -157,6 +158,8 @@ public class SubscriptionConnectorSubtaskManager {
     final PipeConnectorSubtaskLifeCycle lifeCycle =
         attributeSortedString2SubtaskLifeCycleMap.get(attributeSortedString);
     lifeCycle.register();
+    PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+        .register(lifeCycle.getSubtask(), environment.getPipeName(), environment.getCreationTime());
 
     return attributeSortedString;
   }

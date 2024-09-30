@@ -159,7 +159,7 @@ public class ConfigNodeConfig {
       systemDir + File.separator + "pipe" + File.separator + "receiver";
 
   /** Procedure Evict ttl. */
-  private int procedureCompletedEvictTTL = 800;
+  private int procedureCompletedEvictTTL = 60;
 
   /** Procedure completed clean interval. */
   private int procedureCompletedCleanInterval = 30;
@@ -308,14 +308,10 @@ public class ConfigNodeConfig {
     pipeReceiverFileDir = addHomeDir(pipeReceiverFileDir);
   }
 
-  private String addHomeDir(String dir) {
-    String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
-    if (!new File(dir).isAbsolute() && homeDir != null && homeDir.length() > 0) {
-      if (!homeDir.endsWith(File.separator)) {
-        dir = homeDir + File.separatorChar + dir;
-      } else {
-        dir = homeDir + dir;
-      }
+  public static String addHomeDir(String dir) {
+    final String homeDir = System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null);
+    if (!new File(dir).isAbsolute() && homeDir != null && !homeDir.isEmpty()) {
+      dir = !homeDir.endsWith(File.separator) ? homeDir + File.separatorChar + dir : homeDir + dir;
     }
     return dir;
   }
