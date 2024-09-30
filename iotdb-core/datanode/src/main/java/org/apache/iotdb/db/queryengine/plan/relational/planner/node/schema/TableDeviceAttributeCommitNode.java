@@ -23,6 +23,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -89,10 +91,28 @@ public class TableDeviceAttributeCommitNode extends PlanNode {
   }
 
   @Override
-  protected void serializeAttributes(final ByteBuffer byteBuffer) {}
+  protected void serializeAttributes(final ByteBuffer byteBuffer) {
+    getType().serialize(byteBuffer);
+    ReadWriteIOUtils.write(version, byteBuffer);
+    ReadWriteIOUtils.write(commitBuffer.length, byteBuffer);
+    byteBuffer.put(commitBuffer);
+    ReadWriteIOUtils.write(shrunkNodes.size(), byteBuffer);
+    for (final Integer nodeId : shrunkNodes) {
+      ReadWriteIOUtils.write(nodeId, byteBuffer);
+    }
+  }
 
   @Override
-  protected void serializeAttributes(final DataOutputStream stream) throws IOException {}
+  protected void serializeAttributes(final DataOutputStream stream) throws IOException {
+    getType().serialize(stream);
+    ReadWriteIOUtils.write(version, stream);
+    ReadWriteIOUtils.write(commitBuffer.length, stream);
+    stream.write(commitBuffer);
+    ReadWriteIOUtils.write(shrunkNodes.size(), stream);
+    for (final Integer nodeId : shrunkNodes) {
+      ReadWriteIOUtils.write(nodeId, stream);
+    }
+  }
 
   public static PlanNode deserialize(final ByteBuffer buffer) {
     return null;
