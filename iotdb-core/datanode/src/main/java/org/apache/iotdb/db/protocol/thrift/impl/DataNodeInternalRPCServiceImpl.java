@@ -509,6 +509,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // req.getFullPath() is a database path
       DataNodeSchemaCache.getInstance().invalidate(req.getFullPath());
       ClusterTemplateManager.getInstance().invalid(req.getFullPath());
+      LOGGER.info("Schema cache of {} has been invalidated", req.getFullPath());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } finally {
       DataNodeSchemaCache.getInstance().releaseWriteLock();
