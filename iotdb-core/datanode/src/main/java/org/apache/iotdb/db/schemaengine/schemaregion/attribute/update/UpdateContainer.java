@@ -43,7 +43,7 @@ public interface UpdateContainer {
   // The "limitBytes" shall be at least 5 for a "type" and "0" to indicate empty
   byte[] getUpdateContent(final @Nonnull AtomicInteger limitBytes);
 
-  Pair<Integer, Boolean> updateSelfByCommitContainer(final UpdateContainer commitBuffer);
+  Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer);
 
   void serialize(final OutputStream outputstream) throws IOException;
 

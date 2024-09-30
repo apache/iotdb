@@ -177,7 +177,7 @@ public class UpdateDetailContainer implements UpdateContainer {
   }
 
   @Override
-  public Pair<Integer, Boolean> updateSelfByCommitContainer(final UpdateContainer commitBuffer) {
+  public Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer) {
     return null;
   }
 

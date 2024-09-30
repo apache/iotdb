@@ -137,7 +137,7 @@ public class DeviceAttributeRemoteUpdater {
                     (dataNode, container) -> {
                       if (container instanceof UpdateDetailContainer
                           || version.get() == node.getVersion()) {
-                        final Pair<Integer, Boolean> result =
+                        final Pair<Long, Boolean> result =
                             container.updateSelfByCommitContainer(getContainer(bytes));
                         releaseMemory(result.getLeft());
                         // isEmpty

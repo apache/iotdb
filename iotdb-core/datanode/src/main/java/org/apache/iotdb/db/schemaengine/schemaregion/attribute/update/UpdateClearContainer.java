@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @ThreadSafe
 public class UpdateClearContainer implements UpdateContainer {
@@ -96,8 +97,21 @@ public class UpdateClearContainer implements UpdateContainer {
   }
 
   @Override
-  public Pair<Integer, Boolean> updateSelfByCommitContainer(final UpdateContainer commitBuffer) {
-    return null;
+  public Pair<Long, Boolean> updateSelfByCommitContainer(final UpdateContainer commitContainer) {
+    if (!(commitContainer instanceof UpdateClearContainer)) {
+      return new Pair<>(0L, false);
+    }
+    final AtomicLong reducedBytes = new AtomicLong(0);
+    ((UpdateClearContainer) commitContainer)
+        .getTableNames()
+        .forEach(
+            tableName -> {
+              if (tableNames.contains(tableName)) {
+                tableNames.remove(tableName);
+                reducedBytes.addAndGet(RamUsageEstimator.sizeOf(tableName));
+              }
+            });
+    return new Pair<>(reducedBytes.get(), tableNames.isEmpty());
   }
 
   @Override
@@ -115,6 +129,10 @@ public class UpdateClearContainer implements UpdateContainer {
     for (int i = 0; i < size; ++i) {
       tableNames.add(ReadWriteIOUtils.readString(inputStream));
     }
+  }
+
+  Set<String> getTableNames() {
+    return tableNames;
   }
 
   long ramBytesUsed() {
