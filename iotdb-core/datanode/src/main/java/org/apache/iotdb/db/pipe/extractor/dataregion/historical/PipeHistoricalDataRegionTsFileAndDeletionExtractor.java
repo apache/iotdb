@@ -125,8 +125,9 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
   private boolean shouldTerminatePipeOnAllHistoricalEventsConsumed;
   private boolean isTerminateSignalSent = false;
 
-  private Queue<PersistentResource> pendingQueue;
   private volatile boolean hasBeenStarted = false;
+
+  private Queue<PersistentResource> pendingQueue;
 
   @Override
   public void validate(final PipeParameterValidator validator) {
@@ -730,7 +731,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
 
   @Override
   public synchronized boolean hasConsumedAll() {
-    // If the pendingQueues are null when the function is called, it implies that the extractor only
+    // If the pendingQueue is null when the function is called, it implies that the extractor only
     // extracts deletion thus the historical event has nothing to consume.
     return hasBeenStarted
         && (Objects.isNull(pendingQueue)
