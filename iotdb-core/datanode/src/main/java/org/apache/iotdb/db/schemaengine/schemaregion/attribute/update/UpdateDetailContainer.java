@@ -137,12 +137,14 @@ public class UpdateDetailContainer implements UpdateContainer {
           tableEntry.getValue().entrySet()) {
         final byte[][] deviceIdBytes =
             Arrays.stream(deviceEntry.getKey())
-                .map(str -> str.getBytes(TSFileConfig.STRING_CHARSET))
+                .map(str -> Objects.nonNull(str) ? str.getBytes(TSFileConfig.STRING_CHARSET) : null)
                 .toArray(byte[][]::new);
 
         newSize =
             (Integer.BYTES * (deviceIdBytes.length + 2))
-                + Arrays.stream(deviceIdBytes).map(bytes -> bytes.length).reduce(0, Integer::sum);
+                + Arrays.stream(deviceIdBytes)
+                    .map(bytes -> Objects.nonNull(bytes) ? bytes.length : 0)
+                    .reduce(0, Integer::sum);
         if (limitBytes.get() < newSize) {
           outputStream.rewrite(mapEntryCount, mapSizeOffset);
           outputStream.rewrite(deviceEntryCount, deviceSizeOffset);
@@ -158,8 +160,14 @@ public class UpdateDetailContainer implements UpdateContainer {
         int attributeCount = 0;
         for (final Map.Entry<String, String> attributeKV : deviceEntry.getValue().entrySet()) {
           final byte[] keyBytes = attributeKV.getKey().getBytes(TSFileConfig.STRING_CHARSET);
-          final byte[] valueBytes = attributeKV.getValue().getBytes(TSFileConfig.STRING_CHARSET);
-          newSize = 2 * Integer.BYTES + keyBytes.length + valueBytes.length;
+          final byte[] valueBytes =
+              Objects.nonNull(attributeKV.getValue())
+                  ? attributeKV.getValue().getBytes(TSFileConfig.STRING_CHARSET)
+                  : null;
+          newSize =
+              2 * Integer.BYTES
+                  + keyBytes.length
+                  + (Objects.nonNull(valueBytes) ? valueBytes.length : 0);
           if (limitBytes.get() < newSize) {
             outputStream.rewrite(mapEntryCount, mapSizeOffset);
             outputStream.rewrite(deviceEntryCount, deviceSizeOffset);

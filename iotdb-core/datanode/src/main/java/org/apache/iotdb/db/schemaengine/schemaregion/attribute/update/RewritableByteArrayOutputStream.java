@@ -26,17 +26,18 @@ import javax.annotation.concurrent.NotThreadSafe;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Objects;
 
 @NotThreadSafe
 class RewritableByteArrayOutputStream extends ByteArrayOutputStream {
 
   private static final byte[] intPlaceHolder = new byte[4];
 
-  void writeNull() throws IOException {
-    ReadWriteIOUtils.write(ReadWriteIOUtils.NO_BYTE_TO_READ, this);
-  }
-
   void writeWithLength(final byte[] bytes) throws IOException {
+    if (Objects.isNull(bytes)) {
+      ReadWriteIOUtils.write(ReadWriteIOUtils.NO_BYTE_TO_READ, this);
+      return;
+    }
     ReadWriteIOUtils.write(bytes.length, this);
     write(bytes);
   }
