@@ -373,23 +373,52 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  private void extractDeletions(
-      final DeletionResourceManager deletionResourceManager,
-      final List<PersistentResource> resourceList) {
-    LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
-    List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
-    final int originalDeletionCount = allDeletionResources.size();
-    allDeletionResources =
-        allDeletionResources.stream()
-            .filter(this::mayDeletionUnprocessed)
-            .collect(Collectors.toList());
-    resourceList.addAll(allDeletionResources);
-    LOGGER.info(
-        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}",
-        pipeName,
-        dataRegionId,
-        resourceList.size(),
-        originalDeletionCount);
+  @Override
+  public synchronized void start() {
+    if (!shouldExtractInsertion) {
+      hasBeenStarted = true;
+      return;
+    }
+    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+      LOGGER.info(
+          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
+          pipeName,
+          dataRegionId);
+      return;
+    }
+    hasBeenStarted = true;
+
+    final DataRegion dataRegion =
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
+    if (Objects.isNull(dataRegion)) {
+      pendingQueue = new ArrayDeque<>();
+      return;
+    }
+
+    dataRegion.writeLock(
+        "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
+    try {
+      List<PersistentResource> resourceList = new ArrayList<>();
+      // Flush TsFiles
+      final long startHistoricalExtractionTime = System.currentTimeMillis();
+      flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
+      // Extract TsFiles
+      extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
+
+      // Extract deletions
+      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+          .ifPresent(mgr -> extractDeletions(mgr, resourceList));
+
+      // Sort tsFileResource and deletionResource
+      resourceList.sort(
+          (o1, o2) ->
+              startIndex instanceof TimeWindowStateProgressIndex
+                  ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
+                  : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
+      pendingQueue = new ArrayDeque<>(resourceList);
+    } finally {
+      dataRegion.writeUnlock();
+    }
   }
 
   private void flushTsFilesForExtraction(
@@ -492,58 +521,6 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
     }
   }
 
-  @Override
-  public synchronized void start() {
-    if (!shouldExtractInsertion) {
-      hasBeenStarted = true;
-      return;
-    }
-    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-      LOGGER.info(
-          "Pipe {}@{}: failed to start to extract historical TsFile, storage engine is not ready. Will retry later.",
-          pipeName,
-          dataRegionId);
-      return;
-    }
-    hasBeenStarted = true;
-
-    final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
-    if (Objects.isNull(dataRegion)) {
-      pendingQueue = new ArrayDeque<>();
-      return;
-    }
-
-    dataRegion.writeLock(
-        "Pipe: start to extract historical TsFile and Deletion(if uses pipeConsensus)");
-    try {
-      List<PersistentResource> resourceList = new ArrayList<>();
-      // Flush TsFiles
-      final long startHistoricalExtractionTime = System.currentTimeMillis();
-      flushTsFilesForExtraction(dataRegion, startHistoricalExtractionTime);
-      // Extract TsFiles
-      extractTsFiles(dataRegion, startHistoricalExtractionTime, resourceList);
-
-      // Extract deletions
-      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
-          .ifPresent(mgr -> extractDeletions(mgr, resourceList));
-
-      // Sort tsFileResource and deletionResource
-      resourceList.sort(
-          (o1, o2) ->
-              startIndex instanceof TimeWindowStateProgressIndex
-                  ? Long.compare(o1.getFileStartTime(), o2.getFileStartTime())
-                  : o1.getProgressIndex().topologicalCompareTo(o2.getProgressIndex()));
-      pendingQueue = new ArrayDeque<>(resourceList);
-    } finally {
-      dataRegion.writeUnlock();
-    }
-  }
-
-  private boolean mayDeletionUnprocessed(final DeletionResource resource) {
-    return !startIndex.isAfter(resource.getProgressIndex());
-  }
-
   private boolean mayTsFileContainUnprocessedData(final TsFileResource resource) {
     if (startIndex instanceof TimeWindowStateProgressIndex) {
       // The resource is closed thus the TsFileResource#getFileEndTime() is safe to use
@@ -618,6 +595,26 @@ public class PipeHistoricalDataRegionTsFileAndDeletionExtractor
       // anyway.
       return true;
     }
+  }
+
+  private void extractDeletions(
+      final DeletionResourceManager deletionResourceManager,
+      final List<PersistentResource> resourceList) {
+    LOGGER.info("Pipe {}@{}: start to extract deletions", pipeName, dataRegionId);
+    List<DeletionResource> allDeletionResources = deletionResourceManager.getAllDeletionResources();
+    final int originalDeletionCount = allDeletionResources.size();
+    allDeletionResources =
+        allDeletionResources.stream()
+            // filter if deletion is unprocessed
+            .filter(resource -> !startIndex.isAfter(resource.getProgressIndex()))
+            .collect(Collectors.toList());
+    resourceList.addAll(allDeletionResources);
+    LOGGER.info(
+        "Pipe {}@{}: finish to extract deletions, extract deletions count {}/{}",
+        pipeName,
+        dataRegionId,
+        resourceList.size(),
+        originalDeletionCount);
   }
 
   private Event supplyTsFileEvent(TsFileResource resource) {
